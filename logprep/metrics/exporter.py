@@ -1,17 +1,18 @@
 """This module contains functionality to start a prometheus exporter and expose metrics with it"""
+
 import os
 import shutil
 from logging import getLogger
 
 from prometheus_client import REGISTRY, multiprocess, start_http_server
 
-from logprep.util.configuration import Metrics
+from logprep.util.configuration import MetricsConfig
 
 
 class PrometheusExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
 
-    def __init__(self, status_logger_config: Metrics):
+    def __init__(self, status_logger_config: MetricsConfig):
         self.is_running = False
         self._logger = getLogger("Prometheus Exporter")
         self._logger.debug("Initializing Prometheus Exporter")

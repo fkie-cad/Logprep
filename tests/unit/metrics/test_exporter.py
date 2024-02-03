@@ -9,7 +9,7 @@ from unittest import mock
 from prometheus_client import REGISTRY
 
 from logprep.metrics.exporter import PrometheusExporter
-from logprep.util.configuration import Metrics
+from logprep.util.configuration import MetricsConfig
 
 
 @mock.patch(
@@ -19,14 +19,14 @@ from logprep.util.configuration import Metrics
 class TestPrometheusExporter:
     def setup_method(self):
         REGISTRY.__init__()
-        self.metrics_config = Metrics(enabled=True, port=80)
+        self.metrics_config = MetricsConfig(enabled=True, port=80)
 
     def test_correct_setup(self):
         exporter = PrometheusExporter(self.metrics_config)
         assert exporter._port == self.metrics_config.port
 
     def test_default_port_if_missing_in_config(self):
-        metrics_config = Metrics(enabled=True)
+        metrics_config = MetricsConfig(enabled=True)
         exporter = PrometheusExporter(metrics_config)
         assert exporter._port == 8000
 

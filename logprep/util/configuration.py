@@ -146,6 +146,13 @@ class ConfigVersionDidNotChangeError(InvalidConfigurationError):
         )
 
 
+class ConfigGetterException(InvalidConfigurationError):
+    """Raise if configuration getter fails."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 class RequiredConfigurationKeyMissingError(InvalidConfigurationError):
     """Raise if required option is missing in configuration."""
 
@@ -168,7 +175,7 @@ class MissingEnvironmentError(InvalidConfigurationError):
 
 
 @define(kw_only=True, frozen=True)
-class Metrics:
+class MetricsConfig:
     enabled: bool = field(validator=validators.instance_of(bool), default=False)
     port: int = field(validator=validators.instance_of(int), default=8000)
 
@@ -215,10 +222,10 @@ class Configuration:
     """Output connector configuration. Defaults to :code:`{}`."""
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)
     """Pipeline configuration. Defaults to :code:`[]`."""
-    metrics: Metrics = field(
-        validator=validators.instance_of(Metrics),
-        factory=Metrics,
-        converter=lambda x: Metrics(**x) if isinstance(x, dict) else x,
+    metrics: MetricsConfig = field(
+        validator=validators.instance_of(MetricsConfig),
+        factory=MetricsConfig,
+        converter=lambda x: MetricsConfig(**x) if isinstance(x, dict) else x,
         eq=False,
     )
     """Metrics configuration. Defaults to :code:`{"enabled": False, "port": 8000}`."""
@@ -307,13 +314,13 @@ class Configuration:
                 config = Configuration.from_source(config_path)
                 configs.append(config)
             except (GetterNotFoundError, RequestException) as error:
-                raise InvalidConfigurationError(f"{config_path} {error}") from error
+                raise ConfigGetterException(f"{config_path} {error}") from error
             except FileNotFoundError as error:
-                raise InvalidConfigurationError(
+                raise ConfigGetterException(
                     f"One or more of the given config file(s) does not exist: {error.filename}\n",
                 ) from error
             except ScannerError as error:
-                raise InvalidConfigurationError(
+                raise ConfigGetterException(
                     f"Invalid yaml or json file: {config_path} {error.problem}\n"
                 ) from error
             except InvalidConfigurationError as error:

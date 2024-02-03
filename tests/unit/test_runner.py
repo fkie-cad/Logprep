@@ -3,6 +3,7 @@
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-function-docstring
 # pylint: disable=attribute-defined-outside-init
+import re
 import uuid
 from functools import partial
 from pathlib import Path
@@ -175,22 +176,22 @@ class TestRunner:
         "exception, log_message",
         [
             (HTTPError(404), "404"),
-            (FileNotFoundError("no such file or directory"), "no such file or directory"),
+            (
+                FileNotFoundError("no such file or directory"),
+                "One or more of the given config file(s) does not exist",
+            ),
             (SSLError("SSL context"), "SSL context"),
         ],
     )
     @mock.patch("logprep.abc.getter.Getter.get")
     def test_reload_configuration_logs_exception_and_schedules_new_refresh_with_a_quarter_the_time(
-        self, mock_get, runner: Runner, exception, log_message
+        self, mock_get, runner: Runner, caplog, exception, log_message
     ):
         mock_get.side_effect = exception
         assert len(runner.scheduler.jobs) == 0
         runner._config_refresh_interval = 40
-        with mock.patch("logging.Logger.warning") as mock_warning:
-            with mock.patch("logging.Logger.info") as mock_info:
-                runner.reload_configuration()
-        mock_warning.assert_called_with(f"Failed to load configuration: {log_message}")
-        mock_info.assert_called_with("Config refresh interval is set to: 10 seconds")
+        runner.reload_configuration()
+        assert log_message in caplog.text
         assert len(runner.scheduler.jobs) == 1
         assert runner.scheduler.jobs[0].interval == 10
 
@@ -207,16 +208,15 @@ class TestRunner:
 
     @mock.patch("logprep.abc.getter.Getter.get")
     def test_reload_configuration_does_not_set_refresh_interval_below_5_seconds(
-        self, mock_get, runner: Runner
+        self, mock_get, caplog, runner: Runner
     ):
         mock_get.side_effect = HTTPError(404)
         assert len(runner.scheduler.jobs) == 0
         runner._config_refresh_interval = 12
-        with mock.patch("logging.Logger.warning") as mock_warning:
-            with mock.patch("logging.Logger.info") as mock_info:
-                runner.reload_configuration()
-        mock_warning.assert_called_with("Failed to load configuration: 404")
-        mock_info.assert_called_with("Config refresh interval is set to: 5 seconds")
+        with caplog.at_level("INFO"):
+            runner.reload_configuration()
+        assert re.search(r"Failed to load configuration: .*404", caplog.text)
+        assert re.search("Config refresh interval is set to: 5 seconds", caplog.text)
         assert len(runner.scheduler.jobs) == 1
         assert runner.scheduler.jobs[0].interval == 5
 

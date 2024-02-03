@@ -14,6 +14,7 @@ from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util.configuration import (
+    ConfigGetterException,
     Configuration,
     ConfigVersionDidNotChangeError,
     InvalidConfigurationError,
@@ -168,7 +169,7 @@ class Runner:
             self._schedule_config_refresh_job()
             self._logger.info(f"Configuration version: {self._configuration.version}")
             self._set_version_info_metric()
-        except (requests.RequestException, FileNotFoundError) as error:
+        except ConfigGetterException as error:
             self._logger.warning(f"Failed to load configuration: {error}")
             self.metrics.number_of_config_refresh_failures += 1
             self._config_refresh_interval = int(self._config_refresh_interval / 4)

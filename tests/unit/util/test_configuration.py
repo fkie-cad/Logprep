@@ -16,7 +16,7 @@ from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
     InvalidConfigurationErrors,
-    Metrics,
+    MetricsConfig,
 )
 from logprep.util.getter import FileGetter, GetterNotFoundError
 from tests.testdata.metadata import (
@@ -48,7 +48,7 @@ class TestConfiguration:
             ("pipeline", list, []),
             ("input", dict, {}),
             ("output", dict, {}),
-            ("metrics", Metrics, Metrics(**{"enabled": False, "port": 8000})),
+            ("metrics", MetricsConfig, MetricsConfig(**{"enabled": False, "port": 8000})),
         ],
     )
     def test_configuration_init(self, attribute, attribute_type, default):
