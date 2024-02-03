@@ -1,0 +1,34 @@
+[
+  {
+    "raw": {
+      "winlog": {
+        "event_data": {
+          "ToFolder": "test_user"
+        }
+      }
+    },
+    "processed": {
+      "winlog": {
+        "event_data": {
+          "ToFolder|re": "%{PSEUDONYM}"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "winlog": {
+        "event_data": {
+          "ToFolder_false": "test_user"
+        }
+      }
+    },
+    "processed": {
+      "winlog": {
+        "event_data": {
+          "ToFolder_false": "test_user"
+        }
+      }
+    }
+  }
+]

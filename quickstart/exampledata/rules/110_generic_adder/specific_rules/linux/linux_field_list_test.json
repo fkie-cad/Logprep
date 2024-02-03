@@ -1,0 +1,42 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "tags": [
+        "auditd",
+        "linux"
+      ]
+    },
+    "processed": {
+      "tags": [
+        "auditd",
+        "linux"
+      ],
+      "data_stream": {
+        "dataset": "linux.auditd",
+        "namespace": "lab",
+        "type": "logs"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "tags": [
+        "messages",
+        "linux"
+      ]
+    },
+    "processed": {
+      "tags": [
+        "messages",
+        "linux"
+      ],
+      "data_stream": {
+        "dataset": "linux.messages",
+        "namespace": "lab",
+        "type": "logs"
+      }
+    }
+  }
+]

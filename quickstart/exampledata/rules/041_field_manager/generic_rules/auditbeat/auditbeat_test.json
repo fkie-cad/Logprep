@@ -1,0 +1,75 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "@timestamp": "2022-03-18T08:33:27.972Z",
+      "host": {
+        "name": "testhost"
+      }
+    },
+    "processed": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "@timestamp": "2022-03-18T08:33:27.972Z",
+      "host": {
+        "name": "testhost"
+      },
+      "observer": {
+        "name": "testhost"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "@timestamp": "2022-03-18T08:33:27.972Z",
+      "host": {
+
+        "hostname": "testhostname"
+      }
+    },
+    "processed": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "@timestamp": "2022-03-18T08:33:27.972Z",
+      "host": {
+        "hostname": "testhostname"
+      },
+      "observer": {
+        "hostname": "testhostname"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 2,
+    "raw": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "@timestamp": "2022-03-18T08:33:27.972Z",
+      "host": {
+        "ip": "123.123.123.123"
+      }
+    },
+    "processed": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "@timestamp": "2022-03-18T08:33:27.972Z",
+      "host": {
+        "ip": "123.123.123.123"
+      },
+      "observer": {
+        "ip": "123.123.123.123"
+      }
+    }
+  }
+]

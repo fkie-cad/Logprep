@@ -1,0 +1,5 @@
+filter: 'client.address'
+pseudonymizer:
+  pseudonyms:
+    client.address: RE_WHOLE_FIELD
+description: 'pseudonymize client.address'

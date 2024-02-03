@@ -1,0 +1,19 @@
+[
+  {
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "timestamp": "1630563874568"
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "timestamp": "1630563874568",
+      "@timestamp": "2021-09-02T06:24:34.568000Z"
+    }
+  }
+]

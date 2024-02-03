@@ -1,0 +1,7 @@
+filter: 'tags: windows AND NOT agent_type: nxlog-ee'
+list_comparison:
+  source_fields: ["winlog.user.name"]
+  target_field: Winlog_user_category
+  list_file_paths:
+    - "windows_admin_users.txt"
+description: 'List of Users regarded as admin'

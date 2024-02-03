@@ -1,0 +1,5 @@
+filter: 'file.target.path'
+pseudonymizer:
+  pseudonyms:
+    file.target.path: RE_WHOLE_FIELD
+description: 'pseudonymize file.target.path'

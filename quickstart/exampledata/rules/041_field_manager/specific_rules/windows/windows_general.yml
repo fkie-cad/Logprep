@@ -1,0 +1,7 @@
+filter: "tags: windows AND NOT agent_type: nxlog-ee"
+field_manager:
+  mapping:
+    'winlog.channel': event.module
+    'message': event.original
+    'observer.hostname': observer.name
+description: "Windows Forwarder Fields"

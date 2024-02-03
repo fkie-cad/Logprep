@@ -1,0 +1,40 @@
+[
+  {
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ]
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "event": {
+        "kind": "event",
+        "category": "web",
+        "module": "squid",
+        "dataset": "squid.access"
+      },
+      "observer": {
+        "vendor": "squid",
+        "product": "squid",
+        "type": "proxy"
+      },
+      "data_stream": {
+        "dataset": "squid.access",
+        "namespace": "lab",
+        "type": "logs"
+      }
+    }
+  },
+  {
+    "raw": {
+      "wrong": "filter"
+    },
+    "processed": {
+      "wrong": "filter"
+    }
+  }
+]

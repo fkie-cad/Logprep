@@ -1,0 +1,7 @@
+filter: 'url.full:"/.*"'
+regex_fields:
+ - url.full
+dropper:
+ drop:
+  - url.full
+description: "drops url.full field if it starts with a /"

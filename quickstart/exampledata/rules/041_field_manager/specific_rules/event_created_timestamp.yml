@@ -1,0 +1,5 @@
+filter: '@timestamp AND NOT event.created AND NOT agent_type: nxlog-ee'
+field_manager:
+  source_fields: ["@timestamp"]
+  target_field: 'event.created'
+description: 'Copy the @timestamp value into event.created'

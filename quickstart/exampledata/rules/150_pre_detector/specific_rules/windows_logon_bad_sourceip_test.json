@@ -1,0 +1,87 @@
+[
+  {
+    "raw": {
+      "event": {
+        "code": "4624"
+      },
+      "bad_source_ip": {
+        "in_list": [
+          "windows_bad_source_ip.txt"
+        ]
+      },
+      "tags": [
+        "windows"
+      ]
+    },
+    "processed": {
+      "pre_detection_id|re": "%{UUID}",
+      "event": {
+        "code": "4624"
+      },
+      "bad_source_ip": {
+        "in_list": [
+          "windows_bad_source_ip.txt"
+        ]
+      },
+      "tags": [
+        "windows"
+      ]
+    }
+  },
+  {
+    "raw": {
+      "event": {
+        "code": "4624"
+      },
+      "bad_source_ip": {
+        "not_in_list": [
+          "windows_bad_source_ip.txt"
+        ]
+      },
+      "tags": [
+        "windows"
+      ]
+    },
+    "processed": {
+      "event": {
+        "code": "4624"
+      },
+      "bad_source_ip": {
+        "not_in_list": [
+          "windows_bad_source_ip.txt"
+        ]
+      },
+      "tags": [
+        "windows"
+      ]
+    }
+  },
+  {
+    "raw": {
+      "event": {
+        "code": "4711"
+      },
+      "bad_source_ip": {
+        "in_list": [
+          "windows_bad_source_ip.txt"
+        ]
+      },
+      "tags": [
+        "windows"
+      ]
+    },
+    "processed": {
+      "event": {
+        "code": "4711"
+      },
+      "bad_source_ip": {
+        "in_list": [
+          "windows_bad_source_ip.txt"
+        ]
+      },
+      "tags": [
+        "windows"
+      ]
+    }
+  }
+]

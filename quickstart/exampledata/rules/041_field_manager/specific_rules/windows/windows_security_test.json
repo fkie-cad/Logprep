@@ -1,0 +1,211 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "tags": [
+        "windows"
+      ],
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "SubjectUserName": "dummy-text",
+          "SubjectUserSid": "dummy-text",
+          "TargetUserSid": "dummy-text",
+          "TargetUserName": "dummy-text",
+          "TargetDomainName": "dummy-text",
+          "TargetLogonId": "dummy-text",
+          "SubjectLogonId": "dummy-text",
+          "IpAddress": "dummy-text",
+          "IpPort": "dummy-text",
+          "NewProcessName": "dummy-text",
+          "ParentProcessName": "dummy-text"
+        }
+      }
+    },
+    "processed": {
+      "tags": [
+        "windows"
+      ],
+      "winlog": {
+        "channel": "Security",
+        "logon": {
+          "id": "dummy-text"
+        },
+        "event_data": {
+          "SubjectUserName": "dummy-text",
+          "SubjectUserSid": "dummy-text",
+          "TargetUserSid": "dummy-text",
+          "TargetUserName": "dummy-text",
+          "TargetDomainName": "dummy-text",
+          "TargetLogonId": "dummy-text",
+          "SubjectLogonId": "dummy-text",
+          "IpAddress": "dummy-text",
+          "IpPort": "dummy-text",
+          "NewProcessName": "dummy-text",
+          "ParentProcessName": "dummy-text"
+        }
+      },
+      "host": {
+        "user": {
+          "name": "dummy-text",
+          "id": "dummy-text"
+        }
+      },
+      "group": {
+        "id": "dummy-text",
+        "name": "dummy-text",
+        "domain": "dummy-text"
+      },
+      "process": {
+        "executable": "dummy-text",
+        "parent": {
+          "executable": "dummy-text"
+        }
+      },
+      "source": {
+        "ip": "dummy-text",
+        "port": "dummy-text"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "tags": [
+        "windows"
+      ],
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "ProcessName": "dummy-text"
+        }
+      }
+    },
+    "processed": {
+      "tags": [
+        "windows"
+      ],
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "ProcessName": "dummy-text"
+        }
+      },
+      "process": {
+        "executable": "dummy-text"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 2,
+    "raw": {
+      "tags": [
+        "windows"
+      ],
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "WorkstationName": "dummy-text"
+        }
+      }
+    },
+    "processed": {
+      "tags": [
+        "windows"
+      ],
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "WorkstationName": "dummy-text"
+        }
+      },
+      "source": {
+        "domain": "dummy-text"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 3,
+      "raw": {
+        "tags": [
+          "windows"
+        ],
+        "winlog": {
+          "channel": "Security",
+          "event_data": {
+            "LogonType": "dummy-text"
+          }
+        }
+      },
+      "processed": {
+        "tags": [
+          "windows"
+        ],
+        "winlog": {
+          "channel": "Security",
+          "logon": {
+            "type": "dummy-text"
+          },
+          "event_data": {
+            "LogonType": "dummy-text"
+          }
+        }
+      }
+    },
+    {
+      "target_rule_idx": 4,
+      "raw": {
+        "tags": [
+          "windows"
+        ],
+        "winlog": {
+          "channel": "Security",
+          "event_data": {
+            "FromFolder": "dummy-text"
+          }
+        }
+      },
+      "processed": {
+        "tags": [
+          "windows"
+        ],
+        "winlog": {
+          "channel": "Security",
+          "event_data": {
+            "FromFolder": "dummy-text"
+          }
+        },
+        "file": {
+          "path": "dummy-text"
+        }
+      }
+    },
+    {
+      "target_rule_idx": 5,
+      "raw": {
+        "tags": [
+          "windows"
+        ],
+        "winlog": {
+          "channel": "Security",
+          "event_data": {
+            "SubjectLogonId": "dummy-text"
+          }
+        }
+      },
+      "processed": {
+        "tags": [
+          "windows"
+        ],
+        "winlog": {
+          "channel": "Security",
+          "logon": {
+            "id": "dummy-text"
+          },
+          "event_data": {
+            "SubjectLogonId": "dummy-text"
+          }
+        }
+      }
+    }
+]

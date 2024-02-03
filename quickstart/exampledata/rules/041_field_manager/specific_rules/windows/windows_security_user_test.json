@@ -1,0 +1,86 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "TargetUserSid": "dummy-content"
+        }
+      },
+      "tags": [
+        "windows"
+      ]
+    },
+    "processed": {
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "TargetUserSid": "dummy-content"
+        }
+      },
+      "tags": [
+        "windows"
+      ],
+      "user": {
+        "id": "dummy-content"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "TargetUserName": "dummy-content"        
+        }
+      },
+      "tags": [
+        "windows"
+      ]
+    },
+    "processed": {
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "TargetUserName": "dummy-content"        
+        }
+      },
+      "tags": [
+        "windows"
+      ],
+      "user": {
+        "name": "dummy-content"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 2,
+    "raw": {
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "TargetDomainName": "dummy-content"
+        }
+      },
+      "tags": [
+        "windows"
+      ]
+    },
+    "processed": {
+      "winlog": {
+        "channel": "Security",
+        "event_data": {
+          "TargetDomainName": "dummy-content"
+        }
+      },
+      "tags": [
+        "windows"
+      ],
+      "user": {
+        "domain": "dummy-content"
+      }
+    }
+  }
+]

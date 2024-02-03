@@ -1,0 +1,65 @@
+[
+  {
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "response": {
+          "status_code": "200"
+        }
+      },
+      "url": {
+        "original": "a.php?l=a.cab"
+      }
+    },
+    "processed": {
+      "pre_detection_id|re": "%{UUID}",
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "response": {
+          "status_code": "200"
+        }
+      },
+      "url": {
+        "original": "a.php?l=a.cab"
+      }
+    }
+  },
+  {
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "response": {
+          "status_code": "200"
+        }
+      },
+      "url": {
+        "original": "a.php?l=a.notcab"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "response": {
+          "status_code": "200"
+        }
+      },
+      "url": {
+        "original": "a.php?l=a.notcab"
+      }
+    }
+  }
+]
+
+

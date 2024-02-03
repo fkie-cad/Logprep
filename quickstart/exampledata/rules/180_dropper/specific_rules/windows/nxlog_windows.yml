@@ -1,0 +1,13 @@
+filter: "tags: windows AND (agent_type: nxlog-ee OR agent.type: nxlog-ee)"
+dropper:
+  drop:
+    - Level
+    - LevelValue
+    - OpcodeValue
+    - Severity
+    - SeverityValue
+    - SourceModuleName
+    - SourceModuleType
+    - TaskValue
+    - Version
+description: "Drops windows nxlog-ee fields which are not necessary."

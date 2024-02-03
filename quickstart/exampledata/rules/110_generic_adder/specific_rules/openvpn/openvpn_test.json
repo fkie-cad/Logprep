@@ -1,0 +1,99 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "tags": [
+        "openvpn"
+      ]
+    },
+    "processed": {
+      "tags": [
+        "openvpn"
+      ],
+      "event": {
+        "kind": "event",
+        "category": "network",
+        "module": "openvpn",
+        "type": "connection"
+      },
+      "data_stream": {
+        "dataset": "openvpn",
+        "namespace": "lab",
+        "type": "logs"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "tags": [
+        "wrong-tag"
+      ]
+    },
+    "processed": {
+      "tags": [
+        "wrong-tag"
+      ]
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "tags": [
+        "openvpn"
+      ],
+      "log": {
+        "syslog": {
+          "facility": {
+            "name": "system"
+          }
+        }
+      }
+    },
+    "processed": {
+      "tags": [
+        "openvpn"
+      ],
+      "log": {
+        "syslog": {
+          "facility": {
+            "name": "system"
+          }
+        }
+      },
+      "event": {
+        "dataset": "openvpn.system"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 2,
+    "raw": {
+      "tags": [
+        "openvpn"
+      ],
+      "log": {
+        "syslog": {
+          "facility": {
+            "name": "security/authorization"
+          }
+        }
+      }
+    },
+    "processed": {
+      "tags": [
+        "openvpn"
+      ],
+      "log": {
+        "syslog": {
+          "facility": {
+            "name": "security/authorization"
+          }
+        }
+      },
+      "event": {
+        "dataset": "openvpn.security_authorization"
+      }
+    }
+  }
+]

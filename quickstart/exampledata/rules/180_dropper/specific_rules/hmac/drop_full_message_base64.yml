@@ -1,0 +1,5 @@
+filter: 'Full_event.compressed_base64'
+dropper:
+  drop:
+    - Full_event.compressed_base64
+description: "Drops the compressed base64 full event field."

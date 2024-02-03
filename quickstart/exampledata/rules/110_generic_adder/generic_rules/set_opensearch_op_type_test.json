@@ -1,0 +1,15 @@
+[
+  {
+    "raw": {
+      "data_stream": {
+        "dataset": "tor.java_http_access"
+      }
+    },
+    "processed": {
+      "data_stream": {
+        "dataset": "tor.java_http_access"
+      },
+      "_op_type": "create"
+    }
+  }
+]

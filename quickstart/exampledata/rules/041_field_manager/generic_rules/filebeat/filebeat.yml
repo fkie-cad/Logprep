@@ -1,0 +1,36 @@
+  # TODO: Das mapping sollte nochmal hinterfragt werden. Ein Observer ist definiert als z.B. Firewall, Switch, LoadBalancer...
+  # Nicht jeder Host ist ein Observer
+filter: "agent.type: filebeat AND host.name"
+field_manager:
+  source_fields: ['host.name']
+  target_field: 'observer.name'
+  overwrite_target: true
+description: "Add fields for ECS and Mandatory List (Filebeat)"
+---
+filter: "agent.type: filebeat AND host.hostname"
+field_manager:
+  source_fields: ['host.hostname']
+  target_field: 'observer.hostname'
+  overwrite_target: true
+description: "Add fields for ECS and Mandatory List (Filebeat)"
+---
+filter: "agent.type: filebeat AND host.ip"
+field_manager:
+  source_fields: ['host.ip']
+  target_field: 'observer.ip'
+description: "Add fields for ECS and Mandatory List (Filebeat)"
+---
+filter: "agent.type: filebeat AND message"
+field_manager:
+  source_fields: ['message']
+  target_field: 'event.original'
+  overwrite_target: true
+description: "Add fields for ECS and Mandatory List (Filebeat)"
+---
+filter: "NOT host.hostname AND host.name"
+field_manager:
+  source_fields: ['host.name']
+  target_field: 'host.hostname'
+  overwrite_target: true
+description: "Copy host.name into host.hostname if the client does not send a value"
+

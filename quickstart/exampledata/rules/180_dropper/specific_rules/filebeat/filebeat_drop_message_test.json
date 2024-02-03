@@ -1,0 +1,32 @@
+[
+  {
+    "raw": {
+      "agent": {
+        "type": "filebeat"
+      },
+      "message": "test-message"
+    },
+    "processed": {
+      "agent": {
+        "type": "filebeat"
+      }
+    }
+  },
+  {
+    "raw": {
+      "agent": {
+        "type": "filebeat"
+      },
+      "message": "test-message",
+      "log" : {
+        "line": 1234,
+        "offset": 74746638
+      }
+    },
+    "processed": {
+      "agent": {
+        "type": "filebeat"
+      }
+    }
+  }
+]

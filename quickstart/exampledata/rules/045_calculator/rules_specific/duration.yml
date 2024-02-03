@@ -1,0 +1,6 @@
+filter: '(data_stream.dataset: tor.java_http_access OR tags: squid) AND event.duration AND NOT event.duration: "-"'
+calculator:
+  target_field: event.duration
+  calc: ${event.duration} * 10e5
+  overwrite_target: True
+description: 'Convert milliseconds to nanoseconds'

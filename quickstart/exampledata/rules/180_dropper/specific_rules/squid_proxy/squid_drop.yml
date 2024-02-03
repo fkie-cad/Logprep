@@ -1,0 +1,31 @@
+filter: "tags: squid AND tags: access"
+dropper:
+  drop:
+    - message
+    - timestamp
+    - Tmp.url
+description: "Drops the message field for Squid proxy logs after normalization."
+---
+filter: 'Squid.last.server.ip:"-"'
+dropper:
+  drop:
+    - Squid.last.server.ip
+description: "Drop empty field"
+---
+filter: 'Squid.local.port.last.server:"-"'
+dropper:
+  drop:
+    - Squid.local.port.last.server
+description: "Drop empty field"
+---
+filter: 'Squid.peer.response_time:"-"'
+dropper:
+  drop:
+    - Squid.peer.response_time
+description: "Drop empty field"
+---
+filter: 'tags: squid AND geoip'
+dropper:
+  drop_full: True
+  drop:
+    - geoip

@@ -1,0 +1,15 @@
+filter: "@timestamp"
+selective_extractor:
+    source_fields: [
+      "@timestamp",
+      "tags",
+      "Full_event.hmac",
+      "Full_event.compressed_base64",
+      "Logprep_version_info.logprep",
+      "Logprep_version_info.configuration",
+      "host.name",
+      "message",
+    ]
+    outputs: 
+      - kafka: extracted
+description: 'Extract certain fields for extra development'

@@ -1,0 +1,46 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "tags": [
+        "windows"
+      ],
+      "winlog": {
+        "channel": "win-channel"
+      },
+      "message": "log-message",
+      "observer": {
+        "hostname": "obs-name"
+      }
+    },
+    "processed": {
+      "tags": [
+        "windows"
+      ],
+      "winlog": {
+        "channel": "win-channel"
+      },
+      "event": {
+        "module": "win-channel",
+        "original": "log-message"
+      },
+      "message": "log-message",
+      "observer": {
+        "hostname": "obs-name",
+        "name": "obs-name"
+      }
+    }
+  },
+  {
+    "raw": {
+      "tags": [
+        "wrong-filter"
+      ]
+    },
+    "processed": {
+      "tags": [
+        "wrong-filter"
+      ]
+    }
+  }
+]

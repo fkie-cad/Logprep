@@ -1,0 +1,34 @@
+[
+  {
+    "raw": {
+      "winlog": {
+        "event_data": {
+          "SubjectUserName": "test_user"
+        }
+      }
+    },
+    "processed": {
+      "winlog": {
+        "event_data": {
+          "SubjectUserName|re": "%{PSEUDONYM}"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "winlog": {
+        "event_data": {
+          "SubjectUserName_false": "test_user"
+        }
+      }
+    },
+    "processed": {
+      "winlog": {
+        "event_data": {
+          "SubjectUserName_false": "test_user"
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,118 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "observer": {
+        "name": "observer-name"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "observer": {
+        "name": "observer-name",
+        "hostname": "observer-name"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "url": {
+        "original": "full-url"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "url": {
+        "original": "full-url",
+        "full": "full-url"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 2,
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "url": {
+        "port": "1234"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "url": {
+        "port": "1234"
+      },
+      "destination": {
+        "port": "1234"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 3,
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "url": {
+        "original": "http://vm-34.lab.local:5601/node_modules/@osd/ui-framework/dist/kui_light.css"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "url": {
+        "original": "http://vm-34.lab.local:5601/node_modules/@osd/ui-framework/dist/kui_light.css"
+      },
+      "destination": {
+        "address": "http://vm-34.lab.local:5601/node_modules/@osd/ui-framework/dist/kui_light.css"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 4,
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "url": {
+        "domain": "vm-34.lab.local"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "url": {
+        "domain": "vm-34.lab.local"
+      },
+      "destination": {
+        "domain": "vm-34.lab.local"
+      }
+    }
+  }
+]

@@ -1,0 +1,23 @@
+filter: 'source.ip:"-" OR source.ip:""'
+dropper:
+  drop:
+    - source.ip
+description: "Drop empty field"
+---
+filter: 'source.port:"-" OR source.port:""'
+dropper:
+  drop:
+    - source.port
+description: "Drop empty field"
+---
+filter: 'Winlog.hostapplication'
+dropper:
+  drop:
+    - Winlog.hostapplication
+description: "Drop empty field"
+---
+filter: 'Winlog.hostname'
+dropper:
+  drop:
+    - Winlog.hostname
+description: "Drop empty field"

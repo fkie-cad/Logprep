@@ -1,0 +1,56 @@
+[
+  {
+    "raw": {
+      "source": {
+        "ip": "192.168.38.1"
+      },
+      "tags": [
+        "windows"
+      ]
+    },
+    "processed": {
+      "bad_source_ip": {
+        "in_list": [
+          "windows_bad_source_ip.txt"
+        ]
+      },
+      "source": {
+        "ip": "192.168.38.1"
+      },
+      "tags": [
+        "windows"
+      ]
+    }
+  },
+  {
+    "raw": {
+      "source": {
+        "ip": "192.168.38.4"
+      },
+      "tags": [
+        "windows"
+      ]
+    },
+    "processed": {
+      "bad_source_ip": {
+        "not_in_list": [
+          "windows_bad_source_ip.txt"
+        ]
+      },
+      "source": {
+        "ip": "192.168.38.4"
+      },
+      "tags": [
+        "windows"
+      ]
+    }
+  },
+  {
+    "raw": {
+      "wrong": "filter"
+    },
+    "processed": {
+      "wrong": "filter"
+    }
+  }
+]

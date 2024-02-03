@@ -1,0 +1,18 @@
+filter: "winlog.channel: Security AND tags:windows AND NOT agent_type: nxlog-ee"
+field_manager:
+  mapping:
+    'winlog.event_data.TargetUserSid': user.id
+description: Windows Security Log normalizer with target fieldset user
+---
+filter: "winlog.channel: Security AND tags:windows AND NOT agent_type: nxlog-ee"
+field_manager:
+  mapping:
+    'winlog.event_data.TargetUserName': user.name
+description: Windows Security Log normalizer with target fieldset user
+---
+filter: "winlog.channel: Security AND tags:windows AND NOT agent_type: nxlog-ee"
+field_manager:
+  mapping:
+    'winlog.event_data.TargetDomainName': user.domain
+description: Windows Security Log normalizer with target fieldset user
+

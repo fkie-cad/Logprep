@@ -1,0 +1,5 @@
+filter: 'tags: squid AND tags: access AND url.domain'
+domain_label_extractor:
+  source_fields: ["url.domain"]
+  target_field: url
+description: 'Extraction of the domain labels of url.domain for the squid log source'

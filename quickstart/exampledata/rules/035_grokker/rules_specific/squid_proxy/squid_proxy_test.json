@@ -1,0 +1,163 @@
+[
+    {
+        "target_rule_idx": 0,
+        "raw": {
+            "tags": [
+                "squid",
+                "access"
+            ],
+            "message": "1689575745647 45.231.32.21:51008 \"GET http://ctldl.windowsupdate.com/msdownload/update/v3/static/trustedr/en/disallowedcertstl.cab? HTTP/1.1\" TCP_MISS/304 504 304 323 0 \"-\" \"Microsoft-CryptoAPI/10.0\" HIER_DIRECT/8.238.91.254 35548 25 52",
+            "observer": {
+                "name": "observer-name"
+            }
+        },
+        "processed": {
+            "event": {
+                "duration": "52"
+            },
+            "Squid": {
+                "hierarchy": {
+                    "status": "HIER_DIRECT"
+                },
+                "last": {
+                    "server": {
+                        "ip": "8.238.91.254"
+                    }
+                },
+                "local": {
+                    "port": {
+                        "last": {
+                            "server": "35548"
+                        }
+                    }
+                },
+                "object": {
+                    "size": "0"
+                },
+                "peer": {
+                    "response_time": "25"
+                },
+                "request": {
+                    "status": "TCP_MISS",
+                    "status_nexthop": "304"
+                }
+            },
+            "http": {
+                "request": {
+                    "bytes": "323",
+                    "method": "GET",
+                    "referrer": "-"
+                },
+                "response": {
+                    "bytes": "504",
+                    "status_code": "304"
+                },
+                "version": "1.1"
+            },
+            "message": "1689575745647 45.231.32.21:51008 \"GET http://ctldl.windowsupdate.com/msdownload/update/v3/static/trustedr/en/disallowedcertstl.cab? HTTP/1.1\" TCP_MISS/304 504 304 323 0 \"-\" \"Microsoft-CryptoAPI/10.0\" HIER_DIRECT/8.238.91.254 35548 25 52",
+            "observer": {
+                "name": "observer-name"
+            },
+            "source": {
+                "address": "45.231.32.21",
+                "port": "51008"
+            },
+            "tags": [
+                "squid",
+                "access"
+            ],
+            "network": {
+                "protocol": "http"
+            },
+            "timestamp": "1689575745647",
+            "url": {
+                "domain": "ctldl.windowsupdate.com",
+                "original": "http://ctldl.windowsupdate.com/msdownload/update/v3/static/trustedr/en/disallowedcertstl.cab?",
+                "path": "/msdownload/update/v3/static/trustedr/en/disallowedcertstl.cab?"
+            },
+            "user_agent": {
+                "original": "Microsoft-CryptoAPI/10.0"
+            },
+            "grok_failure": ""
+        }
+    },
+    {
+        "target_rule_idx": 0,
+        "raw": {
+            "tags": [
+                "squid",
+                "access"
+            ],
+            "message": "1630563874568 45.231.32.51:61385 \"CONNECT client.wns.windows.com:443 HTTP/1.1\" TCP_TUNNEL/200 4409 - 998 0 \"-\" \" asd\" HIER_DIRECT/20.199.120.151 48228 0 482706",
+            "observer": {
+                "name": "observer-name"
+            }
+        },
+        "processed": {
+            "tags": [
+                "squid",
+                "access"
+            ],
+            "event": {
+                "duration": "482706"
+            },
+            "Squid": {
+                "hierarchy": {
+                    "status": "HIER_DIRECT"
+                },
+                "last": {
+                    "server": {
+                        "ip": "20.199.120.151"
+                    }
+                },
+                "local": {
+                    "port": {
+                        "last": {
+                            "server": "48228"
+                        }
+                    }
+                },
+                "object": {
+                    "size": "0"
+                },
+                "peer": {
+                    "response_time": "0"
+                },
+                "request": {
+                    "status": "TCP_TUNNEL",
+                    "status_nexthop": "-"
+                }
+            },
+            "source": {
+                "address": "45.231.32.51",
+                "port": "61385"
+            },
+            "http": {
+                "request": {
+                    "bytes": "998",
+                    "method": "CONNECT",
+                    "referrer": "-"
+                },
+                "response": {
+                    "bytes": "4409",
+                    "status_code": "200"
+                },
+                "version": "1.1"
+            },
+            "message": "1630563874568 45.231.32.51:61385 \"CONNECT client.wns.windows.com:443 HTTP/1.1\" TCP_TUNNEL/200 4409 - 998 0 \"-\" \" asd\" HIER_DIRECT/20.199.120.151 48228 0 482706",
+            "timestamp": "1630563874568",
+            "url": {
+                "domain": "client.wns.windows.com",
+                "original": "client.wns.windows.com:443",
+                "port": "443"
+            },
+            "user_agent": {
+                "original": " asd"
+            },
+            "grok_failure": "",
+            "observer": {
+                "name": "observer-name"
+            }
+        }
+    }
+]

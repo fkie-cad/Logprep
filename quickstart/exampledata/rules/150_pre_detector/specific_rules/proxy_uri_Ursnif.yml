@@ -1,0 +1,17 @@
+filter: "((url.original:*.php\\?l=*.cab AND http.response.status_code:\"200\") OR (url.original:(*_2f* OR *_2b*) AND url.original:*.avi AND url.original:*\\/images\\/*)) AND tags: squid AND tags: access"
+pre_detector:
+  id: "a36ce77e-30db-4ea0-8795-644d7af5dfb4"
+  title: "Ursnif Malware Download URL Pattern"
+  severity: "critical"
+  mitre: 
+    - attack.initial_access
+    - attack.t1566.001
+    - attack.t1193  # an old one
+    - attack.execution
+    - attack.t1204.002
+    - attack.t1204  # an old one
+    - attack.command_and_control
+    - attack.t1071.001
+  case_condition: "selection"
+sigma_fields: true
+description: "Detects download of Ursnif malware done by dropper documents."

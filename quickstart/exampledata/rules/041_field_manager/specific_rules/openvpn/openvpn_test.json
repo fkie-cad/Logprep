@@ -1,0 +1,156 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "tags": [
+        "openvpn"
+      ],
+      "syslog": {
+        "facility": "3"
+      },
+      "hostname": "OPNsense.localdomain",
+      "process": {
+        "program": "openvpn"
+      }
+    },
+    "processed": {
+      "tags": [
+        "openvpn"
+      ],
+      "hostname": "OPNsense.localdomain",
+      "log": {
+        "syslog": {
+          "facility": {
+            "code": "3"
+          }
+        }
+      },
+      "process": {
+        "program": "openvpn"
+      },
+      "syslog": {
+        "facility": "3"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "tags": [
+        "openvpn"
+      ],
+      "syslog": {
+        "facility_label": "system"
+      },
+      "hostname": "OPNsense.localdomain",
+      "process": {
+        "program": "openvpn"
+      }
+    },
+    "processed": {
+      "tags": [
+        "openvpn"
+      ],
+      "hostname": "OPNsense.localdomain",
+      "log": {
+        "syslog": {
+          "facility": {
+            "name": "system"
+          }
+        }
+      },
+      "process": {
+        "program": "openvpn"
+      },
+      "syslog": {
+        "facility_label": "system"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 2,
+    "raw": {
+      "tags": [
+        "openvpn"
+      ],
+      "syslog": {
+        "priority": "29"
+      },
+      "hostname": "OPNsense.localdomain",
+      "process": {
+        "program": "openvpn"
+      }
+    },
+    "processed": {
+      "tags": [
+        "openvpn"
+      ],
+      "hostname": "OPNsense.localdomain",
+      "log": {
+        "syslog": {
+          "priority": "29"
+        }
+      },
+      "process": {
+        "program": "openvpn"
+      },
+      "syslog": {
+        "priority": "29"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 3,
+    "raw": {
+      "tags": [
+        "openvpn"
+      ],
+      "syslog": {
+        "severity_label": "Notice"
+      },
+      "hostname": "OPNsense.localdomain",
+      "process": {
+        "program": "openvpn"
+      }
+    },
+    "processed": {
+      "tags": [
+        "openvpn"
+      ],
+      "hostname": "OPNsense.localdomain",
+      "log": {
+        "syslog": {
+          "severity": {
+            "name": "Notice"
+          }
+        }
+      },
+      "process": {
+        "program": "openvpn"
+      },
+      "syslog": {
+        "severity_label": "Notice"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 4,
+    "raw": {
+      "tags": [
+        "openvpn"
+      ],
+      "process": {
+        "program": "openvpn"
+      }
+    },
+    "processed": {
+      "tags": [
+        "openvpn"
+      ],
+      "process": {
+        "program": "openvpn",
+        "name": "openvpn"
+      }
+    }
+  }
+]

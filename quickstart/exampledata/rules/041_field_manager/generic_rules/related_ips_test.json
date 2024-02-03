@@ -1,0 +1,58 @@
+[
+    {
+        "target_rule_idx": 0,
+        "raw": {"client": {"ip": "123.123.123.1"}},
+        "processed": {"client": {"ip": "123.123.123.1"}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 1,
+        "raw": {"destination": {"ip": "123.123.123.1"}},
+        "processed": {"destination": {"ip": "123.123.123.1"}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 2,
+        "raw": {"host": {"ip": "123.123.123.1"}},
+        "processed": {"host": {"ip": "123.123.123.1"}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 3,
+        "raw": {"observer": {"ip": "123.123.123.1"}},
+        "processed": {"observer": {"ip": "123.123.123.1"}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 4,
+        "raw": {"network": {"ip": "123.123.123.1"}},
+        "processed": {"network": {"ip": "123.123.123.1"}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 5,
+        "raw": {"server": {"ip": "123.123.123.1"}},
+        "processed": {"server": {"ip": "123.123.123.1"}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 6,
+        "raw": {"source": {"ip": "123.123.123.1"}},
+        "processed": {"source": {"ip": "123.123.123.1"}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 7,
+        "raw": {"server": {"nat": {"ip": "123.123.123.1"}}},
+        "processed": {"server": {"nat": {"ip": "123.123.123.1"}}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 8,
+        "raw": {"client": {"nat": {"ip": "123.123.123.1"}}},
+        "processed": {"client": {"nat": {"ip": "123.123.123.1"}}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 8,
+        "raw": {"client": {"nat": {"ip": "123.123.123.1"}}, "related": {"ip": ["123.123.123.1"]}},
+        "processed": {"client": {"nat": {"ip": "123.123.123.1"}}, "related": {"ip": ["123.123.123.1"]}}
+    },
+    {
+        "target_rule_idx": 8,
+        "raw": {"client": {"nat": {"ip": "123.123.123.1"}}, "related": {"ip": ["123.123.123.2"]}},
+        "processed": {"client": {"nat": {"ip": "123.123.123.1"}}, "related": {"ip": ["123.123.123.2", "123.123.123.1"]}}
+    }
+]
+

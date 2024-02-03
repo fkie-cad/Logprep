@@ -1,0 +1,72 @@
+[
+  {
+    "raw": {
+      "winlog": {
+        "user": {
+          "name": "Helga"
+        },
+        "channel": "Microsoft-Windows-PowerShell/Operational"
+      },
+      "tags": [
+        "windows",
+        "WEC-Powershell"
+      ]
+    },
+    "processed": {
+      "winlog": {
+        "user": {
+          "name": "Helga"
+        },
+        "channel": "Microsoft-Windows-PowerShell/Operational"
+      },
+      "tags": [
+        "windows",
+        "WEC-Powershell"
+      ],
+      "Winlog_user_category": {
+        "not_in_list": [
+          "windows_admin_users.txt"
+        ]
+      }
+    }
+  },
+  {
+    "raw": {
+      "winlog": {
+        "user": {
+          "name": "Hägar"
+        },
+        "channel": "Microsoft-Windows-PowerShell/Operational"
+      },
+      "tags": [
+        "windows",
+        "WEC-Powershell"
+      ]
+    },
+    "processed": {
+      "winlog": {
+        "user": {
+          "name": "Hägar"
+        },
+        "channel": "Microsoft-Windows-PowerShell/Operational"
+      },
+      "tags": [
+        "windows",
+        "WEC-Powershell"
+      ],
+      "Winlog_user_category": {
+        "in_list": [
+          "windows_admin_users.txt"
+        ]
+      }
+    }
+  },
+  {
+    "raw": {
+      "wrong": "filter"
+    },
+    "processed": {
+      "wrong": "filter"
+    }
+  }
+]

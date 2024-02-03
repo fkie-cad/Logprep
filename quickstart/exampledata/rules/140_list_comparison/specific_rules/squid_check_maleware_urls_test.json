@@ -1,0 +1,103 @@
+[
+  {
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "request": {
+          "method": "POST"
+        }
+      },
+      "destination": {
+        "address": "https://bad.malwa.re"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "request": {
+          "method": "POST"
+        }
+      },
+      "destination": {
+        "address": "https://bad.malwa.re"
+      },
+      "malware_urls": {
+        "in_list": [
+          "test_malware_urls.txt"
+        ]
+      }
+    }
+  },
+    {
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "request": {
+          "method": "POST"
+        }
+      },
+      "destination": {
+        "address": "https://firendly.domain"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "request": {
+          "method": "POST"
+        }
+      },
+      "destination": {
+        "address": "https://firendly.domain"
+      },
+      "malware_urls": {
+        "not_in_list": [
+          "test_malware_urls.txt",
+          "malware_urls.txt"
+        ]
+      }
+    }
+  },
+  {
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "request": {
+          "method": "CONNECT"
+        }
+      },
+      "destination": {
+        "address": "https://bad.malwa.re"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "http": {
+        "request": {
+          "method": "CONNECT"
+        }
+      },
+      "destination": {
+        "address": "https://bad.malwa.re"
+      }
+    }
+  }
+]

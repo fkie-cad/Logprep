@@ -1,0 +1,5 @@
+filter: 'agent.hostname'
+dropper:
+  drop:
+    - 'agent.hostname'
+description: "remove agent.hostname: https://github.com/elastic/ecs/issues/178#issuecomment-512586064"

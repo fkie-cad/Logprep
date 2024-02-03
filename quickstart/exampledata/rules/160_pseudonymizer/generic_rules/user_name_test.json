@@ -1,0 +1,48 @@
+[
+  {
+    "raw": {
+      "user": {
+        "name": "test_id"
+      }
+    },
+    "processed": {
+      "user": {
+        "name|re": "%{PSEUDONYM}"
+      }
+    }
+  },
+  {
+    "raw": {
+      "user": {
+        "name_false": "test_path"
+      }
+    },
+    "processed": {
+      "user": {
+        "name_false": "test_path"
+      }
+    }
+  },
+  {
+    "raw": {
+      "pseudo_exclude_user": {
+        "in_list": [
+          "test_list.txt"
+        ]
+      },
+      "user": {
+        "name": "test_path"
+      }
+    },
+    "processed": {
+      "pseudo_exclude_user": {
+        "in_list": [
+          "test_list.txt"
+        ]
+      },
+      "user": {
+        "name": "test_path"
+      }
+    }
+  }
+]

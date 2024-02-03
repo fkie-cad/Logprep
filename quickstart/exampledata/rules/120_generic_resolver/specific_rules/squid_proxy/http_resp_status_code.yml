@@ -1,0 +1,26 @@
+filter: 'http.response.status_code'
+generic_resolver:
+  field_mapping:
+    http.response.status_code: event.reason
+  resolve_list:
+    (10[0-9]|1[1-9][0-9]): "informational"
+    (20[0-9]|2[1-9][0-9]): "success"
+    (30[0-9]|3[1-9][0-9]): "redirection"
+    (40[0-9]|4[1-9][0-9]): "client error"
+    (50[0-9]|5[1-9][0-9]): "server error"
+    ([1-9]|[1-9][0-9]): "informational"
+
+description: "http.response resolution - RegEx based"
+---
+filter: 'http.response.status_code'
+generic_resolver:
+  field_mapping:
+    event.reason: event.outcome
+  resolve_list:
+    "informational" : "success"
+    "success"       : "success"
+    "redirection"   : "success"
+    "client error"  : "failure"
+    "server error"  : "failure"
+
+description: "http.response resolution - RegEx based"

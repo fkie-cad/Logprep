@@ -1,0 +1,14 @@
+[
+    {
+        "raw": {
+            "process": {
+                "command_line": "C:\\Windows\\system32\\svchost.exe -k DcomLaunch"
+            }
+        },
+        "processed": {
+            "process": {
+                "command_line": "C:\\Windows\\system32\\svchost.exe -k DcomLaunch"
+            }
+        }
+    }
+]

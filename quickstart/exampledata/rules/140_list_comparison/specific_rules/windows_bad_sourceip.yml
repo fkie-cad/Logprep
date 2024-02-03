@@ -1,0 +1,7 @@
+filter: 'tags: windows AND NOT agent_type: nxlog-ee'
+list_comparison:
+  source_fields: ["source.ip"]
+  target_field: bad_source_ip
+  list_file_paths:
+    - "windows_bad_source_ip.txt"
+description: 'List of IPs regarded as bad source for login'

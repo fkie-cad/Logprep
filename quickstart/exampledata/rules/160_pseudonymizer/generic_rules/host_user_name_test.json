@@ -1,0 +1,34 @@
+[
+  {
+    "raw": {
+      "host": {
+        "user": {
+          "name": "test_id"
+        }
+      }
+    },
+    "processed": {
+      "host": {
+        "user": {
+          "name|re": "%{PSEUDONYM}"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "host": {
+        "user": {
+          "name_false": "test_path"
+        }
+      }
+    },
+    "processed": {
+      "host": {
+        "user": {
+          "name_false": "test_path"
+        }
+      }
+    }
+  }
+]

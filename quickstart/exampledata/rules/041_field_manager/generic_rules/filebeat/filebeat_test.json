@@ -1,0 +1,123 @@
+[{
+    "target_rule_idx": 0,
+    "raw": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message",
+        "host": {
+            "name": "testhost"
+        }
+    },
+    "processed": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message",
+        "observer": {
+            "name": "testhost"
+        },
+        "host": {
+            "name": "testhost"
+        }
+    }
+},
+{
+    "target_rule_idx": 1,
+    "raw": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message",
+        "host": {
+            "hostname": "testhostname"
+        }
+    },
+    "processed": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message",
+        "observer": {
+            "hostname": "testhostname"
+        },
+        "host": {
+            "hostname": "testhostname"
+        }
+    }
+},
+{
+    "target_rule_idx": 2,
+    "raw": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message",
+        "host": {
+            "ip": "123.123.123.123"
+        }
+    },
+    "processed": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message",
+        "observer": {
+            "ip": "123.123.123.123"
+        },
+        "host": {
+            "ip": "123.123.123.123"
+        }
+    }
+},
+{
+    "target_rule_idx": 3,
+    "raw": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message"
+    },
+    "processed": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "event": {
+            "original": "test-message"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message"
+    }
+},
+{
+    "target_rule_idx": 4,
+    "raw": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message",
+        "host": {
+            "name": "testhost"
+        }
+    },
+    "processed": {
+        "agent": {
+            "type": "filebeat"
+        },
+        "@timestamp": "2022-03-18T08:33:27.972Z",
+        "message": "test-message",
+        "host": {
+            "name": "testhost",
+            "hostname": "testhost"
+        }
+    }
+}
+]

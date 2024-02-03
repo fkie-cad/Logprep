@@ -1,0 +1,15 @@
+[
+    {
+        "raw": {
+            "test_label": "execute"
+        },
+        "processed": {
+            "test_label": "execute",
+            "label": {
+                "action": [
+                    "execute"
+                ]
+            }
+        }
+    }
+]

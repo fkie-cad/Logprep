@@ -1,0 +1,17 @@
+filter: 'agent.type: "auditbeat" AND host.name'
+field_manager:
+  mapping:
+    'host.name': observer.name
+description: 'Add fields for ECS and Mandatory List (Auditbeat)'
+---
+filter: 'agent.type: "auditbeat" AND host.hostname'
+field_manager:
+  mapping:
+    'host.hostname': observer.hostname
+description: 'Add fields for ECS and Mandatory List (Auditbeat)'
+---
+filter: 'agent.type: "auditbeat" AND host.ip'
+field_manager:
+  mapping:
+    'host.ip': observer.ip
+description: 'Add fields for ECS and Mandatory List (Auditbeat)'

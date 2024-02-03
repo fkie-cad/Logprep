@@ -1,0 +1,69 @@
+[
+  {
+    "raw": {
+      "url": {
+        "domain": "www.test.seite.de"
+      },
+      "tags": [
+        "squid",
+        "access"
+      ]
+    },
+    "processed": {
+      "url": {
+        "domain": "www.test.seite.de",
+        "registered_domain": "seite.de",
+        "top_level_domain": "de",
+        "subdomain": "www.test"
+      },
+      "tags": [
+        "squid",
+        "access"
+      ]
+    }
+  },
+  {
+    "raw": {
+      "no": "filter-match"
+    },
+    "processed": {
+      "no": "filter-match"
+    }
+  },
+  {
+    "raw": {
+      "info": "tags-but-no-domain",
+      "tags": [
+        "squid",
+        "access"
+      ]
+    },
+    "processed": {
+      "info": "tags-but-no-domain",
+      "tags": [
+        "squid",
+        "access"
+      ]
+    }
+  },
+  {
+    "raw": {
+      "url": {
+        "domain": "www.test.seite.de"
+      },
+      "tags": [
+        "wrong",
+        "tag"
+      ]
+    },
+    "processed": {
+      "url": {
+        "domain": "www.test.seite.de"
+      },
+      "tags": [
+        "wrong",
+        "tag"
+      ]
+    }
+  }
+]

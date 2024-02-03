@@ -1,0 +1,71 @@
+filter: "client.ip"
+field_manager:
+  source_fields:
+    - client.ip
+  target_field: related.ip
+  extend_target_list: True
+description: "Collect all ips into one common related.ip list."
+---
+filter: "destination.ip"
+field_manager:
+  source_fields:
+    - destination.ip
+  target_field: related.ip
+  extend_target_list: True
+description: "Collect all ips into one common related.ip list."
+---
+filter: "host.ip"
+field_manager:
+  source_fields:
+    - host.ip
+  target_field: related.ip
+  extend_target_list: True
+description: "Collect all ips into one common related.ip list."
+---
+filter: "observer.ip"
+field_manager:
+  source_fields:
+    - observer.ip
+  target_field: related.ip
+  extend_target_list: True
+description: "Collect all ips into one common related.ip list."
+---
+filter: "network.ip"
+field_manager:
+  source_fields:
+    - network.ip
+  target_field: related.ip
+  extend_target_list: True
+description: "Collect all ips into one common related.ip list."
+---
+filter: "server.ip"
+field_manager:
+  source_fields:
+    - server.ip
+  target_field: related.ip
+  extend_target_list: True
+description: "Collect all ips into one common related.ip list."
+---
+filter: "source.ip"
+field_manager:
+  source_fields:
+    - source.ip
+  target_field: related.ip
+  extend_target_list: True
+description: "Collect all ips into one common related.ip list."
+---
+filter: "server.nat.ip"
+field_manager:
+  source_fields:
+    - server.nat.ip
+  target_field: related.ip
+  extend_target_list: True
+description: "Collect all ips into one common related.ip list."
+---
+filter: "client.nat.ip"
+field_manager:
+  source_fields:
+    - client.nat.ip
+  target_field: related.ip
+  extend_target_list: True
+description: "Collect all ips into one common related.ip list."

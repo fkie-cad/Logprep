@@ -1,0 +1,14 @@
+[
+  {
+    "raw": {
+      "client": {
+        "address": "test_address"
+      }
+    },
+    "processed": {
+      "client": {
+        "address": "test_address"
+      }
+    }
+  }
+]

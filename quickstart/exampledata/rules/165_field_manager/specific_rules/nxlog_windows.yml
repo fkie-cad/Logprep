@@ -1,0 +1,13 @@
+filter: "agent_type: nxlog-ee AND tags: windows"
+field_manager:
+  mapping:
+    'agent_type': agent.type
+  delete_source_fields : true
+description: "Rename base fields to ECS"
+---
+filter: "(agent_type: nxlog-ee OR agent.type: nxlog-ee) AND tags: windows"
+field_manager:
+  mapping:
+    'winlog.computer_name': host.name
+  delete_source_fields : false
+description: "Copy field"
