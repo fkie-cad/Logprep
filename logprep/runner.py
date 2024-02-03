@@ -186,7 +186,8 @@ class Runner:
         )
 
     def stop(self):
-        """Stop the current process"""
+        """Stop the logprep runner. Is called by the signal handler
+        in run_logprep.py."""
         self._exit_received = True
 
     def _schedule_config_refresh_job(self):
