@@ -437,6 +437,30 @@ pipeline:
                 },
                 2,
             ),
+            (
+                "rule with not existent output",
+                {
+                    "output": {"kafka_output": {"type": "dummy_output"}},
+                    "pipeline": [
+                        {
+                            "selective_extractor": {
+                                "type": "selective_extractor",
+                                "generic_rules": [],
+                                "specific_rules": [
+                                    {
+                                        "filter": "message",
+                                        "selective_extractor": {
+                                            "outputs": [{"DOES_NOT_EXIST": "FOO"}]
+                                        },
+                                        "source_fields": ["field.extract", "field2", "field3"],
+                                    }
+                                ],
+                            }
+                        }
+                    ],
+                },
+                1,
+            ),
         ],
     )
     def test_verify_verifies_config(self, tmp_path, test_case, test_config, error_count):
@@ -957,3 +981,65 @@ output:
                 match=r"'DOES\/NOT\/EXIST' does not exist",
             ):
                 Configuration.from_sources([path_to_config])
+
+
+class TestInvalidConfigurationErrors:
+
+    @pytest.mark.parametrize(
+        "error_list, expected_error_list",
+        [
+            ([], []),
+            (
+                [
+                    InvalidConfigurationError("test"),
+                    InvalidConfigurationError("test"),
+                ],
+                [
+                    InvalidConfigurationError("test"),
+                ],
+            ),
+            (
+                [
+                    InvalidConfigurationError("test"),
+                    InvalidConfigurationError("test"),
+                    TypeError("typeerror"),
+                ],
+                [
+                    InvalidConfigurationError("test"),
+                    InvalidConfigurationError("typeerror"),
+                ],
+            ),
+            (
+                [
+                    InvalidConfigurationError("test"),
+                    InvalidConfigurationError("test"),
+                    TypeError("typeerror"),
+                    ValueError("valueerror"),
+                ],
+                [
+                    InvalidConfigurationError("test"),
+                    InvalidConfigurationError("typeerror"),
+                    InvalidConfigurationError("valueerror"),
+                ],
+            ),
+            (
+                [
+                    InvalidConfigurationError("test"),
+                    InvalidConfigurationError("test"),
+                    TypeError("typeerror"),
+                    ValueError("valueerror"),
+                ],
+                [
+                    InvalidConfigurationError("test"),
+                    InvalidConfigurationError("typeerror"),
+                    InvalidConfigurationError("valueerror"),
+                ],
+            ),
+        ],
+    )
+    def test_invalid_configuration_error_only_append_unique_errors(
+        self, error_list, expected_error_list
+    ):
+        error = InvalidConfigurationErrors(error_list)
+        assert len(error.errors) == len(expected_error_list)
+        assert error.errors == expected_error_list

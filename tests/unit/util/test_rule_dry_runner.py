@@ -53,11 +53,15 @@ class TestRunLogprep:
           - selective_extractor:
               type: selective_extractor
               specific_rules:
-                - tests/testdata/unit/selective_extractor/rules/specific/
-              generic_rules:
-                - tests/testdata/unit/selective_extractor/rules/generic/
+                - filter: message
+                  selective_extractor:
+                    source_fields: ["field1", "field2"]
+                    outputs:
+                        - kafka_output: topic
+                  description: my reference rule
+              generic_rules: []
         input:
-            kafka_input:
+            kafka_output:
                 type: dummy_input
                 documents: []
         output:

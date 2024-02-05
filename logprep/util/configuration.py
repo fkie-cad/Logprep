@@ -102,6 +102,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
 
+from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
@@ -132,8 +133,19 @@ yaml = MyYAML(pure=True)
 class InvalidConfigurationErrors(InvalidConfigurationError):
     """Raise for multiple Configuration related exceptions."""
 
-    def __init__(self, errors: List[InvalidConfigurationError]):
-        self.errors = errors
+    errors: List[InvalidConfigurationError]
+
+    def __init__(self, errors: List[Exception]):
+        unique_errors = []
+        for error in errors:
+            if not isinstance(error, InvalidConfigurationError):
+                error = InvalidConfigurationError(*error.args)
+                if error not in unique_errors:
+                    unique_errors.append(error)
+            else:
+                if error not in unique_errors:
+                    unique_errors.append(error)
+        self.errors = unique_errors
         super().__init__("\n".join([str(error) for error in self.errors]))
 
 
@@ -491,8 +503,7 @@ class Configuration:
                 processor = Factory.create(deepcopy(processor_config), logger=getLogger(__name__))
                 self._verify_rules(processor)
             except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
-                if "Duplicate rule id" in str(error):
-                    errors.append(error)
+                errors.append(error)
             try:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
@@ -549,7 +560,7 @@ class Configuration:
     def _verify_outputs(self, processor: Processor, rule) -> None:
         for output in rule.outputs:
             for output_name, _ in output.items():
-                if output_name not in self["output"]:
+                if output_name not in self.output:
                     raise InvalidRuleDefinitionError(
                         f"{processor.describe()}: output"
                         f" '{output_name}' does not exist in logprep outputs"

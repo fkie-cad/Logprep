@@ -2,6 +2,7 @@
 
 from typing import Union
 
+from logprep.abc.exceptions import LogprepException
 from logprep.filter.expression.filter_expression import (
     And,
     CompoundFilterExpression,
@@ -11,7 +12,7 @@ from logprep.filter.expression.filter_expression import (
 )
 
 
-class RuleSegmenterException(Exception):
+class RuleSegmenterException(LogprepException):
     """Raise if rule segmenter encounters a problem."""
 
 

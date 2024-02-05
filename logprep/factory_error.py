@@ -1,7 +1,9 @@
 """This module contains errors related to ProcessorFactory."""
 
+from logprep.abc.exceptions import LogprepException
 
-class FactoryError(Exception):
+
+class FactoryError(LogprepException):
     """Base class for ProcessorFactory related exceptions."""
 
 
@@ -34,5 +36,5 @@ class NoTypeSpecifiedError(InvalidConfigurationError):
 class UnknownComponentTypeError(FactoryError):
     """Raise if the type is unknown."""
 
-    def __init__(self, processor_type):
-        super().__init__(f"Unknown type '{processor_type}'")
+    def __init__(self, component_name, component_type):
+        super().__init__(f"Unknown type '{component_type}' for '{component_name}'")

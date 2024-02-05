@@ -15,10 +15,11 @@ from attrs import define, field, validators
 from requests.auth import HTTPBasicAuth
 
 from logprep._version import get_versions
+from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
 
 
-class GetterNotFoundError(Exception):
+class GetterNotFoundError(LogprepException):
     """Is raised if getter is not found."""
 
     def __init__(self, message) -> None:

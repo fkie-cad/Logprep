@@ -10,12 +10,14 @@
 """Git implementation of _version.py."""
 
 import errno
+import functools
 import os
 import re
 import subprocess
 import sys
 from typing import Callable, Dict
-import functools
+
+from logprep.abc.exceptions import LogprepException
 
 
 def get_keywords():
@@ -49,7 +51,7 @@ def get_config():
     return cfg
 
 
-class NotThisMethod(Exception):
+class NotThisMethod(LogprepException):
     """Exception raised if a method is not valid for the current scenario."""
 
 

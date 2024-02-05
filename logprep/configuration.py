@@ -1,11 +1,9 @@
 """module for component configuration """
+
 from typing import TYPE_CHECKING, Any, Mapping
 
+from logprep.factory_error import NoTypeSpecifiedError, UnknownComponentTypeError
 from logprep.registry import Registry
-from logprep.factory_error import (
-    NoTypeSpecifiedError,
-    UnknownComponentTypeError,
-)
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc.component import Component
@@ -61,5 +59,5 @@ class Configuration:
         components = Registry.mapping
         component_type = config_.get("type")
         if component_type not in components:
-            raise UnknownComponentTypeError(component_type)
+            raise UnknownComponentTypeError(name, component_type)
         return Registry.get_class(component_type)

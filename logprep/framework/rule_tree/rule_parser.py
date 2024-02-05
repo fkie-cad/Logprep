@@ -4,24 +4,21 @@ Goal of this module is to parse each rule into a list of less complex rules with
 behavior, allowing a simpler construction of the rule tree.
 
 """
+
 from typing import TYPE_CHECKING
 
-from logprep.filter.expression.filter_expression import (
-    Always,
-    Exists,
-    Not,
-)
-
+from logprep.abc.exceptions import LogprepException
+from logprep.filter.expression.filter_expression import Always, Exists, Not
 from logprep.framework.rule_tree.demorgan_resolver import DeMorganResolver
+from logprep.framework.rule_tree.rule_segmenter import RuleSegmenter
 from logprep.framework.rule_tree.rule_sorter import RuleSorter
 from logprep.framework.rule_tree.rule_tagger import RuleTagger
-from logprep.framework.rule_tree.rule_segmenter import RuleSegmenter
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule
 
 
-class RuleParserException(Exception):
+class RuleParserException(LogprepException):
     """Raise if rule parser encounters a problem."""
 
 

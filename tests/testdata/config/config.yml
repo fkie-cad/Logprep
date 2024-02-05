@@ -59,3 +59,13 @@ output:
       bootstrap.servers: "127.0.0.1:9092"
       acks: "-1"
       compression.type: none
+  kafka:
+    type: confluentkafka_output
+    topic: producer
+    error_topic: producer_error
+    flush_timeout: 30
+    send_timeout: 2
+    kafka_config:
+      bootstrap.servers: "127.0.0.1:9092"
+      acks: "-1"
+      compression.type: none
