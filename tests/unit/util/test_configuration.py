@@ -938,3 +938,22 @@ output:
         with mock.patch(mocked, side_effect=side_effect):
             with pytest.raises(InvalidConfigurationError, match=expected_error_message):
                 Configuration.from_sources([path_to_config])
+
+    def test_valueerror_in_from_source(self, config_path):
+        config_path.write_text("process_count: -1")
+        with pytest.raises(InvalidConfigurationError, match=r"'process_count' must be >= 1"):
+            Configuration.from_sources([str(config_path)])
+
+    def test_from_sources_without_config_paths_attribute(self):
+        with pytest.raises(
+            InvalidConfigurationError, match=r"does not exist: \/etc\/logprep\/pipeline\.yml"
+        ):
+            Configuration.from_sources()
+
+    def test_config_with_missing_environment_error(self):
+        with mock.patch("os.environ", {"PROMETHEUS_MULTIPROC_DIR": "DOES/NOT/EXIST"}):
+            with pytest.raises(
+                InvalidConfigurationError,
+                match=r"'DOES\/NOT\/EXIST' does not exist",
+            ):
+                Configuration.from_sources([path_to_config])

@@ -176,17 +176,21 @@ class MissingEnvironmentError(InvalidConfigurationError):
 
 @define(kw_only=True, frozen=True)
 class MetricsConfig:
+    """the metrics config class used in Configuration"""
+
     enabled: bool = field(validator=validators.instance_of(bool), default=False)
     port: int = field(validator=validators.instance_of(int), default=8000)
 
 
 @define(kw_only=True)
 class Configuration:
+    """the configuration class"""
+
     version: str = field(
         validator=validators.instance_of(str), converter=str, default="unset", eq=True
     )
-    """It is optionally possible to set a version to your configuration file which can be printed via
-    :code:`logprep run --version config/pipeline.yml`.
+    """It is optionally possible to set a version to your configuration file which
+    can be printed via :code:`logprep run --version config/pipeline.yml`.
     This has no effect on the execution of logprep and is merely used for documentation purposes.
     Defaults to :code:`unset`."""
     config_refresh_interval: Optional[int] = field(
@@ -208,8 +212,8 @@ class Configuration:
     """Logprep tries to react to signals (like sent by CTRL+C) within the given time.
     The time taken for some processing steps is not always predictable, thus it is not possible to
     ensure that this time will be adhered to.
-    However, Logprep reacts quickly for small values (< 1.0), but this requires more processing power.
-    This can be useful for testing and debugging.
+    However, Logprep reacts quickly for small values (< 1.0), but this requires more
+    processing power. This can be useful for testing and debugging.
     Larger values (like 5.0) slow the reaction time down, but this requires less processing power,
     which makes in preferable for continuous operation. Defaults to :code:`5.0`."""
     logger: dict = field(
@@ -291,7 +295,7 @@ class Configuration:
         return config
 
     @classmethod
-    def from_sources(cls, config_paths: Iterable[str]) -> "Configuration":
+    def from_sources(cls, config_paths: Iterable[str] = None) -> "Configuration":
         """Creates configuration from a list of configuration sources.
 
         Parameters
@@ -327,10 +331,7 @@ class Configuration:
                 errors.append(error)
         configuration = Configuration()
         configuration._configs = tuple(configs)
-        try:
-            configuration._set_attributes_from_configs()
-        except InvalidConfigurationErrors as error:
-            errors = [*errors, *error.errors]
+        configuration._set_attributes_from_configs()
         try:
             configuration._build_merged_pipeline()
         except InvalidConfigurationErrors as error:
@@ -529,7 +530,6 @@ class Configuration:
                         f"'{prometheus_multiproc_path}' does not exist"
                     )
                 )
-            return
 
     def _verify_rules(self, processor: Processor) -> None:
         if not processor:
