@@ -237,6 +237,7 @@ class ElasticsearchOutput(Output):
         """
         document["_index"] = target
         self._add_dates(document)
+        self.metrics.number_of_processed_events += 1
         self._message_backlog.append(document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):

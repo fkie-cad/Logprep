@@ -293,6 +293,7 @@ class S3Output(Output):
             Prefix for the document.
 
         """
+        self.metrics.number_of_processed_events += 1
         self._add_to_backlog(document, target)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
