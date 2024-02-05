@@ -110,6 +110,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_consumer = kafka_input._consumer
         message = "test message"
         kafka_input._last_valid_records = {0: message}
+        kafka_input.output_connector = mock.MagicMock()
         kafka_input.batch_finished_callback()
         if handlers is None:
             assert kafka_consumer.commit.call_count == 0
@@ -141,6 +142,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
         getattr(kafka_consumer, handler).side_effect = raise_generator(return_sequence)
         kafka_input._last_valid_records = {0: "message"}
+        kafka_input.output_connector = mock.MagicMock()
         with pytest.raises(InputWarning):
             kafka_input.batch_finished_callback()
 
@@ -152,6 +154,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         mock_record.value = mock.MagicMock()
         mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
+        self.object.output_connector = mock.MagicMock()
         with pytest.raises(CriticalInputError, match=r"not a dict"):
             self.object.get_next(1)
 
@@ -163,6 +166,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         mock_record.value = mock.MagicMock()
         mock_record.value.return_value = "I'm not valid json".encode("utf8")
+        self.object.output_connector = mock.MagicMock()
         with pytest.raises(CriticalInputError, match=r"not a valid json"):
             self.object.get_next(1)
 
@@ -174,6 +178,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         mock_record.value = mock.MagicMock()
         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
+        self.object.output_connector = mock.MagicMock()
         event, raw_event = self.object._get_event(0.001)
         assert event == {"element": "in list"}
         assert raw_event == '{"element":"in list"}'.encode("utf8")
@@ -187,6 +192,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         mock_record.value = mock.MagicMock()
         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
+        self.object.output_connector = mock.MagicMock()
         result = self.object._get_raw_event(0.001)
         assert result
 
