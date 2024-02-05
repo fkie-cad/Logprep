@@ -15,7 +15,6 @@ from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 
