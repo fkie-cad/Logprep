@@ -258,12 +258,12 @@ class Configuration:
         return [f"{protocol}://{target}" for protocol, target in targets]
 
     @classmethod
-    def from_source(cls, path: str) -> "Configuration":
+    def from_source(cls, config_path: str) -> "Configuration":
         """Create configuration from an uri source.
 
         Parameters
         ----------
-        path : str
+        config_path : str
             uri of file to create configuration from.
 
         Returns
@@ -273,7 +273,7 @@ class Configuration:
 
         """
         try:
-            config_getter = GetterFactory.from_string(path)
+            config_getter = GetterFactory.from_string(config_path)
             try:
                 config_dict = config_getter.get_json()
             except (json.JSONDecodeError, ValueError):
@@ -281,11 +281,11 @@ class Configuration:
             config = Configuration(**config_dict, getter=config_getter)
         except TypeError as error:
             raise InvalidConfigurationError(
-                f"Invalid configuration file: {path} {error.args[0]}"
+                f"Invalid configuration file: {config_path} {error.args[0]}"
             ) from error
         except ValueError as error:
             raise InvalidConfigurationError(
-                f"Invalid configuration file: {path} {str(error)}"
+                f"Invalid configuration file: {config_path} {str(error)}"
             ) from error
         config._configs = (config,)
         return config
@@ -296,7 +296,7 @@ class Configuration:
 
         Parameters
         ----------
-        paths : list[str]
+        config_paths : list[str]
             List of configuration sources (URI) to create configuration from.
 
         Returns
