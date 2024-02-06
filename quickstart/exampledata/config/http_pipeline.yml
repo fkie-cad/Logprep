@@ -1,11 +1,8 @@
 version: 1
-process_count: 2
-timeout: 0.1
 
 metrics:
   enabled: true
   port: 8000
-
 
 input:
   httpinput:
@@ -14,20 +11,7 @@ input:
           host: 0.0.0.0
           port: 9000
       endpoints:
-          /sap/123/ABC/auditlog: jsonl
-          /sap/123/ABC/auditlog-definition: jsonl
-          /sap/123/ABC/custom-alerts: jsonl
-          /sap/123/ABC/heartbeat: jsonl
-          /sap/123/ABC/profile-parameter-changes: jsonl
-          /sap/123/ABC/profile-parameters: jsonl
-          /sap/123/ABC/sap-kernel: jsonl
-          /sap/123/ABC/security-notes: jsonl
-          /sap/123/ABC/software-components: jsonl
-          /sap/123/ABC/software-updates: jsonl
-          /sap/123/ABC/syslog: jsonl
-          /sap/123/ABC/syslog-definition: jsonl
-
-
+          /lab/123/ABC/auditlog: jsonl
 output:
   kafka:
     type: confluentkafka_output
