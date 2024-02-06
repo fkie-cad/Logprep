@@ -394,11 +394,11 @@ Opensearch Dashboards. Following services are available after start up:
 The example rules that are used in the docker instance of Logprep can be found
 in `quickstart/exampledata/rules`.
 Example events that trigger for the example rules can be found in
-`quickstart/exampledata/input_logdata/test_input.jsonl`.
+`quickstart/exampledata/input_logdata/logclass/test_input.jsonl`.
 These events can be added to Kafka with the following command:
 
 ```bash
-(docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/test_input.jsonl
+(docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/logclass/test_input.jsonl
 ```
 
 Once the events have been processed for the first time, the new indices *processed*, *sre*
