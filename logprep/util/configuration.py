@@ -552,9 +552,6 @@ class Configuration:
             if not hasattr(processor.rule_class, "outputs"):
                 continue
             self._verify_outputs(processor, rule)
-        duplicates = [item for item in rule_ids if rule_ids.count(item) > 1]
-        if duplicates:
-            raise InvalidRuleDefinitionError(f"Duplicate rule ids: {duplicates}")
 
     def _verify_outputs(self, processor: Processor, rule) -> None:
         for output in rule.outputs:
