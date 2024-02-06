@@ -1,0 +1,25 @@
+version: 1
+
+metrics:
+  enabled: true
+  port: 8000
+
+input:
+  httpinput:
+      type: http_input
+      uvicorn_config:
+          host: 0.0.0.0
+          port: 9000
+      endpoints:
+          /lab/123/ABC/auditlog: jsonl
+output:
+  kafka:
+    type: confluentkafka_output
+    topic: consumer
+    error_topic: errors
+    flush_timeout: 300
+    send_timeout: 0
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      compression.type: gzip
+      statistics.interval.ms: "60000"

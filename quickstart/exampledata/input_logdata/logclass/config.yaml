@@ -1,0 +1,7 @@
+target_path: /lab/123/ABC/auditlog
+timestamps:
+  - key: TIMESTAMP_FIELD_1
+    format: "%Y%m%d"
+  - key: TIMESTAMP_FIELD_1
+    format: "%H%M%S"
+    time_shift: "+0200"
