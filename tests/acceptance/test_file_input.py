@@ -5,7 +5,7 @@ from logging import DEBUG, basicConfig, getLogger
 
 import pytest
 
-from logprep.util.json_handling import dump_config_as_file
+from logprep.util.configuration import Configuration
 from tests.acceptance.util import (
     get_default_logprep_config,
     start_logprep,
@@ -53,7 +53,7 @@ def config_fixture():
         }
     ]
     config = get_default_logprep_config(pipeline, with_hmac=False)
-    config["input"] = {
+    config.input = {
         "testinput": {
             "type": "file_input",
             "logfile_path": "",
@@ -74,13 +74,13 @@ def teardown_function():
     stop_logprep()
 
 
-def test_file_input_accepts_message_for_single_pipeline(tmp_path, config):
+def test_file_input_accepts_message_for_single_pipeline(tmp_path, config: Configuration):
     output_path = tmp_path / "output.jsonl"
     input_path = tmp_path / "input.log"
-    config["input"]["testinput"]["logfile_path"] = str(input_path)
-    config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
+    config.input["testinput"]["logfile_path"] = str(input_path)
+    config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
     write_file(str(input_path), test_initial_log_data)
     proc = start_logprep(config_path)
     wait_for_output(proc, "Logprep INFO    : Log level set to 'INFO'")
@@ -88,14 +88,14 @@ def test_file_input_accepts_message_for_single_pipeline(tmp_path, config):
     assert test_initial_log_data[0] in output_path.read_text()
 
 
-def test_file_input_accepts_message_for_two_pipelines(tmp_path, config):
-    config["process_count"] = 2
+def test_file_input_accepts_message_for_two_pipelines(tmp_path, config: Configuration):
+    config.process_count = 2
     output_path = tmp_path / "output.jsonl"
     input_path = tmp_path / "input.log"
-    config["input"]["testinput"]["logfile_path"] = str(input_path)
-    config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
+    config.input["testinput"]["logfile_path"] = str(input_path)
+    config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
     write_file(str(input_path), test_initial_log_data)
     proc = start_logprep(config_path)
     wait_for_output(proc, "Logprep INFO    : Log level set to 'INFO'")

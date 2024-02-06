@@ -6,40 +6,116 @@ import sys
 from pathlib import Path
 from unittest import mock
 
+import pytest
 import requests
 import responses
 from click.testing import CliRunner
 
+from logprep import run_logprep
 from logprep._version import get_versions
 from logprep.run_logprep import cli
-from logprep.util.configuration import InvalidConfigurationError
+from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 
 class TestRunLogprepCli:
     def setup_method(self):
         self.cli_runner = CliRunner()
 
+    @pytest.mark.parametrize(
+        "command, target",
+        [
+            ("run tests/testdata/config/config.yml", "logprep.run_logprep.Runner.start"),
+            (
+                "test config tests/testdata/config/config.yml",
+                "logprep.run_logprep._get_configuration",
+            ),
+            (
+                "test unit tests/testdata/config/config.yml",
+                "logprep.util.auto_rule_tester.auto_rule_tester.AutoRuleTester.run",
+            ),
+            (
+                "print tests/testdata/config/config.yml",
+                "logprep.util.configuration.Configuration.as_yaml",
+            ),
+            (
+                "run tests/testdata/config/config.yml tests/testdata/config/config.yml",
+                "logprep.run_logprep.Runner.start",
+            ),
+            (
+                "test config tests/testdata/config/config.yml tests/testdata/config/config.yml",
+                "logprep.run_logprep._get_configuration",
+            ),
+            (
+                "test unit tests/testdata/config/config.yml tests/testdata/config/config.yml",
+                "logprep.util.auto_rule_tester.auto_rule_tester.AutoRuleTester.run",
+            ),
+            (
+                "print tests/testdata/config/config.yml tests/testdata/config/config.yml",
+                "logprep.util.configuration.Configuration.as_yaml",
+            ),
+            (
+                "test dry-run tests/testdata/config/config.yml quickstart/exampledata/input_logdata/test_input.jsonl",
+                "logprep.util.rule_dry_runner.DryRunner.run",
+            ),
+            (
+                "test integration tests/testdata/config/config.yml path/to/testset",
+                "logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run",
+            ),
+            (
+                "test dry-run tests/testdata/config/config.yml tests/testdata/config/config.yml asdfsdv",
+                "logprep.util.rule_dry_runner.DryRunner.run",
+            ),
+            (
+                "test integration tests/testdata/config/config.yml tests/testdata/config/config.yml path/to/testset",
+                "logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run",
+            ),
+        ],
+    )
+    def test_cli_commands_with_configs(self, command: str, target: str):
+        with mock.patch(target) as mocked_target:
+            result = self.cli_runner.invoke(cli, command.split())
+        mocked_target.assert_called()
+        assert result.exit_code == 0, f"{result.exc_info}"
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            ("run",),
+            ("test", "config"),
+            ("test", "unit"),
+            ("test", "dry-run", "input_data"),
+            ("test", "integration", "testdata"),
+        ],
+    )
+    def test_cli_invokes_default_config_location(self, command):
+        result = self.cli_runner.invoke(cli, [*command])
+        assert result.exit_code != 0
+        assert "does not exist: /etc/logprep/pipeline.yml" in result.stdout
+
     @mock.patch("logprep.run_logprep.Runner")
     def test_cli_run_starts_runner_with_config(self, mock_runner):
         runner_instance = mock.MagicMock()
+        config_file_path = ("tests/testdata/config/config.yml",)
+        expected_config = Configuration.from_sources(config_file_path)
         mock_runner.get_runner.return_value = runner_instance
-        args = ["run", "tests/testdata/config/config.yml"]
+        args = ["run", *config_file_path]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
+        mock_runner.get_runner.assert_called_with(expected_config)
         runner_instance.start.assert_called()
-        config_file_path = "tests/testdata/config/config.yml"
-        runner_instance.load_configuration.assert_called_with(config_file_path)
 
     @mock.patch("logprep.run_logprep.Runner")
-    def test_cli_run_uses_getter_to_get_config(self, mock_runner):
+    def test_cli_run_starts_runner_with_multiple_configs(self, mock_runner):
         runner_instance = mock.MagicMock()
         mock_runner.get_runner.return_value = runner_instance
-        args = ["run", "file://tests/testdata/config/config.yml"]
+        config_file_path = ("tests/testdata/config/config.yml", "tests/testdata/config/config.yml")
+        expected_config = Configuration.from_sources(config_file_path)
+        args = ["run", *config_file_path]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
+        mock_runner.get_runner.assert_called_with(expected_config)
         runner_instance.start.assert_called()
-        config_file_path = "file://tests/testdata/config/config.yml"
-        runner_instance.load_configuration.assert_called_with(config_file_path)
 
     def test_exits_after_getter_error_for_not_existing_protocol(self):
         args = ["run", "almighty_protocol://tests/testdata/config/config.yml"]
@@ -47,7 +123,7 @@ class TestRunLogprepCli:
         assert result.exit_code == 1
         assert "No getter for protocol 'almighty_protocol'" in result.output
 
-    @mock.patch("logprep.util.configuration.Configuration.verify")
+    @mock.patch("logprep.util.configuration.Configuration._verify")
     def test_test_config_verifies_configuration_successfully(self, mock_verify):
         args = ["test", "config", "tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
@@ -55,7 +131,7 @@ class TestRunLogprepCli:
         mock_verify.assert_called()
         assert "The verification of the configuration was successful" in result.stdout
 
-    @mock.patch("logprep.util.configuration.Configuration.verify")
+    @mock.patch("logprep.util.configuration.Configuration._verify")
     def test_test_config_verifies_configuration_unsuccessfully(self, mock_verify):
         mock_verify.side_effect = InvalidConfigurationError
         args = ["test", "config", "tests/testdata/config/config.yml"]
@@ -77,7 +153,7 @@ class TestRunLogprepCli:
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
         assert f"logprep version:         {get_versions()['version']}" in result.output
-        assert f"configuration version:   no configuration found" in result.output
+        assert "configuration version:   no configuration found" in result.output
 
     def test_run_version_arg_prints_logprep_version_with_config_version(self):
         args = ["run", "--version", "tests/testdata/config/config.yml"]
@@ -96,7 +172,7 @@ class TestRunLogprepCli:
         assert f"python version:          {sys.version.split()[0]}" in result.output
         assert f"logprep version:         {get_versions()['version']}" in result.output
         assert (
-            "configuration version:   unset, file://tests/testdata/config/config2.yml"
+            "configuration version:   alternative, file://tests/testdata/config/config2.yml"
             in result.output
         )
 
@@ -137,46 +213,33 @@ class TestRunLogprepCli:
         assert "username" not in result.output
         assert "password" not in result.output
 
-    def test_run_no_config_error_is_printed_if_no_config_was_arg_was_given(self):
-        result = self.cli_runner.invoke(cli, ["run"])
-        assert result.exit_code == 2
-        assert "Usage: logprep run [OPTIONS] CONFIG\nTry 'logprep run --help' for help.\n\nError: Missing argument 'CONFIG'."
-
     def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self, capsys):
         non_existing_config_file = "/tmp/does/not/exist.yml"
         result = self.cli_runner.invoke(cli, ["run", non_existing_config_file])
         assert result.exit_code == 1
         expected_lines = (
-            f"The given config file does not exist: {non_existing_config_file}\nCreate the "
-            f"configuration or change the path. Use '--help' for more information."
+            f"One or more of the given config file(s) does not exist: "
+            f"{non_existing_config_file}\n"
         )
         assert expected_lines in result.output
 
-    @mock.patch("logprep.runner.Runner.start")
-    @mock.patch("logprep.runner.Runner.stop")
-    def test_main_calls_runner_stop_on_any_exception(self, mock_stop, mock_start):
-        mock_start.side_effect = Exception
+    @mock.patch("logprep.runner.Runner._runner")
+    def test_main_calls_runner_stop_on_any_exception(self, mock_runner):
+        mock_runner.start.side_effect = Exception
         config_path = "tests/testdata/config/config.yml"
         result = self.cli_runner.invoke(cli, ["run", config_path])
         assert result.exit_code == 1
-        mock_stop.assert_called()
-
-    def test_logprep_exits_if_logger_can_not_be_created(self):
-        with mock.patch("logprep.run_logprep.Configuration.get") as mock_create:
-            mock_create.side_effect = BaseException
-            config_path = "tests/testdata/config/config.yml"
-            result = self.cli_runner.invoke(cli, ["run", config_path])
-            assert result.exit_code == 1
+        mock_runner.stop.assert_called()
 
     def test_logprep_exits_on_invalid_configuration(self):
-        with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
+        with mock.patch("logprep.util.configuration.Configuration._verify") as mock_verify:
             mock_verify.side_effect = InvalidConfigurationError
             config_path = "tests/testdata/config/config.yml"
             result = self.cli_runner.invoke(cli, ["run", config_path])
             assert result.exit_code == 1
 
     def test_logprep_exits_on_any_exception_during_verify(self):
-        with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
+        with mock.patch("logprep.util.configuration.Configuration._verify") as mock_verify:
             mock_verify.side_effect = Exception
             config_path = "tests/testdata/config/config.yml"
             result = self.cli_runner.invoke(cli, ["run", config_path])
@@ -191,9 +254,9 @@ class TestRunLogprepCli:
 
     @mock.patch("logprep.util.rule_dry_runner.DryRunner.run")
     def test_test_dry_run_starts_dry_runner(self, mock_dry_runner):
-        config_path = "tests/testdata/config/config.yml"
+        config_path = ("tests/testdata/config/config.yml",)
         events_path = "quickstart/exampledata/input_logdata/test_input.jsonl"
-        result = self.cli_runner.invoke(cli, ["test", "dry-run", config_path, events_path])
+        result = self.cli_runner.invoke(cli, ["test", "dry-run", *config_path, events_path])
         assert result.exit_code == 0
         mock_dry_runner.assert_called()
 
@@ -215,3 +278,12 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, ["test", "integration", config_path, test_data_path])
         assert result.exit_code == 0
         mock_tester.assert_called()
+
+    @mock.patch("logging.Logger.info")
+    def test_run_logprep_logs_log_level(self, mock_info):
+        config = Configuration.from_sources(("tests/testdata/config/config.yml",))
+        assert config.logger.get("level") == "INFO"
+        with mock.patch("logprep.run_logprep.Runner"):
+            with pytest.raises(SystemExit):
+                run_logprep.run(("tests/testdata/config/config.yml",))
+        mock_info.assert_has_calls([mock.call("Log level set to 'INFO'")])

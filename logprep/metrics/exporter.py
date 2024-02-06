@@ -1,19 +1,23 @@
 """This module contains functionality to start a prometheus exporter and expose metrics with it"""
+
 import os
 import shutil
 from logging import getLogger
 
 from prometheus_client import REGISTRY, multiprocess, start_http_server
 
+from logprep.util.configuration import MetricsConfig
+
 
 class PrometheusExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
 
-    def __init__(self, status_logger_config):
+    def __init__(self, status_logger_config: MetricsConfig):
+        self.is_running = False
         self._logger = getLogger("Prometheus Exporter")
+        self._logger.debug("Initializing Prometheus Exporter")
         self.configuration = status_logger_config
-        self._port = status_logger_config.get("port", 8000)
-        self._prepare_multiprocessing()
+        self._port = status_logger_config.port
 
     def _prepare_multiprocessing(self):
         """
@@ -48,5 +52,7 @@ class PrometheusExporter:
 
     def run(self):
         """Starts the default prometheus http endpoint"""
+        self._prepare_multiprocessing()
         start_http_server(self._port)
         self._logger.info(f"Prometheus Exporter started on port {self._port}")
+        self.is_running = True

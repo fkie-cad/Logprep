@@ -49,6 +49,7 @@ class Getter(ABC):
             validators.deep_iterable(member_validator=validators.instance_of(str)),
         ],
         factory=list,
+        repr=False,
     )
     """used variables in content but not set in environment"""
 

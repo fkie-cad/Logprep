@@ -290,6 +290,8 @@ import subprocess
 import sys
 from typing import Callable, Dict
 
+from logprep.abc.exceptions import LogprepException
+
 
 class VersioneerConfig:
     """Container for Versioneer configuration parameters."""
@@ -366,7 +368,7 @@ def get_config_from_root(root):
     return cfg
 
 
-class NotThisMethod(Exception):
+class NotThisMethod(LogprepException):
     """Exception raised if a method is not valid for the current scenario."""
 
 
@@ -486,7 +488,7 @@ def get_config():
     return cfg
 
 
-class NotThisMethod(Exception):
+class NotThisMethod(LogprepException):
     """Exception raised if a method is not valid for the current scenario."""
 
 
@@ -1688,7 +1690,7 @@ def render(pieces, style):
     }
 
 
-class VersioneerBadRootError(Exception):
+class VersioneerBadRootError(LogprepException):
     """The project root directory is unknown or missing key files."""
 
 

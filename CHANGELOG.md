@@ -4,14 +4,16 @@
 ### Breaking
 
 * reimplement the logprep CLI, see `logprep --help` for more information.
+* remove feature to reload configuration by sending signal `SIGUSR1`
+* remove feature to validate rules because it is already included in `logprep test config`
 
 ### Features
-
 
 * add a `number_of_successful_writes` metric to the s3 connector, which counts how many events were successfully written to s3
 * make the s3 connector work with the new `_write_backlog` method introduced by the `confluent_kafka` commit bugfix in v9.0.0
 * add option to Opensearch Output Connector to use parallel bulk implementation (default is True)
-
+* add feature to logprep to load config from multiple sources (files or uris)
+* add feature to logprep to print the resulting configruation with `logprep print json|yaml <Path to config>` in json or yaml
 
 ### Improvements
 
@@ -20,6 +22,10 @@
 * make the s3 connector blocking by removing threading
 * revert the change from v9.0.0 to always check the existence of a field for negated key-value based lucene filter expressions
 * make store_custom in s3, opensearch and elasticsearch connector not call `batch_finished_callback` to prevent data loss that could be caused by partially processed events
+* remove the `schema_and_rule_checker` module
+* rewrite Logprep Configuration object see documentation for more details
+* rewrite Runner 
+* delete MultiProcessingPipeline class to simplify multiprocesing
 
 ### Bugfix
 

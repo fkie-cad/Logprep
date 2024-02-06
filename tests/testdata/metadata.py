@@ -1,4 +1,4 @@
-from os.path import split, join
+from os.path import join, split
 
 path_to_testdata = split(__file__)[0]
 
@@ -14,3 +14,4 @@ path_to_config = join(path_to_testdata, "config/config.yml")
 path_to_alternative_config = join(path_to_testdata, "config/config2.yml")
 path_to_invalid_config = join(path_to_testdata, "config/config-invalid.yml")
 path_to_invalid_yml_config = join(path_to_testdata, "config/config-yml-invalid.yml")
+path_to_only_output_config = join(path_to_testdata, "config/config-only-output.yml")

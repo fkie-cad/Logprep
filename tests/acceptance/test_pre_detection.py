@@ -3,12 +3,12 @@
 # pylint: disable=too-many-locals
 import json
 import re
-from logging import basicConfig, DEBUG, getLogger
+from logging import DEBUG, basicConfig, getLogger
+from pathlib import Path
 
 import pytest
 from deepdiff import DeepDiff
 
-from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import get_default_logprep_config, get_test_output
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
@@ -67,15 +67,15 @@ pipeline = [
 )
 # fmt: on
 def test_events_pre_detected_correctly(
-    tmp_path, input_event, expected_output_event, expected_extra_output
+    tmp_path: Path, input_event, expected_output_event, expected_extra_output
 ):
     input_file_path = tmp_path / "input.json"
     input_file_path.write_text(json.dumps(input_event))
     config = get_default_logprep_config(pipeline_config=pipeline, with_hmac=False)
-    config["input"]["jsonl"]["documents_path"] = str(input_file_path)
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
-    logprep_output, logprep_extra_output, logprep_error_output = get_test_output(config_path)
+    config.input["jsonl"]["documents_path"] = str(input_file_path)
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
+    logprep_output, logprep_extra_output, logprep_error_output = get_test_output(str(config_path))
     assert not logprep_error_output
     diff = DeepDiff(
         expected_output_event,

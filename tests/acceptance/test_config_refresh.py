@@ -1,5 +1,4 @@
 # pylint: disable=missing-docstring
-import json
 from pathlib import Path
 
 from ruamel.yaml import YAML
@@ -16,25 +15,27 @@ def teardown_function():
 
 
 def test_two_times_config_refresh_after_5_seconds(tmp_path):
-    config = Configuration.create_from_yaml("tests/testdata/config/config.yml")
-    config.update({"config_refresh_interval": 5, "metrics": {"enabled": False}})
+    config = Configuration.from_sources(["tests/testdata/config/config.yml"])
+    config.config_refresh_interval = 5
+    config.metrics = {"enabled": False}
     config_path = tmp_path / "generated_config.yml"
-    config_path.write_text(json.dumps(config))
+    config_path.write_text(config.as_json())
     proc = start_logprep(config_path)
     wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
-    config.update({"version": 2})
-    config_path.write_text(json.dumps(config))
+    config.version = "2"
+    config_path.write_text(config.as_json())
     wait_for_output(proc, "Successfully reloaded configuration", test_timeout=7)
-    config.update({"version": "other version"})
-    config_path.write_text(json.dumps(config))
+    config.version = "other version"
+    config_path.write_text(config.as_json())
     wait_for_output(proc, "Successfully reloaded configuration", test_timeout=6)
 
 
 def test_no_config_refresh_after_5_seconds(tmp_path):
-    config = Configuration.create_from_yaml("tests/testdata/config/config.yml")
-    config.update({"config_refresh_interval": 5, "metrics": {"enabled": False}})
+    config = Configuration.from_sources(["tests/testdata/config/config.yml"])
+    config.config_refresh_interval = 5
+    config.metrics = {"enabled": False}
     config_path = tmp_path / "generated_config.yml"
-    config_path.write_text(json.dumps(config))
+    config_path.write_text(config.as_json())
     proc = start_logprep(config_path)
     wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
     wait_for_output(

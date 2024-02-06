@@ -5,9 +5,9 @@ To execute Logprep the following command can be executed in the root directory o
 
 ..  code-block:: bash
 
-    logprep $CONFIG
+    logprep run $CONFIG
 
-Where :code:`$CONFIG` is the path or a url to a configuration file (see :doc:`configuration/configurationdata`).
+Where :code:`$CONFIG` is the path or a url to a configuration file (see :ref:`configuration`).
 
 To get help on the different parameters use:
 

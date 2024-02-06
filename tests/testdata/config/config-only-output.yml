@@ -1,0 +1,3 @@
+output:
+  kafka_output:
+    type: dummy_output

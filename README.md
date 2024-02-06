@@ -289,13 +289,13 @@ Depending on how you have installed Logprep you have different choices to run Lo
 If you have installed it via PyPI or the Github Development release just run:
 
 ```
-logprep $CONFIG
+logprep run $CONFIG
 ```
 
 If you have installed Logprep via cloning the repository then you should run it via:
 
 ```
-PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
+PYTHONPATH="." python3 logprep/run_logprep.py run $CONFIG
 ```
 
 Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 
@@ -307,37 +307,12 @@ The next sections all assume an installation via pip
 The following command can be executed to verify the configuration file without having to run Logprep:
 
 ```
-logprep --verify-config $CONFIG
+logprep test config $CONFIG
 ```
 
 Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
-### Validating Labeling-Schema and Rules
-
-The following command can be executed to validate the schema and the rules:
-
-```
-logprep --validate-rules $CONFIG
-```
-
-Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 
-[configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
-
-Alternatively, the validation can be performed directly. Assuming you have cloned the repository 
-from git. 
-
-```
-PYTHONPATH="." python3 logprep/util/schema_and_rule_checker.py --labeling-schema $LABELING_SCHEMA --labeling-rules $LABELING_RULES
-```
-
-Where `$LABELING_SCHEMA` is the path to a labeling-schema (JSON file) and `$LABELING_RULES` is 
-the path to a directory with rule files (JSON/YML files, see Rules.md, subdirectories 
-are permitted)
-
-Analogously, `--normalization-rules` and `--pseudonymizer-rules` can be used.
-
-Validation does also perform a verification of the pipeline section of the Logprep configuration.
 
 ### Reload the Configuration
 

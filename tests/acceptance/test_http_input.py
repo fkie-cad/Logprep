@@ -3,11 +3,12 @@
 import os
 import time
 from logging import DEBUG, basicConfig, getLogger
+from pathlib import Path
 
 import pytest
 import requests
 
-from logprep.util.json_handling import dump_config_as_file
+from logprep.util.configuration import Configuration
 from tests.acceptance.util import (
     get_default_logprep_config,
     start_logprep,
@@ -31,7 +32,7 @@ def config_fixture():
         }
     ]
     config = get_default_logprep_config(pipeline, with_hmac=False)
-    config["input"] = {
+    config.input = {
         "testinput": {
             "type": "http_input",
             "uvicorn_config": {
@@ -55,11 +56,11 @@ def teardown_function():
 
 
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
-def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
+def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: Configuration):
     output_path = tmp_path / "output.jsonl"
-    config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
+    config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
     proc = start_logprep(config_path)
     wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
     # nosemgrep
@@ -70,11 +71,11 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
 
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
 def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
-    config["process_count"] = 2
+    config.process_count = 2
     output_path = tmp_path / "output.jsonl"
-    config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
+    config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
     proc = start_logprep(config_path)
     wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9001", test_timeout=15)
     # nosemgrep
@@ -99,12 +100,12 @@ def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
 
 @pytest.mark.skipif(os.environ.get("GITHUB_ACTIONS") == "true", reason="sometimes fails on CI")
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
-def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
-    config["process_count"] = 3
+def test_http_input_accepts_message_for_three_pipelines(tmp_path: Path, config: Configuration):
+    config.process_count = 3
     output_path = tmp_path / "output.jsonl"
-    config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
+    config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
     proc = start_logprep(config_path)
     wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9002", test_timeout=15)
     # nosemgrep

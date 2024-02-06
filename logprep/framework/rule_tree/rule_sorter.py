@@ -2,15 +2,16 @@
 
 from typing import Union
 
+from logprep.abc.exceptions import LogprepException
 from logprep.filter.expression.filter_expression import (
     Always,
-    Not,
-    KeyBasedFilterExpression,
     FilterExpression,
+    KeyBasedFilterExpression,
+    Not,
 )
 
 
-class RuleSorterException(Exception):
+class RuleSorterException(LogprepException):
     """Raise if rule sorter encounters a problem."""
 
 

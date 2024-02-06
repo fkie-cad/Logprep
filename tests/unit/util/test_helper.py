@@ -1,16 +1,20 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
+import re
 from unittest import mock
 
 import pytest
 
+from logprep.util.configuration import Configuration
 from logprep.util.helper import (
     camel_to_snake,
-    snake_to_camel,
     get_dotted_field_value,
+    get_versions_string,
     pop_dotted_field_value,
+    snake_to_camel,
 )
 from logprep.util.json_handling import is_json
+from tests.testdata.metadata import path_to_alternative_config, path_to_config
 
 
 class TestCamelToSnake:
@@ -221,3 +225,49 @@ class TestPopDottedFieldValue:
         value = pop_dotted_field_value(event, dotted_field)
         assert value == {"field": "value"}
         assert not event
+
+
+class TestGetVersionString:
+    def test_get_version_string(self):
+        config = Configuration()
+        config.version = "0.1.0"
+        expected_pattern = (
+            r"python version:\s+3\.\d+\.\d+\n"
+            r"logprep version:\s+[^\s]+\n"
+            r"configuration version:\s+0\.1\.0, None"
+        )
+
+        result = get_versions_string(config)
+        assert re.search(expected_pattern, result)
+
+    def test_get_version_string_with_config_source(self):
+        config = Configuration.from_sources([path_to_config])
+        expected_pattern = (
+            r"python version:\s+3\.\d+\.\d+\n"
+            r"logprep version:\s+[^\s]+\n"
+            r"configuration version:\s+1,\s+file://[^\s]+/config\.yml"
+        )
+
+        result = get_versions_string(config)
+        assert re.search(expected_pattern, result)
+
+    def test_get_version_string_with_multiple_config_sources(self):
+        config = Configuration.from_sources([path_to_config, path_to_config])
+        expected_pattern = (
+            r"python version:\s+3\.\d+\.\d+\n"
+            r"logprep version:\s+[^\s]+\n"
+            r"configuration version:\s+1,\s+file://[^\s]+/config\.yml,\s+file://[^\s]+/config\.yml"
+        )
+
+        result = get_versions_string(config)
+        assert re.search(expected_pattern, result)
+
+    def test_get_version_string_without_config(self):
+        expected_pattern = (
+            r"python version:\s+3\.\d+\.\d+\n"
+            r"logprep version:\s+[^\s]+\n"
+            r"configuration version:\s+no configuration found in file:///etc/logprep/pipeline.yml"
+        )
+
+        result = get_versions_string(None)
+        assert re.search(expected_pattern, result)

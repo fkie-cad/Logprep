@@ -3,10 +3,11 @@
 # pylint: disable=missing-docstring
 
 from logging import DEBUG, basicConfig, getLogger
+from pathlib import Path
 
 import pytest
 
-from logprep.util.json_handling import dump_config_as_file
+from logprep.util.configuration import Configuration
 from tests.acceptance.util import get_test_output
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
@@ -15,7 +16,7 @@ logger = getLogger("Logprep-Test")
 
 @pytest.fixture
 def config():
-    config_yml = {
+    config_dict = {
         "process_count": 1,
         "timeout": 0.1,
         "profile_pipelines": True,
@@ -46,14 +47,14 @@ def config():
         },
     }
 
-    return config_yml
+    return Configuration(**config_dict)
 
 
-def test_amides(tmp_path, config):
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
+def test_amides(tmp_path: Path, config: Configuration):
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
 
-    test_output = get_test_output(config_path)
+    test_output = get_test_output(str(config_path))
     test_output_documents = [event for event in test_output[0] if event.get("amides")]
     attributed_documents = [
         event for event in test_output_documents if event.get("amides").get("attributions")

@@ -8,21 +8,10 @@ import multiprocessing
 from attr import define, field
 
 from logprep.abc.component import Component
-from logprep.framework.pipeline import MultiprocessingPipeline
+from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
-
-
-class PipelineManagerError(Exception):
-    """Base class for pipeline related exceptions."""
-
-
-class MustSetConfigurationFirstError(PipelineManagerError):
-    """Raise if configuration was not set."""
-
-    def __init__(self, what_failed: str):
-        super().__init__(f"Failed to {what_failed}: Configuration is unset")
 
 
 class PipelineManager:
@@ -56,29 +45,25 @@ class PipelineManager:
         )
         """Number of failed pipelines"""
 
-    def __init__(self):
-        self.prometheus_exporter = None
+    def __init__(self, configuration: Configuration):
         self.metrics = self.Metrics(labels={"component": "manager"})
         self._logger = logging.getLogger("Logprep PipelineManager")
         self.log_queue = multiprocessing.Queue(-1)
         self._queue_listener = logging.handlers.QueueListener(self.log_queue)
         self._queue_listener.start()
 
-        self._pipelines = []
-        self._configuration = None
+        self._pipelines: list[multiprocessing.Process] = []
+        self._configuration = configuration
 
         self._lock = multiprocessing.Lock()
         self._used_server_ports = None
-
-    def set_configuration(self, configuration: Configuration):
-        """set the verified config"""
-        self._configuration = configuration
-
+        prometheus_config = self._configuration.metrics
+        if prometheus_config.enabled:
+            self.prometheus_exporter = PrometheusExporter(prometheus_config)
+        else:
+            self.prometheus_exporter = None
         manager = multiprocessing.Manager()
         self._used_server_ports = manager.dict()
-        prometheus_config = configuration.get("metrics", {})
-        if prometheus_config.get("enabled", False) and not self.prometheus_exporter:
-            self.prometheus_exporter = PrometheusExporter(prometheus_config)
 
     def get_count(self) -> int:
         """Get the pipeline count.
@@ -110,14 +95,13 @@ class PipelineManager:
         while len(self._pipelines) < count:
             new_pipeline_index = len(self._pipelines) + 1
             self._pipelines.append(self._create_pipeline(new_pipeline_index))
-            self._pipelines[-1].start()
             self.metrics.number_of_pipeline_starts += 1
 
     def _decrease_to_count(self, count: int):
         while len(self._pipelines) > count:
-            pipeline = self._pipelines.pop()
-            pipeline.stop()
-            pipeline.join()
+            pipeline_process = self._pipelines.pop()
+            pipeline_process.stop()
+            pipeline_process.join()
             self.metrics.number_of_pipeline_stops += 1
 
     def restart_failed_pipeline(self):
@@ -130,7 +114,7 @@ class PipelineManager:
                 self.prometheus_exporter.mark_process_dead(failed_pipeline.pid)
 
         if failed_pipelines:
-            self.set_count(self._configuration.get("process_count"))
+            self.set_count(self._configuration.process_count)
             exit_codes = [pipeline.exitcode for pipeline in failed_pipelines]
             self._logger.warning(
                 f"Restarted {len(failed_pipelines)} failed pipeline(s), "
@@ -142,21 +126,28 @@ class PipelineManager:
         self._decrease_to_count(0)
         if self.prometheus_exporter:
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
+        self._queue_listener.stop()
+        self.log_queue.close()
 
     def restart(self):
         """Restarts all pipelines"""
-        self._decrease_to_count(0)
-        self._increase_to_count(self._configuration.get("process_count"))
+        self.set_count(0)
+        self.set_count(self._configuration.process_count)
+        if not self.prometheus_exporter:
+            return
+        if not self.prometheus_exporter.is_running:
+            self.prometheus_exporter.run()
 
-    def _create_pipeline(self, index) -> MultiprocessingPipeline:
-        if self._configuration is None:
-            raise MustSetConfigurationFirstError("create new pipeline")
-
-        self._logger.info("Created new pipeline")
-        return MultiprocessingPipeline(
+    def _create_pipeline(self, index) -> multiprocessing.Process:
+        pipeline = Pipeline(
             pipeline_index=index,
             config=self._configuration,
             log_queue=self.log_queue,
             lock=self._lock,
             used_server_ports=self._used_server_ports,
         )
+        self._logger.info("Created new pipeline")
+        process = multiprocessing.Process(target=pipeline.run, daemon=True)
+        process.stop = pipeline.stop
+        process.start()
+        return process

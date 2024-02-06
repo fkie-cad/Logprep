@@ -22,6 +22,7 @@ from os import makedirs, path
 from logprep.abc.processor import Processor
 from logprep.registry import Registry
 from logprep.runner import Runner
+from logprep.util.configuration import Configuration
 from logprep.util.decorators import timeout
 from logprep.util.helper import recursive_compare, remove_file_if_exists
 from logprep.util.json_handling import parse_jsonl
@@ -113,7 +114,7 @@ def store_latest_test_output(target_output_identifier, output_of_test):
             latest_output.write(json.dumps(test_output_line) + "\n")
 
 
-def get_runner_outputs(patched_runner) -> list:
+def get_runner_outputs(patched_runner: Runner) -> list:
     # pylint: disable=protected-access
     """
     Extracts the outputs of a patched logprep runner.
@@ -130,7 +131,7 @@ def get_runner_outputs(patched_runner) -> list:
         and errors
     """
     parsed_outputs = [None, None, None]
-    output_config = list(patched_runner._configuration.get("output").values())[0]
+    output_config = list(patched_runner._configuration.output.values())[0]
     output_paths = [
         output_path for key, output_path in output_config.items() if "output_file" in key
     ]
@@ -164,13 +165,12 @@ def get_patched_runner(config_path):
     runner : Runner
         The patched logprep runner
     """
-    runner = Runner(bypass_check_to_obtain_non_singleton_instance=True)
-    runner.load_configuration(config_path)
+    runner = Runner(Configuration.from_sources([config_path]))
 
     # patch runner to stop on empty pipeline
     def keep_iterating():
         """generator that stops on first iteration"""
-        return  # nosemgrep
+        return
         yield
 
     runner._keep_iterating = keep_iterating  # pylint: disable=protected-access
@@ -178,7 +178,7 @@ def get_patched_runner(config_path):
     return runner
 
 
-def get_test_output(config_path):
+def get_test_output(config_path: str) -> list[dict]:
     patched_runner = get_patched_runner(config_path)
     return get_runner_outputs(patched_runner=patched_runner)
 
@@ -206,7 +206,7 @@ class TmpFileProducerMock:
         ...
 
 
-def get_default_logprep_config(pipeline_config, with_hmac=True):
+def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration:
     config_yml = {
         "version": "1",
         "process_count": 1,
@@ -239,7 +239,7 @@ def get_default_logprep_config(pipeline_config, with_hmac=True):
             }
         }
 
-    return config_yml
+    return Configuration(**config_yml)
 
 
 def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
@@ -312,7 +312,7 @@ def get_full_pipeline(exclude=None):
     return [{processor_name: config} for processor_name, config in processor_configs if config]
 
 
-def convert_to_http_config(config: dict, endpoint) -> dict:
+def convert_to_http_config(config: Configuration, endpoint) -> dict:
     config = deepcopy(config)
     http_fields = [
         "regex_mapping",
@@ -324,7 +324,7 @@ def convert_to_http_config(config: dict, endpoint) -> dict:
         "schema",
         "template",
     ]
-    for processor_config in config.get("pipeline"):
+    for processor_config in config.pipeline:
         name, value = processor_config.popitem()
         for rule_kind in ("specific_rules", "generic_rules"):
             rules = Processor.resolve_directories(value.get(rule_kind))

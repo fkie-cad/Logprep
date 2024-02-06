@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Optional, Tuple
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
+from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser
@@ -23,7 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc.output import Output
 
 
-class InputError(Exception):
+class InputError(LogprepException):
     """Base class for Input related exceptions."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
@@ -47,7 +48,7 @@ class FatalInputError(InputError):
     """Must not be catched."""
 
 
-class InputWarning(Exception):
+class InputWarning(LogprepException):
     """May be catched but must be displayed to the user/logged."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:

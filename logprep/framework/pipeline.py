@@ -13,8 +13,8 @@ import multiprocessing
 import queue
 import warnings
 from ctypes import c_bool
-from functools import cached_property
-from multiprocessing import Lock, Process, Value, current_process
+from functools import cached_property, partial
+from multiprocessing import Lock, Value, current_process
 from typing import Any, List, Tuple
 
 import attrs
@@ -40,6 +40,7 @@ from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.metrics.metrics import HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.util.configuration import Configuration
 from logprep.util.pipeline_profiler import PipelineProfiler
 
 
@@ -86,7 +87,7 @@ class Pipeline:
         )
         """Time in seconds that it took to process an event"""
 
-    _logprep_config: dict
+    _logprep_config: Configuration
     """ the logprep configuration dict """
 
     _log_queue: multiprocessing.Queue
@@ -104,27 +105,6 @@ class Pipeline:
     pipeline_index: int
     """ the index of this pipeline """
 
-    def __init__(
-        self,
-        config: dict,
-        pipeline_index: int = None,
-        log_queue: multiprocessing.Queue = None,
-        lock: Lock = None,
-        used_server_ports: dict = None,
-    ) -> None:
-        self._log_queue = log_queue
-        self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
-        self.logger.addHandler(logging.handlers.QueueHandler(log_queue))
-        self._logprep_config = config
-        self._timeout = config.get("timeout")
-        self._continue_iterating = Value(c_bool)
-
-        self._lock = lock
-        self._used_server_ports = used_server_ports
-        self.pipeline_index = pipeline_index
-        self._encoder = msgspec.msgpack.Encoder()
-        self._decoder = msgspec.msgpack.Decoder()
-
     @cached_property
     def metrics(self):
         """create and return metrics object"""
@@ -138,7 +118,7 @@ class Pipeline:
     def _event_version_information(self) -> dict:
         return {
             "logprep": get_versions().get("version"),
-            "configuration": self._logprep_config.get("version", "unset"),
+            "configuration": self._logprep_config.version,
         }
 
     @property
@@ -154,13 +134,13 @@ class Pipeline:
     @cached_property
     def _pipeline(self) -> tuple:
         self.logger.debug(f"Building '{self._process_name}'")
-        pipeline = [self._create_processor(entry) for entry in self._logprep_config.get("pipeline")]
+        pipeline = [self._create_processor(entry) for entry in self._logprep_config.pipeline]
         self.logger.debug("Finished building pipeline")
         return pipeline
 
     @cached_property
     def _output(self) -> dict[str, Output]:
-        output_configs = self._logprep_config.get("output")
+        output_configs = self._logprep_config.output
         if not output_configs:
             return None
         output_names = list(output_configs.keys())
@@ -172,14 +152,37 @@ class Pipeline:
 
     @cached_property
     def _input(self) -> Input:
-        input_connector_config = self._logprep_config.get("input")
-        if input_connector_config is None:
+        input_connector_config = self._logprep_config.input
+        if not input_connector_config:
             return None
         connector_name = list(input_connector_config.keys())[0]
         input_connector_config[connector_name].update(
             {"version_information": self._event_version_information}
         )
         return Factory.create(input_connector_config, self.logger)
+
+    def __init__(
+        self,
+        config: Configuration,
+        pipeline_index: int = None,
+        log_queue: multiprocessing.Queue = None,
+        lock: Lock = None,
+        used_server_ports: dict = None,
+    ) -> None:
+        self._log_queue = log_queue
+        self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
+        self.logger.addHandler(logging.handlers.QueueHandler(log_queue))
+        self._logprep_config = config
+        self._timeout = config.timeout
+        self._continue_iterating = Value(c_bool)
+
+        self._lock = lock
+        self._used_server_ports = used_server_ports
+        self.pipeline_index = pipeline_index
+        self._encoder = msgspec.msgpack.Encoder()
+        self._decoder = msgspec.msgpack.Decoder()
+        if self._logprep_config.profile_pipelines:
+            self.run = partial(PipelineProfiler.profile_function, self.run)
 
     @_handle_pipeline_error
     def _setup(self):
@@ -214,7 +217,8 @@ class Pipeline:
 
     def run(self) -> None:
         """Start processing processors in the Pipeline."""
-        self._enable_iteration()
+        with self._continue_iterating.get_lock():
+            self._continue_iterating.value = True
         assert self._input, "Pipeline should not be run without input connector"
         assert self._output, "Pipeline should not be run without output connector"
         with self._lock:
@@ -224,24 +228,16 @@ class Pipeline:
         self.logger.debug("Start iterating")
         if hasattr(self._input, "server"):
             with self._input.server.run_in_thread():
-                while self._iterate():
+                while self._continue_iterating.value:
                     self.process_pipeline()
         else:
-            while self._iterate():
+            while self._continue_iterating.value:
                 self.process_pipeline()
         self._shut_down()
-
-    def _iterate(self) -> bool:
-        return self._continue_iterating.value
-
-    def _enable_iteration(self) -> None:
-        with self._continue_iterating.get_lock():
-            self._continue_iterating.value = True
 
     @_handle_pipeline_error
     def process_pipeline(self) -> Tuple[dict, list]:
         """Retrieve next event, process event with full pipeline and store or return results"""
-        assert self._input, "Run process_pipeline only with an valid input connector"
         Component.run_pending_tasks()
         extra_outputs = []
         event = None
@@ -333,52 +329,5 @@ class Pipeline:
     def stop(self) -> None:
         """Stop processing processors in the Pipeline."""
         self.logger.debug(f"Stopping pipeline ({self._process_name})")
-        with self._continue_iterating.get_lock():
-            self._continue_iterating.value = False
-
-
-class MultiprocessingPipeline(Process, Pipeline):
-    """A thread-safe Pipeline for multiprocessing."""
-
-    def __init__(
-        self,
-        pipeline_index: int,
-        config: dict,
-        log_queue: multiprocessing.Queue,
-        lock: Lock,
-        used_server_ports: dict,
-    ) -> None:
-        self._profile = config.get("profile_pipelines", False)
-
-        Pipeline.__init__(
-            self,
-            pipeline_index=pipeline_index,
-            config=config,
-            log_queue=log_queue,
-            lock=lock,
-            used_server_ports=used_server_ports,
-        )
-
-        self._continue_iterating = Value(c_bool)
-        self.stop()
-        Process.__init__(self)
-
-    def run(self) -> None:
-        """Start processing the Pipeline."""
-        if self._profile:
-            PipelineProfiler.profile_function(Pipeline.run, self)
-        else:
-            Pipeline.run(self)
-
-    def _enable_iteration(self) -> None:
-        with self._continue_iterating.get_lock():
-            self._continue_iterating.value = True
-
-    def _iterate(self) -> Value:
-        with self._continue_iterating.get_lock():
-            return self._continue_iterating.value
-
-    def stop(self) -> None:
-        """Stop processing the Pipeline."""
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False

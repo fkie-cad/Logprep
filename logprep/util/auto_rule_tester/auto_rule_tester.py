@@ -37,15 +37,15 @@ The output is printed to the console, highlighting differences between `raw` and
 ..  code-block:: bash
     :caption: Directly with Python
 
-    PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG --auto-test
+    PYTHONPATH="." python3 logprep/run_logprep.py test unit $CONFIG
 
 ..  code-block:: bash
     :caption: With PEX file
 
-    logprep.pex $CONFIG --auto-test
+    logprep.pex test unit $CONFIG
 
 Where :code:`$CONFIG` is the path to a configuration file
-(see :doc:`configuration/configurationdata`).
+(see :ref:`configuration`).
 
 Auto-testing does also perform a verification of the pipeline section of the Logprep configuration.
 """

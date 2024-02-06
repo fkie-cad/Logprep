@@ -9,10 +9,11 @@ from typing import Optional
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
+from logprep.abc.exceptions import LogprepException
 from logprep.abc.input import Input
 
 
-class OutputError(Exception):
+class OutputError(LogprepException):
     """Base class for Output related exceptions."""
 
     def __init__(self, output: "Output", message: str) -> None:
@@ -20,7 +21,7 @@ class OutputError(Exception):
         super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
 
 
-class OutputWarning(Exception):
+class OutputWarning(LogprepException):
     """Base class for Output related warnings."""
 
     def __init__(self, output: "Output", message: str) -> None:

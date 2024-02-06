@@ -8,6 +8,5 @@ User Manual
    introduction
    execution
    verification
-   validation
    testing_rules
    configuration/index

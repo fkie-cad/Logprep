@@ -39,7 +39,7 @@ Processor Configuration
 """
 
 from logging import Logger
-from typing import Optional
+from typing import List, Optional
 
 from attr import define, field, validators
 
@@ -80,6 +80,9 @@ class Labeler(Processor):
     ):
         self._schema = LabelingSchema.create_from_file(configuration.schema)
         super().__init__(name, configuration=configuration, logger=logger)
+
+    def setup(self):
+        super().setup()
         for rule in self._generic_rules + self._specific_rules:
             if self._config.include_parent_labels:
                 rule.add_parent_labels_from_schema(self._schema)

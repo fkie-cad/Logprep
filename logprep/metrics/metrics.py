@@ -114,12 +114,13 @@ Processor Specific Metrics
    :private-members:
    :inherited-members:
 """
+
 import os
 import time
-from _socket import gethostname
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Any, Union
 
+from _socket import gethostname
 from attrs import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
@@ -238,10 +239,10 @@ class Metric(ABC):
 class CounterMetric(Metric):
     """Wrapper for prometheus Counter metric"""
 
-    def __add__(self, other):
+    def __add__(self, other: Any) -> "CounterMetric":
         return self.add_with_labels(other, self.labels)
 
-    def add_with_labels(self, other, labels):
+    def add_with_labels(self, other: Any, labels: dict) -> "CounterMetric":
         """Add with labels"""
         labels = self.labels | labels
         self.tracker.labels(**labels).inc(other)

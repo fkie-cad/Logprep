@@ -11,15 +11,15 @@ The output is displayed in the console and changes made by Logprep are being hig
 ..  code-block:: bash
     :caption: Directly with Python
 
-    PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG --dry-run $EVENTS
+    PYTHONPATH="." python3 logprep/run_logprep.py test dry-run $CONFIG $EVENTS
 
 ..  code-block:: bash
     :caption: With a PEX file
 
-    logprep.pex $CONFIG --dry-run $EVENTS
+    logprep.pex test dry-run $CONFIG $EVENTS
 
 Where :code:`$CONFIG` is the path to a configuration file
-(see :doc:`configuration/configurationdata`).
+(see :ref:`configuration`).
 The only required section in the configuration is :code:`pipeline`
 (see tests/testdata/config/config-dry-run.yml for an example).
 The remaining options are set internally or are being ignored.
@@ -45,12 +45,15 @@ import tempfile
 from copy import deepcopy
 from difflib import ndiff
 from functools import cached_property
+from pathlib import Path
 
 from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline
-from logprep.util.auto_rule_tester.auto_rule_corpus_tester import align_extra_output_formats
+from logprep.util.auto_rule_tester.auto_rule_corpus_tester import (
+    align_extra_output_formats,
+)
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import color_print_line, color_print_title, recursive_compare
@@ -67,15 +70,22 @@ class DryRunner:
 
     @cached_property
     def _pipeline(self):
-        patched_config_path = Configuration.patch_yaml_with_json_connectors(
-            original_config_path=self._config_path,
-            output_dir=self._tmp_path,
-            input_file_path=self._input_file_path,
-        )
-        config = Configuration.create_from_yaml(patched_config_path)
-        config.verify_pipeline_without_processor_outputs(self._logger)
-        del config["output"]
-        return Pipeline(config=config)
+        patched_config = Configuration()
+        patched_config.input = {
+            "patched_input": {
+                "type": f"{'json' if self._use_json else 'jsonl'}_input",
+                "documents_path": str(self._input_file_path),
+            }
+        }
+        input_config = self._config.input
+        connector_name = list(input_config.keys())[0]
+        if "preprocessing" in input_config[connector_name]:
+            patched_config.input["patched_input"] |= {
+                "preprocessing": input_config[connector_name]["preprocessing"]
+            }
+        patched_config.pipeline = self._config.pipeline
+        pipeline = Pipeline(config=patched_config)
+        return pipeline
 
     @cached_property
     def _input_documents(self):
@@ -85,10 +95,10 @@ class DryRunner:
         return document_getter.get_jsonl()
 
     def __init__(
-        self, input_file_path: str, config_path: str, full_output: bool, use_json: bool, logger
+        self, input_file_path: str, config: Configuration, full_output: bool, use_json: bool, logger
     ):
         self._input_file_path = input_file_path
-        self._config_path = config_path
+        self._config = config
         self._full_output = full_output
         self._use_json = use_json
         self._logger = logger

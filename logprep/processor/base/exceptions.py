@@ -2,13 +2,14 @@
 
 from typing import TYPE_CHECKING, Any, List
 
+from logprep.abc.exceptions import LogprepException
 from logprep.factory_error import FactoryError
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.processor.base.rule import Rule
 
 
-class RuleError(BaseException):
+class RuleError(LogprepException):
     """Base class for Rule related exceptions."""
 
 
@@ -48,7 +49,7 @@ class SkipImportError(FactoryError):
             super().__init__("Processor can't be imported")
 
 
-class ProcessingError(Exception):
+class ProcessingError(LogprepException):
     """Base class for exceptions related to processing events."""
 
     def __init__(self, message: str, rule: "Rule"):
