@@ -5,7 +5,6 @@
 import logging
 from typing import Generator
 
-import requests
 from attrs import define, field
 from schedule import Scheduler
 
@@ -203,5 +202,6 @@ class Runner:
 
     def _keep_iterating(self) -> Generator:
         """Indicates whether the runner should keep iterating."""
-        while 1:
+
+        while 1:  # pragma: no cover
             yield 1
