@@ -529,8 +529,7 @@ class Configuration:
         # pylint: enable=protected-access
         missing_env_vars = tuple(chain(*[getter.missing_env_vars for getter in getters]))
         if missing_env_vars:
-            missing_env_error = MissingEnvironmentError(", ".join(missing_env_vars))
-            raise InvalidConfigurationErrors([missing_env_error])
+            raise MissingEnvironmentError(", ".join(missing_env_vars))
         if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
             prometheus_multiproc_path = os.environ["PROMETHEUS_MULTIPROC_DIR"]
             if not Path(prometheus_multiproc_path).exists():

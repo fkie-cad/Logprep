@@ -1017,11 +1017,16 @@ output:
         config = Configuration.from_sources([str(config_path)])
         assert len(config.pipeline) == 1
 
-    def test_config_with_missing_environment_variable(self, config_path):
+    def test_config_with_missing_environment_variable_and_other_failure_raises(self, config_path):
         config_path.write_text(
             """
 version: $LOGPREP_VERSION
-process_count: 2
+process_count: 1
+pipeline:
+    - labelername:
+        type: DOES_NOT_EXIST
+        generic_rules: []
+        specific_rules: []
 input:
     dummy:
         type: dummy_input
@@ -1031,11 +1036,9 @@ output:
         type: dummy_output
 """
         )
-        with pytest.raises(
-            InvalidConfigurationError,
-            match=r"Environment variable\(s\) used, but not set: LOGPREP_VERSION",
-        ):
+        with pytest.raises(InvalidConfigurationError) as raised:
             Configuration.from_sources([str(config_path)])
+        assert len(raised.value.errors) == 2
 
 
 class TestInvalidConfigurationErrors:
