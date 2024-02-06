@@ -287,3 +287,101 @@ class TestRunLogprepCli:
             with pytest.raises(SystemExit):
                 run_logprep.run(("tests/testdata/config/config.yml",))
         mock_info.assert_has_calls([mock.call("Log level set to 'INFO'")])
+
+    @mock.patch("logprep.event_generator.kafka.run_load_tester.LoadTester.run")
+    def test_generate_kafka_starts_kafka_load_tester(self, mock_kafka_load_tester):
+        tester_config = "some_config.yml"
+        result = self.cli_runner.invoke(cli, ["generate", "kafka", tester_config])
+        assert result.exit_code == 0
+        mock_kafka_load_tester.assert_called()
+
+
+@mock.patch("logprep.run_logprep.Controller")
+class TestGeneratorCLI:
+    def test_generator_cli_runs_generator_with_default_values(self, mock_controller_class):
+        mock_controller_instance = mock.MagicMock()
+        mock_controller_class.return_value = mock_controller_instance
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "generate",
+                "http",
+                "--input-dir",
+                "/some-path",
+                "--target-url",
+                "some-domain",
+                "--user",
+                "user",
+                "--password",
+                "password",
+            ],
+        )
+        assert result.exit_code == 0
+        mock_controller_class.assert_called_with(
+            input_dir="/some-path",
+            target_url="some-domain",
+            user="user",
+            password="password",
+            batch_size=500,
+            events=None,
+            shuffle=False,
+            thread_count=1,
+            report=True,
+            replace_timestamp=True,
+            tag="loadtest",
+            loglevel="INFO",
+        )
+        mock_controller_instance.run.assert_called()
+
+    def test_generator_cli_overwrites_default_values(self, mock_generator):
+        mock_controller = mock.MagicMock()
+        mock_generator.return_value = mock_controller
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "generate",
+                "http",
+                "--input-dir",
+                "/some-path",
+                "--target-url",
+                "some-domain",
+                "--user",
+                "user",
+                "--password",
+                "password",
+                "--events",
+                "5000",
+                "--shuffle",
+                "False",
+                "--thread_count",
+                "2",
+                "--batch-size",
+                "1000",
+                "--replace-timestamp",
+                "False",
+                "--tag",
+                "test-tag",
+                "--loglevel",
+                "DEBUG",
+                "--report",
+                "False",
+            ],
+        )
+        assert result.exit_code == 0
+        mock_generator.assert_called_with(
+            input_dir="/some-path",
+            target_url="some-domain",
+            user="user",
+            password="password",
+            batch_size=1000,
+            events=5000,
+            shuffle=False,
+            thread_count=2,
+            report=False,
+            replace_timestamp=False,
+            tag="test-tag",
+            loglevel="DEBUG",
+        )
+        mock_controller.run.assert_called()

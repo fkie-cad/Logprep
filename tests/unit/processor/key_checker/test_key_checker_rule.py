@@ -3,6 +3,7 @@
 # pylint: disable=import-error
 
 import pytest
+
 from logprep.processor.key_checker.rule import KeyCheckerRule
 
 
@@ -57,7 +58,7 @@ class TestKeyCheckerRule:
                     },
                 },
                 ValueError,
-                "Length of 'source_fields' must be => 1: 0",
+                "Length of 'source_fields' must be >= 1: 0",
             ),
             (
                 {

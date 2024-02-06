@@ -34,3 +34,9 @@ wheel
 deepdiff
 msgspec
 boto3
+pydantic
+ndjson
+arrow
+click
+pandas
+tabulate

@@ -2,7 +2,7 @@
 <h3 align="center">
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/fkie-cad/Logprep)
-![GitHub Workflow Status (branch)](https://img.shields.io/github/actions/workflow/status/fkie-cad/logprep/main.yml?branch=main) 
+![GitHub Workflow Status (branch)](https://img.shields.io/github/actions/workflow/status/fkie-cad/logprep/main.yml?branch=main)
 [![Documentation Status](https://readthedocs.org/projects/logprep/badge/?version=latest)](http://logprep.readthedocs.io/?badge=latest)
 ![GitHub contributors](https://img.shields.io/github/contributors/fkie-cad/Logprep)
 <a href="https://codecov.io/github/fkie-cad/Logprep" target="_blank">
@@ -31,14 +31,15 @@ Logprep is primarily designed to process log messages. Generally, Logprep can ha
 allowing further applications besides log handling.
 
 This readme provides basic information about the following topics:
-- [About Logprep](#about-logprep)    
+- [About Logprep](#about-logprep)
 - [Getting Started](#getting-started)
 - [Docker Quickstart](#logprep-quickstart-environment)
+- [Event Generation](#event-generation)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
 
-More detailed information can be found in the 
+More detailed information can be found in the
 [Documentation](https://logprep.readthedocs.io/en/latest/).
 
 ## About Logprep
@@ -48,8 +49,8 @@ More detailed information can be found in the
 Logprep processes incoming log messages with a configured pipeline that can be spawned
 multiple times via multiprocessing.
 The following chart shows a basic setup that represents this behaviour.
-The pipeline consists of three processors: the `Dissector`, `Geo-IP Enricher` and the 
-`Dropper`. 
+The pipeline consists of three processors: the `Dissector`, `Geo-IP Enricher` and the
+`Dropper`.
 Each pipeline runs concurrently and takes one event from it's `Input Connector`.
 Once the log messages is fully processed the result will be forwarded to the `Output Connector`,
 after which the pipeline will take the next message, repeating the processing cycle.
@@ -61,15 +62,15 @@ A2[Input\nConnector] --> C
 A3[Input\nConnector] --> D
 subgraph Pipeline 1
 B[Dissector] --> E[Geo-IP Enricher]
-E --> F[Dropper] 
+E --> F[Dropper]
 end
 subgraph Pipeline 2
 C[Dissector] --> G[Geo-IP Enricher]
-G --> H[Dropper] 
+G --> H[Dropper]
 end
 subgraph Pipeline n
 D[Dissector] --> I[Geo-IP Enricher]
-I --> J[Dropper] 
+I --> J[Dropper]
 end
 F --> K1[Output\nConnector]
 H --> K2[Output\nConnector]
@@ -81,8 +82,8 @@ J --> K3[Output\nConnector]
 Every processor has one simple task to fulfill.
 For example, the `Dissector` can split up long message fields into multiple subfields
 to facilitate structural normalization.
-The `Geo-IP Enricher`, for example, takes an ip-address and adds the geolocation of it to the 
-log message, based on a configured geo-ip database. 
+The `Geo-IP Enricher`, for example, takes an ip-address and adds the geolocation of it to the
+log message, based on a configured geo-ip database.
 Or the `Dropper` deletes fields from the log message.
 
 As detailed overview of all processors can be found in the
@@ -91,12 +92,12 @@ As detailed overview of all processors can be found in the
 To influence the behaviour of those processors, each can be configured with a set of rules.
 These rules define two things.
 Firstly, they specify when the processor should process a log message
-and secondly they specify how to process the message. 
-For example which fields should be deleted or to which IP-address the geolocation should be 
+and secondly they specify how to process the message.
+For example which fields should be deleted or to which IP-address the geolocation should be
 retrieved.
 
-For performance reasons on startup all rules per processor are aggregated to a generic and a specific rule tree, respectively. 
-Instead of evaluating all rules independently for each log message the message is checked against 
+For performance reasons on startup all rules per processor are aggregated to a generic and a specific rule tree, respectively.
+Instead of evaluating all rules independently for each log message the message is checked against
 the rule tree.
 Each node in the rule tree represents a condition that has to be meet,
 while the leafs represent changes that the processor should apply.
@@ -118,9 +119,9 @@ E-->G(Rule 4)
 ```
 
 To further improve the performance, it is possible to prioritize specific nodes of the rule tree,
-such that broader conditions are higher up in the tree. 
+such that broader conditions are higher up in the tree.
 And specific conditions can be moved further down.
-Following json gives an example of such a rule tree configuration. 
+Following json gives an example of such a rule tree configuration.
 This configuration will lead to the prioritization of `tags` and `message` in the rule tree.
 
 ```json
@@ -136,13 +137,13 @@ This configuration will lead to the prioritization of `tags` and `message` in th
 ```
 
 Instead of writing very specific rules that apply to single log messages, it is also possible
-to define generic rules that apply to multiple messages. 
-It is possible to define a set of generic and specific rules for each processor, resulting 
-in two rule trees. 
+to define generic rules that apply to multiple messages.
+It is possible to define a set of generic and specific rules for each processor, resulting
+in two rule trees.
 
 ### Connectors
 
-Connectors are responsible for reading the input and writing the result to a desired output. 
+Connectors are responsible for reading the input and writing the result to a desired output.
 The main connectors that are currently used and implemented are a kafka-input-connector and a
 kafka-output-connector allowing to receive messages from a kafka-topic and write messages into a
 kafka-topic. Addionally, you can use the Opensearch or Opensearch output connectors to ship the
@@ -160,10 +161,10 @@ containerized environment like Kubernetes, these configurations can be provided 
 http. By providing the configuration via http, it is possible to control the configuration change via
 a flexible http api. This enables Logprep to quickly adapt to changes in your environment.
 
-First, a general configuration is given that describes the pipeline and the connectors, 
+First, a general configuration is given that describes the pipeline and the connectors,
 and lastly, the processors need rules in order to process messages correctly.
 
-The following yaml configuration shows an example configuration for the pipeline shown 
+The following yaml configuration shows an example configuration for the pipeline shown
 in the graph above:
 
 ```yaml
@@ -191,7 +192,7 @@ pipeline:
         - rules/03_dropper/specific/
       generic_rules:
         - rules/03_dropper/generic/
-              
+
 input:
   mykafka:
     type: confluentkafka_input
@@ -216,7 +217,7 @@ output:
     cert: /path/to/cert.crt
 ```
 
-The following yaml represents a dropper rule which according to the previous configuration 
+The following yaml represents a dropper rule which according to the previous configuration
 should be in the `rules/03_dropper/generic/` directory.
 
 ```yaml
@@ -240,7 +241,7 @@ Python should be present on the system, currently supported are the versions 3.1
 
 To install Logprep you have following options:
 
-**1. Option:** Installation via PyPI: 
+**1. Option:** Installation via PyPI:
 
 This option is recommended if you just want to use the latest release of logprep.
 ```
@@ -249,7 +250,7 @@ pip install logprep
 
 **2. Option:** Installation via Git Repository:
 
-This option is recommended if you are interested in the latest developments and might want to 
+This option is recommended if you are interested in the latest developments and might want to
 contribute to them.
 ```
 git clone https://github.com/fkie-cad/Logprep.git
@@ -285,7 +286,7 @@ pytest ./tests --cov=logprep --cov-report=xml -vvv
 
 ### Running Logprep
 
-Depending on how you have installed Logprep you have different choices to run Logprep as well.  
+Depending on how you have installed Logprep you have different choices to run Logprep as well.
 If you have installed it via PyPI or the Github Development release just run:
 
 ```
@@ -298,7 +299,7 @@ If you have installed Logprep via cloning the repository then you should run it 
 PYTHONPATH="." python3 logprep/run_logprep.py run $CONFIG
 ```
 
-Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 
+Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 The next sections all assume an installation via pip
 
@@ -310,28 +311,28 @@ The following command can be executed to verify the configuration file without h
 logprep test config $CONFIG
 ```
 
-Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 
+Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
 
 ### Reload the Configuration
 
 To change the configuration of Logprep it is not needed to restart Logprep entirely.
-Instead, it can be issued to reload the configuration. 
+Instead, it can be issued to reload the configuration.
 For this, the signal `SIGUSR1` must be send to the Logprep process.
 
 Additionally, a `config_refresh_interval` can be set to periodically and automatically refresh the given configuration.
 This can be useful in case of containerized environments (such as Kubernetes), when pod volumes often change
 on the fly.
 
-If the configuration does not pass a consistency check, then an error message is logged and 
+If the configuration does not pass a consistency check, then an error message is logged and
 Logprep keeps running with the previous configuration.
 The configuration should be then checked and corrected on the basis of the error message.
 
 ## Logprep Quickstart Environment
 
 To demonstrate the functionality of logprep this repo comes with a complete `kafka`, `lokgprep` and
-`opensearch` stack. 
+`opensearch` stack.
 To get it running `docker` and `docker-compose` (version >= 1.28) must be first installed.
 The docker-compose file is located in the directory `quickstart`.
 A prerequisite is to run `sysctl -w vm.max_map_count=262144`, otherwise Opensearch might not
@@ -341,7 +342,7 @@ The environment can either be started with a Logprep container or without one:
 
 ### Run without Logprep Container (default)
 
-  1. Run from within the `quickstart` directory: 
+  1. Run from within the `quickstart` directory:
      ```bash
      docker-compose up -d
      ```
@@ -353,14 +354,14 @@ The environment can either be started with a Logprep container or without one:
 
 ### Run with Logprep Container
 
-  * Run from within the `quickstart` directory: 
+  * Run from within the `quickstart` directory:
     ```bash
     docker-compose --profile logprep up -d
     ```
 
 ### Run with getting config from http server with basic authentication
 
-  * Run from within the `quickstart` directory: 
+  * Run from within the `quickstart` directory:
     ```bash
     docker-compose --profile basic_auth up -d
     ```
@@ -390,9 +391,9 @@ Opensearch Dashboards. Following services are available after start up:
 | Keycloak:              | `localhost:8080` | admin:admin |
 | Postgres:              | `localhost:5432` | keycloak:bitnami |
 
-The example rules that are used in the docker instance of Logprep can be found 
+The example rules that are used in the docker instance of Logprep can be found
 in `quickstart/exampledata/rules`.
-Example events that trigger for the example rules can be found in 
+Example events that trigger for the example rules can be found in
 `quickstart/exampledata/input_logdata/test_input.jsonl`.
 These events can be added to Kafka with the following command:
 
@@ -400,14 +401,116 @@ These events can be added to Kafka with the following command:
 (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/test_input.jsonl
 ```
 
-Once the events have been processed for the first time, the new indices *processed*, *sre* 
+Once the events have been processed for the first time, the new indices *processed*, *sre*
 and *pseudonyms* should be available in Opensearch Dashboards.
 
 The environment can be stopped via `docker-compose down`.
 
+## Event Generation
+
+Logprep has the additional functionality of generating events and sending them to two
+different targets.
+It can send events to kafka, while also loading events from kafka or reading them from file,
+and it can send events to a http endpoint as POST requests.
+
+Following sections describe the usage of these event generators.
+
+### Kafka
+The kafka load-tester can send a configurable amount of documents to Kafka.
+The documents that are being send can be obtained either from Kafka or from a file with JSON lines.
+
+It can be configured how many documents should be retrieved from Kafka (if Kafka is used as source)
+and how many documents will be sent.
+Documents obtained from Kafka won't be written down to disk.
+
+The documents will be sent repeatedly until the desired amount has been sent.
+The `tags` field and the `_index` field of each document will be set to `load-tester`.
+Furthermore, a field `load-tester-unique` with a unique value will be added to each document every
+time a document is sent.
+This is done to prevent that repeatedly sent documents are identical.
+
+To find out more about the usage of the kafka load-tester execute:
+
+```bash
+logprep generate kafka --help
+```
+
+### Configuration
+The kafka load-tester is configured via a YAML file.
+It must have the following format:
+
+```yaml
+logging_level: LOG_LEVEL  # Default: "INFO"
+source_count: INTERGER  # Number of documents to obtain form Kafka
+count: INTERGER  # Number of documents to send
+process_count: INTERGER  # Number of processes (default: 1)
+profile: BOOL  # Shows profiling data (default: false)
+target_send_per_sec: INTERGER  # Desired number of documents to send per second with each process. Setting it to 0 sends as much as possible (default: 0).
+
+kafka:
+  bootstrap_servers:  # List of bootstrap servers
+    - URL:PORT  # i.e. "127.0.0.1:9092"
+  consumer:  # Kafka consumer
+    topic: STRING  # Topic to obtain documents from
+    group_id: STRING  # Should be different from the group_id of the Logprep Consumer, otherwise the offset in Logprep will be changed!
+    timeout: FLOAT  # Timeout for retrieving documents (default: 1.0)
+  producer:  # Kafka producer
+    acks: STRING/INTERGER # Determines if sending should be acknowledged (default: 0)
+    compression_type: STRING  # Compression type (default: "none")
+    topic: STRING  # Topic to send documents to
+    queue_buffering_max_messages: INTEGER # Batch for sending documents (default: 10000)
+    linger_ms: INTEGER # Time to wait before a batch is sent if the max wasn't reached before (default: 5000)
+    flush_timeout: FLOAT # Timeout to flush the producer (default 30.0)
+  ssl:  # SSL authentication (Optional)
+    ca_location: STRING
+    certificate_location: STRING
+    key:
+      location: STRING
+      password: STRING # Optional
+```
+Unused parameters must be removed or commented.
+
+### Http
+
+The http endpoint allows for generating events based on templated sample files which are stored
+inside a dataset directory.
+
+The dataset directory with the sample files has to have the following format:
+
+```
+ | - Test-Logs-Directory
+ | | - Test-Logs-Class-1-Directory
+ | | | - config.yaml
+ | | | - Test-Logs-1.jsonl
+ | | | - Test-Logs-2.jsonl
+ | | - Test-Logs-Class-2-Directory
+ | | | - config.yaml
+ | | | - Test-Logs-A.jsonl
+ | | | - Test-Logs-B.jsonl
+```
+
+While the jsonl event files can have arbitrary names, the `config.yaml` needs to be called exactly
+that. It also needs to follow the following schema:
+
+```yaml
+target_path: /endpoint/logsource/path
+timestamps:
+  - key: TIMESTAMP_FIELD_1
+    format: "%Y%m%d"
+  - key: TIMESTAMP_FIELD_1
+    format: "%H%M%S"
+    time_shift: "+0200"  # Optional, sets time shift in hours and minutes, if needed ([+-]HHMM)
+```
+
+To find out more about the usage of the http event generator execute:
+
+```bash
+logprep generate http --help
+```
+
 ## Documentation
 
-The documentation for Logprep is online at https://logprep.readthedocs.io/en/latest/ or it can 
+The documentation for Logprep is online at https://logprep.readthedocs.io/en/latest/ or it can
 be built locally via:
 
 ```
@@ -422,7 +525,7 @@ A HTML documentation can be then found in `doc/_build/html/index.html`.
 ## Contributing
 
 Every contribution is highly appreciated.
-If you have ideas or improvements feel free to create a fork and open a pull requests. 
+If you have ideas or improvements feel free to create a fork and open a pull requests.
 Issues and engagement in open discussions are also welcome.
 
 ## License
