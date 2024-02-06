@@ -1105,7 +1105,6 @@ output:
 
 
 class TestInvalidConfigurationErrors:
-
     @pytest.mark.parametrize(
         "error_list, expected_error_list",
         [
