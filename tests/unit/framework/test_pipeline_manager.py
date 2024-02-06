@@ -167,3 +167,16 @@ class TestPipelineManager:
         self.manager.set_count(2)
         self.manager.set_count(0)
         assert self.manager.metrics.number_of_pipeline_stops == 2
+
+    def test_restart_calls_set_count(self):
+        with mock.patch.object(self.manager, "set_count") as mock_set_count:
+            self.manager.restart()
+            mock_set_count.assert_called()
+
+    def test_restart_calls_prometheus_exporter_run(self):
+        self.config.metrics = MetricsConfig(enabled=True, port=666)
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager.prometheus_exporter.is_running = False
+        with mock.patch.object(pipeline_manager.prometheus_exporter, "run") as mock_run:
+            pipeline_manager.restart()
+            mock_run.assert_called()
