@@ -172,6 +172,7 @@ class TestPipelineManager:
         with mock.patch.object(self.manager, "set_count") as mock_set_count:
             self.manager.restart()
             mock_set_count.assert_called()
+            assert mock_set_count.call_count == 2
 
     def test_restart_calls_prometheus_exporter_run(self):
         self.config.metrics = MetricsConfig(enabled=True, port=666)
