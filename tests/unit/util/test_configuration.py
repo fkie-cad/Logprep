@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import responses
 from attrs import asdict
 from requests.exceptions import HTTPError
 from ruamel.yaml.scanner import ScannerError
@@ -1057,6 +1058,46 @@ output:
     dummy:
         type: dummy_output
 """
+        )
+        config = Configuration.from_sources([str(config_path)])
+        assert len(config.pipeline) == 1
+        assert len(config.pipeline[0]["the almighty dissector"]["generic_rules"]) == 1
+
+    @responses.activate
+    def test_processor_config_with_url_path(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+pipeline:
+    - the almighty dissector:
+        type: dissector
+        generic_rules:
+            - http://localhost/dissector_rule.json
+        specific_rules: []
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+"""
+        )
+        resp_text = json.dumps(
+            [
+                {
+                    "filter": "message",
+                    "dissector": {
+                        "id": "random id",
+                        "mapping": {"message": "%{new_field} %{next_field}"},
+                    },
+                }
+            ]
+        )
+        responses.add(
+            responses.GET,
+            "http://localhost/dissector_rule.json",
+            resp_text,
         )
         config = Configuration.from_sources([str(config_path)])
         assert len(config.pipeline) == 1

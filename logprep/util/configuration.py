@@ -541,8 +541,6 @@ class Configuration:
                 )
 
     def _verify_rules(self, processor: Processor) -> None:
-        if not processor:
-            return
         rule_ids = []
         for rule in processor.rules:
             if rule.id in rule_ids:

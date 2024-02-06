@@ -8,7 +8,6 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-import requests
 import responses
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import Timeout
