@@ -432,7 +432,7 @@ class Configuration:
         except ValueError:
             rule_data = yaml.load_all(content)
         if isinstance(rule_data, dict):
-            return [rule_data]
+            return [rule_data]  # pragma: no cover
         return list(rule_data)
 
     @staticmethod

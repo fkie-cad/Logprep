@@ -982,6 +982,61 @@ output:
             ):
                 Configuration.from_sources([path_to_config])
 
+    def test_config_with_single_json_rule(self, config_path):
+        config_path.write_text(
+            """
+{
+"input": {
+    "dummy": {"type": "dummy_input", "documents": []}
+},
+"output": {
+    "dummy": {"type": "dummy_output"}
+},
+"pipeline": [
+    {
+        "my dissector": {
+            "type": "dissector",
+            "specific_rules": [],
+            "generic_rules": [
+                {
+                    "filter": "message",
+                    "dissector": {
+                        "id": "random id",
+                        "mapping": {
+                            "message": "%{new_field} %{next_field}"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+    ]
+}
+"""
+        )
+        config = Configuration.from_sources([str(config_path)])
+        assert len(config.pipeline) == 1
+
+    def test_config_with_missing_environment_variable(self, config_path):
+        config_path.write_text(
+            """
+version: $LOGPREP_VERSION
+process_count: 2
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+"""
+        )
+        with pytest.raises(
+            InvalidConfigurationError,
+            match=r"Environment variable\(s\) used, but not set: LOGPREP_VERSION",
+        ):
+            Configuration.from_sources([str(config_path)])
+
 
 class TestInvalidConfigurationErrors:
 
