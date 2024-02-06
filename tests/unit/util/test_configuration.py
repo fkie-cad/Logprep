@@ -1040,6 +1040,28 @@ output:
             Configuration.from_sources([str(config_path)])
         assert len(raised.value.errors) == 2
 
+    def test_processor_config_with_file_path(self, config_path):
+        config_path.write_text(
+            """
+pipeline:
+    - the almighty dissector:
+        type: dissector
+        generic_rules:
+            - tests/testdata/unit/dissector/generic_rules/dissector_rule.json
+        specific_rules: []
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+"""
+        )
+        config = Configuration.from_sources([str(config_path)])
+        assert len(config.pipeline) == 1
+        assert len(config.pipeline[0]["the almighty dissector"]["generic_rules"]) == 1
+
 
 class TestInvalidConfigurationErrors:
 
