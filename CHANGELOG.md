@@ -3,6 +3,16 @@
 ## next release
 ### Breaking
 
+### Features
+
+### Improvements
+
+### Bugfix
+
+
+## v10.0.0
+### Breaking
+
 * reimplement the logprep CLI, see `logprep --help` for more information.
 * remove feature to reload configuration by sending signal `SIGUSR1`
 * remove feature to validate rules because it is already included in `logprep test config`
@@ -29,6 +39,7 @@
 * rewrite Runner 
 * delete MultiProcessingPipeline class to simplify multiprocesing
 * add FDA to the quickstart setup
+* bump versions for `fastapi` and `aiohttp` to address CVEs
 
 ### Bugfix
 
