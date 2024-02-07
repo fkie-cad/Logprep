@@ -27,7 +27,6 @@ services:
     volumes:
       - data:/usr/share/opensearch/data
     network_mode: host
-
   dashboards:
     image: public.ecr.aws/opensearchproject/opensearch-dashboards:2
     container_name: dashboards
@@ -39,7 +38,6 @@ services:
     expose:
       - 5601
     network_mode: host
-
   kafka:
     image: bitnami/kafka:3.4
     container_name: kafka
@@ -67,7 +65,6 @@ services:
           "CMD-SHELL",
           "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe"
         ]
-
   kafka-exporter:
     image: bitnami/kafka-exporter
     container_name: kafkaexporter
@@ -78,7 +75,6 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-
   logprep:
     build:
       context: ..
@@ -87,18 +83,16 @@ services:
     profiles:
       - logprep
     expose:
-      - 8000
+      - 8001
     network_mode: host
     depends_on:
       - kafka
       - opensearch
-
     volumes:
       - ../quickstart/:/home/logprep/quickstart/
     entrypoint:
       - logprep
       - /home/logprep/quickstart/exampledata/config/pipeline.yml
-
   grafana:
     image: bitnami/grafana:latest
     container_name: grafana
@@ -162,9 +156,65 @@ services:
       POSTGRESQL_USERNAME: keycloak
     volumes:
       # use this folder to persist your postgresql data by dumping the database to it after changes
-      # outside the container: chmod 777 quickstart/exampledata/config/postgresql
+      # outside the container: chmod 777 quickstart/exampledata/config/keycloak
       # inside the container: pg_dump keycloak -U keycloak -W --file /docker-entrypoint-initdb.d/keycloak_db.sql
-      - ../quickstart/exampledata/config/postgresql:/docker-entrypoint-initdb.d
+      - ../quickstart/exampledata/config/keycloak:/docker-entrypoint-initdb.d
+  fda-api:
+    container_name: fda-api
+    image: registry.gitlab.com/z-e-u-s/fda/fda-backend:0.16.0
+    network_mode: host
+    expose:
+      - 8000
+    environment:
+      POSTGRES_PASSWORD: fda
+      POSTGRES_USER: fda
+      POSTGRES_DB: fda
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 25432
+      DJANGO_SECRET_KEY: "django-insecure-*w($$5i@@iq%!ygufa%%@nfdplt(!e#hoahnjy^@6xdutl8mlqz"
+      ALLOWED_HOSTS: '["*"]'
+      CORS_ALLOWED_ORIGINS: '["http://localhost"]'
+      KEYCLOAK_SERVER_URL: "http://localhost:8080"
+      KEYCLOAK_REALM: logprep
+      KEYCLOAK_CLIENT_ID: fda-backend
+      KEYCLOAK_CLIENT_SECRET: tYfkKygb1g2Hf6fmAInoq3XPK1OILbSp
+      KEYCLOAK_CLIENT_ID_FOR_AUTHZ_ROLES: fda
+      SERVICE_BASE_URL: 'http://localhost:8000/'
+    depends_on:
+      fda-db:
+        condition: service_healthy
+  fda-db:
+    container_name: fda-db
+    image: "postgres:14"
+    network_mode: host
+    expose:
+      - 25432
+    volumes:
+      # use this folder to persist your postgresql data by dumping the database to it after changes
+      # outside the container: chmod 777 quickstart/exampledata/config/fda
+      # inside the container: pg_dump -p 25432 fda -U fda -W --file /docker-entrypoint-initdb.d/fda_db.sql
+      - ../quickstart/exampledata/config/fda:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_PASSWORD: fda
+      POSTGRES_USER: fda
+      POSTGRES_DB: fda
+    command: -p 25432
+    healthcheck:
+      test: "pg_isready -p 25432 --username=$$POSTGRES_USER && psql -p 25432 --username=$$POSTGRES_USER --list"
+      interval: 8s
+      timeout: 5s
+      retries: 10
+  fda-frontend:
+    image: registry.gitlab.com/z-e-u-s/fda/fda-frontend:0.16.0
+    container_name: fda-frontend
+    network_mode: host
+    restart: always
+    volumes:
+      - ../quickstart/exampledata/config/fda/config.json:/usr/share/nginx/html/assets/config/keycloak/config.json
+      - ../quickstart/exampledata/config/fda/default.conf:/etc/nginx/conf.d/default.conf
+    expose:
+      - 8002
+
 volumes:
   data:
 

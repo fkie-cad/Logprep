@@ -28,6 +28,7 @@
 * rewrite Logprep Configuration object see documentation for more details
 * rewrite Runner 
 * delete MultiProcessingPipeline class to simplify multiprocesing
+* add FDA to the quickstart setup
 
 ### Bugfix
 

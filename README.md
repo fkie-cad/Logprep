@@ -314,7 +314,6 @@ logprep test config $CONFIG
 Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
-
 ### Reload the Configuration
 
 To change the configuration of Logprep it is not needed to restart Logprep entirely.
@@ -349,7 +348,7 @@ The environment can either be started with a Logprep container or without one:
      It starts and connects `Kafka`, `logprep`, `Opensearch` and `Opensearch Dashboards`.
   2. Run Logprep against loaded environment from main `Logprep` directory:
      ```bash
-     logprep quickstart/exampledata/config/pipeline.yml
+     logprep run quickstart/exampledata/config/pipeline.yml
      ```
 
 ### Run with Logprep Container
@@ -372,24 +371,50 @@ The environment can either be started with a Logprep container or without one:
     logprep http://localhost:8081/config/pipeline.yml
     ```
 
+### Run with getting config from FDA with oauth2 authentication
+
+Start logprep by using the oauth2 profile with docker-compose:
+
+    ```bash
+    docker-compose --profile oauth2 up -d
+    ```
+
+
+In order to run logprep with the FDA configuration it is necessary to set the following environment
+variables:
+
+- `LOGPREP_CONFIG_AUTH_METHOD=oauth`
+- `LOGPREP_CONFIG_AUTH_TOKEN=<TOKEN>` (can be intercepted from the FDA<->Keycloak http requests)
+- `LOGPREP_INPUT=<INPUT_CONNECTOR_CONFIG>`
+- `LOGPREP_OUTPUT=<OUTPUT_CONNECTOR_CONFIG>`
+- `LOGPREP_OPTIONS=<GENERAL_LOGPREP_CONFIG>`
+
+Once they are set logprep can be started with:
+
+```bash
+logprep run "http://localhost:8000/api/v1/pipelines?stage=prod&logclass=ExampleClass"
+```
+
 ### Interacting with the Quickstart Environment
 
 The start up takes a few seconds to complete, but once everything is up
 and running it is possible to write JSON events into Kafka and read the processed events in
 Opensearch Dashboards. Following services are available after start up:
 
-| Service                | Location | Credentials |
-|:-----------------------|:----|:-----|
-| Kafka:                 | `localhost:9092` | |
-| Kafka Exporter:        | `localhost:9308` | |
-| Logprep metrics:       | `localhost:8000` | |
-| Opensearch:            | `localhost:9200` | |
-| Opensearch Dashboards: | `localhost:5601` | |
-| Grafana Dashboards:    | `localhost:3000` | admin:admin |
-| Prometheus:            | `localhost:9090` | |
-| Nginx:                 | `localhost:8081` | user:password |
-| Keycloak:              | `localhost:8080` | admin:admin |
-| Postgres:              | `localhost:5432` | keycloak:bitnami |
+| Service                | Location          | User     | Password |
+|:-----------------------|:------------------|:---------|:---------|
+| Kafka:                 | `localhost:9092`  | /        | /        |
+| Kafka Exporter:        | `localhost:9308`  | /        | /        |
+| Logprep metrics:       | `localhost:8001`  | /        | /        |
+| Opensearch:            | `localhost:9200`  | /        | /        |
+| Opensearch Dashboards: | `localhost:5601`  | /        | /        |
+| Grafana Dashboards:    | `localhost:3000`  | admin    | admin    |
+| Prometheus:            | `localhost:9090`  | /        | /        |
+| Nginx:                 | `localhost:8081`  | user     | password |
+| Keycloak:              | `localhost:8080`  | admin    | admin    |
+| Keycloak Postgres:     | `localhost:5432`  | keycloak | bitnami  |
+| FDA:                   | `localhost:8002`  | logprep  | logprep  |
+| FDA Postgres:          | `localhost:25432` | fda      | fda      |
 
 The example rules that are used in the docker instance of Logprep can be found
 in `quickstart/exampledata/rules`.
