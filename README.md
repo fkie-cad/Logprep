@@ -374,7 +374,7 @@ The environment can either be started with a Logprep container or without one:
      It starts and connects `Kafka`, `logprep`, `Opensearch` and `Opensearch Dashboards`.
   2. Run Logprep against loaded environment from main `Logprep` directory:
      ```bash
-     logprep quickstart/exampledata/config/pipeline.yml
+     logprep run quickstart/exampledata/config/pipeline.yml
      ```
 
 ### Run with Logprep Container
@@ -397,7 +397,14 @@ The environment can either be started with a Logprep container or without one:
     logprep http://localhost:8081/config/pipeline.yml
     ```
 
-### Run with getting config from FDA with basic authentication
+### Run with getting config from FDA with oauth2 authentication
+
+Start logprep by using the oauth2 profile with docker-compose:
+
+    ```bash
+    docker-compose --profile oauth2 up -d
+    ```
+
 
 In order to run logprep with the FDA configuration it is necessary to set the following environment
 variables:
@@ -411,7 +418,7 @@ variables:
 Once they are set logprep can be started with:
 
 ```bash
-logprep "http://localhost:8000/api/v1/pipelines?stage=prod&logclass=ExampleClass"
+logprep run "http://localhost:8000/api/v1/pipelines?stage=prod&logclass=ExampleClass"
 ```
 
 ### Interacting with the Quickstart Environment
