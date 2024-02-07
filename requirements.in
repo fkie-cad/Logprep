@@ -1,11 +1,11 @@
-aiohttp>=3.8.5 # CVE-2023-37276
+aiohttp>=3.9.2 # CVE-2024-23334
 attrs
 certifi>=2023.7.22 # CVE-2023-37920
 ciso8601 # fastest iso8601 datetime parser. can be removed after dropping support for python < 3.11
 colorama
 confluent-kafka>2
 elasticsearch>=7,<8
-fastapi
+fastapi>=0.109.1 # CVE-2024-24762
 geoip2
 hyperscan>=0.4.0; sys_platform == 'linux' and platform_machine == 'x86_64'
 jsonref
