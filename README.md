@@ -314,32 +314,6 @@ logprep test config $CONFIG
 Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
-### Validating Labeling-Schema and Rules
-
-The following command can be executed to validate the schema and the rules:
-
-```
-logprep --validate-rules $CONFIG
-```
-
-Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the
-[configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
-
-Alternatively, the validation can be performed directly. Assuming you have cloned the repository
-from git.
-
-```
-PYTHONPATH="." python3 logprep/util/schema_and_rule_checker.py --labeling-schema $LABELING_SCHEMA --labeling-rules $LABELING_RULES
-```
-
-Where `$LABELING_SCHEMA` is the path to a labeling-schema (JSON file) and `$LABELING_RULES` is
-the path to a directory with rule files (JSON/YML files, see Rules.md, subdirectories
-are permitted)
-
-Analogously, `--normalization-rules` and `--pseudonymizer-rules` can be used.
-
-Validation does also perform a verification of the pipeline section of the Logprep configuration.
-
 ### Reload the Configuration
 
 To change the configuration of Logprep it is not needed to restart Logprep entirely.
