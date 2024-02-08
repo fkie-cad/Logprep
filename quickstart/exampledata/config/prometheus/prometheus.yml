@@ -29,7 +29,7 @@ scrape_configs:
       - targets: ["localhost:9090"]
   - job_name: "logprep"
     static_configs:
-      - targets: ["localhost:8000", "localhost:8001"]
+      - targets: ["localhost:8001", "localhost:8002"]
   - job_name: "kafka"
     metrics_path: "/metrics"
     static_configs:

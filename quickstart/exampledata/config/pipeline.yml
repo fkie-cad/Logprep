@@ -12,8 +12,7 @@ metrics:
 pipeline:
 - dissector:
     type: dissector
-    specific_rules:
-    - quickstart/exampledata/rules/030_dissector/rules_specific/
+    specific_rules: []
     generic_rules:
     - quickstart/exampledata/rules/030_dissector/rules_generic/
 
@@ -21,8 +20,7 @@ pipeline:
     type: grokker
     specific_rules:
     - quickstart/exampledata/rules/035_grokker/rules_specific/
-    generic_rules:
-    - quickstart/exampledata/rules/035_grokker/rules_generic/
+    generic_rules: []
 
 - field_manager_a:
     type: field_manager
@@ -42,8 +40,7 @@ pipeline:
     type: timestamper
     specific_rules:
       - quickstart/exampledata/rules/043_timestamper/rules_specific/
-    generic_rules:
-      - quickstart/exampledata/rules/043_timestamper/rules_generic/
+    generic_rules: []
 
 - calculator:
     type: calculator
