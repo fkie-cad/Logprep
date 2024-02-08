@@ -9,6 +9,11 @@
 
 ### Bugfix
 
+## v10.0.1
+### Bugfix
+
+* fix entrypoint in `setup.py` that corrupted the install
+
 
 ## v10.0.0
 ### Breaking

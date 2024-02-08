@@ -39,7 +39,7 @@ setup(
     python_requires=">=3.10",
     entry_points={
         "console_scripts": [
-            "logprep = logprep.run_logprep:main",
+            "logprep = logprep.run_logprep:cli",
         ]
     },
 )
