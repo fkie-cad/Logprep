@@ -539,6 +539,11 @@ class Configuration:
                         f"'{prometheus_multiproc_path}' does not exist"
                     )
                 )
+        if self.metrics.enabled:
+            if "PROMETHEUS_MULTIPROC_DIR" not in os.environ:
+                raise InvalidConfigurationError(
+                    "Metrics enabled but PROMETHEUS_MULTIPROC_DIR is not set"
+                )
 
     def _verify_rules(self, processor: Processor) -> None:
         rule_ids = []

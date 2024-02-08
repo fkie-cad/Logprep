@@ -1103,6 +1103,18 @@ output:
         assert len(config.pipeline) == 1
         assert len(config.pipeline[0]["the almighty dissector"]["generic_rules"]) == 1
 
+    def test_verify_environment_raises_if_metrics_enabled_but_prometheus_multiproc_dir_not_set(
+        self, config_path
+    ):
+        config = Configuration.from_sources([str(config_path)])
+        config.metrics = MetricsConfig(enabled=True, port=4242)
+        with mock.patch("os.environ", {}):
+            with pytest.raises(
+                InvalidConfigurationError,
+                match="Metrics enabled but PROMETHEUS_MULTIPROC_DIR is not set",
+            ):
+                config._verify_environment()
+
 
 class TestInvalidConfigurationErrors:
     @pytest.mark.parametrize(
