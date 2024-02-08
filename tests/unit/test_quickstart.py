@@ -8,6 +8,7 @@ from logprep import run_logprep
 class TestQuickstart:
     QUICKSTART_CONFIG_PATH = "quickstart/exampledata/config/pipeline.yml"
 
+    @mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": "/tmp"})
     def test_quickstart_setup_is_valid(self):
         """ensures the quickstart rules are valid"""
         with mock.patch(

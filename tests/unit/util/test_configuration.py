@@ -118,13 +118,13 @@ output:
 {attribute}: {second_value}
 """
         )
-
-        config = Configuration.from_sources([str(first_config), str(second_config)])
-        attribute_from_test = getattr(config, attribute)
-        if hasattr(attribute_from_test, "__attrs_attrs__"):
-            assert asdict(attribute_from_test) == second_value
-        else:
-            assert attribute_from_test == second_value
+        with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmp_path)}):
+            config = Configuration.from_sources([str(first_config), str(second_config)])
+            attribute_from_test = getattr(config, attribute)
+            if hasattr(attribute_from_test, "__attrs_attrs__"):
+                assert asdict(attribute_from_test) == second_value
+            else:
+                assert attribute_from_test == second_value
 
     @pytest.mark.parametrize(
         "attribute, value, expected_error, expected_message",
