@@ -9,6 +9,10 @@
 
 ### Bugfix
 
+## v10.0.2
+### Bugfix
+* fix versioneer import
+
 ## v10.0.1
 ### Bugfix
 
