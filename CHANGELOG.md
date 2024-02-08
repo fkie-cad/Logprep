@@ -9,6 +9,11 @@
 
 ### Bugfix
 
+## v10.0.2
+### Bugfix
+* fix versioneer import
+* fix logprep does not complain about missing PROMETHEUS_MULTIPROC_DIR 
+
 ## v10.0.1
 ### Bugfix
 

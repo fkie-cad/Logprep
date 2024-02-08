@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Optional, Union
 from colorama import Back, Fore
 from colorama.ansi import AnsiBack, AnsiFore
 
+from logprep._version import get_versions
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
-from versioneer import get_versions
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.util.configuration import Configuration
