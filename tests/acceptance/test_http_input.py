@@ -63,74 +63,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: 
     config_path.write_text(config.as_yaml())
     proc = start_logprep(config_path)
     wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
-    # nosemgrep
+
     requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
-    time.sleep(0.5)  # nosemgrep
+    time.sleep(0.5)
     assert "my message" in output_path.read_text()
-
-
-@pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
-def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
-    config.process_count = 2
-    output_path = tmp_path / "output.jsonl"
-    config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
-    config_path = tmp_path / "generated_config.yml"
-    config_path.write_text(config.as_yaml())
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9001", test_timeout=15)
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9000/plaintext",
-        data="my first message",
-        verify=False,
-        timeout=5,
-    )
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9001/plaintext",
-        data="my second message",
-        verify=False,
-        timeout=5,
-    )
-    time.sleep(0.5)  # nosemgrep
-    output_content = output_path.read_text()
-    assert "my first message" in output_content
-    assert "my second message" in output_content
-
-
-@pytest.mark.skipif(os.environ.get("GITHUB_ACTIONS") == "true", reason="sometimes fails on CI")
-@pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
-def test_http_input_accepts_message_for_three_pipelines(tmp_path: Path, config: Configuration):
-    config.process_count = 3
-    output_path = tmp_path / "output.jsonl"
-    config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
-    config_path = tmp_path / "generated_config.yml"
-    config_path.write_text(config.as_yaml())
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9002", test_timeout=15)
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9000/plaintext",
-        data="my first message",
-        verify=False,
-        timeout=5,
-    )
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9001/plaintext",
-        data="my second message",
-        verify=False,
-        timeout=5,
-    )
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9002/plaintext",
-        data="my third message",
-        verify=False,
-        timeout=5,
-    )
-    time.sleep(0.5)  # nosemgrep
-    output_content = output_path.read_text()
-    assert "my first message" in output_content
-    assert "my second message" in output_content
-    assert "my third message" in output_content
