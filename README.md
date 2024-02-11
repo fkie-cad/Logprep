@@ -255,7 +255,7 @@ contribute to them.
 ```
 git clone https://github.com/fkie-cad/Logprep.git
 cd Logprep
-pip install -r requirements.txt
+pip install .
 ```
 
 **3. Option:** Installation via Github Release
@@ -316,11 +316,7 @@ Where `$CONFIG` is the path or uri to a configuration file (see the documentatio
 
 ### Reload the Configuration
 
-To change the configuration of Logprep it is not needed to restart Logprep entirely.
-Instead, it can be issued to reload the configuration.
-For this, the signal `SIGUSR1` must be send to the Logprep process.
-
-Additionally, a `config_refresh_interval` can be set to periodically and automatically refresh the given configuration.
+A `config_refresh_interval` can be set to periodically and automatically refresh the given configuration.
 This can be useful in case of containerized environments (such as Kubernetes), when pod volumes often change
 on the fly.
 
