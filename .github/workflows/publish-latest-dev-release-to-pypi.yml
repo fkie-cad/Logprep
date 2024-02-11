@@ -24,7 +24,7 @@ jobs:
           pip install --upgrade pip wheel
 
       - name: Build binary wheel and a source tarball
-        run: python setup.py sdist bdist_wheel
+        run: pip wheel --no-deps --wheel-dir ./dist .
 
       - uses: marvinpinto/action-automatic-releases@latest
         with:
