@@ -67,7 +67,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip wheel
-          pip install -r requirements_dev.txt
+          pip install .[dev]
 
       - name: Perform unit tests
         env:
