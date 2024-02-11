@@ -1,3 +1,89 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[project]
+name = "logprep"
+description = "Logprep allows to collect, process and forward log messages from various data sources."
+requires-python = ">=3.10"
+version = "0.1.0"
+readme = "README.md"
+dynamic = ["version"]
+license = { file = "LICENSE" }
+classifiers = [
+  "Development Status :: 3 - Alpha",
+
+  "Intended Audience :: Developers",
+
+  "License :: LGPL-2.1",
+
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+keywords = [
+  "elasticsearch",
+  "kafka",
+  "etl",
+  "sre",
+  "preprocessing",
+  "opensearch",
+  "soar",
+  "logdata",
+]
+dependencies = [
+  "aiohttp>=3.9.2",         # CVE-2024-23334
+  "certifi>=2023.7.22",     # CVE-2023-37920
+  "ciso8601",               # fastest iso8601 datetime parser. can be removed after dropping support for python < 3.11
+  "confluent-kafka>2",
+  "elasticsearch>=7,<8",
+  "fastapi>=0.109.1",       # CVE-2024-24762
+  "hyperscan>=0.7.0",
+  "mysql-connector-python",
+  "numpy>=1.26.0",
+  "opensearch-py",
+  "protobuf>=3.20.2",
+  "pytz",                   # can be removed with normalizer code
+  "scikit-learn>=1.2.0",
+  "scipy>=1.9.2",
+  "requests>=2.31.0",
+  "ruamel.yaml",
+  "urllib3>=1.26.17",       # CVE-2023-43804
+]
+
+[project.optional-dependencies]
+
+dev = [
+  "black",
+  "httpx",
+  "isort",
+  "pylint",
+  "pytest",
+  "pytest-cov",
+  "responses",
+  "jinja2",
+]
+
+doc = [
+  "sphinx",
+  "sphinx_rtd_theme",
+  "sphinxcontrib.datatemplates",
+  "sphinx-copybutton",
+  "nbsphinx",
+  "ipython",
+]
+
+[project.urls]
+Homepage = "https://github.com/fkie-cad/Logprep"
+Documentation = "https://logprep.readthedocs.io/en/latest/"
+Repository = "https://github.com/fkie-cad/Logprep"
+Issues = "https://github.com/fkie-cad/Logprep/issues"
+Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
+
+[project.scripts]
+logprep = "logprep.run_logprep:cli"
+
 [tool.black]
 line-length = 100
 target-version = ['py310', 'py311', 'py312']
