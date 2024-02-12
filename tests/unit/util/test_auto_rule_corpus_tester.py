@@ -15,7 +15,7 @@ from logprep.util.getter import GetterFactory
 
 @pytest.fixture(name="corpus_tester")
 def fixture_auto_rule_corpus_tester():
-    config_path = "tests/testdata/config/config.yml"
+    config_path = ("tests/testdata/config/config.yml",)
     data_dir = "will be overwritten in test cases"
     corpus_tester = RuleCorpusTester(config_path, data_dir)
     return corpus_tester
@@ -385,7 +385,7 @@ class TestAutoRuleTester:
         )
         test_config_path = tmp_path / "test_config.yml"
         test_config_path.write_text(json.dumps(config), encoding="utf8")
-        corpus_tester = RuleCorpusTester(str(test_config_path), "")
+        corpus_tester = RuleCorpusTester([str(test_config_path)], "")
         test_data = {
             "input": {
                 "message": "A B",
@@ -450,7 +450,7 @@ class TestAutoRuleTester:
         # the cache realizes it as an existing pseudonym already.
         write_test_case_data_tmp_files(test_data_dir, "test_case_one", test_case_data)
         write_test_case_data_tmp_files(test_data_dir, "test_case_two", test_case_data)
-        config_path = "tests/testdata/config/config.yml"
+        config_path = ["tests/testdata/config/config.yml"]
         corpus_tester = RuleCorpusTester(config_path, test_data_dir)
         corpus_tester.run()
         console_output, console_error = capsys.readouterr()
@@ -482,7 +482,7 @@ class TestAutoRuleTester:
         test_data_dir = tmp_path / "test_data"
         os.makedirs(test_data_dir, exist_ok=True)
         write_test_case_data_tmp_files(test_data_dir, "test_case_one", test_case_data)
-        config_path = "tests/testdata/config/config.yml"
+        config_path = ["tests/testdata/config/config.yml"]
         corpus_tester = RuleCorpusTester(config_path, test_data_dir)
         corpus_tester.run()
         console_output, console_error = capsys.readouterr()

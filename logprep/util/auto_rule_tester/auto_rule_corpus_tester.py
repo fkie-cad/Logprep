@@ -129,7 +129,7 @@ class RuleCorpusTester:
     _tmp_dir: str
     """ Temporary directory where test files will be saved temporarily """
 
-    _original_config_path: str
+    _original_config_paths: tuple[str]
     """ Path to the original configuration that should be tested """
 
     _input_test_data_path: str
@@ -149,8 +149,8 @@ class RuleCorpusTester:
         report: List = Factory(list)
         warnings: str = field(default="")
 
-    def __init__(self, config_path, input_test_data_path):
-        self._original_config_path = config_path
+    def __init__(self, config_paths: tuple[str], input_test_data_path: str):
+        self._original_config_paths = config_paths
         self._input_test_data_path = input_test_data_path
         self.log_capture_string = None
 
@@ -193,7 +193,7 @@ class RuleCorpusTester:
         patched_config.input = {
             "patched_input": {"type": "json_input", "documents_path": str(merged_input_file_path)}
         }
-        config = Configuration.from_sources([self._original_config_path])
+        config = Configuration.from_sources(self._original_config_paths)
         input_config = config.input
         connector_name = list(input_config.keys())[0]
         if "preprocessing" in input_config[connector_name]:
