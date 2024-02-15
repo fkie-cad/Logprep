@@ -411,3 +411,69 @@ class TestHttpGetter:
         with pytest.raises(Timeout):
             http_getter.get()
         responses.assert_call_count("https://does-not-matter", 3)
+
+    @responses.activate
+    def test_get_finds_correct_auth_token_if_multiple_are_given(self):
+        mock_env = {
+            "LOGPREP_CONFIG_AUTH_METHOD": "oauth",
+            "LOGPREP_CONFIG_AUTH_TOKEN_0": "ajhsdfpoweiurjdfs239487_01",
+            "LOGPREP_CONFIG_AUTH_TOKEN_1": "ajhsdfpoweiurjdfs239487_02",
+            "LOGPREP_CONFIG_AUTH_TOKEN_2": "ajhsdfpoweiurjdfs239487_03",
+        }
+
+        logprep_version = get_versions().get("version")
+        responses.get(
+            url="https://the.target.url/targetfile",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Accept": "*/*",
+                        "Accept-Encoding": "gzip, deflate",
+                        "Connection": "keep-alive",
+                        "User-Agent": f"Logprep version {logprep_version}",
+                        "Authorization": "Bearer ajhsdfpoweiurjdfs239487_01",
+                    },
+                    strict_match=True,
+                )
+            ],
+            body="status unauthorized",
+            status=401,
+        )
+        responses.get(
+            url="https://the.target.url/targetfile",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Accept": "*/*",
+                        "Accept-Encoding": "gzip, deflate",
+                        "Connection": "keep-alive",
+                        "User-Agent": f"Logprep version {logprep_version}",
+                        "Authorization": "Bearer ajhsdfpoweiurjdfs239487_02",
+                    },
+                    strict_match=True,
+                )
+            ],
+            body="status unauthorized",
+            status=401,
+        )
+        responses.get(
+            url="https://the.target.url/targetfile",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Accept": "*/*",
+                        "Accept-Encoding": "gzip, deflate",
+                        "Connection": "keep-alive",
+                        "User-Agent": f"Logprep version {logprep_version}",
+                        "Authorization": "Bearer ajhsdfpoweiurjdfs239487_03",
+                    },
+                    strict_match=True,
+                )
+            ],
+            body="status success",
+            status=200,
+        )
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
+            file_content = http_getter.get()
+        assert file_content == "status success"

@@ -88,7 +88,7 @@ class FileGetter(Getter):
 
 @define(kw_only=True)
 class HttpGetter(Getter):
-    """get files from a api or simple web server.
+    """get files from an api or simple web server.
 
     Matching string examples:
 
@@ -112,6 +112,7 @@ class HttpGetter(Getter):
     _username: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _password: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    _tokens: list[str] = field(factory=list)
 
     def __attrs_post_init__(self):
         user_agent = f"Logprep version {get_versions().get('version')}"
@@ -130,9 +131,16 @@ class HttpGetter(Getter):
     def _set_credentials(self):
         if os.environ.get("LOGPREP_CONFIG_AUTH_METHOD") == "oauth":
             if token := os.environ.get("LOGPREP_CONFIG_AUTH_TOKEN"):
-                self._headers.update({"Authorization": f"Bearer {token}"})
+                self._tokens.append(token)
                 self._username = None
                 self._password = None
+            token_index = 0
+            while True:
+                if token := os.environ.get(f"LOGPREP_CONFIG_AUTH_TOKEN_{token_index}"):
+                    self._tokens.append(token)
+                    token_index += 1
+                else:
+                    break
         self._username = os.environ.get("LOGPREP_CONFIG_AUTH_USERNAME")
         self._password = os.environ.get("LOGPREP_CONFIG_AUTH_PASSWORD")
 
@@ -154,12 +162,14 @@ class HttpGetter(Getter):
         resp = None
         while resp is None:
             try:
-                resp = session.get(
-                    url=url,
-                    timeout=5,
-                    allow_redirects=True,
-                    headers=self._headers,
-                )
+                for token in self._tokens:
+                    self._headers.update({"Authorization": f"Bearer {token}"})
+                    resp = session.get(
+                        url=url,
+                        timeout=5,
+                        allow_redirects=True,
+                        headers=self._headers,
+                    )
             except requests.exceptions.RequestException as error:
                 retries -= 1
                 if retries == 0:
