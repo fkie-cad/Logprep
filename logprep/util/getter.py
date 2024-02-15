@@ -168,7 +168,7 @@ class HttpGetter(Getter):
         resp = None
         while resp is None:
             try:
-                if not self._found_valid_token:
+                if not self._found_valid_token and self._tokens:
                     resp = self._search_for_valid_token(session, url)
                 else:
                     resp = self._execute_request(session, url)
