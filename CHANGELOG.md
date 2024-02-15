@@ -8,11 +8,12 @@
 ### Improvements
 
 ### Bugfix
+* fix loading of configuration inside the `AutoRuleCorpusTester` for `logprep test integration`
 
 ## v10.0.2
 ### Bugfix
 * fix versioneer import
-* fix logprep does not complain about missing PROMETHEUS_MULTIPROC_DIR 
+* fix logprep does not complain about missing PROMETHEUS_MULTIPROC_DIR
 
 ## v10.0.1
 ### Bugfix
@@ -46,7 +47,7 @@
 * make store_custom in s3, opensearch and elasticsearch connector not call `batch_finished_callback` to prevent data loss that could be caused by partially processed events
 * remove the `schema_and_rule_checker` module
 * rewrite Logprep Configuration object see documentation for more details
-* rewrite Runner 
+* rewrite Runner
 * delete MultiProcessingPipeline class to simplify multiprocesing
 * add FDA to the quickstart setup
 * bump versions for `fastapi` and `aiohttp` to address CVEs
