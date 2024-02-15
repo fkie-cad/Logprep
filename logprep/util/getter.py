@@ -5,6 +5,7 @@ They are returned by the GetterFactory.
 import os
 import re
 from collections import defaultdict
+from itertools import count
 from pathlib import Path
 from string import Template
 from typing import Tuple
@@ -12,6 +13,7 @@ from urllib.parse import urlparse
 
 import requests
 from attrs import define, field, validators
+from requests import Response, Session
 from requests.auth import HTTPBasicAuth
 
 from logprep._version import get_versions
@@ -112,6 +114,7 @@ class HttpGetter(Getter):
     _username: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _password: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    _found_valid_token: bool = field(default=False)
     _tokens: list[str] = field(factory=list)
 
     def __attrs_post_init__(self):
@@ -130,17 +133,15 @@ class HttpGetter(Getter):
 
     def _set_credentials(self):
         if os.environ.get("LOGPREP_CONFIG_AUTH_METHOD") == "oauth":
+            self._username = None
+            self._password = None
             if token := os.environ.get("LOGPREP_CONFIG_AUTH_TOKEN"):
                 self._tokens.append(token)
-                self._username = None
-                self._password = None
-            token_index = 0
-            while True:
+            for token_index in count(start=0, step=1):
                 if token := os.environ.get(f"LOGPREP_CONFIG_AUTH_TOKEN_{token_index}"):
                     self._tokens.append(token)
-                    token_index += 1
-                else:
-                    break
+                    continue
+                break
         self._username = os.environ.get("LOGPREP_CONFIG_AUTH_USERNAME")
         self._password = os.environ.get("LOGPREP_CONFIG_AUTH_PASSWORD")
 
@@ -162,8 +163,9 @@ class HttpGetter(Getter):
         resp = None
         while resp is None:
             try:
-                for token in self._tokens:
-                    self._headers.update({"Authorization": f"Bearer {token}"})
+                if not self._found_valid_token:
+                    resp = self._search_for_valid_token(session, url)
+                else:
                     resp = session.get(
                         url=url,
                         timeout=5,
@@ -176,3 +178,17 @@ class HttpGetter(Getter):
                     raise error
         resp.raise_for_status()
         return resp.content
+
+    def _search_for_valid_token(self, session: Session, url: str) -> [Response, None]:
+        for token in self._tokens:
+            self._headers.update({"Authorization": f"Bearer {token}"})
+            resp = session.get(
+                url=url,
+                timeout=5,
+                allow_redirects=True,
+                headers=self._headers,
+            )
+            if resp is not None and resp.status_code == 200:
+                self._found_valid_token = True
+                return resp
+        return None

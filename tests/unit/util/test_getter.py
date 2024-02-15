@@ -422,54 +422,30 @@ class TestHttpGetter:
         }
 
         logprep_version = get_versions().get("version")
+        header = {
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive",
+            "User-Agent": f"Logprep version {logprep_version}",
+            "Authorization": "Bearer ajhsdfpoweiurjdfs239487_01",
+        }
         responses.get(
             url="https://the.target.url/targetfile",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Accept": "*/*",
-                        "Accept-Encoding": "gzip, deflate",
-                        "Connection": "keep-alive",
-                        "User-Agent": f"Logprep version {logprep_version}",
-                        "Authorization": "Bearer ajhsdfpoweiurjdfs239487_01",
-                    },
-                    strict_match=True,
-                )
-            ],
+            match=[matchers.header_matcher(header.copy(), strict_match=True)],
             body="status unauthorized",
             status=401,
         )
+        header.update({"Authorization": "Bearer ajhsdfpoweiurjdfs239487_02"})
         responses.get(
             url="https://the.target.url/targetfile",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Accept": "*/*",
-                        "Accept-Encoding": "gzip, deflate",
-                        "Connection": "keep-alive",
-                        "User-Agent": f"Logprep version {logprep_version}",
-                        "Authorization": "Bearer ajhsdfpoweiurjdfs239487_02",
-                    },
-                    strict_match=True,
-                )
-            ],
+            match=[matchers.header_matcher(header.copy(), strict_match=True)],
             body="status unauthorized",
             status=401,
         )
+        header.update({"Authorization": "Bearer ajhsdfpoweiurjdfs239487_03"})
         responses.get(
             url="https://the.target.url/targetfile",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Accept": "*/*",
-                        "Accept-Encoding": "gzip, deflate",
-                        "Connection": "keep-alive",
-                        "User-Agent": f"Logprep version {logprep_version}",
-                        "Authorization": "Bearer ajhsdfpoweiurjdfs239487_03",
-                    },
-                    strict_match=True,
-                )
-            ],
+            match=[matchers.header_matcher(header.copy(), strict_match=True)],
             body="status success",
             status=200,
         )
