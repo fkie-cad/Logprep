@@ -171,12 +171,7 @@ class HttpGetter(Getter):
                 if not self._found_valid_token:
                     resp = self._search_for_valid_token(session, url)
                 else:
-                    resp = session.get(
-                        url=url,
-                        timeout=5,
-                        allow_redirects=True,
-                        headers=self._headers,
-                    )
+                    resp = self._execute_request(session, url)
             except requests.exceptions.RequestException as error:
                 retries -= 1
                 if retries == 0:
@@ -187,13 +182,11 @@ class HttpGetter(Getter):
     def _search_for_valid_token(self, session: Session, url: str) -> [Response, None]:
         for token in self._tokens:
             self._headers.update({"Authorization": f"Bearer {token}"})
-            resp = session.get(
-                url=url,
-                timeout=5,
-                allow_redirects=True,
-                headers=self._headers,
-            )
+            resp = self._execute_request(session, url)
             if resp is not None and resp.status_code == 200:
                 self._found_valid_token = True
                 return resp
         return None
+
+    def _execute_request(self, session: Session, url: str) -> [Response, None]:
+        return session.get(url=url, timeout=5, allow_redirects=True, headers=self._headers)
