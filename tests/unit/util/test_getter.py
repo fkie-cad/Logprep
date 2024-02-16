@@ -9,8 +9,8 @@ from unittest import mock
 
 import pytest
 import responses
+from requests import Timeout
 from requests.auth import HTTPBasicAuth
-from requests.exceptions import Timeout
 from responses import matchers
 from ruamel.yaml import YAML
 
@@ -430,26 +430,26 @@ class TestHttpGetter:
             "Authorization": "Bearer ajhsdfpoweiurjdfs239487_01",
         }
         responses.get(
-            url="https://the.target.url/targetfile",
+            url="https://test.url/targetfile",
             match=[matchers.header_matcher(header.copy(), strict_match=True)],
             body="status unauthorized",
             status=401,
         )
         header.update({"Authorization": "Bearer ajhsdfpoweiurjdfs239487_02"})
         responses.get(
-            url="https://the.target.url/targetfile",
+            url="https://test.url/targetfile",
             match=[matchers.header_matcher(header.copy(), strict_match=True)],
             body="status unauthorized",
             status=401,
         )
         header.update({"Authorization": "Bearer ajhsdfpoweiurjdfs239487_03"})
         responses.get(
-            url="https://the.target.url/targetfile",
+            url="https://test.url/targetfile",
             match=[matchers.header_matcher(header.copy(), strict_match=True)],
             body="status success",
             status=200,
         )
         with mock.patch.dict("os.environ", mock_env):
-            http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
+            http_getter = GetterFactory.from_string("https://test.url/targetfile")
             file_content = http_getter.get()
         assert file_content == "status success"
