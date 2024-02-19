@@ -108,8 +108,8 @@ class HttpGetter(Getter):
         * :code:`LOGPREP_CONFIG_AUTH_METHOD=oauth`
 
     If you want to load multiple resources from different sources you can set multiple auth tokens
-    by appending a strictly monotonously rising index to the variable. For example by using
-    :code:`LOGPREP_CONFIG_AUTH_TOKEN_0`, :code:`LOGPREP_CONFIG_AUTH_TOKEN_1`,
+    by appending a strictly monotonously rising index to the variable, starting with zero. For
+    example by using :code:`LOGPREP_CONFIG_AUTH_TOKEN_0`, :code:`LOGPREP_CONFIG_AUTH_TOKEN_1`,
     :code:`LOGPREP_CONFIG_AUTH_TOKEN_2`, etc. Logprep always tries to use all token until one is
     successful.
     """

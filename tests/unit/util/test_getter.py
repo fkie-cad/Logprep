@@ -414,12 +414,12 @@ class TestHttpGetter:
         responses.assert_call_count("https://does-not-matter", 3)
 
     @responses.activate
-    def test_get_finds_correct_auth_token_if_multiple_were_given(self):
+    def test_get_finds_correct_auth_token_if_multiple_were_given_and_last_token_is_valid(self):
         mock_env = {
             "LOGPREP_CONFIG_AUTH_METHOD": "oauth",
-            "LOGPREP_CONFIG_AUTH_TOKEN_0": "ajhsdfpoweiurjdfs239487_01",
-            "LOGPREP_CONFIG_AUTH_TOKEN_1": "ajhsdfpoweiurjdfs239487_02",
-            "LOGPREP_CONFIG_AUTH_TOKEN_2": "ajhsdfpoweiurjdfs239487_03",
+            "LOGPREP_CONFIG_AUTH_TOKEN_0": "ajhsdfpoweiurjdfs239487_0",
+            "LOGPREP_CONFIG_AUTH_TOKEN_1": "ajhsdfpoweiurjdfs239487_1",
+            "LOGPREP_CONFIG_AUTH_TOKEN_2": "ajhsdfpoweiurjdfs239487_2",
         }
 
         logprep_version = get_versions().get("version")
@@ -428,7 +428,7 @@ class TestHttpGetter:
             "Accept-Encoding": "gzip, deflate",
             "Connection": "keep-alive",
             "User-Agent": f"Logprep version {logprep_version}",
-            "Authorization": "Bearer ajhsdfpoweiurjdfs239487_01",
+            "Authorization": "Bearer ajhsdfpoweiurjdfs239487_0",
         }
         responses.get(
             url="https://test.url/targetfile",
@@ -436,14 +436,14 @@ class TestHttpGetter:
             body="status unauthorized",
             status=401,
         )
-        header.update({"Authorization": "Bearer ajhsdfpoweiurjdfs239487_02"})
+        header.update({"Authorization": "Bearer ajhsdfpoweiurjdfs239487_1"})
         responses.get(
             url="https://test.url/targetfile",
             match=[matchers.header_matcher(header.copy(), strict_match=True)],
             body="status unauthorized",
             status=401,
         )
-        header.update({"Authorization": "Bearer ajhsdfpoweiurjdfs239487_03"})
+        header.update({"Authorization": "Bearer ajhsdfpoweiurjdfs239487_2"})
         responses.get(
             url="https://test.url/targetfile",
             match=[matchers.header_matcher(header.copy(), strict_match=True)],
@@ -454,14 +454,15 @@ class TestHttpGetter:
             http_getter = GetterFactory.from_string("https://test.url/targetfile")
             file_content = http_getter.get()
         assert file_content == "status success"
+        responses.assert_call_count("https://test.url/targetfile", 3)
 
     @responses.activate
-    def test_get_raises_on_no_valid_token(self):
+    def test_get_finds_correct_auth_token_if_multiple_were_given_and_second_token_is_valid(self):
         mock_env = {
             "LOGPREP_CONFIG_AUTH_METHOD": "oauth",
-            "LOGPREP_CONFIG_AUTH_TOKEN_0": "token_01",
-            "LOGPREP_CONFIG_AUTH_TOKEN_1": "token_02",
-            "LOGPREP_CONFIG_AUTH_TOKEN_2": "token_03",
+            "LOGPREP_CONFIG_AUTH_TOKEN_0": "ajhsdfpoweiurjdfs239487_0",
+            "LOGPREP_CONFIG_AUTH_TOKEN_1": "ajhsdfpoweiurjdfs239487_1",
+            "LOGPREP_CONFIG_AUTH_TOKEN_2": "ajhsdfpoweiurjdfs239487_2",
         }
 
         logprep_version = get_versions().get("version")
@@ -470,7 +471,43 @@ class TestHttpGetter:
             "Accept-Encoding": "gzip, deflate",
             "Connection": "keep-alive",
             "User-Agent": f"Logprep version {logprep_version}",
-            "Authorization": "Bearer token_01",
+            "Authorization": "Bearer ajhsdfpoweiurjdfs239487_0",
+        }
+        responses.get(
+            url="https://test.org/targetfile",
+            match=[matchers.header_matcher(header.copy(), strict_match=True)],
+            body="status unauthorized",
+            status=401,
+        )
+        header.update({"Authorization": "Bearer ajhsdfpoweiurjdfs239487_1"})
+        responses.get(
+            url="https://test.org/targetfile",
+            match=[matchers.header_matcher(header.copy(), strict_match=True)],
+            body="status success",
+            status=200,
+        )
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://test.org/targetfile")
+            file_content = http_getter.get()
+        assert file_content == "status success"
+        responses.assert_call_count("https://test.org/targetfile", 2)
+
+    @responses.activate
+    def test_get_raises_on_no_valid_token(self):
+        mock_env = {
+            "LOGPREP_CONFIG_AUTH_METHOD": "oauth",
+            "LOGPREP_CONFIG_AUTH_TOKEN_0": "token_0",
+            "LOGPREP_CONFIG_AUTH_TOKEN_1": "token_1",
+            "LOGPREP_CONFIG_AUTH_TOKEN_2": "token_2",
+        }
+
+        logprep_version = get_versions().get("version")
+        header = {
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive",
+            "User-Agent": f"Logprep version {logprep_version}",
+            "Authorization": "Bearer token_0",
         }
         responses.get(
             url="https://test.com/targetfile",
@@ -478,14 +515,14 @@ class TestHttpGetter:
             body="status unauthorized",
             status=401,
         )
-        header.update({"Authorization": "Bearer token_02"})
+        header.update({"Authorization": "Bearer token_1"})
         responses.get(
             url="https://test.com/targetfile",
             match=[matchers.header_matcher(header.copy(), strict_match=True)],
             body="status unauthorized",
             status=401,
         )
-        header.update({"Authorization": "Bearer token_03"})
+        header.update({"Authorization": "Bearer token_2"})
         responses.get(
             url="https://test.com/targetfile",
             match=[matchers.header_matcher(header.copy(), strict_match=True)],
