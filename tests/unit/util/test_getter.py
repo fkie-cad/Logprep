@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import requests.exceptions
 import responses
 from requests import Timeout
 from requests.auth import HTTPBasicAuth
@@ -453,3 +454,45 @@ class TestHttpGetter:
             http_getter = GetterFactory.from_string("https://test.url/targetfile")
             file_content = http_getter.get()
         assert file_content == "status success"
+
+    @responses.activate
+    def test_get_raises_on_no_valid_token(self):
+        mock_env = {
+            "LOGPREP_CONFIG_AUTH_METHOD": "oauth",
+            "LOGPREP_CONFIG_AUTH_TOKEN_0": "token_01",
+            "LOGPREP_CONFIG_AUTH_TOKEN_1": "token_02",
+            "LOGPREP_CONFIG_AUTH_TOKEN_2": "token_03",
+        }
+
+        logprep_version = get_versions().get("version")
+        header = {
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive",
+            "User-Agent": f"Logprep version {logprep_version}",
+            "Authorization": "Bearer token_01",
+        }
+        responses.get(
+            url="https://test.com/targetfile",
+            match=[matchers.header_matcher(header.copy(), strict_match=True)],
+            body="status unauthorized",
+            status=401,
+        )
+        header.update({"Authorization": "Bearer token_02"})
+        responses.get(
+            url="https://test.com/targetfile",
+            match=[matchers.header_matcher(header.copy(), strict_match=True)],
+            body="status unauthorized",
+            status=401,
+        )
+        header.update({"Authorization": "Bearer token_03"})
+        responses.get(
+            url="https://test.com/targetfile",
+            match=[matchers.header_matcher(header.copy(), strict_match=True)],
+            body="status unauthorized",
+            status=401,
+        )
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://test.com/targetfile")
+            with pytest.raises(requests.exceptions.RequestException, match="No valid token found"):
+                http_getter.get()

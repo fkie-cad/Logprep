@@ -179,17 +179,21 @@ class HttpGetter(Getter):
         resp.raise_for_status()
         return resp.content
 
-    def _search_for_valid_token(self, session: Session, url: str) -> [Response, None]:
+    def _search_for_valid_token(self, session: Session, url: str) -> Response:
+        errors = []
         for token in self._tokens:
             self._headers.update({"Authorization": f"Bearer {token}"})
             try:
                 resp = self._execute_request(session, url)
                 resp.raise_for_status()
-            except requests.HTTPError:
+            except requests.HTTPError as error:
+                errors.append(error)
                 continue
             self._found_valid_token = True
             return resp
-        return None
+        raise requests.exceptions.RequestException(
+            f"No valid token found due to following Errors: {errors}"
+        )
 
-    def _execute_request(self, session: Session, url: str) -> [Response, None]:
+    def _execute_request(self, session: Session, url: str) -> Response:
         return session.get(url=url, timeout=5, allow_redirects=True, headers=self._headers)
