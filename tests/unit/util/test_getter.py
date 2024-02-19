@@ -413,7 +413,7 @@ class TestHttpGetter:
         responses.assert_call_count("https://does-not-matter", 3)
 
     @responses.activate
-    def test_get_finds_correct_auth_token_if_multiple_are_given(self):
+    def test_get_finds_correct_auth_token_if_multiple_were_given(self):
         mock_env = {
             "LOGPREP_CONFIG_AUTH_METHOD": "oauth",
             "LOGPREP_CONFIG_AUTH_TOKEN_0": "ajhsdfpoweiurjdfs239487_01",
