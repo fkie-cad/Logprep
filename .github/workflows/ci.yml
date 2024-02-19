@@ -175,8 +175,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-#      - name: Create SHA_SHORT Env
-#        run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-8`" >> $GITHUB_ENV
+      - name: Set outputs
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Build images
         uses: docker/build-push-action@v3
@@ -187,4 +188,4 @@ jobs:
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: |
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
-            ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}-${{ github.sha::8 }}
+            ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}-${{ steps.vars.outputs.sha_short }}
