@@ -143,7 +143,8 @@ class HttpGetter(Getter):
             if token := os.environ.get("LOGPREP_CONFIG_AUTH_TOKEN"):
                 self._tokens.append(token)
             for token_index in count(start=0, step=1):
-                if token := os.environ.get(f"LOGPREP_CONFIG_AUTH_TOKEN_{token_index}"):
+                token = os.environ.get(f"LOGPREP_CONFIG_AUTH_TOKEN_{token_index}")
+                if token is not None:
                     self._tokens.append(token)
                     continue
                 break
