@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 import requests
 from attrs import define, field, validators
 from requests import Response, Session
+from requests.adapters import HTTPAdapter, Retry
 from requests.auth import HTTPBasicAuth
 
 from logprep._version import get_versions
@@ -165,33 +166,29 @@ class HttpGetter(Getter):
         session = self._sessions.get(domain)
         if basic_auth:
             session.auth = basic_auth
-        retries = 3
-        resp = None
-        while resp is None:
-            try:
-                if not self._found_valid_token and self._tokens:
-                    resp = self._search_for_valid_token(session, url)
-                else:
-                    resp = self._execute_request(session, url)
-            except requests.exceptions.RequestException as error:
-                retries -= 1
-                if retries == 0:
-                    raise error
+        if not self._found_valid_token and self._tokens:
+            self._try_each_token_in_header_until_successful_response(session, url)
+            self._found_valid_token = True
+        retries = Retry(total=3, status_forcelist=[500, 502, 503, 504])
+        session.mount("https://", HTTPAdapter(max_retries=retries))
+        session.mount("http://", HTTPAdapter(max_retries=retries))
+        resp = self._execute_request(session, url)
         resp.raise_for_status()
         return resp.content
 
-    def _search_for_valid_token(self, session: Session, url: str) -> Response:
+    def _try_each_token_in_header_until_successful_response(self, session: Session, url: str):
         errors = []
         for token in self._tokens:
             self._headers.update({"Authorization": f"Bearer {token}"})
             try:
                 resp = self._execute_request(session, url)
                 resp.raise_for_status()
+                # end search, with currently valid set token in header
+                return
             except requests.HTTPError as error:
                 errors.append(error)
-                continue
-            self._found_valid_token = True
-            return resp
+        # raise only if all tokens have failed, if one token is successful the other errors aren't
+        # important
         raise requests.exceptions.RequestException(
             f"No valid token found due to following Errors: {errors}"
         )

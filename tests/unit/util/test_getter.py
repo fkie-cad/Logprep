@@ -10,7 +10,6 @@ from unittest import mock
 import pytest
 import requests.exceptions
 import responses
-from requests import Timeout
 from requests.auth import HTTPBasicAuth
 from responses import matchers
 from ruamel.yaml import YAML
@@ -405,13 +404,40 @@ class TestHttpGetter:
             "myusername", "mypassword"
         )
 
-    @responses.activate
-    def test_raises_requestexception_after_3_retries(self):
-        responses.add(responses.GET, "https://does-not-matter", Timeout())
-        http_getter = GetterFactory.from_string("https://does-not-matter")
-        with pytest.raises(Timeout):
+    @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
+    def test_raises_requestexception_after_3_retries(self, getconn_mock):
+        getconn_mock.return_value.getresponse.side_effect = [
+            mock.MagicMock(status=500),  # one initial request and three retries
+            mock.MagicMock(status=502),
+            mock.MagicMock(status=500),
+            mock.MagicMock(status=500),
+            mock.MagicMock(status=500),  # fourth is not considered because of raise
+        ]
+        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        with pytest.raises(requests.exceptions.RequestException, match="Max retries exceed"):
             http_getter.get()
-        responses.assert_call_count("https://does-not-matter", 3)
+        assert getconn_mock.return_value.request.mock_calls == [
+            # one initial request and three retries
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+        ]
+
+    @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
+    def test_get_does_one_successful_request_after_two_failed(self, getconn_mock):
+        getconn_mock.return_value.getresponse.side_effect = [
+            mock.MagicMock(status=500),
+            mock.MagicMock(status=502),
+            mock.MagicMock(status=200),
+        ]
+        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        http_getter.get()
+        assert getconn_mock.return_value.request.mock_calls == [
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+        ]
 
     @responses.activate
     def test_get_finds_correct_auth_token_if_multiple_were_given_and_last_token_is_valid(self):
@@ -454,7 +480,9 @@ class TestHttpGetter:
             http_getter = GetterFactory.from_string("https://test.url/targetfile")
             file_content = http_getter.get()
         assert file_content == "status success"
-        responses.assert_call_count("https://test.url/targetfile", 3)
+        responses.assert_call_count(
+            "https://test.url/targetfile", 4
+        )  # 3+1 find token + actual request
 
     @responses.activate
     def test_get_finds_correct_auth_token_if_multiple_were_given_and_second_token_is_valid(self):
@@ -490,7 +518,9 @@ class TestHttpGetter:
             http_getter = GetterFactory.from_string("https://test.org/targetfile")
             file_content = http_getter.get()
         assert file_content == "status success"
-        responses.assert_call_count("https://test.org/targetfile", 2)
+        responses.assert_call_count(
+            "https://test.org/targetfile", 3
+        )  # 2+1 find token + actual request
 
     @responses.activate
     def test_get_raises_on_no_valid_token(self):
