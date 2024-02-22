@@ -9,7 +9,6 @@
 * add possibility to define multiple oauth tokens by just appending an index to the env like
 `LOGPREP_CONFIG_AUTH_TOKEN_0`, `LOGPREP_CONFIG_AUTH_TOKEN_1`. The index has to be strictly
 monotonously rising.
-* add `SHORT_SHA` to logprep container images in CI-Pipeline
 
 ### Bugfix
 * fix loading of configuration inside the `AutoRuleCorpusTester` for `logprep test integration`
