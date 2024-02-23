@@ -31,7 +31,7 @@ Example
 from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
-from typing import Callable, Optional, Tuple, Union, Iterable
+from typing import Callable, Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
@@ -210,6 +210,15 @@ class ConfluentKafkaInput(Input):
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
 
+        use_metadata_for_offsets: bool = field(
+            validator=validators.instance_of(bool), default=False
+        )
+        """Use metadata to set offsets if this is set to True (default is False).
+
+        This must be set appropriately depending on the output connector for the offsets to be set 
+        correctly.
+        """
+
         kafka_config: Optional[dict] = field(
             validator=[
                 validators.instance_of(dict),
@@ -236,19 +245,15 @@ class ConfluentKafkaInput(Input):
 
     _last_valid_records: dict
     _last_valid_record: Optional[Message]
-    _last_delivered_records: dict
+    _last_delivered_record: Optional[TopicPartition]
 
-    __slots__ = [
-        "_last_valid_records",
-        "_last_valid_record",
-        "_last_delivered_records",
-    ]
+    __slots__ = ["_last_valid_records", "_last_valid_record", "_last_delivered_record"]
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
-        self._last_valid_record = None
         self._last_valid_records = {}
-        self._last_delivered_records = {}
+        self._last_valid_record = None
+        self._last_delivered_record = None
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -394,28 +399,11 @@ class ConfluentKafkaInput(Input):
             raise CriticalInputError(
                 self, "A confluent-kafka record contains an error code", kafka_error
             )
-        self._update_last_valid_records(message)
+        self._last_valid_records[message.partition()] = message
+        self._last_valid_record = message
         labels = {"description": f"topic: {self._config.topic} - partition: {message.partition()}"}
         self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
         return message.value()
-
-    def _update_last_valid_records(self, message: Message):
-        """Update last valid records.
-
-        It updates a dict with multiple partitions if the output connector handles its own backlog.
-        It stores just the last message if the output connector does not handle its own backlog and
-        just needs the last valid record.
-
-        Parameters
-        -------
-        message : Message
-            Message to update the last valid records with.
-
-        """
-        if self.output_connector.handles_backlog:
-            self._last_valid_records[message.partition()] = message
-        else:
-            self._last_valid_record = message
 
     def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
         """Parse the raw document from Kafka into a json.
@@ -448,6 +436,19 @@ class ConfluentKafkaInput(Input):
             ) from error
         return event_dict, raw_event
 
+    def _add_input_connector_metadata_to_event(self, event_dict) -> Tuple[dict, Optional[str]]:
+        if "_metadata" in event_dict:
+            non_critical_error_msg = (
+                "Couldn't add metadata to the input event as the field '_metadata' already exist."
+            )
+            return event_dict, non_critical_error_msg
+
+        event_dict["_metadata"] = {
+            "last_partition": self._last_valid_record.partition(),
+            "last_offset": self._last_valid_record.offset(),
+        }
+        return event_dict, None
+
     @property
     def _enable_auto_offset_store(self) -> bool:
         return self._config.kafka_config.get("enable.auto.offset.store") == "true"
@@ -456,52 +457,50 @@ class ConfluentKafkaInput(Input):
     def _enable_auto_commit(self) -> bool:
         return self._config.kafka_config.get("enable.auto.commit") == "true"
 
-    @property
-    def last_valid_record(self) -> Optional[dict]:
-        return self._last_valid_record
+    def _get_delivered_partition_offset(self, metadata: dict) -> TopicPartition:
+        if metadata is None:
+            raise FatalInputError(self, "Metadata for setting offsets can't be 'None'")
+        try:
+            last_partition = metadata["last_partition"]
+            last_offset = metadata["last_offset"]
+        except KeyError as error:
+            raise FatalInputError(
+                self,
+                "Missing fields in metadata for setting offsets: "
+                "'last_partition' and 'last_offset' required",
+            ) from error
+        return TopicPartition(
+            self._config.topic,
+            partition=last_partition,
+            offset=last_offset,
+        )
 
-    def batch_finished_callback(self) -> None:
+    def batch_finished_callback(self, metadata: Optional[dict] = None) -> None:
         """Store offsets for each kafka partition in `self._last_valid_records`
-        and if configured commit them. Should be called by output connectors if
-        they are finished processing a batch of records.
+        or instead use `metadata` to obtain offsets. If configured commit them.
+        Should be called by output connectors if they are finished processing a batch of records.
         """
         if self._enable_auto_offset_store:
             return
-        self._handle_offsets(self._consumer.store_offsets)
+        self._handle_offsets(self._consumer.store_offsets, metadata)
         if not self._enable_auto_commit:
-            self._handle_offsets(self._consumer.commit)
-        self._clear_records()
-
-    def update_last_delivered_records(self, message: Message):
-        """Update last delivered records.
-
-        Update a dict with the last record for each partition that has been successfully delivered.
-
-        Parameters
-        -------
-        message : Message
-            Message to update the last delivered records with.
-
-        """
-        self._last_delivered_records[message.partition()] = message
-
-    def _clear_records(self):
+            self._handle_offsets(self._consumer.commit, metadata)
         self._last_valid_records.clear()
-        self._last_valid_record = None
-        self._last_delivered_records.clear()
 
-    def _handle_offsets(self, offset_handler: Callable) -> None:
-        for message in self._get_offset_messages():
+    def _handle_offsets(self, offset_handler: Callable, metadata: Optional[dict]) -> None:
+        if self._config.use_metadata_for_offsets:
+            delivered_offset = self._get_delivered_partition_offset(metadata)
             try:
-                if message:
-                    offset_handler(message=message)
+                offset_handler(offsets=[delivered_offset])
             except KafkaException as error:
-                raise InputWarning(self, f"{error}, {message}") from error
-
-    def _get_offset_messages(self) -> Iterable[Message]:
-        if self.output_connector.handles_backlog:
-            return self._last_valid_records.values()
-        return self._last_delivered_records.values()
+                raise InputWarning(self, f"{error}, {delivered_offset}") from error
+        else:
+            records = self._last_valid_records.values()
+            for record in records:
+                try:
+                    offset_handler(message=record)
+                except KafkaException as error:
+                    raise InputWarning(self, f"{error}, {record}") from error
 
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
@@ -526,8 +525,8 @@ class ConfluentKafkaInput(Input):
                 f"topic: {topic_partition.topic} | "
                 f"partition {topic_partition.partition}"
             )
-        if hasattr(self.output_connector, "_write_backlog"):
-            self.output_connector._write_backlog()
+        self.output_connector._write_backlog()
+        if not self._config.use_metadata_for_offsets:
             self.batch_finished_callback()
 
     def _lost_callback(self, consumer, topic_partitions):

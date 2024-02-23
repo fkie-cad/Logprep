@@ -537,6 +537,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
         # asserts entering context manager in metrics.metrics.Metric.measure_time
         mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
 
+    def test_add_input_connector_metadata_returns_true_if_input_connector_metadata_set(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update({"preprocessing": {"input_connector_metadata": True}})
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        assert connector._add_input_connector_metadata is True
+
 
 class BaseOutputTestCase(BaseConnectorTestCase):
     def test_is_output_instance(self):
@@ -555,5 +561,4 @@ class BaseOutputTestCase(BaseConnectorTestCase):
     def test_store_calls_batch_finished_callback(self):
         self.object.input_connector = mock.MagicMock()
         self.object.store({"message": "my event message"})
-        if self.object.handles_backlog:
-            self.object.input_connector.batch_finished_callback.assert_called()
+        self.object.input_connector.batch_finished_callback.assert_called()

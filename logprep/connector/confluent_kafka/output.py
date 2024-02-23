@@ -27,12 +27,11 @@ Example
 import json
 from datetime import datetime
 from functools import cached_property, partial
-from logging import Logger
 from socket import getfqdn
 from typing import Optional
 
 from attrs import define, field, validators
-from confluent_kafka import KafkaException, Producer, Message
+from confluent_kafka import KafkaException, Producer
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.metrics.metrics import GaugeMetric, Metric, CounterMetric
@@ -154,8 +153,6 @@ class ConfluentKafkaOutput(Output):
         error_topic: str
         flush_timeout: float
         send_timeout: int = field(validator=validators.instance_of(int), default=0)
-        delivered_callback_frequency: int = field(validator=validators.instance_of(int), default=1)
-        """ (Optional) count of delivered messages before batch_finished_callback is called."""
         kafka_config: Optional[dict] = field(
             validator=[
                 validators.instance_of(dict),
@@ -179,11 +176,6 @@ class ConfluentKafkaOutput(Output):
             :template: defaults-renderer.tmpl
 
         """
-
-    def __init__(self, name: str, configuration: "ConfluentKafkaOutput.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
-        self.handles_backlog = False
-        self._delivered_cnt = 0
 
     @cached_property
     def _producer(self):
@@ -294,7 +286,7 @@ class ConfluentKafkaOutput(Output):
 
         """
         try:
-            callback = self.delivered_callback() if set_offsets else None
+            callback = self.delivered_callback(document) if set_offsets else None
             self._producer.produce(
                 target,
                 value=self._encoder.encode(document),
@@ -342,14 +334,14 @@ class ConfluentKafkaOutput(Output):
             self._producer.produce(
                 self._config.error_topic,
                 value=json.dumps(value, separators=(",", ":")).encode("utf-8"),
-                on_delivery=self.delivered_callback(),
+                on_delivery=self.delivered_callback(document_processed),
             )
             self._producer.poll(self._config.send_timeout)
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
 
-    def delivered_callback(self):
+    def delivered_callback(self, document):
         """Callback that can called when a single message has been successfully delivered.
 
         The callback is called asynchronously, therefore the current message is stored within a
@@ -362,7 +354,13 @@ class ConfluentKafkaOutput(Output):
             This is the callback method that the Kafka producer calls. It has access to "message".
 
         """
-        message = self._get_current_message()
+        try:
+            partition_offset = {
+                "last_partition": document["_metadata"]["last_partition"],
+                "last_offset": document["_metadata"]["last_offset"],
+            }
+        except (TypeError, KeyError):
+            return lambda *args: None
 
         def store_offsets_on_success(error, _):
             """Set offset via message stored in closure if no error occurred.
@@ -374,20 +372,10 @@ class ConfluentKafkaOutput(Output):
             """
             if error:
                 raise FatalOutputError(output=self, message=error)
-            if message:
-                self._delivered_cnt += 1
-                self.metrics.number_of_successfully_delivered_events += 1
-                self.input_connector.update_last_delivered_records(message)
-                if self._delivered_cnt >= self._config.delivered_callback_frequency:
-                    self.input_connector.batch_finished_callback()
-                    self._delivered_cnt = 0
+            self.metrics.number_of_successfully_delivered_events += 1
+            self.input_connector.batch_finished_callback(metadata=partition_offset)
 
         return store_offsets_on_success
-
-    def _get_current_message(self) -> Optional[Message]:
-        if hasattr(self.input_connector, "last_valid_record"):
-            return self.input_connector.last_valid_record
-        return None
 
     @Metric.measure_time()
     def _write_backlog(self):

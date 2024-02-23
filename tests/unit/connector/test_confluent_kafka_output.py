@@ -146,36 +146,43 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         assert self.object.metrics.number_of_processed_events == 1
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_delivered_callback_calls_with_message_calls_callback(
+    def test_delivered_callback_with_metadata_calls_callback(
         self, _
     ):  # pylint: disable=arguments-differ
         self.object.input_connector = mock.MagicMock()
-        self.object.input_connector.last_valid_record = mock.MagicMock()
-        callback = self.object.delivered_callback()
+        self.object.input_connector._last_delivered_record = mock.MagicMock()
+        metadata = {"_metadata": {"last_partition": 0, "last_offset": 0}}
+        callback = self.object.delivered_callback(metadata)
         callback(None, "msg")
-        self.object.input_connector.update_last_delivered_records.assert_called()
         self.object.input_connector.batch_finished_callback.assert_called()
 
+    @pytest.mark.parametrize(
+        "metadata",
+        [
+            {"_metadata": {"last_partition": 0}},
+            {"_metadata": {"last_offset": 0}},
+            {"_metadata": {}},
+            {},
+        ],
+    )
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_delivered_callback_calls_without_message_does_not_call_callback(
-        self, _
+    def test_delivered_callback_without_metadata_doesnt_call_batch_finished_callback(
+        self, _, metadata
     ):  # pylint: disable=arguments-differ
         self.object.input_connector = mock.MagicMock()
-        self.object.input_connector.last_valid_record = None
-        callback = self.object.delivered_callback()
+        callback = self.object.delivered_callback(metadata)
         callback(None, "msg")
-        self.object.input_connector.update_last_delivered_records.assert_not_called()
-        self.object.input_connector.batch_finished_callback.assert_not_called()
+        assert not self.object.input_connector.batch_finished_callback.called
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_delivered_callback_calls_with_error_does_not_call_callback(
+    def test_delivered_callback_calls_with_error_doesnt_call_batch_finished_callback(
         self, _
     ):  # pylint: disable=arguments-differ
         self.object.input_connector = mock.MagicMock()
-        callback = self.object.delivered_callback()
+        metadata = {"_metadata": {"last_partition": 0, "last_offset": 0}}
+        callback = self.object.delivered_callback(metadata)
         with pytest.raises(FatalOutputError, match=r"some_error"):
             callback(BaseException("some_error"), "msg")
-        self.object.input_connector.update_last_delivered_records.assert_not_called()
         self.object.input_connector.batch_finished_callback.assert_not_called()
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
@@ -190,3 +197,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         expected_error_message = r"keys are missing: {'bootstrap.servers'}"
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
             Factory.create({"test": config}, logger=self.logger)
+
+    def test_store_calls_batch_finished_callback(self):
+        """Skipped from superclass"""

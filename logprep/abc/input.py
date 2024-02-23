@@ -112,6 +112,7 @@ class Input(Connector):
                         "log_arrival_time_target_field": Optional[str],
                         "log_arrival_timedelta": Optional[TimeDeltaConfig],
                         "enrich_by_env_variables": Optional[dict],
+                        "input_connector_metadata": Optional[bool],
                     },
                 ),
             ],
@@ -172,6 +173,8 @@ class Input(Connector):
         - `enrich_by_env_variables` - If required it is possible to automatically enrich incoming
           events by environment variables. To activate this preprocessor the fields value has to be
           a mapping from the target field name (key) to the environment variable name (value).
+        - `input_connector_metadata` - If set to True, metadata will be added by the input connector
+          if the connector implements `_add_input_connector_metadata_to_event`.
         """
 
         _version_information: dict = field(
@@ -185,6 +188,11 @@ class Input(Connector):
     pipeline_index: int
     output_connector: Optional["Output"]
     __slots__ = ["pipeline_index", "output_connector"]
+
+    @property
+    def _add_input_connector_metadata(self):
+        """Check and return if input connector metadata should be added or not."""
+        return bool(self._config.preprocessing.get("input_connector_metadata"))
 
     @property
     def _add_hmac(self):
@@ -283,6 +291,8 @@ class Input(Connector):
         self.metrics.number_of_processed_events += 1
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
+        if self._add_input_connector_metadata:
+            event, non_critical_error_msg = self._add_input_connector_metadata_to_event(event)
         if self._add_hmac:
             event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
         if self._add_version_info:
@@ -295,8 +305,30 @@ class Input(Connector):
             self._add_env_enrichment_to_event(event)
         return event, non_critical_error_msg
 
-    def batch_finished_callback(self):
-        """Can be called by output connectors after processing a batch of one or more records."""
+    def batch_finished_callback(self, metadata: Optional[dict] = None):
+        """Can be called by output connectors after processing a batch of one or more records.
+
+        Parameters
+        ----------
+        metadata: dict
+            Metadata that can be passed by outputs.
+        """
+
+    def _add_input_connector_metadata_to_event(self, event: dict) -> Tuple[dict, Optional[str]]:
+        """Add input connector metadata to the event.
+
+        Does nothing unless implemented by an input connector.
+
+        Parameters
+        ----------
+        event_dict: dict
+            The event to which the metadata should be added to
+
+        Returns
+        -------
+        event_dict: dict
+            The original event extended with metadata from the input connector.
+        """
 
     def _add_env_enrichment_to_event(self, event: dict):
         """Add the env enrichment information to the event"""

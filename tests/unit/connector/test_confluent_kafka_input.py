@@ -8,7 +8,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
-from confluent_kafka import OFFSET_BEGINNING, KafkaException
+from confluent_kafka import OFFSET_BEGINNING, KafkaException, TopicPartition
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -169,6 +169,44 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.output_connector = mock.MagicMock()
         with pytest.raises(CriticalInputError, match=r"not a valid json"):
             self.object.get_next(1)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_next_adds_metadata_if_configured(self, _):
+        input_config = deepcopy(self.CONFIG)
+        input_config["preprocessing"] = {"input_connector_metadata": True}
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+        kafka_input.setup()
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        kafka_input._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '{"foo":"bar"}'.encode("utf8")
+        event, warning = kafka_input.get_next(1)
+        assert warning is None
+        assert event.get("_metadata", {}).get("last_partition")
+        assert event.get("_metadata", {}).get("last_offset")
+        del event["_metadata"]
+        assert event == {"foo": "bar"}
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_next_returns_warning_if_metadata_configured_but_field_exists(self, _):
+        input_config = deepcopy(self.CONFIG)
+        input_config["preprocessing"] = {"input_connector_metadata": True}
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+        kafka_input.setup()
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        kafka_input._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '{"_metadata":"foo"}'.encode("utf8")
+        event, warning = kafka_input.get_next(1)
+        assert (
+            warning
+            == "Couldn't add metadata to the input event as the field '_metadata' already exist."
+        )
+        assert event == {"_metadata": "foo"}
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_event_returns_event_and_raw_event(self, _):
@@ -346,12 +384,57 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         assert self.object.metrics.number_of_warnings == 1
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_revoke_callback_writes_output_backlog_and_calls_batch_finished_callback(
+    def test_revoke_callback_writes_output_backlog_and_does_not_call_batch_finished_callback_if_metadata(
         self, mock_consumer
     ):
-        self.object.output_connector = mock.MagicMock()
-        self.object.batch_finished_callback = mock.MagicMock()
+        input_config = deepcopy(self.CONFIG)
+        input_config["use_metadata_for_offsets"] = True
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+
+        kafka_input.output_connector = mock.MagicMock()
+        kafka_input.batch_finished_callback = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
-        self.object._revoke_callback(mock_consumer, mock_partitions)
-        self.object.output_connector._write_backlog.assert_called()
-        self.object.batch_finished_callback.assert_called()
+        kafka_input._revoke_callback(mock_consumer, mock_partitions)
+        kafka_input.output_connector._write_backlog.assert_called()
+        assert not kafka_input.batch_finished_callback.called
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_revoke_callback_writes_output_backlog_and_calls_batch_finished_callback_if_not_metadata(
+        self, mock_consumer
+    ):
+        input_config = deepcopy(self.CONFIG)
+        input_config["use_metadata_for_offsets"] = False
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+
+        kafka_input.output_connector = mock.MagicMock()
+        kafka_input.batch_finished_callback = mock.MagicMock()
+        mock_partitions = [mock.MagicMock()]
+        kafka_input._revoke_callback(mock_consumer, mock_partitions)
+        kafka_input.output_connector._write_backlog.assert_called()
+        kafka_input.batch_finished_callback.assert_called()
+
+    def test_get_delivered_partition_offset_without_metadata_raises_exception(self):
+        with pytest.raises(FatalInputError, match="Metadata for setting offsets can't be 'None'"):
+            self.object._get_delivered_partition_offset(None)
+
+    @pytest.mark.parametrize(
+        "metadata",
+        [{}, {"last_offset": 0}, {"last_partition": 0}],
+    )
+    def test_get_delivered_partition_offset_with_missing_metadata_field_raises_exception(
+        self, metadata
+    ):
+        with pytest.raises(
+            FatalInputError,
+            match="Missing fields in metadata for setting offsets: "
+            "'last_partition' and 'last_offset' required",
+        ):
+            self.object._get_delivered_partition_offset(metadata)
+
+    def test_get_delivered_partition_offset_with_metadata_returns_topic_partition(self):
+        topic_partition = self.object._get_delivered_partition_offset(
+            {"last_partition": 0, "last_offset": 1}
+        )
+        assert isinstance(topic_partition, TopicPartition)
+        assert topic_partition.partition == 0
+        assert topic_partition.offset == 1
