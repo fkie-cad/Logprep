@@ -12,7 +12,9 @@ from urllib.parse import urlparse
 
 import requests
 from attrs import define, field, validators
+from keycloak import KeycloakOpenID
 from requests.auth import HTTPBasicAuth
+from schedule import Scheduler
 
 from logprep._version import get_versions
 from logprep.abc.exceptions import LogprepException
@@ -108,10 +110,14 @@ class HttpGetter(Getter):
     """
 
     _sessions: dict = {}
+    _scheduler = Scheduler()
 
     _username: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _password: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    _keycloak_token: str = field(
+        validator=validators.optional(validators.instance_of(str)), default=None
+    )
 
     def __attrs_post_init__(self):
         user_agent = f"Logprep version {get_versions().get('version')}"
@@ -135,9 +141,28 @@ class HttpGetter(Getter):
                 self._password = None
         self._username = os.environ.get("LOGPREP_CONFIG_AUTH_USERNAME")
         self._password = os.environ.get("LOGPREP_CONFIG_AUTH_PASSWORD")
+        if os.environ.get("LOGPREP_KEYCLOAK_SERVER") is not None:
+            self._set_keycloak_token()
+            self._headers.update({"Authorization": f"Bearer {self._keycloak_token}"})
+
+    def _set_keycloak_token(self):
+        if os.environ.get("LOGPREP_KEYCLOAK_SERVER") is None:
+            return
+        keycloak_openid = KeycloakOpenID(
+            server_url=os.environ.get("LOGPREP_KEYCLOAK_SERVER"),
+            client_id=os.environ.get("LOGPREP_KEYCLOAK_CLIENT_ID"),
+            realm_name=os.environ.get("LOGPREP_KEYCLOAK_REALM"),
+            client_secret_key=os.environ.get("LOGPREP_KEYCLOAK_CLIENT_SECRET"),
+        )
+        keycloak_username = os.environ.get("LOGPREP_KEYCLOAK_USERNAME")
+        keycloak_password = os.environ.get("LOGPREP_KEYCLOAK_PASSWORD")
+        token = keycloak_openid.token(keycloak_username, keycloak_password)
+        self._keycloak_token = token.get("access_token")
+        self._scheduler.every(token.get("expires_in")).seconds.do(self._set_keycloak_token)
 
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
+        self._scheduler.run_pending()
         basic_auth = None
         username, password = self._username, self._password
         if username is not None:

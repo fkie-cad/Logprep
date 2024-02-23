@@ -384,6 +384,12 @@ variables:
 - `LOGPREP_INPUT=<INPUT_CONNECTOR_CONFIG>`
 - `LOGPREP_OUTPUT=<OUTPUT_CONNECTOR_CONFIG>`
 - `LOGPREP_OPTIONS=<GENERAL_LOGPREP_CONFIG>`
+- `LOGPREP_KEYCLOAK_SERVER=http://localhost:8080`
+- `LOGPREP_KEYCLOAK_REALM=logprep`
+- `LOGPREP_KEYCLOAK_CLIENT_ID=fda-backend`
+- `LOGPREP_KEYCLOAK_CLIENT_SECRET=<SECRET>` (can be retrieved from the running keycloak instance)
+- `LOGPREP_KEYCLOAK_USERNAME=logprep`
+- `LOGPREP_KEYCLOAK_PASSWORD=logprep`
 
 Once they are set logprep can be started with:
 
