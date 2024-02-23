@@ -154,7 +154,7 @@ def dry_run(configs: tuple[str], events: str, input_type: str, full_output: bool
     dry_runner.run()
 
 
-@test.command(short_help="Run the rule tests of the given configuration", name="unit")
+@test.command(short_help="Run the rule tests of the given configurations", name="unit")
 @click.argument("configs", nargs=-1)
 def test_rules(configs: tuple[str]) -> None:
     """
@@ -162,11 +162,10 @@ def test_rules(configs: tuple[str]) -> None:
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    config_obj = _get_configuration(configs)
-    config_path = Path(tempfile.gettempdir(), "auto-rule-test")
-    config_path.write_text(config_obj.as_yaml(), encoding="utf-8")
-    tester = AutoRuleTester(config_path)
-    tester.run()
+    _get_configuration(configs)
+    for config in configs:
+        tester = AutoRuleTester(config)
+        tester.run()
 
 
 @test.command(
