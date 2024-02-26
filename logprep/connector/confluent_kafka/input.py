@@ -245,15 +245,13 @@ class ConfluentKafkaInput(Input):
 
     _last_valid_records: dict
     _last_valid_record: Optional[Message]
-    _last_delivered_record: Optional[TopicPartition]
 
-    __slots__ = ["_last_valid_records", "_last_valid_record", "_last_delivered_record"]
+    __slots__ = ["_last_valid_records", "_last_valid_record"]
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
         self._last_valid_records = {}
         self._last_valid_record = None
-        self._last_delivered_record = None
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -437,7 +435,14 @@ class ConfluentKafkaInput(Input):
         return event_dict, raw_event
 
     def _add_input_connector_metadata_to_event(self, event_dict) -> Tuple[dict, Optional[str]]:
-        if "_metadata" in event_dict:
+        metadata = event_dict.get("_metadata", {})
+        for meta_field in ("last_partition", "last_offset"):
+            try:
+                del event_dict["_metadata"][meta_field]
+            except (TypeError, KeyError):
+                pass
+
+        if metadata:
             non_critical_error_msg = (
                 "Couldn't add metadata to the input event as the field '_metadata' already exist."
             )
