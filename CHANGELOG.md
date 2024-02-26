@@ -3,7 +3,7 @@
 ## next release
 ### Breaking
 ### Features
-* retrieve token automatically from keycloak
+* retrieve token automatically from different oauth endpoints
 ### Improvements
 ### Bugfix
 

@@ -384,12 +384,12 @@ variables:
 - `LOGPREP_INPUT=<INPUT_CONNECTOR_CONFIG>`
 - `LOGPREP_OUTPUT=<OUTPUT_CONNECTOR_CONFIG>`
 - `LOGPREP_OPTIONS=<GENERAL_LOGPREP_CONFIG>`
-- `LOGPREP_KEYCLOAK_SERVER=http://localhost:8080`
-- `LOGPREP_KEYCLOAK_REALM=logprep`
-- `LOGPREP_KEYCLOAK_CLIENT_ID=fda-backend`
-- `LOGPREP_KEYCLOAK_CLIENT_SECRET=<SECRET>` (can be retrieved from the running keycloak instance)
-- `LOGPREP_KEYCLOAK_USERNAME=logprep`
-- `LOGPREP_KEYCLOAK_PASSWORD=logprep`
+- `LOGPREP_OAUTH2_0_ENDPOINT=http://localhost:8080/realms/logprep/protocol/openid-connect/token`
+- `LOGPREP_OAUTH2_0_GRANT_TYPE=password`
+- `LOGPREP_OAUTH2_0_USERNAME=logprep`
+- `LOGPREP_OAUTH2_0_PASSWORD=logprep`
+- `LOGPREP_OAUTH2_0_CLIENT_ID=fda-backend`
+- `LOGPREP_OAUTH2_0_CLIENT_SECRET=<SECRET>`  (can be retrieved from the running keycloak instance)
 
 Once they are set logprep can be started with:
 
