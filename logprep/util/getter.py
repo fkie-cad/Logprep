@@ -17,7 +17,6 @@ from attrs import define, field, validators
 from requests import Session, Response
 from requests.adapters import HTTPAdapter
 from requests.auth import HTTPBasicAuth
-from schedule import Scheduler
 from urllib3 import Retry
 
 from logprep._version import get_versions
@@ -114,7 +113,6 @@ class HttpGetter(Getter):
     """
 
     _sessions: dict = {}
-    _scheduler = Scheduler()
 
     _username: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _password: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
@@ -144,6 +142,7 @@ class HttpGetter(Getter):
             self._password = os.environ.get("LOGPREP_CONFIG_AUTH_PASSWORD")
 
     def _get_oauth_token(self):
+        self._tokens = []
         min_expires_in = sys.maxsize
         for i in count(start=0, step=1):
             if os.environ.get(f"LOGPREP_OAUTH2_{i}_ENDPOINT") is None:
@@ -162,12 +161,10 @@ class HttpGetter(Getter):
             self._tokens.append(token_response.get("access_token"))
             if token_response.get("expires_in") < min_expires_in:
                 min_expires_in = token_response.get("expires_in")
-        self._scheduler.every(min_expires_in).seconds.do(self._get_oauth_token)
         self._found_valid_token = False
 
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
-        self._scheduler.run_pending()
         basic_auth = None
         username, password = self._username, self._password
         if username is not None:
@@ -180,15 +177,22 @@ class HttpGetter(Getter):
         session = self._sessions.get(domain)
         if basic_auth:
             session.auth = basic_auth
+        resp = self._request_resource(session, url)
+        if resp.status_code == 401:
+            self._get_oauth_token()
+            resp = self._request_resource(session, url, max_retries=2)
+        resp.raise_for_status()
+        return resp.content
+
+    def _request_resource(self, session, url, max_retries=3):
         if not self._found_valid_token and self._tokens:
             self._get_valid_token(session, url)
             self._found_valid_token = True
-        retries = Retry(total=3, status_forcelist=[500, 502, 503, 504])
+        retries = Retry(total=max_retries, status_forcelist=[500, 502, 503, 504])
         session.mount("https://", HTTPAdapter(max_retries=retries))
         session.mount("http://", HTTPAdapter(max_retries=retries))
         resp = self._execute_request(session, url)
-        resp.raise_for_status()
-        return resp.content
+        return resp
 
     def _get_valid_token(self, session: Session, url: str):
         errors = []
