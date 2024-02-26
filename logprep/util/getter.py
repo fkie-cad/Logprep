@@ -4,7 +4,9 @@ They are returned by the GetterFactory.
 
 import os
 import re
+import sys
 from collections import defaultdict
+from itertools import count
 from pathlib import Path
 from string import Template
 from typing import Tuple
@@ -12,9 +14,11 @@ from urllib.parse import urlparse
 
 import requests
 from attrs import define, field, validators
-from keycloak import KeycloakOpenID
+from requests import Session, Response
+from requests.adapters import HTTPAdapter
 from requests.auth import HTTPBasicAuth
 from schedule import Scheduler
+from urllib3 import Retry
 
 from logprep._version import get_versions
 from logprep.abc.exceptions import LogprepException
@@ -115,9 +119,8 @@ class HttpGetter(Getter):
     _username: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _password: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
-    _keycloak_token: str = field(
-        validator=validators.optional(validators.instance_of(str)), default=None
-    )
+    _found_valid_token: bool = field(default=False)
+    _tokens: list[str] = field(factory=list)
 
     def __attrs_post_init__(self):
         user_agent = f"Logprep version {get_versions().get('version')}"
@@ -134,31 +137,33 @@ class HttpGetter(Getter):
         self._set_credentials()
 
     def _set_credentials(self):
-        if os.environ.get("LOGPREP_CONFIG_AUTH_METHOD") == "oauth":
-            if token := os.environ.get("LOGPREP_CONFIG_AUTH_TOKEN"):
-                self._headers.update({"Authorization": f"Bearer {token}"})
-                self._username = None
-                self._password = None
-        self._username = os.environ.get("LOGPREP_CONFIG_AUTH_USERNAME")
-        self._password = os.environ.get("LOGPREP_CONFIG_AUTH_PASSWORD")
-        if os.environ.get("LOGPREP_KEYCLOAK_SERVER") is not None:
-            self._set_keycloak_token()
-            self._headers.update({"Authorization": f"Bearer {self._keycloak_token}"})
+        if os.environ.get("LOGPREP_OAUTH2_0_ENDPOINT") is not None:
+            self._get_oauth_token()
+        else:
+            self._username = os.environ.get("LOGPREP_CONFIG_AUTH_USERNAME")
+            self._password = os.environ.get("LOGPREP_CONFIG_AUTH_PASSWORD")
 
-    def _set_keycloak_token(self):
-        if os.environ.get("LOGPREP_KEYCLOAK_SERVER") is None:
-            return
-        keycloak_openid = KeycloakOpenID(
-            server_url=os.environ.get("LOGPREP_KEYCLOAK_SERVER"),
-            client_id=os.environ.get("LOGPREP_KEYCLOAK_CLIENT_ID"),
-            realm_name=os.environ.get("LOGPREP_KEYCLOAK_REALM"),
-            client_secret_key=os.environ.get("LOGPREP_KEYCLOAK_CLIENT_SECRET"),
-        )
-        keycloak_username = os.environ.get("LOGPREP_KEYCLOAK_USERNAME")
-        keycloak_password = os.environ.get("LOGPREP_KEYCLOAK_PASSWORD")
-        token = keycloak_openid.token(keycloak_username, keycloak_password)
-        self._keycloak_token = token.get("access_token")
-        self._scheduler.every(token.get("expires_in")).seconds.do(self._set_keycloak_token)
+    def _get_oauth_token(self):
+        min_expires_in = sys.maxsize
+        for i in count(start=0, step=1):
+            if os.environ.get(f"LOGPREP_OAUTH2_{i}_ENDPOINT") is None:
+                break
+            endpoint = os.environ.get(f"LOGPREP_OAUTH2_{i}_ENDPOINT")
+            grant_type = os.environ.get(f"LOGPREP_OAUTH2_{i}_GRANT_TYPE")
+            username = os.environ.get(f"LOGPREP_OAUTH2_{i}_USERNAME")
+            password = os.environ.get(f"LOGPREP_OAUTH2_{i}_PASSWORD")
+            client_id = os.environ.get(f"LOGPREP_OAUTH2_{i}_CLIENT_ID")
+            client_secret = os.environ.get(f"LOGPREP_OAUTH2_{i}_CLIENT_SECRET")
+            payload = {"grant_type": grant_type, "username": username, "password": password}
+            if client_id is not None and client_secret is not None:
+                payload.update({"client_id": client_id, "client_secret": client_secret})
+            response = requests.post(url=endpoint, data=payload, timeout=1)
+            token_response = response.json()
+            self._tokens.append(token_response.get("access_token"))
+            if token_response.get("expires_in") < min_expires_in:
+                min_expires_in = token_response.get("expires_in")
+        self._scheduler.every(min_expires_in).seconds.do(self._get_oauth_token)
+        self._found_valid_token = False
 
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
@@ -175,19 +180,29 @@ class HttpGetter(Getter):
         session = self._sessions.get(domain)
         if basic_auth:
             session.auth = basic_auth
-        retries = 3
-        resp = None
-        while resp is None:
-            try:
-                resp = session.get(
-                    url=url,
-                    timeout=5,
-                    allow_redirects=True,
-                    headers=self._headers,
-                )
-            except requests.exceptions.RequestException as error:
-                retries -= 1
-                if retries == 0:
-                    raise error
+        if not self._found_valid_token and self._tokens:
+            self._get_valid_token(session, url)
+            self._found_valid_token = True
+        retries = Retry(total=3, status_forcelist=[500, 502, 503, 504])
+        session.mount("https://", HTTPAdapter(max_retries=retries))
+        session.mount("http://", HTTPAdapter(max_retries=retries))
+        resp = self._execute_request(session, url)
         resp.raise_for_status()
         return resp.content
+
+    def _get_valid_token(self, session: Session, url: str):
+        errors = []
+        for token in self._tokens:
+            self._headers.update({"Authorization": f"Bearer {token}"})
+            try:
+                resp = self._execute_request(session, url)
+                resp.raise_for_status()
+                return
+            except requests.HTTPError as error:
+                errors.append(error)
+        raise requests.exceptions.RequestException(
+            f"No valid token found due to following Errors: {errors}"
+        )
+
+    def _execute_request(self, session: Session, url: str) -> Response:
+        return session.get(url=url, timeout=5, allow_redirects=True, headers=self._headers)
