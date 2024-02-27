@@ -30,6 +30,8 @@ jobs:
           pip install virtualenv
           pip install wheel
           pip install pex
+          pip install pip-tools
+          pip-compile -o requirements.txt
 
       - name: Repack confluent-kafka wheel
         run: |
