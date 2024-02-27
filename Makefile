@@ -1,6 +1,6 @@
-# Uninstall all packaged that are not present in requirements.txt and install what is in requirements.txt
+# Install all packages
 install-packages:
-	pip install .
+	pip install -e .[dev]
 
 # Test all pytests
 test:
