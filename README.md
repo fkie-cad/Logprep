@@ -536,8 +536,8 @@ be built locally via:
 
 ```
 sudo apt install pandoc
+pip install -e .[doc]
 cd ./doc/
-pip install -r ./requirements.txt
 make html
 ```
 
