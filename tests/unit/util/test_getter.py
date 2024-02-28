@@ -15,12 +15,14 @@ from responses import matchers
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
+from logprep.util.configuration import Configuration
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
     GetterNotFoundError,
     HttpGetter,
 )
+from tests.testdata.metadata import path_to_config
 
 yaml = YAML(pure=True, typ="safe")
 
@@ -406,9 +408,9 @@ class TestHttpGetter:
 
     @responses.activate
     @mock.patch("logprep.util.getter.HttpGetter._get_oauth_token")
-    def test_set_credentials_calls_get_oauth_token(self, mock_get_oauth_token):
+    def test_get_calls_get_oauth_token(self, mock_get_oauth_token):
         mock_env = {
-            "LOGPREP_OAUTH2_0_ENDPOINT": "https://example.com/oauth/token",
+            "LOGPREP_OAUTH2_0_ENDPOINT": "https://some.url/oauth/token",
             "LOGPREP_OAUTH2_0_GRANT_TYPE": "password",
             "LOGPREP_OAUTH2_0_USERNAME": "test_user",
             "LOGPREP_OAUTH2_0_PASSWORD": "test_password",
@@ -417,13 +419,13 @@ class TestHttpGetter:
         }
 
         responses.get(
-            url="https://example.com/oauth/token",
-            body="status success",
+            url="https://some.url/oauth/token",
+            body="dummy response",
             status=200,
         )
 
         with mock.patch.dict("os.environ", mock_env):
-            http_getter = GetterFactory.from_string("https://example.com/oauth/token")
+            http_getter = GetterFactory.from_string("https://some.url/oauth/token")
             http_getter.get()
         mock_get_oauth_token.assert_called_once()
 
@@ -461,3 +463,49 @@ class TestHttpGetter:
             mock.call("GET", "/bar", body=None, headers=mock.ANY),
             mock.call("GET", "/bar", body=None, headers=mock.ANY),
         ]
+
+    @responses.activate
+    def test_get_requests_an_oauth2_endpoint(self):
+        mock_env = {
+            "LOGPREP_OAUTH2_0_ENDPOINT": "https://some.url/oauth/token",
+            "LOGPREP_OAUTH2_0_GRANT_TYPE": "password",
+            "LOGPREP_OAUTH2_0_USERNAME": "test_user",
+            "LOGPREP_OAUTH2_0_PASSWORD": "test_password",
+            "LOGPREP_OAUTH2_0_CLIENT_ID": "client_id",
+            "LOGPREP_OAUTH2_0_CLIENT_SECRET": "client_secret",
+        }
+        # get the access token
+        responses.post(
+            url="https://some.url/oauth/token",
+            json={
+                "grant_type": "password",
+                "username": "test_user",
+                "password": "test_password",
+                "client_id": "client_id",
+                "client_secret": "client_secret",
+                "access_token": "hoahsknakalamslkoas",
+                "expires_in": 1337,
+            },
+            status=200,
+        )
+        # get configuration with access token
+        config = Configuration.from_sources([path_to_config])
+        responses.get(
+            url="https://some.url/configuration",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer hoahsknakalamslkoas",
+                    }
+                )
+            ],
+            json=config.as_dict(),
+            status=200,
+        )
+
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://some.url/configuration")
+            resp = http_getter.get()
+        assert "input" in resp, "is not a valid logprep config."
+        assert "output" in resp, "is not a valid logprep config."
+        assert "pipeline" in resp, "is not a valid logprep config."
