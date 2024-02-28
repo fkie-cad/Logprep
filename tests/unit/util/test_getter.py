@@ -509,3 +509,58 @@ class TestHttpGetter:
         assert "input" in resp, "is not a valid logprep config."
         assert "output" in resp, "is not a valid logprep config."
         assert "pipeline" in resp, "is not a valid logprep config."
+
+    @mock.patch("logprep.util.getter.HttpGetter._get_oauth_token")
+    @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
+    def test_get_calls_get_oauth_token_on_401_response(self, getconn_mock, get_oauth_token_mock):
+        getconn_mock.return_value.getresponse.side_effect = [
+            mock.MagicMock(status=401),  # one initial request and three retries
+            mock.MagicMock(status=401),
+        ]
+        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        with pytest.raises(requests.exceptions.RequestException):
+            http_getter.get()
+        get_oauth_token_mock.assert_called_once()
+
+    @responses.activate
+    def test_get_raises_with_invalid_token(self):
+        mock_env = {
+            "LOGPREP_OAUTH2_0_ENDPOINT": "https://some.url/oauth/token",
+            "LOGPREP_OAUTH2_0_GRANT_TYPE": "password",
+            "LOGPREP_OAUTH2_0_USERNAME": "test_user",
+            "LOGPREP_OAUTH2_0_PASSWORD": "test_password",
+            "LOGPREP_OAUTH2_0_CLIENT_ID": "client_id",
+            "LOGPREP_OAUTH2_0_CLIENT_SECRET": "client_secret",
+        }
+        # get the invalid access token
+        responses.post(
+            url="https://some.url/oauth/token",
+            json={
+                "grant_type": "password",
+                "username": "test_user",
+                "password": "test_password",
+                "client_id": "client_id",
+                "client_secret": "client_secret",
+                "access_token": "hoahsknakalamslkoas",
+                "expires_in": 1337,
+            },
+            status=401,
+        )
+        # get configuration with access token
+        config = Configuration.from_sources([path_to_config])
+        responses.get(
+            url="https://some.url/configuration",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer hoahsknakalamslkoas",
+                    }
+                )
+            ],
+            json=config.as_dict(),
+            status=401,
+        )
+        with pytest.raises(requests.exceptions.RequestException, match="No valid token found"):
+            with mock.patch.dict("os.environ", mock_env):
+                http_getter = GetterFactory.from_string("https://some.url/configuration")
+                http_getter.get()
