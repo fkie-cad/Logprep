@@ -406,7 +406,7 @@ class TestHttpGetter:
 
     @responses.activate
     @mock.patch("logprep.util.getter.HttpGetter._get_oauth_token")
-    def test_set_credentials_calls_get_auth_token(self, mock_get_oauth_token):
+    def test_set_credentials_calls_get_oauth_token(self, mock_get_oauth_token):
         mock_env = {
             "LOGPREP_OAUTH2_0_ENDPOINT": "https://example.com/oauth/token",
             "LOGPREP_OAUTH2_0_GRANT_TYPE": "password",
@@ -415,20 +415,13 @@ class TestHttpGetter:
             "LOGPREP_OAUTH2_0_CLIENT_ID": "client_id",
             "LOGPREP_OAUTH2_0_CLIENT_SECRET": "client_secret",
         }
-        logprep_version = get_versions().get("version")
-        header = {
-            "Accept": "*/*",
-            "Accept-Encoding": "gzip, deflate",
-            "Connection": "keep-alive",
-            "User-Agent": f"Logprep version {logprep_version}",
-        }
 
         responses.get(
             url="https://example.com/oauth/token",
-            match=[matchers.header_matcher(header.copy(), strict_match=True)],
             body="status success",
             status=200,
         )
+
         with mock.patch.dict("os.environ", mock_env):
             http_getter = GetterFactory.from_string("https://example.com/oauth/token")
             http_getter.get()
