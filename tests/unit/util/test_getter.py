@@ -8,9 +8,9 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import requests.exceptions
 import responses
 from requests.auth import HTTPBasicAuth
-from requests.exceptions import Timeout
 from responses import matchers
 from ruamel.yaml import YAML
 
@@ -405,9 +405,66 @@ class TestHttpGetter:
         )
 
     @responses.activate
-    def test_raises_requestexception_after_3_retries(self):
-        responses.add(responses.GET, "https://does-not-matter", Timeout())
-        http_getter = GetterFactory.from_string("https://does-not-matter")
-        with pytest.raises(Timeout):
+    @mock.patch("logprep.util.getter.HttpGetter._get_oauth_token")
+    def test_set_credentials_calls_get_auth_token(self, mock_get_oauth_token):
+        mock_env = {
+            "LOGPREP_OAUTH2_0_ENDPOINT": "https://example.com/oauth/token",
+            "LOGPREP_OAUTH2_0_GRANT_TYPE": "password",
+            "LOGPREP_OAUTH2_0_USERNAME": "test_user",
+            "LOGPREP_OAUTH2_0_PASSWORD": "test_password",
+            "LOGPREP_OAUTH2_0_CLIENT_ID": "client_id",
+            "LOGPREP_OAUTH2_0_CLIENT_SECRET": "client_secret",
+        }
+        logprep_version = get_versions().get("version")
+        header = {
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive",
+            "User-Agent": f"Logprep version {logprep_version}",
+        }
+
+        responses.get(
+            url="https://example.com/oauth/token",
+            match=[matchers.header_matcher(header.copy(), strict_match=True)],
+            body="status success",
+            status=200,
+        )
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://example.com/oauth/token")
             http_getter.get()
-        responses.assert_call_count("https://does-not-matter", 3)
+        mock_get_oauth_token.assert_called_once()
+
+    @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
+    def test_raises_requestexception_after_3_retries(self, getconn_mock):
+        getconn_mock.return_value.getresponse.side_effect = [
+            mock.MagicMock(status=500),  # one initial request and three retries
+            mock.MagicMock(status=502),
+            mock.MagicMock(status=500),
+            mock.MagicMock(status=500),
+            mock.MagicMock(status=500),  # fourth is not considered because of raise
+        ]
+        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        with pytest.raises(requests.exceptions.RequestException, match="Max retries exceed"):
+            http_getter.get()
+        assert getconn_mock.return_value.request.mock_calls == [
+            # one initial request and three retries
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+        ]
+
+    @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
+    def test_get_does_one_sucessful_request_after_two_failed(self, getconn_mock):
+        getconn_mock.return_value.getresponse.side_effect = [
+            mock.MagicMock(status=500),
+            mock.MagicMock(status=502),
+            mock.MagicMock(status=200),
+        ]
+        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        http_getter.get()
+        assert getconn_mock.return_value.request.mock_calls == [
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+            mock.call("GET", "/bar", body=None, headers=mock.ANY),
+        ]
