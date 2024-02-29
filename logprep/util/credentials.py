@@ -13,8 +13,13 @@ class BasicAuthCredentials(Credentials):
         raise NotImplementedError
 
 
+@define(kw_only=True)
 class OAuth2TokenCredentials(Credentials):
-    pass
+
+    token: str = field(validator=validators.instance_of(str))
+
+    def authenticate(self):
+        raise NotImplementedError
 
 
 class OAuth2PasswordFlowCredentials(OAuth2TokenCredentials):
