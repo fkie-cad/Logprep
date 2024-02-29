@@ -657,3 +657,116 @@ class TestHttpGetter:
             with mock.patch.dict("os.environ", mock_env):
                 http_getter = GetterFactory.from_string("https://some.url/configuration")
                 http_getter.get()
+
+    @responses.activate
+    def test_get_resource_after_token_expires(self):
+        mock_env = {
+            "LOGPREP_OAUTH2_0_ENDPOINT": "https://some.url/oauth/token",
+            "LOGPREP_OAUTH2_0_GRANT_TYPE": "password",
+            "LOGPREP_OAUTH2_0_USERNAME": "test_user",
+            "LOGPREP_OAUTH2_0_PASSWORD": "test_password",
+            "LOGPREP_OAUTH2_0_CLIENT_ID": "client_id",
+            "LOGPREP_OAUTH2_0_CLIENT_SECRET": "client_secret",
+        }
+        # get first valid access token
+        responses.post(
+            url="https://some.url/oauth/token",
+            json={
+                "access_token": "hoahsknakalamslkoas",
+                "expires_in": 1337,
+                "refresh_expires_in": 1800,
+                "refresh_token": "IsInR5cCIgOiAiSldUI",
+                "token_type": "Bearer",
+                "not-before-policy": 0,
+                "session_state": "5c9a3102-f0de-4f55-abd7-4f1773ad26b6",
+                "scope": "profile email",
+            },
+            status=200,
+        )
+        # get valid access token (by searching the list of tokens)
+        responses.get(
+            url="https://some.url/configuration",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer hoahsknakalamslkoas",
+                    }
+                )
+            ],
+            json="some resource",
+            status=200,
+        )
+        # get resource with valid access token
+        responses.get(
+            url="https://some.url/configuration",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer hoahsknakalamslkoas",
+                    }
+                )
+            ],
+            json="some resource",
+            status=200,
+        )
+        # get resource again with token that has expired over time
+        responses.get(
+            url="https://some.url/configuration",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer hoahsknakalamslkoas",
+                    }
+                )
+            ],
+            json="some resource",
+            status=401,  # token has expired
+        )
+        # get new second valid access token
+        responses.post(
+            url="https://some.url/oauth/token",
+            json={
+                "access_token": "R5cCIgOR5cCIgOR5cCIg",
+                "expires_in": 1337,
+                "refresh_expires_in": 1800,
+                "refresh_token": "IsInR5cCIgOiAiSldUI",
+                "token_type": "Bearer",
+                "not-before-policy": 0,
+                "session_state": "5c9a3102-f0de-4f55-abd7-4f1773ad26b6",
+                "scope": "profile email",
+            },
+            status=200,
+        )
+        # get valid access token (by searching the list of tokens)
+        responses.get(
+            url="https://some.url/configuration",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer R5cCIgOR5cCIgOR5cCIg",
+                    }
+                )
+            ],
+            json="some resource",
+            status=200,
+        )
+        # get resource again with second valid token
+        responses.get(
+            url="https://some.url/configuration",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer R5cCIgOR5cCIgOR5cCIg",
+                    }
+                )
+            ],
+            json="some resource",
+            status=200,
+        )
+
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://some.url/configuration")
+            resp = http_getter.get()
+            assert "some resource" in resp
+            resp = http_getter.get()
+            assert "some resource" in resp
