@@ -508,15 +508,109 @@ class TestHttpGetter:
             resp = http_getter.get()
         assert "some resource" in resp
 
+    @responses.activate
+    def test_get_requests_two_different_resources_with_different_oauth2_token(self):
+        mock_env = {
+            "LOGPREP_OAUTH2_0_ENDPOINT": "https://some.url/oauth/token",
+            "LOGPREP_OAUTH2_0_GRANT_TYPE": "password",
+            "LOGPREP_OAUTH2_0_USERNAME": "test_user",
+            "LOGPREP_OAUTH2_0_PASSWORD": "test_password",
+            "LOGPREP_OAUTH2_0_CLIENT_ID": "client_id",
+            "LOGPREP_OAUTH2_0_CLIENT_SECRET": "client_secret",
+            "LOGPREP_OAUTH2_1_ENDPOINT": "https://some-other.url/openid/connect/token",
+            "LOGPREP_OAUTH2_1_GRANT_TYPE": "stronger-password",
+            "LOGPREP_OAUTH2_1_USERNAME": "second_test_user",
+            "LOGPREP_OAUTH2_1_PASSWORD": "second_test_password",
+        }
+        # get the access token from https://some.url/oauth/token
+        responses.post(
+            url="https://some.url/oauth/token",
+            json={
+                "access_token": "hoahsknakalamslkoas",
+                "expires_in": 1337,
+                "refresh_expires_in": 1800,
+                "refresh_token": "IsInR5cCIgOiAiSldUI",
+                "token_type": "Bearer",
+                "not-before-policy": 0,
+                "session_state": "5c9a3102-f0de-4f55-abd7-4f1773ad26b6",
+                "scope": "profile email",
+            },
+            status=200,
+        )
+        # get the access token from https://some-other.url/openid/connect/token
+        responses.post(
+            url="https://some-other.url/openid/connect/token",
+            json={
+                "access_token": "nR5cCIgnR5cCIgnR5cCIg",
+                "expires_in": 600,
+                "refresh_expires_in": 1800,
+                "refresh_token": "iSldUiSldUiSldUiSldU",
+                "token_type": "Bearer",
+                "not-before-policy": 0,
+                "session_state": "faee38b2-d5ce-4cc8-ade3-ed3fcd82cf39",
+                "scope": "profile email",
+            },
+            status=200,
+        )
+        # get first resource with access token
+        responses.get(
+            url="https://some.url/configuration",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer hoahsknakalamslkoas",
+                    }
+                )
+            ],
+            json="some resource",
+            status=200,
+        )
+        # get second resource with wrong access token from first resource (during search of valid token)
+        responses.get(
+            url="https://some-other.url/second-resource",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer hoahsknakalamslkoas",
+                    }
+                )
+            ],
+            json="some other resource",
+            status=401,  # unauthorized due to wrong token
+        )
+        # get second resource with correct access token
+        responses.get(
+            url="https://some-other.url/second-resource",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Authorization": "Bearer nR5cCIgnR5cCIgnR5cCIg",
+                    }
+                )
+            ],
+            json="some other resource",
+            status=200,
+        )
+
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://some.url/configuration")
+            resp = http_getter.get()
+            assert "some resource" in resp
+            http_getter = GetterFactory.from_string("https://some-other.url/second-resource")
+            resp = http_getter.get()
+            assert "some other resource" in resp
+
     @mock.patch("logprep.util.getter.HttpGetter._get_oauth_token")
     @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
     def test_get_calls_get_oauth_token_on_401_response(self, getconn_mock, get_oauth_token_mock):
         getconn_mock.return_value.getresponse.side_effect = [
-            mock.MagicMock(status=401),
+            mock.MagicMock(
+                status=401
+            ),  # two responses one for the first attempt and then a second to retry
             mock.MagicMock(status=401),
         ]
         http_getter = GetterFactory.from_string("https://does-not-matter/bar")
-        with pytest.raises(requests.exceptions.RequestException):
+        with pytest.raises(requests.exceptions.RequestException, match="401 Client Error"):
             http_getter.get()
         get_oauth_token_mock.assert_called_once()
 
