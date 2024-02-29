@@ -92,23 +92,32 @@ class FileGetter(Getter):
 
 @define(kw_only=True)
 class HttpGetter(Getter):
-    """get files from a api or simple web server.
+    """Get files from an api or simple web server.
 
     Matching string examples:
 
     * Simple http target: :code:`http://your.target/file.yml`
     * Simple https target: :code:`https://your.target/file.json`
 
-    if you want to use basic auth, then you have to set the environment variables
+    If you want to use basic auth, then you have to set the environment variables
 
         * :code:`LOGPREP_CONFIG_AUTH_USERNAME=<your_username>`
         * :code:`LOGPREP_CONFIG_AUTH_PASSWORD=<your_password>`
 
-    if you want to use oauth, then you have to set the environment variables
+    If you want to use oauth, then you have to set the environment variables
 
         * :code:`LOGPREP_CONFIG_AUTH_TOKEN=<your_token>`
         * :code:`LOGPREP_CONFIG_AUTH_METHOD=oauth`
 
+    If you want to automatically retrieve a token from an oauth2 endpoint you can set the following
+    environment variables
+
+        * :code:`LOGPREP_OAUTH2_0_ENDPOINT=<some_endpoint_url>`
+        * :code:`LOGPREP_OAUTH2_0_GRANT_TYPE=<password|client_secret>`
+        * :code:`LOGPREP_OAUTH2_0_USERNAME=<your_username>`
+        * :code:`LOGPREP_OAUTH2_0_PASSWORD=<your_password`
+        * :code:`LOGPREP_OAUTH2_0_CLIENT_ID=<your_client>`
+        * :code:`LOGPREP_OAUTH2_0_CLIENT_SECRET=<your_secret>`
     """
 
     _sessions: dict = {}

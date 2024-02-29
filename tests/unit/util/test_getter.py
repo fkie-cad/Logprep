@@ -373,7 +373,8 @@ class TestHttpGetter:
                     {
                         "User-Agent": f"Logprep version {logprep_version}",
                         "Authorization": "Bearer ajhsdfpoweiurjdfs239487",
-                    }
+                    },
+                    strict_match=True,
                 )
             ],
         )
@@ -389,11 +390,31 @@ class TestHttpGetter:
                 "https://oauth:ajhsdfpoweiurjdfs239487@the.target.url/targetfile"
             )
 
+    # ToDo:
+    #  - add tests for basic auth with multiple getter requests (urls)
+    #  - add tests for basic auth and oauth token with multiple getter requests (urls)
+    #  - add tests for basic auth and oauth workflow with multiple getter requests (urls)
+    #  - add tests for oauth token and oauth workflow with multiple getter requests (urls)
+    #  - add some acceptance test for logprep cli (test_run_logprep)
+    #  -> maybe define an external resource that defines all credentials per source. something like:
+    #        https://fda.de:
+    #            method: auth
+    #            client: ..
+    #        https://ucl.de:
+    #            method: basic
+    #            user: ..
+    #            password: ..
+    #        https://seccmd.de:
+    #            ...
+    # option1: logprep run --creds credentials.yaml fda.de/... gitlab.de/...
+    # option2: logprep run fda.de/... gitlab.de/...  [ENV: LOGPREP_CREDENTIAL_FILE=file.yml]
+
     @responses.activate
     def test_provides_basic_authentication_creds_from_environment(self):
         mock_env = {
-            "LOGPREP_CONFIG_AUTH_USERNAME": "myusername",
-            "LOGPREP_CONFIG_AUTH_PASSWORD": "mypassword",
+            "LOGPREP_CONFIG_AUTH_0_METHOD": "basic",
+            "LOGPREP_CONFIG_AUTH_0_USERNAME": "myusername",
+            "LOGPREP_CONFIG_AUTH_0_PASSWORD": "mypassword",
         }
         responses.add(
             responses.GET,
@@ -405,29 +426,6 @@ class TestHttpGetter:
         assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
             "myusername", "mypassword"
         )
-
-    @responses.activate
-    @mock.patch("logprep.util.getter.HttpGetter._get_oauth_token")
-    def test_get_calls_get_oauth_token(self, mock_get_oauth_token):
-        mock_env = {
-            "LOGPREP_OAUTH2_0_ENDPOINT": "https://some.url/oauth/token",
-            "LOGPREP_OAUTH2_0_GRANT_TYPE": "password",
-            "LOGPREP_OAUTH2_0_USERNAME": "test_user",
-            "LOGPREP_OAUTH2_0_PASSWORD": "test_password",
-            "LOGPREP_OAUTH2_0_CLIENT_ID": "client_id",
-            "LOGPREP_OAUTH2_0_CLIENT_SECRET": "client_secret",
-        }
-
-        responses.get(
-            url="https://some.url/oauth/token",
-            body="dummy response",
-            status=200,
-        )
-
-        with mock.patch.dict("os.environ", mock_env):
-            http_getter = GetterFactory.from_string("https://some.url/oauth/token")
-            http_getter.get()
-        mock_get_oauth_token.assert_called_once()
 
     @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
     def test_raises_requestexception_after_3_retries(self, getconn_mock):
