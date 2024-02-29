@@ -22,9 +22,18 @@ class OAuth2TokenCredentials(Credentials):
         raise NotImplementedError
 
 
-class OAuth2PasswordFlowCredentials(OAuth2TokenCredentials):
-    pass
+@define(kw_only=True)
+class OAuth2PasswordFlowCredentials(Credentials):
+
+    endpoint: str = field(validator=validators.instance_of(str))
+    grand_type: str = field(validator=validators.instance_of(str))
+    password: str = field(validator=validators.instance_of(str))
+    username: str = field(validator=validators.instance_of(str))
+
+    def authenticate(self):
+        raise NotImplementedError
 
 
-class Oauth2ClientFlowCredentials(OAuth2TokenCredentials):
-    pass
+class OAuth2ClientFlowCredentials(Credentials):
+    
+
