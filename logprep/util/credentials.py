@@ -11,3 +11,15 @@ class BasicAuthCredentials(Credentials):
 
     def authenticate(self):
         raise NotImplementedError
+
+
+class OAuth2TokenCredentials(Credentials):
+    pass
+
+
+class OAuth2PasswordFlowCredentials(OAuth2TokenCredentials):
+    pass
+
+
+class Oauth2ClientFlowCredentials(OAuth2TokenCredentials):
+    pass
