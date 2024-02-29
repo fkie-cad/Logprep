@@ -450,7 +450,7 @@ class TestHttpGetter:
         ]
 
     @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
-    def test_get_does_one_sucessful_request_after_two_failed(self, getconn_mock):
+    def test_get_does_one_successful_request_after_two_failed(self, getconn_mock):
         getconn_mock.return_value.getresponse.side_effect = [
             mock.MagicMock(status=500),
             mock.MagicMock(status=502),
@@ -478,18 +478,18 @@ class TestHttpGetter:
         responses.post(
             url="https://some.url/oauth/token",
             json={
-                "grant_type": "password",
-                "username": "test_user",
-                "password": "test_password",
-                "client_id": "client_id",
-                "client_secret": "client_secret",
                 "access_token": "hoahsknakalamslkoas",
                 "expires_in": 1337,
+                "refresh_expires_in": 1800,
+                "refresh_token": "IsInR5cCIgOiAiSldUI",
+                "token_type": "Bearer",
+                "not-before-policy": 0,
+                "session_state": "5c9a3102-f0de-4f55-abd7-4f1773ad26b6",
+                "scope": "profile email",
             },
             status=200,
         )
-        # get configuration with access token
-        config = Configuration.from_sources([path_to_config])
+        # get resource with access token
         responses.get(
             url="https://some.url/configuration",
             match=[
@@ -499,22 +499,20 @@ class TestHttpGetter:
                     }
                 )
             ],
-            json=config.as_dict(),
+            json="some resource",
             status=200,
         )
 
         with mock.patch.dict("os.environ", mock_env):
             http_getter = GetterFactory.from_string("https://some.url/configuration")
             resp = http_getter.get()
-        assert "input" in resp, "is not a valid logprep config."
-        assert "output" in resp, "is not a valid logprep config."
-        assert "pipeline" in resp, "is not a valid logprep config."
+        assert "some resource" in resp
 
     @mock.patch("logprep.util.getter.HttpGetter._get_oauth_token")
     @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
     def test_get_calls_get_oauth_token_on_401_response(self, getconn_mock, get_oauth_token_mock):
         getconn_mock.return_value.getresponse.side_effect = [
-            mock.MagicMock(status=401),  # one initial request and three retries
+            mock.MagicMock(status=401),
             mock.MagicMock(status=401),
         ]
         http_getter = GetterFactory.from_string("https://does-not-matter/bar")
@@ -536,15 +534,16 @@ class TestHttpGetter:
         responses.post(
             url="https://some.url/oauth/token",
             json={
-                "grant_type": "password",
-                "username": "test_user",
-                "password": "test_password",
-                "client_id": "client_id",
-                "client_secret": "client_secret",
                 "access_token": "hoahsknakalamslkoas",
                 "expires_in": 1337,
+                "refresh_expires_in": 1800,
+                "refresh_token": "IsInR5cCIgOiAiSldUI",
+                "token_type": "Bearer",
+                "not-before-policy": 0,
+                "session_state": "5c9a3102-f0de-4f55-abd7-4f1773ad26b6",
+                "scope": "profile email",
             },
-            status=401,
+            status=200,  # successful request for a token
         )
         # get configuration with access token
         config = Configuration.from_sources([path_to_config])
@@ -558,7 +557,7 @@ class TestHttpGetter:
                 )
             ],
             json=config.as_dict(),
-            status=401,
+            status=401,  # request token is not valid, result in unauthorized 401
         )
         with pytest.raises(requests.exceptions.RequestException, match="No valid token found"):
             with mock.patch.dict("os.environ", mock_env):
