@@ -142,5 +142,46 @@ class TestOAuth2PasswordFlowCredentials:
 
 class TestOAuth2ClientFlowCredentials:
 
-    def test_init(self):
-        test = OAuth2ClientFlowCredentials()
+    @pytest.mark.parametrize(
+        "testcase, kwargs, error, error_message",
+        [
+            (
+                "invalid because no kwargs",
+                {},
+                TypeError,
+                r"missing \d required keyword-only argument",
+            ),
+            (
+                "invalid because one kwarg is missing",
+                {"endpoint": "https://some.url/endpoint", "client_id": "test_id"},
+                TypeError,
+                r"missing \d required keyword-only argument",
+            ),
+            (
+                "invalid because invalid kwarg",
+                {
+                    "endpoint": "https://some.url/endpoint",
+                    "client_id": "some_id",
+                    "client_secret": 1253.67484,
+                },
+                TypeError,
+                r"must be <class 'str'>",
+            ),
+            (
+                "valid",
+                {
+                    "endpoint": "https://some.url/endpoint",
+                    "client_id": "some_id",
+                    "client_secret": "hijijsmmakaksjasd",
+                },
+                None,
+                None,
+            ),
+        ],
+    )
+    def test_init(self, testcase, kwargs, error, error_message):
+        if error is None:
+            test = OAuth2ClientFlowCredentials(**kwargs)
+        else:
+            with pytest.raises(error, match=error_message):
+                test = OAuth2ClientFlowCredentials(**kwargs)
