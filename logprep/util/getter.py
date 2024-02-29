@@ -4,7 +4,6 @@ They are returned by the GetterFactory.
 
 import os
 import re
-import sys
 from collections import defaultdict
 from itertools import count
 from pathlib import Path
@@ -143,7 +142,6 @@ class HttpGetter(Getter):
 
     def _get_oauth_token(self):
         self._tokens = []
-        min_expires_in = sys.maxsize
         for i in count(start=0, step=1):
             if os.environ.get(f"LOGPREP_OAUTH2_{i}_ENDPOINT") is None:
                 break
@@ -159,8 +157,6 @@ class HttpGetter(Getter):
             response = requests.post(url=endpoint, data=payload, timeout=1)
             token_response = response.json()
             self._tokens.append(token_response.get("access_token"))
-            if token_response.get("expires_in") < min_expires_in:
-                min_expires_in = token_response.get("expires_in")
         self._found_valid_token = False
 
     def get_raw(self) -> bytearray:
