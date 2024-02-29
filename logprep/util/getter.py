@@ -13,12 +13,13 @@ from urllib.parse import urlparse
 
 import requests
 from attrs import define, field, validators
-from requests import Session, Response
+from requests import Response, Session
 from requests.adapters import HTTPAdapter
 from requests.auth import HTTPBasicAuth
 from urllib3 import Retry
 
 from logprep._version import get_versions
+from logprep.abc.credentials import Credentials
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
 
@@ -141,6 +142,12 @@ class HttpGetter(Getter):
                 "LOGPREP_CONFIG_AUTH_USERNAME and LOGPREP_CONFIG_AUTH_PASSWORD instead."
             )
         self._set_credentials()
+
+    @property
+    def credentials(self) -> Credentials:
+        #
+        # get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE
+        pass
 
     def _set_credentials(self):
         if os.environ.get("LOGPREP_OAUTH2_0_ENDPOINT") is not None:
