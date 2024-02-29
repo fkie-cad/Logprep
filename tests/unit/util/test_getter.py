@@ -492,13 +492,7 @@ class TestHttpGetter:
         # get resource with access token
         responses.get(
             url="https://some.url/configuration",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer hoahsknakalamslkoas",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer hoahsknakalamslkoas"})],
             json="some resource",
             status=200,
         )
@@ -555,39 +549,21 @@ class TestHttpGetter:
         # get first resource with access token
         responses.get(
             url="https://some.url/configuration",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer hoahsknakalamslkoas",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer hoahsknakalamslkoas"})],
             json="some resource",
             status=200,
         )
         # get second resource with wrong access token from first resource (during search of valid token)
         responses.get(
             url="https://some-other.url/second-resource",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer hoahsknakalamslkoas",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer hoahsknakalamslkoas"})],
             json="some other resource",
             status=401,  # unauthorized due to wrong token
         )
         # get second resource with correct access token
         responses.get(
             url="https://some-other.url/second-resource",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer nR5cCIgnR5cCIgnR5cCIg",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer nR5cCIgnR5cCIgnR5cCIg"})],
             json="some other resource",
             status=200,
         )
@@ -643,13 +619,7 @@ class TestHttpGetter:
         config = Configuration.from_sources([path_to_config])
         responses.get(
             url="https://some.url/configuration",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer hoahsknakalamslkoas",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer hoahsknakalamslkoas"})],
             json=config.as_dict(),
             status=401,  # request token is not valid, result in unauthorized 401
         )
@@ -686,39 +656,21 @@ class TestHttpGetter:
         # get valid access token (by searching the list of tokens)
         responses.get(
             url="https://some.url/configuration",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer hoahsknakalamslkoas",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer hoahsknakalamslkoas"})],
             json="some resource",
             status=200,
         )
         # get resource with valid access token
         responses.get(
             url="https://some.url/configuration",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer hoahsknakalamslkoas",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer hoahsknakalamslkoas"})],
             json="some resource",
             status=200,
         )
         # get resource again with token that has expired over time
         responses.get(
             url="https://some.url/configuration",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer hoahsknakalamslkoas",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer hoahsknakalamslkoas"})],
             json="some resource",
             status=401,  # token has expired
         )
@@ -740,26 +692,14 @@ class TestHttpGetter:
         # get valid access token (by searching the list of tokens)
         responses.get(
             url="https://some.url/configuration",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer R5cCIgOR5cCIgOR5cCIg",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer R5cCIgOR5cCIgOR5cCIg"})],
             json="some resource",
             status=200,
         )
         # get resource again with second valid token
         responses.get(
             url="https://some.url/configuration",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "Authorization": "Bearer R5cCIgOR5cCIgOR5cCIg",
-                    }
-                )
-            ],
+            match=[matchers.header_matcher({"Authorization": "Bearer R5cCIgOR5cCIgOR5cCIg"})],
             json="some resource",
             status=200,
         )
@@ -770,3 +710,39 @@ class TestHttpGetter:
             assert "some resource" in resp
             resp = http_getter.get()
             assert "some resource" in resp
+
+    @responses.activate
+    def test_get_raises_401_if_no_token_is_received(self):
+        mock_env = {
+            "LOGPREP_OAUTH2_0_ENDPOINT": "https://some.url/oauth/token",
+            "LOGPREP_OAUTH2_0_GRANT_TYPE": "password",
+            "LOGPREP_OAUTH2_0_USERNAME": "test_user",
+            "LOGPREP_OAUTH2_0_PASSWORD": "test_password",
+            "LOGPREP_OAUTH2_0_CLIENT_ID": "client_id",
+            "LOGPREP_OAUTH2_0_CLIENT_SECRET": "client_secret",
+        }
+        # get the access token
+        responses.post(url="https://some.url/oauth/token", json={"no": "token info"}, status=200)
+        # get resource
+        responses.get(
+            url="https://some.url/configuration",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "Accept": "*/*",
+                        "Accept-Encoding": "gzip, deflate",
+                        "Connection": "keep-alive",
+                        "User-Agent": f"Logprep version {get_versions().get('version')}",
+                    },
+                    strict_match=True,
+                )
+            ],
+            status=401,
+        )
+
+        with pytest.raises(
+            requests.exceptions.RequestException, match="401 Client Error: Unauthorized for url"
+        ):
+            with mock.patch.dict("os.environ", mock_env):
+                http_getter = GetterFactory.from_string("https://some.url/configuration")
+                http_getter.get()

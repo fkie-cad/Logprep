@@ -156,7 +156,9 @@ class HttpGetter(Getter):
                 payload.update({"client_id": client_id, "client_secret": client_secret})
             response = requests.post(url=endpoint, data=payload, timeout=1)
             token_response = response.json()
-            self._tokens.append(token_response.get("access_token"))
+            token = token_response.get("access_token")
+            if token is not None:
+                self._tokens.append(token)
         self._found_valid_token = False
 
     def get_raw(self) -> bytearray:
