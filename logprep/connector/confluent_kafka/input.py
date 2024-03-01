@@ -434,11 +434,11 @@ class ConfluentKafkaInput(Input):
             ) from error
         return event_dict, raw_event
 
-    def _add_input_connector_metadata_to_event(self, event_dict) -> Tuple[dict, Optional[str]]:
-        metadata = event_dict.get("_metadata", {})
+    def _add_input_connector_metadata_to_event(self, event: dict) -> Tuple[dict, Optional[str]]:
+        metadata = event.get("_metadata", {})
         for meta_field in ("last_partition", "last_offset"):
             try:
-                del event_dict["_metadata"][meta_field]
+                del event["_metadata"][meta_field]
             except (TypeError, KeyError):
                 pass
 
@@ -446,13 +446,13 @@ class ConfluentKafkaInput(Input):
             non_critical_error_msg = (
                 "Couldn't add metadata to the input event as the field '_metadata' already exist."
             )
-            return event_dict, non_critical_error_msg
+            return event, non_critical_error_msg
 
-        event_dict["_metadata"] = {
+        event["_metadata"] = {
             "last_partition": self._last_valid_record.partition(),
             "last_offset": self._last_valid_record.offset(),
         }
-        return event_dict, None
+        return event, None
 
     @property
     def _enable_auto_offset_store(self) -> bool:
