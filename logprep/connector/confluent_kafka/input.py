@@ -435,12 +435,17 @@ class ConfluentKafkaInput(Input):
         return event_dict, raw_event
 
     def _add_input_connector_metadata_to_event(self, event: dict) -> Tuple[dict, Optional[str]]:
+        """Add last_partition and last_offset to _metadata.
+
+        Pop previous last_partition and last_offset to ensure no incorrect values are set.
+        Try for AttributeError, since _metadata could already exist, but not be a dict.
+        """
         metadata = event.get("_metadata", {})
-        for meta_field in ("last_partition", "last_offset"):
-            try:
-                del event["_metadata"][meta_field]
-            except (TypeError, KeyError):
-                pass
+        try:
+            metadata.pop("last_partition", None)
+            metadata.pop("last_offset", None)
+        except AttributeError:
+            pass
 
         if metadata:
             non_critical_error_msg = (
