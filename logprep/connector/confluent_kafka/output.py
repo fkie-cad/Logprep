@@ -150,9 +150,13 @@ class ConfluentKafkaOutput(Output):
         """Confluent Kafka Output Config"""
 
         topic: str = field(validator=validators.instance_of(str))
+        """The topic to which processed messages will be sent."""
         error_topic: str
+        """The topic to which error messages will be sent."""
         flush_timeout: float
+        """Timeout for sending all messages from the producer queue to kafka."""
         send_timeout: int = field(validator=validators.instance_of(int), default=0)
+        """Timeout for sending messages to kafka. Values above 0 make it blocking."""
         kafka_config: Optional[dict] = field(
             validator=[
                 validators.instance_of(dict),
