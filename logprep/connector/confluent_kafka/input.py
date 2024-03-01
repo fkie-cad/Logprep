@@ -463,8 +463,6 @@ class ConfluentKafkaInput(Input):
         return self._config.kafka_config.get("enable.auto.commit") == "true"
 
     def _get_delivered_partition_offset(self, metadata: dict) -> TopicPartition:
-        if metadata is None:
-            raise FatalInputError(self, "Metadata for setting offsets can't be 'None'")
         try:
             last_partition = metadata["last_partition"]
             last_offset = metadata["last_offset"]
@@ -485,6 +483,7 @@ class ConfluentKafkaInput(Input):
         or instead use `metadata` to obtain offsets. If configured commit them.
         Should be called by output connectors if they are finished processing a batch of records.
         """
+        metadata = {} if metadata is None else metadata
         if self._enable_auto_offset_store:
             return
         self._handle_offsets(self._consumer.store_offsets, metadata)

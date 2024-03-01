@@ -413,10 +413,6 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_input.output_connector._write_backlog.assert_called()
         kafka_input.batch_finished_callback.assert_called()
 
-    def test_get_delivered_partition_offset_without_metadata_raises_exception(self):
-        with pytest.raises(FatalInputError, match="Metadata for setting offsets can't be 'None'"):
-            self.object._get_delivered_partition_offset(None)
-
     @pytest.mark.parametrize(
         "metadata",
         [{}, {"last_offset": 0}, {"last_partition": 0}],
