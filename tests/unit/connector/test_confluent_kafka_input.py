@@ -136,7 +136,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         ],
     )
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_raises_input_warning_on_kafka_exception(self, _, settings, handler):
+    def test_batch_finished_callback_raises_input_warning_on_kafka_exception(
+        self, _, settings, handler
+    ):
         input_config = deepcopy(self.CONFIG)
         kafka_input = Factory.create({"test": input_config}, logger=self.logger)
         kafka_input._config.kafka_config.update(settings)
@@ -316,7 +318,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_partitions = [mock.MagicMock()]
         mock_partitions[0].offset = OFFSET_BEGINNING
         self.object._commit_callback(None, mock_partitions)
-        expected_labels = {"description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"}
+        expected_labels = {
+            "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
+        }
         self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
@@ -327,7 +331,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_partitions[0].offset = OFFSET_BEGINNING
         with mock.patch("logging.Logger.info") as mock_info:
             self.object._assign_callback(mock_consumer, mock_partitions)
-        expected_labels = {"description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"}
+        expected_labels = {
+            "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
+        }
         mock_info.assert_called()
         self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
         self.object.metrics.current_offsets.add_with_labels.assert_called_with(0, expected_labels)
@@ -343,7 +349,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         assert self.object.metrics.number_of_warnings == 1
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_revoke_callback_writes_output_backlog_and_calls_batch_finished_callback(self, mock_consumer):
+    def test_revoke_callback_writes_output_backlog_and_calls_batch_finished_callback(
+        self, mock_consumer
+    ):
         self.object.output_connector = mock.MagicMock()
         self.object.batch_finished_callback = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
