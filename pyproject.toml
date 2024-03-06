@@ -12,7 +12,6 @@ version = { attr = "logprep.__version__" }
 name = "logprep"
 description = "Logprep allows to collect, process and forward log messages from various data sources."
 requires-python = ">=3.10"
-# version = "0.1.0"
 readme = "README.md"
 dynamic = ["version"]
 license = { file = "LICENSE" }
