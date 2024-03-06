@@ -7,6 +7,8 @@
 
 ### Improvements
 
+* refactor logprep build process and requirements management
+
 ### Bugfix
 
 ## v10.0.3
