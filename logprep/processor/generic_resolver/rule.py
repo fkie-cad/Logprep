@@ -71,6 +71,7 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
    :inherited-members:
    :noindex:
 """
+
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule

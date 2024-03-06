@@ -34,6 +34,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.generic_adder.rule
 """
+
 import json
 import os
 import re

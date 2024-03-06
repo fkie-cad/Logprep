@@ -25,6 +25,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.geoip_enricher.rule
 """
+
 import os
 import tempfile
 from functools import cached_property

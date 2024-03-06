@@ -1,4 +1,5 @@
 """For loading documents from Kafka or from file and preparing them for sending"""
+
 import json
 from datetime import datetime
 from logging import Logger

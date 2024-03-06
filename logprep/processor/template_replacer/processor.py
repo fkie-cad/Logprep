@@ -33,6 +33,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.template_replacer.rule
 """
+
 from logging import Logger
 from typing import Optional
 

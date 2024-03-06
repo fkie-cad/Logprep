@@ -1,4 +1,5 @@
 """Abstract module for processors"""
+
 from abc import abstractmethod
 from logging import DEBUG, Logger
 from pathlib import Path
@@ -197,8 +198,7 @@ class Processor(Component):
                 pop_dotted_field_value(event, dotted_field)
 
     @abstractmethod
-    def _apply_rules(self, event, rule):
-        ...  # pragma: no cover
+    def _apply_rules(self, event, rule): ...  # pragma: no cover
 
     def test_rules(self) -> dict:
         """Perform custom rule tests.

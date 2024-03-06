@@ -24,6 +24,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.generic_resolver.rule
 """
+
 import re
 from logging import Logger
 

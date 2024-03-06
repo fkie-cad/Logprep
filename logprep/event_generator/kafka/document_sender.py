@@ -1,4 +1,5 @@
 """For repeatedly sending documents to Kafka"""
+
 import itertools
 from logging import Logger
 from time import perf_counter

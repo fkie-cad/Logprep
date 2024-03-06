@@ -1,4 +1,5 @@
 """This module contains functionality to manage pipelines via multi-processing."""
+
 # pylint: disable=logging-fstring-interpolation
 
 import logging

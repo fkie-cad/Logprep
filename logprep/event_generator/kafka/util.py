@@ -1,4 +1,5 @@
 """Contains utility functions"""
+
 from logging import Logger
 from pathlib import Path
 

@@ -27,6 +27,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.dissector.rule
 """
+
 from typing import Callable, List, Tuple
 
 from logprep.processor.dissector.rule import DissectorRule

@@ -57,6 +57,7 @@ Examples for ip_informer:
    :template: testcase-renderer.tmpl
 
 """
+
 from ipaddress import IPv4Address, IPv6Address
 
 from attrs import define, field, validators

@@ -28,6 +28,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.field_manager.rule
 """
+
 import itertools
 from typing import Any, List, Tuple
 

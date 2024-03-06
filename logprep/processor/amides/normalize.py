@@ -1,4 +1,5 @@
 """This module enables command line normalization of incoming command lines."""
+
 from typing import List
 
 from logprep.processor.amides.features import (

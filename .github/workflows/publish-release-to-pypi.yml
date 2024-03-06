@@ -21,7 +21,7 @@ jobs:
           python -m pip install --upgrade pip wheel
 
       - name: Build binary wheel and a source tarball
-        run: python setup.py sdist bdist_wheel
+        run: pip wheel --no-deps --wheel-dir ./dist .
 
       - name: Upload Artifact for next job
         uses: actions/upload-artifact@master

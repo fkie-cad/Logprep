@@ -32,6 +32,7 @@ Processor Configuration
 .. automodule:: logprep.processor.normalizer.rule
 
 """
+
 import calendar
 import html
 import json

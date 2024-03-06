@@ -25,6 +25,7 @@ In the following example the IP in :code:`client.ip` will be enriched with geoip
    :inherited-members:
    :noindex:
 """
+
 from attr import Factory
 from attrs import define, field, validators
 

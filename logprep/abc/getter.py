@@ -1,4 +1,5 @@
 """Module for getter interface"""
+
 import json
 import os
 import re

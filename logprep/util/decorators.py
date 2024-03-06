@@ -1,4 +1,5 @@
 """Decorators to use with logprep"""
+
 import errno
 import os
 from functools import wraps

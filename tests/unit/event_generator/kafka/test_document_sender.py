@@ -21,11 +21,9 @@ class MockedProducer:
     def produce(self, _, value):
         self.produced.append(json.loads(value))
 
-    def poll(self, timeout):
-        ...
+    def poll(self, timeout): ...
 
-    def flush(self, timeout):
-        ...
+    def flush(self, timeout): ...
 
 
 class TestDocumentSender:

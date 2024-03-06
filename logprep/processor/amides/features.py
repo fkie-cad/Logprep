@@ -2,6 +2,7 @@
 and token filtering callables to split (raw) documents into a list
 of token words.
 """
+
 import re
 from abc import ABC, abstractmethod
 

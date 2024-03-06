@@ -1,4 +1,5 @@
 """This module tracks statistics and creates a final report for the generator"""
+
 import datetime
 import logging
 import os

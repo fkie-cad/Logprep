@@ -24,6 +24,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.timestamp_differ.rule
 """
+
 from datetime import datetime
 from functools import reduce
 from typing import Union

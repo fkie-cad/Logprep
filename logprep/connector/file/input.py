@@ -19,6 +19,7 @@ Example
         interval: 1
         watch_file: True
 """
+
 import queue
 import threading
 import zlib

@@ -202,8 +202,7 @@ class TmpFileProducerMock:
         with open(self.tmp_path, "a", encoding="utf-8") as tmp_file:
             tmp_file.write(f"{target} {value.decode()}\n")
 
-    def poll(self, _):
-        ...
+    def poll(self, _): ...
 
 
 def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration:

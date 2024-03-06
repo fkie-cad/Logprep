@@ -25,7 +25,7 @@
 
   - name: Upgrade pip and wheel
     shell: "{{ python_interpreter_location }} -m pip install pip --upgrade &&
-    {{ python_interpreter_location }} -m pip install wheel --upgrade"
+    {{ python_interpreter_location }} -m pip install wheel --upgrade && pip install pip-tools && pip-compile -o requirements.txt"
 
   - name: Repack confluent-kafka wheel
     shell: "cd {{ project_location }} &&

@@ -33,6 +33,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.domain_label_extractor.rule
 """
+
 import ipaddress
 import os
 import tempfile

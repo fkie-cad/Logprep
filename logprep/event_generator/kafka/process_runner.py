@@ -1,4 +1,5 @@
 """Main module for the load-tester"""
+
 import cProfile
 import pstats
 from logging import Logger

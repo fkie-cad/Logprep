@@ -1,9 +1,0 @@
--r requirements.txt
-black
-httpx
-isort
-pylint
-pytest
-pytest-cov
-responses
-jinja2

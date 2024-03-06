@@ -1,6 +1,7 @@
 """
 Output Module that takes a batch of events and sends them to a http endpoint with given credentials
 """
+
 import logging
 import time
 from functools import cached_property

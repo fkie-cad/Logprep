@@ -21,6 +21,7 @@ Example
             /seccondendpoint: plaintext
             /thirdendpoint: jsonl
 """
+
 import contextlib
 import inspect
 import queue

@@ -14,6 +14,7 @@ Example
       my_console_output:
         type: console_output
 """
+
 import sys
 from pprint import pprint
 

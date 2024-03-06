@@ -27,10 +27,10 @@ contribute to them.
 
     git clone https://github.com/fkie-cad/Logprep.git
     cd Logprep
-    pip install -r requirements.txt
+    pip install .
 
 To see if the installation was successful run
-:code:`PYTHONPATH="." python3 logprep/run_logprep.py --version`.
+:code:`logprep --version`.
 
 **3. Option:** Installation via Github Release
 
@@ -49,7 +49,6 @@ This option can be used to build a container image from a specific commit
 ..  code-block:: bash
 
     git clone https://github.com/fkie-cad/Logprep.git
-    cd Logprep
     docker build -t logprep .
 
 To see if the installation was successful run :code:`docker run logprep --version`.
@@ -63,12 +62,6 @@ If you have installed it via PyPI or the Github Development release just run:
 ..  code-block:: bash
 
     logprep run $CONFIG
-
-If you have installed Logprep via cloning the repository then you should run it via:
-
-..  code-block:: bash
-
-    PYTHONPATH="." python3 logprep/run_logprep.py run $CONFIG
 
 Where :code:`$CONFIG` is the path to a configuration file.
 For more information see the :ref:`configuration` section.
