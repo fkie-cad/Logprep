@@ -27,6 +27,7 @@ In the following example the timestamp will be extracted from
    :inherited-members:
    :noindex:
 """
+
 from attr import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule

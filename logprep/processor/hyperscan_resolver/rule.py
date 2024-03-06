@@ -18,6 +18,7 @@ if a database compiled from a rule's :code:`resolve_list` should be stored persi
    :inherited-members:
    :noindex:
 """
+
 import re
 from typing import Tuple
 

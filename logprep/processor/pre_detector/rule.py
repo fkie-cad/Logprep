@@ -94,6 +94,7 @@ the IPs from the list is also available in the specified fields.
    :inherited-members:
    :noindex:
 """
+
 from functools import cached_property
 from typing import Optional, Union
 

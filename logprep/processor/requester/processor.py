@@ -25,6 +25,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.requester.rule
 """
+
 import json
 import re
 

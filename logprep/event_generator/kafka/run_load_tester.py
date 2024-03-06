@@ -1,4 +1,5 @@
 """Main module for the load-tester"""
+
 from multiprocessing import Manager
 from pathlib import Path
 

@@ -75,6 +75,7 @@ Examples for field_manager:
    :template: testcase-renderer.tmpl
 
 """
+
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule

@@ -26,6 +26,7 @@ The following example shows a complete rule:
    :inherited-members:
    :no-undoc-members:
 """
+
 from attrs import define, field, validators
 from ruamel.yaml import YAML
 

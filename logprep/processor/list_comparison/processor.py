@@ -27,6 +27,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.list_comparison.rule
 """
+
 from logging import Logger
 
 from attr import define, field, validators

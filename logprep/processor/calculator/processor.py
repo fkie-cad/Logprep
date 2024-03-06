@@ -24,6 +24,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.calculator.rule
 """
+
 import re
 from functools import cached_property
 

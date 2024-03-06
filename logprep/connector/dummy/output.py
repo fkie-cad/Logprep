@@ -16,6 +16,7 @@ Example
       my_dummy_output:
         type: dummy_output
 """
+
 from logging import Logger
 from typing import TYPE_CHECKING, List
 

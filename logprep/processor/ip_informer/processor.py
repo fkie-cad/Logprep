@@ -24,6 +24,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.ip_informer.rule
 """
+
 import ipaddress
 from functools import partial
 from itertools import chain

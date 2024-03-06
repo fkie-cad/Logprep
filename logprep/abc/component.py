@@ -1,4 +1,5 @@
 """ abstract module for components"""
+
 from abc import ABC
 from functools import cached_property
 from logging import Logger

@@ -32,6 +32,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.domain_resolver.rule
 """
+
 import datetime
 import os
 import socket

@@ -29,6 +29,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.pre_detector.rule
 """
+
 from functools import cached_property
 from uuid import uuid4
 

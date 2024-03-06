@@ -1,4 +1,5 @@
 """ Contains configuration class with configuration validation """
+
 # pylint: disable=too-few-public-methods
 import sys
 from pathlib import Path

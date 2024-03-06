@@ -2,6 +2,7 @@
 Manipulator Module that takes a batch of input events, processes them and returns the updated
 versions.
 """
+
 import datetime
 import logging
 from datetime import datetime

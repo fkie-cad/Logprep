@@ -2,6 +2,7 @@
 This generator will parse example events, manipulate their timestamps and send them to
 a defined output
 """
+
 import json
 import logging
 import time

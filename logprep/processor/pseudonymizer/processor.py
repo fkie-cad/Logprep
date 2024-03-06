@@ -34,6 +34,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.pseudonymizer.rule
 """
+
 import re
 from functools import cached_property, lru_cache
 from itertools import chain

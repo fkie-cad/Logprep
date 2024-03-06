@@ -4,6 +4,7 @@ Pipelines contain a list of processors that can be executed in order to process 
 They can be multi-processed.
 
 """
+
 import copy
 import logging
 import logging.handlers

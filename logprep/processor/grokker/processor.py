@@ -30,6 +30,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.grokker.rule
 """
+
 import re
 from pathlib import Path
 from zipfile import ZipFile

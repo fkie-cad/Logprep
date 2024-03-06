@@ -86,6 +86,7 @@ retrieved from a field with the schema :code:`${your.dotted.field}`:
 The calc expression is not whitespace sensitive.
 
 """
+
 import re
 
 from attrs import define, field, validators

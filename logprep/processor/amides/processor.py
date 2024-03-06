@@ -83,6 +83,7 @@ cache-related metrics like the number of hits and misses and the current cache l
 
 .. automodule:: logprep.processor.amides.rule
 """
+
 from functools import cached_property, lru_cache
 from multiprocessing import current_process
 from pathlib import Path

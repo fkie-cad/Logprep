@@ -1,4 +1,5 @@
 """ abstract module for connectors"""
+
 from attrs import define, field
 
 from logprep.abc.component import Component

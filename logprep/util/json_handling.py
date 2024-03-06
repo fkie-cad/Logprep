@@ -1,4 +1,5 @@
 """ module for json handling helper methods"""
+
 import json
 import os
 from typing import List

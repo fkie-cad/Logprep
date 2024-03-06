@@ -26,6 +26,7 @@ to the labels of the category :code:`action`:
    :inherited-members:
    :noindex:
 """
+
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule

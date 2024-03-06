@@ -26,6 +26,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.concatenator.rule
 """
+
 from logprep.processor.concatenator.rule import ConcatenatorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import get_dotted_field_value

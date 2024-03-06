@@ -1,4 +1,5 @@
 """For retrieval and insertion of data from and into Kafka."""
+
 import json
 from typing import Optional
 
