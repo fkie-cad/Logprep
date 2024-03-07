@@ -102,10 +102,9 @@ class TestOAuth2PasswordFlowCredentials:
                 "invalid because kwarg is not string",
                 {
                     "endpoint": 12345,
-                    "grand_type": 23.78,
                     "password": "hskwmksölkpwksmksksksmk",
                     "username": "test_user",
-                    "token": "hsldfkdkl" "ossjmkndsjkslkl",
+                    "token": "hsldfkdkl",
                 },
                 TypeError,
                 r"must be <class 'str'>",
@@ -113,7 +112,6 @@ class TestOAuth2PasswordFlowCredentials:
             (
                 "invalid because one kwarg is missing",
                 {
-                    "grand_type": "client",
                     "password": "hskwmksölkpwksmksksksmk",
                     "username": "test_user",
                     "token": "",
@@ -125,10 +123,9 @@ class TestOAuth2PasswordFlowCredentials:
                 "valid",
                 {
                     "endpoint": "https://some.endpoint/endpoint",
-                    "grand_type": "client",
                     "password": "hskwmksölkpwksmksksksmk",
                     "username": "test_user",
-                    "token": "jsodppjpss" "jisiodmskdm" "oiassnjnskjdsmckdm",
+                    "token": "jsodppjpss",
                 },
                 None,
                 None,
