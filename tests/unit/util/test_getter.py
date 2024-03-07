@@ -792,6 +792,21 @@ class TestHttpGetter:
 """,
                 OAuth2TokenCredentials,
             ),
+            (
+                "Return None if credentials are missing",
+                """---
+"https://some.url":
+""",
+                type(None),
+            ),
+            (
+                "Return None if wrong URL is given",
+                """---
+"https://some.other.url":
+    token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
+""",
+                type(None),
+            ),
         ],
     )
     def test_credentials_returns_credential_object(
