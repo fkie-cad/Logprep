@@ -16,7 +16,7 @@ class BasicAuthCredentials(Credentials):
 @define(kw_only=True)
 class OAuth2TokenCredentials(Credentials):
 
-    token: str = field(validator=validators.instance_of(str))
+    token: list[str] = field(factory=list)
 
     def authenticate(self):
         raise NotImplementedError
