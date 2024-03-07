@@ -22,6 +22,12 @@ from logprep._version import get_versions
 from logprep.abc.credentials import Credentials
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
+from logprep.util.credentials import (
+    BasicAuthCredentials,
+    OAuth2ClientFlowCredentials,
+    OAuth2PasswordFlowCredentials,
+    OAuth2TokenCredentials,
+)
 
 
 class GetterNotFoundError(LogprepException):
@@ -52,6 +58,7 @@ class GetterFactory:
         """
         protocol, target = cls._dissect(getter_string)
         target = cls._expand_variables(target, os.environ)
+        # get credentials
         if protocol is None:
             protocol = "file"
         if protocol == "file":
@@ -147,7 +154,21 @@ class HttpGetter(Getter):
     def credentials(self) -> Credentials:
         #
         # get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE
-        pass
+        getter = GetterFactory.from_string(os.environ.get("LOGPREP_CREDENTIALS_FILE"))
+        all_credentials = getter.get_yaml()
+        domain = self.target.split("/", maxsplit=1)[0]
+        raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
+        match raw_credentials:
+            case {"endpoint": _, "username": _, "password": _}:
+                return OAuth2PasswordFlowCredentials(**raw_credentials)
+            case {"endpoint": _, "client_id": _, "client_secret": _}:
+                return OAuth2ClientFlowCredentials(**raw_credentials)
+            case {"username": _, "password": _}:
+                return BasicAuthCredentials(**raw_credentials)
+            case {"token": _}:
+                return OAuth2TokenCredentials(**raw_credentials)
+            case _:
+                return None
 
     def _set_credentials(self):
         if os.environ.get("LOGPREP_OAUTH2_0_ENDPOINT") is not None:

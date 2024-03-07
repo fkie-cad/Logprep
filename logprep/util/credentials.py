@@ -16,7 +16,6 @@ class BasicAuthCredentials(Credentials):
 @define(kw_only=True)
 class OAuth2TokenCredentials(Credentials):
 
-    endpoint: str = field(validator=validators.instance_of(str))
     token: str = field(validator=validators.instance_of(str))
 
     def authenticate(self):
@@ -24,8 +23,9 @@ class OAuth2TokenCredentials(Credentials):
 
 
 @define(kw_only=True)
-class OAuth2PasswordFlowCredentials(OAuth2TokenCredentials):
+class OAuth2PasswordFlowCredentials(Credentials):
 
+    endpoint: str = field(validator=validators.instance_of(str))
     password: str = field(validator=validators.instance_of(str))
     username: str = field(validator=validators.instance_of(str))
 
@@ -34,8 +34,9 @@ class OAuth2PasswordFlowCredentials(OAuth2TokenCredentials):
 
 
 @define(kw_only=True)
-class OAuth2ClientFlowCredentials(OAuth2TokenCredentials):
+class OAuth2ClientFlowCredentials(Credentials):
 
+    endpoint: str = field(validator=validators.instance_of(str))
     client_id: str = field(validator=validators.instance_of(str))
     client_secret: str = field(validator=validators.instance_of(str))
 

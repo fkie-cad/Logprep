@@ -15,7 +15,14 @@ from responses import matchers
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
+from logprep.abc.credentials import Credentials
 from logprep.util.configuration import Configuration
+from logprep.util.credentials import (
+    BasicAuthCredentials,
+    OAuth2ClientFlowCredentials,
+    OAuth2PasswordFlowCredentials,
+    OAuth2TokenCredentials,
+)
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
@@ -744,3 +751,56 @@ class TestHttpGetter:
             with mock.patch.dict("os.environ", mock_env):
                 http_getter = GetterFactory.from_string("https://some.url/configuration")
                 http_getter.get()
+
+    @pytest.mark.parametrize(
+        "testcase, credential_file_content, instance",
+        [
+            (
+                "Return BasicAuthCredential object",
+                """---
+"https://some.url":
+    username: test
+    password: test
+""",
+                BasicAuthCredentials,
+            ),
+            (
+                "Return OAuthPasswordFlowCredential object",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    username: test
+    password: test
+""",
+                OAuth2PasswordFlowCredentials,
+            ),
+            (
+                "Return OAuthClientFlowCredential object",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    client_id: test
+    client_secret: test
+""",
+                OAuth2ClientFlowCredentials,
+            ),
+            (
+                "Return OAuthTokenCredential object",
+                """---
+"https://some.url":
+    token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
+""",
+                OAuth2TokenCredentials,
+            ),
+        ],
+    )
+    def test_credentials_returns_credential_object(
+        self, testcase, credential_file_content, instance, tmp_path
+    ):
+        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path.write_text(credential_file_content)
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://some.url/configuration")
+            creds = http_getter.credentials
+            assert isinstance(creds, instance), testcase
