@@ -809,7 +809,7 @@ class TestHttpGetter:
             ),
         ],
     )
-    def test_credentials_returns_credential_object(
+    def test_credentials_returns_expected_credential_object(
         self, testcase, credential_file_content, instance, tmp_path
     ):
         credential_file_path = tmp_path / "credentials.yml"
@@ -819,3 +819,8 @@ class TestHttpGetter:
             http_getter = GetterFactory.from_string("https://some.url/configuration")
             creds = http_getter.credentials
             assert isinstance(creds, instance), testcase
+
+    def test_credentials_returns_none_if_env_not_set(self):
+        http_getter = GetterFactory.from_string("https://some.url/configuration")
+        creds = http_getter.credentials
+        assert creds is None
