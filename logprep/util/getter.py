@@ -154,7 +154,7 @@ class HttpGetter(Getter):
     def credentials(self) -> Credentials:
         """get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE"""
 
-        if "LOGPREP_CREDETIALS_FILE" not in os.environ:
+        if os.environ.get("LOGPREP_CREDENTIALS_FILE") is None:
             return None
         getter = GetterFactory.from_string(os.environ.get("LOGPREP_CREDENTIALS_FILE"))
         all_credentials = getter.get_yaml()
