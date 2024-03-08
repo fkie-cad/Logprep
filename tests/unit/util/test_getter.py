@@ -16,6 +16,7 @@ from ruamel.yaml import YAML
 
 from logprep._version import get_versions
 from logprep.abc.credentials import Credentials
+from logprep.factory_error import InvalidConfigurationError
 from logprep.util.configuration import Configuration
 from logprep.util.credentials import (
     BasicAuthCredentials,
@@ -753,7 +754,7 @@ class TestHttpGetter:
                 http_getter.get()
 
     @pytest.mark.parametrize(
-        "testcase, credential_file_content, instance",
+        "testcase, credential_file_content, instance, error",
         [
             (
                 "Return BasicAuthCredential object",
@@ -763,6 +764,7 @@ class TestHttpGetter:
     password: test
 """,
                 BasicAuthCredentials,
+                None,
             ),
             (
                 "Return OAuthPasswordFlowCredential object",
@@ -773,6 +775,7 @@ class TestHttpGetter:
     password: test
 """,
                 OAuth2PasswordFlowCredentials,
+                None,
             ),
             (
                 "Return OAuthClientFlowCredential object",
@@ -783,6 +786,7 @@ class TestHttpGetter:
     client_secret: test
 """,
                 OAuth2ClientFlowCredentials,
+                None,
             ),
             (
                 "Return OAuthTokenCredential object",
@@ -791,6 +795,7 @@ class TestHttpGetter:
     token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
 """,
                 OAuth2TokenCredentials,
+                None,
             ),
             (
                 "Return None if credentials are missing",
@@ -798,6 +803,7 @@ class TestHttpGetter:
 "https://some.url":
 """,
                 type(None),
+                None,
             ),
             (
                 "Return None if wrong URL is given",
@@ -806,21 +812,87 @@ class TestHttpGetter:
     token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
 """,
                 type(None),
+                None,
+            ),
+            (
+                "Returns raises InvalidConfigurationError with invalid yml",
+                """---
+"https://some.url":
+    password no colon here
+    username: test
+    endpoint: https://endpoint.end
+""",
+                None,
+                InvalidConfigurationError,
+            ),
+            (
+                "Return OAuthClientFlowCredential object when credentials file is json",
+                """
+{
+    "https://some.url": {
+        "endpoint": "https://endpoint.end",
+        "client_id": "test",
+        "client_secret": "test"
+    }
+}
+""",
+                OAuth2ClientFlowCredentials,
+                None,
+            ),
+            (
+                "Raise InvalidConfigurationError when credentials file is invalid json",
+                """
+{
+    "https://some.url": 
+        "endpoint": "https://endpoint.end",
+        "client_id": "test",
+        "client_secret": "test"
+""",
+                None,
+                InvalidConfigurationError,
             ),
         ],
     )
     def test_credentials_returns_expected_credential_object(
-        self, testcase, credential_file_content, instance, tmp_path
+        self, testcase, credential_file_content, instance, tmp_path, error
     ):
-        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path = tmp_path / "credentials"
         credential_file_path.write_text(credential_file_content)
         mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             http_getter = GetterFactory.from_string("https://some.url/configuration")
-            creds = http_getter.credentials
-            assert isinstance(creds, instance), testcase
+            if error is not None:
+                with pytest.raises(error):
+                    creds = http_getter.credentials
+            else:
+                creds = http_getter.credentials
+                assert isinstance(creds, instance), testcase
 
     def test_credentials_returns_none_if_env_not_set(self):
         http_getter = GetterFactory.from_string("https://some.url/configuration")
         creds = http_getter.credentials
         assert creds is None
+
+    def test_credentials_from_root_url(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path.write_text(
+            """---
+"http://some.url":
+    endpoint: https://endpoint.end
+    client_id: test
+    client_secret: test
+"""
+        )
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("http://some.url")
+            creds = http_getter.credentials
+            assert isinstance(creds, OAuth2ClientFlowCredentials)
+
+    def test_credentials_is_none_on_invalid_credentials_file_path(self):
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": "this is something useless"}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://some.url")
+            with pytest.raises(InvalidConfigurationError, match=r"wrong credentials file path"):
+                creds = http_getter.credentials
+                assert creds is None

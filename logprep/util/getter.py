@@ -2,6 +2,7 @@
 They are returned by the GetterFactory.
 """
 
+import json
 import os
 import re
 from collections import defaultdict
@@ -16,12 +17,14 @@ from attrs import define, field, validators
 from requests import Response, Session
 from requests.adapters import HTTPAdapter
 from requests.auth import HTTPBasicAuth
+from ruamel.yaml.error import YAMLError
 from urllib3 import Retry
 
 from logprep._version import get_versions
 from logprep.abc.credentials import Credentials
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
+from logprep.factory_error import InvalidConfigurationError
 from logprep.util.credentials import (
     BasicAuthCredentials,
     OAuth2ClientFlowCredentials,
@@ -153,11 +156,24 @@ class HttpGetter(Getter):
     @property
     def credentials(self) -> Credentials:
         """get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE"""
-
-        if os.environ.get("LOGPREP_CREDENTIALS_FILE") is None:
+        credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
+        if credentials_file_path is None:
             return None
-        getter = GetterFactory.from_string(os.environ.get("LOGPREP_CREDENTIALS_FILE"))
-        all_credentials = getter.get_yaml()
+        try:
+            getter = GetterFactory.from_string(credentials_file_path)
+            try:
+                all_credentials = getter.get_json()
+            except (json.JSONDecodeError, ValueError):
+                all_credentials = getter.get_yaml()
+        except (TypeError, YAMLError) as error:
+            raise InvalidConfigurationError(
+                f"Invalid credentials file: {credentials_file_path} {error.args[0]}"
+            ) from error
+        except FileNotFoundError as error:
+            raise InvalidConfigurationError(
+                f"Environment variable has wrong credentials file path: {credentials_file_path}"
+            ) from error
+
         domain = self.target.split("/", maxsplit=1)[0]
         raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
         match raw_credentials:
