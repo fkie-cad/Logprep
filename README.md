@@ -233,6 +233,39 @@ If it does exist then the dropper would delete this field from the log message.
 Details about the rule language and how to write rules for the processors can be found in the
 [rule configuration documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/rules.html).
 
+## Authentication
+
+In order for Logprep to choose the correct authentication method the `LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
+This file should provide the credentials that are needed and can either be in yaml or in json format. 
+To use the authentication, the `LOGPREP_CREDENTIALS_FILE` file has to be filled with the correct values that correspond to the method you want to use.
+The following authentication methods are implemented:
+
+- OAuth authentication with known token:
+ ```yaml                            
+    "http://ressource":               
+        token: <token>          
+```           
+- OAuth client authorization grant:
+ ```yaml                            
+ "http://ressource":                
+    endpoint: <endpoint>  
+    client_id: <id>              
+    client_secret: <secret> 
+```
+- OAuth password grand type:
+ ```yaml                            
+ "http://ressource":                
+    endpoint: <endpoint>  
+    username: <username>             
+    password: <password>   
+```
+- Basic Authentication
+ ```yaml                            
+ "http://ressource":                
+    username: <username>
+    password: <password>  
+```
+
 ## Getting Started
 
 ### Installation
@@ -384,12 +417,7 @@ variables:
 - `LOGPREP_INPUT=<INPUT_CONNECTOR_CONFIG>`
 - `LOGPREP_OUTPUT=<OUTPUT_CONNECTOR_CONFIG>`
 - `LOGPREP_OPTIONS=<GENERAL_LOGPREP_CONFIG>`
-- `LOGPREP_OAUTH2_0_ENDPOINT=http://localhost:8080/realms/logprep/protocol/openid-connect/token`
-- `LOGPREP_OAUTH2_0_GRANT_TYPE=password`
-- `LOGPREP_OAUTH2_0_USERNAME=logprep`
-- `LOGPREP_OAUTH2_0_PASSWORD=logprep`
-- `LOGPREP_OAUTH2_0_CLIENT_ID=fda-backend`
-- `LOGPREP_OAUTH2_0_CLIENT_SECRET=<SECRET>`  (can be retrieved from the running keycloak instance)
+- `LOGPREP_CREDENTIALS_FILE` (contains credentials for correct authentication)
 
 Once they are set logprep can be started with:
 
