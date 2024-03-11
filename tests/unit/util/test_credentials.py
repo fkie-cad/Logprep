@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 import pytest
+import responses
 
 from logprep.util.credentials import (
     BasicAuthCredentials,
@@ -156,6 +157,35 @@ class TestOAuth2PasswordFlowCredentials:
         else:
             with pytest.raises(error, match=error_message):
                 test = OAuth2PasswordFlowCredentials(**kwargs)
+
+    @responses.activate
+    def test_get_session_returns_session(self):
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={"access_token": "toooooken"},
+        )
+        test = OAuth2PasswordFlowCredentials(
+            endpoint="https://the.endpoint",
+            password="password",
+            username="user",
+        )
+        assert test.get_session() is not None
+
+    @responses.activate
+    def test_get_session_returns_session_with_auth(self):
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={"access_token": "toooooken"},
+        )
+        test = OAuth2PasswordFlowCredentials(
+            endpoint="https://the.endpoint",
+            password="password",
+            username="user",
+        )
+        session = test.get_session()
+        assert session.headers.get("Authorization") == "Bearer toooooken"
 
 
 class TestOAuth2ClientFlowCredentials:

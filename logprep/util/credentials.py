@@ -1,3 +1,4 @@
+import requests
 from attrs import define, field, validators
 from requests import Session
 
@@ -33,9 +34,23 @@ class OAuth2PasswordFlowCredentials(Credentials):
     endpoint: str = field(validator=validators.instance_of(str))
     password: str = field(validator=validators.instance_of(str))
     username: str = field(validator=validators.instance_of(str))
+    _timeout: int = field(validator=validators.instance_of(int), default=1)
 
     def get_session(self) -> Session:
-        raise NotImplementedError
+        token = self._get_token()
+        session = super().get_session()
+        session.headers["Authorization"] = f"Bearer {token}"
+        return session
+
+    def _get_token(self):
+        payload = {
+            "grant_type": "password",
+            "username": self.username,
+            "password": self.password,
+        }
+        response = requests.post(url=self.endpoint, data=payload, timeout=self._timeout)
+        token_response = response.json()
+        return token_response.get("access_token")
 
 
 @define(kw_only=True)
