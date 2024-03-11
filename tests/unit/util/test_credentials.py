@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 import pytest
 import responses
+from responses import matchers
 
 from logprep.util.credentials import (
     BasicAuthCredentials,
@@ -123,7 +124,6 @@ class TestOAuth2PasswordFlowCredentials:
                     "endpoint": 12345,
                     "password": "hskwmksölkpwksmksksksmk",
                     "username": "test_user",
-                    "token": "hsldfkdkl",
                 },
                 TypeError,
                 r"must be <class 'str'>",
@@ -133,7 +133,6 @@ class TestOAuth2PasswordFlowCredentials:
                 {
                     "password": "hskwmksölkpwksmksksksmk",
                     "username": "test_user",
-                    "token": "",
                 },
                 TypeError,
                 r"missing \d required keyword-only argument",
@@ -144,7 +143,6 @@ class TestOAuth2PasswordFlowCredentials:
                     "endpoint": "https://some.endpoint/endpoint",
                     "password": "hskwmksölkpwksmksksksmk",
                     "username": "test_user",
-                    "token": "jsodppjpss",
                 },
                 None,
                 None,
@@ -177,7 +175,21 @@ class TestOAuth2PasswordFlowCredentials:
         responses.add(
             responses.POST,
             "https://the.endpoint",
-            json={"access_token": "toooooken"},
+            json={
+                "access_token": "toooooken",
+                "expires_in": 3600,
+                "refresh_token": "refresh_token123123",
+            },
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "password",
+                        "username": "user",
+                        "password": "password",
+                    }
+                ),
+                matchers.header_matcher({"Content-Type": "application/x-www-form-urlencoded"}),
+            ],
         )
         test = OAuth2PasswordFlowCredentials(
             endpoint="https://the.endpoint",
@@ -211,7 +223,6 @@ class TestOAuth2ClientFlowCredentials:
                     "endpoint": "https://some.url/endpoint",
                     "client_id": "some_id",
                     "client_secret": 1253.67484,
-                    "token": "",
                 },
                 TypeError,
                 r"must be <class 'str'>",
@@ -222,7 +233,6 @@ class TestOAuth2ClientFlowCredentials:
                     "endpoint": "https://some.url/endpoint",
                     "client_id": "some_id",
                     "client_secret": "hijijsmmakaksjasd",
-                    "token": "",
                 },
                 None,
                 None,
@@ -235,3 +245,49 @@ class TestOAuth2ClientFlowCredentials:
         else:
             with pytest.raises(error, match=error_message):
                 test = OAuth2ClientFlowCredentials(**kwargs)
+
+    @responses.activate
+    def test_get_session_returns_session(self):
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={"access_token": "toooooken"},
+        )
+        test = OAuth2PasswordFlowCredentials(
+            endpoint="https://the.endpoint",
+            password="password",
+            username="user",
+        )
+        assert test.get_session() is not None
+
+    @responses.activate
+    def test_get_session_returns_session_with_auth(self):
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "access_token": "toooooken",
+                "expires_in": 3600,
+                "refresh_token": "refresh_token123123",
+            },
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "client_credentials",
+                    }
+                ),
+                matchers.header_matcher(
+                    {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Authorization": "Basic YWxsbWlnaHR5X2NsaWVudF9pZDp2ZXJ5IHNlY3JldCBwYXNzd29yZA==",
+                    }
+                ),
+            ],
+        )
+        test = OAuth2ClientFlowCredentials(
+            endpoint="https://the.endpoint",
+            client_secret="very secret password",
+            client_id="allmighty_client_id",
+        )
+        session = test.get_session()
+        assert session.headers.get("Authorization") == "Bearer toooooken"

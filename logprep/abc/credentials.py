@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from attrs import define
+from attrs import define, field, validators
 from requests import Session
 
 
