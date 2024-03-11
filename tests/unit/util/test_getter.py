@@ -815,7 +815,7 @@ class TestHttpGetter:
                 None,
             ),
             (
-                "Raises InvalidConfigurationError with invalid yml",
+                "Raises InvalidConfigurationError credentials file is invalid yml",
                 """---
 "https://some.url":
     password no colon here
@@ -826,7 +826,7 @@ class TestHttpGetter:
                 InvalidConfigurationError,
             ),
             (
-                "Return OAuthClientFlowCredential object when credentials file is json",
+                "Return OAuthClientFlowCredential object when credentials file is valid json",
                 """
 {
     "https://some.url": {
@@ -852,7 +852,7 @@ class TestHttpGetter:
                 InvalidConfigurationError,
             ),
             (
-                "Return OAuth2PassowordCredential object with additional client_id in credentials file",
+                "Return OAuth2PassowordFlowCredentials object with additional client_id in credentials file",
                 """---
 "https://some.url": 
     endpoint: https://endpoint.end
@@ -864,7 +864,7 @@ class TestHttpGetter:
                 None,
             ),
             (
-                "Return OAuthTokenCredential object when username passowrd and client id and client secret are also given",
+                "Return OAuthTokenCredential object when username, passowrd, client_id and client_secret are also given",
                 """---
 "https://some.url":
     endpoint: https://endpoint.end
@@ -902,6 +902,17 @@ class TestHttpGetter:
     client_secret: test
 """,
                 OAuth2ClientFlowCredentials,
+                None,
+            ),
+            (
+                "Return None if no matching credentials class is found",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    username: test
+    client_secret: test
+""",
+                type(None),
                 None,
             ),
         ],
