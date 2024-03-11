@@ -159,21 +159,7 @@ class HttpGetter(Getter):
         credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
         if credentials_file_path is None:
             return None
-        try:
-            getter = GetterFactory.from_string(credentials_file_path)
-            try:
-                all_credentials = getter.get_json()
-            except (json.JSONDecodeError, ValueError):
-                all_credentials = getter.get_yaml()
-        except (TypeError, YAMLError) as error:
-            raise InvalidConfigurationError(
-                f"Invalid credentials file: {credentials_file_path} {error.args[0]}"
-            ) from error
-        except FileNotFoundError as error:
-            raise InvalidConfigurationError(
-                f"Environment variable has wrong credentials file path: {credentials_file_path}"
-            ) from error
-
+        all_credentials = self._get_content(credentials_file_path)
         domain = self.target.split("/", maxsplit=1)[0]
         raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
         match raw_credentials:
@@ -187,6 +173,23 @@ class HttpGetter(Getter):
                 return OAuth2TokenCredentials(**raw_credentials)
             case _:
                 return None
+
+    def _get_content(self, file_path):
+        try:
+            getter = GetterFactory.from_string(file_path)
+            try:
+                all_credentials = getter.get_json()
+            except (json.JSONDecodeError, ValueError):
+                all_credentials = getter.get_yaml()
+        except (TypeError, YAMLError) as error:
+            raise InvalidConfigurationError(
+                f"Invalid credentials file: {file_path} {error.args[0]}"
+            ) from error
+        except FileNotFoundError as error:
+            raise InvalidConfigurationError(
+                f"Environment variable has wrong credentials file path: {file_path}"
+            ) from error
+        return all_credentials
 
     def _set_credentials(self):
         if os.environ.get("LOGPREP_OAUTH2_0_ENDPOINT") is not None:
