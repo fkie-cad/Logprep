@@ -95,6 +95,15 @@ class TestOAuth2TokenCredentials:
             with pytest.raises(error, match=error_message):
                 test = OAuth2TokenCredentials(**kwargs)
 
+    def test_get_session_returns_session(self):
+        test = OAuth2TokenCredentials(token="tooooooken")
+        assert test.get_session() is not None
+
+    def test_get_session_returns_session_with_auth(self):
+        test = OAuth2TokenCredentials(token="tooooooken")
+        session = test.get_session()
+        assert session.headers.get("Authorization") == "Bearer tooooooken"
+
 
 class TestOAuth2PasswordFlowCredentials:
 

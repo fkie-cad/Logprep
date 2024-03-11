@@ -22,7 +22,9 @@ class OAuth2TokenCredentials(Credentials):
     token: str = field(validator=validators.instance_of(str))
 
     def get_session(self) -> Session:
-        raise NotImplementedError
+        session = super().get_session()
+        session.headers["Authorization"] = f"Bearer {self.token}"
+        return session
 
 
 @define(kw_only=True)
