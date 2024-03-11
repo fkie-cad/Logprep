@@ -7,5 +7,5 @@ from attrs import define
 class Credentials(ABC):
 
     @abstractmethod
-    def authenticate(self):
+    def get_session(self):
         pass

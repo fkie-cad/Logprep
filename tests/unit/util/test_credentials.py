@@ -53,6 +53,15 @@ class TestBasicAuthCredentials:
             with pytest.raises(error, match=error_message):
                 _ = BasicAuthCredentials(**kwargs)
 
+    def test_get_session_returns_session(self):
+        test = BasicAuthCredentials(username="user", password="password")
+        assert test.get_session() is not None
+
+    def test_get_session_returns_session_with_auth(self):
+        test = BasicAuthCredentials(username="user", password="password")
+        session = test.get_session()
+        assert session.auth == ("user", "password")
+
 
 class TestOAuth2TokenCredentials:
 

@@ -1,4 +1,5 @@
 from attrs import define, field, validators
+from requests import Session
 
 from logprep.abc.credentials import Credentials
 
@@ -9,8 +10,10 @@ class BasicAuthCredentials(Credentials):
     username: str = field(validator=validators.instance_of(str))
     password: str = field(validator=validators.instance_of(str))
 
-    def authenticate(self):
-        raise NotImplementedError
+    def get_session(self) -> Session:
+        session = Session()
+        session.auth = (self.username, self.password)
+        return session
 
 
 @define(kw_only=True)
@@ -18,7 +21,7 @@ class OAuth2TokenCredentials(Credentials):
 
     token: str = field(validator=validators.instance_of(str))
 
-    def authenticate(self):
+    def get_session(self) -> Session:
         raise NotImplementedError
 
 
@@ -29,7 +32,7 @@ class OAuth2PasswordFlowCredentials(Credentials):
     password: str = field(validator=validators.instance_of(str))
     username: str = field(validator=validators.instance_of(str))
 
-    def authenticate(self):
+    def get_session(self) -> Session:
         raise NotImplementedError
 
 
@@ -40,5 +43,5 @@ class OAuth2ClientFlowCredentials(Credentials):
     client_id: str = field(validator=validators.instance_of(str))
     client_secret: str = field(validator=validators.instance_of(str))
 
-    def authenticate(self):
+    def get_session(self) -> Session:
         raise NotImplementedError
