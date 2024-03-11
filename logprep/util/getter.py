@@ -160,27 +160,37 @@ class HttpGetter(Getter):
         if credentials_file_path is None:
             return None
         all_credentials = self._get_content(credentials_file_path)
-        domain = self.target.split("/", maxsplit=1)[0]
+        url = f"{self.protocol}://{self.target}"
+        domain = urlparse(url).netloc
         raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
-        match raw_credentials:
-            case {"endpoint": _, "username": _, "password": _}:
-                return OAuth2PasswordFlowCredentials(**raw_credentials)
-            case {"endpoint": _, "client_id": _, "client_secret": _}:
-                return OAuth2ClientFlowCredentials(**raw_credentials)
-            case {"username": _, "password": _}:
-                return BasicAuthCredentials(**raw_credentials)
-            case {"token": _}:
-                return OAuth2TokenCredentials(**raw_credentials)
-            case _:
-                return None
+        try:
+            match raw_credentials:
+                case {"token": token}:
+                    return OAuth2TokenCredentials(token=token)
+                case {"endpoint": endpoint, "client_id": client_id, "client_secret": client_secret}:
+                    return OAuth2ClientFlowCredentials(
+                        endpoint=endpoint, client_id=client_id, client_secret=client_secret
+                    )
+                case {"endpoint": endpoint, "username": username, "password": password}:
+                    return OAuth2PasswordFlowCredentials(
+                        endpoint=endpoint, username=username, password=password
+                    )
+                case {"username": username, "password": password}:
+                    return BasicAuthCredentials(username=username, password=password)
+                case _:
+                    return None
+        except TypeError as error:
+            raise InvalidConfigurationError(
+                f"Wrong type on given credentials argument: {error.args[0]}"
+            ) from error
 
     def _get_content(self, file_path):
         try:
             getter = GetterFactory.from_string(file_path)
             try:
-                all_credentials = getter.get_json()
+                file_content = getter.get_json()
             except (json.JSONDecodeError, ValueError):
-                all_credentials = getter.get_yaml()
+                file_content = getter.get_yaml()
         except (TypeError, YAMLError) as error:
             raise InvalidConfigurationError(
                 f"Invalid credentials file: {file_path} {error.args[0]}"
@@ -189,7 +199,7 @@ class HttpGetter(Getter):
             raise InvalidConfigurationError(
                 f"Environment variable has wrong credentials file path: {file_path}"
             ) from error
-        return all_credentials
+        return file_content
 
     def _set_credentials(self):
         if os.environ.get("LOGPREP_OAUTH2_0_ENDPOINT") is not None:
