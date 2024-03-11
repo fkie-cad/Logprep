@@ -11,7 +11,7 @@ class BasicAuthCredentials(Credentials):
     password: str = field(validator=validators.instance_of(str))
 
     def get_session(self) -> Session:
-        session = Session()
+        session = super().get_session()
         session.auth = (self.username, self.password)
         return session
 
