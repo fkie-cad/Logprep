@@ -3,9 +3,11 @@ They are returned by the GetterFactory.
 """
 
 import json
+import logging
 import os
 import re
 from collections import defaultdict
+from functools import cached_property
 from itertools import count
 from pathlib import Path
 from string import Template
@@ -153,7 +155,7 @@ class HttpGetter(Getter):
             )
         self._set_credentials()
 
-    @property
+    @cached_property
     def credentials(self) -> Credentials:
         """get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE"""
         credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
@@ -163,26 +165,8 @@ class HttpGetter(Getter):
         url = f"{self.protocol}://{self.target}"
         domain = urlparse(url).netloc
         raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
-        try:
-            match raw_credentials:
-                case {"token": token}:
-                    return OAuth2TokenCredentials(token=token)
-                case {"endpoint": endpoint, "client_id": client_id, "client_secret": client_secret}:
-                    return OAuth2ClientFlowCredentials(
-                        endpoint=endpoint, client_id=client_id, client_secret=client_secret
-                    )
-                case {"endpoint": endpoint, "username": username, "password": password}:
-                    return OAuth2PasswordFlowCredentials(
-                        endpoint=endpoint, username=username, password=password
-                    )
-                case {"username": username, "password": password}:
-                    return BasicAuthCredentials(username=username, password=password)
-                case _:
-                    return None
-        except TypeError as error:
-            raise InvalidConfigurationError(
-                f"Wrong type in file {credentials_file_path} on argument: {error.args[0]}"
-            ) from error
+        credentials = self._get_credentials_from_resource(raw_credentials)
+        return credentials
 
     def _get_content(self, file_path):
         try:
@@ -200,6 +184,53 @@ class HttpGetter(Getter):
                 f"Environment variable has wrong credentials file path: {file_path}"
             ) from error
         return file_content
+
+    def _get_credentials_from_resource(self, resource):
+        """matches the given credentials of the resource with the expected credential object"""
+        logger = logging.getLogger()
+        try:
+            match resource:
+                case {"token": token, **extra_params}:
+                    logger.info("The OAuth Token authorization has been chosen")
+                    if extra_params:
+                        logger.info("Other parameters that were given: %s", **extra_params)
+                    return OAuth2TokenCredentials(token=token)
+                case {
+                    "endpoint": endpoint,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    **extra_params,
+                }:
+                    logger.info("The OAuth client authorization has been chosen")
+                    if extra_params:
+                        logger.info("Other parameters that were given: %s", **extra_params)
+                    return OAuth2ClientFlowCredentials(
+                        endpoint=endpoint, client_id=client_id, client_secret=client_secret
+                    )
+                case {
+                    "endpoint": endpoint,
+                    "username": username,
+                    "password": password,
+                    **extra_params,
+                }:
+                    logger.info("The OAuth password authorization has been chosen")
+                    if extra_params:
+                        logger.info("Other parameters that were given: %s", **extra_params)
+                    return OAuth2PasswordFlowCredentials(
+                        endpoint=endpoint, username=username, password=password
+                    )
+                case {"username": username, "password": password, **extra_params}:
+                    logger.info("The Basic Auth authentication has been chosen")
+                    if extra_params:
+                        logger.info("Other parameters that were given: %s", **extra_params)
+                    return BasicAuthCredentials(username=username, password=password)
+                case _:
+                    logger.info("No matching credentials authentication could be found.")
+                    return None
+        except TypeError as error:
+            raise InvalidConfigurationError(
+                f"Wrong type in given credentials file on argument: {error.args[0]}"
+            ) from error
 
     def _set_credentials(self):
         if os.environ.get("LOGPREP_OAUTH2_0_ENDPOINT") is not None:
