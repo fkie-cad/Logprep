@@ -617,54 +617,56 @@ class TestHttpGetter:
                 creds = http_getter.credentials
                 assert creds is None
 
-    def test_credentials_reads_secret_file_content(self, tmp_path):
+    @pytest.mark.parametrize(
+        "testcase, type_of_secret, endpoint, secret_content, instance",
+        [
+            (
+                "Return OAuthPasswordFlowCredential object when password file is given",
+                "password_file",
+                "endpoint: https://endpoint.end",
+                "hiansdnjskwuthisisaverysecretsecret",
+                OAuth2PasswordFlowCredentials,
+            ),
+            (
+                "Return OAuthClientFlowCredentials object when client secret file is given",
+                "client_secret_file",
+                "endpoint: https://endpoint.end",
+                "hiansdnjskwuthisisaverysecretsecret",
+                OAuth2ClientFlowCredentials,
+            ),
+            (
+                "Return OAuthTokenCredential object when token file is given",
+                "token_file",
+                "endpoint: https://endpoint.end",
+                "hiansdnjskwuthisisaverysecretsecret",
+                OAuth2TokenCredentials,
+            ),
+            (
+                "Return BasicAuthCredential object when no endpoint is given and password_file is given",
+                "password_file",
+                "",
+                "hiansdnjskwuthisisaverysecretsecret",
+                BasicAuthCredentials,
+            ),
+        ],
+    )
+    def test_credentials_reads_secret_file_content(
+        self, tmp_path, testcase, type_of_secret, endpoint, secret_content, instance
+    ):
         credential_file_path = tmp_path / "credentials.yml"
-        client_secret_file_path = tmp_path / "secret.txt"
+        secret_file_path = tmp_path / "secret.txt"
         credential_file_path.write_text(
             f"""---
 "http://some.url":
-    endpoint: https://endpoint.end
-    client_id: test
-    client_secret_file: {client_secret_file_path}
-"""
-        )
-        client_secret_file_path.write_text("hiansdnjskwuthisisaverysecretsecret")
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
-            http_getter = GetterFactory.from_string("http://some.url")
-            creds = http_getter.credentials
-            assert isinstance(creds, OAuth2ClientFlowCredentials)
-
-    def test_credentials_reads_token_file_content(self, tmp_path):
-        credential_file_path = tmp_path / "credentials.yml"
-        token_file_path = tmp_path / "token.txt"
-        credential_file_path.write_text(
-            f"""---
-"http://some.url":
-    token_file: {token_file_path}
-"""
-        )
-        token_file_path.write_text("thisismytokentoken")
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
-        with mock.patch.dict("os.environ", mock_env):
-            http_getter = GetterFactory.from_string("http://some.url")
-            creds = http_getter.credentials
-            assert isinstance(creds, OAuth2TokenCredentials)
-
-    def test_credentials_reads_password_file_content(self, tmp_path):
-        credential_file_path = tmp_path / "credentials.yml"
-        password_file_path = tmp_path / "password.txt"
-        credential_file_path.write_text(
-            f"""---
-"http://some.url":
-    endpoint: https://endpoint.end
+    {endpoint}
     username: testuser
-    password_file: {password_file_path}
+    client_id: testid
+    {type_of_secret}: {secret_file_path}
 """
         )
-        password_file_path.write_text("hiansdnjskwuthisisaverysecretsecret")
+        secret_file_path.write_text(secret_content)
         mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
-            http_getter = GetterFactory.from_string("http://some.url")
+            http_getter = GetterFactory.from_string("http://some.url/configuration")
             creds = http_getter.credentials
-            assert isinstance(creds, OAuth2PasswordFlowCredentials)
+            assert isinstance(creds, instance), testcase
