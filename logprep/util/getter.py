@@ -112,25 +112,36 @@ class HttpGetter(Getter):
     * Simple http target: :code:`http://your.target/file.yml`
     * Simple https target: :code:`https://your.target/file.json`
 
-    If you want to use basic auth, then you have to set the environment variables
+    In order for Logprep to choose the correct authentication method the `LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
+    This file should provide the credentials that are needed and can either be in yaml or in json format.
+    To use the authentication, the `LOGPREP_CREDENTIALS_FILE` file has to be filled with the correct values that correspond to the method you want to use.
+    The following authentication methods are implemented:
 
-        * :code:`LOGPREP_CONFIG_AUTH_USERNAME=<your_username>`
-        * :code:`LOGPREP_CONFIG_AUTH_PASSWORD=<your_password>`
-
-    If you want to use oauth, then you have to set the environment variables
-
-        * :code:`LOGPREP_CONFIG_AUTH_TOKEN=<your_token>`
-        * :code:`LOGPREP_CONFIG_AUTH_METHOD=oauth`
-
-    If you want to automatically retrieve a token from an oauth2 endpoint you can set the following
-    environment variables
-
-        * :code:`LOGPREP_OAUTH2_0_ENDPOINT=<some_endpoint_url>`
-        * :code:`LOGPREP_OAUTH2_0_GRANT_TYPE=<password|client_secret>`
-        * :code:`LOGPREP_OAUTH2_0_USERNAME=<your_username>`
-        * :code:`LOGPREP_OAUTH2_0_PASSWORD=<your_password`
-        * :code:`LOGPREP_OAUTH2_0_CLIENT_ID=<your_client>`
-        * :code:`LOGPREP_OAUTH2_0_CLIENT_SECRET=<your_secret>`
+    - OAuth authentication with known token:
+    ```yaml
+        "http://ressource":
+            token: <token>
+    ```
+    - OAuth client authorization grant:
+    ```yaml
+    "http://ressource":
+        endpoint: <endpoint>
+        client_id: <id>
+        client_secret: <secret>
+    ```
+    - OAuth password grand type:
+    ```yaml
+    "http://ressource":
+        endpoint: <endpoint>
+        username: <username>
+        password: <password>
+    ```
+    - Basic Authentication
+    ```yaml
+    "http://ressource":
+        username: <username>
+        password: <password>
+    ```
     """
 
     _sessions: dict = {}
