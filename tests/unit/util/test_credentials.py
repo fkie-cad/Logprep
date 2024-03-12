@@ -330,6 +330,7 @@ class TestOAuth2PasswordFlowCredentials:
         new_session = test.get_session()
         assert new_session is not session, "new session should be returned for every refresh"
 
+    @responses.activate
     def test_get_session_does_not_refresh_token_if_not_expired(self):
         test = OAuth2PasswordFlowCredentials(
             endpoint="https://the.endpoint",
@@ -340,7 +341,8 @@ class TestOAuth2PasswordFlowCredentials:
         test._expiry_time = datetime.now() + timedelta(seconds=3600)
         test._session = Session()
         test._session.headers.update({"Authorization": "Bearer bla"})
-        session = test.get_session()
+        session = test.get_session()  # should not lead to an exception
+        assert session
 
 
 class TestOAuth2ClientFlowCredentials:
