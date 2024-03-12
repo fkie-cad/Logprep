@@ -634,3 +634,37 @@ class TestHttpGetter:
             http_getter = GetterFactory.from_string("http://some.url")
             creds = http_getter.credentials
             assert isinstance(creds, OAuth2ClientFlowCredentials)
+
+    def test_credentials_reads_token_file_content(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        token_file_path = tmp_path / "token.txt"
+        credential_file_path.write_text(
+            f"""---
+"http://some.url":
+    token_file: {token_file_path}
+"""
+        )
+        token_file_path.write_text("thisismytokentoken")
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("http://some.url")
+            creds = http_getter.credentials
+            assert isinstance(creds, OAuth2TokenCredentials)
+
+    def test_credentials_reads_password_file_content(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        password_file_path = tmp_path / "password.txt"
+        credential_file_path.write_text(
+            f"""---
+"http://some.url":
+    endpoint: https://endpoint.end
+    username: testuser
+    password_file: {password_file_path}
+"""
+        )
+        password_file_path.write_text("hiansdnjskwuthisisaverysecretsecret")
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("http://some.url")
+            creds = http_getter.credentials
+            assert isinstance(creds, OAuth2PasswordFlowCredentials)
