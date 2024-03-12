@@ -616,3 +616,21 @@ class TestHttpGetter:
             with pytest.raises(InvalidConfigurationError, match=r"wrong credentials file path"):
                 creds = http_getter.credentials
                 assert creds is None
+
+    def test_credentials_reads_secret_file_content(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        client_secret_file_path = tmp_path / "secret.txt"
+        credential_file_path.write_text(
+            f"""---
+"http://some.url":
+    endpoint: https://endpoint.end
+    client_id: test
+    client_secret_file: {client_secret_file_path}
+"""
+        )
+        client_secret_file_path.write_text("hiansdnjskwuthisisaverysecretsecret")
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("http://some.url")
+            creds = http_getter.credentials
+            assert isinstance(creds, OAuth2ClientFlowCredentials)

@@ -120,27 +120,27 @@ class HttpGetter(Getter):
     - OAuth authentication with known token:
     ```yaml
         "http://ressource":
-            token: <token>
+            token_file: <path/to/token/file>
     ```
     - OAuth client authorization grant:
     ```yaml
     "http://ressource":
         endpoint: <endpoint>
         client_id: <id>
-        client_secret: <secret>
+        client_secret_file: <path/to/secret/file>
     ```
     - OAuth password grand type:
     ```yaml
     "http://ressource":
         endpoint: <endpoint>
         username: <username>
-        password: <password>
+        password_file: <path/to/password/file>
     ```
     - Basic Authentication
     ```yaml
     "http://ressource":
         username: <username>
-        password: <password>
+        password_file: <path/to/password/file>
     ```
     """
 
@@ -176,6 +176,7 @@ class HttpGetter(Getter):
         url = f"{self.protocol}://{self.target}"
         domain = urlparse(url).netloc
         raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
+        self._get_secret_content(raw_credentials)
         credentials = self._get_credentials_from_resource(raw_credentials)
         return credentials
 
@@ -195,6 +196,24 @@ class HttpGetter(Getter):
                 f"Environment variable has wrong credentials file path: {file_path}"
             ) from error
         return file_content
+
+    def _get_secret_content(self, resource):
+        """gets content from client_secret_file, token_file or password_file"""
+        if "client_secret_file" in resource:
+            file_path = resource.get("client_secret_file")
+            getter = GetterFactory.from_string(str(file_path))
+            file_content = getter.get_raw().decode("utf-8")
+            resource.update({"client_secret": file_content})
+        elif "token_file" in resource:
+            file_path = resource.get("token_file")
+            getter = GetterFactory.from_string(str(file_path))
+            file_content = getter.get_raw().decode("utf-8")
+            resource.update({"token": file_content})
+        elif "password_file" in resource:
+            file_path = resource.get("password_file")
+            getter = GetterFactory.from_string(str(file_path))
+            file_content = getter.get_raw().decode("utf-8")
+            resource.update({"password": file_content})
 
     def _get_credentials_from_resource(self, resource):
         """matches the given credentials of the resource with the expected credential object"""
