@@ -181,7 +181,7 @@ class HttpGetter(Getter):
                     return None
         except TypeError as error:
             raise InvalidConfigurationError(
-                f"Wrong type on given credentials argument: {error.args[0]}"
+                f"Wrong type in file {credentials_file_path} on argument: {error.args[0]}"
             ) from error
 
     def _get_content(self, file_path):
