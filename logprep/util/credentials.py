@@ -1,4 +1,5 @@
 from base64 import b64encode
+from datetime import datetime, timedelta
 
 import requests
 from attrs import define, field, validators
@@ -21,8 +22,14 @@ class BasicAuthCredentials(Credentials):
 
 @define(kw_only=True)
 class OAuth2TokenCredentials(Credentials):
+    """OAuth2 Bearer Token Credentials
+    This is used for authenticating with an API that uses OAuth2 Bearer Tokens.
+    The Token is not refreshed automatically. If it expires, the requests will
+    fail with http status code `401`.
+    """
 
     token: str = field(validator=validators.instance_of(str))
+    """The OAuth2 Bearer Token. This is used to authenticate."""
 
     def get_session(self) -> Session:
         session = super().get_session()
@@ -32,33 +39,51 @@ class OAuth2TokenCredentials(Credentials):
 
 @define(kw_only=True)
 class OAuth2PasswordFlowCredentials(Credentials):
-    """OAuth2 Resource Owner Password Credentials Grant
+    """OAuth2 Resource Owner Password Credentials Grant as described in
     https://datatracker.ietf.org/doc/html/rfc6749#section-4.3
     """
 
     endpoint: str = field(validator=validators.instance_of(str))
     password: str = field(validator=validators.instance_of(str))
     username: str = field(validator=validators.instance_of(str))
-    _timeout: int = field(validator=validators.instance_of(int), default=1)
+    timeout: int = field(validator=validators.instance_of(int), default=1)
     """the timeout for the token request"""
+    _refresh_token: str = field(
+        validator=validators.instance_of((str, type(None))), default=None, init=False
+    )
+    _expiry_time: datetime = field(
+        validator=validators.instance_of((datetime, type(None))), default=None, init=False
+    )
 
     def get_session(self) -> Session:
+        if self._expiry_time is not None and self._expiry_time < datetime.now():
+            self._session = None
         access_token, refresh_token, expires_in = self._get_token()
+        if refresh_token is not None:
+            self._refresh_token = refresh_token
+        if expires_in is not None:
+            self._expiry_time = datetime.now() + timedelta(seconds=expires_in)
         # TODO: implement refresh token
         session = super().get_session()
         session.headers["Authorization"] = f"Bearer {access_token}"
         return session
 
     def _get_token(self) -> tuple[str, str, int]:
-        payload = {
-            "grant_type": "password",
-            "username": self.username,
-            "password": self.password,
-        }
+        if self._refresh_token is not None:
+            payload = {
+                "grant_type": "refresh_token",
+                "refresh_token": self._refresh_token,
+            }
+        else:
+            payload = {
+                "grant_type": "password",
+                "username": self.username,
+                "password": self.password,
+            }
         response = requests.post(
             url=self.endpoint,
             data=payload,
-            timeout=self._timeout,
+            timeout=self.timeout,
         )
         token_response = response.json()
         access_token = token_response.get("access_token")
@@ -76,11 +101,10 @@ class OAuth2ClientFlowCredentials(Credentials):
     endpoint: str = field(validator=validators.instance_of(str))
     client_id: str = field(validator=validators.instance_of(str))
     client_secret: str = field(validator=validators.instance_of(str))
-    _timeout: int = field(validator=validators.instance_of(int), default=1)
+    timeout: int = field(validator=validators.instance_of(int), default=1)
 
     def get_session(self) -> Session:
         access_token, refresh_token, expires_in = self._get_token()
-        # TODO: implement refresh token
         session = super().get_session()
         session.headers["Authorization"] = f"Bearer {access_token}"
         return session

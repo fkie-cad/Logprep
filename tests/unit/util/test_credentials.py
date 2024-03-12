@@ -147,6 +147,39 @@ class TestOAuth2PasswordFlowCredentials:
                 None,
                 None,
             ),
+            (
+                "valid with optional timeout",
+                {
+                    "endpoint": "https://some.endpoint/endpoint",
+                    "password": "hskwmksölkpwksmksksksmk",
+                    "username": "test_user",
+                    "timeout": 123,
+                },
+                None,
+                None,
+            ),
+            (
+                "invalid with refresh token",
+                {
+                    "endpoint": "https://some.endpoint/endpoint",
+                    "password": "hskwmksölkpwksmksksksmk",
+                    "username": "test_user",
+                    "refresh_token": "refresh_token",
+                },
+                TypeError,
+                r"got an unexpected keyword argument 'refresh_token'",
+            ),
+            (
+                "invalid with expiry time",
+                {
+                    "endpoint": "https://some.endpoint/endpoint",
+                    "password": "hskwmksölkpwksmksksksmk",
+                    "username": "test_user",
+                    "expiry_time": "2022-12-12 12:12:12",
+                },
+                TypeError,
+                r"got an unexpected keyword argument 'expiry_time'",
+            ),
         ],
     )
     def test_init(self, testcase, error, kwargs, error_message):
