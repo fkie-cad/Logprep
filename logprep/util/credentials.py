@@ -63,7 +63,6 @@ class OAuth2PasswordFlowCredentials(Credentials):
             self._refresh_token = refresh_token
         if expires_in is not None:
             self._expiry_time = datetime.now() + timedelta(seconds=expires_in)
-        # TODO: implement refresh token
         session = super().get_session()
         session.headers["Authorization"] = f"Bearer {access_token}"
         return session

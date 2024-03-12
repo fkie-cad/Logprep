@@ -1,4 +1,8 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
+from datetime import datetime, timedelta
+from unittest import mock
+
 import pytest
 import responses
 from responses import matchers
@@ -231,6 +235,41 @@ class TestOAuth2PasswordFlowCredentials:
         )
         session = test.get_session()
         assert session.headers.get("Authorization") == "Bearer toooooken"
+
+    @responses.activate
+    def test_get_session_sets_refresh_token_and_expiry_time(self):
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "access_token": "toooooken",
+                "expires_in": 3600,
+                "refresh_token": "refresh_token123123",
+            },
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "password",
+                        "username": "user",
+                        "password": "password",
+                    }
+                ),
+                matchers.header_matcher({"Content-Type": "application/x-www-form-urlencoded"}),
+            ],
+        )
+        test = OAuth2PasswordFlowCredentials(
+            endpoint="https://the.endpoint",
+            password="password",
+            username="user",
+        )
+        mock_now = datetime.now()
+        expected_expiry_time = mock_now + timedelta(seconds=3600)
+        with mock.patch("logprep.util.credentials.datetime") as mock_datetime:
+            mock_datetime.now.return_value = mock_now
+            session = test.get_session()
+        assert session.headers.get("Authorization").startswith("Bearer")
+        assert test._refresh_token == "refresh_token123123"
+        assert test._expiry_time == expected_expiry_time
 
 
 class TestOAuth2ClientFlowCredentials:
