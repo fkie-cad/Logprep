@@ -176,7 +176,8 @@ class HttpGetter(Getter):
         url = f"{self.protocol}://{self.target}"
         domain = urlparse(url).netloc
         raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
-        self._get_secret_content(raw_credentials)
+        if raw_credentials:
+            self._get_secret_content(raw_credentials)
         credentials = self._get_credentials_from_resource(raw_credentials)
         return credentials
 
@@ -204,12 +205,12 @@ class HttpGetter(Getter):
             getter = GetterFactory.from_string(str(file_path))
             file_content = getter.get_raw().decode("utf-8")
             resource.update({"client_secret": file_content})
-        elif "token_file" in resource:
+        if "token_file" in resource:
             file_path = resource.get("token_file")
             getter = GetterFactory.from_string(str(file_path))
             file_content = getter.get_raw().decode("utf-8")
             resource.update({"token": file_content})
-        elif "password_file" in resource:
+        if "password_file" in resource:
             file_path = resource.get("password_file")
             getter = GetterFactory.from_string(str(file_path))
             file_content = getter.get_raw().decode("utf-8")
