@@ -271,6 +271,60 @@ class TestOAuth2PasswordFlowCredentials:
         assert test._refresh_token == "refresh_token123123"
         assert test._expiry_time == expected_expiry_time
 
+    @responses.activate
+    def test_get_session_uses_refresh_token_if_token_is_expired(self):
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "access_token": "new toooken",
+                "expires_in": 3600,
+                "refresh_token": "refresh_token123123",
+            },
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "refresh_token",
+                        "refresh_token": "refresh1234",
+                    }
+                ),
+                matchers.header_matcher({"Content-Type": "application/x-www-form-urlencoded"}),
+            ],
+        )
+        test = OAuth2PasswordFlowCredentials(
+            endpoint="https://the.endpoint",
+            password="password",
+            username="user",
+        )
+        mock_now = datetime.now()
+        test._refresh_token = "refresh1234"
+        test._expiry_time = mock_now  # expire the token
+        session = test.get_session()
+        assert session.headers.get("Authorization") == "Bearer new toooken", "new should be used"
+        assert test._refresh_token == "refresh_token123123", "new refresh token should be set"
+        # next refresh with new refresh token
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "access_token": "very new token",
+                "expires_in": 3600,
+                "refresh_token": "next_refresh_token",
+            },
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "refresh_token",
+                        "refresh_token": "refresh_token123123",
+                    }
+                ),
+                matchers.header_matcher({"Content-Type": "application/x-www-form-urlencoded"}),
+            ],
+        )
+        test._expiry_time = mock_now  # expire the token
+        new_session = test.get_session()
+        assert new_session is not session, "new session should be returned for every refresh"
+
 
 class TestOAuth2ClientFlowCredentials:
 

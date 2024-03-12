@@ -41,6 +41,9 @@ class OAuth2TokenCredentials(Credentials):
 class OAuth2PasswordFlowCredentials(Credentials):
     """OAuth2 Resource Owner Password Credentials Grant as described in
     https://datatracker.ietf.org/doc/html/rfc6749#section-4.3
+
+    Token refresh is implemented as described in
+    https://datatracker.ietf.org/doc/html/rfc6749#section-6
     """
 
     endpoint: str = field(validator=validators.instance_of(str))
@@ -56,7 +59,7 @@ class OAuth2PasswordFlowCredentials(Credentials):
     )
 
     def get_session(self) -> Session:
-        if self._expiry_time is not None and self._expiry_time < datetime.now():
+        if self._token_is_expired():
             self._session = None
         access_token, refresh_token, expires_in = self._get_token()
         if refresh_token is not None:
@@ -66,6 +69,9 @@ class OAuth2PasswordFlowCredentials(Credentials):
         session = super().get_session()
         session.headers["Authorization"] = f"Bearer {access_token}"
         return session
+
+    def _token_is_expired(self):
+        return self._expiry_time is not None and self._expiry_time < datetime.now()
 
     def _get_token(self) -> tuple[str, str, int]:
         if self._refresh_token is not None:
@@ -119,7 +125,7 @@ class OAuth2ClientFlowCredentials(Credentials):
         response = requests.post(
             url=self.endpoint,
             data=payload,
-            timeout=self._timeout,
+            timeout=self.timeout,
             headers=headers,
         )
         token_response = response.json()
