@@ -5,6 +5,7 @@ from unittest import mock
 
 import pytest
 import responses
+from requests import Session
 from responses import matchers
 
 from logprep.util.credentials import (
@@ -291,14 +292,18 @@ class TestOAuth2PasswordFlowCredentials:
                 matchers.header_matcher({"Content-Type": "application/x-www-form-urlencoded"}),
             ],
         )
+        # start prepare mock state after getting first authorization token
         test = OAuth2PasswordFlowCredentials(
             endpoint="https://the.endpoint",
             password="password",
             username="user",
         )
+        test._session = Session()
+        test._session.headers.update({"Authorization": "Bearer bla"})
         mock_now = datetime.now()
         test._refresh_token = "refresh1234"
         test._expiry_time = mock_now  # expire the token
+        # end prepare mock
         session = test.get_session()
         assert session.headers.get("Authorization") == "Bearer new toooken", "new should be used"
         assert test._refresh_token == "refresh_token123123", "new refresh token should be set"
@@ -324,6 +329,18 @@ class TestOAuth2PasswordFlowCredentials:
         test._expiry_time = mock_now  # expire the token
         new_session = test.get_session()
         assert new_session is not session, "new session should be returned for every refresh"
+
+    def test_get_session_does_not_refresh_token_if_not_expired(self):
+        test = OAuth2PasswordFlowCredentials(
+            endpoint="https://the.endpoint",
+            password="password",
+            username="user",
+        )
+        test._refresh_token = "refresh1234"
+        test._expiry_time = datetime.now() + timedelta(seconds=3600)
+        test._session = Session()
+        test._session.headers.update({"Authorization": "Bearer bla"})
+        session = test.get_session()
 
 
 class TestOAuth2ClientFlowCredentials:

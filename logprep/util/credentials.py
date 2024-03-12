@@ -59,32 +59,38 @@ class OAuth2PasswordFlowCredentials(Credentials):
     )
 
     def get_session(self) -> Session:
-        if self._token_is_expired():
-            self._session = None
-        access_token, refresh_token, expires_in = self._get_token()
-        if refresh_token is not None:
-            self._refresh_token = refresh_token
-        if expires_in is not None:
-            self._expiry_time = datetime.now() + timedelta(seconds=expires_in)
         session = super().get_session()
-        session.headers["Authorization"] = f"Bearer {access_token}"
-        return session
-
-    def _token_is_expired(self):
-        return self._expiry_time is not None and self._expiry_time < datetime.now()
-
-    def _get_token(self) -> tuple[str, str, int]:
-        if self._refresh_token is not None:
-            payload = {
-                "grant_type": "refresh_token",
-                "refresh_token": self._refresh_token,
-            }
-        else:
+        payload = None
+        if self._no_authorization_header(session):
             payload = {
                 "grant_type": "password",
                 "username": self.username,
                 "password": self.password,
             }
+            session.headers["Authorization"] = f"Bearer {self._get_token(payload)}"
+
+        if self._token_is_expired():
+            session = Session()
+            payload = {
+                "grant_type": "refresh_token",
+                "refresh_token": self._refresh_token,
+            }
+            session.headers["Authorization"] = f"Bearer {self._get_token(payload)}"
+        self._session = session
+        return session
+
+    def _no_authorization_header(self, session):
+        return session.headers.get("Authorization") is None
+
+    def _token_is_expired(self):
+        return all(
+            (
+                self._expiry_time is not None and self._expiry_time < datetime.now(),
+                self._refresh_token is not None,
+            )
+        )
+
+    def _get_token(self, payload: dict[str, str]) -> str:
         response = requests.post(
             url=self.endpoint,
             data=payload,
@@ -94,7 +100,10 @@ class OAuth2PasswordFlowCredentials(Credentials):
         access_token = token_response.get("access_token")
         refresh_token = token_response.get("refresh_token")
         expires_in = token_response.get("expires_in")
-        return access_token, refresh_token, expires_in
+        self._refresh_token = refresh_token
+        if expires_in is not None:
+            self._expiry_time = datetime.now() + timedelta(seconds=expires_in)
+        return access_token
 
 
 @define(kw_only=True)

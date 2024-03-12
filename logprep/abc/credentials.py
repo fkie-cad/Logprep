@@ -12,6 +12,6 @@ class Credentials(ABC):
     @abstractmethod
     def get_session(self):
         """Return a session with the credentials applied"""
-        if self._session is not None:
-            return self._session
-        return Session()
+        if self._session is None:
+            self._session = Session()
+        return self._session
