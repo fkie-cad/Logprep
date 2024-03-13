@@ -2,8 +2,6 @@
 They are returned by the GetterFactory.
 """
 
-import json
-import logging
 import os
 import re
 from collections import defaultdict
@@ -13,25 +11,12 @@ from string import Template
 from typing import Tuple
 from urllib.parse import urlparse
 
-import requests
 from attrs import define, field, validators
-from requests import Session
-from requests.adapters import HTTPAdapter
-from ruamel.yaml.error import YAMLError
-from urllib3 import Retry
 
 from logprep._version import get_versions
-from logprep.abc.credentials import Credentials
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
-from logprep.factory_error import InvalidConfigurationError
-from logprep.util.credentials import (
-    BasicAuthCredentials,
-    CredentialsFactory,
-    OAuth2ClientFlowCredentials,
-    OAuth2PasswordFlowCredentials,
-    OAuth2TokenCredentials,
-)
+from logprep.util.credentials import Credentials, CredentialsFactory
 
 
 class GetterNotFoundError(LogprepException):
@@ -113,7 +98,7 @@ class HttpGetter(Getter):
 
     """
 
-    _sessions: dict = {}
+    _sessions: dict[str, Credentials] = {}
 
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
 
@@ -135,24 +120,22 @@ class HttpGetter(Getter):
         """Returns the url of the target."""
         return f"{self.protocol}://{self.target}"
 
-    @cached_property
+    @property
     def credentials(self) -> Credentials:
         """get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE"""
-        return CredentialsFactory.from_target(self.url)
+        creds = None
+        if "LOGPREP_CREDENTIALS_FILE" in os.environ:
+            creds = CredentialsFactory.from_target(self.url)
+        return creds if creds else Credentials()
 
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
         domain = urlparse(self.url).netloc
-        if domain not in self._sessions:
-            if self.credentials is None:
-                self._sessions.update({domain: requests.Session()})
-            else:
-                self._sessions.update({domain: self.credentials.get_session()})
-        session: Session = self._sessions.get(domain)
-        max_retries = 3
-        retries = Retry(total=max_retries, status_forcelist=[500, 502, 503, 504])
-        session.mount("https://", HTTPAdapter(max_retries=retries))
-        session.mount("http://", HTTPAdapter(max_retries=retries))
-        resp = session.get(url=url, timeout=5, allow_redirects=True, headers=self._headers)
+        scheme = urlparse(self.url).scheme
+        domain_uri = f"{scheme}://{domain}"
+        if domain_uri not in self._sessions:
+            self._sessions.update({domain_uri: self.credentials})
+        session = self._sessions.get(domain_uri).get_session()
+        resp = session.get(url=self.url, timeout=5, allow_redirects=True, headers=self._headers)
         resp.raise_for_status()
         return resp.content

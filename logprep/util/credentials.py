@@ -46,14 +46,19 @@ from urllib.parse import urlparse
 
 import requests
 from attrs import define, field, validators
-from requests import Session
+from requests import HTTPError, Session
+from requests.adapters import HTTPAdapter
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
+from urllib3 import Retry
 
-from logprep.abc.credentials import Credentials
 from logprep.factory_error import InvalidConfigurationError
 
 yaml = YAML(typ="safe", pure=True)
+
+
+class CredentialsBadRequestError(Exception):
+    """Raised when the API returns a 400 Bad Request error"""
 
 
 class CredentialsFactory:
@@ -195,6 +200,38 @@ class AccessToken:
         if self.expires_in == 0:
             return False
         return datetime.now() > self.expiry_time
+
+
+@define(kw_only=True)
+class Credentials:
+    """Abstract Base Class for Credentials"""
+
+    _logger = logging.getLogger(__name__)
+
+    _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
+
+    def get_session(self):
+        """Return a session with the credentials applied"""
+        if self._session is None:
+            self._session = Session()
+            max_retries = 3
+            retries = Retry(total=max_retries, status_forcelist=[500, 502, 503, 504])
+            self._session.mount("https://", HTTPAdapter(max_retries=retries))
+            self._session.mount("http://", HTTPAdapter(max_retries=retries))
+        return self._session
+
+    def _no_authorization_header(self, session):
+        return session.headers.get("Authorization") is None
+
+    def _handle_bad_requests_errors(self, response):
+        try:
+            response.raise_for_status()
+        except HTTPError as error:
+            if response.status_code == 400:
+                raise CredentialsBadRequestError(
+                    f"Authentication failed with status code 400 Bad Request: {response.json().get('error')}"
+                ) from error
+            raise
 
 
 @define(kw_only=True)

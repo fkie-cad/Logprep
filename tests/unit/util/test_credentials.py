@@ -8,11 +8,11 @@ import responses
 from requests import Session
 from responses import matchers
 
-from logprep.abc.credentials import Credentials, CredentialsBadRequestError
 from logprep.factory_error import InvalidConfigurationError
 from logprep.util.credentials import (
     AccessToken,
     BasicAuthCredentials,
+    CredentialsBadRequestError,
     CredentialsFactory,
     OAuth2ClientFlowCredentials,
     OAuth2PasswordFlowCredentials,

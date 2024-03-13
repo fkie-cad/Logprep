@@ -3,34 +3,26 @@
 # pylint: disable=line-too-long
 # pylint: disable=unspecified-encoding
 # pylint: disable=protected-access
+import json
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
 import pytest
 import requests.exceptions
 import responses
-from requests.auth import HTTPBasicAuth
 from responses import matchers
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
-from logprep.abc.credentials import Credentials
-from logprep.factory_error import InvalidConfigurationError
-from logprep.util.configuration import Configuration
-from logprep.util.credentials import (
-    BasicAuthCredentials,
-    OAuth2ClientFlowCredentials,
-    OAuth2PasswordFlowCredentials,
-    OAuth2TokenCredentials,
-)
+from logprep.util.credentials import Credentials
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
     GetterNotFoundError,
     HttpGetter,
 )
-from tests.testdata.metadata import path_to_config
 
 yaml = YAML(pure=True, typ="safe")
 
@@ -305,6 +297,7 @@ second_dict:
 
 
 class TestHttpGetter:
+
     def test_factory_returns_http_getter_for_http(self):
         http_getter = GetterFactory.from_string("http://testfile.json")
         assert isinstance(http_getter, HttpGetter)
@@ -399,21 +392,122 @@ class TestHttpGetter:
             mock.call("GET", "/bar", body=None, headers=mock.ANY),
         ]
 
-    def test_credentials_returns_none_if_no_credentials(self):
+    def test_credentials_returns_credential_object_if_no_credentials(self):
         http_getter = GetterFactory.from_string("https://does-not-matter/bar")
-        assert http_getter.credentials is None
+        assert isinstance(http_getter.credentials, Credentials)
 
     def test_credentials_returns_credentials_if_set(self, tmp_path):
-        credentials_file_content = """
-{
-    "https://does-not-matter": {
-        "username": "myuser",
-        "password": "mypassword"
-    }
-}
-"""
+        credentials_file_content = {
+            "https://does-not-matter": {
+                "username": "myuser",
+                "password": "mypassword",
+            }
+        }
         credentials_file: Path = tmp_path / "credentials.json"
-        credentials_file.write_text(credentials_file_content)
+        credentials_file.write_text(json.dumps(credentials_file_content))
         os.environ["LOGPREP_CREDENTIALS_FILE"] = str(credentials_file)
         http_getter = GetterFactory.from_string("https://does-not-matter/bar")
         assert isinstance(http_getter.credentials, Credentials)
+
+    @responses.activate
+    def test_get_raw_gets_token_before_request(self, tmp_path):
+        responses.add(
+            responses.POST,
+            "https://the.krass.endpoint/token",
+            json={
+                "access_token": "toooooken",
+                "expires_in": 3600,
+                "refresh_token": "refresh_token123123",
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://does-not-matter/bar",
+            json={"key": "the cooooontent"},
+            match=[matchers.header_matcher({"Authorization": "Bearer toooooken"})],
+        )
+        credentials_file_content = {
+            "https://does-not-matter": {
+                "username": "myuser",
+                "password": "mypassword",
+                "endpoint": "https://the.krass.endpoint/token",
+            }
+        }
+        credentials_file: Path = tmp_path / "credentials.json"
+        credentials_file.write_text(json.dumps(credentials_file_content))
+        with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
+            http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+            return_content = http_getter.get_json()
+            assert return_content == {"key": "the cooooontent"}
+            responses.assert_call_count("https://the.krass.endpoint/token", 1)
+            responses.assert_call_count("https://does-not-matter/bar", 1)
+
+    @responses.activate
+    def test_get_raw_reuses_existing_session(self, tmp_path):
+        responses.add(
+            responses.POST,
+            "https://the.krass.endpoint/token",
+            json={
+                "access_token": "toooooken",
+                "expires_in": 3600,
+                "refresh_token": "refresh_token123123",
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://does-not-matter/bar",
+            json={"key": "the cooooontent"},
+            match=[matchers.header_matcher({"Authorization": "Bearer toooooken"})],
+        )
+        credentials_file_content = {
+            "https://does-not-matter": {
+                "username": "myuser",
+                "password": "mypassword",
+                "endpoint": "https://the.krass.endpoint/token",
+            }
+        }
+        credentials_file: Path = tmp_path / "credentials.json"
+        credentials_file.write_text(json.dumps(credentials_file_content))
+        with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
+            http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+            return_content = http_getter.get_json()
+            return_content = http_getter.get_json()
+            assert return_content == {"key": "the cooooontent"}
+            responses.assert_call_count("https://the.krass.endpoint/token", 1)
+            responses.assert_call_count("https://does-not-matter/bar", 2)
+
+    @responses.activate
+    def test_get_raw_refreshes_token_if_expired(self, tmp_path):
+        responses.add(
+            responses.POST,
+            "https://the.krass.endpoint/token",
+            json={
+                "access_token": "toooooken",
+                "expires_in": 3600,
+                "refresh_token": "refresh_token123123",
+            },
+        )
+        responses.add(
+            responses.GET,
+            "https://does-not-matter/bar",
+            json={"key": "the cooooontent"},
+            match=[matchers.header_matcher({"Authorization": "Bearer toooooken"})],
+        )
+        credentials_file_content = {
+            "https://does-not-matter": {
+                "username": "myuser",
+                "password": "mypassword",
+                "endpoint": "https://the.krass.endpoint/token",
+            }
+        }
+        credentials_file: Path = tmp_path / "credentials.json"
+        credentials_file.write_text(json.dumps(credentials_file_content))
+        with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
+            http_getter: HttpGetter = GetterFactory.from_string("https://does-not-matter/bar")
+            return_content = http_getter.get_json()
+            assert return_content == {"key": "the cooooontent"}
+            responses.assert_call_count("https://the.krass.endpoint/token", 1)
+            responses.assert_call_count("https://does-not-matter/bar", 1)
+            # expire token
+            http_getter.credentials._token.expiry_time = datetime.now() - timedelta(seconds=3600)
+            return_content = http_getter.get_json()
