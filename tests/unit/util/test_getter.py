@@ -64,16 +64,6 @@ class TestGetterFactory:
         my_getter = GetterFactory.from_string(url)
         assert my_getter.target == "the-web-target"
 
-    def test_getter_expands_not_set_environment_to_blank(self):
-        if "PYTEST_TEST_TOKEN" in os.environ:
-            os.environ.pop("PYTEST_TEST_TOKEN")
-        if "PYTEST_TEST_TARGET" in os.environ:
-            os.environ.pop("PYTEST_TEST_TARGET")
-        url = "https://oauth:${PYTEST_TEST_TOKEN}@randomtarget/${PYTEST_TEST_TARGET}"
-        my_getter = GetterFactory.from_string(url)
-        assert my_getter._password is None
-        assert my_getter.target == "oauth:@randomtarget/"
-
     def test_getter_expands_environment_variables_in_content(self, tmp_path):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"

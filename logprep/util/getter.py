@@ -146,11 +146,7 @@ class HttpGetter(Getter):
 
     _sessions: dict = {}
 
-    _username: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
-    _password: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
-    _found_valid_token: bool = field(default=False)
-    _tokens: list[str] = field(factory=list)
 
     def __attrs_post_init__(self):
         user_agent = f"Logprep version {get_versions().get('version')}"
@@ -161,10 +157,9 @@ class HttpGetter(Getter):
         if target_match.group("username") or target_match.group("password"):
             raise NotImplementedError(
                 "Basic auth credentials via commandline are not supported."
-                "Please use environment variables "
-                "LOGPREP_CONFIG_AUTH_USERNAME and LOGPREP_CONFIG_AUTH_PASSWORD instead."
+                "Please use the credential file in connection with the "
+                "environment variable 'LOGPREP_CREDENTIALS_FILE' to authenticate."
             )
-        self._set_credentials()
 
     @cached_property
     def credentials(self) -> Credentials:
@@ -213,7 +208,7 @@ class HttpGetter(Getter):
                 file_content = getter.get_raw().decode("utf-8")
                 return file_content
 
-    def _get_credentials_from_resource(self, resource):
+    def _get_credentials_from_resource(self, resource: dict) -> Credentials:
         """matches the given credentials of the resource with the expected credential object"""
         logger = logging.getLogger()
         try:
@@ -268,78 +263,20 @@ class HttpGetter(Getter):
                 f"Wrong type in given credentials file on argument: {error.args[0]}"
             ) from error
 
-    def _set_credentials(self):
-        if os.environ.get("LOGPREP_OAUTH2_0_ENDPOINT") is not None:
-            self._get_oauth_token()
-        else:
-            self._username = os.environ.get("LOGPREP_CONFIG_AUTH_USERNAME")
-            self._password = os.environ.get("LOGPREP_CONFIG_AUTH_PASSWORD")
-
-    def _get_oauth_token(self):
-        self._tokens = []
-        for i in count(start=0, step=1):
-            if os.environ.get(f"LOGPREP_OAUTH2_{i}_ENDPOINT") is None:
-                break
-            endpoint = os.environ.get(f"LOGPREP_OAUTH2_{i}_ENDPOINT")
-            grant_type = os.environ.get(f"LOGPREP_OAUTH2_{i}_GRANT_TYPE")
-            username = os.environ.get(f"LOGPREP_OAUTH2_{i}_USERNAME")
-            password = os.environ.get(f"LOGPREP_OAUTH2_{i}_PASSWORD")
-            client_id = os.environ.get(f"LOGPREP_OAUTH2_{i}_CLIENT_ID")
-            client_secret = os.environ.get(f"LOGPREP_OAUTH2_{i}_CLIENT_SECRET")
-            payload = {"grant_type": grant_type, "username": username, "password": password}
-            if client_id is not None and client_secret is not None:
-                payload.update({"client_id": client_id, "client_secret": client_secret})
-            response = requests.post(url=endpoint, data=payload, timeout=1)
-            token_response = response.json()
-            token = token_response.get("access_token")
-            if token is not None:
-                self._tokens.append(token)
-        self._found_valid_token = False
-
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
-        basic_auth = None
-        username, password = self._username, self._password
-        if username is not None:
-            basic_auth = HTTPBasicAuth(username, password)
         url = f"{self.protocol}://{self.target}"
         domain = urlparse(url).netloc
         if domain not in self._sessions:
-            domain_session = requests.Session()
-            self._sessions.update({domain: domain_session})
-        session = self._sessions.get(domain)
-        if basic_auth:
-            session.auth = basic_auth
-        resp = self._request_resource(session, url)
-        if resp.status_code == 401:
-            self._get_oauth_token()
-            resp = self._request_resource(session, url, max_retries=2)
-        resp.raise_for_status()
-        return resp.content
-
-    def _request_resource(self, session, url, max_retries=3):
-        if not self._found_valid_token and self._tokens:
-            self._get_valid_token(session, url)
-            self._found_valid_token = True
+            if self.credentials is None:
+                self._sessions.update({domain: requests.Session()})
+            else:
+                self._sessions.update({domain: self.credentials.get_session()})
+        session: Session = self._sessions.get(domain)
+        max_retries = 3
         retries = Retry(total=max_retries, status_forcelist=[500, 502, 503, 504])
         session.mount("https://", HTTPAdapter(max_retries=retries))
         session.mount("http://", HTTPAdapter(max_retries=retries))
-        resp = self._execute_request(session, url)
-        return resp
-
-    def _get_valid_token(self, session: Session, url: str):
-        errors = []
-        for token in self._tokens:
-            self._headers.update({"Authorization": f"Bearer {token}"})
-            try:
-                resp = self._execute_request(session, url)
-                resp.raise_for_status()
-                return
-            except requests.HTTPError as error:
-                errors.append(error)
-        raise requests.exceptions.RequestException(
-            f"No valid token found due to following Errors: {errors}"
-        )
-
-    def _execute_request(self, session: Session, url: str) -> Response:
-        return session.get(url=url, timeout=5, allow_redirects=True, headers=self._headers)
+        resp = session.get(url=url, timeout=5, allow_redirects=True, headers=self._headers)
+        resp.raise_for_status()
+        return resp.content
