@@ -77,12 +77,7 @@ class CredentialsFactory:
         scheme = urlparse(target_url).scheme
         raw_credentials = raw_content.get(f"{scheme}://{domain}")
         if raw_credentials:
-            if "client_secret_file" in raw_credentials:
-                raw_credentials.update({"client_secret": cls._get_secret_content(raw_credentials)})
-            if "token_file" in raw_credentials:
-                raw_credentials.update({"token": cls._get_secret_content(raw_credentials)})
-            if "password_file" in raw_credentials:
-                raw_credentials.update({"password": cls._get_secret_content(raw_credentials)})
+            cls._get_secret_content(raw_credentials)
         credentials = cls._get_credentials_from_resource(raw_credentials)
         return credentials
 
@@ -107,11 +102,14 @@ class CredentialsFactory:
     @staticmethod
     def _get_secret_content(resource: dict):
         """gets content from given secret_file"""
-
-        for key, value in resource.items():
-            if "_file" in key or "_file" in value:
-                file_path = value
-                return Path(file_path).read_text(encoding="utf-8")
+        secret_content = {
+            key.removesuffix("_file"): Path(value).read_text(encoding="utf-8")
+            for key, value in resource.items()
+            if "_file" in key
+        }
+        for key in secret_content.keys():
+            resource.pop(key + "_file")
+        resource.update(secret_content)
 
     @classmethod
     def _get_credentials_from_resource(cls, credential_mapping: dict) -> "Credentials":

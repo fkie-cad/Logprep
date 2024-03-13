@@ -12,6 +12,7 @@ from logprep.factory_error import InvalidConfigurationError
 from logprep.util.credentials import (
     AccessToken,
     BasicAuthCredentials,
+    Credentials,
     CredentialsBadRequestError,
     CredentialsFactory,
     OAuth2ClientFlowCredentials,
@@ -862,3 +863,26 @@ class TestCredentialsFactory:
         with mock.patch.dict("os.environ", mock_env):
             creds = CredentialsFactory.from_target("http://some.url/configuration")
             assert isinstance(creds, instance), testcase
+
+    def test_credentials_reads_secret_file_content_from_every_given_file(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        secret_file_path_0 = tmp_path / "secret-0.txt"
+        secret_file_path_1 = tmp_path / "secret-1.txt"
+
+        credential_file_path.write_text(
+            f"""---
+"http://some.url":
+    endpoint: "https://endpoint.end"
+    username: testuser
+    client_id: testid
+    client_secret_file: {secret_file_path_0}
+    password_file: {secret_file_path_1}
+"""
+        )
+        secret_file_path_0.write_text("thisismysecretsecretclientsecret")
+        secret_file_path_1.write_text("thisismysecorndsecretsecretpasswordsecret")
+
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            creds = CredentialsFactory.from_target("http://some.url/configuration")
+            assert isinstance(creds, Credentials)
