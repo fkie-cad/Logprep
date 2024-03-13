@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from collections import defaultdict
-from functools import cached_property
+from functools import cached_property, reduce
 from itertools import count
 from pathlib import Path
 from string import Template
@@ -178,21 +178,11 @@ class HttpGetter(Getter):
         raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
         if raw_credentials:
             if "client_secret_file" in raw_credentials:
-                raw_credentials.update(
-                    {
-                        "client_secret": self._get_secret_content(
-                            raw_credentials, "client_secret_file"
-                        )
-                    }
-                )
+                raw_credentials.update({"client_secret": self._get_secret_content(raw_credentials)})
             if "token_file" in raw_credentials:
-                raw_credentials.update(
-                    {"token": self._get_secret_content(raw_credentials, "token_file")}
-                )
+                raw_credentials.update({"token": self._get_secret_content(raw_credentials)})
             if "password_file" in raw_credentials:
-                raw_credentials.update(
-                    {"password": self._get_secret_content(raw_credentials, "password_file")}
-                )
+                raw_credentials.update({"password": self._get_secret_content(raw_credentials)})
         credentials = self._get_credentials_from_resource(raw_credentials)
         return credentials
 
@@ -213,13 +203,15 @@ class HttpGetter(Getter):
             ) from error
         return file_content
 
-    def _get_secret_content(self, resource: dict, secret_type: str):
-        """gets content from client_secret_file, token_file or password_file"""
+    def _get_secret_content(self, resource: dict):
+        """gets content from given secret_file"""
 
-        file_path = resource.get(secret_type)
-        getter = GetterFactory.from_string(str(file_path))
-        file_content = getter.get_raw().decode("utf-8")
-        return file_content
+        for key, value in resource.items():
+            if "_file" in key or "_file" in value:
+                file_path = value
+                getter = GetterFactory.from_string(str(file_path))
+                file_content = getter.get_raw().decode("utf-8")
+                return file_content
 
     def _get_credentials_from_resource(self, resource):
         """matches the given credentials of the resource with the expected credential object"""
@@ -227,9 +219,11 @@ class HttpGetter(Getter):
         try:
             match resource:
                 case {"token": token, **extra_params}:
-                    logger.info("The OAuth Token authorization has been chosen")
                     if extra_params:
-                        logger.info("Other parameters that were given: %s", **extra_params)
+                        logger.warning(
+                            "Other parameters were given: %s but OAuth token authorization was chosen",
+                            extra_params,
+                        )
                     return OAuth2TokenCredentials(token=token)
                 case {
                     "endpoint": endpoint,
@@ -237,9 +231,11 @@ class HttpGetter(Getter):
                     "client_secret": client_secret,
                     **extra_params,
                 }:
-                    logger.info("The OAuth client authorization has been chosen")
                     if extra_params:
-                        logger.info("Other parameters that were given: %s", **extra_params)
+                        logger.warning(
+                            "Other parameters were given: %s but OAuth client authorization was chosen",
+                            extra_params,
+                        )
                     return OAuth2ClientFlowCredentials(
                         endpoint=endpoint, client_id=client_id, client_secret=client_secret
                     )
@@ -249,19 +245,23 @@ class HttpGetter(Getter):
                     "password": password,
                     **extra_params,
                 }:
-                    logger.info("The OAuth password authorization has been chosen")
                     if extra_params:
-                        logger.info("Other parameters that were given: %s", **extra_params)
+                        logger.warning(
+                            "Other parameters were given: %s but OAuth password authorization was chosen",
+                            extra_params,
+                        )
                     return OAuth2PasswordFlowCredentials(
                         endpoint=endpoint, username=username, password=password
                     )
                 case {"username": username, "password": password, **extra_params}:
-                    logger.info("The Basic Auth authentication has been chosen")
                     if extra_params:
-                        logger.info("Other parameters that were given: %s", **extra_params)
+                        logger.warning(
+                            "Other parameters were given but Basic authentication was chosen: %s",
+                            extra_params,
+                        )
                     return BasicAuthCredentials(username=username, password=password)
                 case _:
-                    logger.info("No matching credentials authentication could be found.")
+                    logger.warning("No matching credentials authentication could be found.")
                     return None
         except TypeError as error:
             raise InvalidConfigurationError(
