@@ -111,39 +111,6 @@ class HttpGetter(Getter):
     * Simple http target: :code:`http://your.target/file.yml`
     * Simple https target: :code:`https://your.target/file.json`
 
-    In order for Logprep to choose the correct authentication method the
-    `LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
-    This file should provide the credentials that are needed and can either be
-    in yaml or in json format.
-    To use the authentication, the `LOGPREP_CREDENTIALS_FILE` file has to be
-    filled with the correct values that correspond to the method you want to use.
-    The following authentication methods are implemented:
-
-    - OAuth authentication with known token:
-    ```yaml
-        "http://ressource":
-            token_file: <path/to/token/file>
-    ```
-    - OAuth client authorization grant:
-    ```yaml
-    "http://ressource":
-        endpoint: <endpoint>
-        client_id: <id>
-        client_secret_file: <path/to/secret/file>
-    ```
-    - OAuth password grand type:
-    ```yaml
-    "http://ressource":
-        endpoint: <endpoint>
-        username: <username>
-        password_file: <path/to/password/file>
-    ```
-    - Basic Authentication
-    ```yaml
-    "http://ressource":
-        username: <username>
-        password_file: <path/to/password/file>
-    ```
     """
 
     _sessions: dict = {}

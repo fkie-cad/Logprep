@@ -1,4 +1,40 @@
-"""This module contains classes for different types of credentials"""
+"""
+Credentials
+===========
+
+In order for Logprep to choose the correct authentication method the
+`LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
+This file should provide the credentials that are needed and can either be
+in yaml or in json format.
+To use the authentication, the `LOGPREP_CREDENTIALS_FILE` file has to be
+filled with the correct values that correspond to the method you want to use.
+
+some example entries for such a credentials file notation are:
+
+```yaml
+"http://ressource":
+    token_file: <path/to/token/file> # won't be refreshed if expired
+"http://ressource":
+    # example for OAuth2 Client Credentials Grant
+    endpoint: <endpoint>
+    client_id: <id>
+    client_secret_file: <path/to/secret/file>
+"http://ressource":
+    # example for OAuth2 Resource Owner Password Credentials Grant
+    endpoint: <endpoint>
+    username: <username>
+    password_file: <path/to/password/file>
+"http://ressource":
+    # example for Basic Authentication
+    username: <username>
+    password_file: <path/to/password/file>
+"http://ressource":
+    # example for Basic Authentication with inline password
+    username: <username>
+    password: <plaintext password> # will be overwritten if 'password_file' is given
+```
+
+"""
 
 import json
 import logging
