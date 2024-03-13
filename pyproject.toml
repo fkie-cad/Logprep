@@ -81,6 +81,7 @@ dependencies = [
   "click",
   "pandas",
   "tabulate",
+  "falcon==3.1.3",
 
 ]
 
