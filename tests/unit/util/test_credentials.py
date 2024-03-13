@@ -8,10 +8,12 @@ import responses
 from requests import Session
 from responses import matchers
 
-from logprep.abc.credentials import CredentialsBadRequestError
+from logprep.abc.credentials import Credentials, CredentialsBadRequestError
+from logprep.factory_error import InvalidConfigurationError
 from logprep.util.credentials import (
     AccessToken,
     BasicAuthCredentials,
+    CredentialsFactory,
     OAuth2ClientFlowCredentials,
     OAuth2PasswordFlowCredentials,
     OAuth2TokenCredentials,
@@ -600,3 +602,263 @@ class TestOAuth2ClientFlowCredentials:
         error_message = rf"Authentication failed with status code 400 Bad Request: {error_reason}"
         with pytest.raises(CredentialsBadRequestError, match=error_message):
             _ = test.get_session()
+
+
+class TestCredentialsFactory:
+
+    @pytest.mark.parametrize(
+        "testcase, credential_file_content, instance, error",
+        [
+            (
+                "Return BasicAuthCredential object",
+                """---
+"https://some.url":
+    username: test
+    password: test
+""",
+                BasicAuthCredentials,
+                None,
+            ),
+            (
+                "Return OAuthPasswordFlowCredential object",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    username: test
+    password: test
+""",
+                OAuth2PasswordFlowCredentials,
+                None,
+            ),
+            (
+                "Return OAuthClientFlowCredential object",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    client_id: test
+    client_secret: test
+""",
+                OAuth2ClientFlowCredentials,
+                None,
+            ),
+            (
+                "Return OAuthTokenCredential object",
+                """---
+"https://some.url":
+    token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
+""",
+                OAuth2TokenCredentials,
+                None,
+            ),
+            (
+                "Return None if credentials are missing",
+                """---
+"https://some.url":
+""",
+                type(None),
+                None,
+            ),
+            (
+                "Return None if wrong URL is given",
+                """---
+"https://some.other.url":
+    token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
+""",
+                type(None),
+                None,
+            ),
+            (
+                "Raises InvalidConfigurationError credentials file is invalid yml",
+                """---
+"https://some.url":
+    password no colon here
+    username: test
+    endpoint: https://endpoint.end
+""",
+                None,
+                InvalidConfigurationError,
+            ),
+            (
+                "Return OAuthClientFlowCredential object when credentials file is valid json",
+                """
+{
+    "https://some.url": {
+        "endpoint": "https://endpoint.end",
+        "client_id": "test",
+        "client_secret": "test"
+    }
+}
+""",
+                OAuth2ClientFlowCredentials,
+                None,
+            ),
+            (
+                "Raise InvalidConfigurationError when credentials file is invalid json",
+                """
+{
+    "https://some.url": 
+        "endpoint": "https://endpoint.end",
+        "client_id": "test",
+        "client_secret": "test"
+""",
+                None,
+                InvalidConfigurationError,
+            ),
+            (
+                "Return OAuth2PassowordFlowCredentials object with additional client_id in credentials file",
+                """---
+"https://some.url": 
+    endpoint: https://endpoint.end
+    client_id: test
+    username: test
+    password: test
+""",
+                OAuth2PasswordFlowCredentials,
+                None,
+            ),
+            (
+                "Return OAuthTokenCredential object when username, passowrd, client_id and client_secret are also given",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    client_id: test
+    username: test
+    client_secret: test
+    password: test
+    token: "73475289038didjhwxnwnxwoiencn"
+
+""",
+                OAuth2TokenCredentials,
+                None,
+            ),
+            (
+                "Raise InvalidConfigurationError if credentials have wrong type",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    username: 123
+    password: test
+    client_secret: 456
+
+""",
+                None,
+                InvalidConfigurationError,
+            ),
+            (
+                "Return OAuthClientFlowCredential object when username passowrd are also given",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    client_id: test
+    username: test
+    password: test
+    client_secret: test
+""",
+                OAuth2ClientFlowCredentials,
+                None,
+            ),
+            (
+                "Return None if no matching credentials class is found",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    username: test
+    client_secret: test
+""",
+                type(None),
+                None,
+            ),
+        ],
+    )
+    def test_credentials_returns_expected_credential_object(
+        self, testcase, credential_file_content, instance, tmp_path, error
+    ):
+        credential_file_path = tmp_path / "credentials"
+        credential_file_path.write_text(credential_file_content)
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            if error is not None:
+                with pytest.raises(error):
+                    creds = CredentialsFactory.from_target("https://some.url/configuration")
+            else:
+                creds = CredentialsFactory.from_target("https://some.url/configuration")
+                assert isinstance(creds, instance), testcase
+
+    def test_credentials_returns_none_if_env_not_set(self):
+        creds = CredentialsFactory.from_target("https://some.url/configuration")
+        assert creds is None
+
+    def test_credentials_from_root_url(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path.write_text(
+            """---
+"http://some.url":
+    endpoint: https://endpoint.end
+    client_id: test
+    client_secret: test
+"""
+        )
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            creds = CredentialsFactory.from_target("http://some.url")
+            assert isinstance(creds, OAuth2ClientFlowCredentials)
+
+    def test_credentials_is_none_on_invalid_credentials_file_path(self):
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": "this is something useless"}
+        with mock.patch.dict("os.environ", mock_env):
+            with pytest.raises(InvalidConfigurationError, match=r"wrong credentials file path"):
+                creds = CredentialsFactory.from_target("https://some.url")
+                assert creds is None
+
+    @pytest.mark.parametrize(
+        "testcase, type_of_secret, endpoint, secret_content, instance",
+        [
+            (
+                "Return OAuthPasswordFlowCredential object when password file is given",
+                "password_file",
+                "endpoint: https://endpoint.end",
+                "hiansdnjskwuthisisaverysecretsecret",
+                OAuth2PasswordFlowCredentials,
+            ),
+            (
+                "Return OAuthClientFlowCredentials object when client secret file is given",
+                "client_secret_file",
+                "endpoint: https://endpoint.end",
+                "hiansdnjskwuthisisaverysecretsecret",
+                OAuth2ClientFlowCredentials,
+            ),
+            (
+                "Return OAuthTokenCredential object when token file is given",
+                "token_file",
+                "endpoint: https://endpoint.end",
+                "hiansdnjskwuthisisaverysecretsecret",
+                OAuth2TokenCredentials,
+            ),
+            (
+                "Return BasicAuthCredential object when no endpoint is given and password_file is given",
+                "password_file",
+                "",
+                "hiansdnjskwuthisisaverysecretsecret",
+                BasicAuthCredentials,
+            ),
+        ],
+    )
+    def test_credentials_reads_secret_file_content(
+        self, tmp_path, testcase, type_of_secret, endpoint, secret_content, instance
+    ):
+        credential_file_path = tmp_path / "credentials.yml"
+        secret_file_path = tmp_path / "secret.txt"
+        credential_file_path.write_text(
+            f"""---
+"http://some.url":
+    {endpoint}
+    username: testuser
+    client_id: testid
+    {type_of_secret}: {secret_file_path}
+"""
+        )
+        secret_file_path.write_text(secret_content)
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            creds = CredentialsFactory.from_target("http://some.url/configuration")
+            assert isinstance(creds, instance), testcase

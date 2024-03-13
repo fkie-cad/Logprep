@@ -1,13 +1,135 @@
 """This module contains classes for different types of credentials"""
 
+import json
+import logging
+import os
 from base64 import b64encode
 from datetime import datetime, timedelta
+from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 from attrs import define, field, validators
 from requests import Session
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 
 from logprep.abc.credentials import Credentials
+from logprep.factory_error import InvalidConfigurationError
+
+yaml = YAML(typ="safe", pure=True)
+
+
+class CredentialsFactory:
+    """Factory class to create credentials from a given target URL."""
+
+    _logger = logging.getLogger(__name__)
+
+    @classmethod
+    def from_target(cls, target_url: str) -> "Credentials":
+        """Factory method to create a credentials object based on the target"""
+        credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
+        if credentials_file_path is None:
+            return None
+        raw_content: dict = cls._get_content(Path(credentials_file_path))
+        domain = urlparse(target_url).netloc
+        scheme = urlparse(target_url).scheme
+        raw_credentials = raw_content.get(f"{scheme}://{domain}")
+        if raw_credentials:
+            if "client_secret_file" in raw_credentials:
+                raw_credentials.update({"client_secret": cls._get_secret_content(raw_credentials)})
+            if "token_file" in raw_credentials:
+                raw_credentials.update({"token": cls._get_secret_content(raw_credentials)})
+            if "password_file" in raw_credentials:
+                raw_credentials.update({"password": cls._get_secret_content(raw_credentials)})
+        credentials = cls._get_credentials_from_resource(raw_credentials)
+        return credentials
+
+    @staticmethod
+    def _get_content(file_path: Path) -> dict:
+        try:
+            file_content = file_path.read_text(encoding="utf-8")
+            try:
+                return json.loads(file_content)
+            except (json.JSONDecodeError, ValueError):
+                return yaml.load(file_content)
+        except (TypeError, YAMLError) as error:
+            raise InvalidConfigurationError(
+                f"Invalid credentials file: {file_path} {error.args[0]}"
+            ) from error
+        except FileNotFoundError as error:
+            raise InvalidConfigurationError(
+                f"Environment variable has wrong credentials file path: {file_path}"
+            ) from error
+        return file_content
+
+    @staticmethod
+    def _get_secret_content(resource: dict):
+        """gets content from given secret_file"""
+
+        for key, value in resource.items():
+            if "_file" in key or "_file" in value:
+                file_path = value
+                return Path(file_path).read_text(encoding="utf-8")
+
+    @classmethod
+    def _get_credentials_from_resource(cls, credential_mapping: dict) -> "Credentials":
+        """matches the given credentials of the resource with the expected credential object"""
+        try:
+            return cls._match_credentials(credential_mapping)
+        except TypeError as error:
+            raise InvalidConfigurationError(
+                f"Wrong type in given credentials file on argument: {error.args[0]}"
+            ) from error
+
+    @classmethod
+    def _match_credentials(cls, credential_mapping: dict) -> "Credentials":
+        match credential_mapping:
+            case {"token": token, **extra_params}:
+                if extra_params:
+                    cls._logger.warning(
+                        "Other parameters were given: %s but OAuth token authorization was chosen",
+                        extra_params,
+                    )
+                return OAuth2TokenCredentials(token=token)
+            case {
+                "endpoint": endpoint,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                **extra_params,
+            }:
+                if extra_params:
+                    cls._logger.warning(
+                        "Other parameters were given: %s but OAuth client authorization was chosen",
+                        extra_params,
+                    )
+                return OAuth2ClientFlowCredentials(
+                    endpoint=endpoint, client_id=client_id, client_secret=client_secret
+                )
+            case {
+                "endpoint": endpoint,
+                "username": username,
+                "password": password,
+                **extra_params,
+            }:
+                if extra_params:
+                    cls._logger.warning(
+                        "Other parameters were given: %s but OAuth password authorization was chosen",
+                        extra_params,
+                    )
+                return OAuth2PasswordFlowCredentials(
+                    endpoint=endpoint, username=username, password=password
+                )
+            case {"username": username, "password": password, **extra_params}:
+                if extra_params:
+                    cls._logger.warning(
+                        "Other parameters were given but Basic authentication was chosen: %s",
+                        extra_params,
+                    )
+                return BasicAuthCredentials(username=username, password=password)
+            case _:
+                cls._logger.warning("No matching credentials authentication could be found.")
+                return None
 
 
 @define(kw_only=True)

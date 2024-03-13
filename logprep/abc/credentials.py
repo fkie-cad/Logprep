@@ -6,8 +6,6 @@ from abc import ABC, abstractmethod
 from attrs import define, field, validators
 from requests import HTTPError, Session
 
-logger = logging.getLogger(__name__)
-
 
 class CredentialsBadRequestError(Exception):
     """Raised when the API returns a 400 Bad Request error"""
@@ -16,6 +14,8 @@ class CredentialsBadRequestError(Exception):
 @define(kw_only=True)
 class Credentials(ABC):
     """Abstract Base Class for Credentials"""
+
+    _logger = logging.getLogger(__name__)
 
     _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
 

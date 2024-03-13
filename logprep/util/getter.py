@@ -7,8 +7,7 @@ import logging
 import os
 import re
 from collections import defaultdict
-from functools import cached_property, reduce
-from itertools import count
+from functools import cached_property
 from pathlib import Path
 from string import Template
 from typing import Tuple
@@ -16,9 +15,8 @@ from urllib.parse import urlparse
 
 import requests
 from attrs import define, field, validators
-from requests import Response, Session
+from requests import Session
 from requests.adapters import HTTPAdapter
-from requests.auth import HTTPBasicAuth
 from ruamel.yaml.error import YAMLError
 from urllib3 import Retry
 
@@ -112,9 +110,12 @@ class HttpGetter(Getter):
     * Simple http target: :code:`http://your.target/file.yml`
     * Simple https target: :code:`https://your.target/file.json`
 
-    In order for Logprep to choose the correct authentication method the `LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
-    This file should provide the credentials that are needed and can either be in yaml or in json format.
-    To use the authentication, the `LOGPREP_CREDENTIALS_FILE` file has to be filled with the correct values that correspond to the method you want to use.
+    In order for Logprep to choose the correct authentication method the
+    `LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
+    This file should provide the credentials that are needed and can either be
+    in yaml or in json format.
+    To use the authentication, the `LOGPREP_CREDENTIALS_FILE` file has to be
+    filled with the correct values that correspond to the method you want to use.
     The following authentication methods are implemented:
 
     - OAuth authentication with known token:
@@ -164,104 +165,7 @@ class HttpGetter(Getter):
     @cached_property
     def credentials(self) -> Credentials:
         """get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE"""
-        credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
-        if credentials_file_path is None:
-            return None
-        all_credentials = self._get_content(credentials_file_path)
-        url = f"{self.protocol}://{self.target}"
-        domain = urlparse(url).netloc
-        raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
-        if raw_credentials:
-            if "client_secret_file" in raw_credentials:
-                raw_credentials.update({"client_secret": self._get_secret_content(raw_credentials)})
-            if "token_file" in raw_credentials:
-                raw_credentials.update({"token": self._get_secret_content(raw_credentials)})
-            if "password_file" in raw_credentials:
-                raw_credentials.update({"password": self._get_secret_content(raw_credentials)})
-        credentials = self._get_credentials_from_resource(raw_credentials)
-        return credentials
-
-    def _get_content(self, file_path):
-        try:
-            getter = GetterFactory.from_string(file_path)
-            try:
-                file_content = getter.get_json()
-            except (json.JSONDecodeError, ValueError):
-                file_content = getter.get_yaml()
-        except (TypeError, YAMLError) as error:
-            raise InvalidConfigurationError(
-                f"Invalid credentials file: {file_path} {error.args[0]}"
-            ) from error
-        except FileNotFoundError as error:
-            raise InvalidConfigurationError(
-                f"Environment variable has wrong credentials file path: {file_path}"
-            ) from error
-        return file_content
-
-    def _get_secret_content(self, resource: dict):
-        """gets content from given secret_file"""
-
-        for key, value in resource.items():
-            if "_file" in key or "_file" in value:
-                file_path = value
-                getter = GetterFactory.from_string(str(file_path))
-                file_content = getter.get_raw().decode("utf-8")
-                return file_content
-
-    def _get_credentials_from_resource(self, resource: dict) -> Credentials:
-        """matches the given credentials of the resource with the expected credential object"""
-        logger = logging.getLogger()
-        try:
-            match resource:
-                case {"token": token, **extra_params}:
-                    if extra_params:
-                        logger.warning(
-                            "Other parameters were given: %s but OAuth token authorization was chosen",
-                            extra_params,
-                        )
-                    return OAuth2TokenCredentials(token=token)
-                case {
-                    "endpoint": endpoint,
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    **extra_params,
-                }:
-                    if extra_params:
-                        logger.warning(
-                            "Other parameters were given: %s but OAuth client authorization was chosen",
-                            extra_params,
-                        )
-                    return OAuth2ClientFlowCredentials(
-                        endpoint=endpoint, client_id=client_id, client_secret=client_secret
-                    )
-                case {
-                    "endpoint": endpoint,
-                    "username": username,
-                    "password": password,
-                    **extra_params,
-                }:
-                    if extra_params:
-                        logger.warning(
-                            "Other parameters were given: %s but OAuth password authorization was chosen",
-                            extra_params,
-                        )
-                    return OAuth2PasswordFlowCredentials(
-                        endpoint=endpoint, username=username, password=password
-                    )
-                case {"username": username, "password": password, **extra_params}:
-                    if extra_params:
-                        logger.warning(
-                            "Other parameters were given but Basic authentication was chosen: %s",
-                            extra_params,
-                        )
-                    return BasicAuthCredentials(username=username, password=password)
-                case _:
-                    logger.warning("No matching credentials authentication could be found.")
-                    return None
-        except TypeError as error:
-            raise InvalidConfigurationError(
-                f"Wrong type in given credentials file on argument: {error.args[0]}"
-            ) from error
+        return Credentials.from_target(self.target)
 
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
