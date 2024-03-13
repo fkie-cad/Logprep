@@ -177,7 +177,22 @@ class HttpGetter(Getter):
         domain = urlparse(url).netloc
         raw_credentials = all_credentials.get(f"{self.protocol}://{domain}")
         if raw_credentials:
-            self._get_secret_content(raw_credentials)
+            if "client_secret_file" in raw_credentials:
+                raw_credentials.update(
+                    {
+                        "client_secret": self._get_secret_content(
+                            raw_credentials, "client_secret_file"
+                        )
+                    }
+                )
+            if "token_file" in raw_credentials:
+                raw_credentials.update(
+                    {"token": self._get_secret_content(raw_credentials, "token_file")}
+                )
+            if "password_file" in raw_credentials:
+                raw_credentials.update(
+                    {"password": self._get_secret_content(raw_credentials, "password_file")}
+                )
         credentials = self._get_credentials_from_resource(raw_credentials)
         return credentials
 
@@ -198,23 +213,13 @@ class HttpGetter(Getter):
             ) from error
         return file_content
 
-    def _get_secret_content(self, resource):
+    def _get_secret_content(self, resource: dict, secret_type: str):
         """gets content from client_secret_file, token_file or password_file"""
-        if "client_secret_file" in resource:
-            file_path = resource.get("client_secret_file")
-            getter = GetterFactory.from_string(str(file_path))
-            file_content = getter.get_raw().decode("utf-8")
-            resource.update({"client_secret": file_content})
-        if "token_file" in resource:
-            file_path = resource.get("token_file")
-            getter = GetterFactory.from_string(str(file_path))
-            file_content = getter.get_raw().decode("utf-8")
-            resource.update({"token": file_content})
-        if "password_file" in resource:
-            file_path = resource.get("password_file")
-            getter = GetterFactory.from_string(str(file_path))
-            file_content = getter.get_raw().decode("utf-8")
-            resource.update({"password": file_content})
+
+        file_path = resource.get(secret_type)
+        getter = GetterFactory.from_string(str(file_path))
+        file_content = getter.get_raw().decode("utf-8")
+        return file_content
 
     def _get_credentials_from_resource(self, resource):
         """matches the given credentials of the resource with the expected credential object"""
