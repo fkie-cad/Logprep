@@ -27,6 +27,7 @@ from logprep.abc.getter import Getter
 from logprep.factory_error import InvalidConfigurationError
 from logprep.util.credentials import (
     BasicAuthCredentials,
+    CredentialsFactory,
     OAuth2ClientFlowCredentials,
     OAuth2PasswordFlowCredentials,
     OAuth2TokenCredentials,
@@ -165,7 +166,7 @@ class HttpGetter(Getter):
     @cached_property
     def credentials(self) -> Credentials:
         """get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE"""
-        return Credentials.from_target(self.target)
+        return CredentialsFactory.from_target(self.target)
 
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
