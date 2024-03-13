@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from attrs import define, field, validators
 from requests import Session
@@ -15,3 +16,6 @@ class Credentials(ABC):
         if self._session is None:
             self._session = Session()
         return self._session
+
+    def _no_authorization_header(self, session):
+        return session.headers.get("Authorization") is None

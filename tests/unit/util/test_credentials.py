@@ -9,6 +9,7 @@ from requests import Session
 from responses import matchers
 
 from logprep.util.credentials import (
+    AccessToken,
     BasicAuthCredentials,
     OAuth2ClientFlowCredentials,
     OAuth2PasswordFlowCredentials,
@@ -269,8 +270,8 @@ class TestOAuth2PasswordFlowCredentials:
             mock_datetime.now.return_value = mock_now
             session = test.get_session()
         assert session.headers.get("Authorization").startswith("Bearer")
-        assert test._refresh_token == "refresh_token123123"
-        assert test._expiry_time == expected_expiry_time
+        assert test._token.refresh_token == "refresh_token123123"
+        assert test._token.expiry_time == expected_expiry_time
 
     @responses.activate
     def test_get_session_uses_refresh_token_if_token_is_expired(self):
@@ -300,13 +301,15 @@ class TestOAuth2PasswordFlowCredentials:
         )
         test._session = Session()
         test._session.headers.update({"Authorization": "Bearer bla"})
-        mock_now = datetime.now()
-        test._refresh_token = "refresh1234"
-        test._expiry_time = mock_now  # expire the token
+        test._token = AccessToken(
+            token="doesnotmatter", refresh_token="refresh1234", expires_in=3600
+        )
+        mock_expiry_time = datetime.now() - timedelta(seconds=3600)
+        test._token.expiry_time = mock_expiry_time  # expire the token
         # end prepare mock
         session = test.get_session()
         assert session.headers.get("Authorization") == "Bearer new toooken", "new should be used"
-        assert test._refresh_token == "refresh_token123123", "new refresh token should be set"
+        assert test._token.refresh_token == "refresh_token123123", "new refresh token should be set"
         # next refresh with new refresh token
         responses.add(
             responses.POST,
@@ -326,7 +329,7 @@ class TestOAuth2PasswordFlowCredentials:
                 matchers.header_matcher({"Content-Type": "application/x-www-form-urlencoded"}),
             ],
         )
-        test._expiry_time = mock_now  # expire the token
+        test._token.expiry_time = mock_expiry_time  # expire the token
         new_session = test.get_session()
         assert new_session is not session, "new session should be returned for every refresh"
 
@@ -337,8 +340,7 @@ class TestOAuth2PasswordFlowCredentials:
             password="password",
             username="user",
         )
-        test._refresh_token = "refresh1234"
-        test._expiry_time = datetime.now() + timedelta(seconds=3600)
+        test._token = AccessToken(token="bla", refresh_token="refresh1234", expires_in=3600)
         test._session = Session()
         test._session.headers.update({"Authorization": "Bearer bla"})
         session = test.get_session()  # should not lead to an exception
