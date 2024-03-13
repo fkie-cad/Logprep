@@ -1,3 +1,5 @@
+"""This module contains classes for different types of credentials"""
+
 from base64 import b64encode
 from datetime import datetime, timedelta
 
@@ -42,7 +44,9 @@ class BasicAuthCredentials(Credentials):
     """Basic Authentication Credentials"""
 
     username: str = field(validator=validators.instance_of(str))
+    """The username for the basic authentication."""
     password: str = field(validator=validators.instance_of(str))
+    """The password for the basic authentication."""
 
     def get_session(self) -> Session:
         session = super().get_session()
@@ -80,10 +84,13 @@ class OAuth2PasswordFlowCredentials(Credentials):
     """
 
     endpoint: str = field(validator=validators.instance_of(str))
+    """The token endpoint for the OAuth2 server. This is used to request the token."""
     password: str = field(validator=validators.instance_of(str))
+    """the password for the token request"""
     username: str = field(validator=validators.instance_of(str))
+    """the username for the token request"""
     timeout: int = field(validator=validators.instance_of(int), default=1)
-    """the timeout for the token request"""
+    """The timeout for the token request. Defaults to 1 second."""
     _token: AccessToken = field(
         validator=validators.instance_of((AccessToken, type(None))),
         init=False,
@@ -134,9 +141,13 @@ class OAuth2ClientFlowCredentials(Credentials):
     """
 
     endpoint: str = field(validator=validators.instance_of(str))
+    """The token endpoint for the OAuth2 server. This is used to request the token."""
     client_id: str = field(validator=validators.instance_of(str))
+    """The client id for the token request. This is used to identify the client."""
     client_secret: str = field(validator=validators.instance_of(str))
+    """The client secret for the token request. This is used to authenticate the client."""
     timeout: int = field(validator=validators.instance_of(int), default=1)
+    """The timeout for the token request. Defaults to 1 second."""
     _token: AccessToken = field(
         validator=validators.instance_of((AccessToken, type(None))),
         init=False,
