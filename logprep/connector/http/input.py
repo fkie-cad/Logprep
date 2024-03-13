@@ -32,7 +32,8 @@ from typing import Mapping, Tuple, Union
 import msgspec
 import uvicorn
 from attrs import define, field, validators
-from fastapi import FastAPI, Request
+#from fastapi import FastAPI, Request
+import falcon.asgi
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
 from logprep.abc.input import Input
@@ -51,10 +52,10 @@ class HttpEndpoint(ABC):
     def __init__(self, messages: queue.Queue) -> None:
         self.messages = messages
 
-    @abstractmethod
-    async def endpoint(self, **kwargs):
-        """callback method for route"""
-        ...  # pragma: no cover
+    #@abstractmethod
+    #async def on_post(self, req, resp):
+    #    """callback method for route"""
+    #    ...  # pragma: no cover
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -65,7 +66,7 @@ class JSONHttpEndpoint(HttpEndpoint):
 
         message: str
 
-    async def endpoint(self, event: Event):  # pylint: disable=arguments-differ
+    async def on_post(self, event: Event):  # pylint: disable=arguments-differ
         """json endpoint method"""
         self.messages.put(dict(event))
 
@@ -75,9 +76,9 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
-    async def endpoint(self, request: Request):  # pylint: disable=arguments-differ
+    async def __call__(self, req, resp):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
-        data = await request.body()
+        data = await req.stream.read()
         data = data.decode("utf8")
         for line in data.splitlines():
             line = line.strip()
@@ -89,9 +90,9 @@ class JSONLHttpEndpoint(HttpEndpoint):
 class PlaintextHttpEndpoint(HttpEndpoint):
     """:code:`plaintext` endpoint to get the body from request and put it in :code:`message` field"""
 
-    async def endpoint(self, request: Request):  # pylint: disable=arguments-differ
+    async def on_post(self, req, resp):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
-        data = await request.body()
+        data = await req.stream.read()
         self.messages.put({"message": data.decode("utf8")})
 
 
@@ -162,20 +163,19 @@ class HttpConnector(Input):
             :noindex:
         """
 
-    app: FastAPI
+    app: falcon.asgi.App()
     server: uvicorn.Server
 
     __slots__ = ["app", "server"]
 
     def setup(self):
         super().setup()
-        self.app = FastAPI()
+        self.app = falcon.asgi.App()
+
         for endpoint_path, endpoint_name in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_name)
             endpoint = endpoint_class(self.messages)
-            self.app.add_api_route(
-                path=f"{endpoint_path}", endpoint=endpoint.endpoint, methods=["POST"]
-            )
+            self.app.add_sink(endpoint, prefix=f"{endpoint_path}")
         uvicorn_config = uvicorn.Config(
             **self._config.uvicorn_config, app=self.app, log_level=self._logger.level
         )

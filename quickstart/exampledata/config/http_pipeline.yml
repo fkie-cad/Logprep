@@ -1,7 +1,7 @@
 version: 1
 
 metrics:
-  enabled: true
+  enabled: false
   port: 8000
 
 input:
@@ -11,7 +11,8 @@ input:
           host: 0.0.0.0
           port: 9000
       endpoints:
-          /lab/123/ABC/auditlog: jsonl
+          /lab/123/(first|second|third)/js.*: jsonl
+          /lab/123/(ABC|DEF)/pl.*: plaintext
 output:
   kafka:
     type: confluentkafka_output
