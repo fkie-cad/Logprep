@@ -438,3 +438,79 @@ class TestOAuth2ClientFlowCredentials:
         )
         session = test.get_session()
         assert session.headers.get("Authorization") == "Bearer toooooken"
+
+    @responses.activate
+    def test_get_session_does_not_requests_new_token_if_not_expired(self):
+        test = OAuth2ClientFlowCredentials(
+            endpoint="https://the.endpoint",
+            client_secret="very secret password",
+            client_id="allmighty_client_id",
+        )
+        test._token = AccessToken(token="bla", expires_in=3600)
+        test._session = Session()
+        test._session.headers.update({"Authorization": "Bearer bla"})
+        session = test.get_session(), "should not raise"
+        assert session
+
+    @responses.activate
+    def test_get_session_refreshes_token(self):
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "access_token": "new toooken",
+                "expires_in": 3600,
+            },
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "client_credentials",
+                    }
+                ),
+                matchers.header_matcher(
+                    {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Authorization": "Basic YWxsbWlnaHR5X2NsaWVudF9pZDp2ZXJ5IHNlY3JldCBwYXNzd29yZA==",
+                    }
+                ),
+            ],
+        )
+        # start prepare mock state after getting first authorization token
+        test = OAuth2ClientFlowCredentials(
+            endpoint="https://the.endpoint",
+            client_secret="very secret password",
+            client_id="allmighty_client_id",
+        )
+        test._session = Session()
+        test._session.headers.update({"Authorization": "Bearer bla"})
+        test._token = AccessToken(token="doesnotmatter", expires_in=3600)
+        mock_expiry_time = datetime.now() - timedelta(seconds=3600)
+        test._token.expiry_time = mock_expiry_time  # expire the token
+        # end prepare mock
+        session = test.get_session()
+        assert session.headers.get("Authorization") == "Bearer new toooken", "new should be used"
+        # next refresh with new refresh token
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "access_token": "very new token",
+                "expires_in": 3600,
+            },
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "client_credentials",
+                    }
+                ),
+                matchers.header_matcher(
+                    {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Authorization": "Basic YWxsbWlnaHR5X2NsaWVudF9pZDp2ZXJ5IHNlY3JldCBwYXNzd29yZA==",
+                    }
+                ),
+            ],
+        )
+        test._token.expiry_time = mock_expiry_time  # expire the token
+        new_session = test.get_session()
+        assert new_session is not session, "new session should be returned for every refresh"

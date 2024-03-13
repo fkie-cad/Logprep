@@ -136,14 +136,20 @@ class OAuth2ClientFlowCredentials(Credentials):
     client_id: str = field(validator=validators.instance_of(str))
     client_secret: str = field(validator=validators.instance_of(str))
     timeout: int = field(validator=validators.instance_of(int), default=1)
+    _token: AccessToken = field(
+        validator=validators.instance_of((AccessToken, type(None))),
+        init=False,
+    )
 
     def get_session(self) -> Session:
-        access_token, expires_in = self._get_token()
         session = super().get_session()
-        session.headers["Authorization"] = f"Bearer {access_token}"
+        if "Authorization" in session.headers and self._token.is_expired:
+            session = Session()
+        if self._no_authorization_header(session):
+            session.headers["Authorization"] = f"Bearer {self._get_token()}"
         return session
 
-    def _get_token(self) -> tuple[str, str, int]:
+    def _get_token(self) -> AccessToken:
         payload = {
             "grant_type": "client_credentials",
         }
@@ -160,4 +166,5 @@ class OAuth2ClientFlowCredentials(Credentials):
         token_response = response.json()
         access_token = token_response.get("access_token")
         expires_in = token_response.get("expires_in")
-        return access_token, expires_in
+        self._token = AccessToken(token=access_token, expires_in=expires_in)
+        return self._token
