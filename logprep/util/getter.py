@@ -130,15 +130,19 @@ class HttpGetter(Getter):
                 "environment variable 'LOGPREP_CREDENTIALS_FILE' to authenticate."
             )
 
+    @property
+    def url(self) -> str:
+        """Returns the url of the target."""
+        return f"{self.protocol}://{self.target}"
+
     @cached_property
     def credentials(self) -> Credentials:
         """get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE"""
-        return CredentialsFactory.from_target(self.target)
+        return CredentialsFactory.from_target(self.url)
 
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
-        url = f"{self.protocol}://{self.target}"
-        domain = urlparse(url).netloc
+        domain = urlparse(self.url).netloc
         if domain not in self._sessions:
             if self.credentials is None:
                 self._sessions.update({domain: requests.Session()})

@@ -398,3 +398,22 @@ class TestHttpGetter:
             mock.call("GET", "/bar", body=None, headers=mock.ANY),
             mock.call("GET", "/bar", body=None, headers=mock.ANY),
         ]
+
+    def test_credentials_returns_none_if_no_credentials(self):
+        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        assert http_getter.credentials is None
+
+    def test_credentials_returns_credentials_if_set(self, tmp_path):
+        credentials_file_content = """
+{
+    "https://does-not-matter": {
+        "username": "myuser",
+        "password": "mypassword"
+    }
+}
+"""
+        credentials_file: Path = tmp_path / "credentials.json"
+        credentials_file.write_text(credentials_file_content)
+        os.environ["LOGPREP_CREDENTIALS_FILE"] = str(credentials_file)
+        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        assert isinstance(http_getter.credentials, Credentials)
