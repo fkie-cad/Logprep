@@ -116,6 +116,7 @@ class OAuth2PasswordFlowCredentials(Credentials):
             data=payload,
             timeout=self.timeout,
         )
+        self._handle_bad_requests_errors(response)
         token_response = response.json()
         access_token = token_response.get("access_token")
         refresh_token = token_response.get("refresh_token")
@@ -163,6 +164,7 @@ class OAuth2ClientFlowCredentials(Credentials):
             timeout=self.timeout,
             headers=headers,
         )
+        self._handle_bad_requests_errors(response)
         token_response = response.json()
         access_token = token_response.get("access_token")
         expires_in = token_response.get("expires_in")

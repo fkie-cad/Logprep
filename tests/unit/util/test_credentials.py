@@ -8,6 +8,7 @@ import responses
 from requests import Session
 from responses import matchers
 
+from logprep.abc.credentials import CredentialsBadRequestError
 from logprep.util.credentials import (
     AccessToken,
     BasicAuthCredentials,
@@ -346,6 +347,49 @@ class TestOAuth2PasswordFlowCredentials:
         session = test.get_session()  # should not lead to an exception
         assert session
 
+    @pytest.mark.parametrize(
+        "error_reason",
+        [
+            "invalid_request",
+            "invalid_client",
+            "invalid_grant",
+            "unauthorized_client",
+            "unsupported_grant_type",
+        ],
+    )
+    @responses.activate
+    def test_get_session_error_handling(self, error_reason):
+        test = OAuth2PasswordFlowCredentials(
+            endpoint="https://the.endpoint",
+            username="user",
+            password="password",
+        )
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "error": error_reason,
+            },
+            status=400,
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "password",
+                        "username": "user",
+                        "password": "password",
+                    }
+                ),
+                matchers.header_matcher(
+                    {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    }
+                ),
+            ],
+        )
+        error_message = rf"Authentication failed with status code 400 Bad Request: {error_reason}"
+        with pytest.raises(CredentialsBadRequestError, match=error_message):
+            _ = test.get_session()
+
 
 class TestOAuth2ClientFlowCredentials:
 
@@ -514,3 +558,45 @@ class TestOAuth2ClientFlowCredentials:
         test._token.expiry_time = mock_expiry_time  # expire the token
         new_session = test.get_session()
         assert new_session is not session, "new session should be returned for every refresh"
+
+    @pytest.mark.parametrize(
+        "error_reason",
+        [
+            "invalid_request",
+            "invalid_client",
+            "invalid_grant",
+            "unauthorized_client",
+            "unsupported_grant_type",
+        ],
+    )
+    @responses.activate
+    def test_get_session_error_handling(self, error_reason):
+        test = OAuth2ClientFlowCredentials(
+            endpoint="https://the.endpoint",
+            client_secret="very secret password",
+            client_id="allmighty_client_id",
+        )
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "error": error_reason,
+            },
+            status=400,
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "client_credentials",
+                    }
+                ),
+                matchers.header_matcher(
+                    {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Authorization": "Basic YWxsbWlnaHR5X2NsaWVudF9pZDp2ZXJ5IHNlY3JldCBwYXNzd29yZA==",
+                    }
+                ),
+            ],
+        )
+        error_message = rf"Authentication failed with status code 400 Bad Request: {error_reason}"
+        with pytest.raises(CredentialsBadRequestError, match=error_message):
+            _ = test.get_session()
