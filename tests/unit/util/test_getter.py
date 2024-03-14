@@ -5,6 +5,7 @@
 # pylint: disable=protected-access
 import json
 import os
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
@@ -50,23 +51,21 @@ class TestGetterFactory:
         assert my_getter.protocol == expected_protocol
         assert my_getter.target == expected_target
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TARGET": "the-web-target"})
     def test_getter_expands_from_environment(self):
-        os.environ["PYTEST_TEST_TARGET"] = "the-web-target"
         url = "https://${PYTEST_TEST_TARGET}"
         my_getter = GetterFactory.from_string(url)
         assert my_getter.target == "the-web-target"
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_environment_variables_in_content(self, tmp_path):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"
         testfile.write_text("this is my $PYTEST_TEST_TOKEN")
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken"
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_setted_environment_variables_and_missing_to_blank(self, tmp_path):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
-        if "LOGPREP_MISSING_TOKEN" in os.environ:
-            os.environ.pop("LOGPREP_MISSING_TOKEN")
         testfile = tmp_path / "test_getter.json"
         testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $LOGPREP_MISSING_TOKEN")
         my_getter = GetterFactory.from_string(str(testfile))
@@ -74,19 +73,17 @@ class TestGetterFactory:
         assert "LOGPREP_MISSING_TOKEN" in my_getter.missing_env_vars
         assert len(my_getter.missing_env_vars) == 1
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_only_uppercase_variable_names(self, tmp_path):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"
         testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $pytest_test_token")
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my $pytest_test_token"
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_setted_environment_variables_and_missing_to_blank_with_braced_variables(
         self, tmp_path
     ):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
-        if "LOGPREP_MISSING_TOKEN" in os.environ:
-            os.environ.pop("LOGPREP_MISSING_TOKEN")
         testfile = tmp_path / "test_getter.json"
         testfile.write_text(
             "this is my ${PYTEST_TEST_TOKEN}, and this is my ${LOGPREP_MISSING_TOKEN}"
@@ -94,32 +91,31 @@ class TestGetterFactory:
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my "
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_only_uppercase_variable_names_with_braced_variables(self, tmp_path):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"
         testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${not_a_token}")
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my ${not_a_token}"
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_ignores_list_comparison_logprep_list_variable(self, tmp_path):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"
         testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${LOGPREP_LIST}")
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my ${LOGPREP_LIST}"
         assert len(my_getter.missing_env_vars) == 0
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken", "LOGPREP_LIST": "foo"})
     def test_getter_ignores_list_comparison_logprep_list_variable_if_set(self, tmp_path):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
-        os.environ.update({"LOGPREP_LIST": "foo"})
         testfile = tmp_path / "test_getter.json"
         testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${LOGPREP_LIST}")
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my ${LOGPREP_LIST}"
         assert len(my_getter.missing_env_vars) == 0
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_environment_variables_in_yaml_content(self, tmp_path):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"
         testfile.write_text(
             """---
@@ -139,8 +135,8 @@ dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
         }
         assert my_getter.get_yaml() == expected
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_only_whitelisted_in_yaml_content(self, tmp_path):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"
         testfile.write_text(
             """---
@@ -161,9 +157,8 @@ dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
         }
         assert my_getter.get_yaml() == expected
 
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken", "LOGPREP_LIST": "foo"})
     def test_getter_does_not_reduces_double_dollar_for_unvalid_prefixes(self, tmp_path):
-        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
-        os.environ.update({"LOGPREP_LIST": "foo"})
         testfile = tmp_path / "test_getter.json"
         testfile.write_text(
             "this is my $PYTEST_TEST_TOKEN, and this is my $$UNVALID_PREFIXED_TOKEN"
@@ -405,12 +400,13 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
-        os.environ["LOGPREP_CREDENTIALS_FILE"] = str(credentials_file)
-        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
-        assert isinstance(http_getter.credentials, Credentials)
+        with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
+            http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+            assert isinstance(http_getter.credentials, Credentials)
 
     @responses.activate
     def test_get_raw_gets_token_before_request(self, tmp_path):
+        domain = str(uuid.uuid4())
         responses.add(
             responses.POST,
             "https://the.krass.endpoint/token",
@@ -422,12 +418,12 @@ class TestHttpGetter:
         )
         responses.add(
             responses.GET,
-            "https://does-not-matter/bar",
+            f"https://{domain}/bar",
             json={"key": "the cooooontent"},
             match=[matchers.header_matcher({"Authorization": "Bearer toooooken"})],
         )
         credentials_file_content = {
-            "https://does-not-matter": {
+            f"https://{domain}": {
                 "username": "myuser",
                 "password": "mypassword",
                 "endpoint": "https://the.krass.endpoint/token",
@@ -436,14 +432,15 @@ class TestHttpGetter:
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
         with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
-            http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+            http_getter = GetterFactory.from_string(f"https://{domain}/bar")
             return_content = http_getter.get_json()
             assert return_content == {"key": "the cooooontent"}
             responses.assert_call_count("https://the.krass.endpoint/token", 1)
-            responses.assert_call_count("https://does-not-matter/bar", 1)
+            responses.assert_call_count(f"https://{domain}/bar", 1)
 
     @responses.activate
     def test_get_raw_reuses_existing_session(self, tmp_path):
+        domain = str(uuid.uuid4())
         responses.add(
             responses.POST,
             "https://the.krass.endpoint/token",
@@ -455,12 +452,12 @@ class TestHttpGetter:
         )
         responses.add(
             responses.GET,
-            "https://does-not-matter/bar",
+            f"https://{domain}/bar",
             json={"key": "the cooooontent"},
             match=[matchers.header_matcher({"Authorization": "Bearer toooooken"})],
         )
         credentials_file_content = {
-            "https://does-not-matter": {
+            f"https://{domain}": {
                 "username": "myuser",
                 "password": "mypassword",
                 "endpoint": "https://the.krass.endpoint/token",
@@ -469,15 +466,16 @@ class TestHttpGetter:
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
         with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
-            http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+            http_getter = GetterFactory.from_string(f"https://{domain}/bar")
             return_content = http_getter.get_json()
             return_content = http_getter.get_json()
             assert return_content == {"key": "the cooooontent"}
             responses.assert_call_count("https://the.krass.endpoint/token", 1)
-            responses.assert_call_count("https://does-not-matter/bar", 2)
+            responses.assert_call_count(f"https://{domain}/bar", 2)
 
     @responses.activate
     def test_get_raw_refreshes_token_if_expired(self, tmp_path):
+        domain = str(uuid.uuid4())
         responses.add(
             responses.POST,
             "https://the.krass.endpoint/token",
@@ -489,12 +487,12 @@ class TestHttpGetter:
         )
         responses.add(
             responses.GET,
-            "https://does-not-matter/bar",
+            f"https://{domain}/bar",
             json={"key": "the cooooontent"},
             match=[matchers.header_matcher({"Authorization": "Bearer toooooken"})],
         )
         credentials_file_content = {
-            "https://does-not-matter": {
+            f"https://{domain}": {
                 "username": "myuser",
                 "password": "mypassword",
                 "endpoint": "https://the.krass.endpoint/token",
@@ -503,11 +501,13 @@ class TestHttpGetter:
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
         with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
-            http_getter: HttpGetter = GetterFactory.from_string("https://does-not-matter/bar")
+            http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
             return_content = http_getter.get_json()
             assert return_content == {"key": "the cooooontent"}
             responses.assert_call_count("https://the.krass.endpoint/token", 1)
-            responses.assert_call_count("https://does-not-matter/bar", 1)
+            responses.assert_call_count(f"https://{domain}/bar", 1)
             # expire token
-            http_getter.credentials._token.expiry_time = datetime.now() - timedelta(seconds=3600)
+            http_getter._credentials_registry.get(f"https://{domain}")._token.expiry_time = (
+                datetime.now() - timedelta(seconds=3600)
+            )
             return_content = http_getter.get_json()

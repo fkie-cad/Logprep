@@ -98,7 +98,7 @@ class HttpGetter(Getter):
 
     """
 
-    _sessions: dict[str, Credentials] = {}
+    _credentials_registry: dict[str, Credentials] = {}
 
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
 
@@ -133,9 +133,9 @@ class HttpGetter(Getter):
         domain = urlparse(self.url).netloc
         scheme = urlparse(self.url).scheme
         domain_uri = f"{scheme}://{domain}"
-        if domain_uri not in self._sessions:
-            self._sessions.update({domain_uri: self.credentials})
-        session = self._sessions.get(domain_uri).get_session()
+        if domain_uri not in self._credentials_registry:
+            self._credentials_registry.update({domain_uri: self.credentials})
+        session = self._credentials_registry.get(domain_uri).get_session()
         resp = session.get(url=self.url, timeout=5, allow_redirects=True, headers=self._headers)
         resp.raise_for_status()
         return resp.content
