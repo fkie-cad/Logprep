@@ -6,7 +6,7 @@ import json
 
 import requests
 import uvicorn
-from fastapi import FastAPI
+import falcon
 from fastapi.testclient import TestClient
 from logprep.connector.http.input import HttpConnector
 from logprep.factory import Factory
@@ -32,7 +32,7 @@ class TestHttpConnector(BaseInputTestCase):
         assert isinstance(self.object, HttpConnector)
 
     def test_has_fastapi_app(self):
-        assert isinstance(self.object.app, FastAPI)
+        assert isinstance(self.object.app, falcon.asgi.App)
 
     def test_json_endpoint_accepts_post_request(self):
         data = {"message": "my log message"}

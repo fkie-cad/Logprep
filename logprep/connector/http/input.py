@@ -26,7 +26,8 @@ import contextlib
 import inspect
 import queue
 import threading
-from abc import ABC, abstractmethod
+from abc import ABC
+#abstractmethod
 from typing import Mapping, Tuple, Union
 
 import msgspec
@@ -61,14 +62,18 @@ class HttpEndpoint(ABC):
 class JSONHttpEndpoint(HttpEndpoint):
     """:code:`json` endpoint to get json from request"""
 
+    _decoder = msgspec.json.Decoder()
+
     class Event(BaseModel):
         """model for event"""
 
         message: str
 
-    async def on_post(self, event: Event):  # pylint: disable=arguments-differ
+    async def __call__(self, req, resp):  # pylint: disable=arguments-differ
         """json endpoint method"""
-        self.messages.put(dict(event))
+        data = await req.stream.read()
+        data = data.decode("utf8")
+        self.messages.put(self._decoder.decode(data))
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -88,9 +93,10 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
-    """:code:`plaintext` endpoint to get the body from request and put it in :code:`message` field"""
+    """:code:`plaintext` endpoint to get the body from request 
+       and put it in :code:`message` field"""
 
-    async def on_post(self, req, resp):  # pylint: disable=arguments-differ
+    async def __call__(self, req, resp):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
         data = await req.stream.read()
         self.messages.put({"message": data.decode("utf8")})
