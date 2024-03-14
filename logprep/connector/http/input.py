@@ -27,9 +27,8 @@ import inspect
 import queue
 import threading
 from abc import ABC
+from logging import Logger,getLogger
 import re
-
-# abstractmethod
 from typing import Mapping, Tuple, Union
 import msgspec
 import uvicorn
@@ -37,6 +36,7 @@ from attrs import define, field, validators
 import falcon.asgi
 
 from logprep.abc.input import Input
+from logprep.util import defaults
 
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
@@ -51,11 +51,6 @@ class HttpEndpoint(ABC):
 
     def __init__(self, messages: queue.Queue) -> None:
         self.messages = messages
-
-    # @abstractmethod
-    # async def on_post(self, req, resp):
-    #    """callback method for route"""
-    #    ...  # pragma: no cover
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -105,6 +100,7 @@ class Server(uvicorn.Server):
     @contextlib.contextmanager
     def run_in_thread(self):
         """Context manager to run the server in a separate thread"""
+
         thread = threading.Thread(target=self.run)
         thread.start()
         try:
@@ -163,10 +159,10 @@ class HttpConnector(Input):
             :noindex:
         """
 
-    app: falcon.asgi.App()
-    server: uvicorn.Server
+    __slots__ = []
 
-    __slots__ = ["app", "server"]
+    def __init__(self, name: str, configuration: "HttpConnector.Config", logger: Logger) -> None:
+        super().__init__(name, configuration, logger)
 
     def setup(self):
         super().setup()
@@ -177,10 +173,15 @@ class HttpConnector(Input):
             endpoint = endpoint_class(self.messages)
 
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
+       
+        log_config = uvicorn.config.LOGGING_CONFIG
+        log_config["formatters"]["default"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
+        log_config["formatters"]["access"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
         uvicorn_config = uvicorn.Config(
-            **self._config.uvicorn_config, app=self.app, log_level=self._logger.level
+            **self._config.uvicorn_config, app=self.app, log_level=self._logger.level, log_config=log_config
         )
         self.server = Server(uvicorn_config)
+        self._logger.info("HTTP Connector Server is running")
 
     def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""
