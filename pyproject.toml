@@ -18,15 +18,20 @@ license = { file = "LICENSE" }
 classifiers = [
   "Development Status :: 3 - Alpha",
 
-  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
 
-  "License :: LGPL-2.1",
+  "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
 
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+
+  "Operating System :: POSIX :: Linux",
+
+  "Topic :: Security",
+  "Topic :: System :: Logging",
 ]
 keywords = [
   "elasticsearch",
