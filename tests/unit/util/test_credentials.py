@@ -826,7 +826,7 @@ class TestCredentialsFactory:
     password:
 """,
                 type(None),
-                None,
+                InvalidConfigurationError,
             ),
         ],
     )
