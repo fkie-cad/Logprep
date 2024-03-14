@@ -5,7 +5,6 @@ They are returned by the GetterFactory.
 import os
 import re
 from collections import defaultdict
-from functools import cached_property
 from pathlib import Path
 from string import Template
 from typing import Tuple
