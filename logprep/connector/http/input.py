@@ -27,17 +27,14 @@ import inspect
 import queue
 import threading
 from abc import ABC
+import re
 
 # abstractmethod
 from typing import Mapping, Tuple, Union
-
 import msgspec
 import uvicorn
 from attrs import define, field, validators
-
-# from fastapi import FastAPI, Request
 import falcon.asgi
-from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
 from logprep.abc.input import Input
 
@@ -65,11 +62,6 @@ class JSONHttpEndpoint(HttpEndpoint):
     """:code:`json` endpoint to get json from request"""
 
     _decoder = msgspec.json.Decoder()
-
-    class Event(BaseModel):
-        """model for event"""
-
-        message: str
 
     async def __call__(self, req, resp):  # pylint: disable=arguments-differ
         """json endpoint method"""
@@ -183,7 +175,8 @@ class HttpConnector(Input):
         for endpoint_path, endpoint_name in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_name)
             endpoint = endpoint_class(self.messages)
-            self.app.add_sink(endpoint, prefix=f"{endpoint_path}")
+
+            self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
         uvicorn_config = uvicorn.Config(
             **self._config.uvicorn_config, app=self.app, log_level=self._logger.level
         )
@@ -197,3 +190,13 @@ class HttpConnector(Input):
             return message, raw_message
         except queue.Empty:
             return None, None
+
+
+def route_compile_helper(input_re_str: str):
+    """falcon add_sink handles prefix routes as independent URI elements
+    therefore we need regex position anchors to ensure beginning and
+    end of given route and replace * with .* for user-friendliness
+    """
+    input_re_str = input_re_str.replace("*", ".*")
+    input_re_str = "^" + input_re_str + "$"
+    return re.compile(input_re_str)

@@ -25,7 +25,14 @@ class TestHttpConnector(BaseInputTestCase):
     CONFIG: dict = {
         "type": "http_input",
         "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
-        "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
+        "endpoints": {
+            "/json": "json",
+            "/*json": "json",
+            "/jsonl": "jsonl",
+            "/(first|second)/jsonl": "jsonl",
+            "/(third|fourth)/jsonl*": "jsonl",
+            "/plaintext": "plaintext",
+        },
     }
 
     def test_create_connector(self):
@@ -38,6 +45,18 @@ class TestHttpConnector(BaseInputTestCase):
         data = {"message": "my log message"}
         resp = self.client.post(url="/json", content=json.dumps(data))
         assert resp.status_code == 200
+
+    def test_json_endpoint_match_wildcard_route(self):
+        data = {"message": "my log message"}
+        resp = self.client.post(url="/api/wildcard_path/json", content=json.dumps(data))
+        assert resp.status_code == 200
+
+    def test_json_endpoint_not_match_wildcard_route(self):
+        data = {"message": "my log message"}
+        resp = self.client.post(
+            url="/api/wildcard_path/json/another_path", content=json.dumps(data)
+        )
+        assert resp.status_code == 404
 
     def test_json_message_is_put_in_queue(self):
         data = {"message": "my log message"}
@@ -57,6 +76,31 @@ class TestHttpConnector(BaseInputTestCase):
         assert resp.status_code == 200
         event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue.get("message") == data
+
+    def test_jsonl_endpoint_match_regex_route(self):
+        data = {"message": "my log message"}
+        resp = self.client.post(url="/first/jsonl", content=json.dumps(data))
+        assert resp.status_code == 200
+
+    def test_jsonl_endpoint_not_match_regex_route(self):
+        data = {"message": "my log message"}
+        resp = self.client.post(url="/firs/jsonl", content=json.dumps(data))
+        assert resp.status_code == 404
+
+    def test_jsonl_endpoint_not_match_before_start_regex(self):
+        data = {"message": "my log message"}
+        resp = self.client.post(url="/api/first/jsonl", content=json.dumps(data))
+        assert resp.status_code == 404
+
+    def test_jsonl_endpoint_match_wildcard_regex_mix_route(self):
+        data = {"message": "my log message"}
+        resp = self.client.post(url="/third/jsonl/another_path/last_path", content=json.dumps(data))
+        assert resp.status_code == 200
+
+    def test_jsonl_endpoint_not_match_wildcard_regex_mix_route(self):
+        data = {"message": "my log message"}
+        resp = self.client.post(url="/api/third/jsonl/another_path", content=json.dumps(data))
+        assert resp.status_code == 404
 
     def test_jsonl_messages_are_put_in_queue(self):
         data = """
