@@ -78,7 +78,7 @@ class CredentialsFactory:
         raw_credentials = raw_content.get(f"{scheme}://{domain}")
         if raw_credentials:
             cls._get_secret_content(raw_credentials)
-        credentials = cls._get_credentials_from_resource(raw_credentials)
+        credentials = cls._get_credentials_from_mapping(raw_credentials)
         return credentials
 
     @staticmethod
@@ -100,19 +100,21 @@ class CredentialsFactory:
         return file_content
 
     @staticmethod
-    def _get_secret_content(resource: dict):
+    def _get_secret_content(credential_mapping: dict):
         """gets content from given secret_file"""
         secret_content = {
-            key.removesuffix("_file"): Path(value).read_text(encoding="utf-8")
-            for key, value in resource.items()
-            if "_file" in key
+            credential_type.removesuffix("_file"): Path(credential_content).read_text(
+                encoding="utf-8"
+            )
+            for credential_type, credential_content in credential_mapping.items()
+            if "_file" in credential_type
         }
-        for key in secret_content.keys():
-            resource.pop(key + "_file")
-        resource.update(secret_content)
+        for credential_type in secret_content:
+            credential_mapping.pop(f"{credential_type}_file")
+        credential_mapping.update(secret_content)
 
     @classmethod
-    def _get_credentials_from_resource(cls, credential_mapping: dict) -> "Credentials":
+    def _get_credentials_from_mapping(cls, credential_mapping: dict) -> "Credentials":
         """matches the given credentials of the resource with the expected credential object"""
         try:
             return cls._match_credentials(credential_mapping)
