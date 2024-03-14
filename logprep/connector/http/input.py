@@ -27,13 +27,15 @@ import inspect
 import queue
 import threading
 from abc import ABC
-#abstractmethod
+
+# abstractmethod
 from typing import Mapping, Tuple, Union
 
 import msgspec
 import uvicorn
 from attrs import define, field, validators
-#from fastapi import FastAPI, Request
+
+# from fastapi import FastAPI, Request
 import falcon.asgi
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
@@ -53,8 +55,8 @@ class HttpEndpoint(ABC):
     def __init__(self, messages: queue.Queue) -> None:
         self.messages = messages
 
-    #@abstractmethod
-    #async def on_post(self, req, resp):
+    # @abstractmethod
+    # async def on_post(self, req, resp):
     #    """callback method for route"""
     #    ...  # pragma: no cover
 
@@ -93,8 +95,8 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
-    """:code:`plaintext` endpoint to get the body from request 
-       and put it in :code:`message` field"""
+    """:code:`plaintext` endpoint to get the body from request
+    and put it in :code:`message` field"""
 
     async def __call__(self, req, resp):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
