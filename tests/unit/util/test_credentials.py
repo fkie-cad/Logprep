@@ -190,6 +190,18 @@ class TestOAuth2PasswordFlowCredentials:
                 TypeError,
                 r"got an unexpected keyword argument 'expiry_time'",
             ),
+            (
+                "valid with client credentials",
+                {
+                    "endpoint": "https://some.endpoint/endpoint",
+                    "password": "hskwmksölkpwksmksksksmk",
+                    "username": "test_user",
+                    "client_id": "client_id",
+                    "client_secret": "client_secret",
+                },
+                None,
+                None,
+            ),
         ],
     )
     def test_init(self, testcase, error, kwargs, error_message):
@@ -214,7 +226,7 @@ class TestOAuth2PasswordFlowCredentials:
         assert test.get_session() is not None
 
     @responses.activate
-    def test_get_session_returns_session_with_auth(self):
+    def test_get_session_returns_session_with_token(self):
         responses.add(
             responses.POST,
             "https://the.endpoint",
@@ -238,6 +250,42 @@ class TestOAuth2PasswordFlowCredentials:
             endpoint="https://the.endpoint",
             password="password",
             username="user",
+        )
+        session = test.get_session()
+        assert session.headers.get("Authorization") == "Bearer toooooken"
+
+    @responses.activate
+    def test_get_session_returns_session_with_token_and_uses_client_creds(self):
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "access_token": "toooooken",
+                "expires_in": 3600,
+                "refresh_token": "refresh_token123123",
+            },
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "password",
+                        "username": "user",
+                        "password": "password",
+                    }
+                ),
+                matchers.header_matcher(
+                    {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Authorization": "Basic Y2xpZW50X2lkOmNsaWVudF9zZWNyZXQ=",
+                    }
+                ),
+            ],
+        )
+        test = OAuth2PasswordFlowCredentials(
+            endpoint="https://the.endpoint",
+            password="password",
+            username="user",
+            client_id="client_id",
+            client_secret="client_secret",
         )
         session = test.get_session()
         assert session.headers.get("Authorization") == "Bearer toooooken"
@@ -755,7 +803,7 @@ class TestCredentialsFactory:
     password: test
     client_secret: test
 """,
-                OAuth2ClientFlowCredentials,
+                OAuth2PasswordFlowCredentials,
                 None,
             ),
             (
@@ -765,6 +813,17 @@ class TestCredentialsFactory:
     endpoint: https://endpoint.end
     username: test
     client_secret: test
+""",
+                type(None),
+                None,
+            ),
+            (
+                "Error",
+                """---
+"https://some.url":
+    endpoint: https://endpoint.end
+    username: test
+    password:
 """,
                 type(None),
                 None,

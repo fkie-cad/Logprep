@@ -137,6 +137,26 @@ class CredentialsFactory:
                 "endpoint": endpoint,
                 "client_id": client_id,
                 "client_secret": client_secret,
+                "username": username,
+                "password": password,
+                **extra_params,
+            }:
+                if extra_params:
+                    cls._logger.warning(
+                        "Other parameters were given: %s but OAuth client authorization was chosen",
+                        extra_params,
+                    )
+                return OAuth2PasswordFlowCredentials(
+                    endpoint=endpoint,
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    username=username,
+                    password=password,
+                )
+            case {
+                "endpoint": endpoint,
+                "client_id": client_id,
+                "client_secret": client_secret,
                 **extra_params,
             }:
                 if extra_params:
@@ -177,8 +197,10 @@ class CredentialsFactory:
 class AccessToken:
     """A simple dataclass to hold the token and its expiry time."""
 
-    token: str = field(validator=validators.instance_of(str))
-    refresh_token: str = field(validator=validators.instance_of((str, type(None))), default=None)
+    token: str = field(validator=validators.instance_of(str), repr=False)
+    refresh_token: str = field(
+        validator=validators.instance_of((str, type(None))), default=None, repr=False
+    )
     expires_in: int = field(
         validator=validators.instance_of(int),
         default=0,
@@ -240,7 +262,7 @@ class BasicAuthCredentials(Credentials):
 
     username: str = field(validator=validators.instance_of(str))
     """The username for the basic authentication."""
-    password: str = field(validator=validators.instance_of(str))
+    password: str = field(validator=validators.instance_of(str), repr=False)
     """The password for the basic authentication."""
 
     def get_session(self) -> Session:
@@ -260,6 +282,7 @@ class OAuth2TokenCredentials(Credentials):
     token: AccessToken = field(
         validator=validators.instance_of(AccessToken),
         converter=lambda token: AccessToken(token=token),
+        repr=False,
     )
     """The OAuth2 Bearer Token. This is used to authenticate."""
 
@@ -280,15 +303,22 @@ class OAuth2PasswordFlowCredentials(Credentials):
 
     endpoint: str = field(validator=validators.instance_of(str))
     """The token endpoint for the OAuth2 server. This is used to request the token."""
-    password: str = field(validator=validators.instance_of(str))
+    password: str = field(validator=validators.instance_of(str), repr=False)
     """the password for the token request"""
     username: str = field(validator=validators.instance_of(str))
     """the username for the token request"""
     timeout: int = field(validator=validators.instance_of(int), default=1)
     """The timeout for the token request. Defaults to 1 second."""
+    client_id: str = field(validator=validators.instance_of((str, type(None))), default=None)
+    """The client id for the token request. This is used to identify the client. (Optional)"""
+    client_secret: str = field(
+        validator=validators.instance_of((str, type(None))), default=None, repr=False
+    )
+    """The client secret for the token request. This is used to authenticate the client. (Optional)"""
     _token: AccessToken = field(
         validator=validators.instance_of((AccessToken, type(None))),
         init=False,
+        repr=False,
     )
 
     def get_session(self) -> Session:
@@ -313,10 +343,17 @@ class OAuth2PasswordFlowCredentials(Credentials):
         return session
 
     def _get_token(self, payload: dict[str, str]) -> AccessToken:
+        headers = {}
+        if self.client_id and self.client_secret:
+            client_secrets = b64encode(
+                f"{self.client_id}:{self.client_secret}".encode("utf-8")
+            ).decode("utf-8")
+            headers |= {"Authorization": f"Basic {client_secrets}"}
         response = requests.post(
             url=self.endpoint,
             data=payload,
             timeout=self.timeout,
+            headers=headers,
         )
         self._handle_bad_requests_errors(response)
         token_response = response.json()
@@ -339,13 +376,12 @@ class OAuth2ClientFlowCredentials(Credentials):
     """The token endpoint for the OAuth2 server. This is used to request the token."""
     client_id: str = field(validator=validators.instance_of(str))
     """The client id for the token request. This is used to identify the client."""
-    client_secret: str = field(validator=validators.instance_of(str))
+    client_secret: str = field(validator=validators.instance_of(str), repr=False)
     """The client secret for the token request. This is used to authenticate the client."""
     timeout: int = field(validator=validators.instance_of(int), default=1)
     """The timeout for the token request. Defaults to 1 second."""
     _token: AccessToken = field(
-        validator=validators.instance_of((AccessToken, type(None))),
-        init=False,
+        validator=validators.instance_of((AccessToken, type(None))), init=False, repr=False
     )
 
     def get_session(self) -> Session:
