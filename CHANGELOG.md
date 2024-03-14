@@ -2,9 +2,12 @@
 
 ## next release
 ### Breaking
-
 ### Features
+### Improvements
+### Bugfix
 
+
+## v10.0.4
 ### Improvements
 
 * refactor logprep build process and requirements management
