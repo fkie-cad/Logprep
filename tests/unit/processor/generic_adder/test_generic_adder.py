@@ -282,6 +282,19 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "dotted": {"added": {"field": "yet_another_value"}},
             },
         ),
+        (
+            "Extend list field with 'extend_target_list' enabled",
+            {
+                "filter": "*",
+                "generic_adder": {
+                    "add": {
+                        "some_added_field": ["some value"],
+                    },
+                },
+            },
+            {"extend_generic_test": "Test"},
+            {"extend_generic_test": "Test", "some_added_field": ["some value"]},
+        ),
     ]
 
     failure_test_cases = [  # testcase, rule, event, expected, error_message

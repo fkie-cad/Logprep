@@ -11,6 +11,8 @@
 
 ### Bugfix
 
+* fix `generic_adder` not creating new field from type `list`
+
 ## v10.0.3
 ### Bugfix
 * fix loading of configuration inside the `AutoRuleCorpusTester` for `logprep test integration`
