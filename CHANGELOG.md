@@ -2,14 +2,19 @@
 
 ## next release
 ### Breaking
-
 ### Features
+### Improvements
+### Bugfix
 
+
+## v10.0.4
 ### Improvements
 
 * refactor logprep build process and requirements management
 
 ### Bugfix
+
+* fix `generic_adder` not creating new field from type `list`
 
 ## v10.0.3
 ### Bugfix

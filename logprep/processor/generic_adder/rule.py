@@ -98,7 +98,7 @@ from typing import Any
 
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
+from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory
 
@@ -119,7 +119,7 @@ class GenericAdderRule(FieldManagerRule):
         add: dict = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of((str, bool)),
+                value_validator=validators.instance_of((str, bool, list)),
             ),
             default={},
         )
