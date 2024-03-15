@@ -179,6 +179,7 @@ jobs:
       - name: Build images
         uses: docker/build-push-action@v5
         with:
+          context: .
           push: true # Will only build if this is not here
           build-args: |
             LOGPREP_VERSION=dev
