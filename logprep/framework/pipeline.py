@@ -201,10 +201,6 @@ class Pipeline:
         for _, output in self._output.items():
             output.setup()
 
-        if hasattr(self._input, "server"):
-            while self._input.server.config.port in self._used_server_ports:
-                self._input.server.config.port += 1
-            self._used_server_ports.update({self._input.server.config.port: self._process_name})
         self.logger.debug("Finished creating connectors")
         self.logger.info("Start building pipeline")
         _ = self._pipeline
@@ -227,13 +223,8 @@ class Pipeline:
                 warnings.simplefilter("default")
                 self._setup()
         self.logger.debug("Start iterating")
-        if hasattr(self._input, "server"):
-            with self._input.server.run_in_thread():
-                while self._continue_iterating.value:
-                    self.process_pipeline()
-        else:
-            while self._continue_iterating.value:
-                self.process_pipeline()
+        while self._continue_iterating.value:
+            self.process_pipeline()
         self._shut_down()
 
     @_handle_pipeline_error

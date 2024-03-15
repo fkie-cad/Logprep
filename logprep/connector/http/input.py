@@ -22,12 +22,11 @@ Example
             /thirdendpoint: jsonl
 """
 
-import contextlib
 import inspect
 import queue
 import threading
 from abc import ABC
-from logging import Logger, getLogger
+from logging import Logger
 import logging
 import re
 from typing import Mapping, Tuple, Union
@@ -92,11 +91,46 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         self.messages.put({"message": data.decode("utf8")})
 
 
-class Server(uvicorn.Server):
-    """the uvicorn server"""
+class ThreadingHTTPServer(threading.Thread):
+    """Threading Wrapper around Uvicorn Server"""
 
-    def install_signal_handlers(self):
-        pass
+    def __init__(
+        self,
+        uvicorn_config: dict,
+        endpoints_config: dict,
+        log_level: str,
+        stop_flag: threading.Event,
+    ) -> None:
+        super().__init__()
+        self.stopped = stop_flag
+        self.init_web_application_server(endpoints_config)
+        log_config = self.init_log_config()
+        self.uvicorn_config = uvicorn.Config(
+            **uvicorn_config,
+            app=self.app,
+            log_level=log_level,
+            log_config=log_config,
+        )
+        self.server = uvicorn.Server(self.uvicorn_config)
+        self.override_runtime_logging()
+        self.start()
+
+    def init_log_config(self) -> dict:
+        """use for uvicorn same log formatter like for logprep"""
+        log_config = uvicorn.config.LOGGING_CONFIG
+        log_config["formatters"]["default"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
+        log_config["formatters"]["access"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
+
+        return log_config
+
+    def init_web_application_server(self, endpoints_config: dict) -> None:
+        "init application server"
+        self.app = falcon.asgi.App()
+        for endpoint_path, endpoint in endpoints_config.items():
+            self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
+
+    # def install_signal_handlers(self):
+    #    pass
 
     def override_runtime_logging(self):
         """uvicorn doesn't provide API to change name and handler beforehand
@@ -108,20 +142,16 @@ class Server(uvicorn.Server):
         logging.getLogger("uvicorn.access").name = http_server_name
 
     # https://github.com/encode/uvicorn/issues/742#issuecomment-674411676
-    @contextlib.contextmanager
-    def run_in_thread(self):
+    def run(self):
         """Context manager to run the server in a separate thread"""
-
-        thread = threading.Thread(target=self.run)
-        thread.start()
-        self.override_runtime_logging()
-        try:
-            while not self.started:
-                pass
-            yield
-        finally:
-            self.should_exit = True
-            thread.join()
+        self.server.run()
+        # try:
+        #    while not self.started:
+        #        pass
+        #    yield
+        # finally:
+        #    self.should_exit = True
+        #    thread.join()
 
 
 class HttpConnector(Input):
@@ -144,6 +174,7 @@ class HttpConnector(Input):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.in_(UVICORN_CONFIG_KEYS),
+                    # lamba xyz tuple necessary because of input structure
                     value_validator=lambda x, y, z: True,
                 ),
             ]
@@ -175,26 +206,21 @@ class HttpConnector(Input):
 
     def __init__(self, name: str, configuration: "HttpConnector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
+        self.stop_flag = threading.Event()
 
     def setup(self):
         super().setup()
-        self.app = falcon.asgi.App()
-
+        endpoints_config = {}
         for endpoint_path, endpoint_name in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_name)
-            endpoint = endpoint_class(self.messages)
-            self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
+            endpoints_config[endpoint_path] = endpoint_class(self.messages)
 
-        log_config = uvicorn.config.LOGGING_CONFIG
-        log_config["formatters"]["default"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
-        log_config["formatters"]["access"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
-        uvicorn_config = uvicorn.Config(
-            **self._config.uvicorn_config,
-            app=self.app,
+        self.sthread = ThreadingHTTPServer(
+            uvicorn_config=self._config.uvicorn_config,
+            endpoints_config=endpoints_config,
             log_level=self._logger.level,
-            log_config=log_config,
+            stop_flag=self.stop_flag,
         )
-        self.server = Server(uvicorn_config)
 
     def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""
@@ -204,6 +230,10 @@ class HttpConnector(Input):
             return message, raw_message
         except queue.Empty:
             return None, None
+
+    def shut_down(self):
+        """Raises the Stop Event Flag to gracefully stop server"""
+        self.stop_flag.set()
 
 
 def route_compile_helper(input_re_str: str):
