@@ -24,6 +24,8 @@ some example entries for such a credentials file notation are:
     endpoint: <endpoint>
     username: <username>
     password_file: <path/to/password/file>
+    client_id: <client_id> # optional
+    client_secret_file: <path/to/secret/file> # optional
 "http://ressource":
     # example for Basic Authentication
     username: <username>
@@ -68,7 +70,20 @@ class CredentialsFactory:
 
     @classmethod
     def from_target(cls, target_url: str) -> "Credentials":
-        """Factory method to create a credentials object based on the target"""
+        """Factory method to create a credentials object based on the given target from
+            env variable `LOGPREP_CREDENTIALS_FILE`
+
+        Parameters
+        ----------
+        target_url : str
+            target for which credentials are used
+
+        Returns
+        -------
+        credentials: Credentials
+            Credentials object representing the correct authorization
+            depending on the given credentials
+        """
         credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
         if credentials_file_path is None:
             return None
@@ -83,6 +98,25 @@ class CredentialsFactory:
 
     @staticmethod
     def _get_content(file_path: Path) -> dict:
+        """gets content from credentials file
+        file can be either json or yaml
+
+        Parameters
+        ----------
+        file_path : Path
+            path to credentials file given in `LOGPREP_CREDENTIALS_FILE`
+
+        Returns
+        -------
+        dict
+            content from file
+
+        Raises
+        ------
+        InvalidConfigurationError
+            raises when credentials have wrong type or when credentials file
+            is invalid
+        """
         try:
             file_content = file_path.read_text(encoding="utf-8")
             try:
@@ -97,11 +131,19 @@ class CredentialsFactory:
             raise InvalidConfigurationError(
                 f"Environment variable has wrong credentials file path: {file_path}"
             ) from error
-        return file_content
 
     @staticmethod
     def _get_secret_content(credential_mapping: dict):
-        """gets content from given secret_file"""
+        """gets content from given secret_file in credentials file and updates
+        credentials_mapping with this content.
+
+        This file should only contain the content of the given secret e.g. the client secret.
+
+        Parameters
+        ----------
+        credentials_mapping : dict
+            content from given credentials mapping
+        """
         secret_content = {
             credential_type.removesuffix("_file"): Path(credential_content).read_text(
                 encoding="utf-8"
@@ -115,7 +157,7 @@ class CredentialsFactory:
 
     @classmethod
     def _get_credentials_from_mapping(cls, credential_mapping: dict) -> "Credentials":
-        """matches the given credentials of the resource with the expected credential object"""
+        """matches the given credentials of the credentials mapping with the expected credential object"""
         try:
             return cls._match_credentials(credential_mapping)
         except TypeError as error:
@@ -125,6 +167,18 @@ class CredentialsFactory:
 
     @classmethod
     def _match_credentials(cls, credential_mapping: dict) -> "Credentials":
+        """matches the given credentials of a given mapping to the expected credential object
+
+        Parameters
+        ----------
+        credential_mapping : dict
+            mapping of given credentials
+
+        Returns
+        -------
+        Credentials
+           expected credentials object representing the correct authentication method
+        """
         match credential_mapping:
             case {"token": token, **extra_params}:
                 if extra_params:
@@ -243,9 +297,22 @@ class Credentials:
         return self._session
 
     def _no_authorization_header(self, session):
+        """checks if authorization header exists in session"""
         return session.headers.get("Authorization") is None
 
     def _handle_bad_requests_errors(self, response):
+        """handles bad requests and raises CredentialsBadRequestError
+
+        Parameters
+        ----------
+        response : Response
+            respone from post request while getting the token
+
+        Raises
+        ------
+        CredentialsBadRequestError
+            raises error with status code 400
+        """
         try:
             response.raise_for_status()
         except HTTPError as error:
@@ -266,6 +333,13 @@ class BasicAuthCredentials(Credentials):
     """The password for the basic authentication."""
 
     def get_session(self) -> Session:
+        """gets session for basic authentication
+
+        Returns
+        -------
+        session: Session
+            session with username and password set for authentication
+        """
         session = super().get_session()
         session.auth = (self.username, self.password)
         return session
@@ -287,6 +361,7 @@ class OAuth2TokenCredentials(Credentials):
     """The OAuth2 Bearer Token. This is used to authenticate."""
 
     def get_session(self) -> Session:
+        """gets session with token in the authorization header"""
         session = super().get_session()
         session.headers["Authorization"] = f"Bearer {self.token}"
         return session
@@ -322,6 +397,9 @@ class OAuth2PasswordFlowCredentials(Credentials):
     )
 
     def get_session(self) -> Session:
+        """gets session with token in authorization header if token is expired
+        the refresh token is used
+        """
         session = super().get_session()
         payload = None
         if self._no_authorization_header(session):
@@ -343,6 +421,17 @@ class OAuth2PasswordFlowCredentials(Credentials):
         return session
 
     def _get_token(self, payload: dict[str, str]) -> AccessToken:
+        """gets token from given token endpoint
+
+        Parameters
+        ----------
+        payload : dict[str, str]
+            contains credentials and endpoint from which token should be retrieved
+        Returns
+        -------
+        _token: AccessToken
+           returns access token, refresh token and expiry time of given token
+        """
         headers = {}
         if self.client_id and self.client_secret:
             client_secrets = b64encode(
@@ -385,6 +474,13 @@ class OAuth2ClientFlowCredentials(Credentials):
     )
 
     def get_session(self) -> Session:
+        """get session with valid access token in Authorization header
+
+        Returns
+        -------
+        Session
+            session:  Session
+        """
         session = super().get_session()
         if "Authorization" in session.headers and self._token.is_expired:
             session = Session()
@@ -393,6 +489,13 @@ class OAuth2ClientFlowCredentials(Credentials):
         return session
 
     def _get_token(self) -> AccessToken:
+        """get access token from endpoint using the client credentials grant
+
+        Returns
+        -------
+        _token: AccessToken
+            AccessToken object containing the token
+        """
         payload = {
             "grant_type": "client_credentials",
         }
