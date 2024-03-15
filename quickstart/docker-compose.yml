@@ -173,7 +173,6 @@ services:
       POSTGRES_PORT: 25432
       DJANGO_SECRET_KEY: "django-insecure-*w($$5i@@iq%!ygufa%%@nfdplt(!e#hoahnjy^@6xdutl8mlqz"
       ALLOWED_HOSTS: "*"
-      CORS_ALLOW_ALL_ORIGINS: "true"
       CORS_ALLOWED_ORIGINS: "http://localhost"
       KEYCLOAK_SERVER_URL: "http://localhost:8080"
       KEYCLOAK_REALM: logprep
