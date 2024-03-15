@@ -184,7 +184,7 @@ class CredentialsFactory:
                 if extra_params:
                     cls._logger.warning(
                         "Other parameters were given: %s but OAuth token authorization was chosen",
-                        extra_params,
+                        extra_params.keys(),
                     )
                 return OAuth2TokenCredentials(token=token)
             case {
@@ -198,7 +198,7 @@ class CredentialsFactory:
                 if extra_params:
                     cls._logger.warning(
                         "Other parameters were given: %s but OAuth client authorization was chosen",
-                        extra_params,
+                        extra_params.keys(),
                     )
                 return OAuth2PasswordFlowCredentials(
                     endpoint=endpoint,
@@ -216,7 +216,7 @@ class CredentialsFactory:
                 if extra_params:
                     cls._logger.warning(
                         "Other parameters were given: %s but OAuth client authorization was chosen",
-                        extra_params,
+                        extra_params.keys(),
                     )
                 return OAuth2ClientFlowCredentials(
                     endpoint=endpoint, client_id=client_id, client_secret=client_secret
@@ -230,7 +230,7 @@ class CredentialsFactory:
                 if extra_params:
                     cls._logger.warning(
                         "Other parameters were given: %s but OAuth password authorization was chosen",
-                        extra_params,
+                        extra_params.keys(),
                     )
                 return OAuth2PasswordFlowCredentials(
                     endpoint=endpoint, username=username, password=password
@@ -239,7 +239,7 @@ class CredentialsFactory:
                 if extra_params:
                     cls._logger.warning(
                         "Other parameters were given but Basic authentication was chosen: %s",
-                        extra_params,
+                        extra_params.keys(),
                     )
                 return BasicAuthCredentials(username=username, password=password)
             case _:
@@ -287,7 +287,7 @@ class Credentials:
     _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
 
     def get_session(self):
-        """Return a session with the credentials applied"""
+        """Return a session and mount HTTPAdapter"""
         if self._session is None:
             self._session = Session()
             max_retries = 3
@@ -333,7 +333,7 @@ class BasicAuthCredentials(Credentials):
     """The password for the basic authentication."""
 
     def get_session(self) -> Session:
-        """gets session for basic authentication
+        """gets session with basic authentication
 
         Returns
         -------
