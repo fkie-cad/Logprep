@@ -27,7 +27,8 @@ import inspect
 import queue
 import threading
 from abc import ABC
-from logging import Logger,getLogger
+from logging import Logger, getLogger
+import logging
 import re
 from typing import Mapping, Tuple, Union
 import msgspec
@@ -97,12 +98,23 @@ class Server(uvicorn.Server):
     def install_signal_handlers(self):
         pass
 
+    def override_runtime_logging(self):
+        """uvicorn doesn't provide API to change name and handler beforehand
+        needs to be done during runtime"""
+        logging.getLogger("uvicorn").removeHandler(logging.getLogger("uvicorn").handlers[0])
+        logging.getLogger("uvicorn").addHandler(logging.getLogger("Logprep").parent.handlers[0])
+        http_server_name = logging.getLogger("Logprep").name + " HTTPServer"
+        logging.getLogger("uvicorn.error").name = http_server_name
+        logging.getLogger("uvicorn.access").name = http_server_name
+
+    # https://github.com/encode/uvicorn/issues/742#issuecomment-674411676
     @contextlib.contextmanager
     def run_in_thread(self):
         """Context manager to run the server in a separate thread"""
 
         thread = threading.Thread(target=self.run)
         thread.start()
+        self.override_runtime_logging()
         try:
             while not self.started:
                 pass
@@ -171,17 +183,18 @@ class HttpConnector(Input):
         for endpoint_path, endpoint_name in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_name)
             endpoint = endpoint_class(self.messages)
-
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
-       
+
         log_config = uvicorn.config.LOGGING_CONFIG
         log_config["formatters"]["default"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
         log_config["formatters"]["access"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
         uvicorn_config = uvicorn.Config(
-            **self._config.uvicorn_config, app=self.app, log_level=self._logger.level, log_config=log_config
+            **self._config.uvicorn_config,
+            app=self.app,
+            log_level=self._logger.level,
+            log_config=log_config,
         )
         self.server = Server(uvicorn_config)
-        self._logger.info("HTTP Connector Server is running")
 
     def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""
