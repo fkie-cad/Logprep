@@ -11,33 +11,30 @@ filled with the correct values that correspond to the method you want to use.
 
 some example entries for such a credentials file notation are:
 
-```yaml
-"http://ressource":
-    token_file: <path/to/token/file> # won't be refreshed if expired
-"http://ressource":
-    # example for OAuth2 Client Credentials Grant
-    endpoint: <endpoint>
-    client_id: <id>
-    client_secret_file: <path/to/secret/file>
-"http://ressource":
-    # example for OAuth2 Resource Owner Password Credentials Grant
-    endpoint: <endpoint>
-    username: <username>
-    password_file: <path/to/password/file>
-    client_id: <client_id> # optional
-    client_secret_file: <path/to/secret/file> # optional
-"http://ressource":
-    # example for Basic Authentication
-    username: <username>
-    password_file: <path/to/password/file>
-"http://ressource":
-    # example for Basic Authentication with inline password
-    username: <username>
-    password: <plaintext password> # will be overwritten if 'password_file' is given
-```
-Authentication Process: 
-.. raw:: html
-   :file: ../../development/architecture/diagramms/Credentials.drawio.html
+.. code-block:: yaml
+
+    "http://ressource":
+        token_file: <path/to/token/file> # won't be refreshed if expired
+    "http://ressource":
+        # example for OAuth2 Client Credentials Grant
+        endpoint: <endpoint>
+        client_id: <id>
+        client_secret_file: <path/to/secret/file>
+    "http://ressource":
+        # example for OAuth2 Resource Owner Password Credentials Grant
+        endpoint: <endpoint>
+        username: <username>
+        password_file: <path/to/password/file>
+        client_id: <client_id> # optional
+        client_secret_file: <path/to/secret/file> # optional
+    "http://ressource":
+        # example for Basic Authentication
+        username: <username>
+        password_file: <path/to/password/file>
+    "http://ressource":
+        # example for Basic Authentication with inline password
+        username: <username>
+        password: <plaintext password> # will be overwritten if 'password_file' is given
 
 """
 

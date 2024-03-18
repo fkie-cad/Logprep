@@ -20,5 +20,5 @@ Configuration
    processor
    rules
    getter
-   athentication
    metrics
+   authentication
