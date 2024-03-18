@@ -13,25 +13,25 @@ some example entries for such a credentials file notation are:
 
 .. code-block:: yaml
 
-    "http://ressource":
+    "http://target.url":
         token_file: <path/to/token/file> # won't be refreshed if expired
-    "http://ressource":
+    "http://target.url":
         # example for OAuth2 Client Credentials Grant
         endpoint: <endpoint>
         client_id: <id>
         client_secret_file: <path/to/secret/file>
-    "http://ressource":
+    "http://target.url":
         # example for OAuth2 Resource Owner Password Credentials Grant
         endpoint: <endpoint>
         username: <username>
         password_file: <path/to/password/file>
-        client_id: <client_id> # optional
-        client_secret_file: <path/to/secret/file> # optional
-    "http://ressource":
+        client_id: <client_id> # optional if required
+        client_secret_file: <path/to/secret/file> # optional if required
+    "http://target.url":
         # example for Basic Authentication
         username: <username>
         password_file: <path/to/password/file>
-    "http://ressource":
+    "http://target.url":
         # example for Basic Authentication with inline password
         username: <username>
         password: <plaintext password> # will be overwritten if 'password_file' is given
@@ -64,7 +64,7 @@ class CredentialsBadRequestError(Exception):
 
 
 class CredentialsFactory:
-    """Factory class to create credentials from a given target URL."""
+    """Factory class to create credentials for a given target URL."""
 
     _logger = logging.getLogger(__name__)
 
@@ -76,12 +76,12 @@ class CredentialsFactory:
         Parameters
         ----------
         target_url : str
-            target for which credentials are used
+           url against which to authenticate with the given credentials
 
         Returns
         -------
         credentials: Credentials
-            Credentials object representing the correct authorization
+            Credentials object representing the correct authorization method
             depending on the given credentials
         """
         credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
@@ -252,17 +252,22 @@ class AccessToken:
     """A simple dataclass to hold the token and its expiry time."""
 
     token: str = field(validator=validators.instance_of(str), repr=False)
+    """token used for athentication
+    """
     refresh_token: str = field(
         validator=validators.instance_of((str, type(None))), default=None, repr=False
     )
+    """used incase token expired"""
     expires_in: int = field(
         validator=validators.instance_of(int),
         default=0,
         converter=lambda x: 0 if x is None else int(x),
     )
+    """time token is valid"""
     expiry_time: datetime = field(
         validator=validators.instance_of((datetime, type(None))), init=False
     )
+    """time when token is expired"""
 
     def __attrs_post_init__(self):
         self.expiry_time = datetime.now() + timedelta(seconds=self.expires_in)
@@ -287,7 +292,10 @@ class Credentials:
     _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
 
     def get_session(self):
-        """Return a session and mount HTTPAdapter"""
+        """Retrieves or creates a session.
+        If session has not been created, a new session is created with the retry
+        configuration for handeling http errors.
+        """
         if self._session is None:
             self._session = Session()
             max_retries = 3
@@ -333,12 +341,12 @@ class BasicAuthCredentials(Credentials):
     """The password for the basic authentication."""
 
     def get_session(self) -> Session:
-        """gets session with basic authentication
+        """session for basic authentication
 
         Returns
         -------
         session: Session
-            session with username and password set for authentication
+            session with username and password set for basic authentication
         """
         session = super().get_session()
         session.auth = (self.username, self.password)
@@ -361,7 +369,7 @@ class OAuth2TokenCredentials(Credentials):
     """The OAuth2 Bearer Token. This is used to authenticate."""
 
     def get_session(self) -> Session:
-        """gets session with token in the authorization header"""
+        """session with token set in the authorization header"""
         session = super().get_session()
         session.headers["Authorization"] = f"Bearer {self.token}"
         return session
@@ -397,8 +405,8 @@ class OAuth2PasswordFlowCredentials(Credentials):
     )
 
     def get_session(self) -> Session:
-        """gets session with token in authorization header if token is expired
-        the refresh token is used
+        """retrieves or creates session with token in authorization header.
+        If token is expired the refresh token is used.
         """
         session = super().get_session()
         payload = None
@@ -474,12 +482,8 @@ class OAuth2ClientFlowCredentials(Credentials):
     )
 
     def get_session(self) -> Session:
-        """get session with valid access token in Authorization header
-
-        Returns
-        -------
-        Session
-            session:  Session
+        """retrieves or creates session with token in authorization header.
+        If token is expired the refresh token is used.
         """
         session = super().get_session()
         if "Authorization" in session.headers and self._token.is_expired:
