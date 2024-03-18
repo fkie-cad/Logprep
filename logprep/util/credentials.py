@@ -108,7 +108,7 @@ class CredentialsFactory:
 
         Returns
         -------
-        dict
+        file_content: dict
             content from file
 
         Raises
