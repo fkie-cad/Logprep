@@ -40,7 +40,9 @@ from logprep.util import defaults
 
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
-    parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
+    parameter for parameter in uvicorn_parameter_keys if parameter not in [
+        "app", "log_level"
+        ]
 ]
 
 
@@ -129,9 +131,6 @@ class ThreadingHTTPServer(threading.Thread):
         for endpoint_path, endpoint in endpoints_config.items():
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
 
-    # def install_signal_handlers(self):
-    #    pass
-
     def override_runtime_logging(self):
         """uvicorn doesn't provide API to change name and handler beforehand
         needs to be done during runtime"""
@@ -145,14 +144,12 @@ class ThreadingHTTPServer(threading.Thread):
     def run(self):
         """Context manager to run the server in a separate thread"""
         self.server.run()
-        # try:
-        #    while not self.started:
-        #        pass
-        #    yield
-        # finally:
-        #    self.should_exit = True
-        #    thread.join()
+        while not self.server.should_exit:
+            pass
+        return
 
+    def shutdown(self):
+        self.server.should_exit = True
 
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
@@ -179,6 +176,8 @@ class HttpConnector(Input):
                 ),
             ]
         )
+
+
         """Configure uvicorn server. For possible settings see
         `uvicorn settings page <https://www.uvicorn.org/settings>`_.
         """
@@ -207,6 +206,11 @@ class HttpConnector(Input):
     def __init__(self, name: str, configuration: "HttpConnector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
         self.stop_flag = threading.Event()
+        internal_uvicorn_config = {
+                "lifespan":"off",
+                "loop":"asyncio"
+        }
+        self._config.uvicorn_config.update(internal_uvicorn_config)
 
     def setup(self):
         super().setup()
@@ -222,6 +226,8 @@ class HttpConnector(Input):
             stop_flag=self.stop_flag,
         )
 
+        #self.shut_down()
+
     def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""
         try:
@@ -231,10 +237,13 @@ class HttpConnector(Input):
         except queue.Empty:
             return None, None
 
-    def shut_down(self):
-        """Raises the Stop Event Flag to gracefully stop server"""
-        self.stop_flag.set()
+    def get_app_instance(self):
+        return self.sthread.app
 
+    def shut_down(self):
+        """Raises HTTP Server internal stop flags and waits to join"""
+        self.sthread.shutdown()
+        self.sthread.join()
 
 def route_compile_helper(input_re_str: str):
     """falcon add_sink handles prefix routes as independent URI elements
