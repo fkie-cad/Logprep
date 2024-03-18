@@ -1,6 +1,6 @@
 """
-Credentials
-===========
+Authentication
+==============
 
 In order for Logprep to choose the correct authentication method the
 `LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
@@ -35,6 +35,9 @@ some example entries for such a credentials file notation are:
     username: <username>
     password: <plaintext password> # will be overwritten if 'password_file' is given
 ```
+Authentication Process: 
+.. raw:: html
+   :file: ../../development/architecture/diagramms/Credentials.drawio.html
 
 """
 
