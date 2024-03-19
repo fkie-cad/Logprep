@@ -21,4 +21,3 @@ Configuration
    rules
    getter
    metrics
-   authentication

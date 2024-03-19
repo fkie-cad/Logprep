@@ -70,19 +70,20 @@ class CredentialsFactory:
 
     @classmethod
     def from_target(cls, target_url: str) -> "Credentials":
-        """Factory method to create a credentials object based on the given target from
-            env variable `LOGPREP_CREDENTIALS_FILE`
+        """Factory method to create a credentials object based on the credentials stored in the
+        environment variable `LOGPREP_CREDENTIALS_FILE`.
+        Based on these credentials the expected authentication method is chosen and represented
+        by the corresponding credentials object.
 
         Parameters
         ----------
         target_url : str
-           url against which to authenticate with the given credentials
+           target against which to authenticate with the given credentials
 
         Returns
         -------
         credentials: Credentials
             Credentials object representing the correct authorization method
-            depending on the given credentials
         """
         credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
         if credentials_file_path is None:
@@ -172,7 +173,7 @@ class CredentialsFactory:
         Parameters
         ----------
         credential_mapping : dict
-            mapping of given credentials
+            mapping of given credentials used for authentication against target
 
         Returns
         -------
@@ -252,18 +253,17 @@ class AccessToken:
     """A simple dataclass to hold the token and its expiry time."""
 
     token: str = field(validator=validators.instance_of(str), repr=False)
-    """token used for athentication
-    """
+    """token used for athentication against the target"""
     refresh_token: str = field(
         validator=validators.instance_of((str, type(None))), default=None, repr=False
     )
-    """used incase token expired"""
+    """is used incase the token is expired"""
     expires_in: int = field(
         validator=validators.instance_of(int),
         default=0,
         converter=lambda x: 0 if x is None else int(x),
     )
-    """time token is valid"""
+    """time the token stays valid"""
     expiry_time: datetime = field(
         validator=validators.instance_of((datetime, type(None))), init=False
     )
@@ -277,7 +277,7 @@ class AccessToken:
 
     @property
     def is_expired(self) -> bool:
-        """Check if the token is expired."""
+        """Checks if the token is already expired."""
         if self.expires_in == 0:
             return False
         return datetime.now() > self.expiry_time
@@ -292,8 +292,8 @@ class Credentials:
     _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
 
     def get_session(self):
-        """Retrieves or creates a session.
-        If session has not been created, a new session is created with the retry
+        """Retrieves or creates a request session.
+        If the session has not been created, a new session is created with the retry
         configuration for handeling http errors.
         """
         if self._session is None:
@@ -305,16 +305,16 @@ class Credentials:
         return self._session
 
     def _no_authorization_header(self, session):
-        """checks if authorization header exists in session"""
+        """checks if authorization header already exists in the given request session"""
         return session.headers.get("Authorization") is None
 
     def _handle_bad_requests_errors(self, response):
-        """handles bad requests and raises CredentialsBadRequestError
+        """handles requests with status code 400 and raises Error
 
         Parameters
         ----------
         response : Response
-            respone from post request while getting the token
+            signifies the respone from the post request sent while retrieving the token
 
         Raises
         ------
@@ -333,7 +333,8 @@ class Credentials:
 
 @define(kw_only=True)
 class BasicAuthCredentials(Credentials):
-    """Basic Authentication Credentials"""
+    """Basic Authentication Credentials
+    This is used for authenticating with Basic Authentication"""
 
     username: str = field(validator=validators.instance_of(str))
     """The username for the basic authentication."""
@@ -341,12 +342,13 @@ class BasicAuthCredentials(Credentials):
     """The password for the basic authentication."""
 
     def get_session(self) -> Session:
-        """session for basic authentication
+        """the request session used for authentication containing the username and password
+        which are set as the authentication parameters
 
         Returns
         -------
         session: Session
-            session with username and password set for basic authentication
+           session with username and password used for the authentication
         """
         session = super().get_session()
         session.auth = (self.username, self.password)
@@ -369,7 +371,7 @@ class OAuth2TokenCredentials(Credentials):
     """The OAuth2 Bearer Token. This is used to authenticate."""
 
     def get_session(self) -> Session:
-        """session with token set in the authorization header"""
+        """request session with Bearer Token set in the authorization header"""
         session = super().get_session()
         session.headers["Authorization"] = f"Bearer {self.token}"
         return session
@@ -405,8 +407,19 @@ class OAuth2PasswordFlowCredentials(Credentials):
     )
 
     def get_session(self) -> Session:
-        """retrieves or creates session with token in authorization header.
-        If token is expired the refresh token is used.
+        """Retrieves or creates session with token in authorization header.
+        If no authorization header is set yet, a post request containing
+        the grant type, the username and the password credentials as payload is sent to
+        the token endpoint given in the credentials file to retrieve the token.
+
+        If a client secret and a client id is given in the credentials file, they are used to
+        authenticate against the token endpoint.
+
+        Returns
+        -------
+        Session
+            a request session with the retrieved token set in the authorization header
+
         """
         session = super().get_session()
         payload = None
@@ -429,16 +442,20 @@ class OAuth2PasswordFlowCredentials(Credentials):
         return session
 
     def _get_token(self, payload: dict[str, str]) -> AccessToken:
-        """gets token from given token endpoint
+        """sends a post request containing the payload to the token endpoint to retrieve
+        the token.
+        If status code 400 is recieved a Bad Request Error is raised.
 
         Parameters
         ----------
         payload : dict[str, str]
-            contains credentials and endpoint from which token should be retrieved
+            contains credentials and the OAuth2 grant type for the given token endpoint to retrieve
+            the token
         Returns
         -------
         _token: AccessToken
-           returns access token, refresh token and expiry time of given token
+           returns access token to be used, refresh token to be used when
+            token is expired and the expiry time of the given access token
         """
         headers = {}
         if self.client_id and self.client_secret:
@@ -482,8 +499,19 @@ class OAuth2ClientFlowCredentials(Credentials):
     )
 
     def get_session(self) -> Session:
-        """retrieves or creates session with token in authorization header.
-        If token is expired the refresh token is used.
+        """Retrieves or creates session with token in authorization header.
+        If no authorization header is set yet, a post request containing only
+        the grant type as payload is sent to the token endpoint given in the
+        credentials file to retrieve the token.
+
+        The client secret and a client id given in the credentials file are used to
+        authenticate against the token endpoint.
+
+        Returns
+        -------
+        Session
+            a request session with the retrieved token set in the authorization header
+
         """
         session = super().get_session()
         if "Authorization" in session.headers and self._token.is_expired:
@@ -493,12 +521,14 @@ class OAuth2ClientFlowCredentials(Credentials):
         return session
 
     def _get_token(self) -> AccessToken:
-        """get access token from endpoint using the client credentials grant
+        """send post request to token endpoint
+         to retrieve access token using the client credentials grant.
+         If received status code is 400 a Bad Request Error is raised.
 
         Returns
         -------
         _token: AccessToken
-            AccessToken object containing the token
+            AccessToken object containing the token, the refresh token and the expiry time
         """
         payload = {
             "grant_type": "client_credentials",
