@@ -342,7 +342,7 @@ class BasicAuthCredentials(Credentials):
     """The password for the basic authentication."""
 
     def get_session(self) -> Session:
-        """the request session used for authentication containing the username and password
+        """the request session used for basic authentication containing the username and password
         which are set as the authentication parameters
 
         Returns
@@ -412,8 +412,8 @@ class OAuth2PasswordFlowCredentials(Credentials):
         the grant type, the username and the password credentials as payload is sent to
         the token endpoint given in the credentials file to retrieve the token.
 
-        If a client secret and a client id is given in the credentials file, they are used to
-        authenticate against the token endpoint.
+        If additionally a client secret and a client id is given in the credentials file, they are
+        used to authenticate against the token endpoint.
 
         Returns
         -------

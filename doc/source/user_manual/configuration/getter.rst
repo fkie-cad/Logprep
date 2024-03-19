@@ -7,10 +7,6 @@ Getters
    :members:
    :no-undoc-members:
 
-
-Authentication
---------------
-
 .. automodule:: logprep.util.credentials
    :members:
    :no-undoc-members:
