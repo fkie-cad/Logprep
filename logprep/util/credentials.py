@@ -3,10 +3,10 @@ Authentication
 ==============
 
 In order for Logprep to choose the correct authentication method the
-`LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
+:code:`LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
 This file should provide the credentials that are needed and can either be
 in yaml or in json format.
-To use the authentication, the `LOGPREP_CREDENTIALS_FILE` file has to be
+To use the authentication, the :code:`LOGPREP_CREDENTIALS_FILE` file has to be
 filled with the correct values that correspond to the method you want to use.
 
 some example entries for such a credentials file notation are:
@@ -71,7 +71,7 @@ class CredentialsFactory:
     @classmethod
     def from_target(cls, target_url: str) -> "Credentials":
         """Factory method to create a credentials object based on the credentials stored in the
-        environment variable `LOGPREP_CREDENTIALS_FILE`.
+        environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
         Based on these credentials the expected authentication method is chosen and represented
         by the corresponding credentials object.
 
@@ -105,7 +105,7 @@ class CredentialsFactory:
         Parameters
         ----------
         file_path : Path
-            path to credentials file given in `LOGPREP_CREDENTIALS_FILE`
+            path to credentials file given in :code:`LOGPREP_CREDENTIALS_FILE`
 
         Returns
         -------
@@ -292,10 +292,7 @@ class Credentials:
     _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
 
     def get_session(self):
-        """Retrieves or creates a request session.
-        If the session has not been created, a new session is created with the retry
-        configuration for handeling http errors.
-        """
+        """Metod that retrieves or creates a request session if session does not exist yet."""
         if self._session is None:
             self._session = Session()
             max_retries = 3
