@@ -58,7 +58,6 @@ class TestPipeline(ConfigurationForTests):
             config=self.logprep_config,
             log_queue=mock.MagicMock(),
             lock=self.lock,
-            used_server_ports=mock.MagicMock(),
         )
 
     def test_pipeline_property_returns_pipeline(self, mock_create):
@@ -464,40 +463,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._output["dummy"].store_failed.assert_called_with(
             "This is non critical", {"some": "event"}, None
         )
-
-    def test_http_input_registers_to_shard_dict(self, _):
-        self.pipeline._setup()
-        self.pipeline._input.server.config.port = 9000
-        self.pipeline._used_server_ports = {}
-        self.pipeline._setup()
-        assert 9000 in self.pipeline._used_server_ports
-
-    def test_http_input_registers_increased_port_to_shard_dict(self, _):
-        self.pipeline._setup()
-        self.pipeline._input.server.config.port = 9000
-        self.pipeline._used_server_ports = {9000: "other_process_name"}
-        self.pipeline._setup()
-        assert 9001 in self.pipeline._used_server_ports
-
-    def test_http_input_removes_port_from_shard_dict_on_shut_down(self, _):
-        self.pipeline._setup()
-        self.pipeline._input.server.config.port = 9000
-        self.pipeline._used_server_ports = {}
-        self.pipeline._setup()
-        assert 9000 in self.pipeline._used_server_ports
-        self.pipeline._shut_down()
-        assert 9000 not in self.pipeline._used_server_ports
-
-    def test_http_input_registers_increased_port_to_shard_dict_after_shut_down(self, _):
-        self.pipeline._setup()
-        self.pipeline._input.server.config.port = 9000
-        self.pipeline._used_server_ports = {9000: "other_process_name"}
-        self.pipeline._setup()
-        assert 9001 in self.pipeline._used_server_ports
-        self.pipeline._shut_down()
-        assert 9001 not in self.pipeline._used_server_ports
-        self.pipeline._setup()
-        assert 9001 in self.pipeline._used_server_ports
 
     def test_shut_down_drains_input_queues(self, _):
         self.pipeline._setup()

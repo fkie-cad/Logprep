@@ -37,7 +37,7 @@ import uvicorn
 from attrs import define, field, validators
 import falcon.asgi
 
-from logprep.abc.input import Input
+from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
 
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
@@ -257,6 +257,14 @@ class HttpConnector(Input):
 
     def setup(self):
         super().setup()
+
+        if not hasattr(self, "pipeline_index"):
+            raise FatalInputError(
+                self, "Necessary instance attribute `pipeline_index` could not be found."
+            )
+        # Start HTTP Input only when in first process
+        if self.pipeline_index != 1:
+            return
 
         start_server = False
         http_thread_exists, http_thread = check_http_thread()

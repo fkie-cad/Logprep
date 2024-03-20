@@ -44,11 +44,12 @@ def config_fixture():
             "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
         }
     }
+
     return config
 
 
-def setup_function():
-    stop_logprep()
+#def setup_function():
+#    start_logprep()
 
 
 def teardown_function():
@@ -57,6 +58,20 @@ def teardown_function():
 
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
 def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: Configuration):
+    output_path = tmp_path / "output.jsonl"
+    config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
+    proc = start_logprep(config_path)
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
+
+    requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
+    time.sleep(0.5)
+    assert "my message" in output_path.read_text()
+
+@pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
+def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, config: Configuration):
+    config.process_count = 4
     output_path = tmp_path / "output.jsonl"
     config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = tmp_path / "generated_config.yml"

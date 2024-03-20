@@ -15,6 +15,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     def setup_method(self):
         super().setup_method()
+        self.object.pipeline_index = 1
         self.object.setup()
         # we have to empty the queue for testing
         while not self.object.messages.empty():
@@ -163,13 +164,36 @@ class TestHttpConnector(BaseInputTestCase):
     def test_server_returns_uvicorn_server_instance(self):
         assert isinstance(self.object.get_server_instance(), uvicorn.Server)
 
-    def test_server_starts_threaded_server_with_context_manager(self):
+    def test_server_starts_threaded_server(self):
         message = {"message": "my message"}
         for i in range(100):
             message["message"] = f"message number {i}"
             requests.post(url=self.target + "/json", json=message, timeout=0.5)  # nosemgrep
         assert self.object.messages.qsize() == 100, "messages are put to queue"
 
+    def test_server_multiple_config_changes(self):
+        message = {"message": "my message"}
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["uvicorn_config"]["port"] = 9001
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector.pipeline_index = 1
+        connector.setup()
+        target = connector.target
+        resp = requests.post(url=target + "/json", json=message, timeout=0.5)  # nosemgrep
+        assert resp.status_code == 200 
+        target = target.replace(":9001",":9000")
+        try:
+            resp = requests.post(url=target + "/json", json=message, timeout=0.5)  # nosemgrep
+        except requests.exceptions.ConnectionError as e:
+            assert e.response == None
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector.pipeline_index = 1
+        connector.setup()
+        target = connector.target
+        resp = requests.post(url=target + "/json", json=message, timeout=0.5)  # nosemgrep
+        assert resp.status_code == 200 
+    
     def test_get_next_with_hmac_of_raw_message(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(
@@ -184,6 +208,7 @@ class TestHttpConnector(BaseInputTestCase):
             }
         )
         connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector.pipeline_index = 1
         connector.setup()
         test_event = "the content"
         requests.post(url=self.target + "/plaintext", data=test_event, timeout=0.5)  # nosemgrep

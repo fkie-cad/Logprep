@@ -57,14 +57,12 @@ class PipelineManager:
         self._configuration = configuration
 
         self._lock = multiprocessing.Lock()
-        self._used_server_ports = None
         prometheus_config = self._configuration.metrics
         if prometheus_config.enabled:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
         else:
             self.prometheus_exporter = None
         manager = multiprocessing.Manager()
-        self._used_server_ports = manager.dict()
 
     def get_count(self) -> int:
         """Get the pipeline count.
@@ -145,7 +143,6 @@ class PipelineManager:
             config=self._configuration,
             log_queue=self.log_queue,
             lock=self._lock,
-            used_server_ports=self._used_server_ports,
         )
         self._logger.info("Created new pipeline")
         process = multiprocessing.Process(target=pipeline.run, daemon=True)
