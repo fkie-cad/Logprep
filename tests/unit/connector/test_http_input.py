@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 from copy import deepcopy
-import json
 
 import requests
 import uvicorn
@@ -11,18 +10,16 @@ from logprep.connector.http.input import HttpConnector
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
+
 class TestHttpConnector(BaseInputTestCase):
+
     def setup_method(self):
         super().setup_method()
         self.object.setup()
         # we have to empty the queue for testing
         while not self.object.messages.empty():
             self.object.messages.get(timeout=0.001)
-        #self.client = TestClient(self.object.app)
-        port = self.object._config.uvicorn_config["port"]
-        host = self.object._config.uvicorn_config["host"]
-        self.target = "http://"+host+":"+str(port)
-
+        self.target = self.object.target
 
     CONFIG: dict = {
         "type": "http_input",
@@ -48,63 +45,67 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_json_endpoint_accepts_post_request(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=self.target+"/json", json=json.dumps(data))
+        resp = requests.post(url=self.target + "/json", json=data, timeout=0.5)
         assert resp.status_code == 200
 
     def test_json_endpoint_match_wildcard_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=self.target+"/api/wildcard_path/json", json=json.dumps(data))
+        resp = requests.post(url=self.target + "/api/wildcard_path/json", json=data, timeout=0.5)
         assert resp.status_code == 200
 
     def test_json_endpoint_not_match_wildcard_route(self):
         data = {"message": "my log message"}
         resp = requests.post(
-            url=self.target+"/api/wildcard_path/json/another_path", json=json.dumps(data)
+            url=self.target + "/api/wildcard_path/json/another_path", json=data, timeout=0.5
         )
         assert resp.status_code == 404
 
     def test_json_message_is_put_in_queue(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=self.target+"/json", json=json.dumps(data))
+        resp = requests.post(url=self.target + "/json", json=data, timeout=0.5)
         assert resp.status_code == 200
         event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue == data
 
     def test_plaintext_endpoint_accepts_post_request(self):
         data = "my log message"
-        resp = requests.post(url=self.target+"/plaintext", json=data)
+        resp = requests.post(url=self.target + "/plaintext", json=data, timeout=0.5)
         assert resp.status_code == 200
 
     def test_plaintext_message_is_put_in_queue(self):
         data = "my log message"
-        resp = requests.post(url=self.target+"/plaintext", data=data)
+        resp = requests.post(url=self.target + "/plaintext", data=data, timeout=0.5)
         assert resp.status_code == 200
         event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue.get("message") == data
 
     def test_jsonl_endpoint_match_regex_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=self.target+"/first/jsonl", json=json.dumps(data))
+        resp = requests.post(url=self.target + "/first/jsonl", json=data, timeout=0.5)
         assert resp.status_code == 200
 
     def test_jsonl_endpoint_not_match_regex_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=self.target+"/firs/jsonl", json=json.dumps(data))
+        resp = requests.post(url=self.target + "/firs/jsonl", json=data, timeout=0.5)
         assert resp.status_code == 404
 
     def test_jsonl_endpoint_not_match_before_start_regex(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=self.target+"/api/first/jsonl", json=json.dumps(data))
+        resp = requests.post(url=self.target + "/api/first/jsonl", json=data, timeout=0.5)
         assert resp.status_code == 404
 
     def test_jsonl_endpoint_match_wildcard_regex_mix_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=self.target+"/third/jsonl/another_path/last_path", json=json.dumps(data))
+        resp = requests.post(
+            url=self.target + "/third/jsonl/another_path/last_path", json=data, timeout=0.5
+        )
         assert resp.status_code == 200
 
     def test_jsonl_endpoint_not_match_wildcard_regex_mix_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=self.target+"/api/third/jsonl/another_path", json=json.dumps(data))
+        resp = requests.post(
+            url=self.target + "/api/third/jsonl/another_path", json=data, timeout=0.5
+        )
         assert resp.status_code == 404
 
     def test_jsonl_messages_are_put_in_queue(self):
@@ -113,7 +114,7 @@ class TestHttpConnector(BaseInputTestCase):
         {"message": "my second log message"}
         {"message": "my third log message"}
         """
-        resp = requests.post(url=self.target+"/jsonl", json=data)
+        resp = requests.post(url=self.target + "/jsonl", data=data, timeout=0.5)
         assert resp.status_code == 200
         assert self.object.messages.qsize() == 3
         event_from_queue = self.object.messages.get(timeout=0.001)
@@ -125,7 +126,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
-        requests.post(url=self.target+"/json", json=json.dumps(data))
+        requests.post(url=self.target + "/json", json=data, timeout=0.5)
         assert self.object.get_next(0.001) == (data, None)
 
     def test_get_next_returns_first_in_first_out(self):
@@ -135,7 +136,7 @@ class TestHttpConnector(BaseInputTestCase):
             {"message": "third message"},
         ]
         for message in data:
-            requests.post(url=self.target+"/json", json=json.dumps(message))
+            requests.post(url=self.target + "/json", json=message, timeout=0.5)
         assert self.object.get_next(0.001) == (data[0], None)
         assert self.object.get_next(0.001) == (data[1], None)
         assert self.object.get_next(0.001) == (data[2], None)
@@ -149,9 +150,9 @@ class TestHttpConnector(BaseInputTestCase):
         for message in data:
             endpoint, post_data = message.values()
             if endpoint == "json":
-                requests.post(url=self.target+"/json", json=json.dumps(post_data))
+                requests.post(url=self.target + "/json", json=post_data, timeout=0.5)
             if endpoint == "plaintext":
-                requests.post(url=self.target+"/plaintext", data=post_data)
+                requests.post(url=self.target + "/plaintext", data=post_data, timeout=0.5)
         assert self.object.get_next(0.001)[0] == data[0].get("data")
         assert self.object.get_next(0.001)[0] == {"message": data[1].get("data")}
         assert self.object.get_next(0.001)[0] == data[2].get("data")
@@ -160,13 +161,13 @@ class TestHttpConnector(BaseInputTestCase):
         assert self.object.get_next(0.001)[0] is None
 
     def test_server_returns_uvicorn_server_instance(self):
-        assert isinstance(self.object.server, uvicorn.Server)
+        assert isinstance(self.object.get_server_instance(), uvicorn.Server)
 
     def test_server_starts_threaded_server_with_context_manager(self):
         message = {"message": "my message"}
         for i in range(100):
             message["message"] = f"message number {i}"
-            requests.post(url=self.target+"/json", json=message)  # nosemgrep
+            requests.post(url=self.target + "/json", json=message, timeout=0.5)  # nosemgrep
         assert self.object.messages.qsize() == 100, "messages are put to queue"
 
     def test_get_next_with_hmac_of_raw_message(self):
@@ -185,7 +186,7 @@ class TestHttpConnector(BaseInputTestCase):
         connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         connector.setup()
         test_event = "the content"
-        requests.post(url=self.target+"/plaintext", data=test_event)  # nosemgrep
+        requests.post(url=self.target + "/plaintext", data=test_event, timeout=0.5)  # nosemgrep
 
         expected_event = {
             "message": "the content",
