@@ -3,17 +3,11 @@
 Getters
 =======
 
-.. automodule:: logprep.util.getter
-   :members:
-   :no-undoc-members:
+.. autoclass:: logprep.util.getter.FileGetter
+.. autoclass:: logprep.util.getter.HttpGetter
 
-.. automodule:: logprep.util.credentials
-   :members:
-   :no-undoc-members:
+ Authentication Process:
+ -----------------------
 
-Authentication Process: 
-
-.. raw:: html
-   :file: ../../development/architecture/diagramms/Credentials.drawio.html
-
-
+    .. raw:: html
+       :file: ../../development/architecture/diagramms/Credentials.drawio.html
