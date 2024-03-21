@@ -77,7 +77,6 @@ class Clusterer(Processor):
         super().__init__(name=name, configuration=configuration, logger=logger)
         self.matching_rules = []
         self.sps = SignaturePhaseStreaming()
-        self.has_custom_tests = True
 
     def process(self, event: dict):
         self.matching_rules = []
