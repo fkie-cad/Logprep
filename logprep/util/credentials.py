@@ -57,13 +57,10 @@ some example entries for such a credentials file notation are:
 
 .. autoclass:: logprep.util.credentials.BasicAuthCredentials
    :members: username, password
-   :no-index:
 .. autoclass:: logprep.util.credentials.OAuth2ClientFlowCredentials
    :members: endpoint, client_id, client_secret
-   :no-index:
 .. autoclass:: logprep.util.credentials.OAuth2PasswordFlowCredentials
    :members: endpoint, client_id, client_secret, username, password
-   :no-index:
 
 Authentication Process:
 ^^^^^^^^^^^^^^^^^^^^^^^^
