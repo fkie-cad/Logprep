@@ -14,12 +14,21 @@ some example entries for such a credentials file notation are:
 .. code-block:: yaml
 
     "http://target.url":
+        # example for token given directly via file
         token_file: <path/to/token/file> # won't be refreshed if expired
+    "http://target.url":
+        # example for token given directly inline
+        token: <token> # won't be refreshed if expired
     "http://target.url":
         # example for OAuth2 Client Credentials Grant
         endpoint: <endpoint>
         client_id: <id>
         client_secret_file: <path/to/secret/file>
+    "http://target.url":
+        # example for OAuth2 Client Credentials Grant with inline secret
+        endpoint: <endpoint>
+        client_id: <id>
+        client_secret: <secret>
     "http://target.url":
         # example for OAuth2 Resource Owner Password Credentials Grant
         endpoint: <endpoint>
@@ -27,6 +36,16 @@ some example entries for such a credentials file notation are:
         password_file: <path/to/password/file>
         client_id: <client_id> # optional if required
         client_secret_file: <path/to/secret/file> # optional if required
+    "http://target.url":
+        # example for OAuth2 Resource Owner Password Credentials Grant without client_id and secret
+        endpoint: <endpoint>
+        username: <username>
+        password_file: <path/to/password/file>
+    "http://target.url":
+        # example for OAuth2 Resource Owner Password Credentials Grant with inline password
+        endpoint: <endpoint>
+        username: <username>
+        password: <password>
     "http://target.url":
         # example for Basic Authentication
         username: <username>
