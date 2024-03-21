@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
-import os
 import time
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
@@ -48,7 +47,7 @@ def config_fixture():
     return config
 
 
-#def setup_function():
+# def setup_function():
 #    start_logprep()
 
 
@@ -68,6 +67,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: 
     requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
     time.sleep(0.5)
     assert "my message" in output_path.read_text()
+
 
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
 def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, config: Configuration):

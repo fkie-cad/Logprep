@@ -150,7 +150,7 @@ class ThreadingHTTPServer(threading.Thread):
             log_config=log_config,
         )
         self.server = uvicorn.Server(self.compiled_config)
-        self.override_runtime_logging()
+        #self.override_runtime_logging()
         self.start()
         while not self.server.started:
             pass

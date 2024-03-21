@@ -39,9 +39,7 @@ def _print_version(config: "Configuration") -> None:
 
 def _get_logger(logger_config: dict) -> logging.Logger:
     log_level = logger_config.get("level", "INFO")
-    logging.basicConfig(
-        level=log_level, format=defaults.DEFAULT_LOG_FORMAT
-    )
+    logging.basicConfig(level=log_level, format=defaults.DEFAULT_LOG_FORMAT)
     logger = logging.getLogger("Logprep")
     logger.setLevel(log_level)
     return logger

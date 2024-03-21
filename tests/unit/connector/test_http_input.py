@@ -180,8 +180,8 @@ class TestHttpConnector(BaseInputTestCase):
         connector.setup()
         target = connector.target
         resp = requests.post(url=target + "/json", json=message, timeout=0.5)  # nosemgrep
-        assert resp.status_code == 200 
-        target = target.replace(":9001",":9000")
+        assert resp.status_code == 200
+        target = target.replace(":9001", ":9000")
         try:
             resp = requests.post(url=target + "/json", json=message, timeout=0.5)  # nosemgrep
         except requests.exceptions.ConnectionError as e:
@@ -192,8 +192,8 @@ class TestHttpConnector(BaseInputTestCase):
         connector.setup()
         target = connector.target
         resp = requests.post(url=target + "/json", json=message, timeout=0.5)  # nosemgrep
-        assert resp.status_code == 200 
-    
+        assert resp.status_code == 200
+
     def test_get_next_with_hmac_of_raw_message(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(
