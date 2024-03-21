@@ -93,23 +93,13 @@ class FileGetter(Getter):
 class HttpGetter(Getter):
     """Get files from an api or simple web server.
 
-        Matching string examples:
+     Matching string examples:
 
-        * Simple http target: :code:`http://your.target/file.yml`
-        * Simple https target: :code:`https://your.target/file.json`
+     * Simple http target: :code:`http://your.target/file.yml`
+     * Simple https target: :code:`https://your.target/file.json`
 
     .. automodule:: logprep.util.credentials
         :no-index:
-    .. autoclass:: logprep.util.credentials.BasicAuthCredentials
-        :members: username, password
-        :no-index:
-    .. autoclass:: logprep.util.credentials.OAuth2PasswordFlowCredentials
-        :members: endpoint, client_id, client_secret, username, password
-        :no-index:
-    .. autoclass:: logprep.util.credentials.OAuth2ClientFlowCredentials
-        :members: endpoint, client_id, client_secret
-        :no-index:
-
 
     """
 

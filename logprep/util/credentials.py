@@ -1,6 +1,6 @@
 """
 Authentication
-==============
+^^^^^^^^^^^^^^^
 
 In order for Logprep to choose the correct authentication method the
 :code:`LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
@@ -55,6 +55,22 @@ some example entries for such a credentials file notation are:
         username: <username>
         password: <plaintext password> # will be overwritten if 'password_file' is given
 
+.. autoclass:: logprep.util.credentials.BasicAuthCredentials
+   :members: username, password
+   :no-index:
+.. autoclass:: logprep.util.credentials.OAuth2ClientFlowCredentials
+   :members: endpoint, client_id, client_secret
+   :no-index:
+.. autoclass:: logprep.util.credentials.OAuth2PasswordFlowCredentials
+   :members: endpoint, client_id, client_secret, username, password
+   :no-index:
+
+Authentication Process:
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. figure:: ../../_images/Credentials.svg
+    :align: center
+
 """
 
 import json
@@ -103,6 +119,7 @@ class CredentialsFactory:
         -------
         credentials: Credentials
             Credentials object representing the correct authorization method
+
         """
         credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
         if credentials_file_path is None:
@@ -311,7 +328,6 @@ class Credentials:
     _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
 
     def get_session(self):
-        """Metod that retrieves or creates a request session if session does not exist yet."""
         if self._session is None:
             self._session = Session()
             max_retries = 3
@@ -360,6 +376,8 @@ class BasicAuthCredentials(Credentials):
     def get_session(self) -> Session:
         """the request session used for basic authentication containing the username and password
         which are set as the authentication parameters
+
+        :meta private:
 
         Returns
         -------
@@ -423,20 +441,6 @@ class OAuth2PasswordFlowCredentials(Credentials):
     )
 
     def get_session(self) -> Session:
-        """Retrieves or creates session with token in authorization header.
-        If no authorization header is set yet, a post request containing
-        the grant type, the username and the password credentials as payload is sent to
-        the token endpoint given in the credentials file to retrieve the token.
-
-        If additionally a client secret and a client id is given in the credentials file, they are
-        used to authenticate against the token endpoint.
-
-        Returns
-        -------
-        Session
-            a request session with the retrieved token set in the authorization header
-
-        """
         session = super().get_session()
         payload = None
         if self._no_authorization_header(session):
