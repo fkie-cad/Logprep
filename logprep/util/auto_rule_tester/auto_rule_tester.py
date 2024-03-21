@@ -199,7 +199,7 @@ class AutoRuleTester:
     _original_config_paths: tuple[str]
     """ Path to the original configuration that should be tested """
 
-    def __init__(self, config_paths: tuple[str])
+    def __init__(self, config_paths: tuple[str]):
         self._original_config_paths = config_paths
         
         with open(config_paths, "r", encoding="utf8") as yaml_file:
