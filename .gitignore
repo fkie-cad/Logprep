@@ -21,4 +21,3 @@ logs
 sql_db_table.json
 build/
 dist/
-__version__.py
