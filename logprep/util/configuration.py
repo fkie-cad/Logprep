@@ -21,6 +21,109 @@ or
     
     logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/conector.yaml
 
+Configuration File Structure
+----------------------------
+
+..  code-block:: yaml
+    :caption: full configuration file example
+
+    version: config-1.0
+    process_count: 2
+    timeout: 5
+    logger:
+        level: INFO
+    input:
+        kafka:
+            type: confluentkafka_input
+            topic: consumer
+            offset_reset_policy: smallest
+            kafka_config:
+                bootstrap.servers: localhost:9092
+                group.id: test
+    output:
+        kafka:
+            type: confluentkafka_output
+            topic: producer
+            error_topic: producer_error
+            flush_timeout: 30
+            send_timeout: 2
+            kafka_config:
+                bootstrap.servers: localhost:9092
+    pipeline:
+    - labelername:
+        type: labeler
+        schema: quickstart/exampledata/rules/labeler/schema.json
+        include_parent_labels: true
+        specific_rules:
+            - quickstart/exampledata/rules/labeler/specific
+        generic_rules:
+            - quickstart/exampledata/rules/labeler/generic
+
+    - dissectorname:
+        type: dissector
+        specific_rules:
+            - quickstart/exampledata/rules/dissector/specific/
+        generic_rules:
+            - quickstart/exampledata/rules/dissector/generic/
+
+    - dropper:
+        type: dropper
+        specific_rules:
+            - quickstart/exampledata/rules/dropper/specific
+        generic_rules:
+            - quickstart/exampledata/rules/dropper/generic
+            - filter: "test_dropper"
+            dropper:
+                drop:
+                - drop_me
+            description: "..."
+
+    - pre_detector:
+        type: pre_detector
+        specific_rules:
+            - quickstart/exampledata/rules/pre_detector/specific
+        generic_rules:
+            - quickstart/exampledata/rules/pre_detector/generic
+        outputs:
+            - opensearch: sre
+        tree_config: quickstart/exampledata/rules/pre_detector/tree_config.json
+        alert_ip_list_path: quickstart/exampledata/rules/pre_detector/alert_ips.yml
+
+    - amides:
+        type: amides
+        specific_rules:
+            - quickstart/exampledata/rules/amides/specific
+        generic_rules:
+            - quickstart/exampledata/rules/amides/generic
+        models_path: quickstart/exampledata/models/model.zip
+        num_rule_attributions: 10
+        max_cache_entries: 1000000
+        decision_threshold: 0.32
+
+    - pseudonymizer:
+        type: pseudonymizer
+        pubkey_analyst: quickstart/exampledata/rules/pseudonymizer/example_analyst_pub.pem
+        pubkey_depseudo: quickstart/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
+        regex_mapping: quickstart/exampledata/rules/pseudonymizer/regex_mapping.yml
+        hash_salt: a_secret_tasty_ingredient
+        outputs:
+            - opensearch: pseudonyms
+        specific_rules:
+            - quickstart/exampledata/rules/pseudonymizer/specific/
+        generic_rules:
+            - quickstart/exampledata/rules/pseudonymizer/generic/
+        max_cached_pseudonyms: 1000000
+
+    - calculator:
+        type: calculator
+        specific_rules:
+            - filter: "test_label: execute"
+            calculator:
+                target_field: "calculation"
+                calc: "1 + 1"
+        generic_rules: []
+
+
 The options under :code:`input`, :code:`output` and :code:`pipeline` are passed
 to factories in Logprep.
 They contain settings for each separate processor and connector.
@@ -39,7 +142,7 @@ variable names are: :code:`["LOGPREP_LIST"]`, as it is already used internally.
 The following config file will be valid by setting the given environment variables:
 
 ..  code-block:: yaml
-    :caption: pipeline.yml config file
+    :caption: pipeline.yml config file with environment variables
 
     version: $LOGPREP_VERSION
     process_count: $LOGPREP_PROCESS_COUNT
