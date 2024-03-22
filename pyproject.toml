@@ -7,7 +7,6 @@ packages = ["logprep"]
 
 
 [tool.setuptools_scm]
-version_file = "__version__.py"
 fallback_version = "unset"
 
 [project]
