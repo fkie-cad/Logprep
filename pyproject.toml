@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools>=68.0.0", "setuptools-scm", "wheel"]
+requires = ["setuptools>=68.0.0", "setuptools-scm>=8.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["logprep"]
 
-[tool.setuptools.dynamic]
-version = { attr = "logprep.__version__" }
+[tool.setuptools_scm]
+version_file = "logprep.__version__.py"
 
 [project]
 name = "logprep"
