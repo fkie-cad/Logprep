@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["logprep"]
 
+
 [tool.setuptools_scm]
 version_file = "logprep.__version__.py"
 
