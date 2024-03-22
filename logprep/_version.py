@@ -7,6 +7,6 @@ def get_versions() -> dict:
     """generate the current version of the package"""
     try:
         version_str = version("logprep")
-    except PackageNotFoundError:
+    except PackageNotFoundError:  # pragma: no cover
         version_str = "unknown"
     return {"version": version_str}
