@@ -84,45 +84,56 @@ Run without Logprep Container (default)
 ---------------------------------------
 
   1. Run from within the `quickstart` directory:
-     ```bash
-     docker-compose up -d
-     ```
+
+     .. code-block:: bash
+
+      docker-compose up -d
+     
      It starts and connects `Kafka`, `logprep`, `Opensearch` and `Opensearch Dashboards`.
   2. Run Logprep against loaded environment from main `Logprep` directory:
-     ```bash
-     logprep run quickstart/exampledata/config/pipeline.yml
-     ```
+
+     .. code-block:: bash
+
+      logprep run quickstart/exampledata/config/pipeline.yml
+     
 
 Run with Logprep Container
 --------------------------
 
   * Run from within the `quickstart` directory:
-    ```bash
-    docker-compose --profile logprep up -d
-    ```
+
+    .. code-block:: bash
+
+      docker-compose --profile logprep up -d
+    
 
 Run with getting config from http server with basic authentication
 ------------------------------------------------------------------
 
   * Run from within the `quickstart` directory:
-    ```bash
-    docker-compose --profile basic_auth up -d
-    ```
+
+    .. code-block:: bash
+
+      docker-compose --profile basic_auth up -d
+    
   * Run within the project root directory:
-    ```bash
-    export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
-    logprep http://localhost:8081/config/pipeline.yml
-    ```
+  
+    .. code-block:: bash
+
+      export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
+      logprep run http://localhost:8081/config/pipeline.yml
+    
 
 Run with getting config from FDA with oauth2 authentication
 -----------------------------------------------------------
 
 Start logprep by using the oauth2 profile with docker-compose:
 
-    ```bash
-    export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
-    docker-compose --profile oauth2 up -d
-    ```
+    .. code-block:: bash
+
+      export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
+      docker-compose --profile oauth2 up -d
+    
 
 
 In order to run logprep with the FDA configuration it is necessary to set the following environment
@@ -135,11 +146,13 @@ variables:
 
 Once they are set logprep can be started with:
 
-```bash
-logprep run "http://localhost:8000/api/v1/pipelines?stage=prod&logclass=ExampleClass"
-```
+.. code-block:: bash
 
-### Interacting with the Quickstart Environment
+  logprep run "http://localhost:8000/api/v1/pipelines?stage=prod&logclass=ExampleClass"
+
+
+Interacting with the Quickstart Environment
+-------------------------------------------
 
 The start up takes a few seconds to complete, but once everything is up
 and running it is possible to write JSON events into Kafka and read the processed events in
@@ -168,11 +181,12 @@ Example events that trigger for the example rules can be found in
 `quickstart/exampledata/input_logdata/logclass/test_input.jsonl`.
 These events can be added to Kafka with the following command:
 
-```bash
-(docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/logclass/test_input.jsonl
-```
+.. code-block:: bash
+
+  (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/logclass/test_input.jsonl
+
 
 Once the events have been processed for the first time, the new indices *processed*, *sre*
 and *pseudonyms* should be available in Opensearch Dashboards.
 
-The environment can be stopped via `docker-compose down`.
+The environment can be stopped via :code:`docker-compose down`.
