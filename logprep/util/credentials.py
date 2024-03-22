@@ -1,7 +1,6 @@
 """
 Authentication
-^^^^^^^^^^^^^^^
-
+--------------
 In order for Logprep to choose the correct authentication method the
 :code:`LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
 This file should provide the credentials that are needed and can either be
@@ -55,7 +54,6 @@ some example entries for such a credentials file notation are:
         username: <username>
         password: <plaintext password> # will be overwritten if 'password_file' is given
 
-
 .. autoclass:: logprep.util.credentials.BasicAuthCredentials
    :members: username, password
    :no-index:
@@ -65,10 +63,9 @@ some example entries for such a credentials file notation are:
 .. autoclass:: logprep.util.credentials.OAuth2PasswordFlowCredentials
    :members: endpoint, client_id, client_secret, username, password
    :no-index:
-
+   
 Authentication Process:
-^^^^^^^^^^^^^^^^^^^^^^^^
-
+-----------------------
 .. figure:: ../../_images/Credentials.svg
     :align: center
 
