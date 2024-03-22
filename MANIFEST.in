@@ -1,4 +1,1 @@
-include versioneer.py
-include logprep/_version.py
-include logprep/util/grok/patterns/ecs-v1/*
-include logprep/util/grok/patterns/legacy/*
+exclude ./.github/ISSUE_TEMPLATE/feature_request.md
