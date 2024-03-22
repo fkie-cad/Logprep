@@ -36,7 +36,7 @@ import msgspec
 import uvicorn
 from attrs import define, field, validators
 import falcon.asgi
-
+import asyncio
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
 
@@ -49,6 +49,18 @@ UVICORN_CONFIG_KEYS = [
 HTTP_INPUT_CONFIG_KEYS = ["preprocessing", "uvicorn_config", "endpoints"]
 
 
+def threadsafe_wrapper(func):
+    """Decorator making sure that the decorated function is thread safe"""
+    lock = threading.Lock()
+
+    def func_wrapper(*args, **kwargs):
+        with lock:
+            func_wrapper = func(*args, **kwargs)
+        return func_wrapper
+
+    return func_wrapper
+
+
 def has_config_changed(
     old_config: Input.Config, new_config: Input.Config, check_attrs=None
 ) -> bool:
@@ -57,7 +69,8 @@ def has_config_changed(
     For sake of simplicity JSON Strings are compared instead
     of compare nested dict key-values
     """
-
+    if not new_config:
+        return True
     old_config_dict = {}
     new_config_dict = {}
     for key in check_attrs:
@@ -97,6 +110,7 @@ class JSONHttpEndpoint(HttpEndpoint):
 
     async def __call__(self, req, resp):  # pylint: disable=arguments-differ
         """json endpoint method"""
+        print(req.__dict__)
         data = await req.stream.read()
         data = data.decode("utf8")
         self.messages.put(self._decoder.decode(data))
@@ -128,8 +142,22 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         self.messages.put({"message": data.decode("utf8")})
 
 
-class ThreadingHTTPServer(threading.Thread):
+class OverrideUvicorn(uvicorn.Server):
+    def install_signal_handlers(self):
+        pass
+
+
+class ThreadingHTTPServer():
     """Threading Wrapper around Uvicorn Server"""
+    
+    _instance = None
+    _lock = threading.Lock()
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            with cls._lock:
+                if not cls._instance:
+                    cls._instance = super(ThreadingHTTPServer, cls).__new__(cls)
+        return cls._instance
 
     def __init__(
         self,
@@ -138,6 +166,21 @@ class ThreadingHTTPServer(threading.Thread):
         log_level: str,
     ) -> None:
         super().__init__()
+
+        server_continue = False
+        if hasattr(self, "thread"):
+            if self.thread.is_alive():
+                if has_config_changed(
+                        connector_config, 
+                        self.connector_config,
+                        check_attrs=HTTP_INPUT_CONFIG_KEYS):
+                    self.stop()
+                    print("config has changed")
+                    server_continue = False
+                else:
+                    print("config has not changed")
+                    server_continue = True
+            
         self.connector_config = connector_config
         self.endpoints_config = endpoints_config
         self.uvicorn_config = self.connector_config.uvicorn_config
@@ -149,18 +192,39 @@ class ThreadingHTTPServer(threading.Thread):
             log_level=log_level,
             log_config=log_config,
         )
-        self.server = uvicorn.Server(self.compiled_config)
-        #self.override_runtime_logging()
-        self.start()
-        while not self.server.started:
-            pass
 
+        if not server_continue:
+            self.server = OverrideUvicorn(self.compiled_config)
+            self.override_runtime_logging()
+            self.thread = threading.Thread(daemon=False, target=self.server.run)
+            self.start()
+           
+
+    @threadsafe_wrapper
+    def start(self):
+        self.thread.start()
+        asyncio.run(self.wait_for_started())
+
+    @threadsafe_wrapper
+    async def wait_for_started(self):
+        while not self.server.started:
+            await asyncio.sleep(0.1)
+
+    @threadsafe_wrapper
+    def stop(self):
+        if self.thread.is_alive():
+            self.server.should_exit = True
+            while self.thread.is_alive():
+                continue
+        self.thread.join()
+
+    @threadsafe_wrapper
     def init_log_config(self) -> dict:
         """use for uvicorn same log formatter like for logprep"""
         log_config = uvicorn.config.LOGGING_CONFIG
         log_config["formatters"]["default"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
         log_config["formatters"]["access"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
-
+        log_config["handlers"]["default"]["stream"] = "ext://sys.stdout"
         return log_config
 
     def init_web_application_server(self, endpoints_config: dict) -> None:
@@ -169,6 +233,7 @@ class ThreadingHTTPServer(threading.Thread):
         for endpoint_path, endpoint in endpoints_config.items():
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
 
+    @threadsafe_wrapper
     def override_runtime_logging(self):
         """uvicorn doesn't provide API to change name and handler beforehand
         needs to be done during runtime"""
@@ -178,16 +243,18 @@ class ThreadingHTTPServer(threading.Thread):
         logging.getLogger("uvicorn.error").name = http_server_name
         logging.getLogger("uvicorn.access").name = http_server_name
 
+    @threadsafe_wrapper
     def run(self):
         """Context manager to run the server in a separate thread"""
         self.server.run()
         while not self.server.should_exit:
             pass
 
+    @threadsafe_wrapper
     def shut_down(self):
         """Gracefully exit uvicorn server"""
-        self.server.should_exit = True
-        self.server.handle_exit(signal.SIGINT, frame=None)
+        self.stop()
+        self.thread.join()
 
 
 class HttpConnector(Input):
@@ -253,11 +320,9 @@ class HttpConnector(Input):
         self.port = self._config.uvicorn_config["port"]
         self.host = self._config.uvicorn_config["host"]
         self.target = "http://" + self.host + ":" + str(self.port)
-        self.sthread = None
 
     def setup(self):
         super().setup()
-
         if not hasattr(self, "pipeline_index"):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."
@@ -265,35 +330,16 @@ class HttpConnector(Input):
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:
             return
+        endpoints_config = {}
+        for endpoint_path, endpoint_name in self._config.endpoints.items():
+            endpoint_class = self._endpoint_registry.get(endpoint_name)
+            endpoints_config[endpoint_path] = endpoint_class(self.messages)
 
-        start_server = False
-        http_thread_exists, http_thread = check_http_thread()
-        if http_thread_exists:
-            config_update = has_config_changed(
-                http_thread.connector_config, self._config, check_attrs=HTTP_INPUT_CONFIG_KEYS
-            )
-            if config_update:
-                self.shut_down()
-                self.logger.info("HTTP Input Connector Config changed. Restart Uvicorn Server.")
-                start_server = True
-            else:
-                self.logger.info(
-                    "HTTP Input Connector Config didn't change. Remain running Uvicorn Server."
-                )
-        else:
-            start_server = True
-
-        if start_server:
-            endpoints_config = {}
-            for endpoint_path, endpoint_name in self._config.endpoints.items():
-                endpoint_class = self._endpoint_registry.get(endpoint_name)
-                endpoints_config[endpoint_path] = endpoint_class(self.messages)
-
-            self.sthread = ThreadingHTTPServer(
-                connector_config=self._config,
-                endpoints_config=endpoints_config,
-                log_level=self._logger.level,
-            )
+        self.sthread = ThreadingHTTPServer(
+            connector_config=self._config,
+            endpoints_config=endpoints_config,
+            log_level=self._logger.level,
+        )
 
     def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""
@@ -318,22 +364,7 @@ class HttpConnector(Input):
         server instances doesn't share relation to the original http server
         that is created with the first HTTP Connector Object
         """
-        http_thread_exists, http_thread = check_http_thread()
-        if http_thread_exists:
-            http_thread.shut_down()
-            http_thread.join()
-
-
-def check_http_thread(compare_class=ThreadingHTTPServer) -> (bool, ThreadingHTTPServer):
-    """enumerate running threads and find already running instances of
-    ThreadingHTTPServer"""
-
-    thread_list = threading.enumerate()
-    ref_class_name = compare_class.__name__
-    for thread in thread_list:
-        thread_class_name = thread.__class__.__name__
-        if ref_class_name == thread_class_name:
-            if thread.is_alive():
-                return True, thread
-
-    return False, None
+        try:
+            self.sthread.shut_down()
+        except:
+            pass
