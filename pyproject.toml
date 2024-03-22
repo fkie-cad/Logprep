@@ -8,6 +8,7 @@ packages = ["logprep"]
 
 [tool.setuptools_scm]
 version_file = "logprep.__version__.py"
+fallback_version = "unset"
 
 [project]
 name = "logprep"
