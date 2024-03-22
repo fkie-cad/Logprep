@@ -70,6 +70,7 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
+          context: .
           push: true # Will only build if this is not here
           build-args: |
             LOGPREP_VERSION=${{ github.ref_name }}
