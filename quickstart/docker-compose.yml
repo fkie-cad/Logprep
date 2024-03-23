@@ -161,7 +161,7 @@ services:
       - ../quickstart/exampledata/config/keycloak:/docker-entrypoint-initdb.d
   fda-api:
     container_name: fda-api
-    image: registry.gitlab.com/z-e-u-s/fda/fda-backend:0.20.0
+    image: registry.gitlab.com/z-e-u-s/fda/fda-backend:0.21.0
     network_mode: host
     expose:
       - 8000
@@ -206,7 +206,7 @@ services:
       timeout: 5s
       retries: 10
   fda-frontend:
-    image: registry.gitlab.com/z-e-u-s/fda/fda-frontend:0.20.0
+    image: registry.gitlab.com/z-e-u-s/fda/fda-frontend:0.21.0
     container_name: fda-frontend
     network_mode: host
     restart: always
