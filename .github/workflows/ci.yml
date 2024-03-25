@@ -73,11 +73,17 @@ jobs:
           pip install --upgrade pip wheel
           pip install .[dev]
 
-      - name: Perform unit tests
+      - name: Perform unit tests without http
         env:
           PYTEST_ADDOPTS: "--color=yes"
         run: |
-          pytest  -vv tests/unit
+          pytest  -vv tests/unit -k "not test_http"
+      
+      - name: Perform unit tests for http
+        env:
+          PYTEST_ADDOPTS: "--color=yes"
+        run: |
+          pytest  -vv tests/unit -k "test_http"
 
       - name: Perform acceptance tests
         env:
