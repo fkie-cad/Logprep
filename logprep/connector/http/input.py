@@ -265,6 +265,8 @@ class ThreadingHTTPServer:
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
 
+    messages: queue.Queue = queue.Queue()
+
     _endpoint_registry: Mapping[str, HttpEndpoint] = {
         "json": JSONHttpEndpoint,
         "plaintext": PlaintextHttpEndpoint,
@@ -328,11 +330,6 @@ class HttpConnector(Input):
         self.host = self._config.uvicorn_config["host"]
         self.target = "http://" + self.host + ":" + str(self.port)
 
-        if not hasattr(self, "messages"):
-            self.messages = None
-        if not hasattr(self, "http_server"):
-            self.http_server = None
-
     def setup(self):
         super().setup()
         if not hasattr(self, "pipeline_index"):
@@ -343,14 +340,16 @@ class HttpConnector(Input):
         if self.pipeline_index != 1:
             return
 
-        self.messages = queue.Queue(self._config.message_backlog_size)
+        self.messages = queue.Queue(
+            self._config.message_backlog_size
+        )  # pylint: disable=attribute-defined-outside-init
 
         endpoints_config = {}
         for endpoint_path, endpoint_name in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_name)
             endpoints_config[endpoint_path] = endpoint_class(self.messages)
 
-        self.http_server = ThreadingHTTPServer(
+        self.http_server = ThreadingHTTPServer(  # pylint: disable=attribute-defined-outside-init
             connector_config=self._config,
             endpoints_config=endpoints_config,
             log_level=self._logger.level,
@@ -375,4 +374,7 @@ class HttpConnector(Input):
 
     def shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        self.http_server.shut_down()
+        try:
+            self.http_server.shut_down()
+        except:
+            pass
