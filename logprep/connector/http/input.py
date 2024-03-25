@@ -30,9 +30,9 @@ from abc import ABC
 from logging import Logger
 import logging
 import re
-from typing import Mapping, Tuple, Union, Callable
 import msgspec
 import uvicorn
+from typing import Mapping, Tuple, Union, Callable
 from attrs import define, field, validators
 import falcon.asgi
 from falcon import HTTPTooManyRequests, HTTPMethodNotAllowed  # pylint: disable=no-name-in-module
@@ -109,10 +109,16 @@ def decorator_request_exceptions(func: Callable):
     return func_wrapper
 
 
+class HTTPEvent(msgspec.Struct):
+    """Eventdata and Metadata from HTTP Input"""
+    metadata: set[str] = set()
+    event: set[str] = set()
+
+    def to_dict(self):
+        return {f: getattr(self, f) for f in self.__struct_fields__}
+
 class HttpEndpoint(ABC):
     """interface for http endpoints"""
-
-    messages: queue.Queue
 
     def __init__(self, messages: queue.Queue) -> None:
         self.messages = messages
@@ -128,7 +134,15 @@ class JSONHttpEndpoint(HttpEndpoint):
         """json endpoint method"""
         data = await req.stream.read()
         data = data.decode("utf8")
-        self.messages.put(self._decoder.decode(data), block=False)
+        if data:
+            event = HTTPEvent(
+                    metadata={
+                        "url":req.url, 
+                        "remote_addr":req.remote_addr,
+                        "user_agent":req.user_agent
+                    },
+                    event=self._decoder.decode(data))
+            self.messages.put(event.to_dict(), block=False)
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -141,11 +155,18 @@ class JSONLHttpEndpoint(HttpEndpoint):
         """jsonl endpoint method"""
         data = await req.stream.read()
         data = data.decode("utf8")
+        metadata={
+            "url":req.url, 
+            "remote_addr":req.remote_addr,
+            "user_agent":req.user_agent}
         for line in data.splitlines():
             line = line.strip()
             if line:
-                event = self._decoder.decode(line)
-                self.messages.put(event, block=False)
+                event = HTTPEvent(
+                            metadata=metadata, 
+                            event=self._decoder.decode(line)
+                        )
+                self.messages.put(event.to_dict(), block=False)
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -160,7 +181,22 @@ class PlaintextHttpEndpoint(HttpEndpoint):
 
 
 class ThreadingHTTPServer:
-    """Threading Wrapper around Uvicorn Server"""
+    """Singleton Wrapper Class around Uvicorn Thread that controls
+    lifecycle of Uvicorn HTTP Server. During Runtime this singleton object
+    is stateful and therefore we need to check for some attributes during
+    __init__ when multiple consecutive reconfigurations are happening.
+
+    Parameters
+    ----------
+    connector_config: Input.Config
+        Holds full connector config for config change checks
+    endpoints_config: dict
+        Endpoint paths as key and initiated endpoint objects as
+        value
+    log_level: str
+        Log level to be set for uvicorn server
+    """
+
 
     _instance = None
     _lock = threading.Lock()
