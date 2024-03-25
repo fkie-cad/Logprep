@@ -148,14 +148,14 @@ class HttpGetter(Getter):
         try:
             resp.raise_for_status()
         except requests.exceptions.HTTPError as error:
-            if error.response.status_code == 401:
-                if not os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
-                    raise CredentialsEnvNotFoundError(
-                        (
-                            "Credentials file not found. "
-                            "Please set the environment variable "
-                            f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
-                        )
-                    ) from error
+            if not error.response.status_code == 401:
                 raise error
+            if os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
+                raise error
+            raise CredentialsEnvNotFoundError(
+                (
+                    "Credentials file not found. Please set the environment variable "
+                    f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
+                )
+            ) from error
         return resp.content
