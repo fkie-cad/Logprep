@@ -128,10 +128,8 @@ class CredentialsFactory:
         raw_content: dict = cls._get_content(Path(credentials_file_path))
         domain = urlparse(target_url).netloc
         scheme = urlparse(target_url).scheme
-        raw_credentials = raw_content.get(f"{scheme}://{domain}")
-        if raw_credentials:
-            cls._get_secret_content(raw_credentials)
-        credentials = cls._get_credentials_from_mapping(raw_credentials)
+        credential_mapping = raw_content.get(f"{scheme}://{domain}")
+        credentials = cls.from_dict(credential_mapping)
         return credentials
 
     @staticmethod
@@ -171,7 +169,7 @@ class CredentialsFactory:
             ) from error
 
     @staticmethod
-    def _get_secret_content(credential_mapping: dict):
+    def _resolve_secret_content(credential_mapping: dict):
         """gets content from given secret_file in credentials file and updates
         credentials_mapping with this content.
 
@@ -194,8 +192,10 @@ class CredentialsFactory:
         credential_mapping.update(secret_content)
 
     @classmethod
-    def _get_credentials_from_mapping(cls, credential_mapping: dict) -> "Credentials":
+    def from_dict(cls, credential_mapping: dict) -> "Credentials":
         """matches the given credentials of the credentials mapping with the expected credential object"""
+        if credential_mapping:
+            cls._resolve_secret_content(credential_mapping)
         try:
             return cls._match_credentials(credential_mapping)
         except TypeError as error:
@@ -235,7 +235,7 @@ class CredentialsFactory:
             }:
                 if extra_params:
                     cls._logger.warning(
-                        "Other parameters were given: %s but OAuth client authorization was chosen",
+                        "Other parameters were given: %s but OAuth password authorization for confidential clients was chosen",
                         extra_params.keys(),
                     )
                 return OAuth2PasswordFlowCredentials(

@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import re
 from datetime import datetime, timedelta
 from unittest import mock
 
@@ -945,3 +946,20 @@ class TestCredentialsFactory:
         with mock.patch.dict("os.environ", mock_env):
             creds = CredentialsFactory.from_target("http://some.url/configuration")
             assert isinstance(creds, Credentials)
+
+    @mock.patch.object(CredentialsFactory, "_logger")
+    def test_warning_logged_when_extra_params_given(self, mock_logger):
+        credentials_file_content_with_extra_params = {
+            "endpoint": "https://endpoint.end",
+            "client_id": "test",
+            "client_secret": "test",
+            "username": "user1",
+            "password": "password",
+            "extra_param": "extra",
+        }
+        creds = CredentialsFactory.from_dict(credentials_file_content_with_extra_params)
+        mock_logger.warning.assert_called_once()
+        assert re.search(
+            r"OAuth password authorization for confidential clients",
+            mock_logger.mock_calls[0][1][0],
+        )
