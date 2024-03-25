@@ -11,3 +11,4 @@ Development
    register_a_new_component
    testing
    coding_examples
+   programaticly_start_logprep

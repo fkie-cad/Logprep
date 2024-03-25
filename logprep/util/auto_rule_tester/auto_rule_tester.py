@@ -37,7 +37,7 @@ The output is printed to the console, highlighting differences between `raw` and
 ..  code-block:: bash
     :caption: Directly with Python
 
-    PYTHONPATH="." python3 logprep/run_logprep.py test unit $CONFIG
+    logprep test unit $CONFIG
 
 ..  code-block:: bash
     :caption: With PEX file
