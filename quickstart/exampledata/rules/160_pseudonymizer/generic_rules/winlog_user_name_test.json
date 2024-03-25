@@ -1,0 +1,58 @@
+[
+  {
+    "raw": {
+      "winlog": {
+        "user": {
+          "name": "test_name"
+        }
+      }
+    },
+    "processed": {
+      "winlog": {
+        "user": {
+          "name|re": "%{PSEUDONYM}"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "winlog": {
+        "user": {
+          "name_false": "test_name"
+        }
+      }
+    },
+    "processed": {
+      "winlog": {
+        "user": {
+          "name_false": "test_name"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "pseudo_exclude_user": {
+        "in_list": [
+          "test_list.txt"
+      ]},
+      "winlog": {
+        "user": {
+          "name": "test_path"
+        }
+      }
+    },
+    "processed": {
+      "pseudo_exclude_user": {
+        "in_list": [
+          "test_list.txt"
+      ]},
+      "winlog": {
+        "user": {
+          "name": "test_path"
+        }
+      }
+    }
+  }
+]

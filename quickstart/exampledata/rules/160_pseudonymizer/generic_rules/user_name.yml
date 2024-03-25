@@ -1,0 +1,29 @@
+filter: 'user.name AND NOT pseudo_exclude_user.in_list'
+pseudonymizer:
+  pseudonyms:
+    user.name: RE_WHOLE_FIELD
+description: 'pseudonymize user.name'
+
+---
+
+filter: 'user.target.name AND NOT pseudo_exclude_user.in_list'
+pseudonymizer:
+  pseudonyms:
+    user.target.name: RE_WHOLE_FIELD
+description: 'pseudonymize user.target.name'
+
+---
+
+filter: 'user.subject.name AND NOT pseudo_exclude_user.in_list'
+pseudonymizer:
+  pseudonyms:
+    user.subject.name: RE_WHOLE_FIELD
+description: 'pseudonymize user.subject.name'
+
+---
+
+filter: 'user.target.old.name AND NOT pseudo_exclude_user.in_list'
+pseudonymizer:
+  pseudonyms:
+    user.target.old.name: RE_WHOLE_FIELD
+description: 'pseudonymize user.target.old.name'

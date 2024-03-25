@@ -1,0 +1,20 @@
+[
+  {
+    "raw": {
+      "data_stream": {
+        "dataset": "tor.java_http_access"
+      },
+      "event": {
+        "duration": "2"
+      }
+    },
+    "processed": {
+      "data_stream": {
+        "dataset": "tor.java_http_access"
+      },
+      "event": {
+        "duration": 2000000.0
+      }
+    }
+  }
+]

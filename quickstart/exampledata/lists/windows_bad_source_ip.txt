@@ -1,0 +1,4 @@
+# List of IPs to detect logons from
+192.168.38.1
+192.168.38.2
+192.168.38.3

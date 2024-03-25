@@ -1,0 +1,34 @@
+[
+  {
+    "raw": {
+      "winlog": {
+        "event_data": {
+          "SubjectUserSid": "test_user"
+        }
+      }
+    },
+    "processed": {
+      "winlog": {
+        "event_data": {
+          "SubjectUserSid|re": "%{PSEUDONYM}"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "winlog": {
+        "event_data": {
+          "SubjectUserSid_false": "test_user"
+        }
+      }
+    },
+    "processed": {
+      "winlog": {
+        "event_data": {
+          "SubjectUserSid_false": "test_user"
+        }
+      }
+    }
+  }
+]

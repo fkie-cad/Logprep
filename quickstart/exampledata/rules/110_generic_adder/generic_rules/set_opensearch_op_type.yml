@@ -1,0 +1,4 @@
+filter: data_stream
+generic_adder:
+  add:
+    _op_type: create

@@ -1,0 +1,26 @@
+filter: 'tags: openvpn'
+dropper:
+  drop:
+    - syslog.facility
+    - syslog.facility_label
+    - syslog.priority
+    - syslog.severity_label
+    - Tmp.message
+    - host.name
+    - hostname
+    - '@metadata.beat'
+    - '@metadata.truncated'
+    - '@metadata.type'
+    - '@metadata.version'
+    - cluster_signature
+    - log.source.address
+    - process.program
+
+description: "Drops the syslog object"
+
+--- 
+filter: 'tags: openvpn AND geoip'
+dropper:
+  drop_full: True
+  drop:
+    - geoip

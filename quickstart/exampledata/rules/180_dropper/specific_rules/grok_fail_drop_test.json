@@ -1,0 +1,9 @@
+[
+  {
+    "raw": {
+      "grok_failure": ""
+    },
+    "processed": {
+    }
+  }
+]

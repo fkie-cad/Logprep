@@ -92,7 +92,24 @@ services:
       - ../quickstart/:/home/logprep/quickstart/
     entrypoint:
       - logprep
+      - run
       - /home/logprep/quickstart/exampledata/config/pipeline.yml
+  http-input:
+    build:
+      context: ..
+    image: logprep
+    container_name: http-input
+    profiles:
+      - http-input
+    expose:
+      - 8002
+    network_mode: host
+    volumes:
+      - ../quickstart/:/home/logprep/quickstart/
+    entrypoint:
+      - logprep
+      - run
+      - /home/logprep/quickstart/exampledata/config/http_pipeline.yml
   grafana:
     image: bitnami/grafana:latest
     container_name: grafana

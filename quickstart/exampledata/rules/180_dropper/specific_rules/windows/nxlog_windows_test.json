@@ -1,0 +1,25 @@
+[
+    {
+        "raw": {
+            "tags": "windows",
+            "agent": {
+                "type": "nxlog-ee"
+            },
+            "Level": "Information",
+            "LevelValue": "0",
+            "OpcodeValue": "0",
+            "Severity": "INFO",
+            "SeverityValue": "2",
+            "SourceModuleName": "eventlog",
+            "SourceModuleType": "im_msvistalog",
+            "TaskValue": "0",
+            "Version": "0"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent": {
+                "type": "nxlog-ee"
+            }
+        }
+    }
+] 

@@ -1,0 +1,12 @@
+filter: "tags: windows AND bad_source_ip.in_list AND (event.code: 4624 OR  event.code: 4625)"
+pre_detector:
+  id: "37ff14f1-26dd-44bc-b101-f508b1240d0e"
+  title: "Logon in Windows starting from a bad source ip address"
+  severity: "high"
+  mitre: 
+    - attack.initial_access
+    - attack.t1078.002
+# The mitre information has to be checked!
+  case_condition: "selection"
+sigma_fields: true
+description: "Detects a login from an IP address on the list windows_bad_source_ip.txt"

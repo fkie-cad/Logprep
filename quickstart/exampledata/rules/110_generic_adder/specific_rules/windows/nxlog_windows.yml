@@ -1,0 +1,8 @@
+filter: "tags: windows AND (agent_type: nxlog-ee OR agent.type: nxlog-ee)"
+generic_adder:
+  add:
+    organization.name: "Company 1"
+    data_stream.dataset: "windows"
+    data_stream.namespace: "lab"
+    data_stream.type: "logs"
+description: "Enrichment for windows-logs via nxlog."

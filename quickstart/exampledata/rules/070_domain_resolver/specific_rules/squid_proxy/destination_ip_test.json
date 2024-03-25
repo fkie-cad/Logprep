@@ -1,0 +1,59 @@
+[
+  {
+    "raw": {
+      "destination": {
+        "domain": "www.google.de"
+      },
+      "tags": [
+        "squid"
+      ]
+    },
+    "processed": {
+      "destination": {
+        "domain": "www.google.de",
+        "ip|re": "(?:[0-9]{1,3}\\.){3}[0-9]{1,3}"
+      },
+      "tags": [
+        "squid"
+      ]
+    }
+  },
+  {
+    "raw": {
+      "destination": {
+        "domain": "no-domain"
+      },
+      "tags": [
+        "squid"
+      ]
+    },
+    "processed": {
+      "destination": {
+        "domain": "no-domain"
+      },
+      "tags": [
+        "squid"
+      ]
+    }
+  },
+  {
+    "raw": {
+      "destination": {
+        "domain": "no-tags"
+      }
+    },
+    "processed": {
+      "destination": {
+        "domain": "no-tags"
+      }
+    }
+  },
+  {
+    "raw": {
+      "no": "filter-field"
+    },
+    "processed": {
+      "no": "filter-field"
+    }
+  }
+]

@@ -1,0 +1,2297 @@
+[
+    {
+        "target_rule_idx": 0,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "EventReceivedTime": "2023-07-11T13:28:57.032071+02:00",
+            "EventTime": "2023-07-11T13:28:55.282067+02:00",
+            "agent_version": "5.8.8057",
+            "host_ip": "45.231.32.21",
+            "host_os_build": "19044",
+            "host_os_family": "Professional",
+            "host_os_name": "Windows 10 Pro",
+            "host_os_platform": "6.3",
+            "host_os_type": "Multiprocessor Free",
+            "host_os_version": "2009",
+            "meta_processor": "Intel64 Family 6 Model 85 Stepping 7, GenuineIntel",
+            "meta_processor_arch": "AMD64",
+            "meta_processor_count": "1"
+        },
+        "processed": {
+            "tags": "windows",
+            "@timestamp": "2023-07-11T13:28:55.282067+02:00",
+            "agent_type": "nxlog-ee",
+            "agent": {
+                "version": "5.8.8057"
+            },
+            "event": {
+                "created": "2023-07-11T13:28:57.032071+02:00"
+            },
+            "host": {
+                "ip": "45.231.32.21",
+                "os": {
+                    "build": "19044",
+                    "family": "Professional",
+                    "name": "Windows 10 Pro",
+                    "platform": "6.3",
+                    "type": "Multiprocessor Free",
+                    "version": "2009"
+                }
+            },
+            "meta": {
+                "processor": "Intel64 Family 6 Model 85 Stepping 7, GenuineIntel",
+                "processor_arch": "AMD64",
+                "processor_count": "1"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 1,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Category": "Logoff"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "task": "Logoff"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 2,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Channel": "Security"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "channel": "Security"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 3,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "EventID": "4634"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_id": "4634"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 4,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "EventType": "AUDIT_SUCCESS"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "opcode": "AUDIT_SUCCESS"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 5,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ExecutionProcessID": "744"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "process": {
+                    "pid": "744"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 6,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ExecutionThreadID": "1180"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "process": {
+                    "thread": {
+                        "id": "1180"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 7,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Hostname": "DL-DC01.lab.local"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "computer_name": "DL-DC01.lab.local"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 8,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Keywords": "9232379236109516800"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "keywords": "9232379236109516800"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 9,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "LogonType": "3"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "LogonType": "3"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 10,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Message": "The start type of the Windows Modules Installer service was changed from demand start to auto start."
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "event": {
+                "original": "The start type of the Windows Modules Installer service was changed from demand start to auto start."
+            }
+        }
+    },
+    {
+        "target_rule_idx": 11,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Opcode": "Info"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "log": {
+                "level": "Info"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 12,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ProviderGuid": "{54849625-5478-4994-A5BA-3E3B0328C30D}"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "provider_guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 13,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "RecordNumber": "370036340"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "record_id": "370036340"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 14,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "SourceName": "Microsoft-Windows-Security-Auditing"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "provider_name": "Microsoft-Windows-Security-Auditing"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 15,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TargetDomainName": "lab"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TargetDomainName": "lab"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 16,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TargetLogonId": "0x473b742b"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TargetLogonId": "0x473b742b"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 17,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TargetUserName": "s-harbor"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TargetUserName": "s-harbor"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 18,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TargetUserSid": "S-1-5-21-104526785-1692895495-2428697928-1119"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TargetUserSid": "S-1-5-21-104526785-1692895495-2428697928-1119"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 19,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Image": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "executable": "xyz"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 20,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ProcessGuid": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "entity_id": "xyz"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 21,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ProcessId": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "pid": "xyz"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 22,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Domain": "NT AUTHORITY"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "user": {
+                    "name": "NT AUTHORITY"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 23,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "UserID": "S-1-5-18"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "user": {
+                    "identifier": "S-1-5-18"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 24,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "AccountType": "User"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "user": {
+                    "type": "User"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 25,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "VirtualAccount": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "VirtualAccount": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 26,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TransmittedServices": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TransmittedServices": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 27,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TargetOutboundUserName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TargetOutboundUserName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 28,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TargetOutboundDomainName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TargetOutboundDomainName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 29,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TargetLinkedLogonId": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TargetLinkedLogonId": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 30,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "SubjectUserSid": "S-1-5-20"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "SubjectUserSid": "S-1-5-20"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 31,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "SubjectUserName": "VM021$"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "SubjectUserName": "VM021$"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 32,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "SubjectLogonId": "0x3e4"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "SubjectLogonId": "0x3e4"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 33,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "RestrictedAdminMode": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "RestrictedAdminMode": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 34,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "SubjectDomainName": "WINDOWS"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "SubjectDomainName": "WINDOWS"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 35,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ProcessName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "name": "xyz"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 36,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "LogonProcessName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "LogonProcessName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 37,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "LogonGuid": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "LogonGuid": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 38,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "LmPackageName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "LmPackageName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 39,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "KeyLength": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "KeyLength": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 40,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "IpPort": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "IpPort": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 41,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "IpAddress": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "IpAddress": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 42,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ImpersonationLevel": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ImpersonationLevel": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 43,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ElevatedToken": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ElevatedToken": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 44,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "AuthenticationPackageName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "AuthenticationPackageName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 45,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ActivityID": "{4D82CA56-AAA0-0000-83CB-824DA0AAD901}"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "activity_id": "{4D82CA56-AAA0-0000-83CB-824DA0AAD901}"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 46,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "AlgorithmName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "AlgorithmName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 47,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ClientCreationTime": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ClientCreationTime": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 48,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "KeyName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "KeyName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 49,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ClientProcessId": "8056"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ClientProcessId": "8056"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 49,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ClientProcessId": "8056"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ClientProcessId": "8056"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 50,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "KeyType": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "KeyType": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 51,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Operation": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "Operation": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 52,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ProviderName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ProviderName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 53,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ReturnCode": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ReturnCode": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 54,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "OriginalFileName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "pe": {
+                    "original_file_name": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 55,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ParentCommandLine": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "parent": {
+                    "command_line": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 56,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ParentImage": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "parent": {
+                    "executable": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 57,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ParentProcessGuid": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "parent": {
+                    "entity_id": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 58,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ParentProcessId": "636"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "parent": {
+                    "pid": "636"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 59,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Product": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "pe": {
+                    "product": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 60,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TerminalSessionId": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TerminalSessionId": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 61,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "RuleName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "RuleName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 62,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "IntegrityLevel": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "IntegrityLevel": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 63,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "FileVersion": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "FileVersion": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 64,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "CurrentDirectory": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "process": {
+                "working_directory": "xyz"
+            }
+        }
+    },
+    {
+        "target_rule_idx": 65,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Company": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "Company": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 66,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "AccountExpires": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "AccountExpires": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 67,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "AccountName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "AccountName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 68,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "AddServiceID": {
+                "AddServiceStatus": "xyz"
+            }
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "user_data": {
+                    "AddServiceStatus": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 69,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "AdvancedOptions": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "user_data": {
+                    "AdvancedOptions": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 70,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param1": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param1": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 71,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param2": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param2": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 72,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param3": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param3": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 73,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param4": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param4": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 74,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param5": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param5": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 75,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param6": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param6": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 76,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param7": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param7": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 77,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param8": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param8": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 78,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param9": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param9": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 79,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param10": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param10": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 80,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param11": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param11": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 81,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param12": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param12": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 82,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param13": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param13": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 83,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param14": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param14": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 84,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param15": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param15": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 85,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param16": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param16": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 86,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param17": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param17": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 87,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param18": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param18": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 88,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param19": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param19": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 89,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param20": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param20": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 90,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param21": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param21": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 91,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param22": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param22": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 92,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param23": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param23": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 93,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param24": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param24": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 94,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param25": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param25": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 95,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param26": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param26": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 96,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param27": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param27": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 97,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param28": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param28": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 98,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param29": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param29": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 99,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param30": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param30": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 100,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param31": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param31": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 101,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param32": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param32": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 102,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param33": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param33": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 103,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param34": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param34": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 104,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "param35": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "param35": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 105,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "PreAuthType": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "PreAuthType": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 106,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ServiceName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ServiceName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 107,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ServiceSid": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ServiceSid": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 108,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Status": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "Status": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 109,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TargetSid": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TargetSid": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 110,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TicketEncryptionType": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TicketEncryptionType": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 111,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TicketOptions": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TicketOptions": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 112,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "PackageName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "PackageName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 113,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Workstation": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "Workstation": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 114,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "PrivilegeList": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "PrivilegeList": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 115,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Protocol": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "Protocol": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 116,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "AccessMask": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "AccessMask": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 117,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "member_domain": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "member_domain": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 118,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "member_user": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "member_user": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 119,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "TargetServerName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "TargetServerName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 120,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "DestPort": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "DestPort": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 121,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "DestAddress": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "DestAddress": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 122,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "RemoteUserID": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "RemoteUserID": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 123,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "HandleId": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "HandleId": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 124,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "RelativeTargetName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "RelativeTargetName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 125,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ObjectType": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ObjectType": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 126,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ObjectName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ObjectName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 127,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "ShareName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "ShareName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 128,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "AccessReason": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "AccessReason": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 129,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "FailureReason": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "FailureReason": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 130,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "WorkstationName": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "WorkstationName": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 131,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "Application": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "Application": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 132,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "SourcePort": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "SourcePort": "xyz"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 133,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "SourceAddress": "xyz"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "event_data": {
+                    "SourceAddress": "xyz"
+                }
+            }
+        }
+    }
+]

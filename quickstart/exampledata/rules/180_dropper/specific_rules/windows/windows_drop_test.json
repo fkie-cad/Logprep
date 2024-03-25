@@ -1,0 +1,46 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "source": {
+        "ip": ""
+      }
+    },
+    "processed": {
+
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "source": {
+        "port": ""
+      }
+    },
+    "processed": {
+
+    }
+  },
+  {
+    "target_rule_idx": 2,
+    "raw": {
+      "Winlog": {
+        "hostapplication": ""
+      }
+    },
+    "processed": {
+
+    }
+  },
+  {
+    "target_rule_idx": 3,
+    "raw": {
+      "Winlog": {
+        "hostname": ""
+      }
+    },
+    "processed": {
+
+    }
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "raw": {},
+    "processed": {
+      "_index": "uncategorized"
+    }
+  },
+  {
+    "raw": {
+      "data_stream": {
+        "dataset": "linux.auditd",
+        "namespace": "lab",
+        "type": "logs"
+      }
+    },
+    "processed": {
+      "data_stream": {
+        "dataset": "linux.auditd",
+        "namespace": "lab",
+        "type": "logs"
+      }
+    }
+  }
+]

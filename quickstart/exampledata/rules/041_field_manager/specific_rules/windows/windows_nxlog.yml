@@ -1,0 +1,949 @@
+filter: "agent_type: nxlog-ee AND tags: windows"
+field_manager:
+  mapping:
+    'EventReceivedTime': event.created
+    'EventTime': "@timestamp"
+    'agent_version': agent.version
+    'host_ip': host.ip
+    'host_os_build': host.os.build
+    'host_os_family': host.os.family
+    'host_os_name': host.os.name
+    'host_os_platform': host.os.platform
+    'host_os_type': host.os.type
+    'host_os_version': host.os.version
+    'meta_processor': meta.processor
+    'meta_processor_arch': meta.processor_arch
+    'meta_processor_count': meta.processor_count
+  delete_source_fields : true
+description: "Rename base fields to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Category"
+field_manager:
+  mapping:
+    'Category': winlog.task
+  delete_source_fields : true
+description: "Rename Category field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Channel"
+field_manager:
+  mapping:
+    'Channel': winlog.channel
+  delete_source_fields : true
+description: "Rename Channel field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND EventID"
+field_manager:
+  mapping:
+    'EventID': winlog.event_id
+  delete_source_fields : true
+description: "Rename EventID field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND EventType"
+field_manager:
+  mapping:
+    'EventType': winlog.opcode
+  delete_source_fields : true
+description: "Rename EventType field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ExecutionProcessID"
+field_manager:
+  mapping:
+    'ExecutionProcessID': winlog.process.pid
+  delete_source_fields : true
+description: "Rename ExecutionProcessID field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ExecutionThreadID"
+field_manager:
+  mapping:
+    'ExecutionThreadID': winlog.process.thread.id
+  delete_source_fields : true
+description: "Rename ExecutionThreadID field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Hostname"
+field_manager:
+  mapping:
+    'Hostname': winlog.computer_name
+  delete_source_fields : true
+description: "Rename Hostname field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Keywords"
+field_manager:
+  mapping:
+    'Keywords': winlog.keywords
+  delete_source_fields : true
+description: "Rename Keywords field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND LogonType"
+field_manager:
+  mapping:
+    'LogonType': winlog.event_data.LogonType
+  delete_source_fields : true
+description: "Rename LogonType field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Message"
+field_manager:
+  mapping:
+    'Message': event.original
+  delete_source_fields : true
+description: "Rename Message field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Opcode"
+field_manager:
+  mapping:
+    'Opcode': log.level
+  delete_source_fields : true
+description: "Rename Opcode field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ProviderGuid"
+field_manager:
+  mapping:
+    'ProviderGuid': winlog.provider_guid
+  delete_source_fields : true
+description: "Rename ProviderGuid field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND RecordNumber"
+field_manager:
+  mapping:
+    'RecordNumber': winlog.record_id
+  delete_source_fields : true
+description: "Rename RecordNumber field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND SourceName"
+field_manager:
+  mapping:
+    'SourceName': winlog.provider_name
+  delete_source_fields : true
+description: "Rename SourceName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TargetDomainName"
+field_manager:
+  mapping:
+    'TargetDomainName': winlog.event_data.TargetDomainName
+  delete_source_fields : true
+description: "Rename TargetDomainName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TargetLogonId"
+field_manager:
+  mapping:
+    'TargetLogonId': winlog.event_data.TargetLogonId
+  delete_source_fields : true
+description: "Rename TargetLogonId field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TargetUserName"
+field_manager:
+  mapping:
+    'TargetUserName': winlog.event_data.TargetUserName
+  delete_source_fields : true
+description: "Rename TargetUserName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TargetUserSid"
+field_manager:
+  mapping:
+    'TargetUserSid': winlog.event_data.TargetUserSid
+  delete_source_fields : true
+description: "Rename TargetUserSid field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Image"
+field_manager:
+  mapping:
+    'Image': process.executable
+  delete_source_fields : true
+description: "Rename Image field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ProcessGuid"
+field_manager:
+  mapping:
+    'ProcessGuid': process.entity_id
+  delete_source_fields : true
+description: "Rename ProcessGuid field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ProcessId"
+field_manager:
+  mapping:
+    'ProcessId': process.pid
+  delete_source_fields : true
+description: "Rename ProcessId field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Domain"
+field_manager:
+  mapping:
+    'Domain': winlog.user.name
+  delete_source_fields : true
+description: "Rename Domain field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND UserID"
+field_manager:
+  mapping:
+    'UserID': winlog.user.identifier
+  delete_source_fields : true
+description: "Rename UserID field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND AccountType"
+field_manager:
+  mapping:
+    'AccountType': winlog.user.type
+  delete_source_fields : true
+description: "Rename AccountType field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND VirtualAccount"
+field_manager:
+  mapping:
+    'VirtualAccount': winlog.event_data.VirtualAccount
+  delete_source_fields : true
+description: "Rename VirtualAccount field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TransmittedServices"
+field_manager:
+  mapping:
+    'TransmittedServices': winlog.event_data.TransmittedServices
+  delete_source_fields : true
+description: "Rename TransmittedServices field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TargetOutboundUserName"
+field_manager:
+  mapping:
+    'TargetOutboundUserName': winlog.event_data.TargetOutboundUserName
+  delete_source_fields : true
+description: "Rename TargetOutboundUserName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TargetOutboundDomainName"
+field_manager:
+  mapping:
+    'TargetOutboundDomainName': winlog.event_data.TargetOutboundDomainName
+  delete_source_fields : true
+description: "Rename TargetOutboundDomainName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TargetLinkedLogonId"
+field_manager:
+  mapping:
+    'TargetLinkedLogonId': winlog.event_data.TargetLinkedLogonId
+  delete_source_fields : true
+description: "Rename TargetLinkedLogonId field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND SubjectUserSid"
+field_manager:
+  mapping:
+    'SubjectUserSid': winlog.event_data.SubjectUserSid
+  delete_source_fields : true
+description: "Rename SubjectUserSid field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND SubjectUserName"
+field_manager:
+  mapping:
+    'SubjectUserName': winlog.event_data.SubjectUserName
+  delete_source_fields : true
+description: "Rename SubjectUserName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND SubjectLogonId"
+field_manager:
+  mapping:
+    'SubjectLogonId': winlog.event_data.SubjectLogonId
+  delete_source_fields : true
+description: "Rename SubjectLogonId field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND RestrictedAdminMode"
+field_manager:
+  mapping:
+    'RestrictedAdminMode': winlog.event_data.RestrictedAdminMode
+  delete_source_fields : true
+description: "Rename RestrictedAdminMode field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND SubjectDomainName"
+field_manager:
+  mapping:
+    'SubjectDomainName': winlog.event_data.SubjectDomainName
+  delete_source_fields : true
+description: "Rename SubjectDomainName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ProcessName"
+field_manager:
+  mapping:
+    'ProcessName': process.name
+  delete_source_fields : true
+description: "Rename ProcessName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND LogonProcessName"
+field_manager:
+  mapping:
+    'LogonProcessName': winlog.event_data.LogonProcessName
+  delete_source_fields : true
+description: "Rename LogonProcessName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND LogonGuid"
+field_manager:
+  mapping:
+    'LogonGuid': winlog.event_data.LogonGuid
+  delete_source_fields : true
+description: "Rename LogonGuid field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND LmPackageName"
+field_manager:
+  mapping:
+    'LmPackageName': winlog.event_data.LmPackageName
+  delete_source_fields : true
+description: "Rename LmPackageName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND KeyLength"
+field_manager:
+  mapping:
+    'KeyLength': winlog.event_data.KeyLength
+  delete_source_fields : true
+description: "Rename KeyLength field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND IpPort"
+field_manager:
+  mapping:
+    'IpPort': winlog.event_data.IpPort
+  delete_source_fields : true
+description: "Rename IpPort field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND IpAddress"
+field_manager:
+  mapping:
+    'IpAddress': winlog.event_data.IpAddress
+  delete_source_fields : true
+description: "Rename IpAddress field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ImpersonationLevel"
+field_manager:
+  mapping:
+    'ImpersonationLevel': winlog.event_data.ImpersonationLevel
+  delete_source_fields : true
+description: "Rename ImpersonationLevel field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ElevatedToken"
+field_manager:
+  mapping:
+    'ElevatedToken': winlog.event_data.ElevatedToken
+  delete_source_fields : true
+description: "Rename ElevatedToken field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND AuthenticationPackageName"
+field_manager:
+  mapping:
+    'AuthenticationPackageName': winlog.event_data.AuthenticationPackageName
+  delete_source_fields : true
+description: "Rename AuthenticationPackageName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ActivityID"
+field_manager:
+  mapping:
+    'ActivityID': winlog.activity_id
+  delete_source_fields : true
+description: "Rename ActivityID field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND AlgorithmName"
+field_manager:
+  mapping:
+    'AlgorithmName': winlog.event_data.AlgorithmName
+  delete_source_fields : true
+description: "Rename AlgorithmName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ClientCreationTime"
+field_manager:
+  mapping:
+    'ClientCreationTime': winlog.event_data.ClientCreationTime
+  delete_source_fields : true
+description: "Rename ClientCreationTime field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND KeyName"
+field_manager:
+  mapping:
+    'KeyName': winlog.event_data.KeyName
+  delete_source_fields : true
+description: "Rename KeyName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ClientProcessId"
+field_manager:
+  mapping:
+    'ClientProcessId': winlog.event_data.ClientProcessId
+  delete_source_fields : true
+description: "Rename ClientProcessId field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND KeyType"
+field_manager:
+  mapping:
+    'KeyType': winlog.event_data.KeyType
+  delete_source_fields : true
+description: "Rename KeyType field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Operation"
+field_manager:
+  mapping:
+    'Operation': winlog.event_data.Operation
+  delete_source_fields : true
+description: "Rename Operation field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ProviderName"
+field_manager:
+  mapping:
+    'ProviderName': winlog.event_data.ProviderName
+  delete_source_fields : true
+description: "Rename ProviderName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ReturnCode"
+field_manager:
+  mapping:
+    'ReturnCode': winlog.event_data.ReturnCode
+  delete_source_fields : true
+description: "Rename ReturnCode field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND OriginalFileName"
+field_manager:
+  mapping:
+    'OriginalFileName': process.pe.original_file_name
+  delete_source_fields : true
+description: "Rename OriginalFileName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ParentCommandLine"
+field_manager:
+  mapping:
+    'ParentCommandLine': process.parent.command_line
+  delete_source_fields : true
+description: "Rename ParentCommandLine field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ParentImage"
+field_manager:
+  mapping:
+    'ParentImage': process.parent.executable
+  delete_source_fields : true
+description: "Rename ParentImage field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ParentProcessGuid"
+field_manager:
+  mapping:
+    'ParentProcessGuid': process.parent.entity_id
+  delete_source_fields : true
+description: "Rename ParentProcessGuid field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ParentProcessId"
+field_manager:
+  mapping:
+    'ParentProcessId': process.parent.pid
+  delete_source_fields : true
+description: "Rename ParentProcessId field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Product"
+field_manager:
+  mapping:
+    'Product': process.pe.product
+  delete_source_fields : true
+description: "Rename Product field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TerminalSessionId"
+field_manager:
+  mapping:
+    'TerminalSessionId': winlog.event_data.TerminalSessionId
+  delete_source_fields : true
+description: "Rename TerminalSessionId field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND RuleName"
+field_manager:
+  mapping:
+    'RuleName': winlog.event_data.RuleName
+  delete_source_fields : true
+description: "Rename RuleName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND IntegrityLevel"
+field_manager:
+  mapping:
+    'IntegrityLevel': winlog.event_data.IntegrityLevel
+  delete_source_fields : true
+description: "Rename IntegrityLevel field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND FileVersion"
+field_manager:
+  mapping:
+    'FileVersion': winlog.event_data.FileVersion
+  delete_source_fields : true
+description: "Rename FileVersion field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND CurrentDirectory"
+field_manager:
+  mapping:
+    'CurrentDirectory': process.working_directory
+  delete_source_fields : true
+description: "Rename CurrentDirectory field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Company"
+field_manager:
+  mapping:
+    'Company': winlog.event_data.Company
+  delete_source_fields : true
+description: "Rename Company field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND AccountExpires"
+field_manager:
+  mapping:
+    'AccountExpires': winlog.event_data.AccountExpires
+  delete_source_fields : true
+description: "Rename AccountExpires field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND AccountName"
+field_manager:
+  mapping:
+    'AccountName': winlog.event_data.AccountName
+  delete_source_fields : true
+description: "Rename AccountName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND AddServiceID.AddServiceStatus"
+field_manager:
+  mapping:
+    'AddServiceID.AddServiceStatus': winlog.user_data.AddServiceStatus
+  delete_source_fields : true
+description: "Rename AddServiceID.AddServiceStatus field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND AdvancedOptions"
+field_manager:
+  mapping:
+    'AdvancedOptions': winlog.user_data.AdvancedOptions
+  delete_source_fields : true
+description: "Rename AdvancedOptions field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param1"
+field_manager:
+  mapping:
+    'param1': winlog.event_data.param1
+  delete_source_fields : true
+description: "Rename param1 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param2"
+field_manager:
+  mapping:
+    'param2': winlog.event_data.param2
+  delete_source_fields : true
+description: "Rename param2 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param3"
+field_manager:
+  mapping:
+    'param3': winlog.event_data.param3
+  delete_source_fields : true
+description: "Rename param3 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param4"
+field_manager:
+  mapping:
+    'param4': winlog.event_data.param4
+  delete_source_fields : true
+description: "Rename param4 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param5"
+field_manager:
+  mapping:
+    'param5': winlog.event_data.param5
+  delete_source_fields : true
+description: "Rename param5 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param6"
+field_manager:
+  mapping:
+    'param6': winlog.event_data.param6
+  delete_source_fields : true
+description: "Rename param6 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param7"
+field_manager:
+  mapping:
+    'param7': winlog.event_data.param7
+  delete_source_fields : true
+description: "Rename param7 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param8"
+field_manager:
+  mapping:
+    'param8': winlog.event_data.param8
+  delete_source_fields : true
+description: "Rename param8 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param9"
+field_manager:
+  mapping:
+    'param9': winlog.event_data.param9
+  delete_source_fields : true
+description: "Rename param9 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param10"
+field_manager:
+  mapping:
+    'param10': winlog.event_data.param10
+  delete_source_fields : true
+description: "Rename param10 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param11"
+field_manager:
+  mapping:
+    'param11': winlog.event_data.param11
+  delete_source_fields : true
+description: "Rename param11 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param12"
+field_manager:
+  mapping:
+    'param12': winlog.event_data.param12
+  delete_source_fields : true
+description: "Rename param12 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param13"
+field_manager:
+  mapping:
+    'param13': winlog.event_data.param13
+  delete_source_fields : true
+description: "Rename param13 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param14"
+field_manager:
+  mapping:
+    'param14': winlog.event_data.param14
+  delete_source_fields : true
+description: "Rename param14 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param15"
+field_manager:
+  mapping:
+    'param15': winlog.event_data.param15
+  delete_source_fields : true
+description: "Rename param15 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param16"
+field_manager:
+  mapping:
+    'param16': winlog.event_data.param16
+  delete_source_fields : true
+description: "Rename param16 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param17"
+field_manager:
+  mapping:
+    'param17': winlog.event_data.param17
+  delete_source_fields : true
+description: "Rename param17 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param18"
+field_manager:
+  mapping:
+    'param18': winlog.event_data.param18
+  delete_source_fields : true
+description: "Rename param18 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param19"
+field_manager:
+  mapping:
+    'param19': winlog.event_data.param19
+  delete_source_fields : true
+description: "Rename param19 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param20"
+field_manager:
+  mapping:
+    'param20': winlog.event_data.param20
+  delete_source_fields : true
+description: "Rename param20 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param21"
+field_manager:
+  mapping:
+    'param21': winlog.event_data.param21
+  delete_source_fields : true
+description: "Rename param21 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param22"
+field_manager:
+  mapping:
+    'param22': winlog.event_data.param22
+  delete_source_fields : true
+description: "Rename param22 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param23"
+field_manager:
+  mapping:
+    'param23': winlog.event_data.param23
+  delete_source_fields : true
+description: "Rename param23 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param24"
+field_manager:
+  mapping:
+    'param24': winlog.event_data.param24
+  delete_source_fields : true
+description: "Rename param24 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param25"
+field_manager:
+  mapping:
+    'param25': winlog.event_data.param25
+  delete_source_fields : true
+description: "Rename param25 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param26"
+field_manager:
+  mapping:
+    'param26': winlog.event_data.param26
+  delete_source_fields : true
+description: "Rename param26 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param27"
+field_manager:
+  mapping:
+    'param27': winlog.event_data.param27
+  delete_source_fields : true
+description: "Rename param27 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param28"
+field_manager:
+  mapping:
+    'param28': winlog.event_data.param28
+  delete_source_fields : true
+description: "Rename param28 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param29"
+field_manager:
+  mapping:
+    'param29': winlog.event_data.param29
+  delete_source_fields : true
+description: "Rename param29 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param30"
+field_manager:
+  mapping:
+    'param30': winlog.event_data.param30
+  delete_source_fields : true
+description: "Rename param30 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param31"
+field_manager:
+  mapping:
+    'param31': winlog.event_data.param31
+  delete_source_fields : true
+description: "Rename param31 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param32"
+field_manager:
+  mapping:
+    'param32': winlog.event_data.param32
+  delete_source_fields : true
+description: "Rename param32 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param33"
+field_manager:
+  mapping:
+    'param33': winlog.event_data.param33
+  delete_source_fields : true
+description: "Rename param33 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param34"
+field_manager:
+  mapping:
+    'param34': winlog.event_data.param34
+  delete_source_fields : true
+description: "Rename param34 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND param35"
+field_manager:
+  mapping:
+    'param35': winlog.event_data.param35
+  delete_source_fields : true
+description: "Rename param35 field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND PreAuthType"
+field_manager:
+  mapping:
+    'PreAuthType': winlog.event_data.PreAuthType
+  delete_source_fields : true
+description: "Rename PreAuthType field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ServiceName"
+field_manager:
+  mapping:
+    'ServiceName': winlog.event_data.ServiceName
+  delete_source_fields : true
+description: "Rename ServiceName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ServiceSid"
+field_manager:
+  mapping:
+    'ServiceSid': winlog.event_data.ServiceSid
+  delete_source_fields : true
+description: "Rename ServiceSid field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Status"
+field_manager:
+  mapping:
+    'Status': winlog.event_data.Status
+  delete_source_fields : true
+description: "Rename Status field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TargetSid"
+field_manager:
+  mapping:
+    'TargetSid': winlog.event_data.TargetSid
+  delete_source_fields : true
+description: "Rename TargetSid field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TicketEncryptionType"
+field_manager:
+  mapping:
+    'TicketEncryptionType': winlog.event_data.TicketEncryptionType
+  delete_source_fields : true
+description: "Rename TicketEncryptionType field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TicketOptions"
+field_manager:
+  mapping:
+    'TicketOptions': winlog.event_data.TicketOptions
+  delete_source_fields : true
+description: "Rename TicketOptions field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND PackageName"
+field_manager:
+  mapping:
+    'PackageName': winlog.event_data.PackageName
+  delete_source_fields : true
+description: "Rename PackageName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Workstation"
+field_manager:
+  mapping:
+    'Workstation': winlog.event_data.Workstation
+  delete_source_fields : true
+description: "Rename Workstation field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND PrivilegeList"
+field_manager:
+  mapping:
+    'PrivilegeList': winlog.event_data.PrivilegeList
+  delete_source_fields : true
+description: "Rename PrivilegeList field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Protocol"
+field_manager:
+  mapping:
+    'Protocol': winlog.event_data.Protocol
+  delete_source_fields : true
+description: "Rename Protocol field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND AccessMask"
+field_manager:
+  mapping:
+    'AccessMask': winlog.event_data.AccessMask
+  delete_source_fields : true
+description: "Rename AccessMask field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND member_domain"
+field_manager:
+  mapping:
+    'member_domain': winlog.event_data.member_domain
+  delete_source_fields : true
+description: "Rename member_domain field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND member_user"
+field_manager:
+  mapping:
+    'member_user': winlog.event_data.member_user
+  delete_source_fields : true
+description: "Rename member_user field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND TargetServerName"
+field_manager:
+  mapping:
+    'TargetServerName': winlog.event_data.TargetServerName
+  delete_source_fields : true
+description: "Rename TargetServerName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND DestPort"
+field_manager:
+  mapping:
+    'DestPort': winlog.event_data.DestPort
+  delete_source_fields : true
+description: "Rename DestPort field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND DestAddress"
+field_manager:
+  mapping:
+    'DestAddress': winlog.event_data.DestAddress
+  delete_source_fields : true
+description: "Rename DestAddress field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND RemoteUserID"
+field_manager:
+  mapping:
+    'RemoteUserID': winlog.event_data.RemoteUserID
+  delete_source_fields : true
+description: "Rename RemoteUserID field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND HandleId"
+field_manager:
+  mapping:
+    'HandleId': winlog.event_data.HandleId
+  delete_source_fields : true
+description: "Rename HandleId field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND RelativeTargetName"
+field_manager:
+  mapping:
+    'RelativeTargetName': winlog.event_data.RelativeTargetName
+  delete_source_fields : true
+description: "Rename RelativeTargetName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ObjectType"
+field_manager:
+  mapping:
+    'ObjectType': winlog.event_data.ObjectType
+  delete_source_fields : true
+description: "Rename ObjectType field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ObjectName"
+field_manager:
+  mapping:
+    'ObjectName': winlog.event_data.ObjectName
+  delete_source_fields : true
+description: "Rename ObjectName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND ShareName"
+field_manager:
+  mapping:
+    'ShareName': winlog.event_data.ShareName
+  delete_source_fields : true
+description: "Rename ShareName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND AccessReason"
+field_manager:
+  mapping:
+    'AccessReason': winlog.event_data.AccessReason
+  delete_source_fields : true
+description: "Rename AccessReason field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND FailureReason"
+field_manager:
+  mapping:
+    'FailureReason': winlog.event_data.FailureReason
+  delete_source_fields : true
+description: "Rename FailureReason field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND WorkstationName"
+field_manager:
+  mapping:
+    'WorkstationName': winlog.event_data.WorkstationName
+  delete_source_fields : true
+description: "Rename WorkstationName field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND Application"
+field_manager:
+  mapping:
+    'Application': winlog.event_data.Application
+  delete_source_fields : true
+description: "Rename Application field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND SourcePort"
+field_manager:
+  mapping:
+    'SourcePort': winlog.event_data.SourcePort
+  delete_source_fields : true
+description: "Rename SourcePort field to ECS"
+---
+filter: "agent_type: nxlog-ee AND tags: windows AND SourceAddress"
+field_manager:
+  mapping:
+    'SourceAddress': winlog.event_data.SourceAddress
+  delete_source_fields : true
+description: "Rename SourceAddress field to ECS"

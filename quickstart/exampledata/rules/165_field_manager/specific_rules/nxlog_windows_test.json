@@ -1,0 +1,36 @@
+[
+    {
+        "target_rule_idx": 0,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee"
+        },
+        "processed": {
+            "tags": "windows",
+            "agent": {
+                "type": "nxlog-ee"
+            }
+        }     
+    },
+
+    {
+        "target_rule_idx": 1,
+        "raw": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "winlog": {
+                "computer_name": "abc"
+            }
+        },
+        "processed": {
+            "tags": "windows",
+            "agent_type": "nxlog-ee",
+            "host": {
+                "name": "abc"
+            },
+            "winlog": {
+                "computer_name": "abc"
+            }
+        }     
+    }
+]

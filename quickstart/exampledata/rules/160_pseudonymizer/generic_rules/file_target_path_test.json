@@ -1,0 +1,34 @@
+[
+  {
+    "raw": {
+      "file": {
+        "target": {
+          "path": "test_path"
+        }
+      }
+    },
+    "processed": {
+      "file": {
+        "target": {
+          "path|re": "%{PSEUDONYM}"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "file": {
+        "target": {
+          "path_false": "test_path"
+        }
+      }
+    },
+    "processed": {
+      "file": {
+        "target": {
+          "path_false": "test_path"
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,36 @@
+[
+  {
+    "raw": {
+      "tags": [
+        "windows"
+      ]
+    },
+    "processed": {
+      "tags": [
+        "windows"
+      ],
+      "observer": {
+        "type": "windows-event-forwarder",
+        "product": "Microsoft Windows Server 2016 Standard Evaluation",
+        "vendor": "Microsoft Corporation",
+        "version": "10.0.14393 Build 14393"
+      },
+      "organization": {
+        "name": "Company 1"
+      },
+      "data_stream": {
+        "dataset": "windows",
+        "namespace": "lab",
+        "type": "logs"
+      }
+    }
+  },
+  {
+    "raw": {
+      "wrong": "filter"
+    },
+    "processed": {
+      "wrong": "filter"
+    }
+  }
+]

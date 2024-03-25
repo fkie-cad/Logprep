@@ -1,0 +1,5 @@
+filter: 'host.user.name'
+pseudonymizer:
+  pseudonyms:
+    host.user.name: RE_WHOLE_FIELD
+description: 'pseudonymize host.user.name'

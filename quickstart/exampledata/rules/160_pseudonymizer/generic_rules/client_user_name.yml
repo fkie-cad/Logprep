@@ -1,0 +1,5 @@
+filter: 'client.user.name AND NOT pseudo_exclude_user.in_list'
+pseudonymizer:
+  pseudonyms:
+    client.user.name: RE_WHOLE_FIELD
+description: 'pseudonymize client.user.name'

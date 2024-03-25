@@ -1,0 +1,8 @@
+filter: 'tags: squid AND tags: access AND NOT http.request.method: "CONNECT"'
+list_comparison:
+  source_fields: ["destination.address"]
+  target_field: malware_urls
+  list_file_paths:
+    - "malware_urls.txt"
+    - "test_malware_urls.txt"
+description: 'list from https://urlhaus.abuse.ch/downloads/text/'

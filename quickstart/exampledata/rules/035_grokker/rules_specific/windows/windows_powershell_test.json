@@ -1,0 +1,32 @@
+[
+  {
+    "raw": {
+      "winlog": {
+        "event_data": {
+          "ContextInfo": "        Severity = Informational\n        Host Name = ServerRemoteHost\n        Host Version = 1.0.0.0\n        Host ID = bla\n        Host Application = C:\\\\Windows\\\\system32\\\\wsmprovhost.exe -Embedding\n        Engine Version = 5.1.14393.693\n        Runspace ID = blub\n        Pipeline ID = 1\n        Command Name = Invoke-Expression\n        Command Type = Cmdlet\n        Script Name = \n        Command Path = \n        Sequence Number = 45\n        User = hägar\n        Connected User = der schreckliche\n        Shell ID = Microsoft.PowerShell"
+        },
+        "channel": "Microsoft-Windows-PowerShell/Operational"
+      },
+      "tags": [
+        "windows",
+        "WEC-Powershell"
+      ]
+    },
+    "processed": {
+      "winlog": {
+        "event_data": {
+          "ContextInfo": "        Severity = Informational\n        Host Name = ServerRemoteHost\n        Host Version = 1.0.0.0\n        Host ID = bla\n        Host Application = C:\\\\Windows\\\\system32\\\\wsmprovhost.exe -Embedding\n        Engine Version = 5.1.14393.693\n        Runspace ID = blub\n        Pipeline ID = 1\n        Command Name = Invoke-Expression\n        Command Type = Cmdlet\n        Script Name = \n        Command Path = \n        Sequence Number = 45\n        User = hägar\n        Connected User = der schreckliche\n        Shell ID = Microsoft.PowerShell"
+        },
+        "channel": "Microsoft-Windows-PowerShell/Operational"
+      },
+      "Winlog": {
+        "hostapplication": "C:\\\\Windows\\\\system32\\\\wsmprovhost.exe -Embedding",
+        "hostname": "ServerRemoteHost"
+      },
+      "tags": [
+        "windows",
+        "WEC-Powershell"
+      ]
+    }
+  }
+]

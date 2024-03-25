@@ -1,0 +1,27 @@
+filter: 'tags: openvpn'
+generic_adder:
+  add:
+    event.kind: "event"
+    event.category: "network"
+    event.module: "openvpn"
+    event.type: "connection"
+    data_stream.dataset: "openvpn"
+    data_stream.namespace: "lab"
+    data_stream.type: "logs"
+description: ""
+
+---
+
+filter: 'tags: openvpn AND log.syslog.facility.name: system'
+generic_adder:
+  add:
+    event.dataset: "openvpn.system"
+description: ""
+
+---
+
+filter: 'tags: openvpn AND log.syslog.facility.name: security/authorization'
+generic_adder:
+  add:
+    event.dataset: "openvpn.security_authorization"
+description: ""

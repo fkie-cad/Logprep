@@ -1,0 +1,5 @@
+filter: 'winlog.user.name AND NOT pseudo_exclude_user.in_list'
+pseudonymizer:
+  pseudonyms:
+    winlog.user.name: RE_WHOLE_FIELD
+description: 'pseudonymize winlog.user.name'

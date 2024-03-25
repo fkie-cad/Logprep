@@ -1,0 +1,6 @@
+filter: 'NOT data_stream'
+generic_adder:
+  add:
+    _index: "uncategorized"    
+
+description: "Set uncategorized when data_stream is not set"

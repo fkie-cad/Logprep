@@ -1,0 +1,8 @@
+filter: 'data_stream'
+concatenator:
+  source_fields: ["data_stream.type","data_stream.dataset","data_stream.namespace"]
+  target_field: _index
+  separator: "-"
+  overwrite_target: True
+  delete_source_fields: False
+description: 'Compose Indexname based on data_stream fields'

@@ -1,0 +1,7 @@
+filter: "Tmp.tls.client.supported_ciphers"
+string_splitter:
+    source_fields: ["Tmp.tls.client.supported_ciphers"]
+    delimeter: ":"
+    target_field: "tls.client.supported_ciphers"
+    delete_source_fields: True
+description: '...'

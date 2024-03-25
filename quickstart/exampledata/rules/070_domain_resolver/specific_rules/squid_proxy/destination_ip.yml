@@ -1,0 +1,5 @@
+filter: 'tags: squid AND destination.domain'
+domain_resolver:
+  source_fields: ["destination.domain"]
+  target_field: destination.ip
+description: 'Domain resolution of destination.domain to destination.ip'

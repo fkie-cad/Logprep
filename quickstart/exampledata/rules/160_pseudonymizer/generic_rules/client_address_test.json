@@ -1,0 +1,26 @@
+[
+  {
+    "raw": {
+      "client": {
+        "address": "test_address"
+      }
+    },
+    "processed": {
+      "client": {
+        "address|re": "%{PSEUDONYM}"
+      }
+    }
+  },
+  {
+    "raw": {
+      "client": {
+        "address_false": "test_address"
+      }
+    },
+    "processed": {
+      "client": {
+        "address_false": "test_address"
+      }
+    }
+  }
+]

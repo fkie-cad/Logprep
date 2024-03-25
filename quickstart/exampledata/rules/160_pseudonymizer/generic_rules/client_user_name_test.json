@@ -1,0 +1,58 @@
+[
+  {
+    "raw": {
+      "client": {
+        "user": {
+          "name": "test_user"
+        }
+      }
+    },
+    "processed": {
+      "client": {
+        "user": {
+          "name|re": "%{PSEUDONYM}"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "client": {
+        "user": {
+          "not_name": "test_user"
+        }
+      }
+    },
+    "processed": {
+      "client": {
+        "user": {
+          "not_name": "test_user"
+        }
+      }
+    }
+  },
+{
+    "raw": {
+      "pseudo_exclude_user": {
+        "in_list": [
+          "test_list.txt"
+      ]},
+      "client": {
+        "user": {
+          "name": "test_path"
+        }
+      }
+    },
+    "processed": {
+      "pseudo_exclude_user": {
+        "in_list": [
+          "test_list.txt"
+      ]},
+      "client": {
+        "user": {
+          "name": "test_path"
+        }
+      }
+    }
+  }
+]

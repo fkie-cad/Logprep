@@ -1,0 +1,266 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "1"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "1"
+        }
+      },
+      "event": {
+        "reason": "informational"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "99"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "99"
+        }
+      },
+      "event": {
+        "reason": "informational"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "100"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "100"
+        }
+      },
+      "event": {
+        "reason": "informational"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "199"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "199"
+        }
+      },
+      "event": {
+        "reason": "informational"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "200"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "200"
+        }
+      },
+      "event": {
+        "reason": "success"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "299"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "299"
+        }
+      },
+      "event": {
+        "reason": "success"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "300"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "300"
+        }
+      },
+      "event": {
+        "reason": "redirection"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "399"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "399"
+        }
+      },
+      "event": {
+        "reason": "redirection"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "400"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "400"
+        }
+      },
+      "event": {
+        "reason": "client error"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "499"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "499"
+        }
+      },
+      "event": {
+        "reason": "client error"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "500"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "500"
+        }
+      },
+      "event": {
+        "reason": "server error"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "http": {
+        "response": {
+          "status_code": "599"
+        }
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "599"
+        }
+      },
+      "event": {
+        "reason": "server error"
+      }
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+       "http": {
+        "response": {
+          "status_code": "501"
+        }
+      },
+      "event": {
+        "reason": "server error"
+      }
+    },
+    "processed": {
+      "http": {
+        "response": {
+          "status_code": "501"
+        }
+      },
+      "event": {
+        "reason": "server error",
+        "outcome": "failure"
+      }
+    }
+  }
+]

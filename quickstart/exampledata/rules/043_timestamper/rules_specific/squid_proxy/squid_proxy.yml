@@ -1,0 +1,9 @@
+filter: "tags: squid AND tags: access"
+timestamper:
+    source_fields: ["timestamp"]
+    target_field: "@timestamp"
+    source_format: UNIX
+    source_timezone: UTC
+    target_timezone: UTC
+    overwrite_target: true
+description: "timestamp normalization, timestamp -> @timestamp"

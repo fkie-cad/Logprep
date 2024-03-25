@@ -1,0 +1,8 @@
+filter: "tags: squid AND tags: access"
+grokker:
+  mapping:
+     message: "^%{NUMBER:timestamp}%{SPACE}%{IPORHOST:[source][address]}:%{POSINT:[source][port]}%{SPACE}\"%{WORD:[http][request][method]}%{SPACE}%{DATA:[url][original]}%{SPACE}HTTP/%{DATA:[http][version]}\"%{SPACE}%{WORD:[Squid][request][status]}\/%{POSINT:[http][response][status_code]}%{SPACE}%{INT:[http][response][bytes]}%{SPACE}%{DATA:[Squid][request][status_nexthop]}%{SPACE}%{INT:[http][request][bytes]}%{SPACE}%{INT:[Squid][object][size]}%{SPACE}\"%{DATA:[http][request][referrer]}\"%{SPACE}\"%{DATA:[user_agent][original]}\"%{SPACE}%{WORD:[Squid][hierarchy][status]}/%{USERNAME:[Squid][last][server][ip]}%{SPACE}%{USERNAME:[Squid][local][port][last][server]}%{SPACE}%{USERNAME:[Squid][peer][response_time]}%{SPACE}%{USERNAME:[event][duration]}%{GREEDYDATA:[grok_failure]}$"
+     url.original: 
+       - "^%{GREEDYDATA:[network][protocol]}://%{IPORHOST:[url][domain]}%{GREEDYDATA:[url][path]}$"
+       - "^%{IPORHOST:[url][domain]}:%{GREEDYDATA:[url][port]}$"
+description: '(Grok-based) normalisation for Squid Proxy Logs'

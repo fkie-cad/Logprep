@@ -1,0 +1,6 @@
+filter: 'winlog.event_id: 1 AND winlog.provider_name: "Microsoft-Windows-Sysmon"'
+amides:
+  id: amides-1a3c69b2-5d54-4b6b-ab07-c7ddbea7917c
+  source_fields: [process.command_line]
+  target_field: amides
+description": Sample rule for generic AMIDES events

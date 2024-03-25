@@ -1,0 +1,14 @@
+filter: "tags: squid AND tags: access"
+generic_adder:
+  add:
+    event.kind: "event"
+    event.category: "web"
+    event.module: "squid"
+    event.dataset: "squid.access"
+    observer.vendor: "squid"
+    observer.product: "squid"
+    observer.type: "proxy"
+    data_stream.dataset: "squid.access"
+    data_stream.namespace: "lab"
+    data_stream.type: "logs"
+description: "Enrichment for Squid Proxy logs from field list."

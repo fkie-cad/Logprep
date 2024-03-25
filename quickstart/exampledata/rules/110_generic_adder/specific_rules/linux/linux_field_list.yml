@@ -1,0 +1,19 @@
+filter: 'tags: auditd AND tags: linux'
+generic_adder:
+  add:
+    data_stream.dataset: "linux.auditd"
+    data_stream.namespace: "lab"
+    data_stream.type: "logs"
+
+description: "Enrichment data_stream-fields for linux auditd."
+
+---
+
+filter: 'tags: messages AND tags: linux'
+generic_adder:
+  add:
+    data_stream.dataset: "linux.messages"
+    data_stream.namespace: "lab"
+    data_stream.type: "logs"
+
+description: "Enrichment data_stream-fields for linux messages."

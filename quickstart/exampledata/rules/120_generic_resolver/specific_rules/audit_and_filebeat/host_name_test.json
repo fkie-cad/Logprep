@@ -1,0 +1,102 @@
+[
+  {
+    "raw": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "host": {
+        "name": "any.tor-foo.lab"
+      }
+    },
+    "processed": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "host": {
+        "name": "any.tor-foo.lab"
+      },
+      "observer": {
+        "ingress": {
+          "zone": "Vagrant Setup"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "host": {
+        "name": "any.lab.local"
+      }
+    },
+    "processed": {
+      "agent": {
+        "type": "auditbeat"
+      },
+      "host": {
+        "name": "any.lab.local"
+      },
+      "observer": {
+        "ingress": {
+          "zone": "Lab"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "agent": {
+        "type": "filebeat"
+      },
+      "host": {
+        "name": "any.tor-foo.lab"
+      }
+    },
+    "processed": {
+      "agent": {
+        "type": "filebeat"
+      },
+      "host": {
+        "name": "any.tor-foo.lab"
+      },
+      "observer": {
+        "ingress": {
+          "zone": "Vagrant Setup"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "agent": {
+        "type": "filebeat"
+      },
+      "host": {
+        "name": "any.lab.local"
+      }
+    },
+    "processed": {
+      "agent": {
+        "type": "filebeat"
+      },
+      "host": {
+        "name": "any.lab.local"
+      },
+      "observer": {
+        "ingress": {
+          "zone": "Lab"
+        }
+      }
+    }
+  },
+  {
+    "raw": {
+      "wrong": "filter"
+    },
+    "processed": {
+      "wrong": "filter"
+    }
+  }
+]

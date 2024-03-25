@@ -1,0 +1,13 @@
+filter: "user_agent.original:(*\\(hydra\\)* OR *\\ arachni\\/* OR *\\ BFAC\\ * OR *\\ brutus\\ * OR *\\ cgichk\\ * OR *core\\-project\\/1.0* OR *\\ crimscanner\\/* OR *datacha0s* OR *dirbuster* OR *domino\\ hunter* OR *dotdotpwn* OR FHScan\\ Core OR *floodgate* OR *get\\-minimal* OR *gootkit\\ auto\\-rooter\\ scanner* OR *grendel\\-scan* OR *\\ inspath\\ * OR *internet\\ ninja* OR *jaascois* OR *\\ zmeu\\ * OR *masscan* OR *\\ metis\\ * OR *morfeus\\ fucking\\ scanner* OR *n\\-stealth* OR *nsauditor* OR *pmafind* OR *security\\ scan* OR *springenwerk* OR *teh\\ forest\\ lobster* OR *toata\\ dragostea* OR *\\ vega\\/* OR *voideye* OR *webshag* OR *webvulnscan* OR *\\ whcc\\/* OR *\\ Havij OR *absinthe* OR *bsqlbf* OR *mysqloit* OR *pangolin* OR *sql\\ power\\ injector* OR *sqlmap* OR *sqlninja* OR *uil2pn* OR ruler OR Mozilla\\/5.0\\ \\(Windows;\\ U;\\ Windows\\ NT\\ 5.1;\\ pt\\-PT;\\ rv\\:1.9.1.2\\)\\ Gecko\\/20090729\\ Firefox\\/3.5.2\\ \\(.NET\\ CLR\\ 3.5.30729\\)) AND tags: squid AND tags: access"
+pre_detector: 
+  id: "c42a3073-30fb-48ae-8c99-c23ada84b103"
+  title: "Hack Tool User Agent"
+  severity: "high"
+  mitre: 
+    - "attack.initial_access"
+    - "attack.t1190"
+    - "attack.credential_access"
+    - "attack.t1110"
+  case_condition: "selection"
+sigma_fields: true
+description: "Detects suspicious user agent strings user by hack tools in proxy logs"

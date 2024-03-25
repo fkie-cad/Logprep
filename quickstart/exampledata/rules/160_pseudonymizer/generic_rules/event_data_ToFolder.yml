@@ -1,0 +1,5 @@
+filter: 'winlog.event_data.ToFolder'
+pseudonymizer:
+  pseudonyms:
+    winlog.event_data.ToFolder: RE_WHOLE_FIELD
+description: 'pseudonymize winlog.event_data.ToFolder'

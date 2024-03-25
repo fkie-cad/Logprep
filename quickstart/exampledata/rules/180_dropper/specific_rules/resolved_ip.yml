@@ -1,0 +1,5 @@
+filter: 'resolved_ip'
+dropper:
+  drop:
+    - resolved_ip
+description: ""

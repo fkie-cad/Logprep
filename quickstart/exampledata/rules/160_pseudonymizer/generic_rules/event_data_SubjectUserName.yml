@@ -1,0 +1,5 @@
+filter: 'winlog.event_data.SubjectUserName'
+pseudonymizer:
+  pseudonyms:
+    winlog.event_data.SubjectUserName: RE_WHOLE_FIELD
+description: 'pseudonymize winlog.event_data.SubjectUserName'

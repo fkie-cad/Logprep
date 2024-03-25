@@ -1,0 +1,79 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "message": "test-message",
+      "timestamp": "2022-03-18T08:33:27.972Z"
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ]
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "Squid": {
+        "last": {
+          "server": {
+            "ip": "-"
+          }
+        }
+      }
+    },
+    "processed": {
+    }
+  },
+  {
+    "target_rule_idx": 2,
+    "raw": {
+      "Squid": {
+        "local": {
+          "port": {
+            "last": {
+              "server": "-"
+            }
+          }
+        }
+      }
+    },
+    "processed": {
+    }
+  },
+  {
+    "target_rule_idx": 3,
+    "raw": {
+      "Squid": {
+        "peer": {
+          "response_time": "-"
+        }
+      }
+    },
+    "processed": {
+    }
+  },
+  {
+    "target_rule_idx": 4,
+    "raw":{
+      "geoip": {
+        "properties": {
+          "accuracy_radius": 50            
+        },
+        "type": "Feature"
+      }, "tags": [
+        "squid"
+      ]
+    },
+    "processed":{
+      "tags": [
+        "squid"
+      ]
+    }
+  }
+]

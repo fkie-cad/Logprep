@@ -1,0 +1,5 @@
+filter: "winlog.channel: \"Microsoft-Windows-PowerShell/Operational\" AND tags: WEC-Powershell"
+grokker:
+  mapping:
+    winlog.event_data.ContextInfo: "[\\s\\w\\W]*Host Name = %{DATA:[Winlog][hostname]}\\n[\\s\\w\\W]*Host Application = %{DATA:[Winlog][hostapplication]}\\n[\\s\\w\\W]*"
+description: Windows Powershell extract needed fields

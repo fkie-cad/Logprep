@@ -1,0 +1,8 @@
+{
+    "action": {
+        "category": "What has been done?",
+        "execute": {
+            "description": "Start or execute a service"
+        }
+    }
+}

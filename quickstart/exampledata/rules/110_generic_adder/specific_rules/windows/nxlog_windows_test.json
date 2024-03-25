@@ -1,0 +1,24 @@
+[
+    {
+        "raw": {
+            "tags": "windows",
+            "agent": {
+                "type": "nxlog-ee"
+            }
+        },
+        "processed": {
+            "tags": "windows",
+            "agent": {
+                "type": "nxlog-ee"
+            },
+            "data_stream": {
+                "dataset": "windows",
+                "namespace": "lab",
+                "type": "logs"
+            },
+            "organization": {
+                "name": "Company 1"
+            }
+        }
+    }
+]

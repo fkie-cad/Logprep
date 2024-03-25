@@ -1,0 +1,8 @@
+filter: '(agent.type: "auditbeat" OR agent.type: "filebeat") AND host.name'
+generic_resolver:
+  field_mapping:
+    host.name: observer.ingress.zone
+  resolve_list:
+    .*\.tor-foo\.lab: "Vagrant Setup"
+    .*\.lab\.local: "Lab"
+description: "Resolve ingress-zone by domain - RegEx based"

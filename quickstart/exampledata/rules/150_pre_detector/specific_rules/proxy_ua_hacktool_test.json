@@ -1,0 +1,44 @@
+[
+  {
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "user_agent": {
+        "original": "Microsoft*floodgate**CryptoAPI/10.0"
+      }
+    },
+    "processed": {
+      "pre_detection_id|re": "%{UUID}",
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "user_agent": {
+        "original": "Microsoft*floodgate**CryptoAPI/10.0"
+      }
+    }
+  },
+  {
+    "raw": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "user_agent": {
+        "original": "Microsoft*NormalAPI/11.0"
+      }
+    },
+    "processed": {
+      "tags": [
+        "squid",
+        "access"
+      ],
+      "user_agent": {
+        "original": "Microsoft*NormalAPI/11.0"
+      }
+    }
+  }
+]
+

@@ -2,7 +2,7 @@ version: 1
 
 metrics:
   enabled: true
-  port: 8000
+  port: 8002
 
 input:
   httpinput:

@@ -1,0 +1,20 @@
+[
+  {
+        "target_rule_idx": 0,
+        "raw": {"event": {"ingested": "2022-03-18T08:33:27.000Z"}, "@timestamp": "2022-03-18T08:33:25.000Z"},
+        "processed": {
+            "event": {"ingested": "2022-03-18T08:33:27.000Z"},
+            "@timestamp": "2022-03-18T08:33:25.000Z",
+            "Event": {"time": {"full_delta": "2.0"}}
+        }
+    },
+    {
+        "target_rule_idx": 1,
+        "raw": {"event": {"created": "2022-03-18T08:33:27.000Z"}, "@timestamp": "2022-03-18T08:33:25.000Z"},
+        "processed": {
+            "event": {"created": "2022-03-18T08:33:27.000Z"},
+            "@timestamp": "2022-03-18T08:33:25.000Z",
+            "Event": {"time": {"delta": "2.0"}}
+        }
+    }
+]

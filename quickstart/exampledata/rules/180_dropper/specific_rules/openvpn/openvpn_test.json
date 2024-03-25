@@ -1,0 +1,61 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "tags": [
+        "openvpn"
+      ],
+      "syslog": {
+        "facility": "3",
+        "facility_label": "system",
+        "priority": "29",
+        "severity_label": "Notice"
+      },
+      "Tmp": {
+        "message": "test-message"
+      },
+      "host": {
+        "name": "logging-testhost"
+      },
+      "hostname": "opnsense-testhost",
+      "@metadata": {
+        "beat": "filebeat",
+        "truncated": "false",
+        "type": "_doc",
+        "version": "7.10.2"
+      },
+      "cluster_signature": "cluster_signature",
+      "log": {
+        "source": {
+          "address": "123.123.123.123:123"
+        }
+      },
+      "process": {
+        "program": "openvpn"
+      }
+    },
+    "processed": {
+      "tags": [
+        "openvpn"
+      ]
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw":{
+      "geoip": {
+        "properties": {
+          "accuracy_radius": 50            
+        },
+        "type": "Feature"
+      }, "tags": [
+        "openvpn"
+      ]
+    },
+    "processed":{
+      "tags": [
+        "openvpn"
+      ]
+    }
+  }
+]

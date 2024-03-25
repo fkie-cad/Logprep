@@ -1,0 +1,29 @@
+filter: "observer.name AND tags: squid AND tags: access"
+field_manager:
+  source_fields: ['observer.name']
+  target_field: 'observer.hostname'
+description: "Copy observer.name to observer.hostname."
+---
+filter: "tags: squid AND tags: access"
+field_manager:
+  source_fields: ['url.original']
+  target_field: 'url.full'
+description: 'Copy url.original to url.full.'
+---
+filter: "tags: squid AND tags: access AND url.port"
+field_manager:
+  source_fields: ['url.port']
+  target_field: 'destination.port'
+description: 'Copy url.port to destination.port.'
+---
+filter: "tags: squid AND tags: access"
+field_manager:
+  source_fields: ['url.original']
+  target_field: 'destination.address'
+description: 'Copy url.original to destination.address.'
+---
+filter: "tags: squid AND tags: access"
+field_manager:
+  source_fields: ['url.domain']
+  target_field: 'destination.domain'
+description: 'Copy url.domain to destination.domain.'

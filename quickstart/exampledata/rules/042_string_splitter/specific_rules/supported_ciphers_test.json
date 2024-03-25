@@ -1,0 +1,20 @@
+[
+  {
+    "raw": {
+     "Tmp": {
+        "tls": {
+          "client": {
+            "supported_ciphers": "AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305"
+          }
+        }
+      }
+    },
+    "processed": {
+      "tls": {
+        "client": {
+          "supported_ciphers": ["AES-256-GCM","AES-128-GCM","CHACHA20-POLY1305"]
+        }
+      }
+    }
+  }
+]

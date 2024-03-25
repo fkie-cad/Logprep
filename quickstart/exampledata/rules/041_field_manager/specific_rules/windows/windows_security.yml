@@ -1,0 +1,43 @@
+filter: "winlog.channel: Security AND tags:windows AND NOT agent_type: nxlog-ee"
+field_manager:
+  mapping:
+    'winlog.event_data.SubjectUserName': host.user.name
+    'winlog.event_data.SubjectUserSid': host.user.id
+    'winlog.event_data.TargetUserSid': group.id
+    'winlog.event_data.TargetUserName': group.name
+    'winlog.event_data.TargetDomainName': group.domain
+    'winlog.event_data.TargetLogonId': winlog.logon.id
+    'winlog.event_data.IpAddress': source.ip
+    'winlog.event_data.IpPort': source.port
+    'winlog.event_data.NewProcessName': process.executable
+    'winlog.event_data.ParentProcessName': process.parent.executable
+  overwrite_target: true
+description: Windows Security Log normalizer
+---
+filter: "winlog.channel: Security AND tags:windows AND winlog.event_data.ProcessName AND NOT agent_type: nxlog-ee"
+field_manager:
+  mapping:
+    'winlog.event_data.ProcessName': process.executable
+  overwrite_target: true
+description: Windows Security Log normalizer
+---
+filter: "winlog.channel: Security AND tags:windows AND winlog.event_data.WorkstationName AND NOT agent_type: nxlog-ee"
+field_manager:
+  mapping:
+    'winlog.event_data.WorkstationName': source.domain
+  overwrite_target: true
+description: Windows Security Log normalizer
+---
+filter: "winlog.channel: Security AND tags:windows AND winlog.event_data.LogonType AND NOT agent_type: nxlog-ee"
+field_manager:
+  mapping:
+    'winlog.event_data.LogonType': winlog.logon.type
+  overwrite_target: true
+description: Windows Security Log normalizer
+---
+filter: "winlog.channel: Security AND tags:windows AND winlog.event_data.FromFolder AND NOT agent_type: nxlog-ee"
+field_manager:
+  mapping:
+    'winlog.event_data.FromFolder': file.path
+  overwrite_target: true
+description: Windows Security Log normalizer

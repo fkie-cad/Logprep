@@ -1,0 +1,5 @@
+filter: "grok_failure:\"\""
+dropper:
+  drop:
+    - grok_failure
+description: "Drops the field grok_failure if it is empty, i.e., if the grok pattern matched without any errors."

@@ -1,0 +1,12 @@
+filter: "tags: windows AND NOT agent_type: nxlog-ee"
+generic_adder:
+  add:
+    observer.type: "windows-event-forwarder"
+    observer.product: "Microsoft Windows Server 2016 Standard Evaluation"
+    observer.vendor: "Microsoft Corporation"
+    observer.version: "10.3.14393 Build 14393"
+    organization.name: "Company 1"
+    data_stream.dataset: "windows"
+    data_stream.namespace: "lab"
+    data_stream.type: "logs"
+description: "Enrichment for windows wef case from field list."

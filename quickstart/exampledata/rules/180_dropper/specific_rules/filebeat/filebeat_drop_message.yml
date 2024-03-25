@@ -1,0 +1,7 @@
+filter: 'agent.type:"filebeat"'
+dropper:
+  drop:
+    - message
+    - log.offset # https://github.com/elastic/ecs/pull/131
+    - log.line # https://github.com/elastic/ecs/pull/131
+description: "Drops the message field for filebeat logs after normalization."

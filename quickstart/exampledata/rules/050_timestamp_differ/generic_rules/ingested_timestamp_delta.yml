@@ -1,0 +1,13 @@
+filter: 'event.ingested AND @timestamp'
+timestamp_differ:
+  diff: ${event.ingested} - ${@timestamp}
+  target_field: Event.time.full_delta
+  output_format: seconds
+description: '...'
+---
+filter: 'event.created AND @timestamp'
+timestamp_differ:
+  diff: ${event.created} - ${@timestamp}
+  target_field: Event.time.delta
+  output_format: seconds
+description: '...'
