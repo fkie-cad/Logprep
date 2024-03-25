@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 from copy import deepcopy
-
 import requests
 import uvicorn
 import falcon
@@ -24,6 +23,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     CONFIG: dict = {
         "type": "http_input",
+        "message_backlog_size": 15000,
         "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
         "endpoints": {
             "/json": "json",
@@ -44,6 +44,10 @@ class TestHttpConnector(BaseInputTestCase):
     def test_has_falcon_asgi_app(self):
         assert isinstance(self.object.get_app_instance(), falcon.asgi.App)
 
+    def test_get_error_code_on_get(self):
+        resp = requests.get(url=self.target + "/json", timeout=0.5)
+        assert resp.status_code == 405
+
     def test_json_endpoint_accepts_post_request(self):
         data = {"message": "my log message"}
         resp = requests.post(url=self.target + "/json", json=data, timeout=0.5)
@@ -61,7 +65,6 @@ class TestHttpConnector(BaseInputTestCase):
         )
         assert resp.status_code == 404
 
-    def test_json_message_is_put_in_queue(self):
         data = {"message": "my log message"}
         resp = requests.post(url=self.target + "/json", json=data, timeout=0.5)
         assert resp.status_code == 200
@@ -185,7 +188,7 @@ class TestHttpConnector(BaseInputTestCase):
         try:
             resp = requests.post(url=target + "/json", json=message, timeout=0.5)  # nosemgrep
         except requests.exceptions.ConnectionError as e:
-            assert e.response == None
+            assert e.response is None
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         connector.pipeline_index = 1

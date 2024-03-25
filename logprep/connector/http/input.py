@@ -24,19 +24,18 @@ Example
 
 import json
 import inspect
-import signal
 import queue
 import threading
 from abc import ABC
 from logging import Logger
 import logging
 import re
-from typing import Mapping, Tuple, Union
+from typing import Mapping, Tuple, Union, Callable
 import msgspec
 import uvicorn
 from attrs import define, field, validators
 import falcon.asgi
-import asyncio
+from falcon import HTTPTooManyRequests, HTTPMethodNotAllowed  # pylint: disable=no-name-in-module
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
 
@@ -94,6 +93,22 @@ def route_compile_helper(input_re_str: str):
     return re.compile(input_re_str)
 
 
+def decorator_request_exceptions(func: Callable):
+    """Decorator to wrap http calls and raise exceptions"""
+
+    async def func_wrapper(*args, **kwargs):
+        try:
+            if args[1].method == "POST":
+                func_wrapper = await func(*args, **kwargs)
+            else:
+                raise HTTPMethodNotAllowed(["POST"])
+        except queue.Full as exc:
+            raise HTTPTooManyRequests(description="Logprep Message Queue is full.") from exc
+        return func_wrapper
+
+    return func_wrapper
+
+
 class HttpEndpoint(ABC):
     """interface for http endpoints"""
 
@@ -108,12 +123,12 @@ class JSONHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
+    @decorator_request_exceptions
     async def __call__(self, req, resp):  # pylint: disable=arguments-differ
         """json endpoint method"""
-        print(req.__dict__)
         data = await req.stream.read()
         data = data.decode("utf8")
-        self.messages.put(self._decoder.decode(data))
+        self.messages.put(self._decoder.decode(data), block=False)
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -121,6 +136,7 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
+    @decorator_request_exceptions
     async def __call__(self, req, resp):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
         data = await req.stream.read()
@@ -129,29 +145,26 @@ class JSONLHttpEndpoint(HttpEndpoint):
             line = line.strip()
             if line:
                 event = self._decoder.decode(line)
-                self.messages.put(event)
+                self.messages.put(event, block=False)
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
     """:code:`plaintext` endpoint to get the body from request
     and put it in :code:`message` field"""
 
+    @decorator_request_exceptions
     async def __call__(self, req, resp):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
         data = await req.stream.read()
         self.messages.put({"message": data.decode("utf8")})
 
 
-class OverrideUvicorn(uvicorn.Server):
-    def install_signal_handlers(self):
-        pass
-
-
-class ThreadingHTTPServer():
+class ThreadingHTTPServer:
     """Threading Wrapper around Uvicorn Server"""
-    
+
     _instance = None
     _lock = threading.Lock()
+
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             with cls._lock:
@@ -169,98 +182,88 @@ class ThreadingHTTPServer():
 
         server_continue = False
         if hasattr(self, "thread"):
-            if self.thread.is_alive():
+            if self.thread.is_alive():  # pylint: disable=access-member-before-definition
                 if has_config_changed(
-                        connector_config, 
-                        self.connector_config,
-                        check_attrs=HTTP_INPUT_CONFIG_KEYS):
-                    self.stop()
-                    print("config has changed")
+                    connector_config,
+                    self.connector_config,  # pylint: disable=access-member-before-definition
+                    check_attrs=HTTP_INPUT_CONFIG_KEYS,
+                ):
                     server_continue = False
                 else:
-                    print("config has not changed")
                     server_continue = True
-            
-        self.connector_config = connector_config
-        self.endpoints_config = endpoints_config
-        self.uvicorn_config = self.connector_config.uvicorn_config
-        self.init_web_application_server(self.endpoints_config)
-        log_config = self.init_log_config()
-        self.compiled_config = uvicorn.Config(
-            **self.uvicorn_config,
-            app=self.app,
-            log_level=log_level,
-            log_config=log_config,
-        )
 
         if not server_continue:
-            self.server = OverrideUvicorn(self.compiled_config)
-            self.override_runtime_logging()
+            self.connector_config = connector_config
+            self.endpoints_config = endpoints_config
+            self.uvicorn_config = self.connector_config.uvicorn_config
+            self._init_web_application_server(self.endpoints_config)
+            log_config = self._init_log_config()
+            self.compiled_config = uvicorn.Config(
+                **self.uvicorn_config,
+                app=self.app,
+                log_level=log_level,
+                log_config=log_config,
+            )
+            self._stop()
+            self.server = uvicorn.Server(self.compiled_config)
+            self._override_runtime_logging()
             self.thread = threading.Thread(daemon=False, target=self.server.run)
-            self.start()
-           
+            self._start()
 
     @threadsafe_wrapper
-    def start(self):
+    def _start(self):
+        """Start thread with uvicorn+falcon http server and wait
+        until it is up (started)"""
         self.thread.start()
-        asyncio.run(self.wait_for_started())
-
-    @threadsafe_wrapper
-    async def wait_for_started(self):
         while not self.server.started:
-            await asyncio.sleep(0.1)
+            continue
 
     @threadsafe_wrapper
-    def stop(self):
-        if self.thread.is_alive():
-            self.server.should_exit = True
-            while self.thread.is_alive():
-                continue
-        self.thread.join()
+    def _stop(self):
+        """Stop thread with uvicorn+falcon http server, wait for uvicorn
+        to exit gracefully and join the thread"""
+        if hasattr(self, "thread"):
+            if self.thread.is_alive():
+                self.server.should_exit = True
+                while self.thread.is_alive():
+                    continue
+            self.thread.join()
 
     @threadsafe_wrapper
-    def init_log_config(self) -> dict:
-        """use for uvicorn same log formatter like for logprep"""
+    def _init_log_config(self) -> dict:
+        """Use for Uvicorn same log formatter like for Logprep"""
         log_config = uvicorn.config.LOGGING_CONFIG
         log_config["formatters"]["default"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
         log_config["formatters"]["access"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
         log_config["handlers"]["default"]["stream"] = "ext://sys.stdout"
         return log_config
 
-    def init_web_application_server(self, endpoints_config: dict) -> None:
-        "init application server"
+    @threadsafe_wrapper
+    def _override_runtime_logging(self):
+        """Uvicorn doesn't provide API to change name and handler beforehand
+        needs to be done during runtime"""
+        http_server_name = logging.getLogger("Logprep").name + " HTTPServer"
+        for logger_name in ["uvicorn", "uvicorn.access"]:
+            logging.getLogger(logger_name).removeHandler(logging.getLogger(logger_name).handlers[0])
+            logging.getLogger(logger_name).addHandler(
+                logging.getLogger("Logprep").parent.handlers[0]
+            )
+            logging.getLogger(logger_name).name = http_server_name
+
+    def _init_web_application_server(self, endpoints_config: dict) -> None:
+        "Init falcon application server and setting endpoint routes"
         self.app = falcon.asgi.App()
         for endpoint_path, endpoint in endpoints_config.items():
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
 
     @threadsafe_wrapper
-    def override_runtime_logging(self):
-        """uvicorn doesn't provide API to change name and handler beforehand
-        needs to be done during runtime"""
-        logging.getLogger("uvicorn").removeHandler(logging.getLogger("uvicorn").handlers[0])
-        logging.getLogger("uvicorn").addHandler(logging.getLogger("Logprep").parent.handlers[0])
-        http_server_name = logging.getLogger("Logprep").name + " HTTPServer"
-        logging.getLogger("uvicorn.error").name = http_server_name
-        logging.getLogger("uvicorn.access").name = http_server_name
-
-    @threadsafe_wrapper
-    def run(self):
-        """Context manager to run the server in a separate thread"""
-        self.server.run()
-        while not self.server.should_exit:
-            pass
-
-    @threadsafe_wrapper
     def shut_down(self):
-        """Gracefully exit uvicorn server"""
-        self.stop()
-        self.thread.join()
+        """Shutdown method to trigger http server shutdown externally"""
+        self._stop()
 
 
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
-
-    messages: queue.Queue = queue.Queue()
 
     _endpoint_registry: Mapping[str, HttpEndpoint] = {
         "json": JSONHttpEndpoint,
@@ -306,6 +309,10 @@ class HttpConnector(Input):
             :noindex:
         """
 
+        message_backlog_size: int = field(
+            validator=validators.instance_of((int, float)), default=15000
+        )
+
     __slots__ = []
 
     def __init__(self, name: str, configuration: "HttpConnector.Config", logger: Logger) -> None:
@@ -321,6 +328,11 @@ class HttpConnector(Input):
         self.host = self._config.uvicorn_config["host"]
         self.target = "http://" + self.host + ":" + str(self.port)
 
+        if not hasattr(self, "messages"):
+            self.messages = None
+        if not hasattr(self, "http_server"):
+            self.http_server = None
+
     def setup(self):
         super().setup()
         if not hasattr(self, "pipeline_index"):
@@ -330,12 +342,15 @@ class HttpConnector(Input):
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:
             return
+
+        self.messages = queue.Queue(self._config.message_backlog_size)
+
         endpoints_config = {}
         for endpoint_path, endpoint_name in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_name)
             endpoints_config[endpoint_path] = endpoint_class(self.messages)
 
-        self.sthread = ThreadingHTTPServer(
+        self.http_server = ThreadingHTTPServer(
             connector_config=self._config,
             endpoints_config=endpoints_config,
             log_level=self._logger.level,
@@ -352,19 +367,12 @@ class HttpConnector(Input):
 
     def get_app_instance(self):
         """Return app instance from webserver thread"""
-        return self.sthread.app
+        return self.http_server.app
 
     def get_server_instance(self):
         """Return server instance from webserver thread"""
-        return self.sthread.server
+        return self.http_server.server
 
     def shut_down(self):
-        """Raises HTTP Server internal stop flag and waits to join
-        We need to look for the thread this way as newly initiated http
-        server instances doesn't share relation to the original http server
-        that is created with the first HTTP Connector Object
-        """
-        try:
-            self.sthread.shut_down()
-        except:
-            pass
+        """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
+        self.http_server.shut_down()
