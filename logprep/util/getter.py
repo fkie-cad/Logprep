@@ -2,7 +2,6 @@
 They are returned by the GetterFactory.
 """
 
-import logging
 import os
 import re
 from collections import defaultdict
@@ -17,8 +16,6 @@ from logprep._version import get_versions
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
 from logprep.util.credentials import Credentials, CredentialsFactory
-
-logger = logging.getLogger(__name__)
 
 
 class GetterNotFoundError(LogprepException):

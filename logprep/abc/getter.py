@@ -1,7 +1,6 @@
 """Module for getter interface"""
 
 import json
-import logging
 import os
 import re
 from abc import ABC, abstractmethod
@@ -26,8 +25,6 @@ VALID_PREFIXES = ["LOGPREP_", "CI_", "GITHUB_", "PYTEST_"]
 @define(kw_only=True)
 class Getter(ABC):
     """Abstract base class describing the getter interface and providing of a factory method."""
-
-    _logger = logging.getLogger(__name__)
 
     class EnvTemplate(Template):
         """Template class for uppercase only template variables"""
