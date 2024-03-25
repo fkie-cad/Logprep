@@ -17,7 +17,7 @@ from responses import matchers
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
-from logprep.util.credentials import Credentials
+from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
@@ -516,3 +516,32 @@ class TestHttpGetter:
                 datetime.now() - timedelta(seconds=3600)
             )
             return_content = http_getter.get_json()
+
+    @responses.activate
+    def test_get_raw_raises_if_credential_file_env_not_set_and_unauthorizes(self):
+        domain = str(uuid.uuid4())
+        responses.add(
+            responses.GET,
+            f"https://{domain}/bar",
+            status=401,
+        )
+        with pytest.raises(CredentialsEnvNotFoundError):
+            http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
+            http_getter.get_json()
+
+    @responses.activate
+    def test_get_raw_raises_if_credential_file_env_set_and_unauthorizes(self):
+        domain = str(uuid.uuid4())
+        responses.add(
+            responses.GET,
+            f"https://{domain}/bar",
+            status=401,
+        )
+        with pytest.raises(requests.exceptions.HTTPError) as error:
+            http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
+            with mock.patch.dict(
+                "os.environ",
+                {"LOGPREP_CREDENTIALS_FILE": "quickstart/exampledata/config/credentials.yml"},
+            ):
+                http_getter.get_json()
+        assert error.value.response.status_code == 401

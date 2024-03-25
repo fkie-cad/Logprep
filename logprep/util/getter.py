@@ -10,12 +10,18 @@ from string import Template
 from typing import Tuple
 from urllib.parse import urlparse
 
+import requests
 from attrs import define, field, validators
 
 from logprep._version import get_versions
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
-from logprep.util.credentials import Credentials, CredentialsFactory
+from logprep.util.credentials import (
+    Credentials,
+    CredentialsEnvNotFoundError,
+    CredentialsFactory,
+)
+from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 
 
 class GetterNotFoundError(LogprepException):
@@ -114,7 +120,7 @@ class HttpGetter(Getter):
             raise NotImplementedError(
                 "Basic auth credentials via commandline are not supported."
                 "Please use the credential file in connection with the "
-                "environment variable 'LOGPREP_CREDENTIALS_FILE' to authenticate."
+                f"environment variable '{ENV_NAME_LOGPREP_CREDENTIALS_FILE}' to authenticate."
             )
 
     @property
@@ -124,9 +130,9 @@ class HttpGetter(Getter):
 
     @property
     def credentials(self) -> Credentials:
-        """get credentials for target from environment variable LOGPREP_CREDENTIALS_FILE"""
+        """get credentials for target from environment variable"""
         creds = None
-        if "LOGPREP_CREDENTIALS_FILE" in os.environ:
+        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
             creds = CredentialsFactory.from_target(self.url)
         return creds if creds else Credentials()
 
@@ -139,5 +145,17 @@ class HttpGetter(Getter):
             self._credentials_registry.update({domain_uri: self.credentials})
         session = self._credentials_registry.get(domain_uri).get_session()
         resp = session.get(url=self.url, timeout=5, allow_redirects=True, headers=self._headers)
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            if error.response.status_code == 401:
+                if not os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE):
+                    raise CredentialsEnvNotFoundError(
+                        (
+                            "Credentials file not found. "
+                            "Please set the environment variable "
+                            f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
+                        )
+                    ) from error
+                raise error
         return resp.content

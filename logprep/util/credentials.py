@@ -99,6 +99,10 @@ class CredentialsBadRequestError(Exception):
     """Raised when the API returns a 400 Bad Request error"""
 
 
+class CredentialsEnvNotFoundError(Exception):
+    """Raised when the API returns a 401 Not Found"""
+
+
 class CredentialsFactory:
     """Factory class to create credentials for a given target URL."""
 

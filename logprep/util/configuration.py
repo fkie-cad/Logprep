@@ -211,6 +211,7 @@ from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import getter
+from logprep.util.credentials import CredentialsEnvNotFoundError
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.json_handling import list_json_files_in_directory
@@ -431,7 +432,7 @@ class Configuration:
             try:
                 config = Configuration.from_source(config_path)
                 configs.append(config)
-            except (GetterNotFoundError, RequestException) as error:
+            except (GetterNotFoundError, RequestException, CredentialsEnvNotFoundError) as error:
                 raise ConfigGetterException(f"{config_path} {error}") from error
             except FileNotFoundError as error:
                 raise ConfigGetterException(
