@@ -281,6 +281,11 @@ second_dict:
                     {"second_dict": {"key": ["valid_list_element", "valid_list_element"]}},
                 ],
             ),
+            (
+                "get_yaml",
+                b"""""",
+                {},
+            ),
         ],
     )
     def test_parses_content(self, method_name, input_content, expected_output):
