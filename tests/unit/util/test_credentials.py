@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from unittest import mock
 
 import pytest
+import requests
 import responses
 from requests import Session
 from responses import matchers
@@ -651,6 +652,38 @@ class TestOAuth2ClientFlowCredentials:
         )
         error_message = rf"Authentication failed with status code 400 Bad Request: {error_reason}"
         with pytest.raises(CredentialsBadRequestError, match=error_message):
+            _ = test.get_session()
+
+    @responses.activate
+    def test_get_session_error_handling_for_status_code_not_400(self):
+        test = OAuth2ClientFlowCredentials(
+            endpoint="https://the.endpoint",
+            client_secret="very secret password",
+            client_id="allmighty_client_id",
+        )
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+            json={
+                "error": "this is a custom application error",
+            },
+            status=503,
+            match=[
+                matchers.urlencoded_params_matcher(
+                    {
+                        "grant_type": "client_credentials",
+                    }
+                ),
+                matchers.header_matcher(
+                    {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Authorization": "Basic YWxsbWlnaHR5X2NsaWVudF9pZDp2ZXJ5IHNlY3JldCBwYXNzd29yZA==",
+                    }
+                ),
+            ],
+        )
+        error_message = r"Service Unavailable for url"
+        with pytest.raises(requests.HTTPError, match=error_message):
             _ = test.get_session()
 
 
