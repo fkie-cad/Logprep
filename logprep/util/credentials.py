@@ -6,12 +6,11 @@ In order for Logprep to choose the correct authentication method the
 :code:`LOGPREP_CREDENTIALS_FILE` environment variable has to be set.
 This file should provide the credentials that are needed and can either be
 in yaml or in json format.
-To use the authentication, the :code:`LOGPREP_CREDENTIALS_FILE` file has to be
+To use the authentication, the given credentials file has to be
 filled with the correct values that correspond to the method you want to use.
 
-some example entries for such a credentials file notation are:
-
 .. code-block:: yaml
+    :caption: Example for credentials file
 
     "http://target.url":
         # example for token given directly via file
@@ -30,19 +29,19 @@ some example entries for such a credentials file notation are:
         client_id: <id>
         client_secret: <secret>
     "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant
+        # example for OAuth2 Resource Owner Password Credentials Grant with authentication for a confidential client
         endpoint: <endpoint>
         username: <username>
         password_file: <path/to/password/file>
         client_id: <client_id> # optional if required
         client_secret_file: <path/to/secret/file> # optional if required
     "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant without client_id and secret
+        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client
         endpoint: <endpoint>
         username: <username>
         password_file: <path/to/password/file>
     "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant with inline password
+        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client with inline password
         endpoint: <endpoint>
         username: <username>
         password: <password>

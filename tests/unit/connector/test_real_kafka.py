@@ -24,7 +24,7 @@ kafka_config = {"bootstrap.servers": "localhost:9092"}
 def setup_module():
     if not in_ci:
         subprocess.run(
-            ["docker", "compose", "-f", "quickstart/docker compose.yml", "up", "-d", "kafka"]
+            ["docker-compose", "-f", "quickstart/docker compose.yml", "up", "-d", "kafka"]
         )
 
 

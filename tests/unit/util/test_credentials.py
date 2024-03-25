@@ -93,7 +93,7 @@ class TestOAuth2TokenCredentials:
                 r"must be <class 'str'>",
             ),
             (
-                "valdi token",
+                "valid token",
                 {"token": "hioinnjdijskjdhfue672534kmsdk"},
                 None,
                 None,
