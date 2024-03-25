@@ -73,8 +73,8 @@ Logprep Quickstart Environment
 
 To demonstrate the functionality of logprep this repo comes with a complete `kafka`, `logprep` and
 `opensearch` stack.
-To get it running `docker` and `docker-compose` (version >= 1.28) must be first installed.
-The docker-compose file is located in the directory `quickstart`.
+To get it running `docker` with compose support must be first installed.
+The docker compose file is located in the directory `quickstart`.
 A prerequisite is to run `sysctl -w vm.max_map_count=262144`, otherwise Opensearch might not
 properly start.
 
@@ -87,7 +87,7 @@ Run without Logprep Container (default)
 
      .. code-block:: bash
 
-      docker-compose up -d
+      docker compose up -d
      
      It starts and connects `Kafka`, `logprep`, `Opensearch` and `Opensearch Dashboards`.
   2. Run Logprep against loaded environment from main `Logprep` directory:
@@ -104,7 +104,7 @@ Run with Logprep Container
 
     .. code-block:: bash
 
-      docker-compose --profile logprep up -d
+      docker compose --profile logprep up -d
     
 
 Run with getting config from http server with basic authentication
@@ -114,7 +114,7 @@ Run with getting config from http server with basic authentication
 
     .. code-block:: bash
 
-      docker-compose --profile basic_auth up -d
+      docker compose --profile basic_auth up -d
     
   * Run within the project root directory:
   
@@ -127,28 +127,19 @@ Run with getting config from http server with basic authentication
 Run with getting config from FDA with oauth2 authentication
 -----------------------------------------------------------
 
-Start logprep by using the oauth2 profile with docker-compose:
+Start logprep by using the oauth2 profile with docker compose:
 
     .. code-block:: bash
 
       export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
-      docker-compose --profile oauth2 up -d
+      docker compose --profile oauth2 up -d
     
 
-
-In order to run logprep with the FDA configuration it is necessary to set the following environment
-variables:
-
-- `LOGPREP_INPUT=<INPUT_CONNECTOR_CONFIG>`
-- `LOGPREP_OUTPUT=<OUTPUT_CONNECTOR_CONFIG>`
-- `LOGPREP_OPTIONS=<GENERAL_LOGPREP_CONFIG>`
-
-
-Once they are set logprep can be started with:
+Once they are set logprep can be started from the project root directory with:
 
 .. code-block:: bash
 
-  logprep run "http://localhost:8000/api/v1/pipelines?stage=prod&logclass=ExampleClass"
+  logprep run "http://localhost:8002/api/v1/pipelines?stage=prod&logclass=ExampleClass"
 
 
 Interacting with the Quickstart Environment
@@ -189,4 +180,4 @@ These events can be added to Kafka with the following command:
 Once the events have been processed for the first time, the new indices *processed*, *sre*
 and *pseudonyms* should be available in Opensearch Dashboards.
 
-The environment can be stopped via :code:`docker-compose down`.
+The environment can be stopped via :code:`docker compose down`.

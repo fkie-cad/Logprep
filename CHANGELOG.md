@@ -3,8 +3,11 @@
 ## next release
 ### Breaking
 ### Features
-* retrieve token automatically from different oauth endpoints
-### Improvements
+
+* retrieve oauth token automatically from different oauth endpoints by introducing an additional file to 
+  define the credentials for every configuration source
+
+#### Improvements
 ### Bugfix
 
 ## v10.0.4

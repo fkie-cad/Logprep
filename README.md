@@ -15,29 +15,26 @@
 
 Logprep allows to collect, process and forward log messages from various data sources.
 Log messages are being read and written by so-called connectors.
-Currently, connectors for Kafka, Opensearch, Opensearch and JSON(L) files exist.
-Additionally, an Input Connector for HTTP Input is provided, which starts an uvicorn server and
-accepts log message via POST Requests.
+Currently, connectors for Kafka, Opensearch, ElasticSearch, S3, HTTP and JSON(L) files exist.
 
-The log messages are processed step-by-step by a pipeline of processors,
+The log messages are processed in serial by a pipeline of processors,
 where each processor modifies an event that is being passed through.
 The main idea is that each processor performs a simple task that is easy to carry out.
-Once the log massage is passed through all processors in the pipeline the resulting
+Once the log message is passed through all processors in the pipeline the resulting
 message is sent to a configured output connector.
-
-Logprep is designed to be expandable with new connectors and processors.
 
 Logprep is primarily designed to process log messages. Generally, Logprep can handle JSON messages,
 allowing further applications besides log handling.
 
 This readme provides basic information about the following topics:
 - [About Logprep](#about-logprep)
-- [Getting Started](#getting-started)
-- [Docker Quickstart](#logprep-quickstart-environment)
-- [Event Generation](#event-generation)
-- [Documentation](#documentation)
+- [Getting Started](https://logprep.readthedocs.io/en/latest/getting_started.html)
+- [Docker Quickstart](https://logprep.readthedocs.io/en/latest/getting_started.html#logprep-quickstart-environment)
+- [Event Generation](https://logprep.readthedocs.io/en/latest/user_manual/execution.html#event-generation)
+- [Documentation](https://logprep.readthedocs.io/en/latest)
 - [Contributing](#contributing)
-- [License](#license)
+- [License](LICENSE)
+- [Changelog](CHANGELOG.md)
 
 More detailed information can be found in the
 [Documentation](https://logprep.readthedocs.io/en/latest/).
@@ -269,7 +266,3 @@ A HTML documentation can be then found in `doc/_build/html/index.html`.
 Every contribution is highly appreciated.
 If you have ideas or improvements feel free to create a fork and open a pull requests.
 Issues and engagement in open discussions are also welcome.
-
-## License
-
-Logprep is distributed under the LGPL-2.1 License. See LICENSE file for more information.
