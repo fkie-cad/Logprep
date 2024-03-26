@@ -8,7 +8,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
-from confluent_kafka import OFFSET_BEGINNING, KafkaException
+from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -67,7 +67,16 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(self, _):
         mock_record = mock.MagicMock()
-        mock_record.error = mock.MagicMock(return_value="An arbitrary confluent-kafka error")
+        mock_record.error = mock.MagicMock(
+            return_value=KafkaError(
+                error=3,
+                reason="Subscribed topic not available: (Test Instance Name) : Broker: Unknown topic or partition",
+                fatal=False,
+                retriable=False,
+                txn_requires_abort=False,
+            )
+        )
+
         mock_record.value = mock.MagicMock(return_value=None)
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         with pytest.raises(
@@ -76,7 +85,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
                 r"CriticalInputError in ConfluentKafkaInput \(Test Instance Name\) - "
                 r"Kafka Input: testserver:9092: "
                 r"A confluent-kafka record contains an error code -> "
-                r"An arbitrary confluent-kafka error"
+                r"KafkaError{code=UNKNOWN_TOPIC_OR_PART,val=3,str=\"Subscribed topic not available: \(Test Instance Name\) : Broker: Unknown topic or partition\"}"
             ),
         ):
             _, _ = self.object.get_next(1)
@@ -156,7 +165,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             self.object.get_next(1)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_next_raises_critical_input_error_if_unvalid_json(self, _):
+    def test_get_next_raises_critical_input_error_if_invalid_json(self, _):
         mock_record = mock.MagicMock()
         mock_record.error = mock.MagicMock()
         mock_record.error.return_value = None

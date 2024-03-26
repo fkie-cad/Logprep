@@ -11,13 +11,13 @@ Run acceptance tests with:
 
 ..  code-block:: bash
 
-    pytest tests/acceptance
+    pytest tests/acceptance --cov=logprep --cov-report=xml -vvv
 
 or unittests with:
 
 ..  code-block:: bash
 
-    pytest tests/unit
+    pytest tests/unit --cov=logprep --cov-report=xml -vvv
 
 Log Messages
 ============

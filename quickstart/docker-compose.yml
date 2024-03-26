@@ -161,7 +161,7 @@ services:
       - ../quickstart/exampledata/config/keycloak:/docker-entrypoint-initdb.d
   fda-api:
     container_name: fda-api
-    image: registry.gitlab.com/z-e-u-s/fda/fda-backend:0.16.0
+    image: registry.gitlab.com/z-e-u-s/fda/fda-backend:0.21.0
     network_mode: host
     expose:
       - 8000
@@ -172,14 +172,15 @@ services:
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 25432
       DJANGO_SECRET_KEY: "django-insecure-*w($$5i@@iq%!ygufa%%@nfdplt(!e#hoahnjy^@6xdutl8mlqz"
-      ALLOWED_HOSTS: '["*"]'
-      CORS_ALLOWED_ORIGINS: '["http://localhost"]'
+      ALLOWED_HOSTS: "*"
+      CORS_ALLOWED_ORIGINS: "http://localhost"
       KEYCLOAK_SERVER_URL: "http://localhost:8080"
       KEYCLOAK_REALM: logprep
       KEYCLOAK_CLIENT_ID: fda-backend
       KEYCLOAK_CLIENT_SECRET: tYfkKygb1g2Hf6fmAInoq3XPK1OILbSp
       KEYCLOAK_CLIENT_ID_FOR_AUTHZ_ROLES: fda
       SERVICE_BASE_URL: 'http://localhost:8000/'
+      SECURE_REDIRECT_EXEMPT: '[".*localhost.*"]' 
     depends_on:
       fda-db:
         condition: service_healthy
@@ -205,7 +206,7 @@ services:
       timeout: 5s
       retries: 10
   fda-frontend:
-    image: registry.gitlab.com/z-e-u-s/fda/fda-frontend:0.16.0
+    image: registry.gitlab.com/z-e-u-s/fda/fda-frontend:0.21.0
     container_name: fda-frontend
     network_mode: host
     restart: always
