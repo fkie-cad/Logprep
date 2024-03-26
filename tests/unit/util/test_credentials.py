@@ -17,6 +17,7 @@ from logprep.util.credentials import (
     Credentials,
     CredentialsBadRequestError,
     CredentialsFactory,
+    MTLSCredentials,
     OAuth2ClientFlowCredentials,
     OAuth2PasswordFlowCredentials,
     OAuth2TokenCredentials,
@@ -862,6 +863,16 @@ class TestCredentialsFactory:
                 type(None),
                 InvalidConfigurationError,
             ),
+            (
+                "Return MTLSCredentials object if certificate and key are given",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key.pem"
+    client_certificate: "path/to/cert.pem"
+""",
+                MTLSCredentials,
+                None,
+            ),
         ],
     )
     def test_credentials_returns_expected_credential_object(
@@ -996,3 +1007,18 @@ class TestCredentialsFactory:
             r"OAuth password authorization for confidential clients",
             mock_logger.mock_calls[0][1][0],
         )
+
+
+class TestMTLSCredentials:
+    @responses.activate
+    def test_get_session_returns_session_and_cert_is_set(self):
+        responses.add(
+            responses.POST,
+            "https://the.endpoint",
+        )
+        test = MTLSCredentials(
+            client_certificate="path/to/cert.pem",
+            client_key="path/to/key.pem",
+        )
+        assert test.get_session() is not None
+        assert test._session.cert is not None

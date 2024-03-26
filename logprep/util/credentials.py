@@ -230,6 +230,17 @@ class CredentialsFactory:
                     )
                 return OAuth2TokenCredentials(token=token)
             case {
+                "client_key": client_key,
+                "client_certificate": client_certificate,
+                **extra_params,
+            }:
+                if extra_params:
+                    cls._logger.warning(
+                        "Other parameters were given: %s but OAuth token authorization was chosen",
+                        extra_params.keys(),
+                    )
+                return MTLSCredentials(client_key=client_key, client_certificate=client_certificate)
+            case {
                 "endpoint": endpoint,
                 "client_id": client_id,
                 "client_secret": client_secret,
@@ -574,3 +585,20 @@ class OAuth2ClientFlowCredentials(Credentials):
         expires_in = token_response.get("expires_in")
         self._token = AccessToken(token=access_token, expires_in=expires_in)
         return self._token
+
+
+@define(kw_only=True)
+class MTLSCredentials(Credentials):
+    """class for mTLS authentification"""
+
+    client_key: str = field(validator=validators.instance_of(str))
+    """path to client key"""
+    client_certificate: str = field(validator=validators.instance_of(str))
+    """path to client cretificate"""
+
+    def get_session(self):
+        session = super().get_session()
+        if session.cert is None:
+            cert = (self.client_certificate, self.client_key)
+            session.cert = cert
+        return session
