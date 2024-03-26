@@ -59,7 +59,7 @@ class SingleThreadQueueListener(logging.handlers.QueueListener):
                     task_done = getattr(listener.queue, "task_done", noop)
                     while True:
                         record = listener.dequeue(False)
-                        if record is listener._sentinel: # pylint: disable=protected-access
+                        if record is listener._sentinel:  # pylint: disable=protected-access
                             cls.listeners.remove(listener)
                         else:
                             listener.handle(record)
