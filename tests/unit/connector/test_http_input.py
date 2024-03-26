@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 from copy import deepcopy
+from concurrent.futures import ThreadPoolExecutor
 import requests
 import uvicorn
 import falcon
@@ -23,7 +24,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     CONFIG: dict = {
         "type": "http_input",
-        "message_backlog_size": 15000,
+        "message_backlog_size": 100,
         "collect_meta": False,
         "metafield_name": "@metadata",
         "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
@@ -49,6 +50,23 @@ class TestHttpConnector(BaseInputTestCase):
     def test_get_error_code_on_get(self):
         resp = requests.get(url=self.target + "/json", timeout=0.5)
         assert resp.status_code == 405
+
+    def test_get_error_code_too_many_requests(self):
+        data = {"message": "my log message"}
+        session = requests.Session()
+        session.mount(
+            "http://",
+            requests.adapters.HTTPAdapter(pool_maxsize=20, max_retries=3, pool_block=True),
+        )
+
+        def get_url(url):
+            for _ in range(100):
+                _ = session.post(url, json=data)
+
+        with ThreadPoolExecutor(max_workers=100) as executor:
+            executor.submit(get_url, self.target + "/json")
+        resp = requests.post(url=self.target + "/json", json=data, timeout=0.5)
+        assert resp.status_code == 429
 
     def test_json_endpoint_accepts_post_request(self):
         data = {"message": "my log message"}
@@ -175,6 +193,22 @@ class TestHttpConnector(BaseInputTestCase):
             message["message"] = f"message number {i}"
             requests.post(url=self.target + "/json", json=message, timeout=0.5)  # nosemgrep
         assert self.object.messages.qsize() == 100, "messages are put to queue"
+
+    def test_get_metadata(self):
+        message = {"message": "my message"}
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["collect_meta"] = True
+        connector_config["metafield_name"] = "custom"
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector.pipeline_index = 1
+        connector.setup()
+        target = connector.target
+        resp = requests.post(url=target + "/json", json=message, timeout=0.5)  # nosemgrep
+        assert resp.status_code == 200
+        message = connector.messages.get(timeout=0.5)
+        assert message["custom"]["url"] == target + "/json"
+        assert message["custom"]["remote_addr"] == connector.host
+        assert isinstance(message["custom"]["user_agent"], str)
 
     def test_server_multiple_config_changes(self):
         message = {"message": "my message"}

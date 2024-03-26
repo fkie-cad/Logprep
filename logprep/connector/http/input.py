@@ -48,7 +48,14 @@ UVICORN_CONFIG_KEYS = [
 ]
 
 # Config Parts that's checked for Config Change
-HTTP_INPUT_CONFIG_KEYS = ["preprocessing", "uvicorn_config", "endpoints"]
+HTTP_INPUT_CONFIG_KEYS = [
+    "preprocessing",
+    "uvicorn_config",
+    "endpoints",
+    "collect_meta",
+    "metafield_name",
+    "message_backlog_size",
+]
 
 
 def decorator_request_exceptions(func: Callable):
@@ -99,17 +106,23 @@ def has_config_changed(
     For sake of simplicity JSON Strings are compared instead
     of compare nested dict key-values
     """
+    all_dicts = {}
+    all_dicts["old"] = old_config
+    all_dicts["new"] = new_config
+    all_dicts["old_c"] = {}
+    all_dicts["new_c"] = {}
+    print(dir(old_config))
     if not new_config:
         return True
-    old_config_dict = {}
-    new_config_dict = {}
-    for key in check_attrs:
-        old_config_dict.update(getattr(old_config, key))
-        new_config_dict.update(getattr(new_config, key))
-    cur_json = json.dumps(old_config_dict, sort_keys=True)
-    new_json = json.dumps(new_config_dict, sort_keys=True)
-
-    if cur_json == new_json:
+    for version in ["new", "old"]:
+        for key in check_attrs:
+            if isinstance(getattr(old_config, key), dict):
+                all_dicts[version + "_c"].update(getattr(all_dicts[version], key))
+            else:
+                all_dicts[version + "_c"].update({key: getattr(all_dicts[version], key)})
+    old_json = json.dumps(all_dicts["old_c"], sort_keys=True)
+    new_json = json.dumps(all_dicts["new_c"], sort_keys=True)
+    if old_json == new_json:
         return False
     return True
 
@@ -125,7 +138,8 @@ def route_compile_helper(input_re_str: str):
 
 
 class HttpEndpoint(ABC):
-    """Interface for http endpoints
+    """Interface for http endpoints.
+    Additional functionality is added to child classes via removable decorators.
 
     Parameters
     ----------
@@ -171,15 +185,12 @@ class JSONLHttpEndpoint(HttpEndpoint):
         """jsonl endpoint method"""
         data = await req.stream.read()
         data = data.decode("utf8")
+        event = kwargs.get("metadata", {})
         for line in data.splitlines():
             line = line.strip()
             if line:
-                event = kwargs.get("metadata", {})
-                dec_line = self._decoder.decode(line)
-                event.update(dec_line)
-                print("Event: " + str(event))
-                print("Line: " + str(dec_line))
-                self.messages.put(event, block=False)
+                event.update(self._decoder.decode(line))
+                self.messages.put(dict(event), block=False)
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -391,6 +402,11 @@ class HttpConnector(Input):
         self.target = "http://" + self.host + ":" + str(self.port)
 
     def setup(self):
+        """setup starts the actual functionality of this connector.
+        By checking against pipeline_index we're assuring this connector
+        only runs a single time for multiple processes.
+        """
+
         super().setup()
         if not hasattr(self, "pipeline_index"):
             raise FatalInputError(
@@ -407,6 +423,7 @@ class HttpConnector(Input):
         endpoints_config = {}
         collect_meta = self._config.collect_meta
         metafield_name = self._config.metafield_name
+        # preparing dict with endpoint paths and initialized endpoints objects
         for endpoint_path, endpoint_name in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_name)
             endpoints_config[endpoint_path] = endpoint_class(
@@ -440,5 +457,5 @@ class HttpConnector(Input):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
         try:
             self.http_server.shut_down()
-        except:
+        except AttributeError:
             pass
