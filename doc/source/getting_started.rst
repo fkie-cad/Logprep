@@ -56,7 +56,6 @@ To see if the installation was successful run :code:`docker run logprep --versio
 Run Logprep
 ===========
 
-Depending on how you have installed Logprep you have different choices to run Logprep as well.
 If you have installed it via PyPI or the Github Development release just run:
 
 ..  code-block:: bash
@@ -64,96 +63,121 @@ If you have installed it via PyPI or the Github Development release just run:
     logprep run $CONFIG
 
 Where :code:`$CONFIG` is the path to a configuration file.
-For more information see the :ref:`configuration` section.
-
-Integrate Logprep in Python
-===========================
-
-It is possible to make use of the Logprep :ref:`pipeline_config` in plain python, without any
-input or output connectors or further configurations.
-If on the other hand you want to make use of the input connector preprocessors you have to at least
-use an input connector like the DummyInput.
-The integration in python
-
-An example with input connector and preprocessors could look like this:
-
-.. code-block:: python
-
-    from logprep.framework.pipeline import Pipeline
-
-    event = {
-        "some": "data",
-        "test_pre_detector": "bad_information"
-    }
-    config = {
-        "pipeline": [
-            {
-                "predetector": {
-                    "type": "pre_detector",
-                    "specific_rules": [
-                        "quickstart/exampledata/rules/pre_detector/specific"
-                    ],
-                    "generic_rules": [
-                        "quickstart/exampledata/rules/pre_detector/generic"
-                    ],
-                    "pre_detector_topic": "output_topic"
-                }
-            }
-        ],
-        "input": {
-            "my_input":{
-                "type": "dummy_input",
-                "documents": [event],
-                "preprocessing": {
-                    "log_arrival_time_target_field": "arrival_time"
-                }
-            }
-        }
-    }
-    pipeline = Pipeline(config=config)
-    extra_outputs = pipeline.process_pipeline()
-
-An example without input connector and preprocessors could look like this:
-
-.. code-block:: python
-
-    from logprep.framework.pipeline import Pipeline
-
-    event = {
-        "some": "data",
-        "test_pre_detector": "bad_information"
-    }
-    config = {
-        "pipeline": [
-            {
-                "predetector": {
-                    "type": "pre_detector",
-                    "specific_rules": [
-                        "quickstart/exampledata/rules/pre_detector/specific"
-                    ],
-                    "generic_rules": [
-                        "quickstart/exampledata/rules/pre_detector/generic"
-                    ],
-                    "pre_detector_topic": "output_topic"
-                }
-            }
-        ],
-    }
-    pipeline = Pipeline(config=config)
-    extra_outputs = pipeline.process_event(event)
+For more information on running logprep with different configruation files or running
+logprep with configruation from an api see the :ref:`configuration` section.
 
 
-.. hint::
 
-    To make use of preprocessors call :code:`pipeline.process_pipeline()`.
-    Calling the respective method multiple times will result in iterating through the list of input
-    events.
-    To call the pipeline without input connector call :code:`pipeline.process_event(event)`.
+Logprep Quickstart Environment
+==============================
+
+To demonstrate the functionality of logprep this repo comes with a complete `kafka`, `logprep` and
+`opensearch` stack.
+To get it running `docker` with compose support must be first installed.
+The docker compose file is located in the directory `quickstart`.
+A prerequisite is to run `sysctl -w vm.max_map_count=262144`, otherwise Opensearch might not
+properly start.
+
+The environment can either be started with a Logprep container or without one:
+
+Run without Logprep Container (default)
+---------------------------------------
+
+  1. Run from within the `quickstart` directory:
+
+     .. code-block:: bash
+
+      docker compose up -d
+     
+     It starts and connects `Kafka`, `logprep`, `Opensearch` and `Opensearch Dashboards`.
+  2. Run Logprep against loaded environment from main `Logprep` directory:
+
+     .. code-block:: bash
+
+      logprep run quickstart/exampledata/config/pipeline.yml
+     
+
+Run with Logprep Container
+--------------------------
+
+  * Run from within the `quickstart` directory:
+
+    .. code-block:: bash
+
+      docker compose --profile logprep up -d
+    
+
+Run with getting config from http server with basic authentication
+------------------------------------------------------------------
+
+  * Run from within the `quickstart` directory:
+
+    .. code-block:: bash
+
+      docker compose --profile basic_auth up -d
+    
+  * Run within the project root directory:
+  
+    .. code-block:: bash
+
+      export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
+      logprep run http://localhost:8081/config/pipeline.yml
+    
+
+Run with getting config from FDA with oauth2 authentication
+-----------------------------------------------------------
+
+Start logprep by using the oauth2 profile with docker compose:
+
+    .. code-block:: bash
+
+      export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
+      docker compose --profile oauth2 up -d
+    
+
+Once they are set logprep can be started from the project root directory with:
+
+.. code-block:: bash
+
+  logprep run "http://localhost:8002/api/v1/pipelines?stage=prod&logclass=ExampleClass"
 
 
-.. warning::
+Interacting with the Quickstart Environment
+-------------------------------------------
 
-    When using the pipeline like this Logprep does not store any events or errors in an
-    designated output.
-    All relevant information are returned to the user and have to be taken care of the user
-    themself.
+The start up takes a few seconds to complete, but once everything is up
+and running it is possible to write JSON events into Kafka and read the processed events in
+Opensearch Dashboards. Following services are available after start up:
+
+====================== ================= ======== ========
+Service                Location          User     Password
+====================== ================= ======== ========
+Kafka:                 `localhost:9092`  /        /       
+Kafka Exporter:        `localhost:9308`  /        /       
+Logprep metrics:       `localhost:8001`  /        /       
+Opensearch:            `localhost:9200`  /        /       
+Opensearch Dashboards: `localhost:5601`  /        /       
+Grafana Dashboards:    `localhost:3000`  admin    admin   
+Prometheus:            `localhost:9090`  /        /       
+Nginx:                 `localhost:8081`  user     password
+Keycloak:              `localhost:8080`  admin    admin   
+Keycloak Postgres:     `localhost:5432`  keycloak bitnami 
+FDA:                   `localhost:8002`  logprep  logprep 
+FDA Postgres:          `localhost:25432` fda      fda     
+====================== ================= ======== ========
+
+The example rules that are used in the docker instance of Logprep can be found
+in `quickstart/exampledata/rules`.
+Example events that trigger for the example rules can be found in
+`quickstart/exampledata/input_logdata/logclass/test_input.jsonl`.
+These events can be added to Kafka with the following command:
+
+.. code-block:: bash
+
+  (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/logclass/test_input.jsonl
+
+
+Once the events have been processed for the first time, the new indices *processed*, *sre*
+and *pseudonyms* should be available in Opensearch Dashboards.
+
+The environment can be stopped via :code:`docker compose down`.

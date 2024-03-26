@@ -3,8 +3,5 @@
 Getters
 =======
 
-.. automodule:: logprep.util.getter
-   :members:
-   :no-undoc-members:
-
-
+.. autoclass:: logprep.util.getter.FileGetter
+.. autoclass:: logprep.util.getter.HttpGetter

@@ -2,19 +2,27 @@
 
 ## next release
 ### Breaking
-
 ### Features
 
+* retrieve oauth token automatically from different oauth endpoints by introducing an additional file to 
+  define the credentials for every configuration source
+
+#### Improvements
+### Bugfix
+
+## v10.0.4
 ### Improvements
 
 * refactor logprep build process and requirements management
 
 ### Bugfix
 
+* fix `generic_adder` not creating new field from type `list`
+
 ## v10.0.3
 ### Bugfix
 * fix loading of configuration inside the `AutoRuleCorpusTester` for `logprep test integration`
-* fix auto rule tester (`test unit`), which was broken after adding support for multiple configuration files and resolving paths in configuration files 
+* fix auto rule tester (`test unit`), which was broken after adding support for multiple configuration files and resolving paths in configuration files
 
 ## v10.0.2
 ### Bugfix

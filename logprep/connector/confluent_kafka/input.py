@@ -383,7 +383,7 @@ class ConfluentKafkaInput(Input):
         kafka_error = message.error()
         if kafka_error:
             raise CriticalInputError(
-                self, "A confluent-kafka record contains an error code", kafka_error
+                self, "A confluent-kafka record contains an error code", str(kafka_error)
             )
         self._last_valid_records[message.partition()] = message
         labels = {"description": f"topic: {self._config.topic} - partition: {message.partition()}"}

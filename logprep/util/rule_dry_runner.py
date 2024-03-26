@@ -11,7 +11,7 @@ The output is displayed in the console and changes made by Logprep are being hig
 ..  code-block:: bash
     :caption: Directly with Python
 
-    PYTHONPATH="." python3 logprep/run_logprep.py test dry-run $CONFIG $EVENTS
+    logprep test dry-run $CONFIG $EVENTS
 
 ..  code-block:: bash
     :caption: With a PEX file
