@@ -24,6 +24,8 @@ class TestHttpConnector(BaseInputTestCase):
     CONFIG: dict = {
         "type": "http_input",
         "message_backlog_size": 15000,
+        "collect_meta": False,
+        "metafield_name": "@metadata",
         "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
         "endpoints": {
             "/json": "json",
@@ -121,12 +123,12 @@ class TestHttpConnector(BaseInputTestCase):
         resp = requests.post(url=self.target + "/jsonl", data=data, timeout=0.5)
         assert resp.status_code == 200
         assert self.object.messages.qsize() == 3
+        event_from_queue = self.object.messages.get(timeout=1)
+        assert event_from_queue["message"] == "my first log message"
         event_from_queue = self.object.messages.get(timeout=0.001)
-        assert event_from_queue == {"message": "my first log message"}
+        assert event_from_queue["message"] == "my second log message"
         event_from_queue = self.object.messages.get(timeout=0.001)
-        assert event_from_queue == {"message": "my second log message"}
-        event_from_queue = self.object.messages.get(timeout=0.001)
-        assert event_from_queue == {"message": "my third log message"}
+        assert event_from_queue["message"] == "my third log message"
 
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
