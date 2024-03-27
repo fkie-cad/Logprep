@@ -491,10 +491,7 @@ class Configuration:
             raise InvalidConfigurationErrors(errors)
 
     def _set_attributes_from_configs(self) -> None:
-        exclude_attrs = "version"
-        for attribute in filter(
-            lambda x: x.repr and x.name not in exclude_attrs, self.__attrs_attrs__
-        ):
+        for attribute in filter(lambda x: x.repr and x.name, self.__attrs_attrs__):
             setattr(
                 self,
                 attribute.name,
