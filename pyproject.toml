@@ -1,12 +1,13 @@
 [build-system]
-requires = ["setuptools>=68.0.0", "setuptools-scm", "wheel"]
+requires = ["setuptools>=68.0.0", "setuptools-scm>=8.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["logprep"]
 
-[tool.setuptools.dynamic]
-version = { attr = "logprep.__version__" }
+
+[tool.setuptools_scm]
+fallback_version = "unset"
 
 [project]
 name = "logprep"
@@ -124,6 +125,13 @@ logprep = "logprep.run_logprep:cli"
 [tool.black]
 line-length = 100
 target-version = ['py310', 'py311', 'py312']
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+(
+  __version__\.py
+)
+'''
 
 [tool.isort]
 profile = "black"

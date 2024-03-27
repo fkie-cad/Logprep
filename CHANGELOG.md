@@ -7,8 +7,15 @@
 * retrieve oauth token automatically from different oauth endpoints by introducing an additional file to 
   define the credentials for every configuration source
 
-#### Improvements
+### Improvements
+
+* remove `versioneer` dependency in favor of `setuptools-scm`
+
 ### Bugfix
+
+* fix version string of release versions
+* fix version string of container builds for feature branches
+
 
 ## v10.0.4
 ### Improvements

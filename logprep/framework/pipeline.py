@@ -15,13 +15,13 @@ import queue
 import warnings
 from ctypes import c_bool
 from functools import cached_property, partial
+from importlib.metadata import version
 from multiprocessing import Lock, Value, current_process
 from typing import Any, List, Tuple
 
 import attrs
 import msgspec
 
-from logprep._version import get_versions
 from logprep.abc.component import Component
 from logprep.abc.input import (
     CriticalInputError,
@@ -118,7 +118,7 @@ class Pipeline:
     @cached_property
     def _event_version_information(self) -> dict:
         return {
-            "logprep": get_versions().get("version"),
+            "logprep": version("logprep"),
             "configuration": self._logprep_config.version,
         }
 

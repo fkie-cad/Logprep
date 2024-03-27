@@ -5,6 +5,7 @@ They are returned by the GetterFactory.
 import os
 import re
 from collections import defaultdict
+from importlib.metadata import version
 from pathlib import Path
 from string import Template
 from typing import Tuple
@@ -13,7 +14,6 @@ from urllib.parse import urlparse
 import requests
 from attrs import define, field, validators
 
-from logprep._version import get_versions
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter
 from logprep.util.credentials import (
@@ -111,7 +111,7 @@ class HttpGetter(Getter):
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
 
     def __attrs_post_init__(self):
-        user_agent = f"Logprep version {get_versions().get('version')}"
+        user_agent = f"Logprep version {version('logprep')}"
         self._headers |= {"User-Agent": user_agent}
         target = self.target
         target_match = re.match(r"^((?P<username>.+):(?P<password>.+)@)?(?P<target>.+)", target)

@@ -3,13 +3,13 @@
 import re
 import sys
 from functools import lru_cache, partial, reduce
+from importlib.metadata import version
 from os import remove
 from typing import TYPE_CHECKING, Optional, Union
 
 from colorama import Back, Fore
 from colorama.ansi import AnsiBack, AnsiFore
 
-from logprep._version import get_versions
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -322,10 +322,9 @@ def get_versions_string(config: "Configuration" = None) -> str:
     Prints the version and exists. If a configuration was found then it's version
     is printed as well
     """
-    versions = get_versions()
     padding = 25
     version_string = f"{'python version:'.ljust(padding)}{sys.version.split()[0]}"
-    version_string += f"\n{'logprep version:'.ljust(padding)}{versions['version']}"
+    version_string += f"\n{'logprep version:'.ljust(padding)}{version('logprep')}"
     if config:
         config_version = (
             f"{config.version}, {', '.join(config.config_paths) if config.config_paths else 'None'}"

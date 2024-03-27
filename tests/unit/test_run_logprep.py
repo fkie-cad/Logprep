@@ -3,6 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 import sys
+from importlib.metadata import version
 from pathlib import Path
 from unittest import mock
 
@@ -12,10 +13,8 @@ import responses
 from click.testing import CliRunner
 
 from logprep import run_logprep
-from logprep._version import get_versions
 from logprep.run_logprep import cli
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 
 class TestRunLogprepCli:
@@ -152,7 +151,7 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert "configuration version:   no configuration found" in result.output
 
     def test_run_version_arg_prints_logprep_version_with_config_version(self):
@@ -160,7 +159,7 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert (
             "configuration version:   1, file://tests/testdata/config/config.yml" in result.output
         )
@@ -170,7 +169,7 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert (
             "configuration version:   alternative, file://tests/testdata/config/config2.yml"
             in result.output
@@ -188,7 +187,7 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert f"configuration version:   1, http://localhost:32000/{config_path}" in result.output
 
     @responses.activate
@@ -208,7 +207,7 @@ class TestRunLogprepCli:
             result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert f"configuration version:   1, http://localhost:32000/{config_path}" in result.output
         assert "username" not in result.output
         assert "password" not in result.output

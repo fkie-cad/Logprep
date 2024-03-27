@@ -4,9 +4,9 @@
 # pylint: disable=unspecified-encoding
 # pylint: disable=protected-access
 import json
-import os
 import uuid
 from datetime import datetime, timedelta
+from importlib.metadata import version
 from pathlib import Path
 from unittest import mock
 
@@ -16,7 +16,6 @@ import responses
 from responses import matchers
 from ruamel.yaml import YAML
 
-from logprep._version import get_versions
 from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
 from logprep.util.getter import (
     FileGetter,
@@ -339,7 +338,7 @@ class TestHttpGetter:
     @responses.activate
     def test_sends_logprep_version_in_user_agent(self):
         resp_text = Path("tests/testdata/config/config.yml").read_text()
-        logprep_version = get_versions().get("version")
+        logprep_version = version("logprep")
         responses.add(
             responses.GET,
             "https://the-target/file",

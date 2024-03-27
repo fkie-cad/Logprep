@@ -3,12 +3,12 @@
 # pylint: disable=logging-fstring-interpolation
 
 import logging
+from importlib.metadata import version
 from typing import Generator
 
 from attrs import define, field
 from schedule import Scheduler
 
-from logprep._version import get_versions
 from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
@@ -97,9 +97,8 @@ class Runner:
 
     @property
     def _metric_labels(self) -> dict[str, str]:
-        versions = get_versions()
         labels = {
-            "logprep": f"{versions.get('version')}",
+            "logprep": f"{version('logprep')}",
             "config": f"{self._configuration.version}",
         }
         return labels
@@ -182,7 +181,7 @@ class Runner:
     def _set_version_info_metric(self):
         self.metrics.version_info.add_with_labels(
             1,
-            {"logprep": f"{get_versions()['version']}", "config": self._configuration.version},
+            {"logprep": f"{version('logprep')}", "config": self._configuration.version},
         )
 
     def stop(self):
