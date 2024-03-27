@@ -56,6 +56,10 @@ filled with the correct values that correspond to the method you want to use.
         # example for Basic Authentication with inline password
         username: <username>
         password: <plaintext password> # will be overwritten if 'password_file' is given
+    "http://target.url":
+        # example for mTLS authentication
+        client_key: <path/to/client/key/file>
+        password: <path/to/certificate/file>
 
 Options for the credentials file are:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -68,6 +72,9 @@ Options for the credentials file are:
    :no-index:
 .. autoclass:: logprep.util.credentials.OAuth2PasswordFlowCredentials
    :members: endpoint, client_id, client_secret, username, password
+   :no-index:
+.. autoclass:: logprep.util.credentials.MTLSCredentials
+   :members: client_key, client_certificate
    :no-index:
    
 Authentication Process:

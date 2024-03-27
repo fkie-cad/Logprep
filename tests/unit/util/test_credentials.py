@@ -105,10 +105,10 @@ class TestOAuth2TokenCredentials:
     )
     def test_init(self, testcase, kwargs, error, error_message):
         if error is None:
-            _ = OAuth2TokenCredentials(**kwargs)
+            test = OAuth2TokenCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                _ = OAuth2TokenCredentials(**kwargs)
+                test = OAuth2TokenCredentials(**kwargs)
 
     def test_get_session_returns_session(self):
         test = OAuth2TokenCredentials(token="tooooooken")
@@ -209,10 +209,10 @@ class TestOAuth2PasswordFlowCredentials:
     )
     def test_init(self, testcase, error, kwargs, error_message):
         if error is None:
-            _ = OAuth2PasswordFlowCredentials(**kwargs)
+            test = OAuth2PasswordFlowCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                _ = OAuth2PasswordFlowCredentials(**kwargs)
+                test = OAuth2PasswordFlowCredentials(**kwargs)
 
     @responses.activate
     def test_get_session_returns_session(self):
@@ -486,10 +486,10 @@ class TestOAuth2ClientFlowCredentials:
     )
     def test_init(self, testcase, kwargs, error, error_message):
         if error is None:
-            _ = OAuth2ClientFlowCredentials(**kwargs)
+            test = OAuth2ClientFlowCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                _ = OAuth2ClientFlowCredentials(**kwargs)
+                test = OAuth2ClientFlowCredentials(**kwargs)
 
     @responses.activate
     def test_get_session_returns_session(self):
@@ -971,8 +971,7 @@ class TestCredentialsFactory:
                 OAuth2TokenCredentials,
             ),
             (
-                "Return BasicAuthCredential object when no endpoint"
-                "is given and password_file is given",
+                "Return BasicAuthCredential object when no endpoint is given and password_file is given",
                 "password_file",
                 "",
                 "hiansdnjskwuthisisaverysecretsecret",
@@ -1033,7 +1032,7 @@ class TestCredentialsFactory:
             "password": "password",
             "extra_param": "extra",
         }
-        CredentialsFactory.from_dict(credentials_file_content_with_extra_params)
+        creds = CredentialsFactory.from_dict(credentials_file_content_with_extra_params)
         mock_logger.warning.assert_called_once()
         assert re.search(
             r"OAuth password authorization for confidential clients",

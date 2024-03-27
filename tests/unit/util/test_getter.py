@@ -17,11 +17,7 @@ from responses import matchers
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
-from logprep.util.credentials import (
-    Credentials,
-    CredentialsEnvNotFoundError,
-    MTLSCredentials,
-)
+from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
@@ -575,7 +571,7 @@ class TestHttpGetter:
         with mock.patch.dict("os.environ", mock_env):
             http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
             http_getter.get_raw()
-            assert isinstance(http_getter.credentials, MTLSCredentials)
+            assert isinstance(http_getter.credentials, Credentials)
             assert (
                 "path/to/cert"
                 in http_getter._credentials_registry.get(f"https://{domain}")._session.cert
