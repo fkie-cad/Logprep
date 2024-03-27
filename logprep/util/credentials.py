@@ -29,22 +29,19 @@ filled with the correct values that correspond to the method you want to use.
         client_id: <id>
         client_secret: <secret>
     "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant with 
-        authentication for a confidential client
+        # example for OAuth2 Resource Owner Password Credentials Grant with authentication for a confidential client
         endpoint: <endpoint>
         username: <username>
         password_file: <path/to/password/file>
         client_id: <client_id> # optional if required
         client_secret_file: <path/to/secret/file> # optional if required
     "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant 
-        for a public unconfidential client
+        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client
         endpoint: <endpoint>
         username: <username>
         password_file: <path/to/password/file>
     "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant 
-        for a public unconfidential client with inline password
+        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client with inline password
         endpoint: <endpoint>
         username: <username>
         password: <password>
