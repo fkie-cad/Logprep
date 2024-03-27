@@ -4,7 +4,8 @@ process_count: 2
 metrics:
   enabled: false
   port: 8000
-
+  enabled: true
+  port: 8003
 input:
   httpinput:
       type: http_input
