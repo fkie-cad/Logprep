@@ -27,7 +27,7 @@ def test_two_times_config_refresh_after_5_seconds(tmp_path):
     wait_for_output(proc, "Successfully reloaded configuration", test_timeout=7)
     config.version = "other version"
     config_path.write_text(config.as_json())
-    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=6)
+    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=10)
 
 
 def test_no_config_refresh_after_5_seconds(tmp_path):

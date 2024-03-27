@@ -306,7 +306,8 @@ class ThreadingHTTPServer:
             logging.getLogger(logger_name).addHandler(
                 logging.getLogger("Logprep").parent.handlers[0]
             )
-            logging.getLogger(logger_name).name = http_server_name
+        logging.getLogger("uvicorn.access").name = http_server_name
+        logging.getLogger("uvicorn.error").name = http_server_name
 
     def _init_web_application_server(self, endpoints_config: dict) -> None:
         "Init falcon application server and setting endpoint routes"

@@ -66,6 +66,8 @@ class SingleThreadQueueListener(logging.handlers.QueueListener):
                         task_done()
                 except Empty:
                     continue
+                except TypeError:
+                    continue
 
     def start(self):
         """Override default implementation.
