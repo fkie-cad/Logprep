@@ -202,9 +202,9 @@ class PlaintextHttpEndpoint(HttpEndpoint):
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
         data = await req.stream.read()
-        event = kwargs.get("metadata", {})
-        event.update({"message": data.decode("utf8")})
-        self.messages.put(event, block=False)
+        metadata = kwargs.get("metadata", {})
+        event = {"message": data.decode("utf8")}
+        self.messages.put({**event, **metadata}, block=False)
 
 
 class ThreadingHTTPServer:
