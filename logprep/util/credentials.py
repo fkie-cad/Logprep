@@ -29,19 +29,22 @@ filled with the correct values that correspond to the method you want to use.
         client_id: <id>
         client_secret: <secret>
     "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant with authentication for a confidential client
+        # example for OAuth2 Resource Owner Password Credentials Grant with 
+        authentication for a confidential client
         endpoint: <endpoint>
         username: <username>
         password_file: <path/to/password/file>
         client_id: <client_id> # optional if required
         client_secret_file: <path/to/secret/file> # optional if required
     "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client
+        # example for OAuth2 Resource Owner Password Credentials Grant 
+        for a public unconfidential client
         endpoint: <endpoint>
         username: <username>
         password_file: <path/to/password/file>
     "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client with inline password
+        # example for OAuth2 Resource Owner Password Credentials Grant 
+        for a public unconfidential client with inline password
         endpoint: <endpoint>
         username: <username>
         password: <password>
@@ -197,7 +200,8 @@ class CredentialsFactory:
 
     @classmethod
     def from_dict(cls, credential_mapping: dict) -> "Credentials":
-        """matches the given credentials of the credentials mapping with the expected credential object"""
+        """matches the given credentials of the credentials mapping
+        with the expected credential object"""
         if credential_mapping:
             cls._resolve_secret_content(credential_mapping)
         try:
@@ -344,6 +348,7 @@ class Credentials:
     _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
 
     def get_session(self):
+        """returns session with retry configuration"""
         if self._session is None:
             self._session = Session()
             max_retries = 3
@@ -449,7 +454,8 @@ class OAuth2PasswordFlowCredentials(Credentials):
     client_secret: str = field(
         validator=validators.instance_of((str, type(None))), default=None, repr=False
     )
-    """The client secret for the token request. This is used to authenticate the client. (Optional)"""
+    """The client secret for the token request. 
+    This is used to authenticate the client. (Optional)"""
     _token: AccessToken = field(
         validator=validators.instance_of((AccessToken, type(None))),
         init=False,
@@ -592,7 +598,7 @@ class MTLSCredentials(Credentials):
     """class for mTLS authentification"""
 
     client_key: str = field(validator=validators.instance_of(str))
-    """path to client key"""
+    """path to public client key"""
     client_certificate: str = field(validator=validators.instance_of(str))
     """path to client cretificate"""
 

@@ -105,10 +105,10 @@ class TestOAuth2TokenCredentials:
     )
     def test_init(self, testcase, kwargs, error, error_message):
         if error is None:
-            test = OAuth2TokenCredentials(**kwargs)
+            _ = OAuth2TokenCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                test = OAuth2TokenCredentials(**kwargs)
+                _ = OAuth2TokenCredentials(**kwargs)
 
     def test_get_session_returns_session(self):
         test = OAuth2TokenCredentials(token="tooooooken")
@@ -209,10 +209,10 @@ class TestOAuth2PasswordFlowCredentials:
     )
     def test_init(self, testcase, error, kwargs, error_message):
         if error is None:
-            test = OAuth2PasswordFlowCredentials(**kwargs)
+            _ = OAuth2PasswordFlowCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                test = OAuth2PasswordFlowCredentials(**kwargs)
+                _ = OAuth2PasswordFlowCredentials(**kwargs)
 
     @responses.activate
     def test_get_session_returns_session(self):
@@ -486,10 +486,10 @@ class TestOAuth2ClientFlowCredentials:
     )
     def test_init(self, testcase, kwargs, error, error_message):
         if error is None:
-            test = OAuth2ClientFlowCredentials(**kwargs)
+            _ = OAuth2ClientFlowCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                test = OAuth2ClientFlowCredentials(**kwargs)
+                _ = OAuth2ClientFlowCredentials(**kwargs)
 
     @responses.activate
     def test_get_session_returns_session(self):
@@ -801,7 +801,7 @@ class TestCredentialsFactory:
                 None,
             ),
             (
-                "Return OAuthTokenCredential object when username, passowrd, client_id and client_secret are also given",
+                "Return OAuthTokenCredential object when other params are given",
                 """---
 "https://some.url":
     endpoint: https://endpoint.end
@@ -867,11 +867,42 @@ class TestCredentialsFactory:
                 "Return MTLSCredentials object if certificate and key are given",
                 """---
 "https://some.url":
-    client_key: "path/to/client/key.pem"
-    client_certificate: "path/to/cert.pem"
+    client_key: "path/to/client/key"
+    client_certificate: "path/to/cert"
 """,
                 MTLSCredentials,
                 None,
+            ),
+            (
+                "Return MTLSCredentials object if certificate and key are given with extra parameters",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+    client_certificate: "path/to/cert"
+    endpoint: https://endpoint.end
+    username: test
+""",
+                MTLSCredentials,
+                None,
+            ),
+            (
+                "Return None if certificate is missing",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+""",
+                type(None),
+                None,
+            ),
+            (
+                "Return InvalidConfigurationObject object if certificate is empty",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+    client_certificate: 
+""",
+                None,
+                InvalidConfigurationError,
             ),
         ],
     )
@@ -940,7 +971,8 @@ class TestCredentialsFactory:
                 OAuth2TokenCredentials,
             ),
             (
-                "Return BasicAuthCredential object when no endpoint is given and password_file is given",
+                "Return BasicAuthCredential object when no endpoint"
+                "is given and password_file is given",
                 "password_file",
                 "",
                 "hiansdnjskwuthisisaverysecretsecret",
@@ -1001,7 +1033,7 @@ class TestCredentialsFactory:
             "password": "password",
             "extra_param": "extra",
         }
-        creds = CredentialsFactory.from_dict(credentials_file_content_with_extra_params)
+        CredentialsFactory.from_dict(credentials_file_content_with_extra_params)
         mock_logger.warning.assert_called_once()
         assert re.search(
             r"OAuth password authorization for confidential clients",
@@ -1012,13 +1044,9 @@ class TestCredentialsFactory:
 class TestMTLSCredentials:
     @responses.activate
     def test_get_session_returns_session_and_cert_is_set(self):
-        responses.add(
-            responses.POST,
-            "https://the.endpoint",
-        )
         test = MTLSCredentials(
-            client_certificate="path/to/cert.pem",
-            client_key="path/to/key.pem",
+            client_certificate="path/to/cert",
+            client_key="path/to/key",
         )
         assert test.get_session() is not None
         assert test._session.cert is not None

@@ -17,7 +17,11 @@ from responses import matchers
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
-from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
+from logprep.util.credentials import (
+    Credentials,
+    CredentialsEnvNotFoundError,
+    MTLSCredentials,
+)
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
@@ -545,3 +549,63 @@ class TestHttpGetter:
             ):
                 http_getter.get_json()
         assert error.value.response.status_code == 401
+
+    @responses.activate
+    def test_get_raw_uses_mtls_and_session_cert_is_set_and_used_in_request(self, tmp_path):
+        domain = str(uuid.uuid4())
+        with responses.RequestsMock(assert_all_requests_are_fired=False):
+            req_kwargs = {
+                "cert": ("path/to/cert", "path/to/key"),
+                "verify": True,
+            }
+            responses.add(
+                responses.GET,
+                url=f"https://{domain}/bar",
+                match=[matchers.request_kwargs_matcher(req_kwargs)],
+            )
+        credentials_file_content = {
+            f"https://{domain}": {
+                "client_key": "path/to/key",
+                "client_certificate": "path/to/cert",
+            }
+        }
+        credentials_file: Path = tmp_path / "credentials.json"
+        credentials_file.write_text(json.dumps(credentials_file_content))
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
+            http_getter.get_raw()
+            assert isinstance(http_getter.credentials, MTLSCredentials)
+            assert (
+                "path/to/cert"
+                in http_getter._credentials_registry.get(f"https://{domain}")._session.cert
+            )
+
+    @responses.activate
+    def test_get_raw_uses_mtls_but_cert_is_invalid(self, tmp_path):
+        domain = str(uuid.uuid4())
+        with responses.RequestsMock(assert_all_requests_are_fired=False):
+            req_kwargs = {
+                "cert": ("path/to/cert", "path/to/key"),
+                "verify": True,
+            }
+            responses.add(
+                responses.GET,
+                url=f"https://{domain}/bar",
+                match=[matchers.request_kwargs_matcher(req_kwargs)],
+                status=401,
+            )
+        credentials_file_content = {
+            f"https://{domain}": {
+                "client_key": "path/to/key",
+                "client_certificate": "path/to/cert",
+            }
+        }
+        credentials_file: Path = tmp_path / "credentials.json"
+        credentials_file.write_text(json.dumps(credentials_file_content))
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}
+        with pytest.raises(requests.exceptions.HTTPError) as error:
+            with mock.patch.dict("os.environ", mock_env):
+                http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
+                http_getter.get_raw()
+            assert error.value.response.status_code == 401
