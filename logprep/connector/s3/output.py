@@ -112,6 +112,9 @@ class S3Output(Output):
         )
         """The input callback is called after the maximum backlog size has been reached 
         if this is set to True (optional)"""
+        flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
+        """(Optional) Timout after :code:`message_backlog` is flushed if 
+        :code:`message_backlog_size` is not reached."""
 
     @define(kw_only=True)
     class Metrics(Output.Metrics):
@@ -141,6 +144,7 @@ class S3Output(Output):
         self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
         self._s3_resource = None
         self._setup_s3_resource()
+        self._schedule_task(task=self._write_backlog, seconds=self._config.flush_timeout)
 
     def _setup_s3_resource(self):
         session = boto3.Session(
