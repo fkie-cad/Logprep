@@ -256,23 +256,27 @@ class ThreadingHTTPServer:
         else:
             server_continue = True
 
-        if not server_continue:
-            self.connector_config = connector_config
-            self.endpoints_config = endpoints_config
-            self.uvicorn_config = self.connector_config.uvicorn_config
-            self._init_web_application_server(self.endpoints_config)
-            log_config = self._init_log_config()
-            self.compiled_config = uvicorn.Config(
-                **self.uvicorn_config,
-                app=self.app,
-                log_level=log_level,
-                log_config=log_config,
-            )
-            self._stop()
-            self.server = uvicorn.Server(self.compiled_config)
-            self._override_runtime_logging()
-            self.thread = threading.Thread(daemon=False, target=self.server.run)
-            self._start()
+        if server_continue:
+            return
+        self._restart_server(connector_config, endpoints_config, log_level)
+
+    def _restart_server(self, connector_config, endpoints_config, log_level):
+        self.connector_config = connector_config
+        self.endpoints_config = endpoints_config
+        self.uvicorn_config = self.connector_config.uvicorn_config
+        self._init_web_application_server(self.endpoints_config)
+        log_config = self._init_log_config()
+        self.compiled_config = uvicorn.Config(
+            **self.uvicorn_config,
+            app=self.app,
+            log_level=log_level,
+            log_config=log_config,
+        )
+        self._stop()
+        self.server = uvicorn.Server(self.compiled_config)
+        self._override_runtime_logging()
+        self.thread = threading.Thread(daemon=False, target=self.server.run)
+        self._start()
 
     def _start(self):
         """Start thread with uvicorn+falcon http server and wait
@@ -284,12 +288,13 @@ class ThreadingHTTPServer:
     def _stop(self):
         """Stop thread with uvicorn+falcon http server, wait for uvicorn
         to exit gracefully and join the thread"""
-        if hasattr(self, "thread"):
-            if self.thread.is_alive():
-                self.server.should_exit = True
-                while self.thread.is_alive():
-                    continue
-            self.thread.join()
+        if not hasattr(self, "thread"):
+            return
+        if self.thread.is_alive():
+            self.server.should_exit = True
+            while self.thread.is_alive():
+                continue
+        self.thread.join()
 
     def _init_log_config(self) -> dict:
         """Use for Uvicorn same log formatter like for Logprep"""
@@ -376,14 +381,20 @@ class HttpConnector(Input):
         )
         """Configures maximum size of input message queue for this connector. When limit is reached
         the server will answer with 429 Too Many Requests. For reasonable throughput this shouldn't
-        be smaller than default value.
+        be smaller than default value of 15.000 messages.
         """
 
         collect_meta: str = field(validator=validators.instance_of(bool), default=True)
         """Defines if metadata should be collected in format 
-        ``{metafield_name:{"url":"", "remote_addr":"", "user_agent":""}}``:
-        - ``True``: Collect metadata
-        - ``False``: Won't collect metadata
+        :code:`{
+            <metafield_name>:{
+              "url":"<the url where the client requests targets at>",
+              "remote_addr": "<the clients ip address>",
+              "user_agent": "<the clients user agent>"
+            }
+          }`
+        - :code:`True`: Collect metadata
+        - :code:`False`: Won't collect metadata
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
