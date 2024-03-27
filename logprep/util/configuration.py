@@ -491,12 +491,17 @@ class Configuration:
             raise InvalidConfigurationErrors(errors)
 
     def _set_attributes_from_configs(self) -> None:
-        for attribute in filter(lambda x: x.repr, self.__attrs_attrs__):
+        exclude_attrs = ("pipeline", "version")
+        for attribute in filter(
+            lambda x: x.repr and x.name not in exclude_attrs, self.__attrs_attrs__
+        ):
             setattr(
                 self,
                 attribute.name,
                 self._get_last_non_falsy_value(self._configs, attribute.name),
             )
+        versions = (config.version for config in self._configs if config.version)
+        self.version = ", ".join(versions)
 
     def _build_merged_pipeline(self):
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
