@@ -868,7 +868,18 @@ class TestCredentialsFactory:
                 """---
 "https://some.url":
     client_key: "path/to/client/key"
-    client_certificate: "path/to/cert"
+    cert: "path/to/cert"
+""",
+                MTLSCredentials,
+                None,
+            ),
+            (
+                "Return MTLSCredentials object if certificate key and ca cert are given",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+    cert: "path/to/cert"
+    ca_cert: "path/to/ca/cert"
 """,
                 MTLSCredentials,
                 None,
@@ -878,7 +889,7 @@ class TestCredentialsFactory:
                 """---
 "https://some.url":
     client_key: "path/to/client/key"
-    client_certificate: "path/to/cert"
+    cert: "path/to/cert"
     endpoint: https://endpoint.end
     username: test
 """,
@@ -895,11 +906,11 @@ class TestCredentialsFactory:
                 None,
             ),
             (
-                "Return InvalidConfigurationObject object if certificate is empty",
+                "Return InvalidConfigurationError object if certificate is empty",
                 """---
 "https://some.url":
     client_key: "path/to/client/key"
-    client_certificate: 
+    cert: 
 """,
                 None,
                 InvalidConfigurationError,
@@ -1041,11 +1052,21 @@ class TestCredentialsFactory:
 
 
 class TestMTLSCredentials:
-    @responses.activate
     def test_get_session_returns_session_and_cert_is_set(self):
         test = MTLSCredentials(
-            client_certificate="path/to/cert",
+            cert="path/to/cert",
             client_key="path/to/key",
         )
         assert test.get_session() is not None
         assert test._session.cert is not None
+
+    def test_get_session_sets_ca_cert_for_verification(self):
+        test = MTLSCredentials(
+            cert="path/to/cert",
+            client_key="path/to/key",
+            ca_cert="path/to/ca/cert",
+        )
+        assert test.get_session() is not None
+        assert "path/to/cert" in test._session.cert
+        assert "path/to/key" in test._session.cert
+        assert "path/to/ca/cert" in test._session.verify

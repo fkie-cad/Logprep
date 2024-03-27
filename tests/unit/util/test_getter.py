@@ -562,7 +562,7 @@ class TestHttpGetter:
         credentials_file_content = {
             f"https://{domain}": {
                 "client_key": "path/to/key",
-                "client_certificate": "path/to/cert",
+                "cert": "path/to/cert",
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"
@@ -594,7 +594,7 @@ class TestHttpGetter:
         credentials_file_content = {
             f"https://{domain}": {
                 "client_key": "path/to/key",
-                "client_certificate": "path/to/cert",
+                "cert": "path/to/cert",
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"
@@ -612,7 +612,6 @@ class TestHttpGetter:
         with responses.RequestsMock(assert_all_requests_are_fired=False):
             req_kwargs = {
                 "cert": ("path/to/cert", "path/to/key"),
-                "verify": True,
             }
             responses.add(
                 responses.GET,
@@ -622,7 +621,7 @@ class TestHttpGetter:
         credentials_file_content = {
             f"https://{domain}": {
                 "client_key": "path/to/key",
-                "client_certificate": "path/to/cert",
+                "cert": "path/to/cert",
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"
@@ -635,7 +634,7 @@ class TestHttpGetter:
             credentials_file_content.update(
                 {
                     f"https://{domain}": {
-                        "client_certificate": "path/to/other/cert",
+                        "cert": "path/to/other/cert",
                         "client_key": "path/to/client/key",
                     }
                 }
@@ -644,5 +643,88 @@ class TestHttpGetter:
             assert (
                 "path/to/cert"
                 in http_getter._credentials_registry.get(f"https://{domain}")._session.cert
+            )
+            responses.assert_call_count(f"https://{domain}/bar", 2)
+
+    @responses.activate
+    def test_get_raw_uses_mtls_with_session_cert_and_ca_cert(self, tmp_path):
+        domain = str(uuid.uuid4())
+        with responses.RequestsMock(assert_all_requests_are_fired=False):
+            req_kwargs = {
+                "cert": ("path/to/cert", "path/to/key"),
+                "verify": "path/to/ca/cert",
+            }
+            responses.add(
+                responses.GET,
+                url=f"https://{domain}/bar",
+                match=[matchers.request_kwargs_matcher(req_kwargs)],
+            )
+        credentials_file_content = {
+            f"https://{domain}": {
+                "client_key": "path/to/key",
+                "cert": "path/to/cert",
+                "ca_cert": "path/to/ca/cert",
+            }
+        }
+        credentials_file: Path = tmp_path / "credentials.json"
+        credentials_file.write_text(json.dumps(credentials_file_content))
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
+            http_getter.get_raw()
+            assert isinstance(http_getter.credentials, Credentials)
+            assert (
+                "path/to/cert"
+                in http_getter._credentials_registry.get(f"https://{domain}")._session.cert
+            )
+            assert (
+                "path/to/ca/cert"
+                in http_getter._credentials_registry.get(f"https://{domain}")._session.verify
+            )
+
+    @responses.activate
+    def test_get_raw_reuses_mtls_session_and_ca_cert_is_not_updated(self, tmp_path):
+        domain = str(uuid.uuid4())
+        with responses.RequestsMock(assert_all_requests_are_fired=False):
+            req_kwargs = {
+                "cert": ("path/to/cert", "path/to/key"),
+                "verify": "path/to/ca/cert",
+            }
+            responses.add(
+                responses.GET,
+                url=f"https://{domain}/bar",
+                match=[matchers.request_kwargs_matcher(req_kwargs)],
+            )
+        credentials_file_content = {
+            f"https://{domain}": {
+                "client_key": "path/to/key",
+                "cert": "path/to/cert",
+                "ca_cert": "path/to/ca/cert",
+            }
+        }
+        credentials_file: Path = tmp_path / "credentials.json"
+        credentials_file.write_text(json.dumps(credentials_file_content))
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
+            http_getter.get_raw()
+            credentials_file_content.popitem()
+            credentials_file_content.update(
+                {
+                    f"https://{domain}": {
+                        "cert": "path/to/other/cert",
+                        "client_key": "path/to/client/key",
+                        "ca_cert": "path/to/ca/cert/the/second",
+                    }
+                }
+            )
+            http_getter.get_raw()
+            assert (
+                "path/to/cert"
+                in http_getter._credentials_registry.get(f"https://{domain}")._session.cert
+            )
+            assert (
+                "path/to/ca/cert"
+                in http_getter._credentials_registry.get(f"https://{domain}")._session.verify
             )
             responses.assert_call_count(f"https://{domain}/bar", 2)

@@ -56,7 +56,12 @@ filled with the correct values that correspond to the method you want to use.
     "http://target.url":
         # example for mTLS authentication
         client_key: <path/to/client/key/file>
-        password: <path/to/certificate/file>
+        cert: <path/to/certificate/file>
+    "http://target.url":
+        # example for mTLS authentication with ca cert given
+        client_key: <path/to/client/key/file>
+        cert: <path/to/certificate/file>
+        ca_cert: <path/to/ca/cert>
 
 Options for the credentials file are:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +76,7 @@ Options for the credentials file are:
    :members: endpoint, client_id, client_secret, username, password
    :no-index:
 .. autoclass:: logprep.util.credentials.MTLSCredentials
-   :members: client_key, client_certificate
+   :members: client_key, cert, ca_cert
    :no-index:
    
 Authentication Process:
@@ -239,7 +244,8 @@ class CredentialsFactory:
                 return OAuth2TokenCredentials(token=token)
             case {
                 "client_key": client_key,
-                "client_certificate": client_certificate,
+                "cert": cert,
+                "ca_cert": ca_cert,
                 **extra_params,
             }:
                 if extra_params:
@@ -247,7 +253,18 @@ class CredentialsFactory:
                         "Other parameters were given: %s but OAuth token authorization was chosen",
                         extra_params.keys(),
                     )
-                return MTLSCredentials(client_key=client_key, client_certificate=client_certificate)
+                return MTLSCredentials(client_key=client_key, cert=cert, ca_cert=ca_cert)
+            case {
+                "client_key": client_key,
+                "cert": cert,
+                **extra_params,
+            }:
+                if extra_params:
+                    cls._logger.warning(
+                        "Other parameters were given: %s but OAuth token authorization was chosen",
+                        extra_params.keys(),
+                    )
+                return MTLSCredentials(client_key=client_key, cert=cert)
             case {
                 "endpoint": endpoint,
                 "client_id": client_id,
@@ -603,12 +620,17 @@ class MTLSCredentials(Credentials):
 
     client_key: str = field(validator=validators.instance_of(str))
     """path to public client key"""
-    client_certificate: str = field(validator=validators.instance_of(str))
+    cert: str = field(validator=validators.instance_of(str))
     """path to client cretificate"""
+    ca_cert: str = field(validator=validators.instance_of((str, type(None))), default=None)
+    """path to ca certificate"""
 
     def get_session(self):
         session = super().get_session()
         if session.cert is None:
-            cert = (self.client_certificate, self.client_key)
+            cert = (self.cert, self.client_key)
             session.cert = cert
+            if self.ca_cert:
+                session.verify = self.ca_cert
+
         return session
