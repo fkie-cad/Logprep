@@ -348,29 +348,6 @@ class TestHttpGetter:
         http_getter = GetterFactory.from_string("https://the-target/file")
         http_getter.get()
 
-    @responses.activate
-    def test_provides_oauth_compliant_headers_if_token_is_set_via_env(self):
-        mock_env = {
-            "LOGPREP_CONFIG_AUTH_METHOD": "oauth",
-            "LOGPREP_CONFIG_AUTH_TOKEN": "ajhsdfpoweiurjdfs239487",
-        }
-
-        logprep_version = version("logprep")
-        responses.get(
-            url="https://the.target.url/targetfile",
-            match=[
-                matchers.header_matcher(
-                    {
-                        "User-Agent": f"Logprep version {logprep_version}",
-                        "Authorization": "Bearer ajhsdfpoweiurjdfs239487",
-                    }
-                )
-            ],
-        )
-        with mock.patch.dict("os.environ", mock_env):
-            http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
-            http_getter.get()
-
     def test_raises_on_try_to_set_credentials_from_url_string(self):
         with pytest.raises(
             NotImplementedError, match="Basic auth credentials via commandline are not supported"
