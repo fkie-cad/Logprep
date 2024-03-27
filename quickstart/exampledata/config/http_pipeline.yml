@@ -19,7 +19,7 @@ input:
           /json: json
           /lab/123/(first|second|third)/js.*: jsonl
           /lab/123/(ABC|DEF)/pl.*: plaintext
-output:
+          /lab/123/ABC/auditlog: jsonl
   kafka:
     type: confluentkafka_output
     topic: consumer
