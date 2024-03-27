@@ -1115,6 +1115,20 @@ output:
             ):
                 config._verify_environment()
 
+    def test_versions_are_aggregated_for_multiple_configs(self, config_path, tmp_path):
+        config1 = Configuration.from_sources([str(config_path)])
+        config1.version = "first"
+        config1_path = tmp_path / "config1.yml"
+        config1_path.write_text(config1.as_yaml())
+
+        config2 = Configuration.from_sources([str(config_path)])
+        config2.version = "second"
+        config2_path = tmp_path / "config2.yml"
+        config2_path.write_text(config2.as_yaml())
+
+        config = Configuration.from_sources([str(config1_path), str(config2_path)])
+        assert config.version == "first, second"
+
 
 class TestInvalidConfigurationErrors:
     @pytest.mark.parametrize(
