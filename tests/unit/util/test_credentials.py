@@ -880,6 +880,22 @@ class TestCredentialsFactory:
     client_key: "path/to/client/key"
     cert: "path/to/cert"
     ca_cert: "path/to/ca/cert"
+    endpoint: https://endpoint.end
+    client_id: test
+    username: test
+    password: test
+    client_secret: test
+""",
+                MTLSCredentials,
+                None,
+            ),
+            (
+                "Return MTLSCredentials object if certificate key and ca cert are given with extra params",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+    cert: "path/to/cert"
+    ca_cert: "path/to/ca/cert"
 """,
                 MTLSCredentials,
                 None,
