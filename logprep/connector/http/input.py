@@ -243,16 +243,18 @@ class ThreadingHTTPServer:
         super().__init__()
 
         server_continue = False
-        if hasattr(self, "thread"):
-            if self.thread.is_alive():  # pylint: disable=access-member-before-definition
-                if has_config_changed(
-                    connector_config,
-                    self.connector_config,  # pylint: disable=access-member-before-definition
-                    check_attrs=HTTP_INPUT_CONFIG_KEYS,
-                ):
-                    server_continue = False
-                else:
-                    server_continue = True
+        if not hasattr(self, "thread"):
+            return
+        if not self.thread.is_alive():  # pylint: disable=access-member-before-definition
+            return
+        if has_config_changed(
+            connector_config,
+            self.connector_config,  # pylint: disable=access-member-before-definition
+            check_attrs=HTTP_INPUT_CONFIG_KEYS,
+        ):
+            server_continue = False
+        else:
+            server_continue = True
 
         if not server_continue:
             self.connector_config = connector_config
