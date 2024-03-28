@@ -53,6 +53,15 @@ filled with the correct values that correspond to the method you want to use.
         # example for Basic Authentication with inline password
         username: <username>
         password: <plaintext password> # will be overwritten if 'password_file' is given
+    "http://target.url":
+        # example for mTLS authentication
+        client_key: <path/to/client/key/file>
+        cert: <path/to/certificate/file>
+    "http://target.url":
+        # example for mTLS authentication with ca cert given
+        client_key: <path/to/client/key/file>
+        cert: <path/to/certificate/file>
+        ca_cert: <path/to/ca/cert>
 
 Options for the credentials file are:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,6 +74,9 @@ Options for the credentials file are:
    :no-index:
 .. autoclass:: logprep.util.credentials.OAuth2PasswordFlowCredentials
    :members: endpoint, client_id, client_secret, username, password
+   :no-index:
+.. autoclass:: logprep.util.credentials.MTLSCredentials
+   :members: client_key, cert, ca_cert
    :no-index:
    
 Authentication Process:
@@ -197,7 +209,8 @@ class CredentialsFactory:
 
     @classmethod
     def from_dict(cls, credential_mapping: dict) -> "Credentials":
-        """matches the given credentials of the credentials mapping with the expected credential object"""
+        """matches the given credentials of the credentials mapping
+        with the expected credential object"""
         if credential_mapping:
             cls._resolve_secret_content(credential_mapping)
         try:
@@ -229,6 +242,29 @@ class CredentialsFactory:
                         extra_params.keys(),
                     )
                 return OAuth2TokenCredentials(token=token)
+            case {
+                "client_key": client_key,
+                "cert": cert,
+                "ca_cert": ca_cert,
+                **extra_params,
+            }:
+                if extra_params:
+                    cls._logger.warning(
+                        "Other parameters were given: %s but OAuth token authorization was chosen",
+                        extra_params.keys(),
+                    )
+                return MTLSCredentials(client_key=client_key, cert=cert, ca_cert=ca_cert)
+            case {
+                "client_key": client_key,
+                "cert": cert,
+                **extra_params,
+            }:
+                if extra_params:
+                    cls._logger.warning(
+                        "Other parameters were given: %s but OAuth token authorization was chosen",
+                        extra_params.keys(),
+                    )
+                return MTLSCredentials(client_key=client_key, cert=cert)
             case {
                 "endpoint": endpoint,
                 "client_id": client_id,
@@ -333,6 +369,7 @@ class Credentials:
     _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
 
     def get_session(self):
+        """returns session with retry configuration"""
         if self._session is None:
             self._session = Session()
             max_retries = 3
@@ -438,7 +475,8 @@ class OAuth2PasswordFlowCredentials(Credentials):
     client_secret: str = field(
         validator=validators.instance_of((str, type(None))), default=None, repr=False
     )
-    """The client secret for the token request. This is used to authenticate the client. (Optional)"""
+    """The client secret for the token request. 
+    This is used to authenticate the client. (Optional)"""
     _token: AccessToken = field(
         validator=validators.instance_of((AccessToken, type(None))),
         init=False,
@@ -574,3 +612,25 @@ class OAuth2ClientFlowCredentials(Credentials):
         expires_in = token_response.get("expires_in")
         self._token = AccessToken(token=access_token, expires_in=expires_in)
         return self._token
+
+
+@define(kw_only=True)
+class MTLSCredentials(Credentials):
+    """class for mTLS authentification"""
+
+    client_key: str = field(validator=validators.instance_of(str))
+    """path to the client key"""
+    cert: str = field(validator=validators.instance_of(str))
+    """path to the client cretificate"""
+    ca_cert: str = field(validator=validators.instance_of((str, type(None))), default=None)
+    """path to a certification authority certificate"""
+
+    def get_session(self):
+        session = super().get_session()
+        if session.cert is None:
+            cert = (self.cert, self.client_key)
+            session.cert = cert
+            if self.ca_cert:
+                session.verify = self.ca_cert
+
+        return session

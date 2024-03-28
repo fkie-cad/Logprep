@@ -17,6 +17,7 @@ from logprep.util.credentials import (
     Credentials,
     CredentialsBadRequestError,
     CredentialsFactory,
+    MTLSCredentials,
     OAuth2ClientFlowCredentials,
     OAuth2PasswordFlowCredentials,
     OAuth2TokenCredentials,
@@ -800,7 +801,7 @@ class TestCredentialsFactory:
                 None,
             ),
             (
-                "Return OAuthTokenCredential object when username, passowrd, client_id and client_secret are also given",
+                "Return OAuthTokenCredential object when other params are given",
                 """---
 "https://some.url":
     endpoint: https://endpoint.end
@@ -860,6 +861,74 @@ class TestCredentialsFactory:
     password:
 """,
                 type(None),
+                InvalidConfigurationError,
+            ),
+            (
+                "Return MTLSCredentials object if certificate and key are given",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+    cert: "path/to/cert"
+""",
+                MTLSCredentials,
+                None,
+            ),
+            (
+                "Return MTLSCredentials object if certificate key and ca cert are given",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+    cert: "path/to/cert"
+    ca_cert: "path/to/ca/cert"
+    endpoint: https://endpoint.end
+    client_id: test
+    username: test
+    password: test
+    client_secret: test
+""",
+                MTLSCredentials,
+                None,
+            ),
+            (
+                "Return MTLSCredentials object if certificate key and ca cert are given with extra params",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+    cert: "path/to/cert"
+    ca_cert: "path/to/ca/cert"
+""",
+                MTLSCredentials,
+                None,
+            ),
+            (
+                "Return MTLSCredentials object if certificate and key are given with extra parameters",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+    cert: "path/to/cert"
+    endpoint: https://endpoint.end
+    username: test
+""",
+                MTLSCredentials,
+                None,
+            ),
+            (
+                "Return None if certificate is missing",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+""",
+                type(None),
+                None,
+            ),
+            (
+                "Return InvalidConfigurationError object if certificate is empty",
+                """---
+"https://some.url":
+    client_key: "path/to/client/key"
+    cert: 
+""",
+                None,
                 InvalidConfigurationError,
             ),
         ],
@@ -996,3 +1065,24 @@ class TestCredentialsFactory:
             r"OAuth password authorization for confidential clients",
             mock_logger.mock_calls[0][1][0],
         )
+
+
+class TestMTLSCredentials:
+    def test_get_session_returns_session_and_cert_is_set(self):
+        test = MTLSCredentials(
+            cert="path/to/cert",
+            client_key="path/to/key",
+        )
+        assert test.get_session() is not None
+        assert test._session.cert is not None
+
+    def test_get_session_sets_ca_cert_for_verification(self):
+        test = MTLSCredentials(
+            cert="path/to/cert",
+            client_key="path/to/key",
+            ca_cert="path/to/ca/cert",
+        )
+        assert test.get_session() is not None
+        assert "path/to/cert" in test._session.cert
+        assert "path/to/key" in test._session.cert
+        assert "path/to/ca/cert" in test._session.verify
