@@ -6,13 +6,13 @@
 import re
 import uuid
 from functools import partial
+from importlib.metadata import version
 from pathlib import Path
 from unittest import mock
 
 import pytest
 from requests.exceptions import HTTPError, SSLError
 
-from logprep._version import get_versions
 from logprep.runner import Runner
 from logprep.util.configuration import Configuration
 from tests.testdata.metadata import path_to_config
@@ -244,17 +244,17 @@ class TestRunner:
         assert len(runner.scheduler.jobs) == 0
         new_config = Configuration.from_sources([str(config_path)])
         new_config.config_refresh_interval = 5
-        version = str(uuid.uuid4().hex)
-        new_config.version = version
+        config_version = str(uuid.uuid4().hex)
+        new_config.version = config_version
         config_path.write_text(new_config.as_yaml())
         with mock.patch("logging.Logger.info") as mock_info:
             with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
                 with mock.patch.object(runner._manager, "restart"):
                     runner.reload_configuration()
-        mock_info.assert_called_with(f"Configuration version: {version}")
+        mock_info.assert_called_with(f"Configuration version: {config_version}")
         mock_add.assert_called()
         mock_add.assert_has_calls(
-            (mock.call(1, {"logprep": f"{get_versions()['version']}", "config": version}),)
+            (mock.call(1, {"logprep": f"{version('logprep')}", "config": config_version}),)
         )
 
     def test_stop_method(self, runner: Runner):
@@ -273,7 +273,7 @@ class TestRunner:
                 mock.call(
                     1,
                     {
-                        "logprep": f"{get_versions()['version']}",
+                        "logprep": f"{version('logprep')}",
                         "config": runner._configuration.version,
                     },
                 ),
@@ -289,6 +289,6 @@ class TestRunner:
 
     def test_metric_labels_returns_versions(self, runner: Runner):
         assert runner._metric_labels == {
-            "logprep": f"{get_versions()['version']}",
+            "logprep": f"{version('logprep')}",
             "config": runner._configuration.version,
         }

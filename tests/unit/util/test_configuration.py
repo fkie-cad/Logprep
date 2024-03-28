@@ -74,7 +74,6 @@ class TestConfiguration:
     @pytest.mark.parametrize(
         "attribute, first_value, second_value",
         [
-            ("version", "1", "2"),
             ("config_refresh_interval", 0, 900),
             ("process_count", 1, 2),
             ("timeout", 1.0, 2.0),
@@ -1114,6 +1113,54 @@ output:
                 match="Metrics enabled but PROMETHEUS_MULTIPROC_DIR is not set",
             ):
                 config._verify_environment()
+
+    def test_versions_are_aggregated_for_multiple_configs(self, tmp_path):
+        dummy_config = {
+            "input": {"dummy": {"type": "dummy_input", "documents": []}},
+            "output": {"dummy": {"type": "dummy_output"}},
+        }
+        config1 = Configuration(version="first", **dummy_config)
+        config1_path = tmp_path / "config1.yml"
+        config1_path.write_text(config1.as_yaml())
+
+        config2 = Configuration(version="second", **dummy_config)
+        config2_path = tmp_path / "config2.yml"
+        config2_path.write_text(config2.as_yaml())
+
+        config = Configuration.from_sources([str(config1_path), str(config2_path)])
+        assert config.version == "first, second"
+
+    def test_versions_are_aggregated_for_multiple_configs_with_first_unset(self, tmp_path):
+        dummy_config = {
+            "input": {"dummy": {"type": "dummy_input", "documents": []}},
+            "output": {"dummy": {"type": "dummy_output"}},
+        }
+        config1 = Configuration(**dummy_config)
+        config1_path = tmp_path / "config1.yml"
+        config1_path.write_text(config1.as_yaml())
+
+        config2 = Configuration(version="second", **dummy_config)
+        config2_path = tmp_path / "config2.yml"
+        config2_path.write_text(config2.as_yaml())
+
+        config = Configuration.from_sources([str(config1_path), str(config2_path)])
+        assert config.version == "unset, second"
+
+    def test_versions_are_aggregated_for_multiple_configs_with_second_unset(self, tmp_path):
+        dummy_config = {
+            "input": {"dummy": {"type": "dummy_input", "documents": []}},
+            "output": {"dummy": {"type": "dummy_output"}},
+        }
+        config1 = Configuration(version="first", **dummy_config)
+        config1_path = tmp_path / "config1.yml"
+        config1_path.write_text(config1.as_yaml())
+
+        config2 = Configuration(**dummy_config)
+        config2_path = tmp_path / "config2.yml"
+        config2_path.write_text(config2.as_yaml())
+
+        config = Configuration.from_sources([str(config1_path), str(config2_path)])
+        assert config.version == "first, unset"
 
 
 class TestInvalidConfigurationErrors:
