@@ -681,7 +681,9 @@ class TestHttpGetter:
                 "path/to/ca/cert"
                 in http_getter._credentials_registry.get(f"https://{domain}")._session.verify
             )
-
+            session = http_getter._credentials_registry.get(f"https://{domain}")._session
+            assert session.cert == ("path/to/cert", "path/to/key")
+            assert session.verify == "path/to/ca/cert"
     @responses.activate
     def test_get_raw_reuses_mtls_session_and_ca_cert_is_not_updated(self, tmp_path):
         domain = str(uuid.uuid4())
