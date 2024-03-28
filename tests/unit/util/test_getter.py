@@ -577,7 +577,6 @@ class TestHttpGetter:
                 in http_getter._credentials_registry.get(f"https://{domain}")._session.cert
             )
 
-
     @responses.activate
     def test_get_raw_uses_mtls_with_session_cert_and_ca_cert(self, tmp_path):
         domain = str(uuid.uuid4())
@@ -590,6 +589,7 @@ class TestHttpGetter:
             url=f"https://{domain}/bar",
             match=[matchers.request_kwargs_matcher(req_kwargs)],
         )
+        credentials_file_content = {
             f"https://{domain}": {
                 "client_key": "path/to/key",
                 "cert": "path/to/cert",
@@ -614,6 +614,7 @@ class TestHttpGetter:
             session = http_getter._credentials_registry.get(f"https://{domain}")._session
             assert session.cert == ("path/to/cert", "path/to/key")
             assert session.verify == "path/to/ca/cert"
+
     @responses.activate
     def test_get_raw_reuses_mtls_session_and_ca_cert_is_not_updated(self, tmp_path):
         domain = str(uuid.uuid4())
@@ -626,6 +627,7 @@ class TestHttpGetter:
             url=f"https://{domain}/bar",
             match=[matchers.request_kwargs_matcher(req_kwargs)],
         )
+        credentials_file_content = {
             f"https://{domain}": {
                 "client_key": "path/to/key",
                 "cert": "path/to/cert",
