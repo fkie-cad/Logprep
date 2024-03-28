@@ -2,13 +2,24 @@
 
 ## next release
 ### Breaking
+
+### Features
+
+### Improvements
+
+### Bugfix
+
+
+## 11.0.0
+### Breaking
+
+* configuration of Authentication for getters is now done by new introduced credentials file
+
 ### Features
 
 * introducing an additional file to define the credentials for every configuration source
 * retrieve oauth token automatically from different oauth endpoints
 * retrieve configruation with mTLS authentication
-
-
 * reimplementation of HTTP Input Connector with following Features:
   * Wildcard based HTTP Request routing
   * Regex based HTTP Request routing
