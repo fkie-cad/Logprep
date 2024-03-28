@@ -15,7 +15,9 @@ RUN python -m pip install --upgrade pip wheel setuptools
 
 RUN if [ "$LOGPREP_VERSION" = "dev" ]; then pip install .;\
     elif [ "$LOGPREP_VERSION" = "latest" ]; then pip install git+https://github.com/fkie-cad/Logprep.git@latest; \
-    else pip install "logprep==$LOGPREP_VERSION"; fi
+    else pip install "logprep==$LOGPREP_VERSION"; fi; \
+    logprep --version
+
 
 FROM python:${PYTHON_VERSION}-slim as prod
 ARG http_proxy
