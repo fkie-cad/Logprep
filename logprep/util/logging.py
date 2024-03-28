@@ -1,4 +1,5 @@
 """Different helper-functions and -classes for support logging"""
+
 # pragma: no cover
 
 import time
