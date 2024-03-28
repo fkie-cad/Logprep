@@ -4,8 +4,9 @@
 ### Breaking
 ### Features
 
-* retrieve oauth token automatically from different oauth endpoints by introducing an additional file to 
-  define the credentials for every configuration source
+* introducing an additional file to define the credentials for every configuration source
+* retrieve oauth token automatically from different oauth endpoints
+* retrieve configruation with mTLS authentication
 
 #### Improvements
 ### Bugfix
