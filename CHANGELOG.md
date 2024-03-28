@@ -15,6 +15,7 @@
 
 * fix version string of release versions
 * fix version string of container builds for feature branches
+* fix merge of config versions for multiple configs
 
 
 ## v10.0.4
