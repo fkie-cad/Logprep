@@ -7,6 +7,12 @@
 * retrieve oauth token automatically from different oauth endpoints by introducing an additional file to 
   define the credentials for every configuration source
 
+* reimplementation of HTTP Input Connector with following Features:
+  * Wildcard based HTTP Request routing
+  * Regex based HTTP Request routing
+  * Improvements in thread-based runtime
+  * Configuration and possibility to add metadata
+
 #### Improvements
 ### Bugfix
 
