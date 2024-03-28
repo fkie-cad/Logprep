@@ -124,6 +124,23 @@ Run with getting config from http server with basic authentication
       logprep run http://localhost:8081/config/pipeline.yml
     
 
+Run with getting config from http server with mTLS authentication
+-----------------------------------------------------------------
+
+  * Run from within the `quickstart` directory:
+
+    .. code-block:: bash
+
+      docker compose --profile mtls up -d
+    
+  * Run within the project root directory:
+  
+    .. code-block:: bash
+
+      export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
+      logprep run https://localhost:8082/config/pipeline.yml
+
+
 Run with getting config from FDA with oauth2 authentication
 -----------------------------------------------------------
 
@@ -159,7 +176,8 @@ Opensearch:            `localhost:9200`  /        /
 Opensearch Dashboards: `localhost:5601`  /        /       
 Grafana Dashboards:    `localhost:3000`  admin    admin   
 Prometheus:            `localhost:9090`  /        /       
-Nginx:                 `localhost:8081`  user     password
+Nginx Basic Auth:      `localhost:8081`  user     password
+Nginx mTLS:            `localhost:8082`
 Keycloak:              `localhost:8080`  admin    admin   
 Keycloak Postgres:     `localhost:5432`  keycloak bitnami 
 FDA:                   `localhost:8002`  logprep  logprep 

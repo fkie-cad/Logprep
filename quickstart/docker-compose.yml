@@ -122,6 +122,18 @@ services:
       - ../quickstart/exampledata:/usr/share/nginx/html:ro
       - ../quickstart/exampledata/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../quickstart/exampledata/config/nginx/conf.d:/etc/nginx/conf.d:ro
+  mtls-config:
+    image: nginx:latest
+    container_name: mtls-config
+    profiles:
+      - mtls
+    network_mode: host
+    expose:
+      - 8082
+    volumes:
+      - ../quickstart/exampledata:/usr/share/nginx/html:ro
+      - ../quickstart/exampledata/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../quickstart/exampledata/config/nginx/mtls.conf.d:/etc/nginx/conf.d:ro
   keycloak:
     image: bitnami/keycloak:latest
     container_name: keycloak

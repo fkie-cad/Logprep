@@ -144,14 +144,7 @@ class HttpGetter(Getter):
         if domain_uri not in self._credentials_registry:
             self._credentials_registry.update({domain_uri: self.credentials})
         session = self._credentials_registry.get(domain_uri).get_session()
-        resp = session.get(
-            url=self.url,
-            timeout=5,
-            allow_redirects=True,
-            headers=self._headers,
-            cert=session.cert,
-            verify=session.verify,
-        )
+        resp = session.get(url=self.url, timeout=5, headers=self._headers)
         try:
             resp.raise_for_status()
         except requests.exceptions.HTTPError as error:
