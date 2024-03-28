@@ -1,16 +1,22 @@
 version: 1
+process_count: 2
 
 metrics:
   enabled: true
-  port: 8000
-
+  port: 8003
 input:
   httpinput:
       type: http_input
+      message_backlog_size: 1500000
+      collect_meta: True
+      metafield_name: "@metadata"
       uvicorn_config:
           host: 0.0.0.0
           port: 9000
       endpoints:
+          /json: json
+          /lab/123/(first|second|third)/js.*: jsonl
+          /lab/123/(ABC|DEF)/pl.*: plaintext
           /lab/123/ABC/auditlog: jsonl
 output:
   kafka:

@@ -100,9 +100,6 @@ class Pipeline:
     _lock: Lock
     """ the lock for the pipeline process """
 
-    _used_server_ports: dict
-    """ a shard dict for signaling used ports between pipeline processes """
-
     pipeline_index: int
     """ the index of this pipeline """
 
@@ -168,7 +165,6 @@ class Pipeline:
         pipeline_index: int = None,
         log_queue: multiprocessing.Queue = None,
         lock: Lock = None,
-        used_server_ports: dict = None,
     ) -> None:
         self._log_queue = log_queue
         self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
@@ -178,7 +174,6 @@ class Pipeline:
         self._continue_iterating = Value(c_bool)
 
         self._lock = lock
-        self._used_server_ports = used_server_ports
         self.pipeline_index = pipeline_index
         self._encoder = msgspec.msgpack.Encoder()
         self._decoder = msgspec.msgpack.Decoder()
@@ -201,10 +196,6 @@ class Pipeline:
         for _, output in self._output.items():
             output.setup()
 
-        if hasattr(self._input, "server"):
-            while self._input.server.config.port in self._used_server_ports:
-                self._input.server.config.port += 1
-            self._used_server_ports.update({self._input.server.config.port: self._process_name})
         self.logger.debug("Finished creating connectors")
         self.logger.info("Start building pipeline")
         _ = self._pipeline
@@ -227,13 +218,8 @@ class Pipeline:
                 warnings.simplefilter("default")
                 self._setup()
         self.logger.debug("Start iterating")
-        if hasattr(self._input, "server"):
-            with self._input.server.run_in_thread():
-                while self._continue_iterating.value:
-                    self.process_pipeline()
-        else:
-            while self._continue_iterating.value:
-                self.process_pipeline()
+        while self._continue_iterating.value:
+            self.process_pipeline()
         self._shut_down()
 
     @_handle_pipeline_error
@@ -312,8 +298,6 @@ class Pipeline:
 
     def _shut_down(self) -> None:
         self._input.shut_down()
-        if hasattr(self._input, "server"):
-            self._used_server_ports.pop(self._input.server.config.port)
         self._drain_input_queues()
         for _, output in self._output.items():
             output.shut_down()

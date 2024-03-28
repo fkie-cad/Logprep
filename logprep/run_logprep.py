@@ -19,6 +19,7 @@ from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
+from logprep.util import defaults
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
@@ -38,9 +39,7 @@ def _print_version(config: "Configuration") -> None:
 
 def _get_logger(logger_config: dict) -> logging.Logger:
     log_level = logger_config.get("level", "INFO")
-    logging.basicConfig(
-        level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
-    )
+    logging.basicConfig(level=log_level, format=defaults.DEFAULT_LOG_FORMAT)
     logger = logging.getLogger("Logprep")
     logger.setLevel(log_level)
     return logger

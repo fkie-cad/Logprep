@@ -8,6 +8,13 @@
 * retrieve oauth token automatically from different oauth endpoints
 * retrieve configruation with mTLS authentication
 
+
+* reimplementation of HTTP Input Connector with following Features:
+  * Wildcard based HTTP Request routing
+  * Regex based HTTP Request routing
+  * Improvements in thread-based runtime
+  * Configuration and possibility to add metadata
+
 ### Improvements
 
 * remove `versioneer` dependency in favor of `setuptools-scm`

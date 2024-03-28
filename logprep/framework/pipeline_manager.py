@@ -13,6 +13,7 @@ from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
+from logprep.util.logging import SingleThreadQueueListener
 
 
 class PipelineManager:
@@ -50,21 +51,18 @@ class PipelineManager:
         self.metrics = self.Metrics(labels={"component": "manager"})
         self._logger = logging.getLogger("Logprep PipelineManager")
         self.log_queue = multiprocessing.Queue(-1)
-        self._queue_listener = logging.handlers.QueueListener(self.log_queue)
+        self._queue_listener = SingleThreadQueueListener(self.log_queue)
         self._queue_listener.start()
 
         self._pipelines: list[multiprocessing.Process] = []
         self._configuration = configuration
 
         self._lock = multiprocessing.Lock()
-        self._used_server_ports = None
         prometheus_config = self._configuration.metrics
         if prometheus_config.enabled:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
         else:
             self.prometheus_exporter = None
-        manager = multiprocessing.Manager()
-        self._used_server_ports = manager.dict()
 
     def get_count(self) -> int:
         """Get the pipeline count.
@@ -145,7 +143,6 @@ class PipelineManager:
             config=self._configuration,
             log_queue=self.log_queue,
             lock=self._lock,
-            used_server_ports=self._used_server_ports,
         )
         self._logger.info("Created new pipeline")
         process = multiprocessing.Process(target=pipeline.run, daemon=True)
