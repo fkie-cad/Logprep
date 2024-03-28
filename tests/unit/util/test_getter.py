@@ -649,17 +649,15 @@ class TestHttpGetter:
     @responses.activate
     def test_get_raw_uses_mtls_with_session_cert_and_ca_cert(self, tmp_path):
         domain = str(uuid.uuid4())
-        with responses.RequestsMock(assert_all_requests_are_fired=False):
-            req_kwargs = {
-                "cert": ("path/to/cert", "path/to/key"),
-                "verify": "path/to/ca/cert",
-            }
-            responses.add(
-                responses.GET,
-                url=f"https://{domain}/bar",
-                match=[matchers.request_kwargs_matcher(req_kwargs)],
-            )
-        credentials_file_content = {
+        req_kwargs = {
+            "cert": ("path/to/cert", "path/to/key"),
+            "verify": "path/to/ca/cert",
+        }
+        responses.add(
+            responses.GET,
+            url=f"https://{domain}/bar",
+            match=[matchers.request_kwargs_matcher(req_kwargs)],
+        )
             f"https://{domain}": {
                 "client_key": "path/to/key",
                 "cert": "path/to/cert",
