@@ -619,11 +619,11 @@ class MTLSCredentials(Credentials):
     """class for mTLS authentification"""
 
     client_key: str = field(validator=validators.instance_of(str))
-    """path to public client key"""
+    """path to the client key"""
     cert: str = field(validator=validators.instance_of(str))
-    """path to client cretificate"""
+    """path to the client cretificate"""
     ca_cert: str = field(validator=validators.instance_of((str, type(None))), default=None)
-    """path to ca certificate"""
+    """path to a certification authority certificate"""
 
     def get_session(self):
         session = super().get_session()
