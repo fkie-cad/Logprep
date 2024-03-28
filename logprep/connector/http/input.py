@@ -341,14 +341,7 @@ class HttpConnector(Input):
         """
 
         collect_meta: str = field(validator=validators.instance_of(bool), default=True)
-        """Defines if metadata should be collected in format 
-        :code:`{
-            <metafield_name>:{
-              "url":"<the url where the client requests targets at>",
-              "remote_addr": "<the clients ip address>",
-              "user_agent": "<the clients user agent>"
-            }
-          }`
+        """Defines if metadata should be collected 
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
         """
