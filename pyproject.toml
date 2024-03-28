@@ -52,7 +52,6 @@ dependencies = [
   "colorama",
   "confluent-kafka>2",
   "elasticsearch>=7,<8",
-  "fastapi>=0.109.1",       # CVE-2024-24762
   "geoip2",
   "hyperscan>=0.7.0",
   "jsonref",
