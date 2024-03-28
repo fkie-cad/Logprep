@@ -8,6 +8,7 @@ import uvicorn
 import falcon
 from logprep.connector.http.input import HttpConnector
 from logprep.factory import Factory
+from logprep.abc.input import FatalInputError
 from tests.unit.connector.base import BaseInputTestCase
 
 
@@ -46,6 +47,22 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_has_falcon_asgi_app(self):
         assert isinstance(self.object.get_app_instance(), falcon.asgi.App)
+
+    def test_no_pipeline_index(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        try:
+            connector.setup()
+            assert False
+        except FatalInputError:
+            assert True
+
+    def test_not_first_pipeline(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector.pipeline_index = 2
+        connector.setup()
+        assert not hasattr(connector, "http_server")
 
     def test_get_error_code_on_get(self):
         resp = requests.get(url=f"{self.target}/json", timeout=0.5)

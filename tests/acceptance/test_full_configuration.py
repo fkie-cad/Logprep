@@ -125,7 +125,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.version = "my_custom_version"
     config.config_refresh_interval = 300
-    config.metrics = {"enabled": True, "port": 8000}
+    config.metrics = {"enabled": True, "port": 8003}
     config.input = {
         "fileinput": {
             "type": "file_input",
@@ -164,7 +164,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
         assert "exception" not in output.lower(), "error message"
         if "Finished building pipeline" in output:
             break
-    response = requests.get("http://127.0.0.1:8000", timeout=5)
+    response = requests.get("http://127.0.0.1:8003", timeout=5)
     response.raise_for_status()
     metrics = response.text
     expected_metrics = [

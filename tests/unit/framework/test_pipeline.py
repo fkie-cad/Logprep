@@ -478,7 +478,9 @@ class TestPipeline(ConfigurationForTests):
                 "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
             }
         }
-        self.pipeline._input = original_create(input_config, mock.MagicMock())
+        self.pipeline._input = original_create(input_config, self.pipeline.logger)
+        self.pipeline._input.pipeline_index = 1
+        self.pipeline._input.setup()
         self.pipeline._input.messages.put({"message": "test message"})
         assert self.pipeline._input.messages.qsize() == 1
         self.pipeline._shut_down()

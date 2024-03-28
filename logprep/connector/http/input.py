@@ -25,7 +25,6 @@ Example
             /thirdendpoint: jsonl
 """
 
-import json
 import inspect
 import queue
 import threading
@@ -98,35 +97,6 @@ def decorator_add_metadata(func: Callable):
     return func_wrapper
 
 
-def has_config_changed(
-    old_config: Input.Config, new_config: Input.Config, check_attrs=None
-) -> bool:
-    """Compare Input Connector Configs for specific areas
-    specified in check_attrs
-    For sake of simplicity JSON Strings are compared instead
-    of compare nested dict key-values
-    """
-    all_dicts = {}
-    all_dicts["old"] = old_config
-    all_dicts["new"] = new_config
-    all_dicts["old_c"] = {}
-    all_dicts["new_c"] = {}
-    print(dir(old_config))
-    if not new_config:
-        return True
-    for version in ["new", "old"]:
-        for key in check_attrs:
-            if isinstance(getattr(old_config, key), dict):
-                all_dicts[version + "_c"].update(getattr(all_dicts[version], key))
-            else:
-                all_dicts[version + "_c"].update({key: getattr(all_dicts[version], key)})
-    old_json = json.dumps(all_dicts["old_c"], sort_keys=True)
-    new_json = json.dumps(all_dicts["new_c"], sort_keys=True)
-    if old_json == new_json:
-        return False
-    return True
-
-
 def route_compile_helper(input_re_str: str):
     """falcon add_sink handles prefix routes as independent URI elements
     therefore we need regex position anchors to ensure beginning and
@@ -168,10 +138,10 @@ class JSONHttpEndpoint(HttpEndpoint):
         """json endpoint method"""
         data = await req.stream.read()
         data = data.decode("utf8")
-        event = kwargs.get("metadata", {})
+        metadata = kwargs.get("metadata", {})
         if data:
-            event.update(self._decoder.decode(data))
-            self.messages.put(event, block=False)
+            event = self._decoder.decode(data)
+            self.messages.put({**event, **metadata}, block=False)
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -186,11 +156,11 @@ class JSONLHttpEndpoint(HttpEndpoint):
         data = await req.stream.read()
         data = data.decode("utf8")
         event = kwargs.get("metadata", {})
-        for line in data.splitlines():
-            line = line.strip()
-            if line:
-                event.update(self._decoder.decode(line))
-                self.messages.put(dict(event), block=False)
+        metadata = kwargs.get("metadata", {})
+        stripped_lines = map(str.strip, data.splitlines())
+        events = (self._decoder.decode(line) for line in stripped_lines if line)
+        for event in events:
+            self.messages.put({**event, **metadata}, block=False)
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -204,10 +174,11 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         data = await req.stream.read()
         metadata = kwargs.get("metadata", {})
         event = {"message": data.decode("utf8")}
+        print(event)
         self.messages.put({**event, **metadata}, block=False)
 
 
-class ThreadingHTTPServer:
+class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
     """Singleton Wrapper Class around Uvicorn Thread that controls
     lifecycle of Uvicorn HTTP Server. During Runtime this singleton object
     is stateful and therefore we need to check for some attributes during
@@ -236,51 +207,40 @@ class ThreadingHTTPServer:
 
     def __init__(
         self,
-        connector_config,
+        connector_config: Input.Config,
         endpoints_config: dict,
         log_level: str,
     ) -> None:
+        """Creates object attributes with necessary configuration.
+        As this class creates a singleton object, the existing server
+        will be stopped and restarted on consecutively creations"""
         super().__init__()
 
-        server_continue = False
-        if not hasattr(self, "thread"):
-            return
-        if not self.thread.is_alive():  # pylint: disable=access-member-before-definition
-            return
-        if has_config_changed(
-            connector_config,
-            self.connector_config,  # pylint: disable=access-member-before-definition
-            check_attrs=HTTP_INPUT_CONFIG_KEYS,
-        ):
-            server_continue = False
-        else:
-            server_continue = True
-
-        if server_continue:
-            return
-        self._restart_server(connector_config, endpoints_config, log_level)
-
-    def _restart_server(self, connector_config, endpoints_config, log_level):
         self.connector_config = connector_config
         self.endpoints_config = endpoints_config
+        self.log_level = log_level
+
+        if hasattr(self, "thread"):
+            if self.thread.is_alive():  # pylint: disable=access-member-before-definition
+                self._stop()
+        self._start()
+
+    def _start(self):
+        """Collect all configs, initiate application server and webserver
+        and run thread with uvicorn+falcon http server and wait
+        until it is up (started)"""
         self.uvicorn_config = self.connector_config.uvicorn_config
         self._init_web_application_server(self.endpoints_config)
         log_config = self._init_log_config()
         self.compiled_config = uvicorn.Config(
             **self.uvicorn_config,
             app=self.app,
-            log_level=log_level,
+            log_level=self.log_level,
             log_config=log_config,
         )
-        self._stop()
         self.server = uvicorn.Server(self.compiled_config)
         self._override_runtime_logging()
         self.thread = threading.Thread(daemon=False, target=self.server.run)
-        self._start()
-
-    def _start(self):
-        """Start thread with uvicorn+falcon http server and wait
-        until it is up (started)"""
         self.thread.start()
         while not self.server.started:
             continue
@@ -318,7 +278,7 @@ class ThreadingHTTPServer:
 
     def _init_web_application_server(self, endpoints_config: dict) -> None:
         "Init falcon application server and setting endpoint routes"
-        self.app = falcon.asgi.App()
+        self.app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
         for endpoint_path, endpoint in endpoints_config.items():
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
 
@@ -329,8 +289,6 @@ class ThreadingHTTPServer:
 
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
-
-    messages: queue.Queue = queue.Queue()
 
     _endpoint_registry: Mapping[str, HttpEndpoint] = {
         "json": JSONHttpEndpoint,
@@ -414,6 +372,9 @@ class HttpConnector(Input):
         self.port = self._config.uvicorn_config["port"]
         self.host = self._config.uvicorn_config["host"]
         self.target = "http://" + self.host + ":" + str(self.port)
+        self.messages = queue.Queue(
+            self._config.message_backlog_size
+        )  # pylint: disable=attribute-defined-outside-init
 
     def setup(self):
         """setup starts the actual functionality of this connector.
@@ -429,10 +390,6 @@ class HttpConnector(Input):
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:
             return
-
-        self.messages = queue.Queue(
-            self._config.message_backlog_size
-        )  # pylint: disable=attribute-defined-outside-init
 
         endpoints_config = {}
         collect_meta = self._config.collect_meta
@@ -469,7 +426,4 @@ class HttpConnector(Input):
 
     def shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        try:
-            self.http_server.shut_down()
-        except AttributeError:
-            pass
+        self.http_server.shut_down()
