@@ -725,4 +725,6 @@ class TestHttpGetter:
                 "path/to/ca/cert"
                 in http_getter._credentials_registry.get(f"https://{domain}")._session.verify
             )
-            responses.assert_call_count(f"https://{domain}/bar", 2)
+            session = http_getter._credentials_registry.get(f"https://{domain}")._session
+            assert session.cert == ("path/to/cert", "path/to/key")
+            assert session.verify == "path/to/ca/cert"
