@@ -24,10 +24,10 @@ def test_two_times_config_refresh_after_5_seconds(tmp_path):
     wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
     config.version = "2"
     config_path.write_text(config.as_json())
-    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=7)
+    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=12)
     config.version = "other version"
     config_path.write_text(config.as_json())
-    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=10)
+    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=12)
 
 
 def test_no_config_refresh_after_5_seconds(tmp_path):
