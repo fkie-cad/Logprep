@@ -95,6 +95,15 @@ Run without Logprep Container (default)
      .. code-block:: bash
 
       logprep run quickstart/exampledata/config/pipeline.yml
+
+    If logprep is run with the metrics enabled, the necessary environment variable has to be set first:
+
+    .. code-block:: bash
+
+      export PROMETHEUS_MULTIPROC_DIR="tmp/logprep"
+      logprep run quickstart/exampledata/config/pipeline.yml
+
+      
      
 
 Run with Logprep Container
