@@ -96,7 +96,7 @@ Run without Logprep Container (default)
 
       logprep run quickstart/exampledata/config/pipeline.yml
 
-    If logprep is run with the metrics enabled, the necessary environment variable has to be set:
+    If logprep is run with the metrics enabled, the necessary environment variable has to be set first:
 
     .. code-block:: bash
 
