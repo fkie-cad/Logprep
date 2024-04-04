@@ -250,7 +250,7 @@ class CredentialsFactory:
             }:
                 if extra_params:
                     cls._logger.warning(
-                        "Other parameters were given: %s but OAuth token authorization was chosen",
+                        "Other parameters were given: %s but mTLS authorization was chosen",
                         extra_params.keys(),
                     )
                 return MTLSCredentials(client_key=client_key, cert=cert, ca_cert=ca_cert)
@@ -261,7 +261,7 @@ class CredentialsFactory:
             }:
                 if extra_params:
                     cls._logger.warning(
-                        "Other parameters were given: %s but OAuth token authorization was chosen",
+                        "Other parameters were given: %s but mTLS authorization was chosen",
                         extra_params.keys(),
                     )
                 return MTLSCredentials(client_key=client_key, cert=cert)
