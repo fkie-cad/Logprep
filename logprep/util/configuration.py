@@ -305,7 +305,13 @@ class Configuration:
     """It is optionally possible to set a version to your configuration file which
     can be printed via :code:`logprep run --version config/pipeline.yml`.
     This has no effect on the execution of logprep and is merely used for documentation purposes.
-    Defaults to :code:`unset`."""
+    Defaults to :code:`unset`.
+
+    .. security-best-practice::
+       :title: Version
+
+       Version: This is a version note.
+    """
     config_refresh_interval: Optional[int] = field(
         validator=validators.instance_of((int, type(None))), default=None, eq=False
     )
@@ -314,7 +320,13 @@ class Configuration:
     If configured the configuration will only be reloaded if the configuration version changes.
     If http errors occurs on configuration reload `config_refresh_interval` is set to a quarter
     of the current `config_refresh_interval` until a minimum of 5 seconds is reached.
-    Defaults to :code:`None`, which means that the configuration will not be refreshed."""
+    Defaults to :code:`None`, which means that the configuration will not be refreshed.
+
+    .. security-best-practice::
+       :title: Refresh Interval
+
+       Config refresh interval
+    """
     process_count: int = field(
         validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
     )
