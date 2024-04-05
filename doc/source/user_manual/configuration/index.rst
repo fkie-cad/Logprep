@@ -16,7 +16,6 @@ Configuration
 
    input
    output
-   pipeline
    processor
    rules
    getter

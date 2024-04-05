@@ -12,13 +12,13 @@ You can pass multiple configuration files via valid file paths or urls.
 or
 
 ..  code-block:: bash
-    
+
     logprep run http://url-to-our-yaml-file-or-api
 
 or
 
 ..  code-block:: bash
-    
+
     logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/conector.yaml
 
 Configuration File Structure
@@ -129,8 +129,6 @@ to factories in Logprep.
 They contain settings for each separate processor and connector.
 Details for configuring connectors are described in
 :ref:`output` and :ref:`input` and for processors in :ref:`processors`.
-General information about the configuration of the pipeline can be found
-in :ref:`pipeline_config`.
 
 It is possible to use environment variables in all configuration
 and rule files in all places.
