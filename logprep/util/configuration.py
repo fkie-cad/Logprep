@@ -6,26 +6,18 @@ configuration file is passed.
 You can pass multiple configuration files via valid file paths or urls.
 
 ..  code-block:: bash
+    :caption: Valid Run Examples
 
     logprep run /different/path/file.yml
-
-or
-
-..  code-block:: bash
-
     logprep run http://url-to-our-yaml-file-or-api
-
-or
-
-..  code-block:: bash
-
     logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/conector.yaml
+
 
 Configuration File Structure
 ----------------------------
 
 ..  code-block:: yaml
-    :caption: full configuration file example
+    :caption: Example of a complete configuration file
 
     version: config-1.0
     process_count: 2
@@ -305,13 +297,7 @@ class Configuration:
     """It is optionally possible to set a version to your configuration file which
     can be printed via :code:`logprep run --version config/pipeline.yml`.
     This has no effect on the execution of logprep and is merely used for documentation purposes.
-    Defaults to :code:`unset`.
-
-    .. security-best-practice::
-       :title: Version
-
-       Version: This is a version note.
-    """
+    Defaults to :code:`unset`."""
     config_refresh_interval: Optional[int] = field(
         validator=validators.instance_of((int, type(None))), default=None, eq=False
     )
@@ -323,9 +309,12 @@ class Configuration:
     Defaults to :code:`None`, which means that the configuration will not be refreshed.
 
     .. security-best-practice::
-       :title: Refresh Interval
+       :title: Configuration Refresh Interval
 
-       Config refresh interval
+       The refresh interval for the configuration shouldn't be set too high in production
+       environments.
+       It is suggested to not set a value higher than :code:`300` (5 min).
+       That way configuration updates are propagated fairly quickly instead of once a day.
     """
     process_count: int = field(
         validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
@@ -344,13 +333,29 @@ class Configuration:
     logger: dict = field(
         validator=validators.instance_of(dict), default={"level": "INFO"}, eq=False
     )
-    """Logger configuration. Defaults to :code:`{"level": "INFO"}`."""
+    """Logger configuration. Defaults to :code:`{"level": "INFO"}`.
+
+    .. security-best-practice::
+       :title: Logprep Log-Level
+
+       The loglevel of logprep should be set to :code:`"INFO"` in production environments, as the
+       :code:`"DEBUG"` level could expose sensitive events into the log.
+    """
     input: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
-    """Input connector configuration. Defaults to :code:`{}`."""
+    """
+    Input connector configuration. Defaults to :code:`{}`.
+    For detailed configurations see :ref:`input`.
+    """
     output: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
-    """Output connector configuration. Defaults to :code:`{}`."""
+    """
+    Output connector configuration. Defaults to :code:`{}`.
+    For detailed configurations see :ref:`output`.
+    """
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)
-    """Pipeline configuration. Defaults to :code:`[]`."""
+    """
+    Pipeline configuration. Defaults to :code:`[]`.
+    See :ref:`processors` for a detailed overview on how to configure a pipeline.
+    """
     metrics: MetricsConfig = field(
         validator=validators.instance_of(MetricsConfig),
         factory=MetricsConfig,

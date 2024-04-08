@@ -55,7 +55,14 @@ class ElasticsearchOutput(Output):
 
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
-        """Elastic/Opensearch Output Config"""
+        """Elastic/Opensearch Output Config
+
+        .. security-best-practice::
+           :title: Output Connectors - ElasticsearchOutput
+
+           It is suggested to enable a secure message transfer by setting :code:`user`,
+           :code:`secret` and a valid :code:`ca_cert`.
+        """
 
         hosts: List[str] = field(
             validator=validators.deep_iterable(
@@ -80,7 +87,7 @@ class ElasticsearchOutput(Output):
             converter=(lambda x: x * 10**6 if x else None),
             default=None,
         )
-        """(Optional) Maximum estimated size of a document in MB before discarding it if it causes 
+        """(Optional) Maximum estimated size of a document in MB before discarding it if it causes
         an error."""
         timeout: int = field(validator=validators.instance_of(int), default=500)
         """(Optional) Timeout for the connection (default is 500ms)."""
@@ -94,7 +101,7 @@ class ElasticsearchOutput(Output):
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) Path to a SSL ca certificate to verify the ssl context."""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) Timout after :code:`message_backlog` is flushed if 
+        """(Optional) Timout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
 
     __slots__ = ["_message_backlog", "_size_error_pattern"]

@@ -26,18 +26,20 @@ Example
 """
 
 import inspect
+import logging
 import queue
+import re
 import threading
 from abc import ABC
 from logging import Logger
-import logging
-import re
 from typing import Mapping, Tuple, Union, Callable
-from attrs import define, field, validators
+
+import falcon.asgi
 import msgspec
 import uvicorn
-import falcon.asgi
+from attrs import define, field, validators
 from falcon import HTTPTooManyRequests, HTTPMethodNotAllowed  # pylint: disable=no-name-in-module
+
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
 
@@ -323,7 +325,7 @@ class HttpConnector(Input):
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`.
-        
+
         .. autoclass:: logprep.connector.http.input.PlaintextHttpEndpoint
             :noindex:
         .. autoclass:: logprep.connector.http.input.JSONLHttpEndpoint
@@ -341,9 +343,15 @@ class HttpConnector(Input):
         """
 
         collect_meta: str = field(validator=validators.instance_of(bool), default=True)
-        """Defines if metadata should be collected 
+        """Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
+
+        .. security-best-practice::
+           :title: Input Connector - HttpConnector
+
+           It is suggested to enable the collection of meta data (:code:`collect_meta: True`) to
+           ensure transparency of the incoming events.
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")

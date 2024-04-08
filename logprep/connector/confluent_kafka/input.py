@@ -225,8 +225,8 @@ class ConfluentKafkaInput(Input):
         - bootstrap.servers (STRING): a comma separated list of kafka brokers
         - group.id (STRING): a unique identifier for the consumer group
 
-        For additional configuration options and their description see:
-        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+        For additional configuration options see the official:
+        `librdkafka configuration <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
 
         .. datatemplate:import-module:: logprep.connector.confluent_kafka.input
             :template: defaults-renderer.tmpl

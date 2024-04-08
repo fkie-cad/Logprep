@@ -70,7 +70,15 @@ class OpensearchOutput(ElasticsearchOutput):
 
     @define(kw_only=True, slots=False)
     class Config(ElasticsearchOutput.Config):
-        """Config for OpensearchOutput."""
+        """
+        Config for OpensearchOutput.
+
+        .. security-best-practice::
+           :title: Output Connectors - OpensearchOutput
+
+           It is suggested to enable a secure message transfer by setting :code:`user`,
+           :code:`secret` and a valid :code:`ca_cert`.
+        """
 
         parallel_bulk: bool = field(default=True, validator=validators.instance_of(bool))
         """Configure if all events in the backlog should be send, in parallel, via multiple threads
