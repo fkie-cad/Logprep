@@ -31,7 +31,7 @@ def visit_best_practice_node(self, node):
     self.visit_admonition(node)
 
 
-def depart_best_practice_node_node(self, node):
+def depart_best_practice_node(self, node):
     self.depart_admonition(node)
 
 
@@ -125,12 +125,11 @@ def create_back_reference(app, fromdocname, node_info):
 
 def setup(app: Sphinx):
     """Initializer for the Security Best Practices Extension"""
-    app.add_node(SecurityBestPracticesLists)
     app.add_node(
         SecurityBestPractice,
-        html=(visit_best_practice_node, depart_best_practice_node_node),
-        latex=(visit_best_practice_node, depart_best_practice_node_node),
-        text=(visit_best_practice_node, depart_best_practice_node_node),
+        html=(visit_best_practice_node, depart_best_practice_node),
+        latex=(visit_best_practice_node, depart_best_practice_node),
+        text=(visit_best_practice_node, depart_best_practice_node),
     )
     app.add_directive("security-best-practice", BestPracticeDirective)
     app.add_directive("security-best-practices-list", BestPracticeListDirective)

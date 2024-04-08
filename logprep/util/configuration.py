@@ -129,6 +129,16 @@ with :code:`LOGPREP_`, :code:`GITHUB_`, :code:`PYTEST_` or
 :code:`CI_`. Lowercase variables are ignored. Forbidden
 variable names are: :code:`["LOGPREP_LIST"]`, as it is already used internally.
 
+.. security-best-practice::
+   :title: Configuration Environment Variables
+
+   As it is possible to replace all configuration options with environment variables it is
+   recommended to use these especially for sensitive information like usernames, password, secrets
+   or hash salts.
+   Examples where this could be useful would be the :code:`key` for the hmac calculation (see
+   `input` > `preprocessing`) or the :code:`user`/:code:`secret` for the elastic-/opensearch
+   connectors.
+
 The following config file will be valid by setting the given environment variables:
 
 ..  code-block:: yaml

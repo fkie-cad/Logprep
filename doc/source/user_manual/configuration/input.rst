@@ -12,7 +12,7 @@ Input
    The connectors :code:`DummyInput`, :code:`JsonInput` and :code:`JsonlInput` are mainly designed
    for debugging purposes.
 
-   Furthermore, it is suggested to enable the :code:`HMAC` preprocessor to ensure no temparing of
+   Furthermore, it is suggested to enable the :code:`HMAC` preprocessor to ensure no tempering of
    processed events.
 
    .. code:: yaml
