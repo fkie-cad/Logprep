@@ -14,12 +14,16 @@ from sphinx.util.docutils import SphinxDirective
 
 
 class SecurityBestPractice(nodes.Admonition, nodes.Element):
+    """Admonition for Security Best Practices"""
+
     def __init__(self, *args, **kwargs):
         super(SecurityBestPractice, self).__init__(*args, **kwargs)
         self.attributes.update({"classes": ["security-best-practice"]})
 
 
 class SecurityBestPracticesLists(nodes.General, nodes.Element):
+    """PlaceHolder for a List of Security Best Practices"""
+
     pass
 
 
@@ -32,11 +36,17 @@ def depart_best_practice_node_node(self, node):
 
 
 class BestPracticeListDirective(Directive):
+    """Initializer for Security Best Practices List"""
+
     def run(self):
         return [SecurityBestPracticesLists("")]
 
 
 class BestPracticeDirective(SphinxDirective):
+    """
+    Initializer for Security Best Practice. Content of run method is triggered for every security
+    best practice admonition"""
+
     has_content = True
     option_spec = {
         "title": directives.unchanged_required,
@@ -82,13 +92,13 @@ def merge_best_practice(app, env, docnames, other):
 
 
 def process_nodes(app, doctree, fromdocname):
-    # Replace all list nodes with a list of the collected best practices.
-    # Augment each best practice with a backlink to the original location.
+    """
+    Builds a list of all security best practices with back references to the original
+    admonition.
+    """
     env = app.builder.env
-
     if not hasattr(env, "all_security_best_practices"):
         env.all_security_best_practices = []
-
     for node in doctree.findall(SecurityBestPracticesLists):
         content = []
         for node_info in env.all_security_best_practices:
@@ -100,6 +110,7 @@ def process_nodes(app, doctree, fromdocname):
 
 
 def create_back_reference(app, fromdocname, node_info):
+    """Creates a sphinx paragraph node containing a reference to the original admonition."""
     back_reference = nodes.paragraph()
     newnode = nodes.reference("", "")
     reference_text = "Reference to original description"
@@ -113,6 +124,7 @@ def create_back_reference(app, fromdocname, node_info):
 
 
 def setup(app: Sphinx):
+    """Initializer for the Security Best Practices Extension"""
     app.add_node(SecurityBestPracticesLists)
     app.add_node(
         SecurityBestPractice,
