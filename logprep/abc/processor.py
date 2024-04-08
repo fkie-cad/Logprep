@@ -61,7 +61,7 @@ class Processor(Component):
             default=None, validator=[validators.optional(validators.instance_of(str))]
         )
         """Path to a JSON file with a valid rule tree configuration.
-        For string format see :ref:`getters`"""
+        For string format see :ref:`getters`."""
         apply_multiple_times: Optional[bool] = field(
             default=False, validator=[validators.optional(validators.instance_of(bool))]
         )
@@ -198,7 +198,8 @@ class Processor(Component):
                 pop_dotted_field_value(event, dotted_field)
 
     @abstractmethod
-    def _apply_rules(self, event, rule): ...  # pragma: no cover
+    def _apply_rules(self, event, rule):
+        ...  # pragma: no cover
 
     def test_rules(self) -> dict:
         """Perform custom rule tests.

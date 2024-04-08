@@ -15,7 +15,6 @@ Processor Configuration
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
-        hyperscan_db_path: tmp/path/scan.db
         tld_list: tmp/path/tld.dat
         timeout: 0.5
         max_cached_domains: 20000

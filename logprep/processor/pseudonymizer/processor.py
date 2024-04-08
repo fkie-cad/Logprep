@@ -5,6 +5,13 @@ Pseudonymizer
 The `pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
 privacy regulations can be adhered to.
 
+.. security-best-practice::
+   :title: Processor - Pseudonymizer
+
+   The `pseudonymizer` works with two public keys for different roles.
+   It is suggested to ensure that two different keys are being used such that the separation of the
+   roles can be maintained.
+
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
@@ -39,7 +46,7 @@ import re
 from functools import cached_property, lru_cache
 from itertools import chain
 from logging import Logger
-from typing import List, Optional, Pattern
+from typing import Optional, Pattern
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from attrs import define, field, validators
