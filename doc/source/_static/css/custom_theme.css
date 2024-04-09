@@ -1,5 +1,9 @@
 @import url("theme.css");
 
+p {
+    margin: 0 0 10px;
+}
+
 .wy-nav-content {
     max-width: 100% !important;
 }
