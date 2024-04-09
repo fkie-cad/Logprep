@@ -150,8 +150,6 @@ class PorcessorExtensions:
         print()
         for key, rule in rules.items():
             self._print_diff_test(key, rule, t_idx)
-        #else:
-        #        print_fcolor(Fore.LIGHTRED_EX, "None")
 
     @staticmethod
     def _print_diff_test( key, rule, t_idx=None):
@@ -160,7 +158,6 @@ class PorcessorExtensions:
             PorcessorExtensions.color_based_print(diff)
         else:
             if t_idx is not None:
-                print(t_idx)
                 diff = f"{key}: {rule[t_idx]}"
                 PorcessorExtensions.color_based_print(diff)
             else:
@@ -249,12 +246,8 @@ class AutoRuleTester:
 
     def _run_tests_for_rules(self, rules_pn: dict):
         self._check_which_rule_files_miss_tests(rules_pn)
-        #self._set_rules_dirs_to_empty()
-
         processors_no_ct = self._get_processors()
-
         self.check_run_rule_tests(processors_no_ct, rules_pn, "file")
-
         self._result["~ warning_cnt"] += len(self._problems.get("warnings") )
         self._pd_extra.print_rules(self._result) 
 
@@ -312,29 +305,19 @@ class AutoRuleTester:
 
     def _eval_file_rule_test(self, rule_test: dict, processor: "Processor", r_idx: int):
         self._filename_printed = False
-        #print(f"....... {rule_test['tests']}")
-        #self._rule_cnt = 0 #todo what is with this variable?
         for t_idx, test in enumerate(rule_test["tests"]):
-            ##print(f"rule {t_idx}/{len(rule_test['tests'])}")
-            #rule_nr = test.get("target_rule_idx") if test.get("target_rule_idx") != None else "0" #test.get("target_rule_idx")
-            #if rule_nr is not None and rule_nr != r_idx:
-            
-            if test.get("target_rule_idx") is not None and test.get("target_rule_idx") != r_idx: #todo here is the problem when first rule in example two si wrong
-                print("continue")
+
+            if test.get("target_rule_idx") is not None and test.get("target_rule_idx") != r_idx:
                 continue
             try:
                 extra_output = processor.process(test["raw"])
-                #print(f"EXTRA: {extra_output}")
                 if not extra_output:
-                    print("\n\n\nExcept the Except\n\n\n")
-                    raise Exception("Couldn't process, maybe invalid filter.") 
+                    raise Exception("Couldn't process, maybe invalid filter.") #Warning not counted in this case
             except BaseException as error:
-                self._print_error_on_exception(error, rule_test, self._rule_cnt)#t_idx)# #todo: _rule_cnt needed?
+                self._print_error_on_exception(error, rule_test, self._rule_cnt)
                 self._success = False
                 self._result["- failed_rule_tests_cnt"] += 1
-                return
-
-            print(f"rule {t_idx}/{len(rule_test['tests'])}")
+                continue
 
             diff = self._get_diff_raw_test(test)
             print_diff = self._check_if_different(diff)
@@ -343,7 +326,7 @@ class AutoRuleTester:
                 self._pd_extra.update_errors(processor, extra_output, self._problems)
 
             if print_diff or self._problems.get("warnings") or self._problems.get("errors"):
-                print_fcolor(Fore.MAGENTA, f"RULE FILE {rule_test['file']} & RULE {t_idx}:")
+                print_fcolor(Fore.MAGENTA, f"\nRULE FILE {rule_test['file']} & RULE {t_idx}/{len(rule_test['tests'])}:")
 
             if print_diff or self._problems.get("errors"):
                 self._pd_extra.print_rules({"DIFF": diff})
@@ -352,15 +335,10 @@ class AutoRuleTester:
             else:
                 self._result["+ successful_rule_tests_cnt"] += 1 
 
+            self._pd_extra.print_rules(self._problems, self._rule_cnt) 
 
-            print(f"self._problems ++ {self._problems}")
-            self._pd_extra.print_rules(self._problems, self._rule_cnt) #, _rule_cnt
-
-            self._rule_cnt += 1 #optimizable?!
-        #print(666, self._result["+ successful_rule_tests_cnt"])
-        #print(666, self._result["- failed_rule_tests_cnt"])
-        #todo below gets executed twice
-        self._result["total_tests"] = self._result["+ successful_rule_tests_cnt"] + self._result["- failed_rule_tests_cnt"] #wont work if cause of failed filter this method doesnt process through
+            self._rule_cnt += 1 
+        self._result["total_tests"] = self._result["+ successful_rule_tests_cnt"] + self._result["- failed_rule_tests_cnt"] 
 
     @staticmethod
     def _reset_(processor: "Processor"):
@@ -379,7 +357,7 @@ class AutoRuleTester:
             json.dump([rule_dict], temp_file)
 
     def _print_error_on_exception(self, error: BaseException, rule_test: dict, t_idx: int):
-        print_fcolor(Fore.MAGENTA, f"RULE FILE {rule_test['file']} & RULE {t_idx}:")
+        print_fcolor(Fore.MAGENTA, f"\nRULE FILE {rule_test['file']} & RULE {t_idx}:")
         print_fcolor(Fore.RED, f"Exception: {error}")
         self._print_stack_trace(error)
 
