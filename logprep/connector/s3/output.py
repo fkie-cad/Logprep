@@ -75,8 +75,8 @@ class S3Output(Output):
         .. security-best-practice::
            :title: Output Connectors - S3Output
 
-            It is suggested to activate SSL for a secure connection. In order to do that set
-            :code:`use_ssl` and the corresponding :code:`ca_cert`.
+           It is suggested to activate SSL for a secure connection. In order to do that set
+           :code:`use_ssl` and the corresponding :code:`ca_cert`.
         """
 
         endpoint_url: str = field(validator=validators.instance_of(str))
