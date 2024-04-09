@@ -101,9 +101,20 @@ class HttpGetter(Getter):
      * Simple http target: :code:`http://your.target/file.yml`
      * Simple https target: :code:`https://your.target/file.json`
 
+    .. security-best-practice::
+       :title: HttpGetter
+
+       If recourses are loaded via HttpGetters it is recommended to
+
+       - Use a credential file to securely manage authentication
+       - Use preferably the :code:`MTLSCredentials` or :code:`OAuth2PasswordFlowCredentials` (with
+         client-auth)
+       - Use always HTTPS connections as HTTPS is not enforced by logprep
+       - Consider that the HttpGetter does not support pagination. If the resource is provided by
+         an endpoint with pagination it could lead to a loss of data.
+
     .. automodule:: logprep.util.credentials
         :no-index:
-
     """
 
     _credentials_registry: dict[str, Credentials] = {}

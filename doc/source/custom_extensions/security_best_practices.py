@@ -1,7 +1,7 @@
 """
 Sphinx Extension to enable and list security best practices
 
-Derived from the original documetation:
+Derived from the original documentation:
 https://www.sphinx-doc.org/en/master/development/tutorials/todo.html
 """
 

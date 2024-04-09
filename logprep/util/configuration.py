@@ -13,6 +13,14 @@ You can pass multiple configuration files via valid file paths or urls.
     logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/conector.yaml
 
 
+.. security-best-practice::
+   :title: Configuration - Combining multiple configuration files
+
+   Consider when using multiple configuration files logprep will reject all configuration files
+   if one can not be retrieved or is not valid.
+   If using multiple files ensure that all can be loaded safely and that all endpoints (if using
+   http resources) are accessible.
+
 Configuration File Structure
 ----------------------------
 
@@ -325,6 +333,16 @@ class Configuration:
        environments.
        It is suggested to not set a value higher than :code:`300` (5 min).
        That way configuration updates are propagated fairly quickly instead of once a day.
+
+       It should also be noted that a new configuration file will be read as long as it is a valid
+       config.
+       There is no further check to ensure credibility.
+
+       In case a new configuration could not be retrieved successfully and the
+       :code:`config_refresh_interval` is already reduced automatically to 5 seconds it should be
+       noted that this could lead to a blocking behavior or an significant reduction in performance
+       as logprep is often retrying to reload the configuration.
+       Because of that ensure that the configuration endpoint is always available.
     """
     process_count: int = field(
         validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
