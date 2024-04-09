@@ -5,9 +5,10 @@ Derived from the original documentation:
 https://www.sphinx-doc.org/en/master/development/tutorials/todo.html
 """
 
+import pandas as pd
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
-
+from openpyxl.styles import Alignment
 from sphinx.application import Sphinx
 from sphinx.locale import _
 from sphinx.util.docutils import SphinxDirective
@@ -107,6 +108,38 @@ def process_nodes(app, doctree, fromdocname):
             back_reference = create_back_reference(app, fromdocname, node_info)
             content.extend((title, node_info["best_practice"], back_reference))
         node.replace_self(content)
+    create_xls_checklist(app, env)
+
+
+def create_xls_checklist(app, env):
+    description = []
+    for node in env.all_security_best_practices:
+        title = node.get("title")
+        text = node.get("best_practice").rawsource
+        description.append(
+            {
+                "Topic": title,
+                "Requirement": text,
+                "Configuration Location": "",
+                "Parameter": "",
+                "Suggested": "",
+                "Is": "",
+                "Comment": "",
+            }
+        )
+    dataframe = pd.DataFrame(description)
+    download_file_name = "security-best-practices-check-list"
+    download_file_obj = [env.dlfiles[key] for key in env.dlfiles if download_file_name in key][0]
+    download_file_path = download_file_obj[1]
+    full_file_path = f"{app.outdir}/_downloads/{download_file_path}"
+    writer = pd.ExcelWriter(full_file_path, engine="openpyxl")
+    dataframe.to_excel(writer, index=False, sheet_name="Security Best Practices")
+    worksheet = writer.sheets["Security Best Practices"]
+    column_width = {"A": 60, "B": 60, "C": 30, "D": 30, "E": 30, "F": 30, "G": 30}
+    for column, width in column_width.items():
+        worksheet.column_dimensions[column].width = width
+    worksheet["B2"].alignment = Alignment(wrap_text=True)
+    writer.close()
 
 
 def create_back_reference(app, fromdocname, node_info):
