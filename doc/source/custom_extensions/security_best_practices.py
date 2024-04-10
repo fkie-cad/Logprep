@@ -51,6 +51,8 @@ class BestPracticeDirective(SphinxDirective):
     has_content = True
     option_spec = {
         "title": directives.unchanged_required,
+        "location": directives.unchanged,
+        "suggested-value": directives.unchanged,
     }
 
     def run(self):
@@ -71,7 +73,11 @@ class BestPracticeDirective(SphinxDirective):
                 "lineno": self.lineno,
                 "best_practice": node.deepcopy(),
                 "target": targetnode,
-                "title": title,
+                "meta": {
+                    "title": title,
+                    "location": self.options.get("location", ""),
+                    "suggested-value": self.options.get("suggested-value", ""),
+                },
             }
         )
         return [targetnode, node]
@@ -104,7 +110,7 @@ def process_nodes(app, doctree, fromdocname):
         content = []
         for node_info in env.all_security_best_practices:
             title = nodes.topic()
-            title += nodes.Text(node_info["title"])
+            title += nodes.Text(node_info.get("meta").get("title"))
             back_reference = create_back_reference(app, fromdocname, node_info)
             content.extend((title, node_info["best_practice"], back_reference))
         node.replace_self(content)
@@ -114,15 +120,14 @@ def process_nodes(app, doctree, fromdocname):
 def create_xls_checklist(app, env):
     description = []
     for node in env.all_security_best_practices:
-        title = node.get("title")
+        meta_info = node.get("meta")
         text = node.get("best_practice").rawsource
         description.append(
             {
-                "Topic": title,
+                "Topic": meta_info.get("title"),
                 "Requirement": text,
-                "Configuration Location": "",
-                "Parameter": "",
-                "Suggested": "",
+                "Configuration Location": meta_info.get("location"),
+                "Suggested Value": meta_info.get("suggested-value"),
                 "Is": "",
                 "Comment": "",
             }

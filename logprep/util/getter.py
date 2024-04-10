@@ -103,14 +103,16 @@ class HttpGetter(Getter):
 
     .. security-best-practice::
        :title: HttpGetter
+       :location: any http resource
+       :suggested-value: MTLSCredential or OAuth2PasswordFlowCredentials
 
        If recourses are loaded via HttpGetters it is recommended to
 
-       - Use a credential file to securely manage authentication
-       - Use preferably the :code:`MTLSCredentials` or :code:`OAuth2PasswordFlowCredentials` (with
+       - use a credential file to securely manage authentication
+       - use preferably the :code:`MTLSCredentials` or :code:`OAuth2PasswordFlowCredentials` (with
          client-auth)
-       - Use always HTTPS connections as HTTPS is not enforced by logprep
-       - Consider that the HttpGetter does not support pagination. If the resource is provided by
+       - use always HTTPS connections as HTTPS is not enforced by logprep
+       - consider that the HttpGetter does not support pagination. If the resource is provided by
          an endpoint with pagination it could lead to a loss of data.
 
     .. automodule:: logprep.util.credentials
