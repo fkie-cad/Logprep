@@ -1,8 +1,52 @@
 """
+Security Best Practices
+=======================
+
 Sphinx Extension to enable and list security best practices
 
 Derived from the original documentation:
 https://www.sphinx-doc.org/en/master/development/tutorials/todo.html
+
+Usage
+-----
+
+The extension enables two different rst directives, the first acts like a single note/admonition
+and lets you describe a current best practice somewhere in the documentation.
+An example would look like:
+
+.. code-block:: rst
+
+    .. security-best-practice::
+       :title: Example Best Practice
+       :location: configuration.example.param
+       :suggested-value: True
+
+       The example.param should always be set to true
+
+The second directive collects all these admonitions and creates a list of them.
+This can simply be added by using the following snippet to a file:
+
+.. code-block:: rst
+
+    .. security-best-practices-list::
+
+Lastly the extension generates an excel sheet with the best practices as checklist.
+In order to expose it into the documentation you have to use the following resource link:
+
+.. code-block:: rst
+
+    :download:`Best Practice Check List <../_static/security-best-practices-check-list.xlsx>`
+
+Note that the filepath and name must match this exact example and that the sphinx config needs to
+create this file in the docs source directory.
+
+Known limitations
+-----------------
+
+At the moment it is not possible to add `:ref:` links to security best practice admonitions,
+when the `security-best-practices-list` directive is used.
+When creating the list it is not possible yet to resolve the links, leading to an unknown pending
+xref exception.
 """
 
 import pandas as pd
