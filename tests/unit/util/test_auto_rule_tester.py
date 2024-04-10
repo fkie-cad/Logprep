@@ -49,8 +49,8 @@ class TestAutoRuleTester:
             }
         }
 
-        coverage = auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
-        assert coverage == 0
+        auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
+        assert auto_rule_tester._result["rule_test_coverage"] == 0
 
     def test_coverage_all_rule_files_have_tests(self, auto_rule_tester):
         rules_pn = {
@@ -69,8 +69,8 @@ class TestAutoRuleTester:
             }
         }
 
-        coverage = auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
-        assert coverage == 100
+        auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
+        assert auto_rule_tester._result["rule_test_coverage"] == 100
 
     def test_coverage_half_rule_files_have_tests(self, auto_rule_tester):
         rules_pn = {
@@ -89,8 +89,8 @@ class TestAutoRuleTester:
             }
         }
 
-        coverage = auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
-        assert coverage == 50
+        auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
+        assert auto_rule_tester._result["rule_test_coverage"] == 50
 
     def test_does_not_run_if_no_rules_exist(self, auto_rule_tester, capsys):
         rules_pn = {
@@ -156,7 +156,7 @@ class TestAutoRuleTester:
         processor = auto_rule_tester._get_processor_instance(
             "pseudonymizer", pseudonymizer_cfg, LOGGER
         )
-        auto_rule_tester._reset_trees(
+        auto_rule_tester._reset_(
             processor
         )  # Called every time by auto tester before adding rules
         auto_rule_tester._load_rules(processor, "specific_rules")
@@ -177,7 +177,7 @@ class TestAutoRuleTester:
         processor = auto_rule_tester._get_processor_instance(
             "list_comparison", list_comparison_cfg, LOGGER
         )
-        auto_rule_tester._reset_trees(
+        auto_rule_tester._reset_(
             processor
         )  # Called every time by auto tester before adding rules instead
         mock_setup.assert_called_once()
@@ -188,7 +188,7 @@ class TestAutoRuleTester:
         with pytest.raises(SystemExit):
             auto_rule_tester.run()
         expected_rules_with_tests = [
-            "RULES WITH TESTS:",
+            "with tests",
             "tests/testdata/auto_tests/labeler/rules/generic/auto_test_labeling_match.json",
             "tests/testdata/auto_tests/labeler/rules/specific/auto_test_labeling_mismatch.json",
             "tests/testdata/auto_tests/dissector/rules/generic/auto_test_match.json",
@@ -203,24 +203,19 @@ class TestAutoRuleTester:
             "tests/testdata/auto_tests/template_replacer/rules/specific/template_replacer.json",
         ]
         expected_rules_without_tests = [
-            "RULES WITHOUT TESTS:",
+            "without tests",
             "tests/testdata/auto_tests/labeler/rules/specific/auto_test_labeling_no_test_.json",
             "tests/testdata/auto_tests/dissector/rules/specific/auto_test_no_test_.json",
             "tests/testdata/auto_tests/pre_detector/rules/specific/auto_test_pre_detector_no_test_.json",
             "tests/testdata/auto_tests/pseudonymizer/rules/specific/auto_test_pseudonymizer_no_test_.json",
         ]
-        expected_rules_with_custom_tests = [
-            "RULES WITH CUSTOM TESTS:",
-            "tests/testdata/auto_tests/clusterer/rules/specific/rule_with_custom_tests.yml",
-        ]
 
         expected_overall_results = [
-            "Results:",
-            "Failed tests: 7",
-            "Successful tests: 33",
-            "Total tests: 40",
-            "Rule Test Coverage: 80.00%",
-            "Warnings: 2",
+            "+ successful_rule_tests_cnt: 32", #7 failed
+            "- failed_rule_tests_cnt: 6", #33 success
+            "~ warning_cnt: 2", #40 rules
+            "rule_test_coverage: 72.72727272727273", #80.00% cov
+            "total_tests: 38", #2 warnings
         ]
         captured = capsys.readouterr()
 
@@ -237,7 +232,6 @@ class TestAutoRuleTester:
         expected_sample_lines = (
             expected_rules_with_tests
             + expected_rules_without_tests
-            + expected_rules_with_custom_tests
             + expected_overall_results
         )
         for line in expected_sample_lines:

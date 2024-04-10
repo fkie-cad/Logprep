@@ -66,6 +66,8 @@ from pprint import pprint
 from typing import TYPE_CHECKING, TextIO, Tuple
 from collections.abc import Iterable
 
+from more_itertools import nth
+
 from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
 
@@ -158,6 +160,7 @@ class PorcessorExtensions:
             PorcessorExtensions.color_based_print(diff)
         else:
             if t_idx is not None:
+                #print(key, t_idx, rule)
                 diff = f"{key}: {rule[t_idx]}"
                 PorcessorExtensions.color_based_print(diff)
             else:
@@ -311,7 +314,7 @@ class AutoRuleTester:
                 continue
             try:
                 extra_output = processor.process(test["raw"])
-                if not extra_output:
+                if not extra_output and processor.name == "pre_detector":
                     raise Exception("Couldn't process, maybe invalid filter.") #Warning not counted in this case
             except BaseException as error:
                 self._print_error_on_exception(error, rule_test, self._rule_cnt)
@@ -321,24 +324,32 @@ class AutoRuleTester:
 
             diff = self._get_diff_raw_test(test)
             print_diff = self._check_if_different(diff)
+            
+            #print(print_diff)
+            #print(self._problems.get("errors"))
+            #print(nth(self._problems.get("errors"), self._rule_cnt))
+            #print("print_diff: ", print_diff)
+            #print("nth(self._problems.get('errors'), self._rule_cnt) : ", nth(self._problems.get("errors"), self._rule_cnt) )
 
             if isinstance(processor, PreDetector):
                 self._pd_extra.update_errors(processor, extra_output, self._problems)
 
-            if print_diff or self._problems.get("warnings") or self._problems.get("errors"):
+            if print_diff or nth(self._problems.get("warnings"), self._rule_cnt)  is not None or nth(self._problems.get("errors"), self._rule_cnt)  is not None: #todo diff wird immer geprinted da generell auf vorhandensein geprüft wird
                 print_fcolor(Fore.MAGENTA, f"\nRULE FILE {rule_test['file']} & RULE {t_idx}/{len(rule_test['tests'])}:")
+                #self._pd_extra.print_rules(self._problems, self._rule_cnt) #todo place here?
 
-            if print_diff or self._problems.get("errors"):
+            if print_diff or nth(self._problems.get("errors"), self._rule_cnt)  is not None:
                 self._pd_extra.print_rules({"DIFF": diff})
                 self._success = False
                 self._result["- failed_rule_tests_cnt"] += 1
             else:
                 self._result["+ successful_rule_tests_cnt"] += 1 
 
-            self._pd_extra.print_rules(self._problems, self._rule_cnt) 
+            #print(self._problems)
+            #self._pd_extra.print_rules(self._problems, self._rule_cnt) #todo
 
-            self._rule_cnt += 1 
-        self._result["total_tests"] = self._result["+ successful_rule_tests_cnt"] + self._result["- failed_rule_tests_cnt"] 
+            self._rule_cnt += 1 #todo does this work?
+        self._result["total_tests"] = self._result["+ successful_rule_tests_cnt"] + self._result["- failed_rule_tests_cnt"] #todo: check this
 
     @staticmethod
     def _reset_(processor: "Processor"):
@@ -391,8 +402,11 @@ class AutoRuleTester:
                 else:
                     rule_tests["without tests"].append(rule["file"])
 
+        print(len(rule_tests["with tests"]))
+        print(len(rule_tests["without tests"]))
+
         self._result["rule_test_coverage"] = (
-            len(rule_tests["with tests"]) / (len(rule_tests["without tests"]) + len(rule_tests["without tests"])) * 100
+            len(rule_tests["with tests"]) / (len(rule_tests["without tests"]) + len(rule_tests["with tests"])) * 100
         )
 
         self._pd_extra.print_rules(rule_tests)
@@ -471,7 +485,7 @@ class AutoRuleTester:
         file_path = path.join(root, file)
         try:
             multi_rule = self._pd_extra._load_json_or_yaml(file_path)
-            if  not all(d.get("target_rule_idx") is not None for d in rule_tests) and len(rule_tests) > 1:
+            if  processor_name == "pre_detector" and not all(d.get("target_rule_idx") is not None for d in rule_tests) and len(rule_tests) > 1:
                 raise Exception(f"Not all dictionaries in {file_path} contain the mandatory key target_rule_idx: Cant build corret test set for rules.")
         except ValueError as error:
             self._problems["errors"].append(str(error))
