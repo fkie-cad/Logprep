@@ -328,6 +328,8 @@ class Configuration:
 
     .. security-best-practice::
        :title: Configuration Refresh Interval
+       :location: config.config_refresh_interval
+       :suggested-value: <= 300
 
        The refresh interval for the configuration shouldn't be set too high in production
        environments.
@@ -365,6 +367,8 @@ class Configuration:
 
     .. security-best-practice::
        :title: Logprep Log-Level
+       :location: config.logger.level
+       :suggested-value: INFO
 
        The loglevel of logprep should be set to :code:`"INFO"` in production environments, as the
        :code:`"DEBUG"` level could expose sensitive events into the log.

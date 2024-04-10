@@ -23,6 +23,9 @@ An example would look like:
 
        The example.param should always be set to true
 
+The options `location` and `suggested-value` are optional and are only used to fill the excel
+check list, they are not rendered in the actual sphinx documentation.
+
 The second directive collects all these admonitions and creates a list of them.
 This can simply be added by using the following snippet to a file:
 

@@ -6,6 +6,8 @@ Input
 
 .. security-best-practice::
    :title: Input Connectors
+   :location: config.input.<INPUT-Name>.type and config.input.<INPUT-Name>.preprocessing.hmac
+   :suggested-value: <ConfluentKafkaInput|HttpConnector|FileInput> and <hmac>
 
    It is advised to only use the :code:`ConfluentKafkaInput`, :code:`HttpConnector` or
    :code:`FileInput` as input connectors in production environments.
