@@ -92,7 +92,7 @@ class TestPipelineManager:
         ok_pipeline.is_alive = mock.MagicMock(return_value=True)
         self.manager._pipelines = [failed_pipeline, ok_pipeline]
         self.manager.restart_failed_pipeline()
-        logger_mock.assert_called_with("Restarted 1 failed pipeline(s), with exit code(s): [-1]")
+        logger_mock.assert_called_with("Restarting failed pipeline on index 1 with exit code: -1")
 
     def test_stop_terminates_processes_created(self):
         self.manager.set_count(3)
@@ -111,9 +111,10 @@ class TestPipelineManager:
             failed_pipeline.is_alive = mock.MagicMock()
             failed_pipeline.is_alive.return_value = False
             failed_pipeline.pid = 42
-            self.config.metrics = {"enabled": True, "port": 1234}
-            self.config.process_count = 2
-            manager = PipelineManager(self.config)
+            config = deepcopy(self.config)
+            config.metrics = {"enabled": True, "port": 1234}
+            config.process_count = 2
+            manager = PipelineManager(config)
             prometheus_exporter_mock = mock.MagicMock()
             manager.prometheus_exporter = prometheus_exporter_mock
             manager._pipelines = [failed_pipeline]
@@ -134,7 +135,7 @@ class TestPipelineManager:
         with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
             config = deepcopy(self.config)
             config.metrics = {"enabled": True, "port": 1234}
-            self.config.process_count = 2
+            config.process_count = 2
             manager = PipelineManager(config)
             prometheus_exporter_mock = mock.MagicMock()
             manager.prometheus_exporter = prometheus_exporter_mock
@@ -142,8 +143,9 @@ class TestPipelineManager:
             prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
 
     def test_prometheus_exporter_is_instanciated_if_metrics_enabled(self):
-        self.config.metrics = MetricsConfig(enabled=True, port=8000)
-        manager = PipelineManager(self.config)
+        config = deepcopy(self.config)
+        config.metrics = MetricsConfig(enabled=True, port=8000)
+        manager = PipelineManager(config)
         assert isinstance(manager.prometheus_exporter, PrometheusExporter)
 
     def test_stop_stops_queue_listener(self):
@@ -175,9 +177,29 @@ class TestPipelineManager:
             assert mock_set_count.call_count == 2
 
     def test_restart_calls_prometheus_exporter_run(self):
-        self.config.metrics = MetricsConfig(enabled=True, port=666)
-        pipeline_manager = PipelineManager(self.config)
+        config = deepcopy(self.config)
+        config.metrics = MetricsConfig(enabled=True, port=666)
+        pipeline_manager = PipelineManager(config)
         pipeline_manager.prometheus_exporter.is_running = False
         with mock.patch.object(pipeline_manager.prometheus_exporter, "run") as mock_run:
             pipeline_manager.restart()
             mock_run.assert_called()
+
+    def test_restart_sets_deterministic_pipline_index(self):
+        config = deepcopy(self.config)
+        config.metrics = MetricsConfig(enabled=False, port=666)
+        pipeline_manager = PipelineManager(config)
+        pipeline_manager.set_count(3)
+        expected_calls = [mock.call(1), mock.call(2), mock.call(3)]
+        with mock.patch.object(pipeline_manager, "_create_pipeline") as mock_create_pipeline:
+            pipeline_manager.restart()
+            mock_create_pipeline.assert_has_calls(expected_calls)
+
+    def test_restart_failed_pipelines_sets_old_pipeline_index(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager.set_count(3)
+        pipeline_manager._pipelines[0] = mock.MagicMock()
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        with mock.patch.object(pipeline_manager, "_create_pipeline") as mock_create_pipeline:
+            pipeline_manager.restart_failed_pipeline()
+            mock_create_pipeline.assert_called_once_with(1)

@@ -9,6 +9,7 @@
 
 ### Bugfix
 
+* fixes a bug where the pipeline index increases on every restart of a failed pipeline
 
 ## 11.0.0
 ### Breaking

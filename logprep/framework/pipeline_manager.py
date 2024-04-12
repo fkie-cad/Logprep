@@ -105,19 +105,26 @@ class PipelineManager:
 
     def restart_failed_pipeline(self):
         """Remove one pipeline at a time."""
-        failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
-        for failed_pipeline in failed_pipelines:
-            self._pipelines.remove(failed_pipeline)
+        failed_pipelines = [
+            (index, pipeline)
+            for index, pipeline in enumerate(self._pipelines)
+            if not pipeline.is_alive()
+        ]
+
+        if not failed_pipelines:
+            return
+
+        for index, failed_pipeline in failed_pipelines:
+            pipeline_index = index + 1
+            self._pipelines.pop(index)
             self.metrics.number_of_failed_pipelines += 1
             if self.prometheus_exporter:
                 self.prometheus_exporter.mark_process_dead(failed_pipeline.pid)
-
-        if failed_pipelines:
-            self.set_count(self._configuration.process_count)
-            exit_codes = [pipeline.exitcode for pipeline in failed_pipelines]
+            self._pipelines.insert(index, self._create_pipeline(pipeline_index))
+            exit_code = failed_pipeline.exitcode
             self._logger.warning(
-                f"Restarted {len(failed_pipelines)} failed pipeline(s), "
-                f"with exit code(s): {exit_codes}"
+                f"Restarting failed pipeline on index {pipeline_index} "
+                f"with exit code: {exit_code}"
             )
 
     def stop(self):
