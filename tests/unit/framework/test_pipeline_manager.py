@@ -181,3 +181,21 @@ class TestPipelineManager:
         with mock.patch.object(pipeline_manager.prometheus_exporter, "run") as mock_run:
             pipeline_manager.restart()
             mock_run.assert_called()
+
+    def test_restart_sets_deterministic_pipline_index(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager.set_count(3)
+        expected_calls = [mock.call(1), mock.call(2), mock.call(3)]
+        with mock.patch.object(pipeline_manager, "_create_pipeline") as mock_create_pipeline:
+            pipeline_manager.restart()
+            pipeline_manager.restart()
+            mock_create_pipeline.assert_has_calls(expected_calls)
+
+    def test_restart_failed_pipelines_sets_old_pipeline_index(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager.set_count(3)
+        pipeline_manager._pipelines[0] = mock.MagicMock()
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        with mock.patch.object(pipeline_manager, "_create_pipeline") as mock_create_pipeline:
+            pipeline_manager.restart_failed_pipeline()
+            mock_create_pipeline.assert_called_once_with(1)
