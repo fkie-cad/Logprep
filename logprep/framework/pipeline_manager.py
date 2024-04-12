@@ -5,6 +5,7 @@
 import logging
 import logging.handlers
 import multiprocessing
+import multiprocessing.queues
 
 from attr import define, field
 
@@ -13,7 +14,18 @@ from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
-from logprep.util.logging import SingleThreadQueueListener
+
+
+def logger_process(queue: multiprocessing.queues.Queue, logger: logging.Logger):
+    """Process log messages from a queue."""
+    try:
+        while True:
+            message = queue.get()
+            if message is None:
+                break
+            logger.handle(message)
+    except KeyboardInterrupt:
+        pass
 
 
 class PipelineManager:
@@ -51,9 +63,10 @@ class PipelineManager:
         self.metrics = self.Metrics(labels={"component": "manager"})
         self._logger = logging.getLogger("Logprep PipelineManager")
         self.log_queue = multiprocessing.Queue(-1)
-        self._queue_listener = SingleThreadQueueListener(self.log_queue)
-        self._queue_listener.start()
-
+        self._log_process = multiprocessing.Process(
+            target=logger_process, args=(self.log_queue, self._logger), daemon=True
+        )
+        self._log_process.start()
         self._pipelines: list[multiprocessing.Process] = []
         self._configuration = configuration
 
@@ -132,7 +145,8 @@ class PipelineManager:
         self._decrease_to_count(0)
         if self.prometheus_exporter:
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
-        self._queue_listener.stop()
+        self.log_queue.put(None)  # signal the logger process to stop
+        self._log_process.join()
         self.log_queue.close()
 
     def restart(self):
