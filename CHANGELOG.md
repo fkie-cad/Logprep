@@ -9,6 +9,9 @@
 
 ### Bugfix
 
+## 11.0.1
+### Bugfix
+
 * fixes a bug where the pipeline index increases on every restart of a failed pipeline
 * fixes closed log queue issue by run logging in an extra process
 
