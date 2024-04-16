@@ -270,8 +270,11 @@ class TestS3Output(BaseOutputTestCase):
     def test_store_failed_counts_failed_events(self):
         self.object._write_backlog = mock.MagicMock()
         super().test_store_failed_counts_failed_events()
-        self.object._scheduler.jobs = []  # If I don't do this,
-        # I poison the scheduler for all subsequent tests (wtf)
+
+    def test_setup_registers_flush_timout_tasks(self):
+        job_count = len(self.object._scheduler.jobs)
+        self.object.setup()
+        assert len(self.object._scheduler.jobs) == job_count + 1
 
     @staticmethod
     def _calculate_backlog_size(s3_output):
