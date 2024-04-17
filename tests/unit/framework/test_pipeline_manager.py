@@ -6,6 +6,7 @@ from logging import Logger
 from unittest import mock
 
 from logprep.connector.http.input import HttpConnector
+from logprep.factory import Factory
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
@@ -202,13 +203,17 @@ class TestPipelineManager:
     def test_pipeline_manager_sets_queue_size_for_http_input(self):
         config = deepcopy(self.config)
         config.input = {
-            "type": "http_input",
-            "message_backlog_size": 100,
-            "collect_meta": False,
-            "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
-            "endpoints": {
-                "/json": "json",
-            },
+            "http": {
+                "type": "http_input",
+                "message_backlog_size": 100,
+                "collect_meta": False,
+                "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
+                "endpoints": {
+                    "/json": "json",
+                },
+            }
         }
         PipelineManager(config)
         assert HttpConnector.messages._maxsize == 100
+        http_input = Factory.create(config.input, mock.MagicMock())
+        assert http_input.messages._maxsize == 100

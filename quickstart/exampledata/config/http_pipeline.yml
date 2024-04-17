@@ -1,6 +1,9 @@
 version: 1
 process_count: 2
 
+logger:
+  level: DEBUG
+
 metrics:
   enabled: true
   port: 8003

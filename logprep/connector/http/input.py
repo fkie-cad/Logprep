@@ -294,14 +294,6 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
 
-    messages: mp.Queue = mp.Queue()
-
-    _endpoint_registry: Mapping[str, HttpEndpoint] = {
-        "json": JSONHttpEndpoint,
-        "plaintext": PlaintextHttpEndpoint,
-        "jsonl": JSONLHttpEndpoint,
-    }
-
     @define(kw_only=True)
     class Config(Input.Config):
         """Config for HTTPInput"""
@@ -359,6 +351,14 @@ class HttpConnector(Input):
 
     __slots__ = []
 
+    messages: mp.Queue = None
+
+    _endpoint_registry: Mapping[str, HttpEndpoint] = {
+        "json": JSONHttpEndpoint,
+        "plaintext": PlaintextHttpEndpoint,
+        "jsonl": JSONLHttpEndpoint,
+    }
+
     def __init__(self, name: str, configuration: "HttpConnector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
         internal_uvicorn_config = {
@@ -367,7 +367,6 @@ class HttpConnector(Input):
             "timeout_graceful_shutdown": 0,
         }
         self._config.uvicorn_config.update(internal_uvicorn_config)
-        self.logger = logger
         self.port = self._config.uvicorn_config["port"]
         self.host = self._config.uvicorn_config["host"]
         self.target = f"http://{self.host}:{self.port}"
@@ -383,6 +382,11 @@ class HttpConnector(Input):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."
             )
+        self._logger.debug(
+            f"HttpInput Connector started on target {self.target} and "
+            f"queue {id(self.messages)} "
+            f"with queue_size: {self.messages._maxsize}"
+        )
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:
             return
