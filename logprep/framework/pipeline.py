@@ -11,7 +11,7 @@ import logging.handlers
 import multiprocessing
 
 # pylint: disable=logging-fstring-interpolation
-import queue
+import multiprocessing.queues
 import warnings
 from ctypes import c_bool
 from functools import cached_property, partial
@@ -307,7 +307,7 @@ class Pipeline:
     def _drain_input_queues(self) -> None:
         if not hasattr(self._input, "messages"):
             return
-        if isinstance(self._input.messages, queue.Queue):
+        if isinstance(self._input.messages, multiprocessing.queues.Queue):
             while self._input.messages.qsize():
                 self.process_pipeline()
 
