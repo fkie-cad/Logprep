@@ -1,14 +1,17 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-from copy import deepcopy
+import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
+
+import falcon
 import requests
 import uvicorn
-import falcon
+
+from logprep.abc.input import FatalInputError
 from logprep.connector.http.input import HttpConnector
 from logprep.factory import Factory
-from logprep.abc.input import FatalInputError
 from tests.unit.connector.base import BaseInputTestCase
 
 
@@ -278,3 +281,10 @@ class TestHttpConnector(BaseInputTestCase):
         }
         connector_next_msg, _ = connector.get_next(1)
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
+
+    def test_two_connector_instances_share_the_same_queue(self):
+        new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
+        assert self.object.messages is new_connector.messages
+
+    def test_messages_is_multiprocessing_queue(self):
+        assert isinstance(self.object.messages, multiprocessing.queues.Queue)

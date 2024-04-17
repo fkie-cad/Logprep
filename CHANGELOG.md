@@ -9,6 +9,8 @@
 
 ### Bugfix
 
+* fix a bug in http connector leading to only first process working
+
 ## 11.0.1
 ### Bugfix
 

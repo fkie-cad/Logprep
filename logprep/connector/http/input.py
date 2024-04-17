@@ -26,18 +26,24 @@ Example
 """
 
 import inspect
+import logging
+import multiprocessing as mp
 import queue
+import re
 import threading
 from abc import ABC
 from logging import Logger
-import logging
-import re
-from typing import Mapping, Tuple, Union, Callable
-from attrs import define, field, validators
+from typing import Callable, Mapping, Tuple, Union
+
+import falcon.asgi
 import msgspec
 import uvicorn
-import falcon.asgi
-from falcon import HTTPTooManyRequests, HTTPMethodNotAllowed  # pylint: disable=no-name-in-module
+from attrs import define, field, validators
+from falcon import (  # pylint: disable=no-name-in-module
+    HTTPMethodNotAllowed,
+    HTTPTooManyRequests,
+)
+
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
 
@@ -288,6 +294,8 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
 
+    messages: mp.Queue = mp.Queue()
+
     _endpoint_registry: Mapping[str, HttpEndpoint] = {
         "json": JSONHttpEndpoint,
         "plaintext": PlaintextHttpEndpoint,
@@ -363,9 +371,7 @@ class HttpConnector(Input):
         self.port = self._config.uvicorn_config["port"]
         self.host = self._config.uvicorn_config["host"]
         self.target = "http://" + self.host + ":" + str(self.port)
-        self.messages = queue.Queue(
-            self._config.message_backlog_size
-        )  # pylint: disable=attribute-defined-outside-init
+        self.messages.maxsize = self._config.message_backlog_size
 
     def setup(self):
         """setup starts the actual functionality of this connector.
