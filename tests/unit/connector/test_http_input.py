@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 import multiprocessing
-from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 
 import falcon
@@ -18,12 +17,12 @@ from tests.unit.connector.base import BaseInputTestCase
 class TestHttpConnector(BaseInputTestCase):
 
     def setup_method(self):
+        HttpConnector.messages = multiprocessing.Queue(
+            maxsize=self.CONFIG.get("message_backlog_size")
+        )
         super().setup_method()
         self.object.pipeline_index = 1
         self.object.setup()
-        # we have to empty the queue for testing
-        while not self.object.messages.empty():
-            self.object.messages.get(timeout=0.001)
         self.target = self.object.target
 
     CONFIG: dict = {
@@ -43,6 +42,8 @@ class TestHttpConnector(BaseInputTestCase):
     }
 
     def teardown_method(self):
+        while not self.object.messages.empty():
+            self.object.messages.get(timeout=0.001)
         self.object.shut_down()
 
     def test_create_connector(self):
@@ -74,18 +75,11 @@ class TestHttpConnector(BaseInputTestCase):
     def test_get_error_code_too_many_requests(self):
         data = {"message": "my log message"}
         session = requests.Session()
-        session.mount(
-            "http://",
-            requests.adapters.HTTPAdapter(pool_maxsize=20, max_retries=3, pool_block=True),
-        )
-
-        def get_url(url):
-            for _ in range(100):
-                _ = session.post(url, json=data)
-
-        with ThreadPoolExecutor(max_workers=100) as executor:
-            executor.submit(get_url, f"{self.target}/json")
+        for i in range(100):
+            resp = session.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        assert self.object.messages.qsize() == 100
         resp = requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        assert self.object.messages._maxsize == 100
         assert resp.status_code == 429
 
     def test_json_endpoint_accepts_post_request(self):
@@ -288,3 +282,18 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_messages_is_multiprocessing_queue(self):
         assert isinstance(self.object.messages, multiprocessing.queues.Queue)
+
+    def test_all_endpoints_share_the_same_queue(self):
+        data = {"message": "my log message"}
+        requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        assert self.object.messages.qsize() == 1
+        data = "my log message"
+        requests.post(url=f"{self.target}/plaintext", json=data, timeout=0.5)
+        assert self.object.messages.qsize() == 2
+        data = """
+        {"message": "my first log message"}
+        {"message": "my second log message"}
+        {"message": "my third log message"}
+        """
+        requests.post(url=f"{self.target}/jsonl", data=data, timeout=0.5)
+        assert self.object.messages.qsize() == 5

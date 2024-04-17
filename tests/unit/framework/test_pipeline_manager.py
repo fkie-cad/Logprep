@@ -5,6 +5,7 @@ from copy import deepcopy
 from logging import Logger
 from unittest import mock
 
+from logprep.connector.http.input import HttpConnector
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
@@ -197,3 +198,17 @@ class TestPipelineManager:
         with mock.patch.object(pipeline_manager, "_create_pipeline") as mock_create_pipeline:
             pipeline_manager.restart_failed_pipeline()
             mock_create_pipeline.assert_called_once_with(1)
+
+    def test_pipeline_manager_sets_queue_size_for_http_input(self):
+        config = deepcopy(self.config)
+        config.input = {
+            "type": "http_input",
+            "message_backlog_size": 100,
+            "collect_meta": False,
+            "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
+            "endpoints": {
+                "/json": "json",
+            },
+        }
+        PipelineManager(config)
+        assert HttpConnector.messages._maxsize == 100

@@ -10,6 +10,7 @@ import multiprocessing.queues
 from attr import define, field
 
 from logprep.abc.component import Component
+from logprep.connector.http.input import HttpConnector
 from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
@@ -76,6 +77,11 @@ class PipelineManager:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
         else:
             self.prometheus_exporter = None
+        if configuration.input.get("type") == "http_input":
+            # this workaround has to be done because the queue size is not configurable
+            # after initialization and the queue has to be shared between the multiple processes
+            message_backlog_size = configuration.input.get("message_backlog_size", 15000)
+            HttpConnector.messages = multiprocessing.Queue(maxsize=message_backlog_size)
 
     def get_count(self) -> int:
         """Get the pipeline count.

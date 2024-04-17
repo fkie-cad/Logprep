@@ -119,7 +119,7 @@ class HttpEndpoint(ABC):
 
     Parameters
     ----------
-    messages: queue.Queue
+    messages: mp.Queue
         Input Events are put here
     collect_meta: bool
         Collects Metadata on True (default)
@@ -127,7 +127,7 @@ class HttpEndpoint(ABC):
         Defines key name for metadata
     """
 
-    def __init__(self, messages: queue.Queue, collect_meta: bool, metafield_name: str) -> None:
+    def __init__(self, messages: mp.Queue, collect_meta: bool, metafield_name: str) -> None:
         self.messages = messages
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
@@ -370,8 +370,7 @@ class HttpConnector(Input):
         self.logger = logger
         self.port = self._config.uvicorn_config["port"]
         self.host = self._config.uvicorn_config["host"]
-        self.target = "http://" + self.host + ":" + str(self.port)
-        self.messages.maxsize = self._config.message_backlog_size
+        self.target = f"http://{self.host}:{self.port}"
 
     def setup(self):
         """setup starts the actual functionality of this connector.

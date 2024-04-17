@@ -7,7 +7,7 @@ metrics:
 input:
   httpinput:
       type: http_input
-      message_backlog_size: 1500000
+      message_backlog_size: 1500
       collect_meta: True
       metafield_name: "@metadata"
       uvicorn_config:
