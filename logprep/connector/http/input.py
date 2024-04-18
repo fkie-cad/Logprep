@@ -43,6 +43,9 @@ from falcon import (  # pylint: disable=no-name-in-module
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
 )
+from falcon_auth2 import AuthMiddleware
+from falcon_auth2 import HeaderGetter
+from falcon_auth2.backends import BasicAuthBackend, GenericAuthBackend
 
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
@@ -50,16 +53,6 @@ from logprep.util import defaults
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
     parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
-]
-
-# Config Parts that's checked for Config Change
-HTTP_INPUT_CONFIG_KEYS = [
-    "preprocessing",
-    "uvicorn_config",
-    "endpoints",
-    "collect_meta",
-    "metafield_name",
-    "message_backlog_size",
 ]
 
 
@@ -113,6 +106,19 @@ def route_compile_helper(input_re_str: str):
     return re.compile(input_re_str)
 
 
+async def authenticate(user, password):
+    # Check if the user exists and the password match.
+    # This is just for the example
+    return random.choice((True, False))
+
+
+async def basic_user_loader(attributes, user, password):
+    if await authenticate(user, password):
+        print(user)
+        return {"username": user, "kind": "basic"}
+    return None
+
+
 class HttpEndpoint(ABC):
     """Interface for http endpoints.
     Additional functionality is added to child classes via removable decorators.
@@ -126,6 +132,12 @@ class HttpEndpoint(ABC):
     metafield_name: str
         Defines key name for metadata
     """
+
+    auth = {
+        "backend": BasicAuthBackend(basic_user_loader, getter=HeaderGetter("Authorization")),
+        "exempt_methods": ["GET"],
+    }
+
 
     def __init__(self, messages: mp.Queue, collect_meta: bool, metafield_name: str) -> None:
         self.messages = messages
@@ -142,6 +154,7 @@ class JSONHttpEndpoint(HttpEndpoint):
     @decorator_add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """json endpoint method"""
+        print(req.auth)
         data = await req.stream.read()
         data = data.decode("utf8")
         metadata = kwargs.get("metadata", {})
@@ -282,7 +295,17 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
 
     def _init_web_application_server(self, endpoints_config: dict) -> None:
         "Init falcon application server and setting endpoint routes"
-        self.app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
+        # a loader function to fetch user from username, password
+        user_loader = lambda username, password: { 'username': username }
+
+        # basic auth backend
+        basic_auth = BasicAuthBackend(user_loader)
+
+        # Auth Middleware that uses basic_auth for authentication
+        auth_middleware = AuthMiddleware(basic_auth)
+        self.app = falcon.asgi.App(middleware=[auth_middleware])
+
+        #self.app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
         for endpoint_path, endpoint in endpoints_config.items():
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
 
