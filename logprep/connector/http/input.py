@@ -20,12 +20,7 @@ Example
             host: 0.0.0.0
             port: 9000
         endpoints:
-            linux_logs: 
-              path: /firstendpoint 
-              type: json
-              auth: true
-              user: test
-              password: secret:alksdfjsadkl
+            /firstendpoint: json 
             /seccondendpoint: plaintext
             /thirdendpoint: jsonl
 """
@@ -53,6 +48,7 @@ from falcon_auth2.backends import BasicAuthBackend, GenericAuthBackend
 
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
+from logprep.util.credentials import CredentialsFactory
 
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
@@ -66,14 +62,14 @@ def decorator_basic_auth(func: Callable):
     async def func_wrapper(*args, **kwargs):
         # need to define auth
         endpoint = args[0]
-        if endpoint.auth_enabled:
-            print(endpoint.auth_credentials)
+        if endpoint.credentials:
+            print(endpoint.credentials)
 
             req = args[1]
             basic_string = req.auth
             # if password in basic_string is auth_credentials.passsword_file
             # tut dinge
-            if endpoint.auth_enabled:
+            if endpoint.credentials:
                 pass
                 # not authenticated
             else:
@@ -159,10 +155,8 @@ class HttpEndpoint(ABC):
         Collects Metadata on True (default)
     metafield_name: str
         Defines key name for metadata
-    auth_enabled: bool
-        Defines if basic authentication is enabled
-    auth_credentials: dict
-        Includes authentication credentials
+    credentials: dict
+        Includes authentication credentials, if unset auth is disabled
     """
 
     auth = {
@@ -175,14 +169,12 @@ class HttpEndpoint(ABC):
         messages: mp.Queue,
         collect_meta: bool,
         metafield_name: str,
-        auth_enabled: bool = False,
-        auth_credentials: dict = {},
+        credentials: dict,
     ) -> None:
         self.messages = messages
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
-        self.auth_enabled = auth_enabled
-        self.auth_credentials = auth_credentials
+        self.credentials = credentials
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -376,17 +368,12 @@ class HttpConnector(Input):
         """Configure uvicorn server. For possible settings see
         `uvicorn settings page <https://www.uvicorn.org/settings>`_.
         """
-        endpoints: Mapping[str, dict] = field(
+        endpoints: Mapping[str, str] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
-                    key_validator=validators.instance_of(str),
-                    value_validator=validators.deep_mapping(
-                        key_validator=validators.in_(
-                            ["type", "path", "auth", "username", "password_file", "password"]
-                        ),
-                        value_validator=validators.instance_of((str, bool)),
-                    ),
+                    key_validator=validators.matches_re(r"^\/.+"),
+                    value_validator=validators.in_(["json", "plaintext", "jsonl"]),
                 ),
             ]
         )
@@ -470,17 +457,13 @@ class HttpConnector(Input):
         endpoints_config = {}
         collect_meta = self._config.collect_meta
         metafield_name = self._config.metafield_name
+        cred_factory = CredentialsFactory()
         # preparing dict with endpoint paths and initialized endpoints objects
-        for endpoint_name, endpoint_config in self._config.endpoints.items():
-            endpoint_class = self._endpoint_registry.get(endpoint_config["type"])
-            auth_enabled = endpoint_config.get("auth", False)
-            auth_credentials = {
-                "username": endpoint_config.get("username", ""),
-                "password_file": endpoint_config.get("password_file", ""),
-            }
-            path = endpoint_config["path"]
-            endpoints_config[path] = endpoint_class(
-                self.messages, collect_meta, metafield_name, auth_enabled, auth_credentials
+        for endpoint_path, endpoint_type in self._config.endpoints.items():
+            endpoint_class = self._endpoint_registry.get(endpoint_type)
+            credentials = cred_factory.from_endpoint(endpoint_path)
+            endpoints_config[endpoint_path] = endpoint_class(
+                self.messages, collect_meta, metafield_name, credentials
             )
 
         self.http_server = ThreadingHTTPServer(  # pylint: disable=attribute-defined-outside-init

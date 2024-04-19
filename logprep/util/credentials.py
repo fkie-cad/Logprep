@@ -144,7 +144,35 @@ class CredentialsFactory:
         raw_content: dict = cls._get_content(Path(credentials_file_path))
         domain = urlparse(target_url).netloc
         scheme = urlparse(target_url).scheme
-        credential_mapping = raw_content.get(f"{scheme}://{domain}")
+        getter_credentials = raw_content.get("getter")
+        credential_mapping = getter_credentials.get(f"{scheme}://{domain}")
+        credentials = cls.from_dict(credential_mapping)
+        return credentials
+
+    @classmethod
+    def from_endpoint(cls, target_endpoint: str) -> "Credentials":
+        """Factory method to create a credentials object based on the credentials stored in the
+        environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
+        Based on these credentials the expected authentication method is chosen and represented
+        by the corresponding credentials object.
+
+        Parameters
+        ----------
+        target_endpoint : str
+           get authentication parameters for given target_endpoint
+
+        Returns
+        -------
+        credentials: Credentials
+            Credentials object representing the correct authorization method
+
+        """
+        credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
+        if credentials_file_path is None:
+            return None
+        raw_content: dict = cls._get_content(Path(credentials_file_path))
+        endpoint_credentials = raw_content.get("input").get("endpoints")
+        credential_mapping = endpoint_credentials.get(target_endpoint)
         credentials = cls.from_dict(credential_mapping)
         return credentials
 

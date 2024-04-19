@@ -17,21 +17,10 @@ input:
           host: 0.0.0.0
           port: 9000
       endpoints:
-          auth-linux-logs:
-            path: /auth-json
-            type: json
-            auth: True
-            username: blah
-            password_file: /home/logprep/auth/basic-auth-linux-logs
-          linux-logs:
-            path: /json 
-            type: json
-          plaintext-logs:
-            path: /lab/123/(ABC|DEF)/pl.*
-            type: plaintext
-          jsonl-logs:
-            path: /lab/123/ABC/auditlog
-            type: jsonl
+          /auth-json: json
+          /json: json
+          /lab/123/(ABC|DEF)/pl.*: plaintext
+          /lab/123/ABC/auditlog: jsonl
 output:
   kafka:
     type: confluentkafka_output
