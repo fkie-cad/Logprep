@@ -6,26 +6,26 @@ configuration file is passed.
 You can pass multiple configuration files via valid file paths or urls.
 
 ..  code-block:: bash
+    :caption: Valid Run Examples
 
     logprep run /different/path/file.yml
-
-or
-
-..  code-block:: bash
-    
     logprep run http://url-to-our-yaml-file-or-api
-
-or
-
-..  code-block:: bash
-    
     logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/conector.yaml
+
+
+.. security-best-practice::
+   :title: Configuration - Combining multiple configuration files
+
+   Consider when using multiple configuration files logprep will reject all configuration files
+   if one can not be retrieved or is not valid.
+   If using multiple files ensure that all can be loaded safely and that all endpoints (if using
+   http resources) are accessible.
 
 Configuration File Structure
 ----------------------------
 
 ..  code-block:: yaml
-    :caption: full configuration file example
+    :caption: Example of a complete configuration file
 
     version: config-1.0
     process_count: 2
@@ -129,8 +129,6 @@ to factories in Logprep.
 They contain settings for each separate processor and connector.
 Details for configuring connectors are described in
 :ref:`output` and :ref:`input` and for processors in :ref:`processors`.
-General information about the configuration of the pipeline can be found
-in :ref:`pipeline_config`.
 
 It is possible to use environment variables in all configuration
 and rule files in all places.
@@ -138,6 +136,16 @@ Environment variables have to be set in uppercase and prefixed
 with :code:`LOGPREP_`, :code:`GITHUB_`, :code:`PYTEST_` or
 :code:`CI_`. Lowercase variables are ignored. Forbidden
 variable names are: :code:`["LOGPREP_LIST"]`, as it is already used internally.
+
+.. security-best-practice::
+   :title: Configuration Environment Variables
+
+   As it is possible to replace all configuration options with environment variables it is
+   recommended to use these especially for sensitive information like usernames, password, secrets
+   or hash salts.
+   Examples where this could be useful would be the :code:`key` for the hmac calculation (see
+   `input` > `preprocessing`) or the :code:`user`/:code:`secret` for the elastic-/opensearch
+   connectors.
 
 The following config file will be valid by setting the given environment variables:
 
@@ -316,7 +324,28 @@ class Configuration:
     If configured the configuration will only be reloaded if the configuration version changes.
     If http errors occurs on configuration reload `config_refresh_interval` is set to a quarter
     of the current `config_refresh_interval` until a minimum of 5 seconds is reached.
-    Defaults to :code:`None`, which means that the configuration will not be refreshed."""
+    Defaults to :code:`None`, which means that the configuration will not be refreshed.
+
+    .. security-best-practice::
+       :title: Configuration Refresh Interval
+       :location: config.config_refresh_interval
+       :suggested-value: <= 300
+
+       The refresh interval for the configuration shouldn't be set too high in production
+       environments.
+       It is suggested to not set a value higher than :code:`300` (5 min).
+       That way configuration updates are propagated fairly quickly instead of once a day.
+
+       It should also be noted that a new configuration file will be read as long as it is a valid
+       config.
+       There is no further check to ensure credibility.
+
+       In case a new configuration could not be retrieved successfully and the
+       :code:`config_refresh_interval` is already reduced automatically to 5 seconds it should be
+       noted that this could lead to a blocking behavior or an significant reduction in performance
+       as logprep is often retrying to reload the configuration.
+       Because of that ensure that the configuration endpoint is always available.
+    """
     process_count: int = field(
         validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
     )
@@ -334,13 +363,31 @@ class Configuration:
     logger: dict = field(
         validator=validators.instance_of(dict), default={"level": "INFO"}, eq=False
     )
-    """Logger configuration. Defaults to :code:`{"level": "INFO"}`."""
+    """Logger configuration. Defaults to :code:`{"level": "INFO"}`.
+
+    .. security-best-practice::
+       :title: Logprep Log-Level
+       :location: config.logger.level
+       :suggested-value: INFO
+
+       The loglevel of logprep should be set to :code:`"INFO"` in production environments, as the
+       :code:`"DEBUG"` level could expose sensitive events into the log.
+    """
     input: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
-    """Input connector configuration. Defaults to :code:`{}`."""
+    """
+    Input connector configuration. Defaults to :code:`{}`.
+    For detailed configurations see :ref:`input`.
+    """
     output: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
-    """Output connector configuration. Defaults to :code:`{}`."""
+    """
+    Output connector configuration. Defaults to :code:`{}`.
+    For detailed configurations see :ref:`output`.
+    """
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)
-    """Pipeline configuration. Defaults to :code:`[]`."""
+    """
+    Pipeline configuration. Defaults to :code:`[]`.
+    See :ref:`processors` for a detailed overview on how to configure a pipeline.
+    """
     metrics: MetricsConfig = field(
         validator=validators.instance_of(MetricsConfig),
         factory=MetricsConfig,

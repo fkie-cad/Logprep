@@ -110,6 +110,7 @@ doc = [
   "sphinx-copybutton",
   "nbsphinx",
   "ipython",
+  "openpyxl"
 ]
 
 [project.urls]

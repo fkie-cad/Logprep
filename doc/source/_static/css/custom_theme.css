@@ -1,5 +1,9 @@
 @import url("theme.css");
 
+p {
+    margin: 0 0 10px;
+}
+
 .wy-nav-content {
     max-width: 100% !important;
 }
@@ -26,4 +30,30 @@
 
 .rst-content div[class^=highlight] div[class^=highlight], .rst-content pre.literal-block div[class^=highlight] {
     margin: 0 !important;
+}
+
+
+.security-best-practice {
+    background: #f3e9ff !important;
+}
+
+.security-best-practice .admonition-title {
+    background: #6d259d;
+}
+
+#security-best-practices .security-best-practice {
+    background: inherit !important;
+    padding: 0;
+}
+
+#security-best-practices .admonition-title {
+    display: none;
+}
+
+#security-best-practices .topic {
+    margin-top: 0;
+    font-weight: 700;
+    font-family: Roboto Slab, ff-tisa-web-pro, Georgia, Arial, sans-serif;
+    font-size: 150%;
+    padding: 0 0 15px 0;
 }

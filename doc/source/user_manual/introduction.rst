@@ -24,10 +24,6 @@ Pipelines
 A pipeline consists of a sequence of multiple processing steps (processors).
 The main idea is that each processor performs a simple task that is easy to carry out.
 
-How are Pipelines Implemented?
-------------------------------
-
-This program generates a list of processors according to the configuration.
 Each incoming event is being processed by these processors in the configured order.
 The processors modify the event that is being `passed` through.
 Thus, the order of the processors is relevant.
@@ -40,22 +36,4 @@ Therefore, results of a processor should not depend on other events.
 Processors
 ==========
 
-.. autosummary::
-   
-   logprep.processor.clusterer.processor
-   logprep.processor.datetime_extractor.processor
-   logprep.processor.deleter.processor
-   logprep.processor.domain_label_extractor.processor
-   logprep.processor.domain_resolver.processor
-   logprep.processor.dropper.processor
-   logprep.processor.generic_adder.processor
-   logprep.processor.generic_resolver.processor
-   logprep.processor.geoip_enricher.processor
-   logprep.processor.labeler.processor
-   logprep.processor.list_comparison.processor
-   logprep.processor.normalizer.processor
-   logprep.processor.pre_detector.processor
-   logprep.processor.pseudonymizer.processor
-   logprep.processor.selective_extractor.processor
-   logprep.processor.template_replacer.processor
-   logprep.processor.hyperscan_resolver.processor
+A list of all available processors can be found under the configuration section :ref:`processors`.

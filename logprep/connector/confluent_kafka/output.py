@@ -3,8 +3,7 @@ ConfluentKafkaOutput
 ====================
 
 This section contains the connection settings for ConfluentKafka, the default
-index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
-the amount of times connections are created.
+index, the error index and a buffer size.
 
 Example
 ^^^^^^^
@@ -144,7 +143,9 @@ class ConfluentKafkaOutput(Output):
         """Confluent Kafka Output Config"""
 
         topic: str = field(validator=validators.instance_of(str))
+        """The topic into which the processed events should be written to."""
         error_topic: str
+        """The topic into which events should be written that couldn't be processed successfully."""
         flush_timeout: float
         send_timeout: int = field(validator=validators.instance_of(int), default=0)
         kafka_config: Optional[dict] = field(
@@ -158,14 +159,14 @@ class ConfluentKafkaOutput(Output):
             ],
             factory=dict,
         )
-        """ Kafka configuration for the kafka client. 
+        """ Kafka configuration for the kafka client.
         At minimum the following keys must be set:
-        
+
         - bootstrap.servers (STRING): a comma separated list of kafka brokers
-        
-        For additional configuration options and their description see: 
+
+        For additional configuration options and their description see:
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
-        
+
         .. datatemplate:import-module:: logprep.connector.confluent_kafka.output
             :template: defaults-renderer.tmpl
 

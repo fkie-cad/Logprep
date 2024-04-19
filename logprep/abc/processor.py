@@ -61,7 +61,7 @@ class Processor(Component):
             default=None, validator=[validators.optional(validators.instance_of(str))]
         )
         """Path to a JSON file with a valid rule tree configuration.
-        For string format see :ref:`getters`"""
+        For string format see :ref:`getters`."""
         apply_multiple_times: Optional[bool] = field(
             default=False, validator=[validators.optional(validators.instance_of(bool))]
         )
