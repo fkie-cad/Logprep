@@ -5,15 +5,28 @@
 import logging
 import logging.handlers
 import multiprocessing
+import multiprocessing.queues
 
 from attr import define, field
 
 from logprep.abc.component import Component
+from logprep.connector.http.input import HttpConnector
 from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
-from logprep.util.logging import SingleThreadQueueListener
+
+
+def logger_process(queue: multiprocessing.queues.Queue, logger: logging.Logger):
+    """Process log messages from a queue."""
+    try:
+        while True:
+            message = queue.get()
+            if message is None:
+                break
+            logger.handle(message)
+    except KeyboardInterrupt:
+        pass
 
 
 class PipelineManager:
@@ -51,9 +64,10 @@ class PipelineManager:
         self.metrics = self.Metrics(labels={"component": "manager"})
         self._logger = logging.getLogger("Logprep PipelineManager")
         self.log_queue = multiprocessing.Queue(-1)
-        self._queue_listener = SingleThreadQueueListener(self.log_queue)
-        self._queue_listener.start()
-
+        self._log_process = multiprocessing.Process(
+            target=logger_process, args=(self.log_queue, self._logger), daemon=True
+        )
+        self._log_process.start()
         self._pipelines: list[multiprocessing.Process] = []
         self._configuration = configuration
 
@@ -63,6 +77,13 @@ class PipelineManager:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
         else:
             self.prometheus_exporter = None
+        input_config = next(iter(configuration.input.values()))
+        if input_config.get("type") == "http_input":
+            # this workaround has to be done because the queue size is not configurable
+            # after initialization and the queue has to be shared between the multiple processes
+            if HttpConnector.messages is None:
+                message_backlog_size = input_config.get("message_backlog_size", 15000)
+                HttpConnector.messages = multiprocessing.Queue(maxsize=message_backlog_size)
 
     def get_count(self) -> int:
         """Get the pipeline count.
@@ -105,19 +126,26 @@ class PipelineManager:
 
     def restart_failed_pipeline(self):
         """Remove one pipeline at a time."""
-        failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
-        for failed_pipeline in failed_pipelines:
-            self._pipelines.remove(failed_pipeline)
+        failed_pipelines = [
+            (index, pipeline)
+            for index, pipeline in enumerate(self._pipelines)
+            if not pipeline.is_alive()
+        ]
+
+        if not failed_pipelines:
+            return
+
+        for index, failed_pipeline in failed_pipelines:
+            pipeline_index = index + 1
+            self._pipelines.pop(index)
             self.metrics.number_of_failed_pipelines += 1
             if self.prometheus_exporter:
                 self.prometheus_exporter.mark_process_dead(failed_pipeline.pid)
-
-        if failed_pipelines:
-            self.set_count(self._configuration.process_count)
-            exit_codes = [pipeline.exitcode for pipeline in failed_pipelines]
+            self._pipelines.insert(index, self._create_pipeline(pipeline_index))
+            exit_code = failed_pipeline.exitcode
             self._logger.warning(
-                f"Restarted {len(failed_pipelines)} failed pipeline(s), "
-                f"with exit code(s): {exit_codes}"
+                f"Restarting failed pipeline on index {pipeline_index} "
+                f"with exit code: {exit_code}"
             )
 
     def stop(self):
@@ -125,7 +153,8 @@ class PipelineManager:
         self._decrease_to_count(0)
         if self.prometheus_exporter:
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
-        self._queue_listener.stop()
+        self.log_queue.put(None)  # signal the logger process to stop
+        self._log_process.join()
         self.log_queue.close()
 
     def restart(self):

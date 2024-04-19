@@ -1,13 +1,16 @@
 version: 1
 process_count: 2
 
+logger:
+  level: DEBUG
+
 metrics:
   enabled: true
   port: 8003
 input:
   httpinput:
       type: http_input
-      message_backlog_size: 1500000
+      message_backlog_size: 1500
       collect_meta: True
       metafield_name: "@metadata"
       uvicorn_config:
