@@ -4,9 +4,7 @@ import logging
 import os
 import signal
 import sys
-import tempfile
 import warnings
-from pathlib import Path
 
 import click
 from colorama import Fore
@@ -14,12 +12,12 @@ from colorama import Fore
 from logprep.event_generator.http.controller import Controller
 from logprep.event_generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
+from logprep.util import defaults
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
-from logprep.util import defaults
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
@@ -60,6 +58,9 @@ def cli() -> None:
     Logprep allows to collect, process and forward log messages from various data sources.
     Log messages are being read and written by so-called connectors.
     """
+    if "pytest" not in sys.modules:  # needed for not blocking tests
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
 
 
 @cli.command(short_help="Run logprep to process log messages", epilog=EPILOG_STR)
@@ -323,6 +324,4 @@ def signal_handler(__: int, _) -> None:
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
     cli()
