@@ -32,18 +32,20 @@ import queue
 import re
 import threading
 from abc import ABC
+from base64 import b64encode
 from logging import Logger
 from typing import Callable, Mapping, Tuple, Union
 
 import falcon.asgi
 import msgspec
+import requests
 import uvicorn
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
 )
-from falcon_auth2 import AuthMiddleware, HeaderGetter
+from falcon_auth2 import AuthenticationFailure, AuthMiddleware, HeaderGetter
 from falcon_auth2.backends import BasicAuthBackend, GenericAuthBackend
 
 from logprep.abc.input import FatalInputError, Input
@@ -63,18 +65,14 @@ def decorator_basic_auth(func: Callable):
         # need to define auth
         endpoint = args[0]
         if endpoint.credentials:
-            print(endpoint.credentials)
-
+            auth_creds = b64encode(
+                f"{endpoint.credentials.username}:{endpoint.credentials.password}".encode("utf-8")
+            ).decode("utf-8")
             req = args[1]
             basic_string = req.auth
-            # if password in basic_string is auth_credentials.passsword_file
             # tut dinge
-            if endpoint.credentials:
-                pass
-                # not authenticated
-            else:
-                pass
-                # raise falcon.HTTPUnauthorizedbumms
+            if auth_creds not in basic_string:
+                raise AuthenticationFailure
         return func_wrapper
 
     return func_wrapper
