@@ -364,7 +364,7 @@ class HttpConnector(Input):
         internal_uvicorn_config = {
             "lifespan": "off",
             "loop": "asyncio",
-            "timeout_graceful_shutdown": 0,
+            "timeout_graceful_shutdown": 5,
         }
         self._config.uvicorn_config.update(internal_uvicorn_config)
         self.port = self._config.uvicorn_config["port"]
@@ -385,7 +385,7 @@ class HttpConnector(Input):
         self._logger.debug(
             f"HttpInput Connector started on target {self.target} and "
             f"queue {id(self.messages)} "
-            f"with queue_size: {self.messages._maxsize}"
+            f"with queue_size: {self.messages._maxsize}"  # pylint: disable=protected-access
         )
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:
@@ -426,4 +426,6 @@ class HttpConnector(Input):
 
     def shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
+        if not hasattr(self, "http_server"):
+            return
         self.http_server.shut_down()
