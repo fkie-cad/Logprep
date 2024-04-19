@@ -48,8 +48,7 @@ from falcon import (  # pylint: disable=no-name-in-module
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
 )
-from falcon_auth2 import AuthMiddleware
-from falcon_auth2 import HeaderGetter
+from falcon_auth2 import AuthMiddleware, HeaderGetter
 from falcon_auth2.backends import BasicAuthBackend, GenericAuthBackend
 
 from logprep.abc.input import FatalInputError, Input
@@ -59,6 +58,30 @@ uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
     parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
 ]
+
+
+def decorator_basic_auth(func: Callable):
+    """Decorator to check basic authentication"""
+
+    async def func_wrapper(*args, **kwargs):
+        # need to define auth
+        endpoint = args[0]
+        if endpoint.auth_enabled:
+            print(endpoint.auth_credentials)
+
+            req = args[1]
+            basic_string = req.auth
+            # if password in basic_string is auth_credentials.passsword_file
+            # tut dinge
+            if endpoint.auth_enabled:
+                pass
+                # not authenticated
+            else:
+                pass
+                # raise falcon.HTTPUnauthorizedbumms
+        return func_wrapper
+
+    return func_wrapper
 
 
 def decorator_request_exceptions(func: Callable):
@@ -136,6 +159,10 @@ class HttpEndpoint(ABC):
         Collects Metadata on True (default)
     metafield_name: str
         Defines key name for metadata
+    auth_enabled: bool
+        Defines if basic authentication is enabled
+    auth_credentials: dict
+        Includes authentication credentials
     """
 
     auth = {
@@ -143,11 +170,19 @@ class HttpEndpoint(ABC):
         "exempt_methods": ["GET"],
     }
 
-
-    def __init__(self, messages: mp.Queue, collect_meta: bool, metafield_name: str) -> None:
+    def __init__(
+        self,
+        messages: mp.Queue,
+        collect_meta: bool,
+        metafield_name: str,
+        auth_enabled: bool = False,
+        auth_credentials: dict = {},
+    ) -> None:
         self.messages = messages
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
+        self.auth_enabled = auth_enabled
+        self.auth_credentials = auth_credentials
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -155,6 +190,7 @@ class JSONHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
+    @decorator_basic_auth
     @decorator_request_exceptions
     @decorator_add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
@@ -301,7 +337,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
     def _init_web_application_server(self, endpoints_config: dict) -> None:
         "Init falcon application server and setting endpoint routes"
         # a loader function to fetch user from username, password
-        user_loader = lambda username, password: { 'username': username }
+        user_loader = lambda username, password: {"username": username}
 
         # basic auth backend
         basic_auth = BasicAuthBackend(user_loader)
@@ -310,7 +346,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         auth_middleware = AuthMiddleware(basic_auth)
         self.app = falcon.asgi.App(middleware=[auth_middleware])
 
-        #self.app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
+        # self.app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
         for endpoint_path, endpoint in endpoints_config.items():
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
 
@@ -340,12 +376,17 @@ class HttpConnector(Input):
         """Configure uvicorn server. For possible settings see
         `uvicorn settings page <https://www.uvicorn.org/settings>`_.
         """
-        endpoints: Mapping[str, str] = field(
+        endpoints: Mapping[str, dict] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
-                    key_validator=validators.matches_re(r"^\/.+"),
-                    value_validator=validators.in_(["json", "plaintext", "jsonl"]),
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.deep_mapping(
+                        key_validator=validators.in_(
+                            ["type", "path", "auth", "username", "password_file", "password"]
+                        ),
+                        value_validator=validators.instance_of((str, bool)),
+                    ),
                 ),
             ]
         )
@@ -430,10 +471,16 @@ class HttpConnector(Input):
         collect_meta = self._config.collect_meta
         metafield_name = self._config.metafield_name
         # preparing dict with endpoint paths and initialized endpoints objects
-        for endpoint_path, endpoint_name in self._config.endpoints.items():
-            endpoint_class = self._endpoint_registry.get(endpoint_name)
-            endpoints_config[endpoint_path] = endpoint_class(
-                self.messages, collect_meta, metafield_name
+        for endpoint_name, endpoint_config in self._config.endpoints.items():
+            endpoint_class = self._endpoint_registry.get(endpoint_config["type"])
+            auth_enabled = endpoint_config.get("auth", False)
+            auth_credentials = {
+                "username": endpoint_config.get("username", ""),
+                "password_file": endpoint_config.get("password_file", ""),
+            }
+            path = endpoint_config["path"]
+            endpoints_config[path] = endpoint_class(
+                self.messages, collect_meta, metafield_name, auth_enabled, auth_credentials
             )
 
         self.http_server = ThreadingHTTPServer(  # pylint: disable=attribute-defined-outside-init
