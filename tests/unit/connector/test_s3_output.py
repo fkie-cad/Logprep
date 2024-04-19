@@ -273,8 +273,40 @@ class TestS3Output(BaseOutputTestCase):
 
     def test_setup_registers_flush_timout_tasks(self):
         job_count = len(self.object._scheduler.jobs)
-        self.object.setup()
+        with pytest.raises(FatalOutputError):
+            self.object.setup()
         assert len(self.object._scheduler.jobs) == job_count + 1
+
+    @pytest.mark.parametrize(
+        "error, message",
+        [
+            (
+                EndpointConnectionError(endpoint_url="http://xdfzy:123"),
+                r".*Could not connect to the endpoint URL.*",
+            ),
+            (
+                ConnectionClosedError(endpoint_url="http://xdfzy:123"),
+                r".*Connection was closed before we received a valid response from endpoint URL.*",
+            ),
+            (
+                ClientError(error_response={"foo": "bar"}, operation_name="HeadBucket"),
+                r".*An error occurred \(\w+\) when calling the HeadBucket operation: \w+.*",
+            ),
+            (
+                BotoCoreError(),
+                r".*An unspecified error occurred.*",
+            ),
+        ],
+    )
+    def test_setup_raises_fataloutputerror_if_boto_exception_is_raised(self, error, message):
+
+        with mock.patch.object(
+            self.object._s3_resource.meta.client,
+            "head_bucket",
+            side_effect=error,
+        ):
+            with pytest.raises(FatalOutputError, match=message):
+                self.object.setup()
 
     @staticmethod
     def _calculate_backlog_size(s3_output):

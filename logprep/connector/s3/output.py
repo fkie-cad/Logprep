@@ -179,8 +179,20 @@ class S3Output(Output):
 
     def setup(self):
         super().setup()
-        self._schedule_task(task=self._write_backlog, seconds=self._config.flush_timeout)
-        _ = self._s3_resource
+        flush_timeout = self._config.flush_timeout
+        self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
+
+        try:
+            _ = self._s3_resource.meta.client.head_bucket(Bucket=self._config.bucket)
+        except EndpointConnectionError as error:
+            raise FatalOutputError(self, "Could not connect to the endpoint URL") from error
+        except ConnectionClosedError as error:
+            raise FatalOutputError(
+                self,
+                "Connection was closed before we received a valid response from endpoint URL",
+            ) from error
+        except (BotoCoreError, ClientError) as error:
+            raise FatalOutputError(self, str(error)) from error
 
     def store(self, document: dict):
         """Store a document into s3 bucket.
