@@ -20,7 +20,12 @@ Example
             host: 0.0.0.0
             port: 9000
         endpoints:
-            /firstendpoint: json
+            linux_logs: 
+              path: /firstendpoint 
+              type: json
+              auth: true
+              user: test
+              password: secret:alksdfjsadkl
             /seccondendpoint: plaintext
             /thirdendpoint: jsonl
 """
