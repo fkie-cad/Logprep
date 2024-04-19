@@ -5,6 +5,9 @@
 
 ### Features
 
+  * new documentation part with security best practices which compiles to `user_manual/security/best_practices.html`
+    * also comes with excel export functionality of given best practices  
+
 ### Improvements
 
 ### Bugfix
