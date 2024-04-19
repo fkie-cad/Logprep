@@ -1,7 +1,7 @@
 Start Logprep programaticly
 ===========================
 
-It is possible to make use of the Logprep :ref:`pipeline_config` in plain python, without any
+It is possible to make use of the Logprep pipeline in plain python, without any
 input or output connectors or further configurations.
 If on the other hand you want to make use of the input connector preprocessors you have to at least
 use an input connector like the DummyInput.

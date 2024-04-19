@@ -5,6 +5,16 @@ Requester
 A processor to invoke http requests. Can be used to enrich events from an external api or
 to trigger external systems by and with event field values.
 
+.. security-best-practice::
+   :title: Processor - Requester
+
+   As the `requester` can execute arbitrary http requests it is advised to execute requests only
+   against known and trusted endpoints and that the communication is protected with a valid
+   SSL-Certificate. Do so by setting a certificate path with the option :code:`cert`.
+   To ensure that the communication is trusted it is also recommended to set either an
+   :code:`Authorization`-Header or a corresponding authentication with a username and password, via
+   :code:`auth`.
+
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml

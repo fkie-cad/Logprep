@@ -5,10 +5,20 @@
 
 ### Features
 
+  * new documentation part with security best practices which compiles to `user_manual/security/best_practices.html`
+    * also comes with excel export functionality of given best practices  
+
 ### Improvements
 
 ### Bugfix
 
+* fix a bug in http connector leading to only first process working
+
+## 11.0.1
+### Bugfix
+
+* fixes a bug where the pipeline index increases on every restart of a failed pipeline
+* fixes closed log queue issue by run logging in an extra process
 
 ## 11.0.0
 ### Breaking

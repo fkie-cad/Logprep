@@ -19,7 +19,7 @@ Processor Configuration
         sql_config:
             user: example_user
             password: example_password
-            host: "127.0.0.1
+            host: "127.0.0.1"
             database: example_db
             table: example_table
             target_column: example_column
@@ -103,6 +103,12 @@ class GenericAdder(Processor):
           (default: ./sql_update.lock).
         - `db_file_path` - Path to a file used to store the SQL table obtained by the generic adder
           (default: ./sql_db_table.json).
+
+          .. security-best-practice::
+             :title: Processor - GenericAdder
+
+             When using a sql database to enrich events, ensure that it is a database which is
+             protected with a user credentials.
         """
 
     rule_class = GenericAdderRule

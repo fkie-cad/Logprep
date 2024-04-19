@@ -10,3 +10,4 @@ User Manual
    verification
    testing_rules
    configuration/index
+   security_best_practices

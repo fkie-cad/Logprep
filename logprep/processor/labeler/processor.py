@@ -2,18 +2,6 @@
 Labeler
 =======
 
-Labeling-Schema and validating Rules
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The validation of schemata and rules can be started separately by executing:
-
-..  code-block:: bash
-
-    PYTHONPATH="." python3 logprep/util/schema_and_rule_checker.py $LABELING_SCHEMA $RULES
-
-Where :code:`$LABELING_SCHEMA` is the path to a labeling schema file and :code:`$RULES` is the path
-to a directory with rule files.
-
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -39,7 +27,7 @@ Processor Configuration
 """
 
 from logging import Logger
-from typing import List, Optional
+from typing import Optional
 
 from attr import define, field, validators
 

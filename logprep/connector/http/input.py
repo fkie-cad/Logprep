@@ -26,18 +26,24 @@ Example
 """
 
 import inspect
+import logging
+import multiprocessing as mp
 import queue
+import re
 import threading
 from abc import ABC
 from logging import Logger
-import logging
-import re
-from typing import Mapping, Tuple, Union, Callable
-from attrs import define, field, validators
+from typing import Callable, Mapping, Tuple, Union
+
+import falcon.asgi
 import msgspec
 import uvicorn
-import falcon.asgi
-from falcon import HTTPTooManyRequests, HTTPMethodNotAllowed  # pylint: disable=no-name-in-module
+from attrs import define, field, validators
+from falcon import (  # pylint: disable=no-name-in-module
+    HTTPMethodNotAllowed,
+    HTTPTooManyRequests,
+)
+
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
 
@@ -113,7 +119,7 @@ class HttpEndpoint(ABC):
 
     Parameters
     ----------
-    messages: queue.Queue
+    messages: mp.Queue
         Input Events are put here
     collect_meta: bool
         Collects Metadata on True (default)
@@ -121,7 +127,7 @@ class HttpEndpoint(ABC):
         Defines key name for metadata
     """
 
-    def __init__(self, messages: queue.Queue, collect_meta: bool, metafield_name: str) -> None:
+    def __init__(self, messages: mp.Queue, collect_meta: bool, metafield_name: str) -> None:
         self.messages = messages
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
@@ -288,12 +294,6 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
 
-    _endpoint_registry: Mapping[str, HttpEndpoint] = {
-        "json": JSONHttpEndpoint,
-        "plaintext": PlaintextHttpEndpoint,
-        "jsonl": JSONLHttpEndpoint,
-    }
-
     @define(kw_only=True)
     class Config(Input.Config):
         """Config for HTTPInput"""
@@ -323,7 +323,7 @@ class HttpConnector(Input):
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`.
-        
+
         .. autoclass:: logprep.connector.http.input.PlaintextHttpEndpoint
             :noindex:
         .. autoclass:: logprep.connector.http.input.JSONLHttpEndpoint
@@ -341,15 +341,29 @@ class HttpConnector(Input):
         """
 
         collect_meta: str = field(validator=validators.instance_of(bool), default=True)
-        """Defines if metadata should be collected 
+        """Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
+
+        .. security-best-practice::
+           :title: Input Connector - HttpConnector
+
+           It is suggested to enable the collection of meta data (:code:`collect_meta: True`) to
+           ensure transparency of the incoming events.
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
         """Defines the name of the key for the collected metadata fields"""
 
     __slots__ = []
+
+    messages: mp.Queue = None
+
+    _endpoint_registry: Mapping[str, HttpEndpoint] = {
+        "json": JSONHttpEndpoint,
+        "plaintext": PlaintextHttpEndpoint,
+        "jsonl": JSONLHttpEndpoint,
+    }
 
     def __init__(self, name: str, configuration: "HttpConnector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
@@ -359,13 +373,9 @@ class HttpConnector(Input):
             "timeout_graceful_shutdown": 0,
         }
         self._config.uvicorn_config.update(internal_uvicorn_config)
-        self.logger = logger
         self.port = self._config.uvicorn_config["port"]
         self.host = self._config.uvicorn_config["host"]
-        self.target = "http://" + self.host + ":" + str(self.port)
-        self.messages = queue.Queue(
-            self._config.message_backlog_size
-        )  # pylint: disable=attribute-defined-outside-init
+        self.target = f"http://{self.host}:{self.port}"
 
     def setup(self):
         """setup starts the actual functionality of this connector.
@@ -378,6 +388,11 @@ class HttpConnector(Input):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."
             )
+        self._logger.debug(
+            f"HttpInput Connector started on target {self.target} and "
+            f"queue {id(self.messages)} "
+            f"with queue_size: {self.messages._maxsize}"
+        )
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:
             return

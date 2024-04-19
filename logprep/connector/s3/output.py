@@ -68,7 +68,15 @@ class S3Output(Output):
 
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
-        """S3 Output Config"""
+        """
+        S3 Output Config
+
+        .. security-best-practice::
+           :title: Output Connectors - S3Output
+
+           It is suggested to activate SSL for a secure connection. In order to do that set
+           :code:`use_ssl` and the corresponding :code:`ca_cert`.
+        """
 
         endpoint_url: str = field(validator=validators.instance_of(str))
         """Address of s3 endpoint in the format SCHEMA:HOST:PORT."""
@@ -109,7 +117,7 @@ class S3Output(Output):
         call_input_callback: Optional[bool] = field(
             validator=validators.instance_of(bool), default=True
         )
-        """The input callback is called after the maximum backlog size has been reached 
+        """The input callback is called after the maximum backlog size has been reached
         if this is set to True (optional)"""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
         """(Optional) Timout after :code:`message_backlog` is flushed if 
