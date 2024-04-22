@@ -52,8 +52,7 @@ Endpoint Credentials Config Example
 .. security-best-practice::
    :title: Http Input Connector - Authentication
 
-    When using basic auth with the http input connector the following points should 
-    be taken into account:
+    When using basic auth with the http input connector the following points should be taken into account:
         - basic auth must only be used with strong passwords
         - basic auth must only be used with TLS encryption
 """
