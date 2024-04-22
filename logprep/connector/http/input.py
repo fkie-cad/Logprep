@@ -4,10 +4,10 @@ HTTPInput
 
 A http input connector that spawns an uvicorn server and accepts http requests, parses them,
 puts them to an internal queue and pops them via :code:`get_next` method.
-By providing 
+An example config file would look like:
 
-Example
-^^^^^^^
+HTTP Connector Config Example
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -22,8 +22,29 @@ Example
             port: 9000
         endpoints:
             /firstendpoint: json 
-            /seccondendpoint: plaintext
-            /thirdendpoint: jsonl
+            /second*: plaintext
+            /(third|fourth)/endpoint: jsonl
+            
+The endpoint config supports regex and wildcard patterns:
+  * :code:`/second*`: matches everything after asterisk
+  * :code:`/(third|fourth)/endpoint` matches either third or forth in the first part
+
+By providing a credentials file in environment variable :code:`LOGPREP_CREDENTIALS_FILE` you can
+add basic authentication for a specific endpoint. The format of this file would look like:
+
+Endpoint Credentials Config Example
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    input:
+    endpoints:
+      /firstendpoint:
+        username: user
+        password_file: quickstart/exampledata/config/user_password.txt
+      /second*:
+        username: user
+        password: secret_password
 """
 
 import inspect
@@ -350,8 +371,10 @@ class HttpConnector(Input):
             ]
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
-        are: :code:`json`, :code:`jsonl`, :code:`plaintext`.
-
+        are: :code:`json`, :code:`jsonl`, :code:`plaintext`. It's possible to use wildcards and
+        regexes for pattern matching.
+        
+        
         .. autoclass:: logprep.connector.http.input.PlaintextHttpEndpoint
             :noindex:
         .. autoclass:: logprep.connector.http.input.JSONLHttpEndpoint
