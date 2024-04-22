@@ -8,60 +8,73 @@ This file should provide the credentials that are needed and can either be
 in yaml or in json format.
 To use the authentication, the given credentials file has to be
 filled with the correct values that correspond to the method you want to use.
+It is important not to forget the getter keyword when filling the credentials file.
 
 .. code-block:: yaml
-    :caption: Example for credentials file
-
-    "http://target.url":
-        # example for token given directly via file
-        token_file: <path/to/token/file> # won't be refreshed if expired
-    "http://target.url":
-        # example for token given directly inline
-        token: <token> # won't be refreshed if expired
-    "http://target.url":
-        # example for OAuth2 Client Credentials Grant
-        endpoint: <endpoint>
-        client_id: <id>
-        client_secret_file: <path/to/secret/file>
-    "http://target.url":
-        # example for OAuth2 Client Credentials Grant with inline secret
-        endpoint: <endpoint>
-        client_id: <id>
-        client_secret: <secret>
-    "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant with authentication for a confidential client
-        endpoint: <endpoint>
-        username: <username>
-        password_file: <path/to/password/file>
-        client_id: <client_id> # optional if required
-        client_secret_file: <path/to/secret/file> # optional if required
-    "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client
-        endpoint: <endpoint>
-        username: <username>
-        password_file: <path/to/password/file>
-    "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client with inline password
-        endpoint: <endpoint>
-        username: <username>
-        password: <password>
-    "http://target.url":
-        # example for Basic Authentication
-        username: <username>
-        password_file: <path/to/password/file>
-    "http://target.url":
-        # example for Basic Authentication with inline password
-        username: <username>
-        password: <plaintext password> # will be overwritten if 'password_file' is given
-    "http://target.url":
-        # example for mTLS authentication
-        client_key: <path/to/client/key/file>
-        cert: <path/to/certificate/file>
-    "http://target.url":
-        # example for mTLS authentication with ca cert given
-        client_key: <path/to/client/key/file>
-        cert: <path/to/certificate/file>
-        ca_cert: <path/to/ca/cert>
+    :caption: Example for credentials file 
+    
+    getter:
+        "http://target.url":
+            # example for token given directly via file
+            token_file: <path/to/token/file> # won't be refreshed if expired
+    getter:
+        "http://target.url":
+            # example for token given directly inline
+            token: <token> # won't be refreshed if expired
+    getter:
+        "http://target.url":
+            # example for OAuth2 Client Credentials Grant
+            endpoint: <endpoint>
+            client_id: <id>
+            client_secret_file: <path/to/secret/file>
+    getter:
+        "http://target.url":
+            # example for OAuth2 Client Credentials Grant with inline secret
+            endpoint: <endpoint>
+            client_id: <id>
+            client_secret: <secret>
+    getter:
+        "http://target.url":
+            # example for OAuth2 Resource Owner Password Credentials Grant with authentication for a confidential client
+            endpoint: <endpoint>
+            username: <username>
+            password_file: <path/to/password/file>
+            client_id: <client_id> # optional if required
+            client_secret_file: <path/to/secret/file> # optional if required
+    getter:
+        "http://target.url":
+            # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client
+            endpoint: <endpoint>
+            username: <username>
+            password_file: <path/to/password/file>
+    getter:
+        "http://target.url":
+            # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client with inline password
+            endpoint: <endpoint>
+            username: <username>
+            password: <password>
+    getter:
+        "http://target.url":
+            # example for Basic Authentication
+            username: <username>
+            password_file: <path/to/password/file>
+    getter:
+        "http://target.url":
+            # example for Basic Authentication with inline password
+            username: <username>
+            password: <plaintext password> # will be overwritten if 'password_file' is given
+    getter:
+        "http://target.url":
+            # example for mTLS authentication
+            client_key: <path/to/client/key/file>
+            cert: <path/to/certificate/file>
+    getter:
+        "http://target.url":
+            # example for mTLS authentication with ca cert given
+            client_key: <path/to/client/key/file>
+            cert: <path/to/certificate/file>
+            ca_cert: <path/to/ca/cert>
+   
 
 Options for the credentials file are:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
