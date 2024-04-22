@@ -370,8 +370,6 @@ class HttpConnector(Input):
         self.port = self._config.uvicorn_config["port"]
         self.host = self._config.uvicorn_config["host"]
         self.target = f"http://{self.host}:{self.port}"
-        if self.messages is None:  # this is only for testing. Is set by pipeline_manager
-            self.messages = mp.Queue(maxsize=self._config.message_backlog_size)
 
     def setup(self):
         """setup starts the actual functionality of this connector.
