@@ -325,6 +325,9 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector.setup()
             resp = requests.post(url=f"{self.target}/auth-json-file", timeout=0.5)
             assert resp.status_code == 401
+            basic = HTTPBasicAuth("wrong", "credentials")
+            resp = requests.post(url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5)
+            assert resp.status_code == 401
             basic = HTTPBasicAuth("user", "file_password")
             resp = requests.post(url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5)
             assert resp.status_code == 200
