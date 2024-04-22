@@ -4,6 +4,7 @@ HTTPInput
 
 A http input connector that spawns an uvicorn server and accepts http requests, parses them,
 puts them to an internal queue and pops them via :code:`get_next` method.
+By providing 
 
 Example
 ^^^^^^^
@@ -73,6 +74,7 @@ def decorator_basic_auth(func: Callable):
             basic_string = req.auth
             if auth_creds not in basic_string:
                 raise HTTPUnauthorized
+        func_wrapper = await func(*args, **kwargs)
         return func_wrapper
 
     return func_wrapper
@@ -163,8 +165,8 @@ class JSONHttpEndpoint(HttpEndpoint):
     _decoder = msgspec.json.Decoder()
 
     @decorator_basic_auth
-    @decorator_request_exceptions
     @decorator_add_metadata
+    @decorator_request_exceptions
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """json endpoint method"""
         data = await req.stream.read()
@@ -180,8 +182,9 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
-    @decorator_request_exceptions
+    @decorator_basic_auth
     @decorator_add_metadata
+    @decorator_request_exceptions
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
         data = await req.stream.read()
@@ -198,8 +201,9 @@ class PlaintextHttpEndpoint(HttpEndpoint):
     """:code:`plaintext` endpoint to get the body from request
     and put it in :code:`message` field"""
 
-    @decorator_request_exceptions
+    @decorator_basic_auth
     @decorator_add_metadata
+    @decorator_request_exceptions
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
         data = await req.stream.read()
@@ -306,8 +310,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
 
     def _init_web_application_server(self, endpoints_config: dict) -> None:
         "Init falcon application server and setting endpoint routes"
-        self.app = falcon.asgi.App()
-        # self.app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
+        self.app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
         for endpoint_path, endpoint in endpoints_config.items():
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
 
