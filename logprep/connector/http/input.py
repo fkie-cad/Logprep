@@ -35,16 +35,27 @@ add basic authentication for a specific endpoint. The format of this file would 
 Endpoint Credentials Config Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
+    :caption: Example for credentials file 
     :linenos:
 
     input:
-    endpoints:
-      /firstendpoint:
-        username: user
-        password_file: quickstart/exampledata/config/user_password.txt
-      /second*:
-        username: user
-        password: secret_password
+        endpoints:
+        /firstendpoint:
+            username: user
+            password_file: quickstart/exampledata/config/user_password.txt
+        /second*:
+            username: user
+            password: secret_password
+                /seccondendpoint: plaintext
+                /thirdendpoint: jsonl
+
+.. security-best-practice::
+   :title: Http Input Connector - Authentication
+
+    When using basic auth with the http input connector the following points should 
+    be taken into account:
+        - basic auth must only be used with strong passwords
+        - basic auth must only be used with TLS encryption
 """
 
 import inspect
