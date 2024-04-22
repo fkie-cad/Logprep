@@ -89,11 +89,8 @@ def decorator_basic_auth(func: Callable):
             auth_request_header = req.get_header("Authorization")
             if not auth_request_header:
                 raise HTTPUnauthorized
-            auth_creds = b64encode(
-                f"{endpoint.credentials.username}:{endpoint.credentials.password}".encode("utf-8")
-            ).decode("utf-8")
             basic_string = req.auth
-            if auth_creds not in basic_string:
+            if endpoint.basicauth_b64 not in basic_string:
                 raise HTTPUnauthorized
         func_wrapper = await func(*args, **kwargs)
         return func_wrapper
@@ -178,6 +175,10 @@ class HttpEndpoint(ABC):
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
         self.credentials = credentials
+        if self.credentials:
+            self.basicauth_b64 = b64encode(
+                f"{self.credentials.username}:{self.credentials.password}".encode("utf-8")
+            ).decode("utf-8")
 
 
 class JSONHttpEndpoint(HttpEndpoint):
