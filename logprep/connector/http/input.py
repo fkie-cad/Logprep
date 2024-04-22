@@ -38,15 +38,13 @@ from typing import Callable, Mapping, Tuple, Union
 
 import falcon.asgi
 import msgspec
-import requests
 import uvicorn
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
+    HTTPUnauthorized,
 )
-from falcon_auth2 import AuthenticationFailure, AuthMiddleware, HeaderGetter
-from falcon_auth2.backends import BasicAuthBackend, GenericAuthBackend
 
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
@@ -59,20 +57,22 @@ UVICORN_CONFIG_KEYS = [
 
 
 def decorator_basic_auth(func: Callable):
-    """Decorator to check basic authentication"""
+    """Decorator to check basic authentication.
+    Will raise 401 on wrong credentials or missing Authorization-Header"""
 
     async def func_wrapper(*args, **kwargs):
-        # need to define auth
         endpoint = args[0]
+        req = args[1]
         if endpoint.credentials:
+            auth_request_header = req.get_header("Authorization")
+            if not auth_request_header:
+                raise HTTPUnauthorized
             auth_creds = b64encode(
                 f"{endpoint.credentials.username}:{endpoint.credentials.password}".encode("utf-8")
             ).decode("utf-8")
-            req = args[1]
             basic_string = req.auth
-            # tut dinge
             if auth_creds not in basic_string:
-                raise AuthenticationFailure
+                raise HTTPUnauthorized
         return func_wrapper
 
     return func_wrapper
@@ -128,19 +128,6 @@ def route_compile_helper(input_re_str: str):
     return re.compile(input_re_str)
 
 
-async def authenticate(user, password):
-    # Check if the user exists and the password match.
-    # This is just for the example
-    return random.choice((True, False))
-
-
-async def basic_user_loader(attributes, user, password):
-    if await authenticate(user, password):
-        print(user)
-        return {"username": user, "kind": "basic"}
-    return None
-
-
 class HttpEndpoint(ABC):
     """Interface for http endpoints.
     Additional functionality is added to child classes via removable decorators.
@@ -156,11 +143,6 @@ class HttpEndpoint(ABC):
     credentials: dict
         Includes authentication credentials, if unset auth is disabled
     """
-
-    auth = {
-        "backend": BasicAuthBackend(basic_user_loader, getter=HeaderGetter("Authorization")),
-        "exempt_methods": ["GET"],
-    }
 
     def __init__(
         self,
@@ -185,7 +167,6 @@ class JSONHttpEndpoint(HttpEndpoint):
     @decorator_add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """json endpoint method"""
-        print(req.auth)
         data = await req.stream.read()
         data = data.decode("utf8")
         metadata = kwargs.get("metadata", {})
@@ -224,7 +205,6 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         data = await req.stream.read()
         metadata = kwargs.get("metadata", {})
         event = {"message": data.decode("utf8")}
-        print(event)
         self.messages.put({**event, **metadata}, block=False)
 
 
@@ -326,16 +306,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
 
     def _init_web_application_server(self, endpoints_config: dict) -> None:
         "Init falcon application server and setting endpoint routes"
-        # a loader function to fetch user from username, password
-        user_loader = lambda username, password: {"username": username}
-
-        # basic auth backend
-        basic_auth = BasicAuthBackend(user_loader)
-
-        # Auth Middleware that uses basic_auth for authentication
-        auth_middleware = AuthMiddleware(basic_auth)
-        self.app = falcon.asgi.App(middleware=[auth_middleware])
-
+        self.app = falcon.asgi.App()
         # self.app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
         for endpoint_path, endpoint in endpoints_config.items():
             self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
@@ -457,6 +428,7 @@ class HttpConnector(Input):
         metafield_name = self._config.metafield_name
         cred_factory = CredentialsFactory()
         # preparing dict with endpoint paths and initialized endpoints objects
+        # and add authentication if credentials are existing for path
         for endpoint_path, endpoint_type in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_type)
             credentials = cred_factory.from_endpoint(endpoint_path)
