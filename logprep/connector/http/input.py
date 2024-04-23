@@ -93,10 +93,10 @@ import msgspec
 import uvicorn
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
+    HTTP_200,
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
     HTTPUnauthorized,
-    HTTP_200,
 )
 
 from logprep.abc.input import FatalInputError, Input

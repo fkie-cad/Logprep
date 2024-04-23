@@ -17,9 +17,8 @@ from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
 
-@pytest.fixture(scope="function")
-def create_credentials(tmp_path_factory):
-    tmp_path = tmp_path_factory.mktemp("data")
+@pytest.fixture(scope="function", name="credentials_file_path")
+def create_credentials(tmp_path):
     secret_file_path = tmp_path / "secret-0.txt"
     secret_file_path.write_text("secret_password")
     credential_file_path = tmp_path / "credentials.yml"
@@ -33,6 +32,9 @@ input:
     /auth-json-file:
       username: user
       password: file_password
+    /.*/[A-Z]{{2}}/json$:
+      username: user
+      password: password
 """
     )
 
@@ -65,6 +67,7 @@ class TestHttpConnector(BaseInputTestCase):
             "/plaintext": "plaintext",
             "/auth-json-secret": "json",
             "/auth-json-file": "json",
+            "/.*/[A-Z]{2}/json$": "json",
         },
     }
 
@@ -95,11 +98,11 @@ class TestHttpConnector(BaseInputTestCase):
         connector.setup()
         assert not hasattr(connector, "http_server")
 
-    def test_get_error_code_on_get(self):
+    def test_get_method_returns_200(self):
         resp = requests.get(url=f"{self.target}/json", timeout=0.5)
         assert resp.status_code == 200
 
-    def test_get_error_code_on_get_with_basic_auth_endpoint(self):
+    def test_get_method_returns_200_with_authentication(self):
         resp = requests.get(url=f"{self.target}/auth-json-secret", timeout=0.5)
         assert resp.status_code == 200
 
@@ -311,21 +314,19 @@ class TestHttpConnector(BaseInputTestCase):
         connector_next_msg, _ = connector.get_next(1)
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
 
-    def test_endpoint_has_credentials(self, create_credentials):
-        credential_file_path = create_credentials
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+    @pytest.mark.parametrize("endpoint", ["/auth-json-secret", "/.*/[A-Z]{2}/json$"])
+    def test_endpoint_has_credentials(self, endpoint, credentials_file_path):
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": credentials_file_path}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
             new_connector.pipeline_index = 1
             new_connector.setup()
-            endpoint_config = new_connector.http_server.endpoints_config.get("/auth-json-secret")
-            print(endpoint_config.credentials)
-            assert endpoint_config.credentials.username
-            assert endpoint_config.credentials.password
+            endpoint_config = new_connector.http_server.endpoints_config.get(endpoint)
+            assert endpoint_config.credentials.username, endpoint
+            assert endpoint_config.credentials.password, endpoint
 
-    def test_endpoint_has_basic_auth(self, create_credentials):
-        credential_file_path = create_credentials
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+    def test_endpoint_has_basic_auth(self, credentials_file_path):
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": credentials_file_path}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
             new_connector.pipeline_index = 1
@@ -340,6 +341,11 @@ class TestHttpConnector(BaseInputTestCase):
             assert resp.status_code == 200
             basic = HTTPBasicAuth("user", "secret_password")
             resp = requests.post(url=f"{self.target}/auth-json-secret", auth=basic, timeout=0.5)
+            assert resp.status_code == 200
+            basic = HTTPBasicAuth("user", "password")
+            resp = requests.post(
+                url=f"{self.target}/auth-json-secret/AB/json", auth=basic, timeout=0.5
+            )
             assert resp.status_code == 200
 
     def test_two_connector_instances_share_the_same_queue(self):
