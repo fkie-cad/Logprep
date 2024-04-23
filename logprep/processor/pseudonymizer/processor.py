@@ -10,7 +10,8 @@ privacy regulations can be adhered to.
 
    The `pseudonymizer` works with two public keys for different roles.
    It is suggested to ensure that two different keys are being used such that the separation of the
-   roles can be maintained.
+   roles can be maintained. You have to ensure, that the key length of both keys is sufficient, because
+   they depend on each other.
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
