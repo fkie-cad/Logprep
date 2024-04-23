@@ -4,10 +4,12 @@ HTTPInput
 
 A http input connector that spawns an uvicorn server and accepts http requests, parses them,
 puts them to an internal queue and pops them via :code:`get_next` method.
-An example config file would look like:
+
 
 HTTP Connector Config Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+An example config file would look like:
+
 ..  code-block:: yaml
     :linenos:
 
@@ -18,55 +20,60 @@ HTTP Connector Config Example
         collect_meta: False
         metafield_name: "@metadata"
         uvicorn_config:
-            host: 0.0.0.0
-            port: 9000
+          host: 0.0.0.0
+          port: 9000
         endpoints:
-            /firstendpoint: json 
-            /second*: plaintext
-            /(third|fourth)/endpoint: jsonl
+          /firstendpoint: json 
+          /second*: plaintext
+          /(third|fourth)/endpoint: jsonl
             
 The endpoint config supports regex and wildcard patterns:
   * :code:`/second*`: matches everything after asterisk
   * :code:`/(third|fourth)/endpoint` matches either third or forth in the first part
 
-By providing a credentials file in environment variable :code:`LOGPREP_CREDENTIALS_FILE` you can
-add basic authentication for a specific endpoint. The format of this file would look like:
 
 Endpoint Credentials Config Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+By providing a credentials file in environment variable :code:`LOGPREP_CREDENTIALS_FILE` you can
+add basic authentication for a specific endpoint. The format of this file would look like:
+
 ..  code-block:: yaml
     :caption: Example for credentials file 
     :linenos:
 
     input:
-        endpoints:
+      endpoints:
         /firstendpoint:
-            username: user
-            password_file: quickstart/exampledata/config/user_password.txt
+          username: user
+          password_file: quickstart/exampledata/config/user_password.txt
         /second*:
-            username: user
-            password: secret_password
-                /seccondendpoint: plaintext
-                /thirdendpoint: jsonl
+          username: user
+          password: secret_password
+          
+You can choose between a plain secret with the key :code:`password` or a filebased secret
+with the key :code:`password_file`.
 
 .. security-best-practice::
    :title: Http Input Connector - Authentication
 
-    When using basic auth with the http input connector the following points 
-    should be taken into account:
+    When using basic auth with the http input connector the following points should be taken into account:
         - basic auth must only be used with strong passwords
         - basic auth must only be used with TLS encryption
+        - avoid to reveal your plaintext secrets in public repositories
         
 Behaviour of HTTP Requests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  * :code:`GET`: 
+  * :code:`GET`:
+   
     * Responds always with 200 (ignores configured Basic Auth)
     * When Messages Queue is full, it responds with 429
   * :code:`POST`:
+  
     * Responds with 200 on non-Basic Auth Endpoints
     * Responds with 401 on Basic Auth Endpoints (and 200 with appropriate credentials)
     * When Messages Queue is full, it responds wiht 429
   * :code:`ALL OTHER`:
+  
     * Responds with 405
 """
 
