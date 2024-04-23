@@ -52,9 +52,22 @@ Endpoint Credentials Config Example
 .. security-best-practice::
    :title: Http Input Connector - Authentication
 
-    When using basic auth with the http input connector the following points should be taken into account:
+    When using basic auth with the http input connector the following points 
+    should be taken into account:
         - basic auth must only be used with strong passwords
         - basic auth must only be used with TLS encryption
+        
+Behaviour of HTTP Requests
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+  * :code:`GET`: 
+    * Responds always with 200 (ignores configured Basic Auth)
+    * When Messages Queue is full, it responds with 429
+  * :code:`POST`:
+    * Responds with 200 on non-Basic Auth Endpoints
+    * Responds with 401 on Basic Auth Endpoints (and 200 with appropriate credentials)
+    * When Messages Queue is full, it responds wiht 429
+  * :code:`ALL OTHER`:
+    * Responds with 405
 """
 
 import inspect
@@ -117,8 +130,11 @@ def decorator_request_exceptions(func: Callable):
             if args[1].method == "POST":
                 func_wrapper = await func(*args, **kwargs)
             elif args[1].method == "GET":
+                endpoint = args[0]
                 resp = args[2]
                 resp.status = HTTP_200
+                if endpoint.messages.full():
+                    raise HTTPTooManyRequests(description="Logprep Message Queue is full.")
                 return
             else:
                 raise HTTPMethodNotAllowed(["POST"])

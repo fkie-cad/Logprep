@@ -98,17 +98,26 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_get_error_code_on_get(self):
         resp = requests.get(url=f"{self.target}/json", timeout=0.5)
-        assert resp.status_code == 405
+        assert resp.status_code == 200
+        
+    def test_get_error_code_on_get_with_basic_auth_endpoint(self):
+        resp = requests.get(url=f"{self.target}/auth-json-secret", timeout=0.5)
+        assert resp.status_code == 200
 
     def test_get_error_code_too_many_requests(self):
         data = {"message": "my log message"}
         session = requests.Session()
-        for _ in range(100):
+        for _ in range(200):
             resp = session.post(url=f"{self.target}/json", json=data, timeout=0.5)
         assert self.object.messages.qsize() == 100
         resp = requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
         assert self.object.messages._maxsize == 100
         assert resp.status_code == 429
+        for _ in range(200):
+            resp = session.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        resp = requests.get(url=f"{self.target}/json", json=data, timeout=0.5)
+        assert resp.status_code == 429
+
 
     def test_json_endpoint_accepts_post_request(self):
         data = {"message": "my log message"}
