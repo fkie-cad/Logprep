@@ -76,6 +76,7 @@ from falcon import (  # pylint: disable=no-name-in-module
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
     HTTPUnauthorized,
+    HTTP_200,
 )
 
 from logprep.abc.input import FatalInputError, Input
@@ -115,6 +116,10 @@ def decorator_request_exceptions(func: Callable):
         try:
             if args[1].method == "POST":
                 func_wrapper = await func(*args, **kwargs)
+            elif args[1].method == "GET":
+                resp = args[2]
+                resp.status = HTTP_200
+                return
             else:
                 raise HTTPMethodNotAllowed(["POST"])
         except queue.Full as exc:
@@ -196,9 +201,9 @@ class JSONHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
+    @decorator_request_exceptions
     @decorator_basic_auth
     @decorator_add_metadata
-    @decorator_request_exceptions
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """json endpoint method"""
         data = await req.stream.read()
@@ -214,9 +219,9 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
+    @decorator_request_exceptions
     @decorator_basic_auth
     @decorator_add_metadata
-    @decorator_request_exceptions
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
         data = await req.stream.read()
@@ -233,9 +238,9 @@ class PlaintextHttpEndpoint(HttpEndpoint):
     """:code:`plaintext` endpoint to get the body from request
     and put it in :code:`message` field"""
 
+    @decorator_request_exceptions
     @decorator_basic_auth
     @decorator_add_metadata
-    @decorator_request_exceptions
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
         data = await req.stream.read()
