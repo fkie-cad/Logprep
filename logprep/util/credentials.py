@@ -63,6 +63,14 @@ filled with the correct values that correspond to the method you want to use.
             client_key: <path/to/client/key/file>
             cert: <path/to/certificate/file>
             ca_cert: <path/to/ca/cert>
+    input:
+      endpoints:
+        /firstendpoint:
+          username: <username>
+          password_file: <path/to/password/file>
+        /second*:
+          username: <username>
+          password: <password>
    
 
 Options for the credentials file are:
