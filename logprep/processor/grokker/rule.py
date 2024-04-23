@@ -68,10 +68,14 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
     def _transform(pattern):  # nosemgrep
         fields = re.findall(FIELD_PATTERN, pattern)
         for dotted_field, _ in fields:
-            splitted_field = dotted_field.split(".")
-            if len(splitted_field) > 1:
-                replacement = "".join(f"[{element}]" for element in splitted_field)
-                pattern = re.sub(re.escape(dotted_field), replacement, pattern)
+            split_field = dotted_field.split(".")
+            if len(split_field) > 1:
+                replacement = "".join(f"[{element}]" for element in split_field)
+                # ensure full field is replaced by scanning for ':' at the front and '}' or ':'
+                # at the end in the pattern. Also add them again in the replacement string.
+                pattern = re.sub(
+                    f":{re.escape(dotted_field)}([}}:])", f":{replacement}\\1", pattern
+                )
         return pattern
 
     def _replace_pattern(pattern):
@@ -116,7 +120,7 @@ class GrokkerRule(DissectorRule):
         pattern.
         It is possible to use `oniguruma` regex pattern with or without grok patterns in the
         patterns part. When defining an `oniguruma` there is a limitation of three nested
-        parentheses inside the pattern. Applying more nested parentheses is not possible.  
+        parentheses inside the pattern. Applying more nested parentheses is not possible.
         Logstashs ecs conform grok patterns are used to resolve the here used grok patterns.
         When writing patterns it is advised to be careful as the underlying regex can become complex
         fast. If the execution and the resolving of the pattern takes more than one second a
