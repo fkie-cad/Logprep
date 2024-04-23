@@ -1108,6 +1108,37 @@ getter:
             mock_logger.mock_calls[0][1][0],
         )
 
+    def test_from_target_raises_when_getter_key_not_set(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path.write_text(
+            """---
+    "http://some.url":
+        endpoint: "https://endpoint.end"
+        username: testuser
+        password_file: "thisismysecretsecretclientsecret"
+"""
+        )
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            with pytest.raises(InvalidConfigurationError, match="Missing key 'getter'"):
+                creds = CredentialsFactory.from_target("http://some.url/configuration")
+                assert isinstance(creds, InvalidConfigurationError)
+
+    def test_from_endpoint_raises_when_input_key_not_set(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path.write_text(
+            """---
+    /some/endpoint:
+        username: testuser
+        password_file: "thisismysecretsecretclientsecret"
+"""
+        )
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            with pytest.raises(InvalidConfigurationError, match="Missing key 'input'"):
+                creds = CredentialsFactory.from_endpoint("/some/endpoint")
+                assert isinstance(creds, InvalidConfigurationError)
+
 
 class TestMTLSCredentials:
     def test_get_session_returns_session_and_cert_is_set(self):

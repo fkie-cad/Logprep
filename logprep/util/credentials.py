@@ -155,6 +155,8 @@ class CredentialsFactory:
         domain = urlparse(target_url).netloc
         scheme = urlparse(target_url).scheme
         getter_credentials = raw_content.get("getter")
+        if not getter_credentials:
+            raise InvalidConfigurationError(f"Missing key 'getter' in {credentials_file_path}")
         credential_mapping = getter_credentials.get(f"{scheme}://{domain}")
         credentials = cls.from_dict(credential_mapping)
         return credentials
@@ -181,7 +183,10 @@ class CredentialsFactory:
         if credentials_file_path is None:
             return None
         raw_content: dict = cls._get_content(Path(credentials_file_path))
-        endpoint_credentials = raw_content.get("input").get("endpoints")
+        input_credentials = raw_content.get("input")
+        if not input_credentials:
+            raise InvalidConfigurationError(f"Missing key 'input' in {credentials_file_path}")
+        endpoint_credentials = input_credentials.get("endpoints")
         credential_mapping = endpoint_credentials.get(target_endpoint)
         credentials = cls.from_dict(credential_mapping)
         return credentials
