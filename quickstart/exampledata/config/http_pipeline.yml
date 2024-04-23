@@ -2,7 +2,7 @@ version: 1
 process_count: 2
 
 logger:
-  level: DEBUG
+  level: INFO
 
 metrics:
   enabled: true
@@ -17,8 +17,8 @@ input:
           host: 0.0.0.0
           port: 9000
       endpoints:
+          /auth-json: json
           /json: json
-          /lab/123/(first|second|third)/js.*: jsonl
           /lab/123/(ABC|DEF)/pl.*: plaintext
           /lab/123/ABC/auditlog: jsonl
 output:

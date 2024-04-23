@@ -696,9 +696,10 @@ class TestCredentialsFactory:
             (
                 "Return BasicAuthCredential object",
                 """---
-"https://some.url":
-    username: test
-    password: test
+getter:
+    "https://some.url":
+        username: test
+        password: test
 """,
                 BasicAuthCredentials,
                 None,
@@ -706,10 +707,11 @@ class TestCredentialsFactory:
             (
                 "Return OAuthPasswordFlowCredential object",
                 """---
-"https://some.url":
-    endpoint: https://endpoint.end
-    username: test
-    password: test
+getter:
+    "https://some.url":
+        endpoint: https://endpoint.end
+        username: test
+        password: test
 """,
                 OAuth2PasswordFlowCredentials,
                 None,
@@ -717,10 +719,11 @@ class TestCredentialsFactory:
             (
                 "Return OAuthClientFlowCredential object",
                 """---
-"https://some.url":
-    endpoint: https://endpoint.end
-    client_id: test
-    client_secret: test
+getter:
+    "https://some.url":
+        endpoint: https://endpoint.end
+        client_id: test
+        client_secret: test
 """,
                 OAuth2ClientFlowCredentials,
                 None,
@@ -728,8 +731,9 @@ class TestCredentialsFactory:
             (
                 "Return OAuthTokenCredential object",
                 """---
-"https://some.url":
-    token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
+getter:
+    "https://some.url":
+        token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
 """,
                 OAuth2TokenCredentials,
                 None,
@@ -737,7 +741,8 @@ class TestCredentialsFactory:
             (
                 "Return None if credentials are missing",
                 """---
-"https://some.url":
+getter:
+    "https://some.url":
 """,
                 type(None),
                 None,
@@ -745,8 +750,9 @@ class TestCredentialsFactory:
             (
                 "Return None if wrong URL is given",
                 """---
-"https://some.other.url":
-    token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
+getter:             
+    "https://some.other.url":
+        token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
 """,
                 type(None),
                 None,
@@ -754,10 +760,11 @@ class TestCredentialsFactory:
             (
                 "Raises InvalidConfigurationError credentials file is invalid yml",
                 """---
-"https://some.url":
-    password no colon here
-    username: test
-    endpoint: https://endpoint.end
+getter:                
+    "https://some.url":
+        password no colon here
+        username: test
+        endpoint: https://endpoint.end
 """,
                 None,
                 InvalidConfigurationError,
@@ -766,10 +773,12 @@ class TestCredentialsFactory:
                 "Return OAuthClientFlowCredential object when credentials file is valid json",
                 """
 {
+"getter": {
     "https://some.url": {
         "endpoint": "https://endpoint.end",
         "client_id": "test",
         "client_secret": "test"
+        }
     }
 }
 """,
@@ -780,6 +789,7 @@ class TestCredentialsFactory:
                 "Raise InvalidConfigurationError when credentials file is invalid json",
                 """
 {
+"getter": {
     "https://some.url": 
         "endpoint": "https://endpoint.end",
         "client_id": "test",
@@ -791,11 +801,12 @@ class TestCredentialsFactory:
             (
                 "Return OAuth2PassowordFlowCredentials object with additional client_id in credentials file",
                 """---
-"https://some.url": 
-    endpoint: https://endpoint.end
-    client_id: test
-    username: test
-    password: test
+getter:
+    "https://some.url": 
+        endpoint: https://endpoint.end
+        client_id: test
+        username: test
+        password: test
 """,
                 OAuth2PasswordFlowCredentials,
                 None,
@@ -803,13 +814,14 @@ class TestCredentialsFactory:
             (
                 "Return OAuthTokenCredential object when other params are given",
                 """---
-"https://some.url":
-    endpoint: https://endpoint.end
-    client_id: test
-    username: test
-    client_secret: test
-    password: test
-    token: "73475289038didjhwxnwnxwoiencn"
+getter:
+    "https://some.url":
+        endpoint: https://endpoint.end
+        client_id: test
+        username: test
+        client_secret: test
+        password: test
+        token: "73475289038didjhwxnwnxwoiencn"
 
 """,
                 OAuth2TokenCredentials,
@@ -818,11 +830,12 @@ class TestCredentialsFactory:
             (
                 "Raise InvalidConfigurationError if credentials have wrong type",
                 """---
-"https://some.url":
-    endpoint: https://endpoint.end
-    username: 123
-    password: test
-    client_secret: 456
+getter:
+    "https://some.url":
+        endpoint: https://endpoint.end
+        username: 123
+        password: test
+        client_secret: 456
 
 """,
                 None,
@@ -831,12 +844,13 @@ class TestCredentialsFactory:
             (
                 "Return OAuthClientFlowCredential object when username passowrd are also given",
                 """---
-"https://some.url":
-    endpoint: https://endpoint.end
-    client_id: test
-    username: test
-    password: test
-    client_secret: test
+getter:
+    "https://some.url":
+        endpoint: https://endpoint.end
+        client_id: test
+        username: test
+        password: test
+        client_secret: test
 """,
                 OAuth2PasswordFlowCredentials,
                 None,
@@ -844,10 +858,11 @@ class TestCredentialsFactory:
             (
                 "Return None if no matching credentials class is found",
                 """---
-"https://some.url":
-    endpoint: https://endpoint.end
-    username: test
-    client_secret: test
+getter:
+    "https://some.url":
+        endpoint: https://endpoint.end
+        username: test
+        client_secret: test
 """,
                 type(None),
                 None,
@@ -855,10 +870,11 @@ class TestCredentialsFactory:
             (
                 "Error",
                 """---
-"https://some.url":
-    endpoint: https://endpoint.end
-    username: test
-    password:
+getter:
+    "https://some.url":
+        endpoint: https://endpoint.end
+        username: test
+        password:
 """,
                 type(None),
                 InvalidConfigurationError,
@@ -866,9 +882,10 @@ class TestCredentialsFactory:
             (
                 "Return MTLSCredentials object if certificate and key are given",
                 """---
-"https://some.url":
-    client_key: "path/to/client/key"
-    cert: "path/to/cert"
+getter:
+    "https://some.url":
+        client_key: "path/to/client/key"
+        cert: "path/to/cert"
 """,
                 MTLSCredentials,
                 None,
@@ -876,15 +893,16 @@ class TestCredentialsFactory:
             (
                 "Return MTLSCredentials object if certificate key and ca cert are given",
                 """---
-"https://some.url":
-    client_key: "path/to/client/key"
-    cert: "path/to/cert"
-    ca_cert: "path/to/ca/cert"
-    endpoint: https://endpoint.end
-    client_id: test
-    username: test
-    password: test
-    client_secret: test
+getter:
+    "https://some.url":
+        client_key: "path/to/client/key"
+        cert: "path/to/cert"
+        ca_cert: "path/to/ca/cert"
+        endpoint: https://endpoint.end
+        client_id: test
+        username: test
+        password: test
+        client_secret: test
 """,
                 MTLSCredentials,
                 None,
@@ -892,10 +910,11 @@ class TestCredentialsFactory:
             (
                 "Return MTLSCredentials object if certificate key and ca cert are given with extra params",
                 """---
-"https://some.url":
-    client_key: "path/to/client/key"
-    cert: "path/to/cert"
-    ca_cert: "path/to/ca/cert"
+getter:
+    "https://some.url":
+        client_key: "path/to/client/key"
+        cert: "path/to/cert"
+        ca_cert: "path/to/ca/cert"
 """,
                 MTLSCredentials,
                 None,
@@ -903,11 +922,12 @@ class TestCredentialsFactory:
             (
                 "Return MTLSCredentials object if certificate and key are given with extra parameters",
                 """---
-"https://some.url":
-    client_key: "path/to/client/key"
-    cert: "path/to/cert"
-    endpoint: https://endpoint.end
-    username: test
+getter:
+    "https://some.url":
+        client_key: "path/to/client/key"
+        cert: "path/to/cert"
+        endpoint: https://endpoint.end
+        username: test
 """,
                 MTLSCredentials,
                 None,
@@ -915,8 +935,9 @@ class TestCredentialsFactory:
             (
                 "Return None if certificate is missing",
                 """---
-"https://some.url":
-    client_key: "path/to/client/key"
+getter:
+    "https://some.url":
+        client_key: "path/to/client/key"
 """,
                 type(None),
                 None,
@@ -924,16 +945,17 @@ class TestCredentialsFactory:
             (
                 "Return InvalidConfigurationError object if certificate is empty",
                 """---
-"https://some.url":
-    client_key: "path/to/client/key"
-    cert: 
+getter:
+    "https://some.url":
+        client_key: "path/to/client/key"
+        cert: 
 """,
                 None,
                 InvalidConfigurationError,
             ),
         ],
     )
-    def test_credentials_returns_expected_credential_object(
+    def test_getter_credentials_returns_expected_credential_object(
         self, testcase, credential_file_content, instance, tmp_path, error
     ):
         credential_file_path = tmp_path / "credentials"
@@ -947,6 +969,23 @@ class TestCredentialsFactory:
                 creds = CredentialsFactory.from_target("https://some.url/configuration")
                 assert isinstance(creds, instance), testcase
 
+    def test_input_credentials_returns_expected_credentials_object(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path.write_text(
+            """---
+input:
+    endpoints:
+        /some/auth/endpoint:
+            username: test_user
+            password: myverysecretpassword
+"""
+        )
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            creds = CredentialsFactory.from_endpoint("/some/auth/endpoint")
+            assert isinstance(creds, BasicAuthCredentials)
+            assert "test_user" in creds.username
+
     def test_credentials_returns_none_if_env_not_set(self):
         creds = CredentialsFactory.from_target("https://some.url/configuration")
         assert creds is None
@@ -955,10 +994,11 @@ class TestCredentialsFactory:
         credential_file_path = tmp_path / "credentials.yml"
         credential_file_path.write_text(
             """---
-"http://some.url":
-    endpoint: https://endpoint.end
-    client_id: test
-    client_secret: test
+getter:
+    "http://some.url":
+        endpoint: https://endpoint.end
+        client_id: test
+        client_secret: test
 """
         )
         mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
@@ -1013,11 +1053,12 @@ class TestCredentialsFactory:
         secret_file_path = tmp_path / "secret.txt"
         credential_file_path.write_text(
             f"""---
-"http://some.url":
-    {endpoint}
-    username: testuser
-    client_id: testid
-    {type_of_secret}: {secret_file_path}
+getter:
+    "http://some.url":
+        {endpoint}
+        username: testuser
+        client_id: testid
+        {type_of_secret}: {secret_file_path}
 """
         )
         secret_file_path.write_text(secret_content)
@@ -1033,12 +1074,13 @@ class TestCredentialsFactory:
 
         credential_file_path.write_text(
             f"""---
-"http://some.url":
-    endpoint: "https://endpoint.end"
-    username: testuser
-    client_id: testid
-    client_secret_file: {secret_file_path_0}
-    password_file: {secret_file_path_1}
+getter:
+    "http://some.url":
+        endpoint: "https://endpoint.end"
+        username: testuser
+        client_id: testid
+        client_secret_file: {secret_file_path_0}
+        password_file: {secret_file_path_1}
 """
         )
         secret_file_path_0.write_text("thisismysecretsecretclientsecret")

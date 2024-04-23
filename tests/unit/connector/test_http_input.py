@@ -3,15 +3,42 @@
 # pylint: disable=attribute-defined-outside-init
 import multiprocessing
 from copy import deepcopy
+from unittest import mock
 
 import falcon
+import pytest
 import requests
 import uvicorn
+from requests.auth import HTTPBasicAuth
 
 from logprep.abc.input import FatalInputError
 from logprep.connector.http.input import HttpConnector
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
+
+
+@pytest.fixture(scope="function", name="credentials_file_path")
+def create_credentials(tmp_path):
+    secret_file_path = tmp_path / "secret-0.txt"
+    secret_file_path.write_text("secret_password")
+    credential_file_path = tmp_path / "credentials.yml"
+    credential_file_path.write_text(
+        f"""---
+input:
+  endpoints:
+    /auth-json-secret:
+      username: user
+      password_file: {secret_file_path}
+    /auth-json-file:
+      username: user
+      password: file_password
+    /.*/[A-Z]{{2}}/json$:
+      username: user
+      password: password
+"""
+    )
+
+    return str(credential_file_path)
 
 
 class TestHttpConnector(BaseInputTestCase):
@@ -38,6 +65,9 @@ class TestHttpConnector(BaseInputTestCase):
             "/(first|second)/jsonl": "jsonl",
             "/(third|fourth)/jsonl*": "jsonl",
             "/plaintext": "plaintext",
+            "/auth-json-secret": "json",
+            "/auth-json-file": "json",
+            "/.*/[A-Z]{2}/json$": "json",
         },
     }
 
@@ -68,18 +98,26 @@ class TestHttpConnector(BaseInputTestCase):
         connector.setup()
         assert not hasattr(connector, "http_server")
 
-    def test_get_error_code_on_get(self):
+    def test_get_method_returns_200(self):
         resp = requests.get(url=f"{self.target}/json", timeout=0.5)
-        assert resp.status_code == 405
+        assert resp.status_code == 200
+
+    def test_get_method_returns_200_with_authentication(self):
+        resp = requests.get(url=f"{self.target}/auth-json-secret", timeout=0.5)
+        assert resp.status_code == 200
 
     def test_get_error_code_too_many_requests(self):
         data = {"message": "my log message"}
         session = requests.Session()
-        for i in range(100):
+        for _ in range(100):
             resp = session.post(url=f"{self.target}/json", json=data, timeout=0.5)
         assert self.object.messages.qsize() == 100
         resp = requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
         assert self.object.messages._maxsize == 100
+        assert resp.status_code == 429
+        for _ in range(100):
+            resp = session.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        resp = requests.get(url=f"{self.target}/json", json=data, timeout=0.5)
         assert resp.status_code == 429
 
     def test_json_endpoint_accepts_post_request(self):
@@ -275,6 +313,40 @@ class TestHttpConnector(BaseInputTestCase):
         }
         connector_next_msg, _ = connector.get_next(1)
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
+
+    @pytest.mark.parametrize("endpoint", ["/auth-json-secret", "/.*/[A-Z]{2}/json$"])
+    def test_endpoint_has_credentials(self, endpoint, credentials_file_path):
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": credentials_file_path}
+        with mock.patch.dict("os.environ", mock_env):
+            new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
+            new_connector.pipeline_index = 1
+            new_connector.setup()
+            endpoint_config = new_connector.http_server.endpoints_config.get(endpoint)
+            assert endpoint_config.credentials.username, endpoint
+            assert endpoint_config.credentials.password, endpoint
+
+    def test_endpoint_has_basic_auth(self, credentials_file_path):
+        mock_env = {"LOGPREP_CREDENTIALS_FILE": credentials_file_path}
+        with mock.patch.dict("os.environ", mock_env):
+            new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
+            new_connector.pipeline_index = 1
+            new_connector.setup()
+            resp = requests.post(url=f"{self.target}/auth-json-file", timeout=0.5)
+            assert resp.status_code == 401
+            basic = HTTPBasicAuth("wrong", "credentials")
+            resp = requests.post(url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5)
+            assert resp.status_code == 401
+            basic = HTTPBasicAuth("user", "file_password")
+            resp = requests.post(url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5)
+            assert resp.status_code == 200
+            basic = HTTPBasicAuth("user", "secret_password")
+            resp = requests.post(url=f"{self.target}/auth-json-secret", auth=basic, timeout=0.5)
+            assert resp.status_code == 200
+            basic = HTTPBasicAuth("user", "password")
+            resp = requests.post(
+                url=f"{self.target}/auth-json-secret/AB/json", auth=basic, timeout=0.5
+            )
+            assert resp.status_code == 200
 
     def test_two_connector_instances_share_the_same_queue(self):
         new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)

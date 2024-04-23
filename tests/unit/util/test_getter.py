@@ -397,9 +397,11 @@ class TestHttpGetter:
 
     def test_credentials_returns_credentials_if_set(self, tmp_path):
         credentials_file_content = {
-            "https://does-not-matter": {
-                "username": "myuser",
-                "password": "mypassword",
+            "getter": {
+                "https://does-not-matter": {
+                    "username": "myuser",
+                    "password": "mypassword",
+                }
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"
@@ -427,10 +429,12 @@ class TestHttpGetter:
             match=[matchers.header_matcher({"Authorization": "Bearer toooooken"})],
         )
         credentials_file_content = {
-            f"https://{domain}": {
-                "username": "myuser",
-                "password": "mypassword",
-                "endpoint": "https://the.krass.endpoint/token",
+            "getter": {
+                f"https://{domain}": {
+                    "username": "myuser",
+                    "password": "mypassword",
+                    "endpoint": "https://the.krass.endpoint/token",
+                }
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"
@@ -461,10 +465,12 @@ class TestHttpGetter:
             match=[matchers.header_matcher({"Authorization": "Bearer toooooken"})],
         )
         credentials_file_content = {
-            f"https://{domain}": {
-                "username": "myuser",
-                "password": "mypassword",
-                "endpoint": "https://the.krass.endpoint/token",
+            "getter": {
+                f"https://{domain}": {
+                    "username": "myuser",
+                    "password": "mypassword",
+                    "endpoint": "https://the.krass.endpoint/token",
+                }
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"
@@ -496,10 +502,12 @@ class TestHttpGetter:
             match=[matchers.header_matcher({"Authorization": "Bearer toooooken"})],
         )
         credentials_file_content = {
-            f"https://{domain}": {
-                "username": "myuser",
-                "password": "mypassword",
-                "endpoint": "https://the.krass.endpoint/token",
+            "getter": {
+                f"https://{domain}": {
+                    "username": "myuser",
+                    "password": "mypassword",
+                    "endpoint": "https://the.krass.endpoint/token",
+                }
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"
@@ -559,9 +567,11 @@ class TestHttpGetter:
                 match=[matchers.request_kwargs_matcher(req_kwargs)],
             )
         credentials_file_content = {
-            f"https://{domain}": {
-                "client_key": "path/to/key",
-                "cert": "path/to/cert",
+            "getter": {
+                f"https://{domain}": {
+                    "client_key": "path/to/key",
+                    "cert": "path/to/cert",
+                }
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"
@@ -589,10 +599,12 @@ class TestHttpGetter:
             match=[matchers.request_kwargs_matcher(req_kwargs)],
         )
         credentials_file_content = {
-            f"https://{domain}": {
-                "client_key": "path/to/key",
-                "cert": "path/to/cert",
-                "ca_cert": "path/to/ca/cert",
+            "getter": {
+                f"https://{domain}": {
+                    "client_key": "path/to/key",
+                    "cert": "path/to/cert",
+                    "ca_cert": "path/to/ca/cert",
+                }
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"
@@ -627,10 +639,12 @@ class TestHttpGetter:
             match=[matchers.request_kwargs_matcher(req_kwargs)],
         )
         credentials_file_content = {
-            f"https://{domain}": {
-                "client_key": "path/to/key",
-                "cert": "path/to/cert",
-                "ca_cert": "path/to/ca/cert",
+            "getter": {
+                f"https://{domain}": {
+                    "client_key": "path/to/key",
+                    "cert": "path/to/cert",
+                    "ca_cert": "path/to/ca/cert",
+                }
             }
         }
         credentials_file: Path = tmp_path / "credentials.json"

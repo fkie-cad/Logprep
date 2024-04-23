@@ -1,14 +1,22 @@
 ## Upcoming Changes
 
 ## next release
+
 ### Breaking
+
+### Features
+
+### Improvements
+
+### Bugfix
+
+## 11.1.0
 
 ### Features
 
   * new documentation part with security best practices which compiles to `user_manual/security/best_practices.html`
     * also comes with excel export functionality of given best practices  
-
-### Improvements
+  * add basic auth to http_input
 
 ### Bugfix
 
