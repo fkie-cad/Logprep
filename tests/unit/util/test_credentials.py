@@ -799,7 +799,7 @@ getter:
                 InvalidConfigurationError,
             ),
             (
-                "Return OAuth2PassowordFlowCredentials object with additional client_id in credentials file",
+                "Return OAuth2PassowordFlowCredentials object with extra client_id given",
                 """---
 getter:
     "https://some.url": 
@@ -908,7 +908,7 @@ getter:
                 None,
             ),
             (
-                "Return MTLSCredentials object if certificate key and ca cert are given with extra params",
+                "Return MTLSCredentials object if cert key and ca cert are given with extra params",
                 """---
 getter:
     "https://some.url":
@@ -920,7 +920,7 @@ getter:
                 None,
             ),
             (
-                "Return MTLSCredentials object if certificate and key are given with extra parameters",
+                "Return MTLSCredentials object if cert and key are given with extra parameters",
                 """---
 getter:
     "https://some.url":
@@ -1038,7 +1038,7 @@ getter:
                 OAuth2TokenCredentials,
             ),
             (
-                "Return BasicAuthCredential object when no endpoint is given and password_file is given",
+                "Return BasicAuthCredential object with no endpoint and password_file",
                 "password_file",
                 "",
                 "hiansdnjskwuthisisaverysecretsecret",
