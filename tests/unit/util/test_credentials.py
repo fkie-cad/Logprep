@@ -105,10 +105,10 @@ class TestOAuth2TokenCredentials:
     )
     def test_init(self, testcase, kwargs, error, error_message):
         if error is None:
-            test = OAuth2TokenCredentials(**kwargs)
+            _ = OAuth2TokenCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                test = OAuth2TokenCredentials(**kwargs)
+                _ = OAuth2TokenCredentials(**kwargs)
 
     def test_get_session_returns_session(self):
         test = OAuth2TokenCredentials(token="tooooooken")
@@ -209,10 +209,10 @@ class TestOAuth2PasswordFlowCredentials:
     )
     def test_init(self, testcase, error, kwargs, error_message):
         if error is None:
-            test = OAuth2PasswordFlowCredentials(**kwargs)
+            _ = OAuth2PasswordFlowCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                test = OAuth2PasswordFlowCredentials(**kwargs)
+                _ = OAuth2PasswordFlowCredentials(**kwargs)
 
     @responses.activate
     def test_get_session_returns_session(self):
@@ -486,10 +486,10 @@ class TestOAuth2ClientFlowCredentials:
     )
     def test_init(self, testcase, kwargs, error, error_message):
         if error is None:
-            test = OAuth2ClientFlowCredentials(**kwargs)
+            _ = OAuth2ClientFlowCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                test = OAuth2ClientFlowCredentials(**kwargs)
+                _ = OAuth2ClientFlowCredentials(**kwargs)
 
     @responses.activate
     def test_get_session_returns_session(self):
@@ -799,7 +799,7 @@ getter:
                 InvalidConfigurationError,
             ),
             (
-                "Return OAuth2PassowordFlowCredentials object with extra client_id given",
+                "Return OAuth2PassowordFlowCredentials object with extra client_id",
                 """---
 getter:
     "https://some.url": 
@@ -1101,7 +1101,7 @@ getter:
             "password": "password",
             "extra_param": "extra",
         }
-        creds = CredentialsFactory.from_dict(credentials_file_content_with_extra_params)
+        _ = CredentialsFactory.from_dict(credentials_file_content_with_extra_params)
         mock_logger.warning.assert_called_once()
         assert re.search(
             r"OAuth password authorization for confidential clients",
