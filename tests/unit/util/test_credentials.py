@@ -1169,7 +1169,7 @@ class TestMTLSCredentials:
         assert "path/to/ca/cert" in test._session.verify
 
 
-class TestCredentialsFile:
+class TestCredentialsFileSchema:
     def test_credential_file_can_be_instanciated(self):
         credentials_file_content = {
             "input": {
