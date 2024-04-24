@@ -310,6 +310,22 @@ test_cases = [  # testcase, rule, event, expected
             "port": 1234,
         },
     ),
+    (
+        "Subfield with common prefix",
+        {
+            "filter": "message",
+            "grokker": {
+                "mapping": {
+                    "message": "Facility %{USER:facility.location} %{USER:facility.location_level}"
+                }
+            },
+        },
+        {"message": "Facility spain primary"},
+        {
+            "message": "Facility spain primary",
+            "facility": {"location": "spain", "location_level": "primary"},
+        },
+    ),
 ]
 
 failure_test_cases = [
