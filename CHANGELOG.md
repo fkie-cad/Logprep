@@ -10,6 +10,8 @@
 
 ### Bugfix
 
+  * fixes bug where missing key in credentials file leads to AttributeError
+
 ## 11.1.0
 
 ### Features

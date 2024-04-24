@@ -113,6 +113,7 @@ from ruamel.yaml.error import YAMLError
 from urllib3 import Retry
 
 from logprep.factory_error import InvalidConfigurationError
+from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -148,14 +149,13 @@ class CredentialsFactory:
             Credentials object representing the correct authorization method
 
         """
-        credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
+        credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
         if credentials_file_path is None:
             return None
-        raw_content: dict = cls._get_content(Path(credentials_file_path))
+        credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
         domain = urlparse(target_url).netloc
         scheme = urlparse(target_url).scheme
-        getter_credentials = raw_content.get("getter")
-        credential_mapping = getter_credentials.get(f"{scheme}://{domain}")
+        credential_mapping = credentials_file.getter.get(f"{scheme}://{domain}")
         credentials = cls.from_dict(credential_mapping)
         return credentials
 
@@ -177,17 +177,17 @@ class CredentialsFactory:
             Credentials object representing the correct authorization method
 
         """
-        credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
+        credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
         if credentials_file_path is None:
             return None
-        raw_content: dict = cls._get_content(Path(credentials_file_path))
-        endpoint_credentials = raw_content.get("input").get("endpoints")
+        credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
+        endpoint_credentials = credentials_file.input.get("endpoints")
         credential_mapping = endpoint_credentials.get(target_endpoint)
         credentials = cls.from_dict(credential_mapping)
         return credentials
 
     @staticmethod
-    def _get_content(file_path: Path) -> dict:
+    def get_content(file_path: Path) -> dict:
         """gets content from credentials file
         file can be either json or yaml
 
@@ -210,9 +210,9 @@ class CredentialsFactory:
         try:
             file_content = file_path.read_text(encoding="utf-8")
             try:
-                return json.loads(file_content)
+                return CredentialsFileSchema(**json.loads(file_content))
             except (json.JSONDecodeError, ValueError):
-                return yaml.load(file_content)
+                return CredentialsFileSchema(**yaml.load(file_content))
         except (TypeError, YAMLError) as error:
             raise InvalidConfigurationError(
                 f"Invalid credentials file: {file_path} {error.args[0]}"
@@ -441,6 +441,23 @@ class Credentials:
                     f"Authentication failed with status code 400 Bad Request: {response.json().get('error')}"
                 ) from error
             raise
+
+
+@define(kw_only=True)
+class CredentialsFileSchema:
+    """class for credentials file"""
+
+    input: dict = field(
+        validator=[
+            validators.instance_of(dict),
+            validators.deep_mapping(
+                key_validator=validators.in_(["endpoints"]),
+                value_validator=validators.instance_of(dict),
+            ),
+        ],
+        default={"endpoints": {}},
+    )
+    getter: dict = field(validator=validators.instance_of(dict), default={})
 
 
 @define(kw_only=True)
