@@ -14,6 +14,7 @@ from requests.auth import HTTPBasicAuth
 from logprep.abc.input import FatalInputError
 from logprep.connector.http.input import HttpConnector
 from logprep.factory import Factory
+from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from tests.unit.connector.base import BaseInputTestCase
 
 
@@ -316,7 +317,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     @pytest.mark.parametrize("endpoint", ["/auth-json-secret", "/.*/[A-Z]{2}/json$"])
     def test_endpoint_has_credentials(self, endpoint, credentials_file_path):
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": credentials_file_path}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
             new_connector.pipeline_index = 1
@@ -326,7 +327,7 @@ class TestHttpConnector(BaseInputTestCase):
             assert endpoint_config.credentials.password, endpoint
 
     def test_endpoint_has_basic_auth(self, credentials_file_path):
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": credentials_file_path}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
             new_connector.pipeline_index = 1
