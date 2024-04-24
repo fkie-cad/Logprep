@@ -306,6 +306,7 @@ class MetricsConfig:
 
     enabled: bool = field(validator=validators.instance_of(bool), default=False)
     port: int = field(validator=validators.instance_of(int), default=8000)
+    uvicorn_config: dict = field(validator=validators.instance_of(dict), factory=dict)
 
 
 @define(kw_only=True)
