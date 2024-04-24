@@ -444,7 +444,7 @@ class Credentials:
 
 
 @define(kw_only=True)
-class CredentialsFile:
+class CredentialsFileSchema:
     """class for credentials file"""
 
     input: dict = field(
