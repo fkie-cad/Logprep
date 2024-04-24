@@ -1,18 +1,27 @@
 ## Upcoming Changes
 
 ## next release
+
 ### Breaking
 
 ### Features
-
-  * new documentation part with security best practices which compiles to `user_manual/security/best_practices.html`
-    * also comes with excel export functionality of given best practices  
 
 ### Improvements
 
 ### Bugfix
 
-* fix a bug in http connector leading to only first process working
+## 11.1.0
+
+### Features
+
+  * new documentation part with security best practices which compiles to `user_manual/security/best_practices.html`
+    * also comes with excel export functionality of given best practices  
+  * add basic auth to http_input
+
+### Bugfix
+
+* fixes a bug in http connector leading to only first process working
+* fixes the broken gracefull shutdown behaviour
 
 ## 11.0.1
 ### Bugfix

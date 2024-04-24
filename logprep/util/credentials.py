@@ -10,58 +10,68 @@ To use the authentication, the given credentials file has to be
 filled with the correct values that correspond to the method you want to use.
 
 .. code-block:: yaml
-    :caption: Example for credentials file
-
-    "http://target.url":
-        # example for token given directly via file
-        token_file: <path/to/token/file> # won't be refreshed if expired
-    "http://target.url":
-        # example for token given directly inline
-        token: <token> # won't be refreshed if expired
-    "http://target.url":
-        # example for OAuth2 Client Credentials Grant
-        endpoint: <endpoint>
-        client_id: <id>
-        client_secret_file: <path/to/secret/file>
-    "http://target.url":
-        # example for OAuth2 Client Credentials Grant with inline secret
-        endpoint: <endpoint>
-        client_id: <id>
-        client_secret: <secret>
-    "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant with authentication for a confidential client
-        endpoint: <endpoint>
-        username: <username>
-        password_file: <path/to/password/file>
-        client_id: <client_id> # optional if required
-        client_secret_file: <path/to/secret/file> # optional if required
-    "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client
-        endpoint: <endpoint>
-        username: <username>
-        password_file: <path/to/password/file>
-    "http://target.url":
-        # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client with inline password
-        endpoint: <endpoint>
-        username: <username>
-        password: <password>
-    "http://target.url":
-        # example for Basic Authentication
-        username: <username>
-        password_file: <path/to/password/file>
-    "http://target.url":
-        # example for Basic Authentication with inline password
-        username: <username>
-        password: <plaintext password> # will be overwritten if 'password_file' is given
-    "http://target.url":
-        # example for mTLS authentication
-        client_key: <path/to/client/key/file>
-        cert: <path/to/certificate/file>
-    "http://target.url":
-        # example for mTLS authentication with ca cert given
-        client_key: <path/to/client/key/file>
-        cert: <path/to/certificate/file>
-        ca_cert: <path/to/ca/cert>
+    :caption: Example for credentials file 
+    
+    getter:
+        "http://target.url":
+            # example for token given directly via file
+            token_file: <path/to/token/file> # won't be refreshed if expired
+        "http://target.url":
+            # example for token given directly inline
+            token: <token> # won't be refreshed if expired
+        "http://target.url":
+            # example for OAuth2 Client Credentials Grant
+            endpoint: <endpoint>
+            client_id: <id>
+            client_secret_file: <path/to/secret/file>
+        "http://target.url":
+            # example for OAuth2 Client Credentials Grant with inline secret
+            endpoint: <endpoint>
+            client_id: <id>
+            client_secret: <secret>
+        "http://target.url":
+            # example for OAuth2 Resource Owner Password Credentials Grant with authentication for a confidential client
+            endpoint: <endpoint>
+            username: <username>
+            password_file: <path/to/password/file>
+            client_id: <client_id> # optional if required
+            client_secret_file: <path/to/secret/file> # optional if require
+        "http://target.url":
+            # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client
+            endpoint: <endpoint>
+            username: <username>
+            password_file: <path/to/password/file>
+        "http://target.url":
+            # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client with inline password
+            endpoint: <endpoint>
+            username: <username>
+            password: <password>
+        "http://target.url":
+            # example for Basic Authentication
+            username: <username>
+            password_file: <path/to/password/file>
+        "http://target.url":
+            # example for Basic Authentication with inline password
+            username: <username>
+            password: <plaintext password> # will be overwritten if 'password_file' is given
+        "http://target.url":
+            # example for mTLS authentication
+            client_key: <path/to/client/key/file>
+            cert: <path/to/certificate/file>
+        "http://target.url":
+            # example for mTLS authentication with ca cert given
+            client_key: <path/to/client/key/file>
+            cert: <path/to/certificate/file>
+            ca_cert: <path/to/ca/cert>
+    input:
+      endpoints:
+        /firstendpoint:
+          username: <username>
+          password_file: <path/to/password/file>
+        /second*:
+          username: <username>
+          password: <password>
+   
 
 Options for the credentials file are:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -144,7 +154,35 @@ class CredentialsFactory:
         raw_content: dict = cls._get_content(Path(credentials_file_path))
         domain = urlparse(target_url).netloc
         scheme = urlparse(target_url).scheme
-        credential_mapping = raw_content.get(f"{scheme}://{domain}")
+        getter_credentials = raw_content.get("getter")
+        credential_mapping = getter_credentials.get(f"{scheme}://{domain}")
+        credentials = cls.from_dict(credential_mapping)
+        return credentials
+
+    @classmethod
+    def from_endpoint(cls, target_endpoint: str) -> "Credentials":
+        """Factory method to create a credentials object based on the credentials stored in the
+        environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
+        Based on these credentials the expected authentication method is chosen and represented
+        by the corresponding credentials object.
+
+        Parameters
+        ----------
+        target_endpoint : str
+           get authentication parameters for given target_endpoint
+
+        Returns
+        -------
+        credentials: Credentials
+            Credentials object representing the correct authorization method
+
+        """
+        credentials_file_path = os.environ.get("LOGPREP_CREDENTIALS_FILE")
+        if credentials_file_path is None:
+            return None
+        raw_content: dict = cls._get_content(Path(credentials_file_path))
+        endpoint_credentials = raw_content.get("input").get("endpoints")
+        credential_mapping = endpoint_credentials.get(target_endpoint)
         credentials = cls.from_dict(credential_mapping)
         return credentials
 

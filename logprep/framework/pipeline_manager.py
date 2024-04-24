@@ -19,14 +19,12 @@ from logprep.util.configuration import Configuration
 
 def logger_process(queue: multiprocessing.queues.Queue, logger: logging.Logger):
     """Process log messages from a queue."""
-    try:
-        while True:
-            message = queue.get()
-            if message is None:
-                break
-            logger.handle(message)
-    except KeyboardInterrupt:
-        pass
+
+    while True:
+        message = queue.get()
+        if message is None:
+            break
+        logger.handle(message)
 
 
 class PipelineManager:
@@ -63,11 +61,9 @@ class PipelineManager:
     def __init__(self, configuration: Configuration):
         self.metrics = self.Metrics(labels={"component": "manager"})
         self._logger = logging.getLogger("Logprep PipelineManager")
-        self.log_queue = multiprocessing.Queue(-1)
-        self._log_process = multiprocessing.Process(
-            target=logger_process, args=(self.log_queue, self._logger), daemon=True
-        )
-        self._log_process.start()
+        if multiprocessing.current_process().name == "MainProcess":
+            self._start_multiprocess_logger()
+            self._set_http_input_queue(configuration)
         self._pipelines: list[multiprocessing.Process] = []
         self._configuration = configuration
 
@@ -77,13 +73,25 @@ class PipelineManager:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
         else:
             self.prometheus_exporter = None
+
+    def _set_http_input_queue(self, configuration):
+        """
+        this workaround has to be done because the queue size is not configurable
+        after initialization and the queue has to be shared between the multiple processes
+        """
         input_config = next(iter(configuration.input.values()))
-        if input_config.get("type") == "http_input":
-            # this workaround has to be done because the queue size is not configurable
-            # after initialization and the queue has to be shared between the multiple processes
-            if HttpConnector.messages is None:
-                message_backlog_size = input_config.get("message_backlog_size", 15000)
-                HttpConnector.messages = multiprocessing.Queue(maxsize=message_backlog_size)
+        is_http_input = input_config.get("type") == "http_input"
+        if not is_http_input and HttpConnector.messages is not None:
+            return
+        message_backlog_size = input_config.get("message_backlog_size", 15000)
+        HttpConnector.messages = multiprocessing.Queue(maxsize=message_backlog_size)
+
+    def _start_multiprocess_logger(self):
+        self.log_queue = multiprocessing.Queue(-1)
+        self._log_process = multiprocessing.Process(
+            target=logger_process, args=(self.log_queue, self._logger), daemon=True
+        )
+        self._log_process.start()
 
     def get_count(self) -> int:
         """Get the pipeline count.

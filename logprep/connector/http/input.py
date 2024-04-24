@@ -5,8 +5,11 @@ HTTPInput
 A http input connector that spawns an uvicorn server and accepts http requests, parses them,
 puts them to an internal queue and pops them via :code:`get_next` method.
 
-Example
-^^^^^^^
+
+HTTP Connector Config Example
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+An example config file would look like:
+
 ..  code-block:: yaml
     :linenos:
 
@@ -17,12 +20,61 @@ Example
         collect_meta: False
         metafield_name: "@metadata"
         uvicorn_config:
-            host: 0.0.0.0
-            port: 9000
+          host: 0.0.0.0
+          port: 9000
         endpoints:
-            /firstendpoint: json
-            /seccondendpoint: plaintext
-            /thirdendpoint: jsonl
+          /firstendpoint: json 
+          /second*: plaintext
+          /(third|fourth)/endpoint: jsonl
+            
+The endpoint config supports regex and wildcard patterns:
+  * :code:`/second*`: matches everything after asterisk
+  * :code:`/(third|fourth)/endpoint` matches either third or forth in the first part
+
+
+Endpoint Credentials Config Example
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+By providing a credentials file in environment variable :code:`LOGPREP_CREDENTIALS_FILE` you can
+add basic authentication for a specific endpoint. The format of this file would look like:
+
+..  code-block:: yaml
+    :caption: Example for credentials file 
+    :linenos:
+
+    input:
+      endpoints:
+        /firstendpoint:
+          username: user
+          password_file: quickstart/exampledata/config/user_password.txt
+        /second*:
+          username: user
+          password: secret_password
+          
+You can choose between a plain secret with the key :code:`password` or a filebased secret
+with the key :code:`password_file`.
+
+.. security-best-practice::
+   :title: Http Input Connector - Authentication
+
+    When using basic auth with the http input connector the following points should be taken into account:
+        - basic auth must only be used with strong passwords
+        - basic auth must only be used with TLS encryption
+        - avoid to reveal your plaintext secrets in public repositories
+        
+Behaviour of HTTP Requests
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+  * :code:`GET`:
+   
+    * Responds always with 200 (ignores configured Basic Auth)
+    * When Messages Queue is full, it responds with 429
+  * :code:`POST`:
+  
+    * Responds with 200 on non-Basic Auth Endpoints
+    * Responds with 401 on Basic Auth Endpoints (and 200 with appropriate credentials)
+    * When Messages Queue is full, it responds wiht 429
+  * :code:`ALL OTHER`:
+  
+    * Responds with 405
 """
 
 import inspect
@@ -32,6 +84,7 @@ import queue
 import re
 import threading
 from abc import ABC
+from base64 import b64encode
 from logging import Logger
 from typing import Callable, Mapping, Tuple, Union
 
@@ -40,27 +93,40 @@ import msgspec
 import uvicorn
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
+    HTTP_200,
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
+    HTTPUnauthorized,
 )
 
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import defaults
+from logprep.util.credentials import CredentialsFactory
 
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
     parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
 ]
 
-# Config Parts that's checked for Config Change
-HTTP_INPUT_CONFIG_KEYS = [
-    "preprocessing",
-    "uvicorn_config",
-    "endpoints",
-    "collect_meta",
-    "metafield_name",
-    "message_backlog_size",
-]
+
+def decorator_basic_auth(func: Callable):
+    """Decorator to check basic authentication.
+    Will raise 401 on wrong credentials or missing Authorization-Header"""
+
+    async def func_wrapper(*args, **kwargs):
+        endpoint = args[0]
+        req = args[1]
+        if endpoint.credentials:
+            auth_request_header = req.get_header("Authorization")
+            if not auth_request_header:
+                raise HTTPUnauthorized
+            basic_string = req.auth
+            if endpoint.basicauth_b64 not in basic_string:
+                raise HTTPUnauthorized
+        func_wrapper = await func(*args, **kwargs)
+        return func_wrapper
+
+    return func_wrapper
 
 
 def decorator_request_exceptions(func: Callable):
@@ -70,6 +136,13 @@ def decorator_request_exceptions(func: Callable):
         try:
             if args[1].method == "POST":
                 func_wrapper = await func(*args, **kwargs)
+            elif args[1].method == "GET":
+                endpoint = args[0]
+                resp = args[2]
+                resp.status = HTTP_200
+                if endpoint.messages.full():
+                    raise HTTPTooManyRequests(description="Logprep Message Queue is full.")
+                return
             else:
                 raise HTTPMethodNotAllowed(["POST"])
         except queue.Full as exc:
@@ -125,12 +198,25 @@ class HttpEndpoint(ABC):
         Collects Metadata on True (default)
     metafield_name: str
         Defines key name for metadata
+    credentials: dict
+        Includes authentication credentials, if unset auth is disabled
     """
 
-    def __init__(self, messages: mp.Queue, collect_meta: bool, metafield_name: str) -> None:
+    def __init__(
+        self,
+        messages: mp.Queue,
+        collect_meta: bool,
+        metafield_name: str,
+        credentials: dict,
+    ) -> None:
         self.messages = messages
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
+        self.credentials = credentials
+        if self.credentials:
+            self.basicauth_b64 = b64encode(
+                f"{self.credentials.username}:{self.credentials.password}".encode("utf-8")
+            ).decode("utf-8")
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -139,6 +225,7 @@ class JSONHttpEndpoint(HttpEndpoint):
     _decoder = msgspec.json.Decoder()
 
     @decorator_request_exceptions
+    @decorator_basic_auth
     @decorator_add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """json endpoint method"""
@@ -156,6 +243,7 @@ class JSONLHttpEndpoint(HttpEndpoint):
     _decoder = msgspec.json.Decoder()
 
     @decorator_request_exceptions
+    @decorator_basic_auth
     @decorator_add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
@@ -174,13 +262,13 @@ class PlaintextHttpEndpoint(HttpEndpoint):
     and put it in :code:`message` field"""
 
     @decorator_request_exceptions
+    @decorator_basic_auth
     @decorator_add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
         data = await req.stream.read()
         metadata = kwargs.get("metadata", {})
         event = {"message": data.decode("utf8")}
-        print(event)
         self.messages.put({**event, **metadata}, block=False)
 
 
@@ -322,8 +410,10 @@ class HttpConnector(Input):
             ]
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
-        are: :code:`json`, :code:`jsonl`, :code:`plaintext`.
-
+        are: :code:`json`, :code:`jsonl`, :code:`plaintext`. It's possible to use wildcards and
+        regexes for pattern matching.
+        
+        
         .. autoclass:: logprep.connector.http.input.PlaintextHttpEndpoint
             :noindex:
         .. autoclass:: logprep.connector.http.input.JSONLHttpEndpoint
@@ -370,7 +460,7 @@ class HttpConnector(Input):
         internal_uvicorn_config = {
             "lifespan": "off",
             "loop": "asyncio",
-            "timeout_graceful_shutdown": 0,
+            "timeout_graceful_shutdown": 5,
         }
         self._config.uvicorn_config.update(internal_uvicorn_config)
         self.port = self._config.uvicorn_config["port"]
@@ -388,10 +478,11 @@ class HttpConnector(Input):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."
             )
+
         self._logger.debug(
             f"HttpInput Connector started on target {self.target} and "
             f"queue {id(self.messages)} "
-            f"with queue_size: {self.messages._maxsize}"
+            f"with queue_size: {self.messages._maxsize}"  # pylint: disable=protected-access
         )
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:
@@ -400,11 +491,14 @@ class HttpConnector(Input):
         endpoints_config = {}
         collect_meta = self._config.collect_meta
         metafield_name = self._config.metafield_name
+        cred_factory = CredentialsFactory()
         # preparing dict with endpoint paths and initialized endpoints objects
-        for endpoint_path, endpoint_name in self._config.endpoints.items():
-            endpoint_class = self._endpoint_registry.get(endpoint_name)
+        # and add authentication if credentials are existing for path
+        for endpoint_path, endpoint_type in self._config.endpoints.items():
+            endpoint_class = self._endpoint_registry.get(endpoint_type)
+            credentials = cred_factory.from_endpoint(endpoint_path)
             endpoints_config[endpoint_path] = endpoint_class(
-                self.messages, collect_meta, metafield_name
+                self.messages, collect_meta, metafield_name, credentials
             )
 
         self.http_server = ThreadingHTTPServer(  # pylint: disable=attribute-defined-outside-init
@@ -432,4 +526,6 @@ class HttpConnector(Input):
 
     def shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
+        if not hasattr(self, "http_server"):
+            return
         self.http_server.shut_down()
