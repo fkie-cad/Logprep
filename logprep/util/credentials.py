@@ -181,7 +181,7 @@ class CredentialsFactory:
         if credentials_file_path is None:
             return None
         credentials_file: CredentialsFile = cls.get_content(Path(credentials_file_path))
-        endpoint_credentials = credentials_file.input.endpoints
+        endpoint_credentials = credentials_file.input.get("endpoints")
         credential_mapping = endpoint_credentials.get(target_endpoint)
         credentials = cls.from_dict(credential_mapping)
         return credentials
@@ -444,22 +444,18 @@ class Credentials:
 
 
 @define(kw_only=True)
-class InputCredentials:
-    """class for input credentials"""
-
-    endpoints: dict = field(
-        validator=validators.instance_of(dict),
-    )
-
-
-@define(kw_only=True)
 class CredentialsFile:
     """class for credentials file"""
 
-    input: InputCredentials = field(
-        validator=validators.instance_of(InputCredentials),
-        converter=lambda x: InputCredentials(**x) if isinstance(x, dict) else x,
-        default=InputCredentials(endpoints={}),
+    input: dict = field(
+        validator=[
+            validators.instance_of(dict),
+            validators.deep_mapping(
+                key_validator=validators.in_(["endpoints"]),
+                value_validator=validators.instance_of(dict),
+            ),
+        ],
+        default={"endpoints": {}},
     )
     getter: dict = field(validator=validators.instance_of(dict), default={})
 
