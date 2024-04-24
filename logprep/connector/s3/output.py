@@ -120,7 +120,7 @@ class S3Output(Output):
         """The input callback is called after the maximum backlog size has been reached
         if this is set to True (optional)"""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) Timout after :code:`message_backlog` is flushed if 
+        """(Optional) Timeout after :code:`message_backlog` is flushed if 
         :code:`message_backlog_size` is not reached."""
 
     @define(kw_only=True)

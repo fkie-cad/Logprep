@@ -101,7 +101,7 @@ class ElasticsearchOutput(Output):
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) Path to a SSL ca certificate to verify the ssl context."""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) Timout after :code:`message_backlog` is flushed if
+        """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
 
     __slots__ = ["_message_backlog", "_size_error_pattern"]
