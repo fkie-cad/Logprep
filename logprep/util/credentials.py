@@ -152,7 +152,7 @@ class CredentialsFactory:
         credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
         if credentials_file_path is None:
             return None
-        credentials_file: CredentialsFile = cls.get_content(Path(credentials_file_path))
+        credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
         domain = urlparse(target_url).netloc
         scheme = urlparse(target_url).scheme
         credential_mapping = credentials_file.getter.get(f"{scheme}://{domain}")
@@ -180,7 +180,7 @@ class CredentialsFactory:
         credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
         if credentials_file_path is None:
             return None
-        credentials_file: CredentialsFile = cls.get_content(Path(credentials_file_path))
+        credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
         endpoint_credentials = credentials_file.input.get("endpoints")
         credential_mapping = endpoint_credentials.get(target_endpoint)
         credentials = cls.from_dict(credential_mapping)
@@ -210,9 +210,9 @@ class CredentialsFactory:
         try:
             file_content = file_path.read_text(encoding="utf-8")
             try:
-                return CredentialsFile(**json.loads(file_content))
+                return CredentialsFileSchema(**json.loads(file_content))
             except (json.JSONDecodeError, ValueError):
-                return CredentialsFile(**yaml.load(file_content))
+                return CredentialsFileSchema(**yaml.load(file_content))
         except (TypeError, YAMLError) as error:
             raise InvalidConfigurationError(
                 f"Invalid credentials file: {file_path} {error.args[0]}"

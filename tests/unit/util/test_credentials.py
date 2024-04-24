@@ -17,7 +17,7 @@ from logprep.util.credentials import (
     Credentials,
     CredentialsBadRequestError,
     CredentialsFactory,
-    CredentialsFile,
+    CredentialsFileSchema,
     MTLSCredentials,
     OAuth2ClientFlowCredentials,
     OAuth2PasswordFlowCredentials,
@@ -1187,5 +1187,5 @@ class TestCredentialsFileSchema:
                 }
             },
         }
-        creds = CredentialsFile(**credentials_file_content)
-        assert isinstance(creds, CredentialsFile)
+        creds = CredentialsFileSchema(**credentials_file_content)
+        assert isinstance(creds, CredentialsFileSchema)
