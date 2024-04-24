@@ -17,6 +17,7 @@ from responses import matchers
 from ruamel.yaml import YAML
 
 from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
+from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
@@ -406,7 +407,9 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
-        with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
+        with mock.patch.dict(
+            "os.environ", {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
+        ):
             http_getter = GetterFactory.from_string("https://does-not-matter/bar")
             assert isinstance(http_getter.credentials, Credentials)
 
@@ -439,7 +442,9 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
-        with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
+        with mock.patch.dict(
+            "os.environ", {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
+        ):
             http_getter = GetterFactory.from_string(f"https://{domain}/bar")
             return_content = http_getter.get_json()
             assert return_content == {"key": "the cooooontent"}
@@ -475,7 +480,9 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
-        with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
+        with mock.patch.dict(
+            "os.environ", {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
+        ):
             http_getter = GetterFactory.from_string(f"https://{domain}/bar")
             return_content = http_getter.get_json()
             return_content = http_getter.get_json()
@@ -512,7 +519,9 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
-        with mock.patch.dict("os.environ", {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}):
+        with mock.patch.dict(
+            "os.environ", {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
+        ):
             http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
             return_content = http_getter.get_json()
             assert return_content == {"key": "the cooooontent"}
@@ -548,7 +557,9 @@ class TestHttpGetter:
             http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
             with mock.patch.dict(
                 "os.environ",
-                {"LOGPREP_CREDENTIALS_FILE": "quickstart/exampledata/config/credentials.yml"},
+                {
+                    ENV_NAME_LOGPREP_CREDENTIALS_FILE: "quickstart/exampledata/config/credentials.yml"
+                },
             ):
                 http_getter.get_json()
         assert error.value.response.status_code == 401
@@ -576,7 +587,7 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
         with mock.patch.dict("os.environ", mock_env):
             http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
             http_getter.get_raw()
@@ -609,7 +620,7 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
         with mock.patch.dict("os.environ", mock_env):
             http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
             http_getter.get_raw()
@@ -649,7 +660,7 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credentials_file)}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
         with mock.patch.dict("os.environ", mock_env):
             http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
             http_getter.get_raw()

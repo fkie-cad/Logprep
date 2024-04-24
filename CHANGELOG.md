@@ -11,6 +11,7 @@
 ### Bugfix
 
 * fixes a bug in grokker rules, where common field prefixes wasn't possible
+* fixes bug where missing key in credentials file leads to AttributeError
 
 ## 11.1.0
 

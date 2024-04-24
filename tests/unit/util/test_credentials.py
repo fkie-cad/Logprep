@@ -17,11 +17,13 @@ from logprep.util.credentials import (
     Credentials,
     CredentialsBadRequestError,
     CredentialsFactory,
+    CredentialsFileSchema,
     MTLSCredentials,
     OAuth2ClientFlowCredentials,
     OAuth2PasswordFlowCredentials,
     OAuth2TokenCredentials,
 )
+from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 
 
 class TestBasicAuthCredentials:
@@ -105,10 +107,10 @@ class TestOAuth2TokenCredentials:
     )
     def test_init(self, testcase, kwargs, error, error_message):
         if error is None:
-            test = OAuth2TokenCredentials(**kwargs)
+            _ = OAuth2TokenCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                test = OAuth2TokenCredentials(**kwargs)
+                _ = OAuth2TokenCredentials(**kwargs)
 
     def test_get_session_returns_session(self):
         test = OAuth2TokenCredentials(token="tooooooken")
@@ -209,10 +211,10 @@ class TestOAuth2PasswordFlowCredentials:
     )
     def test_init(self, testcase, error, kwargs, error_message):
         if error is None:
-            test = OAuth2PasswordFlowCredentials(**kwargs)
+            _ = OAuth2PasswordFlowCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                test = OAuth2PasswordFlowCredentials(**kwargs)
+                _ = OAuth2PasswordFlowCredentials(**kwargs)
 
     @responses.activate
     def test_get_session_returns_session(self):
@@ -486,10 +488,10 @@ class TestOAuth2ClientFlowCredentials:
     )
     def test_init(self, testcase, kwargs, error, error_message):
         if error is None:
-            test = OAuth2ClientFlowCredentials(**kwargs)
+            _ = OAuth2ClientFlowCredentials(**kwargs)
         else:
             with pytest.raises(error, match=error_message):
-                test = OAuth2ClientFlowCredentials(**kwargs)
+                _ = OAuth2ClientFlowCredentials(**kwargs)
 
     @responses.activate
     def test_get_session_returns_session(self):
@@ -799,7 +801,7 @@ getter:
                 InvalidConfigurationError,
             ),
             (
-                "Return OAuth2PassowordFlowCredentials object with additional client_id in credentials file",
+                "Return OAuth2PassowordFlowCredentials object with extra client_id",
                 """---
 getter:
     "https://some.url": 
@@ -908,7 +910,7 @@ getter:
                 None,
             ),
             (
-                "Return MTLSCredentials object if certificate key and ca cert are given with extra params",
+                "Return MTLSCredentials object if cert key and ca cert are given with extra params",
                 """---
 getter:
     "https://some.url":
@@ -920,7 +922,7 @@ getter:
                 None,
             ),
             (
-                "Return MTLSCredentials object if certificate and key are given with extra parameters",
+                "Return MTLSCredentials object if cert and key are given with extra parameters",
                 """---
 getter:
     "https://some.url":
@@ -960,7 +962,7 @@ getter:
     ):
         credential_file_path = tmp_path / "credentials"
         credential_file_path.write_text(credential_file_content)
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             if error is not None:
                 with pytest.raises(error):
@@ -980,7 +982,7 @@ input:
             password: myverysecretpassword
 """
         )
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             creds = CredentialsFactory.from_endpoint("/some/auth/endpoint")
             assert isinstance(creds, BasicAuthCredentials)
@@ -1001,13 +1003,13 @@ getter:
         client_secret: test
 """
         )
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             creds = CredentialsFactory.from_target("http://some.url")
             assert isinstance(creds, OAuth2ClientFlowCredentials)
 
     def test_credentials_is_none_on_invalid_credentials_file_path(self):
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": "this is something useless"}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: "this is something useless"}
         with mock.patch.dict("os.environ", mock_env):
             with pytest.raises(InvalidConfigurationError, match=r"wrong credentials file path"):
                 creds = CredentialsFactory.from_target("https://some.url")
@@ -1038,7 +1040,7 @@ getter:
                 OAuth2TokenCredentials,
             ),
             (
-                "Return BasicAuthCredential object when no endpoint is given and password_file is given",
+                "Return BasicAuthCredential object with no endpoint and password_file",
                 "password_file",
                 "",
                 "hiansdnjskwuthisisaverysecretsecret",
@@ -1062,7 +1064,7 @@ getter:
 """
         )
         secret_file_path.write_text(secret_content)
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             creds = CredentialsFactory.from_target("http://some.url/configuration")
             assert isinstance(creds, instance), testcase
@@ -1086,7 +1088,7 @@ getter:
         secret_file_path_0.write_text("thisismysecretsecretclientsecret")
         secret_file_path_1.write_text("thisismysecorndsecretsecretpasswordsecret")
 
-        mock_env = {"LOGPREP_CREDENTIALS_FILE": str(credential_file_path)}
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             creds = CredentialsFactory.from_target("http://some.url/configuration")
             assert isinstance(creds, Credentials)
@@ -1101,12 +1103,49 @@ getter:
             "password": "password",
             "extra_param": "extra",
         }
-        creds = CredentialsFactory.from_dict(credentials_file_content_with_extra_params)
+        _ = CredentialsFactory.from_dict(credentials_file_content_with_extra_params)
         mock_logger.warning.assert_called_once()
         assert re.search(
             r"OAuth password authorization for confidential clients",
             mock_logger.mock_calls[0][1][0],
         )
+
+    def test_from_target_raises_when_getter_key_not_set(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path.write_text(
+            """---
+    "http://some.url":
+        endpoint: "https://endpoint.end"
+        username: testuser
+        password_file: "thisismysecretsecretclientsecret"
+"""
+        )
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            with pytest.raises(
+                InvalidConfigurationError,
+                match="Invalid credentials file.* unexpected keyword argument 'http://some.url'",
+            ):
+                creds = CredentialsFactory.from_target("http://some.url/configuration")
+                assert isinstance(creds, InvalidConfigurationError)
+
+    def test_from_endpoint_raises_when_input_key_not_set(self, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path.write_text(
+            """---
+    /some/endpoint:
+        username: testuser
+        password_file: "thisismysecretsecretclientsecret"
+"""
+        )
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            with pytest.raises(
+                InvalidConfigurationError,
+                match="Invalid credentials file.* unexpected keyword argument '/some/endpoint'",
+            ):
+                creds = CredentialsFactory.from_endpoint("/some/endpoint")
+                assert isinstance(creds, InvalidConfigurationError)
 
 
 class TestMTLSCredentials:
@@ -1128,3 +1167,25 @@ class TestMTLSCredentials:
         assert "path/to/cert" in test._session.cert
         assert "path/to/key" in test._session.cert
         assert "path/to/ca/cert" in test._session.verify
+
+
+class TestCredentialsFileSchema:
+    def test_credential_file_can_be_instanciated(self):
+        credentials_file_content = {
+            "input": {
+                "endpoints": {
+                    "some/endpoint": {
+                        "username": "user1",
+                        "password": "password",
+                    }
+                }
+            },
+            "getter": {
+                "some/endpoint": {
+                    "username": "user1",
+                    "password": "password",
+                }
+            },
+        }
+        creds = CredentialsFileSchema(**credentials_file_content)
+        assert isinstance(creds, CredentialsFileSchema)

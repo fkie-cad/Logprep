@@ -219,8 +219,11 @@ from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import getter
-from logprep.util.credentials import CredentialsEnvNotFoundError
-from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
+from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
+from logprep.util.defaults import (
+    DEFAULT_CONFIG_LOCATION,
+    ENV_NAME_LOGPREP_CREDENTIALS_FILE,
+)
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.json_handling import list_json_files_in_directory
 
@@ -658,6 +661,12 @@ class Configuration:
                 errors.append(error)
             try:
                 self._verify_processor_outputs(processor_config)
+            except Exception as error:  # pylint: disable=broad-except
+                errors.append(error)
+        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
+            try:
+                credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+                _ = CredentialsFactory.get_content(Path(credentials_file_path))
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
         if errors:
