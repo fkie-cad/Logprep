@@ -1163,7 +1163,7 @@ output:
         config = Configuration.from_sources([str(config1_path), str(config2_path)])
         assert config.version == "first, unset"
 
-    def test_verify_credentials_file_raises_with_missing_key(self, config_path, tmp_path):
+    def test_verify_credentials_file_raises_for_unexpected_key(self, config_path, tmp_path):
         credential_file_path = tmp_path / "credentials.yml"
         credential_file_path.write_text(
             """---
