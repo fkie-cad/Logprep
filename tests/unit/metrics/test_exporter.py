@@ -30,13 +30,13 @@ class TestPrometheusExporter:
         exporter = PrometheusExporter(metrics_config)
         assert exporter._port == 8000
 
-    @mock.patch("logprep.metrics.exporter.start_http_server")
-    def test_run_starts_http_server(self, mock_http_server, caplog):
+    @mock.patch("logprep.util.http.ThreadingHTTPServer.start")
+    def test_run_starts_http_server(self, mock_http_server_start, caplog):
         with caplog.at_level(logging.INFO):
             exporter = PrometheusExporter(self.metrics_config)
             exporter.run()
 
-        mock_http_server.assert_has_calls([mock.call(exporter._port)])
+        mock_http_server_start.assert_called()
         assert f"Prometheus Exporter started on port {exporter._port}" in caplog.text
 
     def test_cleanup_prometheus_multiprocess_dir_deletes_temp_dir_contents_but_not_the_dir_itself(
