@@ -6,6 +6,10 @@
 
 ### Features
 
+* expose metrics via uvicorn webserver
+  * makes all uvicorn configuration options possible
+  * add security best practices to server configuration
+
 ### Improvements
 
 ### Bugfix
