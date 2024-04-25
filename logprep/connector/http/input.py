@@ -78,11 +78,9 @@ Behaviour of HTTP Requests
 """
 
 import inspect
-import logging
 import multiprocessing as mp
 import queue
 import re
-import threading
 from abc import ABC
 from base64 import b64encode
 from logging import Logger
@@ -100,7 +98,7 @@ from falcon import (  # pylint: disable=no-name-in-module
 )
 
 from logprep.abc.input import FatalInputError, Input
-from logprep.util import defaults
+from logprep.util import http
 from logprep.util.credentials import CredentialsFactory
 
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
@@ -272,113 +270,6 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         self.messages.put({**event, **metadata}, block=False)
 
 
-class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
-    """Singleton Wrapper Class around Uvicorn Thread that controls
-    lifecycle of Uvicorn HTTP Server. During Runtime this singleton object
-    is stateful and therefore we need to check for some attributes during
-    __init__ when multiple consecutive reconfigurations are happening.
-
-    Parameters
-    ----------
-    connector_config: Input.Config
-        Holds full connector config for config change checks
-    endpoints_config: dict
-        Endpoint paths as key and initiated endpoint objects as
-        value
-    log_level: str
-        Log level to be set for uvicorn server
-    """
-
-    _instance = None
-    _lock = threading.Lock()
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            with cls._lock:
-                if not cls._instance:
-                    cls._instance = super(ThreadingHTTPServer, cls).__new__(cls)
-        return cls._instance
-
-    def __init__(
-        self,
-        connector_config: Input.Config,
-        endpoints_config: dict,
-        log_level: str,
-    ) -> None:
-        """Creates object attributes with necessary configuration.
-        As this class creates a singleton object, the existing server
-        will be stopped and restarted on consecutively creations"""
-        super().__init__()
-
-        self.connector_config = connector_config
-        self.endpoints_config = endpoints_config
-        self.log_level = log_level
-
-        if hasattr(self, "thread"):
-            if self.thread.is_alive():  # pylint: disable=access-member-before-definition
-                self._stop()
-        self._start()
-
-    def _start(self):
-        """Collect all configs, initiate application server and webserver
-        and run thread with uvicorn+falcon http server and wait
-        until it is up (started)"""
-        self.uvicorn_config = self.connector_config.uvicorn_config
-        self._init_web_application_server(self.endpoints_config)
-        log_config = self._init_log_config()
-        self.compiled_config = uvicorn.Config(
-            **self.uvicorn_config,
-            app=self.app,
-            log_level=self.log_level,
-            log_config=log_config,
-        )
-        self.server = uvicorn.Server(self.compiled_config)
-        self._override_runtime_logging()
-        self.thread = threading.Thread(daemon=False, target=self.server.run)
-        self.thread.start()
-        while not self.server.started:
-            continue
-
-    def _stop(self):
-        """Stop thread with uvicorn+falcon http server, wait for uvicorn
-        to exit gracefully and join the thread"""
-        if self.thread.is_alive():
-            self.server.should_exit = True
-            while self.thread.is_alive():
-                continue
-        self.thread.join()
-
-    def _init_log_config(self) -> dict:
-        """Use for Uvicorn same log formatter like for Logprep"""
-        log_config = uvicorn.config.LOGGING_CONFIG
-        log_config["formatters"]["default"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
-        log_config["formatters"]["access"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
-        log_config["handlers"]["default"]["stream"] = "ext://sys.stdout"
-        return log_config
-
-    def _override_runtime_logging(self):
-        """Uvicorn doesn't provide API to change name and handler beforehand
-        needs to be done during runtime"""
-        http_server_name = logging.getLogger("Logprep").name + " HTTPServer"
-        for logger_name in ["uvicorn", "uvicorn.access"]:
-            logging.getLogger(logger_name).removeHandler(logging.getLogger(logger_name).handlers[0])
-            logging.getLogger(logger_name).addHandler(
-                logging.getLogger("Logprep").parent.handlers[0]
-            )
-        logging.getLogger("uvicorn.access").name = http_server_name
-        logging.getLogger("uvicorn.error").name = http_server_name
-
-    def _init_web_application_server(self, endpoints_config: dict) -> None:
-        "Init falcon application server and setting endpoint routes"
-        self.app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
-        for endpoint_path, endpoint in endpoints_config.items():
-            self.app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
-
-    def shut_down(self):
-        """Shutdown method to trigger http server shutdown externally"""
-        self._stop()
-
-
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
 
@@ -457,15 +348,10 @@ class HttpConnector(Input):
 
     def __init__(self, name: str, configuration: "HttpConnector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
-        internal_uvicorn_config = {
-            "lifespan": "off",
-            "loop": "asyncio",
-            "timeout_graceful_shutdown": 5,
-        }
-        self._config.uvicorn_config.update(internal_uvicorn_config)
-        self.port = self._config.uvicorn_config["port"]
-        self.host = self._config.uvicorn_config["host"]
-        self.target = f"http://{self.host}:{self.port}"
+        port = self._config.uvicorn_config["port"]
+        host = self._config.uvicorn_config["host"]
+        self.target = f"http://{host}:{port}"
+        self.http_server = None
 
     def setup(self):
         """setup starts the actual functionality of this connector.
@@ -501,11 +387,19 @@ class HttpConnector(Input):
                 self.messages, collect_meta, metafield_name, credentials
             )
 
-        self.http_server = ThreadingHTTPServer(  # pylint: disable=attribute-defined-outside-init
-            connector_config=self._config,
-            endpoints_config=endpoints_config,
-            log_level=self._logger.level,
+        app = self._get_asgi_app(endpoints_config)
+        self.http_server = http.ThreadingHTTPServer(
+            self._config.uvicorn_config, app, daemon=False, logger_name="Logprep HTTPServer"
         )
+        self.http_server.start()
+
+    @staticmethod
+    def _get_asgi_app(endpoints_config: dict) -> falcon.asgi.App:
+        "Init falcon application server and setting endpoint routes"
+        app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
+        for endpoint_path, endpoint in endpoints_config.items():
+            app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
+        return app
 
     def _get_event(self, timeout: float) -> Tuple:
         """Returns the first message from the queue"""
@@ -516,16 +410,7 @@ class HttpConnector(Input):
         except queue.Empty:
             return None, None
 
-    def get_app_instance(self):
-        """Return app instance from webserver thread"""
-        return self.http_server.app
-
-    def get_server_instance(self):
-        """Return server instance from webserver thread"""
-        return self.http_server.server
-
     def shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        if not hasattr(self, "http_server"):
-            return
-        self.http_server.shut_down()
+        if hasattr(self, "http_server") and self.http_server is not None:
+            self.http_server.shut_down()

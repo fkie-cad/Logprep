@@ -1,3 +1,5 @@
+"""logprep http utils"""
+
 import logging
 import threading
 
@@ -52,6 +54,12 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         if hasattr(self, "thread"):
             if self.thread.is_alive():  # pylint: disable=access-member-before-definition
                 self._stop()
+        internal_uvicorn_config = {
+            "lifespan": "off",
+            "loop": "asyncio",
+            "timeout_graceful_shutdown": 5,
+        }
+        uvicorn_config = {**internal_uvicorn_config, **uvicorn_config}
         self._logger_name = logger_name
         uvicorn_config = uvicorn.Config(**uvicorn_config, app=app, log_config=self._log_config)
         self.server = uvicorn.Server(uvicorn_config)

@@ -1,15 +1,12 @@
 """This module contains functionality to start a prometheus exporter and expose metrics with it"""
 
-import logging
 import os
 import shutil
-import threading
 from logging import getLogger
 
-import uvicorn
 from prometheus_client import REGISTRY, make_asgi_app, multiprocess
 
-from logprep.util import defaults, http
+from logprep.util import http
 from logprep.util.configuration import MetricsConfig
 
 
