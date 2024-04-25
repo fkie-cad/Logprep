@@ -218,7 +218,7 @@ from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util import getter
+from logprep.util import getter, http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
 from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
@@ -306,7 +306,17 @@ class MetricsConfig:
 
     enabled: bool = field(validator=validators.instance_of(bool), default=False)
     port: int = field(validator=validators.instance_of(int), default=8000)
-    uvicorn_config: dict = field(validator=validators.instance_of(dict), factory=dict)
+    uvicorn_config: dict = field(
+        validator=[
+            validators.instance_of(dict),
+            validators.deep_mapping(
+                key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
+                # lamba xyz tuple necessary because of input structure
+                value_validator=lambda x, y, z: True,
+            ),
+        ],
+        factory=dict,
+    )
 
 
 @define(kw_only=True)

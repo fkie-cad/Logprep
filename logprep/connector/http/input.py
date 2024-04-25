@@ -88,7 +88,6 @@ from typing import Callable, Mapping, Tuple, Union
 
 import falcon.asgi
 import msgspec
-import uvicorn
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTP_200,
@@ -100,11 +99,6 @@ from falcon import (  # pylint: disable=no-name-in-module
 from logprep.abc.input import FatalInputError, Input
 from logprep.util import http
 from logprep.util.credentials import CredentialsFactory
-
-uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
-UVICORN_CONFIG_KEYS = [
-    parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
-]
 
 
 def decorator_basic_auth(func: Callable):
@@ -281,7 +275,7 @@ class HttpConnector(Input):
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
-                    key_validator=validators.in_(UVICORN_CONFIG_KEYS),
+                    key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
                     # lamba xyz tuple necessary because of input structure
                     value_validator=lambda x, y, z: True,
                 ),

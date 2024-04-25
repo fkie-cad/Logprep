@@ -1,11 +1,17 @@
 """logprep http utils"""
 
+import inspect
 import logging
 import threading
 
 import uvicorn
 
 from logprep.util import defaults
+
+uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
+UVICORN_CONFIG_KEYS = [
+    parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
+]
 
 
 class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
@@ -88,7 +94,10 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         """Uvicorn doesn't provide API to change name and handler beforehand
         needs to be done during runtime"""
         for logger_name in ["uvicorn", "uvicorn.access"]:
-            logging.getLogger(logger_name).removeHandler(logging.getLogger(logger_name).handlers[0])
+            registered_handlers = logging.getLogger(logger_name).handlers
+            if not registered_handlers:
+                continue
+            logging.getLogger(logger_name).removeHandler(registered_handlers[0])
             logging.getLogger(logger_name).addHandler(
                 logging.getLogger("Logprep").parent.handlers[0]
             )
