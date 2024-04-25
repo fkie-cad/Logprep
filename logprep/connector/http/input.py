@@ -284,6 +284,27 @@ class HttpConnector(Input):
 
         """Configure uvicorn server. For possible settings see
         `uvicorn settings page <https://www.uvicorn.org/settings>`_.
+
+        .. security-best-practice::
+           :title: Uvicorn Webserver Configuration
+           :location: uvicorn_config
+           :suggested-value: below
+           
+           Additionaly to the below it is recommended to configure `ssl on the metrics server endpoint
+           <https://www.uvicorn.org/settings/#https>`_
+
+           .. code-block:: yaml
+               :caption: Recommended uvicorn configuration for connector endpoint
+
+                metrics:
+                    enabled: true
+                    port: 9000
+                    uvicorn_config:
+                        access_log: true
+                        server_header: false
+                        date_header: false
+                        workers: 2
+
         """
         endpoints: Mapping[str, str] = field(
             validator=[

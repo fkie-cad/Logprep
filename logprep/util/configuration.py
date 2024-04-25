@@ -408,7 +408,33 @@ class Configuration:
         converter=lambda x: MetricsConfig(**x) if isinstance(x, dict) else x,
         eq=False,
     )
-    """Metrics configuration. Defaults to :code:`{"enabled": False, "port": 8000}`."""
+    """Metrics configuration. Defaults to 
+    :code:`{"enabled": False, "port": 8000, "uvicorn_config": {}}`.
+    
+    The key :code:`uvicorn_config` can be configured with any uvicorn config parameters.
+    For further information see the `uvicorn documentation <https://www.uvicorn.org/settings/>`_.
+
+    .. security-best-practice::
+       :title: Metrics Configuration
+       :location: config.metrics.uvicorn_config
+       :suggested-value: below
+
+       Additionaly to the below it is recommended to configure `ssl on the metrics server endpoint
+       <https://www.uvicorn.org/settings/#https>`_
+
+       .. code-block:: yaml
+          :caption: Recommended uvicorn configuration for metrics
+
+          metrics:
+            enabled: true
+            port: 9000
+            uvicorn_config:
+                access_log: true
+                server_header: false
+                date_header: false
+                workers: 1
+
+    """
     profile_pipelines: bool = field(default=False, eq=False)
     """Start the profiler to profile the pipeline. Defaults to :code:`False`."""
     print_auto_test_stack_trace: bool = field(default=False, eq=False)
