@@ -162,7 +162,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
         assert "error" not in output.lower(), "error message"
         assert "critical" not in output.lower(), "error message"
         assert "exception" not in output.lower(), "error message"
-        if "Finished building pipeline" in output:
+        if "Prometheus Exporter started on port 8003" in output:
             break
     response = requests.get("http://127.0.0.1:8003", timeout=5)
     response.raise_for_status()
