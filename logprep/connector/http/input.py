@@ -412,5 +412,6 @@ class HttpConnector(Input):
 
     def shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        if hasattr(self, "http_server") and self.http_server is not None:
-            self.http_server.shut_down()
+        if self.http_server is None:
+            return
+        self.http_server.shut_down()
