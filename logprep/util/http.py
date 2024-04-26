@@ -59,9 +59,11 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
             Name of the logger instance
         """
 
-        if hasattr(self, "thread"):
-            if self.thread.is_alive():  # pylint: disable=access-member-before-definition
-                self._stop()
+        if (
+            hasattr(self, "thread")
+            and self.thread.is_alive()  # pylint: disable=access-member-before-definition
+        ):
+            self.shut_down()
         internal_uvicorn_config = {
             "lifespan": "off",
             "loop": "asyncio",
