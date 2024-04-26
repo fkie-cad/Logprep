@@ -63,5 +63,5 @@ class PrometheusExporter:
         """Starts the default prometheus http endpoint"""
         self._prepare_multiprocessing()
         self._server.start()
-        self._logger.info(f"Prometheus Exporter started on port {self._port}")
+        self._logger.info("Prometheus Exporter started on port %s" % self._port)
         self.is_running = True

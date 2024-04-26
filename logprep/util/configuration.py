@@ -311,7 +311,7 @@ class MetricsConfig:
             validators.instance_of(dict),
             validators.deep_mapping(
                 key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
-                # lamba xyz tuple necessary because of input structure
+                # lambda xyz tuple necessary because of input structure
                 value_validator=lambda x, y, z: True,
             ),
         ],
@@ -429,10 +429,10 @@ class Configuration:
             enabled: true
             port: 9000
             uvicorn_config:
-                access_log: true
-                server_header: false
-                date_header: false
-                workers: 1
+              access_log: true
+              server_header: false
+              date_header: false
+              workers: 1
 
     """
     profile_pipelines: bool = field(default=False, eq=False)

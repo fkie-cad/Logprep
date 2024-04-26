@@ -3,7 +3,6 @@
 # pylint: disable=attribute-defined-outside-init
 import multiprocessing
 import re
-import socket
 from copy import deepcopy
 from unittest import mock
 

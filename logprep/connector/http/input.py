@@ -77,7 +77,6 @@ Behaviour of HTTP Requests
     * Responds with 405
 """
 
-import inspect
 import multiprocessing as mp
 import queue
 import re
@@ -276,7 +275,7 @@ class HttpConnector(Input):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
-                    # lamba xyz tuple necessary because of input structure
+                    # lambda xyz tuple necessary because of input structure
                     value_validator=lambda x, y, z: True,
                 ),
             ]

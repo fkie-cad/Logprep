@@ -19,16 +19,6 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
     lifecycle of Uvicorn HTTP Server. During Runtime this singleton object
     is stateful and therefore we need to check for some attributes during
     __init__ when multiple consecutive reconfigurations are happening.
-
-    Parameters
-    ----------
-    connector_config: Input.Config
-        Holds full connector config for config change checks
-    endpoints_config: dict
-        Endpoint paths as key and initiated endpoint objects as
-        value
-    log_level: str
-        Log level to be set for uvicorn server
     """
 
     _instance = None
