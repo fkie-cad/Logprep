@@ -43,9 +43,22 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self, uvicorn_config: dict, app, daemon=True, logger_name="Logprep HTTPServer"
     ) -> None:
-        """Creates object attributes with necessary configuration.
+        """
+        Creates object attributes with necessary configuration.
         As this class creates a singleton object, the existing server
-        will be stopped and restarted on consecutively creations"""
+        will be stopped and restarted on consecutively creations
+
+        Parameters
+        ----------
+        uvicorn_config: dict
+            Holds server config for config change checks
+        app:
+            The app instance that the server should provide
+        daemon: bool
+            Whether the server is in daemon mode or not
+        logger_name: str
+            Name of the logger instance
+        """
 
         if hasattr(self, "thread"):
             if self.thread.is_alive():  # pylint: disable=access-member-before-definition
