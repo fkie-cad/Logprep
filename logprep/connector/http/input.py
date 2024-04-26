@@ -410,8 +410,8 @@ class HttpConnector(Input):
 
     @staticmethod
     def _get_asgi_app(endpoints_config: dict) -> falcon.asgi.App:
-        "Init falcon application server and setting endpoint routes"
-        app = falcon.asgi.App()  # pylint: disable=attribute-defined-outside-init
+        """Init falcon application server and setting endpoint routes"""
+        app = falcon.asgi.App()
         for endpoint_path, endpoint in endpoints_config.items():
             app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
         return app
