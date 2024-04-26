@@ -101,7 +101,7 @@ from logprep.util import http
 from logprep.util.credentials import CredentialsFactory
 
 
-def decorator_basic_auth(func: Callable):
+def basic_auth(func: Callable):
     """Decorator to check basic authentication.
     Will raise 401 on wrong credentials or missing Authorization-Header"""
 
@@ -121,7 +121,7 @@ def decorator_basic_auth(func: Callable):
     return func_wrapper
 
 
-def decorator_request_exceptions(func: Callable):
+def handle_request_exceptions(func: Callable):
     """Decorator to wrap http calls and raise exceptions"""
 
     async def func_wrapper(*args, **kwargs):
@@ -144,7 +144,7 @@ def decorator_request_exceptions(func: Callable):
     return func_wrapper
 
 
-def decorator_add_metadata(func: Callable):
+def add_metadata(func: Callable):
     """Decorator to add metadata to resulting http event.
     Uses attribute collect_meta of endpoint class to decide over metadata collection
     Uses attribute metafield_name to define key name for metadata
@@ -200,15 +200,21 @@ class HttpEndpoint(ABC):
         collect_meta: bool,
         metafield_name: str,
         credentials: dict,
+        number_of_http_requests: CounterMetric,
     ) -> None:
         self.messages = messages
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
         self.credentials = credentials
+        self.number_of_http_requests = number_of_http_requests
         if self.credentials:
             self.basicauth_b64 = b64encode(
                 f"{self.credentials.username}:{self.credentials.password}".encode("utf-8")
             ).decode("utf-8")
+
+    def collect_metrics(self):
+        """Increment number of requests"""
+        self.number_of_http_requests += 1
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -216,11 +222,12 @@ class JSONHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
-    @decorator_request_exceptions
-    @decorator_basic_auth
-    @decorator_add_metadata
+    @handle_request_exceptions
+    @basic_auth
+    @add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """json endpoint method"""
+        self.collect_metrics()
         data = await req.stream.read()
         data = data.decode("utf8")
         metadata = kwargs.get("metadata", {})
@@ -234,11 +241,12 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
-    @decorator_request_exceptions
-    @decorator_basic_auth
-    @decorator_add_metadata
+    @handle_request_exceptions
+    @basic_auth
+    @add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
+        self.collect_metrics()
         data = await req.stream.read()
         data = data.decode("utf8")
         event = kwargs.get("metadata", {})
@@ -253,11 +261,12 @@ class PlaintextHttpEndpoint(HttpEndpoint):
     """:code:`plaintext` endpoint to get the body from request
     and put it in :code:`message` field"""
 
-    @decorator_request_exceptions
-    @decorator_basic_auth
-    @decorator_add_metadata
+    @handle_request_exceptions
+    @basic_auth
+    @add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
+        self.collect_metrics()
         data = await req.stream.read()
         metadata = kwargs.get("metadata", {})
         event = {"message": data.decode("utf8")}
@@ -411,7 +420,11 @@ class HttpConnector(Input):
             endpoint_class = self._endpoint_registry.get(endpoint_type)
             credentials = cred_factory.from_endpoint(endpoint_path)
             endpoints_config[endpoint_path] = endpoint_class(
-                self.messages, collect_meta, metafield_name, credentials
+                self.messages,
+                collect_meta,
+                metafield_name,
+                credentials,
+                self.metrics.number_of_http_requests,
             )
 
         app = self._get_asgi_app(endpoints_config)

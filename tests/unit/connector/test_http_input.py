@@ -6,7 +6,6 @@ import re
 from copy import deepcopy
 from unittest import mock
 
-import falcon
 import pytest
 import requests
 import uvicorn
@@ -72,6 +71,12 @@ class TestHttpConnector(BaseInputTestCase):
             "/.*/[A-Z]{2}/json$": "json",
         },
     }
+
+    expected_metrics = [
+        *BaseInputTestCase.expected_metrics,
+        "logprep_message_backlog_size",
+        "logprep_number_of_http_requests",
+    ]
 
     def teardown_method(self):
         while not self.object.messages.empty():
