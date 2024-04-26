@@ -45,7 +45,7 @@ class PrometheusExporter:
                 os.remove(os.path.join(root, file))
             for directory in dirs:
                 shutil.rmtree(os.path.join(root, directory), ignore_errors=True)
-        self._logger.info("Cleaned up %s" % multiprocess_dir)
+        self._logger.info("Cleaned up %s", multiprocess_dir)
 
     def mark_process_dead(self, pid):
         """
@@ -63,5 +63,5 @@ class PrometheusExporter:
         """Starts the default prometheus http endpoint"""
         self._prepare_multiprocessing()
         self._server.start()
-        self._logger.info("Prometheus Exporter started on port %s" % self._port)
+        self._logger.info("Prometheus Exporter started on port %s", self._port)
         self.is_running = True
