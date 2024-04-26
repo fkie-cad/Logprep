@@ -34,10 +34,9 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         return log_config
 
     def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            with cls._lock:
-                if not cls._instance:
-                    cls._instance = super(ThreadingHTTPServer, cls).__new__(cls)
+        with cls._lock:
+            if not cls._instance:
+                cls._instance = super(ThreadingHTTPServer, cls).__new__(cls)
         return cls._instance
 
     def __init__(
