@@ -332,7 +332,7 @@ class S3Output(Output):
             "@timestamp": TimeParser.now().isoformat(),
         }
         try:
-            document["message"] = self._encoder.encode(message_document)
+            document["message"] = self._encoder.encode(message_document).decode("utf-8")
         except TypeError:
             document["message"] = str(message_document)
         return document

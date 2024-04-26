@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 import logging
+from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from math import isclose
@@ -65,7 +66,7 @@ class TestS3Output(BaseOutputTestCase):
         expected = {
             default_prefix: [
                 {
-                    "message": '{"field": "content"}',
+                    "message": '{"field":"content"}',
                     "reason": "Prefix field 'foo_prefix_field' empty or missing in document",
                 }
             ]
@@ -89,7 +90,7 @@ class TestS3Output(BaseOutputTestCase):
         event = {"field": "content"}
         default_prefix = f"{base_prefix}/default_prefix" if base_prefix else "default_prefix"
         expected = {
-            "message": '{"field": "content"}',
+            "message": '{"field":"content"}',
             "reason": "Prefix field 'foo_prefix_field' empty or missing in document",
         }
         s3_config = deepcopy(self.CONFIG)
