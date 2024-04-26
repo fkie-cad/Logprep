@@ -96,6 +96,7 @@ from falcon import (  # pylint: disable=no-name-in-module
 )
 
 from logprep.abc.input import FatalInputError, Input
+from logprep.metrics.metrics import CounterMetric
 from logprep.util import http
 from logprep.util.credentials import CredentialsFactory
 
@@ -267,6 +268,18 @@ class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
 
     @define(kw_only=True)
+    class Metrics(Input.Metrics):
+        """Tracks statistics about this connector"""
+
+        number_of_http_requests: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of incomming requests",
+                name="number_of_http_requests",
+            )
+        )
+        """Number of incomming requests"""
+
+    @define(kw_only=True)
     class Config(Input.Config):
         """Config for HTTPInput"""
 
@@ -417,6 +430,7 @@ class HttpConnector(Input):
 
     def _get_event(self, timeout: float) -> Tuple:
         """Returns the first message from the queue"""
+        self.metrics.message_backlog_size += self.messages.qsize()
         try:
             message = self.messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")

@@ -214,6 +214,7 @@ class ElasticsearchOutput(Output):
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
+        self.metrics.message_backlog_size += len(self._message_backlog)
         if document.get("_index") is None:
             document = self._build_failed_index_document(document, "Missing index in document")
 

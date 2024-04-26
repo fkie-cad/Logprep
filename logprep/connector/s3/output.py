@@ -58,8 +58,8 @@ from botocore.exceptions import (
     EndpointConnectionError,
 )
 
-from logprep.abc.output import Output, FatalOutputError
-from logprep.metrics.metrics import Metric, CounterMetric
+from logprep.abc.output import FatalOutputError, Output
+from logprep.metrics.metrics import CounterMetric, Metric
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 
@@ -264,7 +264,7 @@ class S3Output(Output):
            Document to store.
         """
         self.metrics.number_of_processed_events += 1
-
+        self.metrics.message_backlog_size += len(self._message_backlog)
         prefix_value = get_dotted_field_value(document, self._config.prefix_field)
         if prefix_value is None:
             document = self._build_no_prefix_document(
