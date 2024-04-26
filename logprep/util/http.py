@@ -69,6 +69,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         }
         uvicorn_config = {**internal_uvicorn_config, **uvicorn_config}
         self._logger_name = logger_name
+        self._logger = logging.getLogger(self._logger_name)
         uvicorn_config = uvicorn.Config(**uvicorn_config, app=app, log_config=self._log_config)
         self.server = uvicorn.Server(uvicorn_config)
         self._override_runtime_logging()
@@ -83,13 +84,15 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         while not self.server.started:
             continue
 
-    def _stop(self):
+    def shut_down(self):
         """Stop thread with uvicorn+falcon http server, wait for uvicorn
         to exit gracefully and join the thread"""
-        if self.thread.is_alive():
-            self.server.should_exit = True
-            while self.thread.is_alive():
-                continue
+        if not self.thread.is_alive():
+            return
+        self.server.should_exit = True
+        while self.thread.is_alive():
+            self._logger.debug("Wait for server to exit gracefully...")
+            continue
         self.thread.join()
 
     def _override_runtime_logging(self):
@@ -105,7 +108,3 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
             )
         logging.getLogger("uvicorn.access").name = self._logger_name
         logging.getLogger("uvicorn.error").name = self._logger_name
-
-    def shut_down(self):
-        """Shutdown method to trigger http server shutdown externally"""
-        self._stop()
