@@ -295,14 +295,11 @@ class HttpConnector(Input):
            .. code-block:: yaml
                :caption: Recommended uvicorn configuration for connector endpoint
 
-                metrics:
-                    enabled: true
-                    port: 9000
-                    uvicorn_config:
-                        access_log: true
-                        server_header: false
-                        date_header: false
-                        workers: 2
+                uvicorn_config:
+                    access_log: true
+                    server_header: false
+                    date_header: false
+                    workers: 2
 
         """
         endpoints: Mapping[str, str] = field(
