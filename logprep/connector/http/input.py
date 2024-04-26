@@ -361,7 +361,11 @@ class HttpConnector(Input):
         super().__init__(name, configuration, logger)
         port = self._config.uvicorn_config["port"]
         host = self._config.uvicorn_config["host"]
-        self.target = f"http://{host}:{port}"
+        ssl_options = any(
+            setting for setting in self._config.uvicorn_config if setting.startswith("ssl")
+        )
+        schema = "https" if ssl_options else "http"
+        self.target = f"{schema}://{host}:{port}"
         self.http_server = None
 
     def setup(self):

@@ -357,3 +357,14 @@ class TestHttpConnector(BaseInputTestCase):
         """
         requests.post(url=f"{self.target}/jsonl", data=data, timeout=0.5)
         assert self.object.messages.qsize() == 5
+
+    def test_sets_target_to_https_schema_if_ssl_options(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["uvicorn_config"]["ssl_keyfile"] = "path/to/keyfile"
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        assert connector.target.startswith("https://")
+
+    def test_sets_target_to_http_schema_if_no_ssl_options(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        assert connector.target.startswith("http://")
