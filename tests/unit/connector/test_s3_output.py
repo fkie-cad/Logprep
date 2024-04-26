@@ -132,7 +132,6 @@ class TestS3Output(BaseOutputTestCase):
 
         s3_output.store_failed(error_message, event_received, event)
 
-        print(s3_output._message_backlog)
         error_document = s3_output._message_backlog[error_prefix][0]
         # timestamp is compared to be approximately the same,
         # since it is variable and then removed to compare the rest
@@ -267,11 +266,18 @@ class TestS3Output(BaseOutputTestCase):
             self.object.store({"test": "event"})
         mock_write_backlog.assert_not_called()
 
+    def test_write_backlog_executed_on_empty_message_backlog(self):
+        with mock.patch(
+            "logprep.connector.s3.output.S3Output._backlog_size", new_callable=mock.PropertyMock
+        ) as mock_backlog_size:
+            self.object._write_backlog()
+            mock_backlog_size.assert_not_called()
+
     def test_store_failed_counts_failed_events(self):
         self.object._write_backlog = mock.MagicMock()
         super().test_store_failed_counts_failed_events()
 
-    def test_setup_registers_flush_timout_tasks(self):
+    def test_setup_registers_flush_timeout_tasks(self):
         job_count = len(self.object._scheduler.jobs)
         with pytest.raises(FatalOutputError):
             self.object.setup()
@@ -299,7 +305,6 @@ class TestS3Output(BaseOutputTestCase):
         ],
     )
     def test_setup_raises_fataloutputerror_if_boto_exception_is_raised(self, error, message):
-
         with mock.patch.object(
             self.object._s3_resource.meta.client,
             "head_bucket",
