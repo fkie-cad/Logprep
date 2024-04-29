@@ -287,7 +287,7 @@ class HttpConnector(Input):
         .. security-best-practice::
            :title: Uvicorn Webserver Configuration
            :location: uvicorn_config
-           :suggested-value: below
+           :suggested-value: uvicorn_config.access_log: true, uvicorn_config.server_header: false, uvicorn_config.data_header: false
            
            Additionaly to the below it is recommended to configure `ssl on the metrics server endpoint
            <https://www.uvicorn.org/settings/#https>`_
