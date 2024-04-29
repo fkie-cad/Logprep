@@ -304,7 +304,7 @@ class Pipeline:
                 output.shut_down()
             for processor in self._pipeline:
                 processor.shut_down()
-        except Exception as error:
+        except Exception as error:  # pylint: disable=broad-except
             self.logger.error(f"Couldn't gracefully shut down pipeline due to: {error}")
 
     def _drain_input_queues(self) -> None:
