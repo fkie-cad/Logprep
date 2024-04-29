@@ -423,7 +423,6 @@ class Configuration:
        <https://www.uvicorn.org/settings/#https>`_
 
        .. code-block:: yaml
-          :caption: Recommended uvicorn configuration for metrics
 
           metrics:
             enabled: true
