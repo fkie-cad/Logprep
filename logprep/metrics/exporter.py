@@ -4,20 +4,29 @@ import os
 import shutil
 from logging import getLogger
 
-from prometheus_client import REGISTRY, multiprocess, start_http_server
+from prometheus_client import REGISTRY, make_asgi_app, multiprocess
 
+from logprep.util import http
 from logprep.util.configuration import MetricsConfig
 
 
 class PrometheusExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
 
-    def __init__(self, status_logger_config: MetricsConfig):
+    def __init__(self, configuration: MetricsConfig):
         self.is_running = False
-        self._logger = getLogger("Prometheus Exporter")
+        logger_name = "Prometheus Exporter"
+        self._logger = getLogger(logger_name)
         self._logger.debug("Initializing Prometheus Exporter")
-        self.configuration = status_logger_config
-        self._port = status_logger_config.port
+        self.configuration = configuration
+        self._port = configuration.port
+        self._app = make_asgi_app(REGISTRY)
+        self._server = http.ThreadingHTTPServer(
+            configuration.uvicorn_config | {"port": self._port},
+            self._app,
+            daemon=True,
+            logger_name=logger_name,
+        )
 
     def _prepare_multiprocessing(self):
         """
@@ -36,7 +45,7 @@ class PrometheusExporter:
                 os.remove(os.path.join(root, file))
             for directory in dirs:
                 shutil.rmtree(os.path.join(root, directory), ignore_errors=True)
-        self._logger.info("Cleaned up %s" % multiprocess_dir)
+        self._logger.info("Cleaned up %s", multiprocess_dir)
 
     def mark_process_dead(self, pid):
         """
@@ -53,6 +62,6 @@ class PrometheusExporter:
     def run(self):
         """Starts the default prometheus http endpoint"""
         self._prepare_multiprocessing()
-        start_http_server(self._port)
-        self._logger.info(f"Prometheus Exporter started on port {self._port}")
+        self._server.start()
+        self._logger.info("Prometheus Exporter started on port %s", self._port)
         self.is_running = True

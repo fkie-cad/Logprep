@@ -7,6 +7,12 @@ logger:
 metrics:
   enabled: true
   port: 8003
+  uvicorn_config:
+    host: 0.0.0.0
+    access_log: true
+    server_header: false
+    date_header: false
+    workers: 1
 input:
   httpinput:
       type: http_input
@@ -16,6 +22,10 @@ input:
       uvicorn_config:
           host: 0.0.0.0
           port: 9000
+          workers: 2
+          access_log: true
+          server_header: false
+          date_header: false
       endpoints:
           /auth-json: json
           /json: json

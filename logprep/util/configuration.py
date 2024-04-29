@@ -218,7 +218,7 @@ from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util import getter
+from logprep.util import getter, http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
 from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
@@ -306,6 +306,17 @@ class MetricsConfig:
 
     enabled: bool = field(validator=validators.instance_of(bool), default=False)
     port: int = field(validator=validators.instance_of(int), default=8000)
+    uvicorn_config: dict = field(
+        validator=[
+            validators.instance_of(dict),
+            validators.deep_mapping(
+                key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
+                # lambda xyz tuple necessary because of input structure
+                value_validator=lambda x, y, z: True,
+            ),
+        ],
+        factory=dict,
+    )
 
 
 @define(kw_only=True)
@@ -397,7 +408,32 @@ class Configuration:
         converter=lambda x: MetricsConfig(**x) if isinstance(x, dict) else x,
         eq=False,
     )
-    """Metrics configuration. Defaults to :code:`{"enabled": False, "port": 8000}`."""
+    """Metrics configuration. Defaults to 
+    :code:`{"enabled": False, "port": 8000, "uvicorn_config": {}}`.
+    
+    The key :code:`uvicorn_config` can be configured with any uvicorn config parameters.
+    For further information see the `uvicorn documentation <https://www.uvicorn.org/settings/>`_.
+
+    .. security-best-practice::
+       :title: Metrics Configuration
+       :location: config.metrics.uvicorn_config
+       :suggested-value: metrics.uvicorn_config.access_log: true, metrics.uvicorn_config.server_header: false, metrics.uvicorn_config.data_header: false
+
+       Additionaly to the below it is recommended to configure `ssl on the metrics server endpoint
+       <https://www.uvicorn.org/settings/#https>`_
+
+       .. code-block:: yaml
+
+          metrics:
+            enabled: true
+            port: 9000
+            uvicorn_config:
+              access_log: true
+              server_header: false
+              date_header: false
+              workers: 1
+
+    """
     profile_pipelines: bool = field(default=False, eq=False)
     """Start the profiler to profile the pipeline. Defaults to :code:`False`."""
     print_auto_test_stack_trace: bool = field(default=False, eq=False)

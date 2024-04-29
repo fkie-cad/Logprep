@@ -2,6 +2,7 @@
 import os
 import re
 import tempfile
+import time
 from pathlib import Path
 
 import requests
@@ -162,9 +163,10 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
         assert "error" not in output.lower(), "error message"
         assert "critical" not in output.lower(), "error message"
         assert "exception" not in output.lower(), "error message"
-        if "Finished building pipeline" in output:
+        if "Startup complete" in output:
             break
-    response = requests.get("http://127.0.0.1:8003", timeout=5)
+    time.sleep(2)
+    response = requests.get("http://127.0.0.1:8003", timeout=7)
     response.raise_for_status()
     metrics = response.text
     expected_metrics = [

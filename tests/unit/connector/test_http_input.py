@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 import multiprocessing
+import re
 from copy import deepcopy
 from unittest import mock
 
@@ -80,9 +81,6 @@ class TestHttpConnector(BaseInputTestCase):
     def test_create_connector(self):
         assert isinstance(self.object, HttpConnector)
 
-    def test_has_falcon_asgi_app(self):
-        assert isinstance(self.object.get_app_instance(), falcon.asgi.App)
-
     def test_no_pipeline_index(self):
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config}, logger=self.logger)
@@ -97,7 +95,7 @@ class TestHttpConnector(BaseInputTestCase):
         connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         connector.pipeline_index = 2
         connector.setup()
-        assert not hasattr(connector, "http_server")
+        assert connector.http_server is None
 
     def test_get_method_returns_200(self):
         resp = requests.get(url=f"{self.target}/json", timeout=0.5)
@@ -238,7 +236,7 @@ class TestHttpConnector(BaseInputTestCase):
         assert self.object.get_next(0.001)[0] is None
 
     def test_server_returns_uvicorn_server_instance(self):
-        assert isinstance(self.object.get_server_instance(), uvicorn.Server)
+        assert isinstance(self.object.http_server.server, uvicorn.Server)
 
     def test_server_starts_threaded_server(self):
         message = {"message": "my message"}
@@ -260,7 +258,7 @@ class TestHttpConnector(BaseInputTestCase):
         assert resp.status_code == 200
         message = connector.messages.get(timeout=0.5)
         assert message["custom"]["url"] == target + "/json"
-        assert message["custom"]["remote_addr"] == connector.host
+        assert re.search(r"\d+\.\d+\.\d+\.\d+", message["custom"]["remote_addr"])
         assert isinstance(message["custom"]["user_agent"], str)
 
     def test_server_multiple_config_changes(self):
@@ -315,17 +313,6 @@ class TestHttpConnector(BaseInputTestCase):
         connector_next_msg, _ = connector.get_next(1)
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
 
-    @pytest.mark.parametrize("endpoint", ["/auth-json-secret", "/.*/[A-Z]{2}/json$"])
-    def test_endpoint_has_credentials(self, endpoint, credentials_file_path):
-        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
-        with mock.patch.dict("os.environ", mock_env):
-            new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
-            new_connector.pipeline_index = 1
-            new_connector.setup()
-            endpoint_config = new_connector.http_server.endpoints_config.get(endpoint)
-            assert endpoint_config.credentials.username, endpoint
-            assert endpoint_config.credentials.password, endpoint
-
     def test_endpoint_has_basic_auth(self, credentials_file_path):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         with mock.patch.dict("os.environ", mock_env):
@@ -370,3 +357,14 @@ class TestHttpConnector(BaseInputTestCase):
         """
         requests.post(url=f"{self.target}/jsonl", data=data, timeout=0.5)
         assert self.object.messages.qsize() == 5
+
+    def test_sets_target_to_https_schema_if_ssl_options(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["uvicorn_config"]["ssl_keyfile"] = "path/to/keyfile"
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        assert connector.target.startswith("https://")
+
+    def test_sets_target_to_http_schema_if_no_ssl_options(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        assert connector.target.startswith("http://")

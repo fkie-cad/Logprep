@@ -81,13 +81,13 @@ class TestConfiguration:
             ("logger", {"level": "INFO"}, {"level": "DEBUG"}),
             (
                 "metrics",
-                {"enabled": False, "port": 8000},
-                {"enabled": True, "port": 9000},
+                {"enabled": False, "port": 8000, "uvicorn_config": {"access_log": True}},
+                {"enabled": True, "port": 9000, "uvicorn_config": {"access_log": False}},
             ),
             (
                 "metrics",
                 {"enabled": False, "port": 8000},
-                {"enabled": True, "port": 9000},
+                {"enabled": True, "port": 9000, "uvicorn_config": {}},
             ),
         ],
     )
