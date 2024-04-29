@@ -2,11 +2,11 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 import multiprocessing
+import random
 import re
 from copy import deepcopy
 from unittest import mock
 
-import falcon
 import pytest
 import requests
 import uvicorn
@@ -72,6 +72,12 @@ class TestHttpConnector(BaseInputTestCase):
             "/.*/[A-Z]{2}/json$": "json",
         },
     }
+
+    expected_metrics = [
+        *BaseInputTestCase.expected_metrics,
+        "logprep_message_backlog_size",
+        "logprep_number_of_http_requests",
+    ]
 
     def teardown_method(self):
         while not self.object.messages.empty():
@@ -368,3 +374,21 @@ class TestHttpConnector(BaseInputTestCase):
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         assert connector.target.startswith("http://")
+
+    def test_get_event_sets_message_backlog_size_metric(self):
+        self.object.metrics.message_backlog_size = 0
+        random_number = random.randint(1, 100)
+        for number in range(random_number):
+            self.object.messages.put({"message": f"my message{number}"})
+        self.object.get_next(0.001)
+        assert self.object.metrics.message_backlog_size == random_number
+
+    def test_enpoints_count_requests(self):
+        self.object.metrics.number_of_http_requests = 0
+        self.object.setup()
+        random_number = random.randint(1, 100)
+        for number in range(random_number):
+            requests.post(
+                url=f"{self.target}/json", json={"message": f"my message{number}"}, timeout=0.5
+            )
+        assert self.object.metrics.number_of_http_requests == random_number

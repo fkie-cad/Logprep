@@ -9,6 +9,9 @@
 * expose metrics via uvicorn webserver
   * makes all uvicorn configuration options possible
   * add security best practices to server configuration
+* add following metrics to `http_input` connector
+  * `nummer_of_http_requests`
+  * `message_backlog_size`
 
 ### Improvements
 

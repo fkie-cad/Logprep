@@ -96,11 +96,12 @@ from falcon import (  # pylint: disable=no-name-in-module
 )
 
 from logprep.abc.input import FatalInputError, Input
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util import http
 from logprep.util.credentials import CredentialsFactory
 
 
-def decorator_basic_auth(func: Callable):
+def basic_auth(func: Callable):
     """Decorator to check basic authentication.
     Will raise 401 on wrong credentials or missing Authorization-Header"""
 
@@ -120,7 +121,7 @@ def decorator_basic_auth(func: Callable):
     return func_wrapper
 
 
-def decorator_request_exceptions(func: Callable):
+def handle_request_exceptions(func: Callable):
     """Decorator to wrap http calls and raise exceptions"""
 
     async def func_wrapper(*args, **kwargs):
@@ -143,7 +144,7 @@ def decorator_request_exceptions(func: Callable):
     return func_wrapper
 
 
-def decorator_add_metadata(func: Callable):
+def add_metadata(func: Callable):
     """Decorator to add metadata to resulting http event.
     Uses attribute collect_meta of endpoint class to decide over metadata collection
     Uses attribute metafield_name to define key name for metadata
@@ -199,15 +200,21 @@ class HttpEndpoint(ABC):
         collect_meta: bool,
         metafield_name: str,
         credentials: dict,
+        metrics: "HttpConnector.Metrics",
     ) -> None:
         self.messages = messages
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
         self.credentials = credentials
+        self.metrics = metrics
         if self.credentials:
             self.basicauth_b64 = b64encode(
                 f"{self.credentials.username}:{self.credentials.password}".encode("utf-8")
             ).decode("utf-8")
+
+    def collect_metrics(self):
+        """Increment number of requests"""
+        self.metrics.number_of_http_requests += 1
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -215,11 +222,12 @@ class JSONHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
-    @decorator_request_exceptions
-    @decorator_basic_auth
-    @decorator_add_metadata
+    @handle_request_exceptions
+    @basic_auth
+    @add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """json endpoint method"""
+        self.collect_metrics()
         data = await req.stream.read()
         data = data.decode("utf8")
         metadata = kwargs.get("metadata", {})
@@ -233,11 +241,12 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
-    @decorator_request_exceptions
-    @decorator_basic_auth
-    @decorator_add_metadata
+    @handle_request_exceptions
+    @basic_auth
+    @add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
+        self.collect_metrics()
         data = await req.stream.read()
         data = data.decode("utf8")
         event = kwargs.get("metadata", {})
@@ -252,11 +261,12 @@ class PlaintextHttpEndpoint(HttpEndpoint):
     """:code:`plaintext` endpoint to get the body from request
     and put it in :code:`message` field"""
 
-    @decorator_request_exceptions
-    @decorator_basic_auth
-    @decorator_add_metadata
+    @handle_request_exceptions
+    @basic_auth
+    @add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
+        self.collect_metrics()
         data = await req.stream.read()
         metadata = kwargs.get("metadata", {})
         event = {"message": data.decode("utf8")}
@@ -265,6 +275,26 @@ class PlaintextHttpEndpoint(HttpEndpoint):
 
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
+
+    @define(kw_only=True)
+    class Metrics(Input.Metrics):
+        """Tracks statistics about this connector"""
+
+        number_of_http_requests: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of incomming requests",
+                name="number_of_http_requests",
+            )
+        )
+        """Number of incomming requests"""
+
+        message_backlog_size: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Size of the message backlog queue",
+                name="message_backlog_size",
+            )
+        )
+        """Size of the message backlog queue"""
 
     @define(kw_only=True)
     class Config(Input.Config):
@@ -398,7 +428,11 @@ class HttpConnector(Input):
             endpoint_class = self._endpoint_registry.get(endpoint_type)
             credentials = cred_factory.from_endpoint(endpoint_path)
             endpoints_config[endpoint_path] = endpoint_class(
-                self.messages, collect_meta, metafield_name, credentials
+                self.messages,
+                collect_meta,
+                metafield_name,
+                credentials,
+                self.metrics,
             )
 
         app = self._get_asgi_app(endpoints_config)
@@ -417,6 +451,7 @@ class HttpConnector(Input):
 
     def _get_event(self, timeout: float) -> Tuple:
         """Returns the first message from the queue"""
+        self.metrics.message_backlog_size += self.messages.qsize()
         try:
             message = self.messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
