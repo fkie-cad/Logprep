@@ -52,11 +52,3 @@ class Connector(Component):
             )
         )
         """Number of errors that occurred while processing events"""
-
-        message_backlog_size: GaugeMetric = field(
-            factory=lambda: GaugeMetric(
-                description="Size of the message backlog queue",
-                name="message_backlog_size",
-            )
-        )
-        """Size of the message backlog queue"""

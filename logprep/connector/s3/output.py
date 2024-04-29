@@ -264,7 +264,6 @@ class S3Output(Output):
            Document to store.
         """
         self.metrics.number_of_processed_events += 1
-        self.metrics.message_backlog_size += len(self._message_backlog)
         prefix_value = get_dotted_field_value(document, self._config.prefix_field)
         if prefix_value is None:
             document = self._build_no_prefix_document(

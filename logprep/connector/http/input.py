@@ -96,7 +96,7 @@ from falcon import (  # pylint: disable=no-name-in-module
 )
 
 from logprep.abc.input import FatalInputError, Input
-from logprep.metrics.metrics import CounterMetric
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util import http
 from logprep.util.credentials import CredentialsFactory
 
@@ -200,13 +200,13 @@ class HttpEndpoint(ABC):
         collect_meta: bool,
         metafield_name: str,
         credentials: dict,
-        number_of_http_requests: CounterMetric,
+        metrics: "HttpConnector.Metrics",
     ) -> None:
         self.messages = messages
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
         self.credentials = credentials
-        self.number_of_http_requests = number_of_http_requests
+        self.metrics = metrics
         if self.credentials:
             self.basicauth_b64 = b64encode(
                 f"{self.credentials.username}:{self.credentials.password}".encode("utf-8")
@@ -214,7 +214,7 @@ class HttpEndpoint(ABC):
 
     def collect_metrics(self):
         """Increment number of requests"""
-        self.number_of_http_requests += 1
+        self.metrics.number_of_http_requests += 1
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -287,6 +287,14 @@ class HttpConnector(Input):
             )
         )
         """Number of incomming requests"""
+
+        message_backlog_size: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Size of the message backlog queue",
+                name="message_backlog_size",
+            )
+        )
+        """Size of the message backlog queue"""
 
     @define(kw_only=True)
     class Config(Input.Config):
@@ -424,7 +432,7 @@ class HttpConnector(Input):
                 collect_meta,
                 metafield_name,
                 credentials,
-                self.metrics.number_of_http_requests,
+                self.metrics,
             )
 
         app = self._get_asgi_app(endpoints_config)
