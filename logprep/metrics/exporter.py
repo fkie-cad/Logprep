@@ -22,7 +22,7 @@ class PrometheusExporter:
         self._port = configuration.port
         self._app = make_asgi_app(REGISTRY)
         self._server = http.ThreadingHTTPServer(
-            configuration.uvicorn_config | {"port": self._port},
+            configuration.uvicorn_config | {"port": self._port, "host": "0.0.0.0"},
             self._app,
             daemon=True,
             logger_name=logger_name,
