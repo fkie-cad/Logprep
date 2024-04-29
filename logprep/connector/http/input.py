@@ -293,7 +293,6 @@ class HttpConnector(Input):
            <https://www.uvicorn.org/settings/#https>`_
 
            .. code-block:: yaml
-               :caption: Recommended uvicorn configuration for connector endpoint
 
                 uvicorn_config:
                     access_log: true
