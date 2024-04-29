@@ -550,6 +550,15 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.run()
         self.pipeline._shut_down.assert_called()
 
+    @mock.patch("logging.Logger.error")
+    def test_shutdown_logs_fatal_errors(self, mock_error, _):
+        error = FatalOutputError(mock.MagicMock(), "fatal error")
+        self.pipeline._output["dummy"].shut_down.side_effect = error
+        self.pipeline._shut_down()
+        self.pipeline._output["dummy"].shut_down.assert_called_once()
+        logger_call = f"Couldn't gracefully shut down pipeline due to: {error}"
+        mock_error.assert_called_with(logger_call)
+
 
 class TestPipelineWithActualInput:
     def setup_method(self):
