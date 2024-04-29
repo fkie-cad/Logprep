@@ -3,7 +3,7 @@
 from attrs import define, field
 
 from logprep.abc.component import Component
-from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric
+from logprep.metrics.metrics import CounterMetric, HistogramMetric
 
 
 class Connector(Component):
