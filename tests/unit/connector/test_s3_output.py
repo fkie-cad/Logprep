@@ -177,8 +177,9 @@ class TestS3Output(BaseOutputTestCase):
     )
     def test_write_document_batch_calls_handles_errors(self, caplog, error, message):
         with caplog.at_level(logging.WARNING):
-            with mock.patch(
-                "logprep.connector.s3.output.S3Output._write_to_s3",
+            with mock.patch.object(
+                self.object._s3_resource,
+                "Object",
                 side_effect=error,
             ):
                 with pytest.raises(FatalOutputError, match=message):

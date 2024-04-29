@@ -43,10 +43,11 @@ from collections import defaultdict
 from functools import cached_property
 from logging import Logger
 from time import time
-from typing import DefaultDict, Optional
+from typing import Any, DefaultDict, Optional
 from uuid import uuid4
 
 import boto3
+import msgspec
 from attr import define, field
 from attrs import validators
 from botocore.exceptions import (
@@ -60,6 +61,25 @@ from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import CounterMetric, Metric
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
+
+
+def _handle_s3_error(func):
+    def _inner(self: "S3Output", *args) -> Any:
+        try:
+            return func(self, *args)
+        except EndpointConnectionError as error:
+            raise FatalOutputError(self, "Could not connect to the endpoint URL") from error
+        except ConnectionClosedError as error:
+            raise FatalOutputError(
+                self,
+                "Connection was closed before we received a valid response from endpoint URL",
+            ) from error
+        except (BotoCoreError, ClientError) as error:
+            raise FatalOutputError(self, str(error)) from error
+
+        return None
+
+    return _inner
 
 
 class S3Output(Output):
@@ -184,22 +204,13 @@ class S3Output(Output):
         base_description = super().describe()
         return f"{base_description} - S3 Output: {self._config.endpoint_url}"
 
+    @_handle_s3_error
     def setup(self) -> None:
         super().setup()
         flush_timeout = self._config.flush_timeout
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
 
-        try:
-            _ = self._s3_resource.meta.client.head_bucket(Bucket=self._config.bucket)
-        except EndpointConnectionError as error:
-            raise FatalOutputError(self, "Could not connect to the endpoint URL") from error
-        except ConnectionClosedError as error:
-            raise FatalOutputError(
-                self,
-                "Connection was closed before we received a valid response from endpoint URL",
-            ) from error
-        except (BotoCoreError, ClientError) as error:
-            raise FatalOutputError(self, str(error)) from error
+        _ = self._s3_resource.meta.client.head_bucket(Bucket=self._config.bucket)
 
     def store(self, document: dict) -> None:
         """Store a document into s3 bucket.
@@ -307,20 +318,8 @@ class S3Output(Output):
         if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
             self.input_connector.batch_finished_callback()
 
+    @_handle_s3_error
     def _write_document_batch(self, document_batch: dict, identifier: str) -> None:
-        try:
-            self._write_to_s3(document_batch, identifier)
-        except EndpointConnectionError as error:
-            raise FatalOutputError(self, "Could not connect to the endpoint URL") from error
-        except ConnectionClosedError as error:
-            raise FatalOutputError(
-                self,
-                "Connection was closed before we received a valid response from endpoint URL",
-            ) from error
-        except (BotoCoreError, ClientError) as error:
-            raise FatalOutputError(self, str(error)) from error
-
-    def _write_to_s3(self, document_batch: dict, identifier: str) -> None:
         self._logger.debug(f'Writing "{identifier}" to s3 bucket "{self._config.bucket}"')
         s3_obj = self._s3_resource.Object(self._config.bucket, identifier)
         s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
@@ -333,6 +332,6 @@ class S3Output(Output):
         }
         try:
             document["message"] = self._encoder.encode(message_document).decode("utf-8")
-        except TypeError:
+        except (msgspec.EncodeError, TypeError):
             document["message"] = str(message_document)
         return document
