@@ -77,3 +77,7 @@ class TestPrometheusExporter:
         exporter.mark_process_dead(test_process_id)
         mock_multiprocess.mark_process_dead.assert_called()
         mock_multiprocess.mark_process_dead.assert_called_with(test_process_id)
+
+    def test_exporter_spawns_server_on_all_interfaces(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        assert exporter._server.server.config.host == "0.0.0.0"

@@ -12,6 +12,12 @@
 
 * fixes exposing OpenSearch/ElasitcSearch stacktraces in log when errors happen
 
+## 11.2.1
+
+### Bugfix
+
+* fixes bug, that leads to spawning exporter http server always on localhost
+
 ## 11.2.0
 
 ### Features
