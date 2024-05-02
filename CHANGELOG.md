@@ -10,7 +10,7 @@
 
 ### Bugfix
 
-* fixes exposing OpenSearch/ElasitcSearch stacktraces in log when errors happen
+* fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen
 
 ## 11.2.1
 
