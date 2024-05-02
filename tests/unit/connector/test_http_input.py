@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import gzip
+import json
 import multiprocessing
 import random
 import re
@@ -392,3 +394,15 @@ class TestHttpConnector(BaseInputTestCase):
                 url=f"{self.target}/json", json={"message": f"my message{number}"}, timeout=0.5
             )
         assert self.object.metrics.number_of_http_requests == random_number
+
+    def test_endpoint_handles_gzip_content(self):
+        data = {"message": "my log message"}
+        data = gzip.compress(json.dumps(data).encode())
+        headers = {"Content-Encoding": "gzip", "Content-Type": "application/json"}
+        resp = requests.post(
+            url=f"{self.target}/json",
+            data=data,
+            headers=headers,
+            timeout=0.5,
+        )
+        assert resp.status_code == 200
