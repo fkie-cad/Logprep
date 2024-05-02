@@ -7,6 +7,7 @@
 ### Features
 
 * add fine-grained logger configuration for OpenSearch/ElasticSearch libraries
+* add gzip handling to `http_input` connector
 
 ### Improvements
 
