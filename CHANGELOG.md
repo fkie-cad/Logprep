@@ -6,11 +6,13 @@
 
 ### Features
 
+* add fine-grained logger configuration for OpenSearch/ElasticSearch libraries
+
 ### Improvements
 
 ### Bugfix
 
-## Upcoming Changes
+* fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen
 
 ## 11.2.1
 

@@ -297,12 +297,15 @@ class Pipeline:
         list(map(self._store_extra_data, extra_data))
 
     def _shut_down(self) -> None:
-        self._input.shut_down()
-        self._drain_input_queues()
-        for _, output in self._output.items():
-            output.shut_down()
-        for processor in self._pipeline:
-            processor.shut_down()
+        try:
+            self._input.shut_down()
+            self._drain_input_queues()
+            for _, output in self._output.items():
+                output.shut_down()
+            for processor in self._pipeline:
+                processor.shut_down()
+        except Exception as error:  # pylint: disable=broad-except
+            self.logger.error(f"Couldn't gracefully shut down pipeline due to: {error}")
 
     def _drain_input_queues(self) -> None:
         if not hasattr(self._input, "messages"):

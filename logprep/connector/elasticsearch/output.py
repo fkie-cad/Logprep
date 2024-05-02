@@ -31,6 +31,7 @@ Example
 """
 
 import json
+import logging
 import re
 import ssl
 from functools import cached_property
@@ -103,6 +104,9 @@ class ElasticsearchOutput(Output):
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
         """(Optional) Timout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
+        loglevel: Optional[str] = field(validator=validators.instance_of(str), default="INFO")
+        """(Optional) Log level for the underlying library. Enables fine-grained control over the
+        logging, e.g. stacktraces can be activated or deactivated. Defaults to :code:`INFO`."""
 
     __slots__ = ["_message_backlog", "_size_error_pattern"]
 
@@ -168,6 +172,7 @@ class ElasticsearchOutput(Output):
         elasticsearch.Elasticsearch
             the eleasticsearch context
         """
+        logging.getLogger("elasticsearch").setLevel(self._config.loglevel)
         return search.Elasticsearch(
             self._config.hosts,
             scheme=self.schema,
@@ -412,7 +417,7 @@ class ElasticsearchOutput(Output):
 
         """
         if self._config.maximum_message_size_mb is None:
-            raise error
+            raise FatalOutputError(self, error.error)
 
         if self._message_exceeds_max_size_error(error):
             (
@@ -421,7 +426,7 @@ class ElasticsearchOutput(Output):
             ) = self._split_message_backlog_by_size_limit()
 
             if len(messages_over_size_limit) == 0:
-                raise error
+                raise FatalOutputError(self, error.error)
 
             error_documents = self._build_messages_for_large_error_documents(
                 messages_over_size_limit
@@ -429,7 +434,7 @@ class ElasticsearchOutput(Output):
             self._message_backlog = error_documents + messages_under_size_limit
             self._bulk(self._search_context, self._message_backlog)
         else:
-            raise error
+            raise FatalOutputError(self, error.error)
 
     def _message_exceeds_max_size_error(self, error):
         if error.status_code == 429:

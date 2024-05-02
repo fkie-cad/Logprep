@@ -229,7 +229,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "bar"}, {"bar": "baz"}],
                 0,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -253,7 +253,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -261,7 +261,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -277,7 +277,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"error": {"reason": "wrong_reason"}},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -305,7 +305,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 },
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
         ],
     )
