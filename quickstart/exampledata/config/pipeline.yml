@@ -118,6 +118,7 @@ output:
     parallel_bulk: false
     user: admin
     secret: admin
+    loglevel: ERROR
   kafka:
     type: confluentkafka_output
     default: false

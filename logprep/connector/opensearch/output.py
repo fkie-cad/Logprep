@@ -100,6 +100,7 @@ class OpensearchOutput(ElasticsearchOutput):
 
     @cached_property
     def _search_context(self):
+        logging.getLogger("opensearch").setLevel(self._config.loglevel)
         return search.OpenSearch(
             self._config.hosts,
             scheme=self.schema,

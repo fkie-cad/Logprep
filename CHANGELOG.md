@@ -6,6 +6,8 @@
 
 ### Features
 
+* add fine-grained logger configuration for OpenSearch/ElasticSearch libraries
+
 ### Improvements
 
 ### Bugfix
