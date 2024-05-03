@@ -80,6 +80,7 @@ Behaviour of HTTP Requests
 import multiprocessing as mp
 import queue
 import re
+import zlib
 from abc import ABC
 from base64 import b64encode
 from logging import Logger
@@ -121,7 +122,7 @@ def basic_auth(func: Callable):
     return func_wrapper
 
 
-def handle_request_exceptions(func: Callable):
+def raise_request_exceptions(func: Callable):
     """Decorator to wrap http calls and raise exceptions"""
 
     async def func_wrapper(*args, **kwargs):
@@ -216,19 +217,43 @@ class HttpEndpoint(ABC):
         """Increment number of requests"""
         self.metrics.number_of_http_requests += 1
 
+    async def get_data(self, req: falcon.Request) -> bytes:
+        """returns the data from the request body
+
+        if the request has a Content-Encoding header with the value gzip, the data will be
+        decompressed using zlib because according to
+        https://docs.python.org/3/library/gzip.html#gzip.decompress
+        zlib with wbits=31 is the faster implementation.
+
+        Parameters
+        ----------
+        req : falcon.Request
+            the incoming request
+
+        Returns
+        -------
+        bytes
+            data from the request body
+        """
+        data = await req.stream.readall()
+        if encoding := req.get_header("Content-Encoding"):
+            if encoding == "gzip":
+                data = zlib.decompress(data, 31)
+        return data
+
 
 class JSONHttpEndpoint(HttpEndpoint):
     """:code:`json` endpoint to get json from request"""
 
     _decoder = msgspec.json.Decoder()
 
-    @handle_request_exceptions
+    @raise_request_exceptions
     @basic_auth
     @add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """json endpoint method"""
         self.collect_metrics()
-        data = await req.stream.read()
+        data = await self.get_data(req)
         data = data.decode("utf8")
         metadata = kwargs.get("metadata", {})
         if data:
@@ -241,13 +266,13 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
     _decoder = msgspec.json.Decoder()
 
-    @handle_request_exceptions
+    @raise_request_exceptions
     @basic_auth
     @add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
         self.collect_metrics()
-        data = await req.stream.read()
+        data = await self.get_data(req)
         data = data.decode("utf8")
         event = kwargs.get("metadata", {})
         metadata = kwargs.get("metadata", {})
@@ -261,13 +286,13 @@ class PlaintextHttpEndpoint(HttpEndpoint):
     """:code:`plaintext` endpoint to get the body from request
     and put it in :code:`message` field"""
 
-    @handle_request_exceptions
+    @raise_request_exceptions
     @basic_auth
     @add_metadata
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
         self.collect_metrics()
-        data = await req.stream.read()
+        data = await self.get_data(req)
         metadata = kwargs.get("metadata", {})
         event = {"message": data.decode("utf8")}
         self.messages.put({**event, **metadata}, block=False)

@@ -395,12 +395,13 @@ class TestHttpConnector(BaseInputTestCase):
             )
         assert self.object.metrics.number_of_http_requests == random_number
 
-    def test_endpoint_handles_gzip_content(self):
+    @pytest.mark.parametrize("endpoint", ["json", "plaintext", "jsonl"])
+    def test_endpoint_handles_gzip_compression(self, endpoint):
         data = {"message": "my log message"}
         data = gzip.compress(json.dumps(data).encode())
-        headers = {"Content-Encoding": "gzip", "Content-Type": "application/json"}
+        headers = {"Content-Encoding": "gzip"}
         resp = requests.post(
-            url=f"{self.target}/json",
+            url=f"{self.target}/{endpoint}",
             data=data,
             headers=headers,
             timeout=0.5,
