@@ -2,7 +2,9 @@ version: 1
 process_count: 2
 timeout: 0.1
 logger:
-  level: INFO
+  level: DEBUG
+  # format: "%(asctime)-15s %(hostname)-5s %(name)-19s %(levelname)-8s: %(message)s"
+  datefmt: "%Y-%m-%d %H:%M:%S"
 
 metrics:
   enabled: true

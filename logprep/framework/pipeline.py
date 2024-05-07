@@ -167,7 +167,7 @@ class Pipeline:
         lock: Lock = None,
     ) -> None:
         self._log_queue = log_queue
-        self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
+        self.logger = logging.getLogger(f"Pipeline {pipeline_index}")
         self.logger.addHandler(logging.handlers.QueueHandler(log_queue))
         self._logprep_config = config
         self._timeout = config.timeout

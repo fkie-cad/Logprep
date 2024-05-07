@@ -130,7 +130,7 @@ class Runner:
     def __init__(self, configuration: Configuration) -> None:
         self._configuration = configuration
         self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
-        self._logger = logging.getLogger("Logprep Runner")
+        self._logger = logging.getLogger("Runner")
 
         self._manager = PipelineManager(configuration)
         self.scheduler = Scheduler()
