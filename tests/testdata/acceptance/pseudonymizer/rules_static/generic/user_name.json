@@ -2,7 +2,7 @@
   {
     "filter": "user.name",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "user.name": "RE_WHOLE_FIELD"
       }
     },

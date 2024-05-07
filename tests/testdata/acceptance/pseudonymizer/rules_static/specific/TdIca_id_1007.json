@@ -2,7 +2,7 @@
   {
     "filter": "winlog.event_id: 1007 AND winlog.provider_name: \"TdIca\"",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "winlog.event_data.param3": "RE_IP4_COLON_PORT"
       }
     },

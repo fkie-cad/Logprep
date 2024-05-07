@@ -2,7 +2,7 @@
   {
     "filter": "client.address",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "client.address": "RE_WHOLE_FIELD"
       }
     },
