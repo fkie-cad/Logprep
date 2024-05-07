@@ -392,9 +392,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {"field1": "2022-12-05"},
         {
             "field1": "2022-12-05",
-            "tags": ["_timestamp_differ_failure"],
+            "tags": ["_timestamp_differ_missing_field_warning"],
         },
-        r".*ProcessingWarning.*no value for fields: \['subfield.field2'\]",
+        r".*ProcessingWarning.*missing source_fields: \['subfield.field2'\]",
     ),
     (
         "diff between two timestamps with non existing fields",
@@ -408,9 +408,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {"some_field": "some value"},
         {
             "some_field": "some value",
-            "tags": ["_timestamp_differ_failure"],
+            "tags": ["_timestamp_differ_missing_field_warning"],
         },
-        r".*ProcessingWarning.*no value for fields: \['subfield.field2', 'field1'\]",
+        r".*ProcessingWarning.*missing source_fields: \['subfield.field2', 'field1']",
     ),
     (
         "diff between two timestamps with already existing output field",

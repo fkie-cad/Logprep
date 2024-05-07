@@ -53,7 +53,7 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, add_field_to
 from logprep.util.validators import list_of_urls_validator
 
 
@@ -223,10 +223,8 @@ class DomainResolver(Processor):
             self.metrics.timeouts += 1
 
     def _store_debug_infos(self, event, requires_storing):
-        event["resolved_ip_debug"] = {}
-        event_dbg = event["resolved_ip_debug"]
-        if requires_storing:
-            event_dbg["obtained_from_cache"] = False
-        else:
-            event_dbg["obtained_from_cache"] = True
-        event_dbg["cache_size"] = len(self._domain_ip_map.keys())
+        event_dbg = {
+            "obtained_from_cache": not requires_storing,
+            "cache_size": len(self._domain_ip_map.keys()),
+        }
+        add_field_to(event, "resolved_ip_debug", event_dbg, overwrite_output_field=True)

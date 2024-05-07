@@ -37,18 +37,18 @@ from zipfile import ZipFile
 
 from attrs import define, field, validators
 
-from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingError,
     ProcessingWarning,
 )
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class Grokker(Processor):
+class Grokker(FieldManager):
     """A processor that dissects a message by grok patterns"""
 
     rule_class = GrokkerRule
@@ -56,7 +56,7 @@ class Grokker(Processor):
     _config: "Grokker.Config"
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """Config of Grokker"""
 
         custom_patterns_dir: str = field(default="", validator=validators.instance_of(str))
@@ -68,17 +68,16 @@ class Grokker(Processor):
     def _apply_rules(self, event: dict, rule: GrokkerRule):
         conflicting_fields = []
         matches = []
+        source_values = []
         for dotted_field, grok in rule.actions.items():
             field_value = get_dotted_field_value(event, dotted_field)
+            source_values.append(field_value)
             if field_value is None:
-                if rule.ignore_missing_fields:
-                    continue
-                error = BaseException(f"{self.name}: missing source_field: '{dotted_field}'")
-                self._handle_warning_error(event=event, rule=rule, error=error)
                 continue
             try:
                 result = grok.match(field_value)
             except TimeoutError as error:
+                self._handle_missing_fields(event, rule, rule.actions.keys(), source_values)
                 raise ProcessingError(
                     self,
                     f"Grok pattern timeout for source field: '{dotted_field}' in rule '{rule}', "
@@ -95,6 +94,8 @@ class Grokker(Processor):
                 )
                 if not success:
                     conflicting_fields.append(dotted_field)
+        if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
+            return
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
         if not matches:

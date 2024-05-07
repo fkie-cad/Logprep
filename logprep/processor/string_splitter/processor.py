@@ -26,10 +26,10 @@ Processor Configuration
 .. automodule:: logprep.processor.string_splitter.rule
 """
 
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.string_splitter.rule import StringSplitterRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value
 
 
 class StringSplitter(FieldManager):
@@ -38,18 +38,10 @@ class StringSplitter(FieldManager):
     rule_class = StringSplitterRule
 
     def _apply_rules(self, event: dict, rule: StringSplitterRule):
-        target_field = rule.target_field
         source_field = rule.source_fields[0]
         source_field_content = get_dotted_field_value(event, source_field)
+        self._handle_missing_fields(event, rule, rule.source_fields, [source_field_content])
         if not isinstance(source_field_content, str):
             raise ProcessingWarning(f"source_field '{source_field}' is not a string", rule, event)
         result = source_field_content.split(rule.delimeter)
-        successful = add_field_to(
-            event=event,
-            output_field=target_field,
-            content=result,
-            extends_lists=rule.extend_target_list,
-            overwrite_output_field=rule.overwrite_target,
-        )
-        if not successful:
-            raise FieldExistsWarning(rule, event, [target_field])
+        self._write_target_field(event, rule, result)

@@ -38,6 +38,7 @@ from attr import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
+from logprep.util.helper import get_dotted_field_value, add_field_to
 from logprep.util.time import TimeParser
 
 
@@ -85,44 +86,41 @@ class PreDetector(Processor):
         then the expiration date of the IP is being used.
         """
 
-    __slots__ = ["_extra_data"]
-
-    _extra_data: list
-
     rule_class = PreDetectorRule
 
     @cached_property
     def _ip_alerter(self):
         return IPAlerter(self._config.alert_ip_list_path)
 
-    def process(self, event: dict) -> tuple:
-        self._extra_data = []
-        super().process(event)
-        return (self._extra_data, self._config.outputs) if self._extra_data else None
-
     def _apply_rules(self, event, rule):
         if not (
             self._ip_alerter.has_ip_fields(rule)
             and not self._ip_alerter.is_in_alerts_list(rule, event)
         ):
-            self._get_detection_result(event, rule, self._extra_data)
-        for detection in self._extra_data:
+            self._get_detection_result(event, rule)
+        for detection, _ in self._extra_data:
             detection["creation_timestamp"] = TimeParser.now().isoformat()
-            if "@timestamp" in event:
-                detection["@timestamp"] = event["@timestamp"]
+            timestamp = get_dotted_field_value(event, "@timestamp")
+            if timestamp is not None:
+                detection["@timestamp"] = timestamp
 
-    def _get_detection_result(self, event: dict, rule: PreDetectorRule, detection_results: list):
-        if event.get("pre_detection_id") is None:
-            event["pre_detection_id"] = str(uuid4())
+    def _get_detection_result(self, event: dict, rule: PreDetectorRule):
+        pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
+        if pre_detection_id is None:
+            pre_detection_id = str(uuid4())
+            add_field_to(event, "pre_detection_id", pre_detection_id)
 
-        detection_results.append(self._generate_detection_result(event, rule))
+        detection_result = self._generate_detection_result(pre_detection_id, event, rule)
+        self._extra_data.append((detection_result, self._config.outputs))
 
-    def _generate_detection_result(self, event: dict, rule: PreDetectorRule):
+    @staticmethod
+    def _generate_detection_result(pre_detection_id: str, event: dict, rule: PreDetectorRule):
         detection_result = rule.detection_data
         detection_result["rule_filter"] = rule.filter_str
         detection_result["description"] = rule.description
-        detection_result["pre_detection_id"] = event["pre_detection_id"]
-        if "host" in event and "name" in event["host"]:
-            detection_result["host"] = {"name": event["host"]["name"]}
+        detection_result["pre_detection_id"] = pre_detection_id
 
+        host_name = get_dotted_field_value(event, "host.name")
+        if host_name is not None:
+            detection_result["host"] = {"name": host_name}
         return detection_result

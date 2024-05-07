@@ -55,6 +55,7 @@ from urlextract import URLExtract
 
 from logprep.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.getter import GetterFactory
@@ -63,11 +64,11 @@ from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
 
-class Pseudonymizer(Processor):
+class Pseudonymizer(FieldManager):
     """Pseudonymize log events to conform to EU privacy laws."""
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """Pseudonymizer config"""
 
         outputs: tuple[dict[str, str]] = field(
@@ -174,10 +175,6 @@ class Pseudonymizer(Processor):
         )
         """Relative cache load."""
 
-    __slots__ = ["pseudonyms"]
-
-    pseudonyms: list
-
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
 
@@ -219,37 +216,25 @@ class Pseudonymizer(Processor):
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self.pseudonyms = []
 
     def setup(self):
         super().setup()
         self._replace_regex_keywords_by_regex_expression()
 
     def _replace_regex_keywords_by_regex_expression(self):
-        for rule_dict in self._specific_rules:
-            for dotted_field, regex_keyword in rule_dict.pseudonyms.items():
+        for rule in self._specific_rules + self._generic_rules:
+            for dotted_field, regex_keyword in rule.pseudonyms.items():
                 if regex_keyword in self._regex_mapping:
-                    rule_dict.pseudonyms[dotted_field] = re.compile(
-                        self._regex_mapping[regex_keyword]
-                    )
-        for rule_dict in self._generic_rules:
-            for dotted_field, regex_keyword in rule_dict.pseudonyms.items():
-                if regex_keyword in self._regex_mapping:
-                    rule_dict.pseudonyms[dotted_field] = re.compile(
-                        self._regex_mapping[regex_keyword]
-                    )
-
-    def process(self, event: dict):
-        self.pseudonyms = []
-        super().process(event)
-        unique_pseudonyms = list(
-            {pseudonyms["pseudonym"]: pseudonyms for pseudonyms in self.pseudonyms}.values()
-        )
-        return (unique_pseudonyms, self._config.outputs) if unique_pseudonyms else None
+                    rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
 
     def _apply_rules(self, event: dict, rule: PseudonymizerRule):
-        for dotted_field, regex in rule.pseudonyms.items():
-            field_value = get_dotted_field_value(event, dotted_field)
+        source_dict = {}
+        for source_field in rule.pseudonyms:
+            source_dict[source_field] = get_dotted_field_value(event, source_field)
+        self._handle_missing_fields(event, rule, source_dict.keys(), source_dict.values())
+
+        for dotted_field, field_value in source_dict.items():
+            regex = rule.pseudonyms[dotted_field]
             if field_value is None:
                 continue
             if isinstance(field_value, list):
@@ -261,7 +246,7 @@ class Pseudonymizer(Processor):
                 field_value = self._pseudonymize_field(rule, dotted_field, regex, field_value)
             _ = add_field_to(event, dotted_field, field_value, overwrite_output_field=True)
         if "@timestamp" in event:
-            for pseudonym in self.pseudonyms:
+            for pseudonym, _ in self._extra_data:
                 pseudonym["@timestamp"] = event["@timestamp"]
         self._update_cache_metrics()
 
@@ -291,7 +276,9 @@ class Pseudonymizer(Processor):
         if self.pseudonymized_pattern.match(value):
             return value
         pseudonym_dict = self._get_pseudonym_dict_cached(value)
-        self.pseudonyms.append(pseudonym_dict)
+        extra = (pseudonym_dict, self._config.outputs)
+        if extra not in self._extra_data:
+            self._extra_data.append(extra)
         return self._wrap_hash(pseudonym_dict["pseudonym"])
 
     def _pseudonymize(self, value):

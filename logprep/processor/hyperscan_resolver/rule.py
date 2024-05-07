@@ -24,7 +24,7 @@ from typing import Tuple
 
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
+from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.getter import GetterFactory
 
@@ -44,7 +44,7 @@ class InvalidHyperscanResolverDefinition(HyperscanResolverRuleError):
         super().__init__(message)
 
 
-class HyperscanResolverRule(Rule):
+class HyperscanResolverRule(GenericResolverRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
@@ -173,10 +173,6 @@ class HyperscanResolverRule(Rule):
     @property
     def resolve_from_file(self) -> str:
         return self._config.resolve_from_file
-
-    @property
-    def append_to_list(self) -> bool:
-        return self._config.append_to_list
 
     @property
     def store_db_persistent(self) -> bool:

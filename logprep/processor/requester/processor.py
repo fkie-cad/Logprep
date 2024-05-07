@@ -41,8 +41,8 @@ import re
 
 import requests
 
-from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.requester.rule import RequesterRule
 from logprep.util.helper import (
     add_field_to,
@@ -53,7 +53,7 @@ from logprep.util.helper import (
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
 
-class Requester(Processor):
+class Requester(FieldManager):
     """A processor to invoke http requests with field data
     and parses response data to field values"""
 
@@ -61,6 +61,8 @@ class Requester(Processor):
 
     def _apply_rules(self, event, rule):
         source_field_dict = get_source_fields_dict(event, rule)
+        if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
+            return
         if self._has_missing_values(event, rule, source_field_dict):
             return
         kwargs = self._template_kwargs(rule.kwargs, source_field_dict)

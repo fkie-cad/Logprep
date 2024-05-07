@@ -98,7 +98,7 @@ from typing import Any
 
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
+from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory
 
@@ -107,10 +107,10 @@ class GenericAdderRule(FieldManagerRule):
     """Check if documents match a filter and initialize the fields and values can be added."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(FieldManagerRule.Config):
         """Config for GenericAdderRule"""
 
-        overwrite_target: str = field(validator=validators.instance_of(bool), default=False)
+        overwrite_target: bool = field(validator=validators.instance_of(bool), default=False)
         """Overwrite the target field value if exists. Defaults to :code:`False`"""
         extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the values

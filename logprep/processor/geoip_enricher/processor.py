@@ -37,18 +37,18 @@ from filelock import FileLock
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
-from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class GeoipEnricher(Processor):
+class GeoipEnricher(FieldManager):
     """Resolve values in documents by referencing a mapping list."""
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """geoip_enricher config"""
 
         db_path: str = field(validator=validators.instance_of(str))
@@ -120,10 +120,8 @@ class GeoipEnricher(Processor):
 
     def _apply_rules(self, event, rule):
         ip_string = get_dotted_field_value(event, rule.source_fields[0])
-        if ip_string is None:
-            raise ProcessingWarning(
-                f"Value of IP field '{rule.source_fields[0]}' is 'None'", rule, event
-            )
+        if self._handle_missing_fields(event, rule, rule.source_fields, [ip_string]):
+            return
         geoip_data = self._try_getting_geoip_data(ip_string)
         if not geoip_data:
             return

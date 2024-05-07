@@ -89,8 +89,8 @@ class ListComparison(Processor):
 
         if comparison_result is not None:
             output_field = f"{ rule.target_field }.{ comparison_key }"
-            field_possible = add_field_to(event, output_field, comparison_result, True)
-            if not field_possible:
+            add_successful = add_field_to(event, output_field, comparison_result, True)
+            if not add_successful:
                 raise FieldExistsWarning(rule, event, [output_field])
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict):
