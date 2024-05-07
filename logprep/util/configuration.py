@@ -200,10 +200,12 @@ The following config file will be valid by setting the given environment variabl
 """
 
 import json
+import logging
 import os
 from copy import deepcopy
 from itertools import chain
 from logging import getLogger
+from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 
@@ -222,6 +224,7 @@ from logprep.util import getter, http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
 from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
+    DEFAULT_LOG_CONFIG,
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
 )
 from logprep.util.getter import GetterFactory, GetterNotFoundError
@@ -319,6 +322,57 @@ class MetricsConfig:
     )
 
 
+@define(kw_only=True, frozen=True)
+class LoggerConfig:
+    """the logger config class used in Configuration
+    the schema for this class is derived from the python logging module:
+    https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+    """
+
+    version: int = field(validator=validators.instance_of(int), default=1)
+    """The only valid value at present is 1"""
+    formatters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    """A dictionary which defines the formatters available to the logging system."""
+    filters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    """A dictionary which defines the filters available to the logging system."""
+    handlers: dict = field(
+        validator=validators.instance_of(dict),
+    )
+    """A dictionary which defines the handlers available to the logging system."""
+    loggers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    """A dictionary which defines the loggers available to the logging system."""
+    disable_existing_loggers: bool = field(validator=validators.instance_of(bool), default=False)
+    """whether any existing non-root loggers are to be disabled."""
+
+    @staticmethod
+    def from_logprep_config(config: dict) -> "LoggerConfig":
+        """Create a LoggerConfig from a logprep logger configuration."""
+        logger_config = LoggerConfig(**DEFAULT_LOG_CONFIG)
+        if "level" in config:
+            logger_config.loggers["root"]["level"] = config["level"]
+        if "format" in config:
+            logger_config.formatters["logprep"]["format"] = config["format"]
+        if "datefmt" in config:
+            logger_config.formatters["logprep"]["datefmt"] = config["datefmt"]
+        if "loggers" in config:
+            for logger_name, value in config["loggers"].items():
+                specific_logger_config = {}
+                if "level" in value:
+                    specific_logger_config["level"] = value["level"]
+                if "handlers" in value:
+                    specific_logger_config["handlers"] = value["handlers"]
+                if logger_name in logger_config.loggers:
+                    logger_config.loggers[logger_name].update(specific_logger_config)
+                else:
+                    logger_config.loggers[logger_name] = specific_logger_config
+        logging.Formatter(
+            fmt=logger_config.formatters["logprep"]["format"],
+            datefmt=logger_config.formatters["logprep"]["datefmt"],
+            validate=True,
+        )
+        return logger_config
+
+
 @define(kw_only=True)
 class Configuration:
     """the configuration class"""
@@ -374,8 +428,11 @@ class Configuration:
     processing power. This can be useful for testing and debugging.
     Larger values (like 5.0) slow the reaction time down, but this requires less processing power,
     which makes in preferable for continuous operation. Defaults to :code:`5.0`."""
-    logger: dict = field(
-        validator=validators.instance_of(dict), default={"level": "INFO"}, eq=False
+    logger: LoggerConfig = field(
+        validator=validators.instance_of(LoggerConfig),
+        default=LoggerConfig(**DEFAULT_LOG_CONFIG),
+        eq=False,
+        converter=lambda x: LoggerConfig.from_logprep_config(x) if isinstance(x, dict) else x,
     )
     """Logger configuration. Defaults to :code:`{"level": "INFO"}`.
 
