@@ -4,11 +4,20 @@
 
 ### Breaking
 
+* change `pseudonyms` in pseudonymizer rules to `mapping` and change `target` in clusterer rules to `source_fields` like in the field_mapper
+
 ### Features
 
 * add fine-grained logger configuration for OpenSearch/ElasticSearch libraries
 
 ### Improvements
+
+* align processor architecture to use methods like `write_to_target`, `add_field_to` and `get_dotted_field_value` when reading and writing from and to events
+  * required substantial refactoring of the `hyperscan_resolver`, `generic_resolver` and `template_replacer` 
+* change `pseudonymizer`, `pre_detector`, `selective_extractor` processors and `pipeline` to handle `extra_data` the same way
+* refactor `clusterer`, `pre_detector` and `pseudonymizer` processors and change `rule_tree` so that the processor do not require `process` override
+  * required substantial refactoring of the `clusterer`
+* handle missing fields in processors via `_handle_missing_fields` from the field_manager
 
 ### Bugfix
 
