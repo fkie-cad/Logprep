@@ -42,15 +42,15 @@ class TestClustererRule:
                 True,
             ),
             (
-                    "Should be equal cause the same with default source field",
-                    {
-                        "filter": "message",
-                        "clusterer": {
-                            "pattern": r"test (signature) test",
-                            "repl": "<+>\1</+>",
-                        },
+                "Should be equal cause the same with default source field",
+                {
+                    "filter": "message",
+                    "clusterer": {
+                        "pattern": r"test (signature) test",
+                        "repl": "<+>\1</+>",
                     },
-                    True,
+                },
+                True,
             ),
             (
                 "Should be not equal cause of other filter",

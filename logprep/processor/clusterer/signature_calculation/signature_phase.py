@@ -1,4 +1,5 @@
 """Module for Signature-Phase of the Log-Clustering."""
+
 import re
 from typing import Tuple, List, Dict
 

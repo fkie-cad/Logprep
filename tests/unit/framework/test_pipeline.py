@@ -400,10 +400,12 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         processor_with_extra_data = mock.MagicMock()
         processor_with_extra_data.process = mock.MagicMock()
-        processor_with_extra_data.process.return_value = [(
-            {"foo": "bar"},
-            ({"dummy": "target"}, {"dummy1": "second_target"}),
-        )]
+        processor_with_extra_data.process.return_value = [
+            (
+                {"foo": "bar"},
+                ({"dummy": "target"}, {"dummy1": "second_target"}),
+            )
+        ]
         self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 1
@@ -419,9 +421,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         processor_with_extra_data = mock.MagicMock()
         processor_with_extra_data.process = mock.MagicMock()
-        processor_with_extra_data.process.return_value = [
-            ({"foo": "bar"}, ({"dummy": "target"},))
-        ]
+        processor_with_extra_data.process.return_value = [({"foo": "bar"}, ({"dummy": "target"},))]
         self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 1

@@ -39,6 +39,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.clusterer.rule
 """
+
 import math
 from logging import Logger
 from typing import Tuple
