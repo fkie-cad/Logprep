@@ -3,8 +3,10 @@ process_count: 2
 timeout: 0.1
 logger:
   level: DEBUG
-  # format: "%(asctime)-15s %(hostname)-5s %(name)-19s %(levelname)-8s: %(message)s"
+  format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
+  loggers:
+    "py.warnings": {"level": "ERROR"}
 
 metrics:
   enabled: true

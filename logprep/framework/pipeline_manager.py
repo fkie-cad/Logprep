@@ -60,7 +60,7 @@ class PipelineManager:
 
     def __init__(self, configuration: Configuration):
         self.metrics = self.Metrics(labels={"component": "manager"})
-        self._logger = logging.getLogger("PipelineManager")
+        self._logger = logging.getLogger("Manager")
         if multiprocessing.current_process().name == "MainProcess":
             self._start_multiprocess_logger()
             self._set_http_input_queue(configuration)
