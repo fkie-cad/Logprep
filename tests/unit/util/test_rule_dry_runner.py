@@ -160,7 +160,7 @@ class TestRunLogprep:
         dry_runner.run()
 
         captured = capsys.readouterr()
-        assert captured.err == ""
+        assert "'tags': ['_pseudonymizer_missing_field_warning']" in captured.err
         assert "------ PROCESSED EVENT ------" in captured.out
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
         assert "------ CUSTOM OUTPUTS ------" in captured.out
