@@ -175,17 +175,15 @@ services:
       # use this folder to persist your postgresql data by dumping the database to it after changes
       # outside the container: chmod 777 quickstart/exampledata/config/keycloak
       # inside the container: pg_dump keycloak -U keycloak -W --file /docker-entrypoint-initdb.d/keycloak_db.sql
-#      - ../quickstart/exampledata/config/keycloak:/docker-entrypoint-initdb.d
+      # - ../quickstart/exampledata/config/keycloak:/docker-entrypoint-initdb.d
       - keycloak-db-volume:/var/lib/postgresql/data
     networks:
       - ucl
       - keycloak
   fda-api:
-    container_name: fda-api
     image: registry.gitlab.com/z-e-u-s/fda/fda-backend:0.24.0
-#    network_mode: host
-#    expose:
-#      - 8000
+    container_name: fda-api
+    read_only: true
     environment:
       POSTGRES_HOST: fda-db
       POSTGRES_PORT: 5432
@@ -196,69 +194,74 @@ services:
       THROTTLE_RATE_USER: 1000/day
       WEB_CONCURRENCY: 4
       SECURE_SSL_REDIRECT: "False"
-      SERVICE_BASE_URL: http://localhost:8000/
+      SERVICE_BASE_URL: http://localhost:8000/api/v1
       DJANGO_SECRET_KEY: "django-insecure-*w($$5i@@iq%!ygufa%%@nfdplt(!e#hoahnjy^@6xdutl8mlqz"
       ALLOWED_HOSTS: "*"
-      CORS_ALLOWED_ORIGINS: http://localhost
+      CORS_ALLOWED_ORIGINS: "http://localhost"
       CORS_ALLOWED_ALLOW_ALL: "True"
       DJANGO_DEBUG: "True"
       KEYCLOAK_SERVER_URL: http://keycloak:8080
       KEYCLOAK_REALM: logprep
       KEYCLOAK_CLIENT_ID: fda-backend
       KEYCLOAK_CLIENT_ID_FOR_AUTHZ_ROLES: fda
-      KEYCLOAK_CLIENT_SECRET: f61AJPfBamIqGFcSkBKzx2lmFV6qBIsM
+      KEYCLOAK_CLIENT_SECRET: Kh4tz3wMcBMrPdGVuQeOv3aTlPKpQfOw
       KEYCLOAK_VERIFY_CERTIFICATE: "False"
       KEYCLOAK_VALIDATE_ISSUER: "False"
       SECURE_REDIRECT_EXEMPT: '[".*localhost.*"]'
     depends_on:
       fda-db:
         condition: service_healthy
+    entrypoint:
+      - ./docker/docker-entrypoint.sh
     security_opt:
       - no-new-privileges:true
+    tmpfs:
+      - /tmp
     networks:
       - fda
       - keycloak
   fda-db:
     container_name: fda-db
     image: "postgres:14"
-#    network_mode: host
-#    expose:
-#      - 25432
+    read_only: true
     volumes:
       # use this folder to persist your postgresql data by dumping the database to it after changes
       # outside the container: chmod 777 quickstart/exampledata/config/fda
       # inside the container: pg_dump -p 25432 fda -U fda -W --file /docker-entrypoint-initdb.d/fda_db.sql
-#      - ../quickstart/exampledata/config/fda:/docker-entrypoint-initdb.d
+      - ../quickstart/exampledata/config/fda:/docker-entrypoint-initdb.d
       - fda-db-volume:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: fda
       POSTGRES_USER: fda
       POSTGRES_DB: fda
-#    command: -p 25432
     healthcheck:
       test: "pg_isready --username=$$POSTGRES_USER && psql --username=$$POSTGRES_USER --list"
       interval: 8s
       timeout: 5s
       retries: 10
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /run/postgresql
     networks:
       - fda
   fda-frontend:
     image: registry.gitlab.com/z-e-u-s/fda/fda-frontend:0.24.0
     container_name: fda-frontend
-#    network_mode: host
-    restart: always
+    depends_on:
+      fda-api:
+        condition: service_started
+    ports:
+      - "3002:80"
     volumes:
       - ../quickstart/exampledata/config/fda/config.json:/usr/share/nginx/html/assets/config/keycloak/config.json
       - ../quickstart/exampledata/config/fda/default.conf:/etc/nginx/conf.d/default.conf
-    ports:
-      - "3002:80"
-#    expose:
-#      - 8002
     networks:
       - fda
   ucl-api:
-    container_name: ucl-api
     image: registry.gitlab.com/z-e-u-s/ucl/ucl-backend:0.24.0
+    container_name: ucl-api
     read_only: true
     environment:
       POSTGRES_HOST: ucl-db
@@ -280,7 +283,7 @@ services:
       KEYCLOAK_REALM: logprep
       KEYCLOAK_CLIENT_ID: ucl-backend
       KEYCLOAK_CLIENT_ID_FOR_AUTHZ_ROLES: ucl
-      KEYCLOAK_CLIENT_SECRET: 8W0CQP5um0dkBZ9mfW0PgNYdD8qBSA4u
+      KEYCLOAK_CLIENT_SECRET: CwPAptWESjdJXboOLTnHRBpf5MnsC3UY
       KEYCLOAK_VERIFY_CERTIFICATE: "False"
       KEYCLOAK_VALIDATE_ISSUER: "False"
       FDA_BASE_URL: http://fda-frontend
@@ -319,8 +322,8 @@ services:
     networks:
       - ucl
   ucl-frontend:
-    container_name: ucl-frontend
     image: registry.gitlab.com/z-e-u-s/ucl/ucl-frontend:0.24.0
+    container_name: ucl-frontend
     depends_on:
       ucl-api:
         condition: service_started

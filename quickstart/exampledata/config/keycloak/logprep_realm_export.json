@@ -96,6 +96,42 @@
           "clientRole": true,
           "containerId": "02d1898e-b586-4795-b3ff-fd2bae926af0",
           "attributes": {}
+        },
+        {
+          "id": "1a897a89-f194-45a9-aabd-eb02413cdab9",
+          "name": "fda-onboarder",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "02d1898e-b586-4795-b3ff-fd2bae926af0",
+          "attributes": {}
+        },
+        {
+          "id": "4ea2b45a-d9bf-4007-b508-b802058a1568",
+          "name": "config-reader",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "02d1898e-b586-4795-b3ff-fd2bae926af0",
+          "attributes": {}
+        },
+        {
+          "id": "a2336061-0373-4cf6-8fcc-170b34be868d",
+          "name": "fda-reader",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "02d1898e-b586-4795-b3ff-fd2bae926af0",
+          "attributes": {}
+        },
+        {
+          "id": "a8f765e5-bb1c-4505-b829-350df971ecd3",
+          "name": "fda-ecs-maintainer",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "02d1898e-b586-4795-b3ff-fd2bae926af0",
+          "attributes": {}
         }
       ],
       "realm-management": [
@@ -417,30 +453,30 @@
       ],
       "ucl": [
         {
-          "id": "43ecdc3b-cbf7-4643-9244-79964f91ae77",
-          "name": "ucl-security-analyst",
-          "description": "",
-          "composite": false,
-          "clientRole": true,
-          "containerId": "7d0c0a82-08ef-43e6-9595-f0e3eee880ef",
-          "attributes": {}
-        },
-        {
-          "id": "92cf34d0-c52c-47a8-b656-3f137699de10",
+          "id": "8fe7e643-8b80-4bd1-8056-e583f35655c9",
           "name": "ucl-use-case-requester",
           "description": "",
           "composite": false,
           "clientRole": true,
-          "containerId": "7d0c0a82-08ef-43e6-9595-f0e3eee880ef",
+          "containerId": "e999e6f3-2e1f-43e8-8cc5-4b59c23ea213",
           "attributes": {}
         },
         {
-          "id": "d032181c-577b-4c72-af31-dbe08ad9a2e5",
+          "id": "35ad1ad0-7ffb-4d1d-94a6-d745085785c3",
+          "name": "ucl-security-analyst",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "e999e6f3-2e1f-43e8-8cc5-4b59c23ea213",
+          "attributes": {}
+        },
+        {
+          "id": "076c22ed-88ad-4074-988d-6d993a789f78",
           "name": "ucl-admin",
           "description": "",
           "composite": false,
           "clientRole": true,
-          "containerId": "7d0c0a82-08ef-43e6-9595-f0e3eee880ef",
+          "containerId": "e999e6f3-2e1f-43e8-8cc5-4b59c23ea213",
           "attributes": {}
         }
       ]
@@ -497,6 +533,40 @@
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
   "webAuthnPolicyPasswordlessExtraOrigins": [],
+  "users": [
+    {
+      "id": "30f2517d-8cb2-4191-8428-cac485d7b9e0",
+      "username": "service-account-fda-backend",
+      "emailVerified": false,
+      "createdTimestamp": 1715074933415,
+      "enabled": true,
+      "totp": false,
+      "serviceAccountClientId": "fda-backend",
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-logprep"
+      ],
+      "notBefore": 0,
+      "groups": []
+    },
+    {
+      "id": "d26f938a-120b-4897-811e-deada125f9b5",
+      "username": "service-account-ucl-backend",
+      "emailVerified": false,
+      "createdTimestamp": 1715074387918,
+      "enabled": true,
+      "totp": false,
+      "serviceAccountClientId": "ucl-backend",
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-logprep"
+      ],
+      "notBefore": 0,
+      "groups": []
+    }
+  ],
   "scopeMappings": [
     {
       "clientScope": "offline_access",
@@ -758,31 +828,79 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "**********",
       "redirectUris": [
-        "/*"
+        "http://localhost:3002/*"
       ],
       "webOrigins": [
-        "/*"
+        "*"
       ],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
-      "standardFlowEnabled": true,
+      "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
       "publicClient": false,
       "frontchannelLogout": true,
       "protocol": "openid-connect",
       "attributes": {
         "oidc.ciba.grant.enabled": "false",
-        "oauth2.device.authorization.grant.enabled": "false",
         "client.secret.creation.time": "1700562889",
         "backchannel.logout.session.required": "true",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "display.on.consent.screen": "false",
         "backchannel.logout.revoke.offline.tokens": "false"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "id": "784c5656-fd0f-4612-bc79-6e412b94c3a7",
+          "name": "Client Host",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientHost",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientHost",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "bf1e191c-a104-44f9-8462-c0cfe53cf050",
+          "name": "Client IP Address",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientAddress",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientAddress",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "6acda595-91cb-4072-bbb8-19f7685db4cf",
+          "name": "Client ID",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "client_id",
+            "introspection.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "client_id",
+            "jsonType.label": "String"
+          }
+        }
+      ],
       "defaultClientScopes": [
         "web-origins",
         "acr",
@@ -900,7 +1018,7 @@
       ]
     },
     {
-      "id": "7d0c0a82-08ef-43e6-9595-f0e3eee880ef",
+      "id": "ca9a6e1d-e27f-4cce-bdc7-320fa0d95751",
       "clientId": "ucl",
       "name": "ucl",
       "description": "",
@@ -911,13 +1029,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost/*"
-      ],
-      "webOrigins": [
-        "*",
-        "http://localhost/*"
-      ],
+      "redirectUris": ["http://localhost/*"],
+      "webOrigins": ["*", "http://localhost/*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -931,9 +1044,9 @@
       "attributes": {
         "oidc.ciba.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "*",
-        "oauth2.device.authorization.grant.enabled": "false",
+        "post.logout.redirect.uris": "+",
         "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false"
       },
       "authenticationFlowBindingOverrides": {},
@@ -942,8 +1055,8 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "roles",
         "profile",
+        "roles",
         "email"
       ],
       "optionalClientScopes": [
@@ -954,7 +1067,7 @@
       ]
     },
     {
-      "id": "6628831b-633b-474c-b2f6-93b81c1eca1a",
+      "id": "720c1bd1-893c-4e67-9ae7-1fdf30b6ae0b",
       "clientId": "ucl-automation",
       "name": "",
       "description": "",
@@ -965,12 +1078,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": ["/*"],
+      "webOrigins": ["/*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -982,19 +1091,80 @@
       "frontchannelLogout": true,
       "protocol": "openid-connect",
       "attributes": {
-        "oidc.ciba.grant.enabled": "false",
+        "access.token.lifespan": "-1",
+        "client.secret.creation.time": "1685024222",
+        "post.logout.redirect.uris": "+",
         "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "use.refresh.tokens": "true",
+        "oidc.ciba.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "client_credentials.use_refresh_token": "false",
+        "client.offline.session.idle.timeout": "-1",
+        "acr.loa.map": "{}",
+        "require.pushed.authorization.requests": "false",
+        "tls.client.certificate.bound.access.tokens": "false",
+        "client.offline.session.max.lifespan": "-1",
+        "display.on.consent.screen": "false",
+        "client.session.max.lifespan": "-1",
+        "client.session.idle.timeout": "-1",
+        "token.response.type.bearer.lower-case": "false"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "id": "1c80f50d-69c7-4a4e-bd73-84fe1ab2ca4b",
+          "name": "Client IP Address",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientAddress",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientAddress",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "622a8ad5-2bc8-42c3-b311-d452e210b3ed",
+          "name": "Client Host",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientHost",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientHost",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "fcabd802-e8c3-4742-a57c-252fbdd40e8f",
+          "name": "Client ID",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "client_id",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "client_id",
+            "jsonType.label": "String"
+          }
+        }
+      ],
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "roles",
         "profile",
+        "roles",
         "email"
       ],
       "optionalClientScopes": [
@@ -1005,10 +1175,10 @@
       ]
     },
     {
-      "id": "717ebf1f-ca4a-4bd2-89f4-51b0e793362e",
+      "id": "8a04df61-b65f-4937-9238-65dd3ed1f799",
       "clientId": "ucl-backend",
-      "name": "",
-      "description": "",
+      "name": "ucl-backend",
+      "description": "This is the UCL backend (api) application",
       "rootUrl": "",
       "adminUrl": "",
       "baseUrl": "",
@@ -1016,12 +1186,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1033,27 +1199,75 @@
       "frontchannelLogout": true,
       "protocol": "openid-connect",
       "attributes": {
+        "client.secret.creation.time": "1710433489",
+        "post.logout.redirect.uris": "+",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "false",
         "oidc.ciba.grant.enabled": "false",
-        "client.use.lightweight.access.token.enabled": "false",
         "backchannel.logout.session.required": "true",
         "client_credentials.use_refresh_token": "false",
-        "tls.client.certificate.bound.access.tokens": "false",
-        "require.pushed.authorization.requests": "false",
         "acr.loa.map": "{}",
+        "require.pushed.authorization.requests": "false",
+        "tls.client.certificate.bound.access.tokens": "false",
         "display.on.consent.screen": "false",
         "token.response.type.bearer.lower-case": "false"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "id": "9e65046a-f924-4556-80fe-f049c69ea81c",
+          "name": "Client ID",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "client_id",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "client_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "e58b0d6f-84f0-4279-bf1d-8bcb1c82fc2a",
+          "name": "Client Host",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientHost",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientHost",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "4c18a915-153a-4c79-83cd-577dc1853623",
+          "name": "Client IP Address",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientAddress",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientAddress",
+            "jsonType.label": "String"
+          }
+        }
+      ],
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "roles",
         "profile",
+        "roles",
         "email"
       ],
       "optionalClientScopes": [
@@ -1707,7 +1921,7 @@
     ],
     "org.keycloak.userprofile.UserProfileProvider": [
       {
-        "id": "af31790e-19a7-4086-95a1-8a5af8e89221",
+        "id": "e6cc8c0b-4f4b-4d35-af0d-e395dea06b71",
         "providerId": "declarative-user-profile",
         "subComponents": {},
         "config": {
@@ -1719,7 +1933,7 @@
     ],
     "org.keycloak.keys.KeyProvider": [
       {
-        "id": "128087ed-6b0c-411c-95a3-5e983877c31e",
+        "id": "7af7f5a7-32a0-4504-a7f6-d9327132ce5f",
         "name": "hmac-generated-hs512",
         "providerId": "hmac-generated",
         "subComponents": {},
