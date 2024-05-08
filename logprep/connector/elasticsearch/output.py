@@ -104,9 +104,6 @@ class ElasticsearchOutput(Output):
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
         """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
-        loglevel: Optional[str] = field(validator=validators.instance_of(str), default="INFO")
-        """(Optional) Log level for the underlying library. Enables fine-grained control over the
-        logging, e.g. stacktraces can be activated or deactivated. Defaults to :code:`INFO`."""
 
     __slots__ = ["_message_backlog", "_size_error_pattern"]
 
@@ -172,7 +169,6 @@ class ElasticsearchOutput(Output):
         elasticsearch.Elasticsearch
             the eleasticsearch context
         """
-        logging.getLogger("elasticsearch").setLevel(self._config.loglevel)
         return search.Elasticsearch(
             self._config.hosts,
             scheme=self.schema,
