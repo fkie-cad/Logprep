@@ -208,8 +208,6 @@ from logging import getLogger
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 
-import uvicorn
-import uvicorn.config
 from attrs import asdict, define, field, validators
 from requests import RequestException
 from ruamel.yaml import YAML
@@ -227,6 +225,7 @@ from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
     DEFAULT_LOG_CONFIG,
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
+    log_queue,
 )
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.json_handling import list_json_files_in_directory
@@ -423,8 +422,8 @@ class LoggerConfig:
         make it available for the uvicorn server in :code:'logprep.util.http'.
         """
         log_config = asdict(self)
-        logging.config.dictConfig(log_config)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
+        logging.config.dictConfig(log_config)
 
     def _set_custom_log_level(self, logger_name: str) -> None:
         """Sets custom log level for loggers which cannot be reached by default log config"""

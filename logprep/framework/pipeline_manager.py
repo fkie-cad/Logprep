@@ -15,13 +15,14 @@ from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
+from logprep.util.defaults import log_queue
 
 
-def logger_process(queue: multiprocessing.queues.Queue, logger: logging.Logger):
+def logger_process(logger: logging.Logger):
     """Process log messages from a queue."""
 
     while True:
-        message = queue.get()
+        message = log_queue.get()
         if message is None:
             break
         logger.handle(message)
@@ -87,9 +88,8 @@ class PipelineManager:
         HttpConnector.messages = multiprocessing.Queue(maxsize=message_backlog_size)
 
     def _start_multiprocess_logger(self):
-        self.log_queue = multiprocessing.Queue(-1)
         self._log_process = multiprocessing.Process(
-            target=logger_process, args=(self.log_queue, self._logger), daemon=True
+            target=logger_process, args=(self._logger,), daemon=True
         )
         self._log_process.start()
 
@@ -161,9 +161,9 @@ class PipelineManager:
         self._decrease_to_count(0)
         if self.prometheus_exporter:
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
-        self.log_queue.put(None)  # signal the logger process to stop
+        log_queue.put(None)  # signal the logger process to stop
         self._log_process.join()
-        self.log_queue.close()
+        log_queue.close()
 
     def restart(self):
         """Restarts all pipelines"""
@@ -175,12 +175,7 @@ class PipelineManager:
             self.prometheus_exporter.run()
 
     def _create_pipeline(self, index) -> multiprocessing.Process:
-        pipeline = Pipeline(
-            pipeline_index=index,
-            config=self._configuration,
-            log_queue=self.log_queue,
-            lock=self._lock,
-        )
+        pipeline = Pipeline(pipeline_index=index, config=self._configuration, lock=self._lock)
         self._logger.info("Created new pipeline")
         process = multiprocessing.Process(target=pipeline.run, daemon=True)
         process.stop = pipeline.stop
