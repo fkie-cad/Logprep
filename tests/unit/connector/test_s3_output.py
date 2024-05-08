@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 import logging
+from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from math import isclose
@@ -65,7 +66,7 @@ class TestS3Output(BaseOutputTestCase):
         expected = {
             default_prefix: [
                 {
-                    "message": '{"field": "content"}',
+                    "message": '{"field":"content"}',
                     "reason": "Prefix field 'foo_prefix_field' empty or missing in document",
                 }
             ]
@@ -89,7 +90,7 @@ class TestS3Output(BaseOutputTestCase):
         event = {"field": "content"}
         default_prefix = f"{base_prefix}/default_prefix" if base_prefix else "default_prefix"
         expected = {
-            "message": '{"field": "content"}',
+            "message": '{"field":"content"}',
             "reason": "Prefix field 'foo_prefix_field' empty or missing in document",
         }
         s3_config = deepcopy(self.CONFIG)
@@ -132,7 +133,6 @@ class TestS3Output(BaseOutputTestCase):
 
         s3_output.store_failed(error_message, event_received, event)
 
-        print(s3_output._message_backlog)
         error_document = s3_output._message_backlog[error_prefix][0]
         # timestamp is compared to be approximately the same,
         # since it is variable and then removed to compare the rest
@@ -177,8 +177,9 @@ class TestS3Output(BaseOutputTestCase):
     )
     def test_write_document_batch_calls_handles_errors(self, caplog, error, message):
         with caplog.at_level(logging.WARNING):
-            with mock.patch(
-                "logprep.connector.s3.output.S3Output._write_to_s3",
+            with mock.patch.object(
+                self.object._s3_resource,
+                "Object",
                 side_effect=error,
             ):
                 with pytest.raises(FatalOutputError, match=message):
@@ -267,9 +268,52 @@ class TestS3Output(BaseOutputTestCase):
             self.object.store({"test": "event"})
         mock_write_backlog.assert_not_called()
 
+    def test_write_backlog_executed_on_empty_message_backlog(self):
+        with mock.patch(
+            "logprep.connector.s3.output.S3Output._backlog_size", new_callable=mock.PropertyMock
+        ) as mock_backlog_size:
+            self.object._write_backlog()
+            mock_backlog_size.assert_not_called()
+
     def test_store_failed_counts_failed_events(self):
         self.object._write_backlog = mock.MagicMock()
         super().test_store_failed_counts_failed_events()
+
+    def test_setup_registers_flush_timeout_tasks(self):
+        job_count = len(self.object._scheduler.jobs)
+        with pytest.raises(FatalOutputError):
+            self.object.setup()
+        assert len(self.object._scheduler.jobs) == job_count + 1
+
+    @pytest.mark.parametrize(
+        "error, message",
+        [
+            (
+                EndpointConnectionError(endpoint_url="http://xdfzy:123"),
+                r".*Could not connect to the endpoint URL.*",
+            ),
+            (
+                ConnectionClosedError(endpoint_url="http://xdfzy:123"),
+                r".*Connection was closed before we received a valid response from endpoint URL.*",
+            ),
+            (
+                ClientError(error_response={"foo": "bar"}, operation_name="HeadBucket"),
+                r".*An error occurred \(\w+\) when calling the HeadBucket operation: \w+.*",
+            ),
+            (
+                BotoCoreError(),
+                r".*An unspecified error occurred.*",
+            ),
+        ],
+    )
+    def test_setup_raises_fataloutputerror_if_boto_exception_is_raised(self, error, message):
+        with mock.patch.object(
+            self.object._s3_resource.meta.client,
+            "head_bucket",
+            side_effect=error,
+        ):
+            with pytest.raises(FatalOutputError, match=message):
+                self.object.setup()
 
     @staticmethod
     def _calculate_backlog_size(s3_output):

@@ -38,13 +38,12 @@ Example
 
 """
 
-import json
 import re
 from collections import defaultdict
 from functools import cached_property
 from logging import Logger
 from time import time
-from typing import DefaultDict, Optional
+from typing import Any, DefaultDict, Optional
 from uuid import uuid4
 
 import boto3
@@ -62,6 +61,25 @@ from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import CounterMetric, Metric
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
+
+
+def _handle_s3_error(func):
+    def _inner(self: "S3Output", *args) -> Any:
+        try:
+            return func(self, *args)
+        except EndpointConnectionError as error:
+            raise FatalOutputError(self, "Could not connect to the endpoint URL") from error
+        except ConnectionClosedError as error:
+            raise FatalOutputError(
+                self,
+                "Connection was closed before we received a valid response from endpoint URL",
+            ) from error
+        except (BotoCoreError, ClientError) as error:
+            raise FatalOutputError(self, str(error)) from error
+
+        return None
+
+    return _inner
 
 
 class S3Output(Output):
@@ -120,6 +138,9 @@ class S3Output(Output):
         )
         """The input callback is called after the maximum backlog size has been reached
         if this is set to True (optional)"""
+        flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
+        """(Optional) Timeout after :code:`message_backlog` is flushed if 
+        :code:`message_backlog_size` is not reached."""
 
     @define(kw_only=True)
     class Metrics(Output.Metrics):
@@ -133,13 +154,9 @@ class S3Output(Output):
         )
         """Number of events that were successfully written to s3"""
 
-    __slots__ = ["_message_backlog", "_index_cache"]
+    __slots__ = ["_message_backlog", "_base_prefix"]
 
     _message_backlog: DefaultDict
-
-    _s3_resource: Optional["boto3.resources.factory.s3.ServiceResource"]
-
-    _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
 
     _base_prefix: str
 
@@ -147,10 +164,9 @@ class S3Output(Output):
         super().__init__(name, configuration, logger)
         self._message_backlog = defaultdict(list)
         self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
-        self._s3_resource = None
-        self._setup_s3_resource()
 
-    def _setup_s3_resource(self):
+    @cached_property
+    def _s3_resource(self) -> boto3.resources.factory.ServiceResource:
         session = boto3.Session(
             aws_access_key_id=self._config.aws_access_key_id,
             aws_secret_access_key=self._config.aws_secret_access_key,
@@ -160,7 +176,7 @@ class S3Output(Output):
             connect_timeout=self._config.connect_timeout,
             retries={"max_attempts": self._config.max_retries},
         )
-        self._s3_resource = session.resource(
+        return session.resource(
             "s3",
             endpoint_url=f"{self._config.endpoint_url}",
             verify=self._config.ca_cert,
@@ -169,16 +185,11 @@ class S3Output(Output):
         )
 
     @property
-    def s3_resource(self):
-        """Return s3 resource"""
-        return self._s3_resource
-
-    @property
-    def _backlog_size(self):
+    def _backlog_size(self) -> int:
         return sum(map(len, self._message_backlog.values()))
 
     @cached_property
-    def _replace_pattern(self):
+    def _replace_pattern(self) -> re.Pattern[str]:
         return re.compile(r"%{\S+?}")
 
     def describe(self) -> str:
@@ -193,69 +204,15 @@ class S3Output(Output):
         base_description = super().describe()
         return f"{base_description} - S3 Output: {self._config.endpoint_url}"
 
-    def _add_dates(self, prefix):
-        date_format_matches = self._replace_pattern.findall(prefix)
-        if date_format_matches:
-            now = TimeParser.now()
-            for date_format_match in date_format_matches:
-                formatted_date = now.strftime(date_format_match[2:-1])
-                prefix = re.sub(date_format_match, formatted_date, prefix)
-        return prefix
+    @_handle_s3_error
+    def setup(self) -> None:
+        super().setup()
+        flush_timeout = self._config.flush_timeout
+        self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
 
-    @Metric.measure_time()
-    def _write_to_s3_resource(self):
-        """Writes a document into s3 bucket using given prefix."""
-        if self._backlog_size >= self._config.message_backlog_size:
-            self._write_backlog()
+        _ = self._s3_resource.meta.client.head_bucket(Bucket=self._config.bucket)
 
-    def _add_to_backlog(self, document: dict, prefix: str):
-        """Adds document to backlog and adds a a prefix.
-
-        Parameters
-        ----------
-        document : dict
-           Document to store in backlog.
-        """
-        prefix = self._add_dates(prefix)
-        prefix = f"{self._base_prefix}{prefix}"
-        self._message_backlog[prefix].append(document)
-
-    def _write_backlog(self):
-        """Write to s3 if it is not already writing."""
-        if not self._message_backlog:
-            return
-
-        self._logger.info("Writing %s documents to s3", self._backlog_size)
-        for prefix_mb, document_batch in self._message_backlog.items():
-            self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
-        self._message_backlog.clear()
-
-        if not self._config.call_input_callback:
-            return
-
-        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-            self.input_connector.batch_finished_callback()
-
-    def _write_document_batch(self, document_batch: dict, identifier: str):
-        try:
-            self._write_to_s3(document_batch, identifier)
-        except EndpointConnectionError as error:
-            raise FatalOutputError(self, "Could not connect to the endpoint URL") from error
-        except ConnectionClosedError as error:
-            raise FatalOutputError(
-                self,
-                "Connection was closed before we received a valid response from endpoint URL",
-            ) from error
-        except (BotoCoreError, ClientError) as error:
-            raise FatalOutputError(self, str(error)) from error
-
-    def _write_to_s3(self, document_batch: dict, identifier: str):
-        self._logger.debug(f'Writing "{identifier}" to s3 bucket "{self._config.bucket}"')
-        s3_obj = self.s3_resource.Object(self._config.bucket, identifier)
-        s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
-        self.metrics.number_of_successful_writes += len(document_batch)
-
-    def store(self, document: dict):
+    def store(self, document: dict) -> None:
         """Store a document into s3 bucket.
 
         Parameters
@@ -273,19 +230,7 @@ class S3Output(Output):
         self._add_to_backlog(document, prefix_value)
         self._write_to_s3_resource()
 
-    @staticmethod
-    def _build_no_prefix_document(message_document: dict, reason: str):
-        document = {
-            "reason": reason,
-            "@timestamp": TimeParser.now().isoformat(),
-        }
-        try:
-            document["message"] = json.dumps(message_document)
-        except TypeError:
-            document["message"] = str(message_document)
-        return document
-
-    def store_custom(self, document: dict, target: str):
+    def store_custom(self, document: dict, target: str) -> None:
         """Store document into backlog to be written into s3 bucket using the target prefix.
 
         Only add to backlog instead of writing the batch and calling batch_finished_callback,
@@ -304,7 +249,9 @@ class S3Output(Output):
         self.metrics.number_of_processed_events += 1
         self._add_to_backlog(document, target)
 
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+    def store_failed(
+        self, error_message: str, document_received: dict, document_processed: dict
+    ) -> None:
         """Write errors into s3 bucket using error prefix for documents that failed processing.
 
         Parameters
@@ -326,3 +273,64 @@ class S3Output(Output):
         }
         self._add_to_backlog(error_document, self._config.error_prefix)
         self._write_to_s3_resource()
+
+    def _add_dates(self, prefix: str) -> str:
+        date_format_matches = self._replace_pattern.findall(prefix)
+        if date_format_matches:
+            now = TimeParser.now()
+            for date_format_match in date_format_matches:
+                formatted_date = now.strftime(date_format_match[2:-1])
+                prefix = re.sub(date_format_match, formatted_date, prefix)
+        return prefix
+
+    @Metric.measure_time()
+    def _write_to_s3_resource(self) -> None:
+        """Writes a document into s3 bucket using given prefix."""
+        if self._backlog_size >= self._config.message_backlog_size:
+            self._write_backlog()
+
+    def _add_to_backlog(self, document: dict, prefix: str) -> None:
+        """Adds document to backlog and adds a a prefix.
+
+        Parameters
+        ----------
+        document : dict
+           Document to store in backlog.
+        """
+        prefix = self._add_dates(prefix)
+        prefix = f"{self._base_prefix}{prefix}"
+        self._message_backlog[prefix].append(document)
+
+    def _write_backlog(self) -> None:
+        """Write to s3 if it is not already writing."""
+        if not self._message_backlog:
+            return
+
+        self._logger.info("Writing %s documents to s3", self._backlog_size)
+        for prefix_mb, document_batch in self._message_backlog.items():
+            self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
+        self._message_backlog.clear()
+
+        if not self._config.call_input_callback:
+            return
+
+        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
+            self.input_connector.batch_finished_callback()
+
+    @_handle_s3_error
+    def _write_document_batch(self, document_batch: dict, identifier: str) -> None:
+        self._logger.debug(f'Writing "{identifier}" to s3 bucket "{self._config.bucket}"')
+        s3_obj = self._s3_resource.Object(self._config.bucket, identifier)
+        s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
+        self.metrics.number_of_successful_writes += len(document_batch)
+
+    def _build_no_prefix_document(self, message_document: dict, reason: str) -> dict:
+        document = {
+            "reason": reason,
+            "@timestamp": TimeParser.now().isoformat(),
+        }
+        try:
+            document["message"] = self._encoder.encode(message_document).decode("utf-8")
+        except (msgspec.EncodeError, TypeError):
+            document["message"] = str(message_document)
+        return document

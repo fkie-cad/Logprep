@@ -352,7 +352,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             self.object.setup()
 
     def test_setup_registers_flush_timout_tasks(self):
-        # this test fails if opensearch is running on localhost
+        self.object._config.hosts = ["opensearch:9092"]
         job_count = len(Component._scheduler.jobs)
         with pytest.raises(FatalOutputError):
             self.object.setup()
