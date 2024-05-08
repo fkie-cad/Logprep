@@ -17,9 +17,10 @@ from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
     InvalidConfigurationErrors,
+    LoggerConfig,
     MetricsConfig,
 )
-from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from logprep.util.defaults import DEFAULT_LOG_CONFIG, ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from logprep.util.getter import FileGetter, GetterNotFoundError
 from tests.testdata.metadata import (
     path_to_config,
@@ -46,7 +47,7 @@ class TestConfiguration:
             ("config_refresh_interval", type(None), None),
             ("process_count", int, 1),
             ("timeout", float, 5.0),
-            ("logger", dict, {"level": "INFO"}),
+            ("logger", LoggerConfig, LoggerConfig(**{"level": "INFO"})),
             ("pipeline", list, []),
             ("input", dict, {}),
             ("output", dict, {}),
@@ -78,7 +79,7 @@ class TestConfiguration:
             ("config_refresh_interval", 0, 900),
             ("process_count", 1, 2),
             ("timeout", 1.0, 2.0),
-            ("logger", {"level": "INFO"}, {"level": "DEBUG"}),
+            ("logger", {"level": "DEBUG"}, DEFAULT_LOG_CONFIG),
             (
                 "metrics",
                 {"enabled": False, "port": 8000, "uvicorn_config": {"access_log": True}},
@@ -1241,3 +1242,11 @@ class TestInvalidConfigurationErrors:
         error = InvalidConfigurationErrors(error_list)
         assert len(error.errors) == len(expected_error_list)
         assert error.errors == expected_error_list
+
+
+class TestLoggerConfig:
+
+    @pytest.mark.parametrize("kwargs", [{"level": "DEBUG"}, {"level": "INFO"}])
+    def test_logger_config_with_kwargs(self, kwargs):
+        config = LoggerConfig(**kwargs)
+        assert config.loggers.get("root").get("level") == "DEBUG"

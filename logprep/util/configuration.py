@@ -205,7 +205,6 @@ import os
 from copy import deepcopy
 from itertools import chain
 from logging import getLogger
-from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 
@@ -322,55 +321,83 @@ class MetricsConfig:
     )
 
 
-@define(kw_only=True, frozen=True)
+@define(kw_only=True)
 class LoggerConfig:
     """the logger config class used in Configuration
     the schema for this class is derived from the python logging module:
     https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
     """
 
-    version: int = field(validator=validators.instance_of(int), default=1)
-    """The only valid value at present is 1"""
-    formatters: dict = field(validator=validators.instance_of(dict), factory=dict)
-    """A dictionary which defines the formatters available to the logging system."""
-    filters: dict = field(validator=validators.instance_of(dict), factory=dict)
-    """A dictionary which defines the filters available to the logging system."""
-    handlers: dict = field(
-        validator=validators.instance_of(dict),
+    _LOG_LEVELS = (
+        logging.NOTSET,  # 0
+        logging.DEBUG,  # 10
+        logging.INFO,  # 20
+        logging.WARNING,  # 30
+        logging.ERROR,  # 40
+        logging.CRITICAL,  # 50
     )
-    """A dictionary which defines the handlers available to the logging system."""
-    loggers: dict = field(validator=validators.instance_of(dict), factory=dict)
-    """A dictionary which defines the loggers available to the logging system."""
-    disable_existing_loggers: bool = field(validator=validators.instance_of(bool), default=False)
-    """whether any existing non-root loggers are to be disabled."""
 
-    @staticmethod
-    def from_logprep_config(config: dict) -> "LoggerConfig":
+    _version: int = field(validator=validators.instance_of(int), default=1)
+    _formatters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    _filters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    _handlers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    _disable_existing_loggers: bool = field(validator=validators.instance_of(bool), default=False)
+    level: str = field(
+        default="INFO",
+        validator=[
+            validators.instance_of(str),
+            validators.in_(logging.getLevelName(level) for level in _LOG_LEVELS),
+        ],
+        eq=False,
+    )
+    """The log level of the root logger. Defaults to :code:`INFO`.
+
+    .. security-best-practice::
+       :title: Logprep Log-Level
+       :location: config.logger.level
+       :suggested-value: INFO
+
+         The log level of the root logger should be set to :code:`INFO` or higher in production environments
+         to avoid exposing sensitive information in the logs.
+    """
+    format: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    """The format of the log message as supportet bei the :code:`LogprepFormatter`.
+    Defaults to :code:`"%(asctime)-15s %(name)-10s %(levelname)-8s: %(message)s"`.
+    
+    .. autoclass:: logprep.util.logging.LogprepFormatter
+    
+    """
+    datefmt: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    """The date format of the log message. Defaults to :code:`"%Y-%m-%d %H:%M:%S"`."""
+    loggers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    """The loggers loglevel configuration. Defaults to:
+
+    .. csv-table::
+
+        "root", "INFO"
+        "filelock", "ERROR"
+        "urllib3.connectionpool", "ERROR"
+        "elasticsearch", "ERROR"
+        "opensearch", "ERROR"
+        "logprep", "INFO"
+
+        """
+
+    def __attrs_post_init__(self):
         """Create a LoggerConfig from a logprep logger configuration."""
-        logger_config = LoggerConfig(**DEFAULT_LOG_CONFIG)
-        if "level" in config:
-            logger_config.loggers["root"]["level"] = config["level"]
-        if "format" in config:
-            logger_config.formatters["logprep"]["format"] = config["format"]
-        if "datefmt" in config:
-            logger_config.formatters["logprep"]["datefmt"] = config["datefmt"]
-        if "loggers" in config:
-            for logger_name, value in config["loggers"].items():
-                specific_logger_config = {}
-                if "level" in value:
-                    specific_logger_config["level"] = value["level"]
-                if "handlers" in value:
-                    specific_logger_config["handlers"] = value["handlers"]
-                if logger_name in logger_config.loggers:
-                    logger_config.loggers[logger_name].update(specific_logger_config)
-                else:
-                    logger_config.loggers[logger_name] = specific_logger_config
-        logging.Formatter(
-            fmt=logger_config.formatters["logprep"]["format"],
-            datefmt=logger_config.formatters["logprep"]["datefmt"],
-            validate=True,
-        )
-        return logger_config
+        for key, value in DEFAULT_LOG_CONFIG.items():
+            key = f"_{key}" if key != "loggers" else key
+            setattr(self, key, value)
+        if not self.level:
+            self.level = DEFAULT_LOG_CONFIG.get("loggers", {}).get("root", {}).get("level", "INFO")
+        if self.loggers:
+            for logger_name, logger_config in self.loggers.items():
+                default_logger_config = DEFAULT_LOG_CONFIG.get(logger_name, {})
+                if "level" in logger_config:
+                    default_logger_config.update({"level": logger_config["level"]})
+                self.loggers[logger_name].update(default_logger_config)
+        self.loggers = {**DEFAULT_LOG_CONFIG["loggers"] | self.loggers}
+        self.loggers.get("root", {}).update({"level": self.level})
 
 
 @define(kw_only=True)
@@ -432,17 +459,13 @@ class Configuration:
         validator=validators.instance_of(LoggerConfig),
         default=LoggerConfig(**DEFAULT_LOG_CONFIG),
         eq=False,
-        converter=lambda x: LoggerConfig.from_logprep_config(x) if isinstance(x, dict) else x,
+        converter=lambda x: LoggerConfig(**x) if isinstance(x, dict) else x,
     )
     """Logger configuration. Defaults to :code:`{"level": "INFO"}`.
 
-    .. security-best-practice::
-       :title: Logprep Log-Level
-       :location: config.logger.level
-       :suggested-value: INFO
+    .. autoclass:: logprep.util.configuration.LoggerConfig
+       :members:
 
-       The loglevel of logprep should be set to :code:`"INFO"` in production environments, as the
-       :code:`"DEBUG"` level could expose sensitive events into the log.
     """
     input: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
     """
