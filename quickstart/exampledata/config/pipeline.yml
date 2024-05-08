@@ -2,12 +2,12 @@ version: 1
 process_count: 2
 timeout: 0.1
 logger:
-  level: DEBUG
+  level: INFO
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
     "py.warnings": {"level": "ERROR"}
-
+    "Runner": {"level": "ERROR"}
 metrics:
   enabled: true
   port: 8001
@@ -122,7 +122,6 @@ output:
     parallel_bulk: false
     user: admin
     secret: admin
-    loglevel: ERROR
   kafka:
     type: confluentkafka_output
     default: false
