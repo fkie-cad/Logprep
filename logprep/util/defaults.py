@@ -16,15 +16,8 @@ DEFAULT_LOG_CONFIG = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "logprep",
-            "level": "INFO",
             "stream": "ext://sys.stdout",
-        },
-        "file": {
-            "class": "logging.FileHandler",
-            "formatter": "logprep",
-            "filename": "logprep.log",
-            "mode": "w",
-        },
+        }
     },
     "loggers": {
         "root": {"level": "INFO", "handlers": ["console"]},
@@ -33,6 +26,9 @@ DEFAULT_LOG_CONFIG = {
         "elasticsearch": {"level": "ERROR", "handlers": ["console"]},
         "opensearch": {"level": "ERROR", "handlers": ["console"]},
         "logprep": {"level": "INFO", "handlers": ["console"]},
+        "uvicorn": {"level": "INFO", "handlers": ["console"]},
+        "uvicorn.access": {"level": "INFO", "handlers": ["console"]},
+        "uvicorn.error": {"level": "INFO", "handlers": ["console"]},
     },
     "filters": {},
     "disable_existing_loggers": False,

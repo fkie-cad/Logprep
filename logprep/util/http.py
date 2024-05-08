@@ -1,12 +1,12 @@
 """logprep http utils"""
 
 import inspect
+import json
 import logging
+import os
 import threading
 
 import uvicorn
-
-from logprep.util import defaults
 
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
@@ -23,15 +23,6 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
 
     _instance = None
     _lock = threading.Lock()
-
-    @property
-    def _log_config(self) -> dict:
-        """Use for Uvicorn same log formatter like for Logprep"""
-        log_config = uvicorn.config.LOGGING_CONFIG
-        log_config["formatters"]["default"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
-        log_config["formatters"]["access"]["fmt"] = defaults.DEFAULT_LOG_FORMAT
-        log_config["handlers"]["default"]["stream"] = "ext://sys.stdout"
-        return log_config
 
     def __new__(cls, *args, **kwargs):
         with cls._lock:
@@ -72,9 +63,11 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         uvicorn_config = {**internal_uvicorn_config, **uvicorn_config}
         self._logger_name = logger_name
         self._logger = logging.getLogger(self._logger_name)
-        uvicorn_config = uvicorn.Config(**uvicorn_config, app=app, log_config=self._log_config)
+        logprep_log_config = json.loads(os.environ.get("LOGPREP_LOG_CONFIG", "{}"))
+        uvicorn_config = uvicorn.Config(**uvicorn_config, app=app, log_config=logprep_log_config)
+        logging.getLogger("uvicorn.access").name = self._logger_name
+        logging.getLogger("uvicorn.error").name = self._logger_name
         self.server = uvicorn.Server(uvicorn_config)
-        self._override_runtime_logging()
         self.thread = threading.Thread(daemon=daemon, target=self.server.run)
 
     def start(self):
@@ -96,17 +89,3 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
             self._logger.debug("Wait for server to exit gracefully...")
             continue
         self.thread.join()
-
-    def _override_runtime_logging(self):
-        """Uvicorn doesn't provide API to change name and handler beforehand
-        needs to be done during runtime"""
-        for logger_name in ["uvicorn", "uvicorn.access"]:
-            registered_handlers = logging.getLogger(logger_name).handlers
-            if not registered_handlers:
-                continue
-            logging.getLogger(logger_name).removeHandler(registered_handlers[0])
-            logging.getLogger(logger_name).addHandler(
-                logging.getLogger("Logprep").parent.handlers[0]
-            )
-        logging.getLogger("uvicorn.access").name = self._logger_name
-        logging.getLogger("uvicorn.error").name = self._logger_name

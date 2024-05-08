@@ -208,6 +208,8 @@ from logging import getLogger
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 
+import uvicorn
+import uvicorn.config
 from attrs import asdict, define, field, validators
 from requests import RequestException
 from ruamel.yaml import YAML
@@ -383,7 +385,7 @@ class LoggerConfig:
 
         """
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         """Create a LoggerConfig from a logprep logger configuration."""
         self._set_defaults()
         if not self.level:
@@ -392,6 +394,16 @@ class LoggerConfig:
             self._set_loggers_levels()
         self.loggers = {**DEFAULT_LOG_CONFIG["loggers"] | self.loggers}
         self.loggers.get("root", {}).update({"level": self.level})
+
+    def setup_logging(self) -> None:
+        """Setup the logging configuration."""
+        log_config = asdict(self)
+        logging.config.dictConfig(log_config)
+        os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
+
+    def _set_custom_log_level(self, logger_name: str) -> None:
+        """Sets custom log level for loggers which cannot be reached by default log config"""
+        logging.getLogger(logger_name).setLevel(self.loggers[logger_name]["level"])
 
     def _set_loggers_levels(self):
         """sets the loggers levels to the default or to the given level."""

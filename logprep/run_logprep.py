@@ -8,7 +8,6 @@ import sys
 import warnings
 
 import click
-from attrs import asdict
 from colorama import Fore
 
 from logprep.generator.http.controller import Controller
@@ -34,7 +33,7 @@ def _print_version(config: "Configuration") -> None:
 def _get_configuration(config_paths: list[str]) -> Configuration:
     try:
         config = Configuration.from_sources(config_paths)
-        logging.config.dictConfig(asdict(config.logger))
+        config.logger.setup_logging()
         return config
     except InvalidConfigurationError as error:
         print(f"InvalidConfigurationError: {error}", file=sys.stderr)

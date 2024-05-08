@@ -3,6 +3,11 @@ process_count: 2
 
 logger:
   level: INFO
+  loggers:
+    "Exporter": {"level": "ERROR"}
+    "HTTPServer": {"level": "ERROR"}
+    "uvicorn": {"level": "ERROR"}
+    "uvicorn.access": {"level": "ERROR"}
 
 metrics:
   enabled: true
