@@ -207,7 +207,7 @@ class Pipeline:
         self.logger.debug(f"Created '{processor}' processor")
         return processor
 
-    def run(self) -> None:
+    def run(self) -> None:  # pylint: disable=method-hidden
         """Start processing processors in the Pipeline."""
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
