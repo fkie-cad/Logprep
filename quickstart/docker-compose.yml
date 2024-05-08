@@ -17,6 +17,8 @@ services:
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # Set min and max JVM heap sizes to at least 50% of system RAM
       - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
       - "DISABLE_SECURITY_PLUGIN=true" # Disables security plugin
+    ports:
+      - "9200:9200"
     ulimits:
       memlock:
         soft: -1
@@ -25,27 +27,28 @@ services:
         soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
         hard: 65536
     volumes:
-      - data:/usr/share/opensearch/data
-    network_mode: host
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - opensearch
   dashboards:
     image: public.ecr.aws/opensearchproject/opensearch-dashboards:2
     container_name: dashboards
     environment:
-      - 'OPENSEARCH_HOSTS=["http://127.0.0.1:9200"]'
+      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
       - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true" # disables security dashboards plugin in OpenSearch Dashboards
     depends_on:
       - opensearch
-    expose:
-      - 5601
-    network_mode: host
+    ports:
+      - "5601:5601"
+    networks:
+      - opensearch
   kafka:
     image: bitnami/kafka:3.4
     container_name: kafka
     hostname: kafka
-    expose:
-      - 9092
-      - 9093
-    network_mode: host
+    ports:
+      - "9092:9092"
+      - "9093:9093"
     environment:
       - KAFKA_ENABLE_KRAFT=yes
       - KAFKA_CFG_NODE_ID=1
@@ -65,16 +68,20 @@ services:
           "CMD-SHELL",
           "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe"
         ]
+    networks:
+      - kafka
   kafka-exporter:
     image: bitnami/kafka-exporter
     container_name: kafkaexporter
-    command: [ "--kafka.server=127.0.0.1:9092" ]
-    network_mode: host
-    expose:
-      - 9308
+    command: [ "--kafka.server=kafka:9092" ]
+    ports:
+      - "9308:9308"
     depends_on:
       kafka:
         condition: service_healthy
+    networks:
+      - kafka
+      - prometheus
   logprep:
     build:
       context: ..
@@ -96,28 +103,33 @@ services:
   grafana:
     image: bitnami/grafana:latest
     container_name: grafana
-    expose:
-      - 3000
-    network_mode: host
+    ports:
+      - "3000:3000"
     volumes:
       - ../quickstart/exampledata/config/grafana/datasources:/opt/bitnami/grafana/conf/provisioning/datasources
       - ../quickstart/exampledata/config/grafana/dashboards:/opt/bitnami/grafana/conf/provisioning/dashboards
+    networks:
+      - prometheus
   prometheus:
     image: bitnami/prometheus:latest
     container_name: prometheus
-    network_mode: host
-    expose:
-      - 9090
+    ports:
+      - "9090:9090"
     volumes:
       - ../quickstart/exampledata/config/prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml
+    networks:
+      - kafka
+      - prometheus
+    extra_hosts:
+      # enables prometheus to access the host system (eg when logprep is running locally in the terminal)
+      - "host.docker.internal:172.17.0.1"
   config:
     image: nginx:latest
     container_name: config
     profiles:
       - basic_auth
-    network_mode: host
-    expose:
-      - 8081
+    ports:
+      - "8081:8081"
     volumes:
       - ../quickstart/exampledata:/usr/share/nginx/html:ro
       - ../quickstart/exampledata/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -127,9 +139,8 @@ services:
     container_name: mtls-config
     profiles:
       - mtls
-    network_mode: host
-    expose:
-      - 8082
+    ports:
+      - "8082:8082"
     volumes:
       - ../quickstart/exampledata:/usr/share/nginx/html:ro
       - ../quickstart/exampledata/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -137,7 +148,6 @@ services:
   keycloak:
     image: bitnami/keycloak:latest
     container_name: keycloak
-#    network_mode: host
     ports:
       - "8080:8080"
     profiles:
@@ -161,7 +171,6 @@ services:
   keycloak_db:
     image: bitnami/postgresql:latest
     container_name: keycloak_db
-#    network_mode: host
     expose:
       - 5432
     profiles:
@@ -337,13 +346,15 @@ services:
       - ucl
 
 volumes:
-  data:
+  opensearch-data:
   fda-db-volume:
   ucl-db-volume:
   keycloak-db-volume:
 
 networks:
-  opensearch-net:
+  opensearch:
   fda:
   ucl:
   keycloak:
+  kafka:
+  prometheus:
