@@ -482,7 +482,30 @@
       ]
     }
   },
-  "groups": [],
+  "groups": [
+    {
+      "id": "206dc965-35fc-4f5c-97fc-89e55e88924b",
+      "name": "logprep-admin",
+      "path": "/logprep-admin",
+      "subGroups": [],
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {
+        "fda": [
+          "fda-admin",
+          "fda-onboarder",
+          "fda-reader",
+          "config-reader",
+          "fda-ecs-maintainer"
+        ],
+        "ucl": [
+          "ucl-use-case-requester",
+          "ucl-security-analyst",
+          "ucl-admin"
+        ]
+      }
+    }
+  ],
   "defaultRole": {
     "id": "355d504e-2e39-4d69-b225-04074afc8263",
     "name": "default-roles-logprep",
