@@ -337,16 +337,16 @@ class LoggerConfig:
         logging.CRITICAL,  # 50
     )
 
-    _version: int = field(validator=validators.instance_of(int), default=1)
-    _formatters: dict = field(validator=validators.instance_of(dict), factory=dict)
-    _filters: dict = field(validator=validators.instance_of(dict), factory=dict)
-    _handlers: dict = field(validator=validators.instance_of(dict), factory=dict)
-    _disable_existing_loggers: bool = field(validator=validators.instance_of(bool), default=False)
+    version: int = field(validator=validators.instance_of(int), default=1)
+    formatters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    filters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    handlers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    disable_existing_loggers: bool = field(validator=validators.instance_of(bool), default=False)
     level: str = field(
         default="INFO",
         validator=[
             validators.instance_of(str),
-            validators.in_(logging.getLevelName(level) for level in _LOG_LEVELS),
+            validators.in_([logging.getLevelName(level) for level in _LOG_LEVELS]),
         ],
         eq=False,
     )
@@ -386,7 +386,8 @@ class LoggerConfig:
     def __attrs_post_init__(self):
         """Create a LoggerConfig from a logprep logger configuration."""
         for key, value in DEFAULT_LOG_CONFIG.items():
-            key = f"_{key}" if key != "loggers" else key
+            if key == "loggers":
+                continue
             setattr(self, key, value)
         if not self.level:
             self.level = DEFAULT_LOG_CONFIG.get("loggers", {}).get("root", {}).get("level", "INFO")
