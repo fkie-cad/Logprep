@@ -385,20 +385,28 @@ class LoggerConfig:
 
     def __attrs_post_init__(self):
         """Create a LoggerConfig from a logprep logger configuration."""
+        self._set_defaults()
+        if not self.level:
+            self.level = DEFAULT_LOG_CONFIG.get("loggers", {}).get("root", {}).get("level", "INFO")
+        if self.loggers:
+            self._set_loggers_levels()
+        self.loggers = {**DEFAULT_LOG_CONFIG["loggers"] | self.loggers}
+        self.loggers.get("root", {}).update({"level": self.level})
+
+    def _set_loggers_levels(self):
+        """sets the loggers levels to the default or to the given level."""
+        for logger_name, logger_config in self.loggers.items():
+            default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
+            if "level" in logger_config:
+                default_logger_config.update({"level": logger_config["level"]})
+            self.loggers[logger_name].update(default_logger_config)
+
+    def _set_defaults(self):
+        """resets all keys to the defined defaults except :code:`loggers`."""
         for key, value in DEFAULT_LOG_CONFIG.items():
             if key == "loggers":
                 continue
             setattr(self, key, value)
-        if not self.level:
-            self.level = DEFAULT_LOG_CONFIG.get("loggers", {}).get("root", {}).get("level", "INFO")
-        if self.loggers:
-            for logger_name, logger_config in self.loggers.items():
-                default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
-                if "level" in logger_config:
-                    default_logger_config.update({"level": logger_config["level"]})
-                self.loggers[logger_name].update(default_logger_config)
-        self.loggers = {**DEFAULT_LOG_CONFIG["loggers"] | self.loggers}
-        self.loggers.get("root", {}).update({"level": self.level})
 
 
 @define(kw_only=True)
