@@ -367,6 +367,7 @@ class LoggerConfig:
     Defaults to :code:`"%(asctime)-15s %(name)-10s %(levelname)-8s: %(message)s"`.
     
     .. autoclass:: logprep.util.logging.LogprepFormatter
+      :no-index:
     
     """
     datefmt: str = field(default="", validator=[validators.instance_of(str)], eq=False)
@@ -382,6 +383,26 @@ class LoggerConfig:
         "elasticsearch", "ERROR"
         "opensearch", "ERROR"
         "logprep", "INFO"
+        "uvicorn", "INFO"
+        "uvicorn.access", "INFO"
+        "uvicorn.error", "INFO"
+
+    You can alter the log level of the loggers by adding them to the loggers mapping like in the
+    example. Remember that the `logger.level` config parameter setups the python root logger,
+    so you can't set the level of any child logger higher than the root logger. For example
+    if you set the root logger to :code:`INFO` you can't set the logger :code:`Runner` to :code:`DEBUG`
+    hoping to receive debug messages.
+
+    .. code-block:: yaml
+        :caption: Example of a custom logger configuration
+
+        logger:
+            level: INFO
+            format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
+            datefmt: "%Y-%m-%d %H:%M:%S"
+            loggers:
+                "py.warnings": {"level": "ERROR"}
+                "Runner": {"level": "ERROR"}
 
         """
 
@@ -396,7 +417,11 @@ class LoggerConfig:
         self.loggers.get("root", {}).update({"level": self.level})
 
     def setup_logging(self) -> None:
-        """Setup the logging configuration."""
+        """Setup the logging configuration.
+        is called in the :code:`logprep.run_logprep` module.
+        We have to write the configuration to the environment variable :code:`LOGPREP_LOG_CONFIG` to
+        make it available for the uvicorn server in :code:'logprep.util.http'.
+        """
         log_config = asdict(self)
         logging.config.dictConfig(log_config)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
@@ -482,10 +507,12 @@ class Configuration:
         eq=False,
         converter=lambda x: LoggerConfig(**x) if isinstance(x, dict) else x,
     )
-    """Logger configuration. Defaults to :code:`{"level": "INFO"}`.
+    """Logger configuration.
 
     .. autoclass:: logprep.util.configuration.LoggerConfig
-       :members:
+       :no-index:
+       :no-undoc-members:
+       :members: level, format, datefmt, loggers
 
     """
     input: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
