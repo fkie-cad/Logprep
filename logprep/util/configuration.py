@@ -225,7 +225,6 @@ from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
     DEFAULT_LOG_CONFIG,
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
-    log_queue,
 )
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.json_handling import list_json_files_in_directory

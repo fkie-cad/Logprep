@@ -15,17 +15,6 @@ from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
-from logprep.util.defaults import log_queue
-
-
-def logger_process(logger: logging.Logger):
-    """Process log messages from a queue."""
-
-    while True:
-        message = log_queue.get()
-        if message is None:
-            break
-        logger.handle(message)
 
 
 class PipelineManager:
@@ -63,7 +52,6 @@ class PipelineManager:
         self.metrics = self.Metrics(labels={"component": "manager"})
         self._logger = logging.getLogger("Manager")
         if multiprocessing.current_process().name == "MainProcess":
-            self._start_multiprocess_logger()
             self._set_http_input_queue(configuration)
         self._pipelines: list[multiprocessing.Process] = []
         self._configuration = configuration
@@ -86,12 +74,6 @@ class PipelineManager:
             return
         message_backlog_size = input_config.get("message_backlog_size", 15000)
         HttpConnector.messages = multiprocessing.Queue(maxsize=message_backlog_size)
-
-    def _start_multiprocess_logger(self):
-        self._log_process = multiprocessing.Process(
-            target=logger_process, args=(self._logger,), daemon=True
-        )
-        self._log_process.start()
 
     def get_count(self) -> int:
         """Get the pipeline count.
@@ -161,9 +143,6 @@ class PipelineManager:
         self._decrease_to_count(0)
         if self.prometheus_exporter:
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
-        log_queue.put(None)  # signal the logger process to stop
-        self._log_process.join()
-        log_queue.close()
 
     def restart(self):
         """Restarts all pipelines"""

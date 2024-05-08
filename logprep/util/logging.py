@@ -1,7 +1,12 @@
 """helper classes for logprep logging"""
 
 import logging
+import logging.handlers
 from socket import gethostname
+
+
+class LogprepListener(logging.handlers.QueueListener):
+    """custom QueueListener for logprep logging"""
 
 
 class LogprepFormatter(logging.Formatter):
