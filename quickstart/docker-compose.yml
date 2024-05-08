@@ -295,7 +295,9 @@ services:
       KEYCLOAK_CLIENT_SECRET: CwPAptWESjdJXboOLTnHRBpf5MnsC3UY
       KEYCLOAK_VERIFY_CERTIFICATE: "False"
       KEYCLOAK_VALIDATE_ISSUER: "False"
-      FDA_BASE_URL: http://fda-frontend
+      # FDA_BASE_URL: http://fda-frontend
+    ports:
+      - "3005:8000"
     depends_on:
       ucl-db:
         condition: service_healthy
