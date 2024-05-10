@@ -7,7 +7,7 @@ logger:
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
     "py.warnings": {"level": "ERROR"}
-    "Runner": {"level": "ERROR"}
+    "Runner": {"level": "DEBUG"}
 metrics:
   enabled: true
   port: 8001

@@ -381,27 +381,29 @@ class LoggerConfig:
         "urllib3.connectionpool", "ERROR"
         "elasticsearch", "ERROR"
         "opensearch", "ERROR"
-        "logprep", "INFO"
         "uvicorn", "INFO"
         "uvicorn.access", "INFO"
         "uvicorn.error", "INFO"
 
     You can alter the log level of the loggers by adding them to the loggers mapping like in the
-    example. Remember that the `logger.level` config parameter setups the python root logger,
-    so you can't set the level of any child logger higher than the root logger. For example
-    if you set the root logger to :code:`INFO` you can't set the logger :code:`Runner` to :code:`DEBUG`
-    hoping to receive debug messages.
+    example. Logprep opts out of hierarchical loggers and so it is possible to set the log level in
+    general for all loggers in the :code:`root` logger to :code:`INFO` and then set the log level
+    for specific loggers like :code:`Runner` to :code:`DEBUG` to get only DEBUG Messages from the
+    Runner instance.
+
+    If you want to silence other loggers like :code:`py.warnings` you can set the log level to
+    :code:`ERROR` here.
 
     .. code-block:: yaml
         :caption: Example of a custom logger configuration
 
         logger:
-            level: INFO
+            level: ERROR
             format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
             datefmt: "%Y-%m-%d %H:%M:%S"
             loggers:
                 "py.warnings": {"level": "ERROR"}
-                "Runner": {"level": "ERROR"}
+                "Runner": {"level": "DEBUG"}
 
         """
 
@@ -424,10 +426,6 @@ class LoggerConfig:
         log_config = asdict(self)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
         dictConfig(log_config)
-
-    def _set_custom_log_level(self, logger_name: str) -> None:
-        """Sets custom log level for loggers which cannot be reached by default log config"""
-        logging.getLogger(logger_name).setLevel(self.loggers[logger_name]["level"])
 
     def _set_loggers_levels(self):
         """sets the loggers levels to the default or to the given level."""

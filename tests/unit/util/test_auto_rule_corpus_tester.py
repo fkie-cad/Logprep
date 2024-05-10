@@ -41,6 +41,10 @@ def prepare_corpus_tester(corpus_tester, tmp_path, test_data):
 
 
 class TestAutoRuleTester:
+
+    def setup_method(self):
+        dictConfig(DEFAULT_LOG_CONFIG)
+
     @pytest.mark.parametrize(
         "test_case, test_data, mock_output, expected_prints, exit_code",
         [

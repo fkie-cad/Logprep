@@ -123,20 +123,6 @@ def align_extra_output_formats(extra_outputs):
     return reformatted_extra_outputs
 
 
-TESTER_LOG_CONFIG = {
-    "version": 1,
-    "formatters": {},
-    "handlers": {
-        "string": {"class": "logging.StreamHandler", "level": "WARNING"},
-    },
-    "loggers": {
-        "root": {"level": "WARNING", "handlers": ["string"]},
-    },
-    "filters": {},
-    "disable_existing_loggers": True,
-}
-
-
 class RuleCorpusTester:
     """This class can test a rule corpus against expected outputs"""
 
@@ -167,8 +153,7 @@ class RuleCorpusTester:
         self._original_config_paths = config_paths
         self._input_test_data_path = input_test_data_path
         self.log_capture_string = io.StringIO()
-        dictConfig(TESTER_LOG_CONFIG)
-        self.logger = logging.getLogger("root")
+        self.logger = logging.getLogger("corpustester")
         self.logger.handlers[0].setStream(self.log_capture_string)
 
     @cached_property

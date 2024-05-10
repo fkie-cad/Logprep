@@ -29,7 +29,7 @@ DEFAULT_LOG_CONFIG = {
             "class": "logging.handlers.QueueHandler",
             "queue": "ext://logprep.util.defaults.logqueue",
         },
-        "logprep-rule-corpus-tester": {"class": "logging.StreamHandler", "level": "WARNING"},
+        "string": {"class": "logging.StreamHandler", "level": "WARNING"},
     },
     "loggers": {
         "root": {"level": "INFO", "handlers": ["console"]},
@@ -37,16 +37,13 @@ DEFAULT_LOG_CONFIG = {
         "urllib3.connectionpool": {"level": "ERROR"},
         "elasticsearch": {"level": "ERROR"},
         "opensearch": {"level": "ERROR"},
-        "logprep": {"level": "INFO"},
-        "Generator": {"level": "INFO"},
-        "Pipeline": {"level": "INFO", "handlers": ["multiprocess"]},
         "uvicorn": {"level": "INFO", "handlers": ["multiprocess"]},
         "uvicorn.access": {"level": "INFO", "handlers": ["multiprocess"]},
         "uvicorn.error": {"level": "INFO", "handlers": ["multiprocess"]},
-        "logprep-rule-corpus-tester": {
+        "corpustester": {
             "level": "WARNING",
-            "handlers": ["logprep-rule-corpus-tester"],
-            "propagate": "0",
+            "handlers": ["string"],
+            "propagate": "1",
         },
     },
     "filters": {},

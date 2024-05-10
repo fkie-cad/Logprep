@@ -24,12 +24,6 @@ class TestPipelineManager:
     def teardown_method(self):
         self.manager._pipelines = []
 
-    def test_get_count_returns_count_of_pipelines(self):
-        for count in range(5):
-            self.manager.set_count(count)
-
-            assert self.manager.get_count() == count
-
     def test_decrease_to_count_removes_required_number_of_pipelines(self):
         self.manager._increase_to_count(3)
 

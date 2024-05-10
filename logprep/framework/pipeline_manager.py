@@ -75,18 +75,6 @@ class PipelineManager:
         message_backlog_size = input_config.get("message_backlog_size", 15000)
         HttpConnector.messages = multiprocessing.Queue(maxsize=message_backlog_size)
 
-    def get_count(self) -> int:
-        """Get the pipeline count.
-
-        Parameters
-        ----------
-        count : int
-           The pipeline count will be incrementally changed until it reaches this value.
-
-        """
-        self._logger.debug(f"Getting pipeline count: {len(self._pipelines)}")
-        return len(self._pipelines)
-
     def set_count(self, count: int):
         """Set the pipeline count.
 

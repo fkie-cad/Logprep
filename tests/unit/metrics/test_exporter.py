@@ -4,12 +4,14 @@
 # pylint: disable=line-too-long
 import logging
 import os.path
+from logging.config import dictConfig
 from unittest import mock
 
 from prometheus_client import REGISTRY
 
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import MetricsConfig
+from logprep.util.defaults import DEFAULT_LOG_CONFIG
 
 
 @mock.patch(
@@ -32,6 +34,7 @@ class TestPrometheusExporter:
 
     @mock.patch("logprep.util.http.ThreadingHTTPServer.start")
     def test_run_starts_http_server(self, mock_http_server_start, caplog):
+        dictConfig(DEFAULT_LOG_CONFIG)
         with caplog.at_level(logging.INFO):
             exporter = PrometheusExporter(self.metrics_config)
             exporter.run()
