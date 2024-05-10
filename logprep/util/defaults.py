@@ -1,9 +1,5 @@
 """Default values for logprep."""
 
-import multiprocessing as mp
-
-logqueue = mp.Queue(-1)
-
 DEFAULT_CONFIG_LOCATION = "file:///etc/logprep/pipeline.yml"
 DEFAULT_LOG_FORMAT = "%(asctime)-15s %(process)-6s %(name)-10s %(levelname)-8s: %(message)s"
 DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -27,7 +23,7 @@ DEFAULT_LOG_CONFIG = {
         },
         "multiprocess": {
             "class": "logging.handlers.QueueHandler",
-            "queue": "ext://logprep.util.defaults.logqueue",
+            "queue": "ext://logprep.util.logging.logqueue",
         },
         "string": {"class": "logging.StreamHandler", "level": "WARNING"},
     },

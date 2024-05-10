@@ -2,11 +2,10 @@
 
 import logging
 import logging.handlers
+import multiprocessing as mp
 from socket import gethostname
 
-
-class LogprepListener(logging.handlers.QueueListener):
-    """custom QueueListener for logprep logging"""
+logqueue = mp.Queue(-1)
 
 
 class LogprepFormatter(logging.Formatter):
