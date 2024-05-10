@@ -40,6 +40,7 @@ Additional output, like pseudonyms, will be printed if :code:`--dry-run-full-out
 """
 
 import json
+import logging
 import shutil
 import tempfile
 from copy import deepcopy
@@ -95,13 +96,13 @@ class DryRunner:
         return document_getter.get_jsonl()
 
     def __init__(
-        self, input_file_path: str, config: Configuration, full_output: bool, use_json: bool, logger
+        self, input_file_path: str, config: Configuration, full_output: bool, use_json: bool
     ):
         self._input_file_path = input_file_path
         self._config = config
         self._full_output = full_output
         self._use_json = use_json
-        self._logger = logger
+        self._logger = logging.getLogger("DryRunner")
 
     def run(self):
         """Run the dry runner."""
