@@ -8,6 +8,8 @@ import threading
 
 import uvicorn
 
+from logprep.util.defaults import DEFAULT_LOG_CONFIG
+
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
     parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
@@ -63,7 +65,9 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         uvicorn_config = {**internal_uvicorn_config, **uvicorn_config}
         self._logger_name = logger_name
         self._logger = logging.getLogger(self._logger_name)
-        logprep_log_config = json.loads(os.environ.get("LOGPREP_LOG_CONFIG", "{}"))
+        logprep_log_config = json.loads(
+            os.environ.get("LOGPREP_LOG_CONFIG", json.dumps(DEFAULT_LOG_CONFIG))
+        )
         uvicorn_config = uvicorn.Config(**uvicorn_config, app=app, log_config=logprep_log_config)
         logging.getLogger("uvicorn.access").name = self._logger_name
         logging.getLogger("uvicorn.error").name = self._logger_name

@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 import logging
+import multiprocessing
 from copy import deepcopy
 from logging import DEBUG, getLogger
 from multiprocessing import Lock
@@ -481,6 +482,7 @@ class TestPipeline(ConfigurationForTests):
         }
         self.pipeline._input = original_create(input_config, mock.MagicMock())
         self.pipeline._input.pipeline_index = 1
+        self.pipeline._input.messages = multiprocessing.Queue(-1)
         self.pipeline._input.setup()
         self.pipeline._input.messages.put({"message": "test message"})
         assert self.pipeline._input.messages.qsize() == 1

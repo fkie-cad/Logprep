@@ -19,7 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
 class Factory:
     """Create components for logprep."""
 
-    _logger: "Logger" = logging.getLogger(__name__)
+    _logger: "Logger" = logging.getLogger("Factory")
 
     @classmethod
     def create(cls, configuration: dict, logger: "Logger") -> "Component":

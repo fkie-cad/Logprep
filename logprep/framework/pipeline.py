@@ -159,11 +159,9 @@ class Pipeline:
         return Factory.create(input_connector_config, logger)
 
     def __init__(
-        self,
-        config: Configuration,
-        pipeline_index: int = None,
-        lock: Lock = None,
+        self, config: Configuration, pipeline_index: int = None, lock: Lock = None
     ) -> None:
+        self.logger = logger
         self._logprep_config = config
         self._timeout = config.timeout
         self._continue_iterating = Value(c_bool)

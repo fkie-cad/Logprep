@@ -129,7 +129,7 @@ class CredentialsEnvNotFoundError(Exception):
 class CredentialsFactory:
     """Factory class to create credentials for a given target URL."""
 
-    _logger = logging.getLogger(__name__)
+    _logger = logging.getLogger("Credentials")
 
     @classmethod
     def from_target(cls, target_url: str) -> "Credentials":
@@ -402,7 +402,7 @@ class AccessToken:
 class Credentials:
     """Abstract Base Class for Credentials"""
 
-    _logger = logging.getLogger(__name__)
+    _logger = logging.getLogger("Credentials")
 
     _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
 

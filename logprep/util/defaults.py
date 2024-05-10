@@ -29,6 +29,7 @@ DEFAULT_LOG_CONFIG = {
             "class": "logging.handlers.QueueHandler",
             "queue": "ext://logprep.util.defaults.logqueue",
         },
+        "logprep-rule-corpus-tester": {"class": "logging.StreamHandler", "level": "WARNING"},
     },
     "loggers": {
         "root": {"level": "INFO", "handlers": ["console"]},
@@ -42,6 +43,11 @@ DEFAULT_LOG_CONFIG = {
         "uvicorn": {"level": "INFO", "handlers": ["multiprocess"]},
         "uvicorn.access": {"level": "INFO", "handlers": ["multiprocess"]},
         "uvicorn.error": {"level": "INFO", "handlers": ["multiprocess"]},
+        "logprep-rule-corpus-tester": {
+            "level": "WARNING",
+            "handlers": ["logprep-rule-corpus-tester"],
+            "propagate": "0",
+        },
     },
     "filters": {},
     "disable_existing_loggers": False,

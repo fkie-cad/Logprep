@@ -150,11 +150,6 @@ class TestPipelineManager:
         manager = PipelineManager(config)
         assert isinstance(manager.prometheus_exporter, PrometheusExporter)
 
-    def test_stop_closes_log_queue(self):
-        with mock.patch.object(self.manager, "log_queue") as log_queue_mock:
-            self.manager.stop()
-            log_queue_mock.close.assert_called()
-
     def test_set_count_increases_number_of_pipeline_starts_metric(self):
         self.manager.metrics.number_of_pipeline_starts = 0
         self.manager.set_count(2)

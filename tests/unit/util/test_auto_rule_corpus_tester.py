@@ -5,11 +5,13 @@ import json
 import os
 import re
 from json import JSONDecodeError
+from logging.config import dictConfig
 from unittest import mock
 
 import pytest
 
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
+from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.getter import GetterFactory
 
 

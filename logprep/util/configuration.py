@@ -205,6 +205,7 @@ import os
 from copy import deepcopy
 from itertools import chain
 from logging import getLogger
+from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 
@@ -422,7 +423,7 @@ class LoggerConfig:
         """
         log_config = asdict(self)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
-        logging.config.dictConfig(log_config)
+        dictConfig(log_config)
 
     def _set_custom_log_level(self, logger_name: str) -> None:
         """Sets custom log level for loggers which cannot be reached by default log config"""

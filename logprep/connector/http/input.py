@@ -433,7 +433,6 @@ class HttpConnector(Input):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."
             )
-
         self._logger.debug(
             f"HttpInput Connector started on target {self.target} and "
             f"queue {id(self.messages)} "
