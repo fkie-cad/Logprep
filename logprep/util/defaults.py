@@ -33,9 +33,10 @@ DEFAULT_LOG_CONFIG = {
         "urllib3.connectionpool": {"level": "ERROR"},
         "elasticsearch": {"level": "ERROR"},
         "opensearch": {"level": "ERROR"},
-        "uvicorn": {"level": "INFO", "handlers": ["multiprocess"]},
-        "uvicorn.access": {"level": "INFO", "handlers": ["multiprocess"]},
-        "uvicorn.error": {"level": "INFO", "handlers": ["multiprocess"]},
+        "Pipeline": {"level": "INFO", "handlers": ["multiprocess"], "propagate": "0"},
+        "uvicorn": {"level": "INFO", "handlers": ["multiprocess"], "propagate": "0"},
+        "uvicorn.access": {"level": "INFO", "handlers": ["multiprocess"], "propagate": "0"},
+        "uvicorn.error": {"level": "INFO", "handlers": ["multiprocess"], "propagate": "0"},
         "corpustester": {
             "level": "WARNING",
             "handlers": ["string"],

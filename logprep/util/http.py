@@ -66,7 +66,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         self._logger_name = logger_name
         self._logger = logging.getLogger(self._logger_name)
         logprep_log_config = json.loads(
-            os.environ.get("LOGPREP_LOG_CONFIG", json.dumps(DEFAULT_LOG_CONFIG))
+            os.environ.get("LOGPREP_LOG_CONFIG", json.dumps({"version": 1}))
         )
         uvicorn_config = uvicorn.Config(**uvicorn_config, app=app, log_config=logprep_log_config)
         logging.getLogger("uvicorn.access").name = self._logger_name
