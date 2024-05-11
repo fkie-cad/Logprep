@@ -21,10 +21,6 @@ DEFAULT_LOG_CONFIG = {
             "formatter": "logprep",
             "stream": "ext://sys.stdout",
         },
-        "multiprocess": {
-            "class": "logging.handlers.QueueHandler",
-            "queue": "ext://logprep.util.logging.logqueue",
-        },
         "string": {"class": "logging.StreamHandler", "level": "WARNING"},
     },
     "loggers": {
@@ -33,10 +29,6 @@ DEFAULT_LOG_CONFIG = {
         "urllib3.connectionpool": {"level": "ERROR"},
         "elasticsearch": {"level": "ERROR"},
         "opensearch": {"level": "ERROR"},
-        "Pipeline": {"handlers": ["multiprocess"], "propagate": "0"},
-        "uvicorn": {"handlers": ["multiprocess"], "propagate": "0"},
-        "uvicorn.access": {"handlers": ["multiprocess"], "propagate": "0"},
-        "uvicorn.error": {"handlers": ["multiprocess"], "propagate": "0"},
         "corpustester": {
             "level": "WARNING",
             "handlers": ["string"],

@@ -147,15 +147,18 @@ class Runner:
         self._manager.restart()
         self._logger.info("Startup complete")
         self._logger.debug("Runner iterating")
+        self._iterate()
+        self._logger.info("Shutting down")
+        self._logger.info("Initiated shutdown")
+        self._manager.stop()
+        self._logger.info("Shutdown complete")
+
+    def _iterate(self):
         for _ in self._keep_iterating():
             if self._exit_received:
                 break
             self.scheduler.run_pending()
             self._manager.restart_failed_pipeline()
-        self._logger.info("Shutting down")
-        self._logger.info("Initiated shutdown")
-        self._manager.stop()
-        self._logger.info("Shutdown complete")
 
     def reload_configuration(self):
         """Reloads the configuration"""

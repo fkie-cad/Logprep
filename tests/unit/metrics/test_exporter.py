@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=line-too-long
-import logging
 import os.path
 from logging.config import dictConfig
 from unittest import mock
@@ -33,8 +32,7 @@ class TestPrometheusExporter:
         assert exporter._port == 8000
 
     @mock.patch("logprep.util.http.ThreadingHTTPServer.start")
-    def test_run_starts_http_server(self, mock_http_server_start, caplog):
-        dictConfig(DEFAULT_LOG_CONFIG)
+    def test_run_starts_http_server(self, mock_http_server_start):
         exporter = PrometheusExporter(self.metrics_config)
         exporter.run()
         mock_http_server_start.assert_called()
