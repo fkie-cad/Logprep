@@ -36,7 +36,7 @@ def _get_configuration(config_paths: list[str]) -> Configuration:
     try:
         config = Configuration.from_sources(config_paths)
         config.logger.setup_logging()
-        logger = logging.getLogger("logprep")  # pylint: disable=redefined-outer-name
+        logger = logging.getLogger("root")  # pylint: disable=redefined-outer-name
         logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
         return config
     except InvalidConfigurationError as error:

@@ -20,7 +20,7 @@ from logprep.util.configuration import (
     LoggerConfig,
     MetricsConfig,
 )
-from logprep.util.defaults import DEFAULT_LOG_CONFIG, ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from logprep.util.getter import FileGetter, GetterNotFoundError
 from tests.testdata.metadata import (
     path_to_config,
@@ -1283,7 +1283,6 @@ class TestLoggerConfig:
     def test_logger_config_sets_global_level(self, kwargs):
         config = LoggerConfig(**kwargs)
         assert config.loggers.get("root").get("level") == kwargs.get("level")
-        assert config.loggers.get("logprep").get("level") == "INFO"
         assert config.loggers.get("opensearch").get("level") == "ERROR"
 
     @pytest.mark.parametrize("kwargs", [{"loggers": {"logprep": {"level": "DEBUG"}}}])
