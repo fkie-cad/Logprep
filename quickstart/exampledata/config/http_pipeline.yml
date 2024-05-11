@@ -1,5 +1,6 @@
 version: 1
 process_count: 2
+config_refresh_interval: 10
 
 logger:
   level: INFO
