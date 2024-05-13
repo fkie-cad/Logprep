@@ -11,6 +11,8 @@
 
 ### Improvements
 
+* rename `logprep.event_generator` module to `logprep.generator`
+
 ### Bugfix
 
 * fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen
