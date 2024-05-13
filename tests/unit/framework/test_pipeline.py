@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import logging
+import multiprocessing
 from copy import deepcopy
 from logging import DEBUG, getLogger
 from multiprocessing import Lock
@@ -56,7 +58,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline = Pipeline(
             pipeline_index=1,
             config=self.logprep_config,
-            log_queue=mock.MagicMock(),
             lock=self.lock,
         )
 
@@ -112,7 +113,8 @@ class TestPipeline(ConfigurationForTests):
         )
         deleter_processor._specific_tree.add_rule(deleter_rule)
         self.pipeline._pipeline = [mock.MagicMock(), deleter_processor, mock.MagicMock()]
-        self.pipeline.logger.setLevel(DEBUG)
+        logger = logging.getLogger("Pipeline")
+        logger.setLevel(DEBUG)
         while self.pipeline._input._documents:
             self.pipeline.process_pipeline()
         assert len(self.pipeline._input._documents) == 0, "all events were processed"
@@ -478,8 +480,9 @@ class TestPipeline(ConfigurationForTests):
                 "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
             }
         }
-        self.pipeline._input = original_create(input_config, self.pipeline.logger)
+        self.pipeline._input = original_create(input_config, mock.MagicMock())
         self.pipeline._input.pipeline_index = 1
+        self.pipeline._input.messages = multiprocessing.Queue(-1)
         self.pipeline._input.setup()
         self.pipeline._input.messages.put({"message": "test message"})
         assert self.pipeline._input.messages.qsize() == 1

@@ -91,9 +91,6 @@ class Pipeline:
     _logprep_config: Configuration
     """ the logprep configuration dict """
 
-    _log_queue: multiprocessing.Queue
-    """ the handler for the logs """
-
     _continue_iterating: Value
     """ a flag to signal if iterating continues """
 
@@ -160,15 +157,10 @@ class Pipeline:
         return Factory.create(input_connector_config, self.logger)
 
     def __init__(
-        self,
-        config: Configuration,
-        pipeline_index: int = None,
-        log_queue: multiprocessing.Queue = None,
-        lock: Lock = None,
+        self, config: Configuration, pipeline_index: int = None, lock: Lock = None
     ) -> None:
-        self._log_queue = log_queue
-        self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
-        self.logger.addHandler(logging.handlers.QueueHandler(log_queue))
+        self.logger = logging.getLogger("Pipeline")
+        self.logger.name = f"Pipeline{pipeline_index}"
         self._logprep_config = config
         self._timeout = config.timeout
         self._continue_iterating = Value(c_bool)
@@ -207,7 +199,7 @@ class Pipeline:
         self.logger.debug(f"Created '{processor}' processor")
         return processor
 
-    def run(self) -> None:
+    def run(self) -> None:  # pylint: disable=method-hidden
         """Start processing processors in the Pipeline."""
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True

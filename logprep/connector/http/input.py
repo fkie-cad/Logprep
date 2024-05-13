@@ -433,7 +433,6 @@ class HttpConnector(Input):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."
             )
-
         self._logger.debug(
             f"HttpInput Connector started on target {self.target} and "
             f"queue {id(self.messages)} "
@@ -462,7 +461,7 @@ class HttpConnector(Input):
 
         app = self._get_asgi_app(endpoints_config)
         self.http_server = http.ThreadingHTTPServer(
-            self._config.uvicorn_config, app, daemon=False, logger_name="Logprep HTTPServer"
+            self._config.uvicorn_config, app, daemon=False, logger_name="HTTPServer"
         )
         self.http_server.start()
 

@@ -91,7 +91,7 @@ import sys
 import tempfile
 from functools import cached_property
 from json import JSONDecodeError
-from logging import getLogger
+from logging.config import dictConfig
 from pathlib import Path
 from pprint import pprint
 from typing import List
@@ -152,7 +152,9 @@ class RuleCorpusTester:
     def __init__(self, config_paths: tuple[str], input_test_data_path: str):
         self._original_config_paths = config_paths
         self._input_test_data_path = input_test_data_path
-        self.log_capture_string = None
+        self.log_capture_string = io.StringIO()
+        self.logger = logging.getLogger("corpustester")
+        self.logger.handlers[0].setStream(self.log_capture_string)
 
     @cached_property
     def _tmp_dir(self):
@@ -174,17 +176,6 @@ class RuleCorpusTester:
         return dict(sorted(test_cases.items()))
 
     @cached_property
-    def _logprep_logger(self):
-        logprep_logger = getLogger("logprep-rule-corpus-tester")
-        logprep_logger.propagate = False
-        logprep_logger.setLevel(logging.WARNING)
-        self.log_capture_string = io.StringIO()
-        self.stream_handler = logging.StreamHandler(self.log_capture_string)
-        self.stream_handler.setLevel(logging.WARNING)
-        logprep_logger.addHandler(self.stream_handler)
-        return logprep_logger
-
-    @cached_property
     def _pipeline(self):
         merged_input_file_path = Path(self._tmp_dir) / "input.json"
         inputs = [test_case.input_document for test_case in self._test_cases.values()]
@@ -202,7 +193,7 @@ class RuleCorpusTester:
             }
         patched_config.pipeline = config.pipeline
         pipeline = Pipeline(config=patched_config)
-        pipeline.logger = self._logprep_logger
+        pipeline.logger = self.logger
         return pipeline
 
     def run(self):
@@ -241,10 +232,7 @@ class RuleCorpusTester:
         log_capture = self.log_capture_string.getvalue()
         # set new log_capture to clear previous entries
         self.log_capture_string = io.StringIO()
-        self.stream_handler = logging.StreamHandler(self.log_capture_string)
-        self.stream_handler.setLevel(logging.WARNING)
-        self._logprep_logger.handlers.clear()
-        self._logprep_logger.addHandler(self.stream_handler)
+        self.logger.handlers[0].setStream(self.log_capture_string)
         return log_capture
 
     def _compare_logprep_outputs(self, test_case_id, logprep_output):

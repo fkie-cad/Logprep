@@ -6,16 +6,21 @@
 
 ### Features
 
-* add fine-grained logger configuration for OpenSearch/ElasticSearch libraries
 * add gzip handling to `http_input` connector
+* adds advanced logging configuration
+  * add configurable log format
+  * add configurable datetime formate in logs
+  * makes `hostname` available in custom log formats
+  * add fine grained log level configuration for every logger instance
 
 ### Improvements
 
 * rename `logprep.event_generator` module to `logprep.generator`
+* shorten logger instance names
 
 ### Bugfix
 
-* fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen
+* fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen by making loglevel configurable for loggers `opensearch` and `elasticsearch`
 
 ## 11.2.1
 

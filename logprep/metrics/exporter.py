@@ -15,7 +15,7 @@ class PrometheusExporter:
 
     def __init__(self, configuration: MetricsConfig):
         self.is_running = False
-        logger_name = "Prometheus Exporter"
+        logger_name = "Exporter"
         self._logger = getLogger(logger_name)
         self._logger.debug("Initializing Prometheus Exporter")
         self.configuration = configuration

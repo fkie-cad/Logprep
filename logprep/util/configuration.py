@@ -200,10 +200,12 @@ The following config file will be valid by setting the given environment variabl
 """
 
 import json
+import logging
 import os
 from copy import deepcopy
 from itertools import chain
 from logging import getLogger
+from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 
@@ -222,6 +224,7 @@ from logprep.util import getter, http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
 from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
+    DEFAULT_LOG_CONFIG,
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
 )
 from logprep.util.getter import GetterFactory, GetterNotFoundError
@@ -320,6 +323,127 @@ class MetricsConfig:
 
 
 @define(kw_only=True)
+class LoggerConfig:
+    """The logger config class used in Configuration.
+    The schema for this class is derived from the python logging module:
+    https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+    """
+
+    _LOG_LEVELS = (
+        logging.NOTSET,  # 0
+        logging.DEBUG,  # 10
+        logging.INFO,  # 20
+        logging.WARNING,  # 30
+        logging.ERROR,  # 40
+        logging.CRITICAL,  # 50
+    )
+
+    version: int = field(validator=validators.instance_of(int), default=1)
+    formatters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    filters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    handlers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    disable_existing_loggers: bool = field(validator=validators.instance_of(bool), default=False)
+    level: str = field(
+        default="INFO",
+        validator=[
+            validators.instance_of(str),
+            validators.in_([logging.getLevelName(level) for level in _LOG_LEVELS]),
+        ],
+        eq=False,
+    )
+    """The log level of the root logger. Defaults to :code:`INFO`.
+
+    .. security-best-practice::
+       :title: Logprep Log-Level
+       :location: config.logger.level
+       :suggested-value: INFO
+
+         The log level of the root logger should be set to :code:`INFO` or higher in production environments
+         to avoid exposing sensitive information in the logs.
+    """
+    format: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    """The format of the log message as supported by the :code:`LogprepFormatter`.
+    Defaults to :code:`"%(asctime)-15s %(name)-10s %(levelname)-8s: %(message)s"`.
+    
+    .. autoclass:: logprep.util.logging.LogprepFormatter
+      :no-index:
+    
+    """
+    datefmt: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    """The date format of the log message. Defaults to :code:`"%Y-%m-%d %H:%M:%S"`."""
+    loggers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    """The loggers loglevel configuration. Defaults to:
+
+    .. csv-table::
+
+        "root", "INFO"
+        "filelock", "ERROR"
+        "urllib3.connectionpool", "ERROR"
+        "elasticsearch", "ERROR"
+        "opensearch", "ERROR"
+        "uvicorn", "INFO"
+        "uvicorn.access", "INFO"
+        "uvicorn.error", "INFO"
+
+    You can alter the log level of the loggers by adding them to the loggers mapping like in the
+    example. Logprep opts out of hierarchical loggers and so it is possible to set the log level in
+    general for all loggers in the :code:`root` logger to :code:`INFO` and then set the log level
+    for specific loggers like :code:`Runner` to :code:`DEBUG` to get only DEBUG Messages from the
+    Runner instance.
+
+    If you want to silence other loggers like :code:`py.warnings` you can set the log level to
+    :code:`ERROR` here.
+
+    .. code-block:: yaml
+        :caption: Example of a custom logger configuration
+
+        logger:
+            level: ERROR
+            format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
+            datefmt: "%Y-%m-%d %H:%M:%S"
+            loggers:
+                "py.warnings": {"level": "ERROR"}
+                "Runner": {"level": "DEBUG"}
+
+        """
+
+    def __attrs_post_init__(self) -> None:
+        """Create a LoggerConfig from a logprep logger configuration."""
+        self._set_defaults()
+        if not self.level:
+            self.level = DEFAULT_LOG_CONFIG.get("loggers", {}).get("root", {}).get("level", "INFO")
+        if self.loggers:
+            self._set_loggers_levels()
+        self.loggers = {**DEFAULT_LOG_CONFIG["loggers"] | self.loggers}
+        self.loggers.get("root", {}).update({"level": self.level})
+
+    def setup_logging(self) -> None:
+        """Setup the logging configuration.
+        is called in the :code:`logprep.run_logprep` module.
+        We have to write the configuration to the environment variable :code:`LOGPREP_LOG_CONFIG` to
+        make it available for the uvicorn server in :code:'logprep.util.http'.
+        """
+        log_config = asdict(self)
+        os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
+        dictConfig(log_config)
+
+    def _set_loggers_levels(self):
+        """sets the loggers levels to the default or to the given level."""
+        for logger_name, logger_config in self.loggers.items():
+            default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
+            if "level" in logger_config:
+                default_logger_config.update({"level": logger_config["level"]})
+            self.loggers[logger_name].update(default_logger_config)
+
+    def _set_defaults(self):
+        """resets all keys to the defined defaults except :code:`loggers`."""
+        for key, value in DEFAULT_LOG_CONFIG.items():
+            if key == "loggers":
+                continue
+            setattr(self, key, value)
+
+
+@define(kw_only=True)
 class Configuration:
     """the configuration class"""
 
@@ -374,18 +498,19 @@ class Configuration:
     processing power. This can be useful for testing and debugging.
     Larger values (like 5.0) slow the reaction time down, but this requires less processing power,
     which makes in preferable for continuous operation. Defaults to :code:`5.0`."""
-    logger: dict = field(
-        validator=validators.instance_of(dict), default={"level": "INFO"}, eq=False
+    logger: LoggerConfig = field(
+        validator=validators.instance_of(LoggerConfig),
+        default=LoggerConfig(**DEFAULT_LOG_CONFIG),
+        eq=False,
+        converter=lambda x: LoggerConfig(**x) if isinstance(x, dict) else x,
     )
-    """Logger configuration. Defaults to :code:`{"level": "INFO"}`.
+    """Logger configuration.
 
-    .. security-best-practice::
-       :title: Logprep Log-Level
-       :location: config.logger.level
-       :suggested-value: INFO
+    .. autoclass:: logprep.util.configuration.LoggerConfig
+       :no-index:
+       :no-undoc-members:
+       :members: level, format, datefmt, loggers
 
-       The loglevel of logprep should be set to :code:`"INFO"` in production environments, as the
-       :code:`"DEBUG"` level could expose sensitive events into the log.
     """
     input: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
     """

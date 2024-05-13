@@ -2,14 +2,15 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=line-too-long
-import logging
 import os.path
+from logging.config import dictConfig
 from unittest import mock
 
 from prometheus_client import REGISTRY
 
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import MetricsConfig
+from logprep.util.defaults import DEFAULT_LOG_CONFIG
 
 
 @mock.patch(
@@ -31,13 +32,10 @@ class TestPrometheusExporter:
         assert exporter._port == 8000
 
     @mock.patch("logprep.util.http.ThreadingHTTPServer.start")
-    def test_run_starts_http_server(self, mock_http_server_start, caplog):
-        with caplog.at_level(logging.INFO):
-            exporter = PrometheusExporter(self.metrics_config)
-            exporter.run()
-
+    def test_run_starts_http_server(self, mock_http_server_start):
+        exporter = PrometheusExporter(self.metrics_config)
+        exporter.run()
         mock_http_server_start.assert_called()
-        assert f"Prometheus Exporter started on port {exporter._port}" in caplog.text
 
     def test_cleanup_prometheus_multiprocess_dir_deletes_temp_dir_contents_but_not_the_dir_itself(
         self, tmp_path

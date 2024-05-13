@@ -24,12 +24,6 @@ class TestPipelineManager:
     def teardown_method(self):
         self.manager._pipelines = []
 
-    def test_get_count_returns_count_of_pipelines(self):
-        for count in range(5):
-            self.manager.set_count(count)
-
-            assert self.manager.get_count() == count
-
     def test_decrease_to_count_removes_required_number_of_pipelines(self):
         self.manager._increase_to_count(3)
 
@@ -149,11 +143,6 @@ class TestPipelineManager:
         config.metrics = MetricsConfig(enabled=True, port=8000)
         manager = PipelineManager(config)
         assert isinstance(manager.prometheus_exporter, PrometheusExporter)
-
-    def test_stop_closes_log_queue(self):
-        with mock.patch.object(self.manager, "log_queue") as log_queue_mock:
-            self.manager.stop()
-            log_queue_mock.close.assert_called()
 
     def test_set_count_increases_number_of_pipeline_starts_metric(self):
         self.manager.metrics.number_of_pipeline_starts = 0

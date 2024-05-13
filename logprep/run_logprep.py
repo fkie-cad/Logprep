@@ -1,6 +1,7 @@
 # pylint: disable=logging-fstring-interpolation
 """This module can be used to start the logprep."""
 import logging
+import logging.config
 import os
 import signal
 import sys
@@ -12,21 +13,17 @@ from colorama import Fore
 from logprep.generator.http.controller import Controller
 from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
-from logprep.util import defaults
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
-
-logging.getLogger("filelock").setLevel(logging.ERROR)
-logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
-logging.getLogger("elasticsearch").setLevel(logging.ERROR)
-
-
+logging.config.dictConfig(DEFAULT_LOG_CONFIG)
+logger = logging.getLogger("logprep")
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 
 
@@ -35,17 +32,13 @@ def _print_version(config: "Configuration") -> None:
     sys.exit(0)
 
 
-def _get_logger(logger_config: dict) -> logging.Logger:
-    log_level = logger_config.get("level", "INFO")
-    logging.basicConfig(level=log_level, format=defaults.DEFAULT_LOG_FORMAT)
-    logger = logging.getLogger("Logprep")
-    logger.setLevel(log_level)
-    return logger
-
-
 def _get_configuration(config_paths: list[str]) -> Configuration:
     try:
-        return Configuration.from_sources(config_paths)
+        config = Configuration.from_sources(config_paths)
+        config.logger.setup_logging()
+        logger = logging.getLogger("root")  # pylint: disable=redefined-outer-name
+        logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
+        return config
     except InvalidConfigurationError as error:
         print(f"InvalidConfigurationError: {error}", file=sys.stderr)
         sys.exit(1)
@@ -80,8 +73,6 @@ def run(configs: tuple[str], version=None) -> None:
     configuration = _get_configuration(configs)
     if version:
         _print_version(configuration)
-    logger = _get_logger(configuration.logger)
-    logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
     for version in get_versions_string(configuration).split("\n"):
         logger.info(version)
     logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
@@ -150,7 +141,7 @@ def dry_run(configs: tuple[str], events: str, input_type: str, full_output: bool
     """
     config = _get_configuration(configs)
     json_input = input_type == "json"
-    dry_runner = DryRunner(events, config, full_output, json_input, logging.getLogger("DryRunner"))
+    dry_runner = DryRunner(events, config, full_output, json_input)
     dry_runner.run()
 
 
@@ -270,7 +261,7 @@ def generate_kafka(config, file):
 @click.option(
     "--loglevel",
     help="Sets the log level for the logger.",
-    type=click.Choice(logging._levelToName.values()),
+    type=click.Choice(logging._levelToName.values()),  # pylint: disable=protected-access
     required=False,
     default="INFO",
 )
@@ -286,12 +277,8 @@ def generate_http(**kwargs):
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a http endpoint.
     """
-    log_level = kwargs.get("loglevel")
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    logger = logging.getLogger("generator")
-    logger.info(f"Log level set to '{log_level}'")
+    generator_logger = logging.getLogger("Generator")
+    generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
     generator = Controller(**kwargs)
     generator.run()
 

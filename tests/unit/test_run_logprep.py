@@ -281,7 +281,7 @@ class TestRunLogprepCli:
     @mock.patch("logging.Logger.info")
     def test_run_logprep_logs_log_level(self, mock_info):
         config = Configuration.from_sources(("tests/testdata/config/config.yml",))
-        assert config.logger.get("level") == "INFO"
+        assert config.logger.level == "INFO"
         with mock.patch("logprep.run_logprep.Runner"):
             with pytest.raises(SystemExit):
                 run_logprep.run(("tests/testdata/config/config.yml",))

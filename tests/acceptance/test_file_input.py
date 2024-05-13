@@ -83,7 +83,7 @@ def test_file_input_accepts_message_for_single_pipeline(tmp_path, config: Config
     config_path.write_text(config.as_yaml())
     write_file(str(input_path), test_initial_log_data)
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Logprep INFO    : Log level set to 'INFO'")
+    wait_for_output(proc, "Runner     INFO    : Startup complete")
     wait_for_interval(4 * CHECK_INTERVAL)
     assert test_initial_log_data[0] in output_path.read_text()
 
@@ -98,6 +98,6 @@ def test_file_input_accepts_message_for_two_pipelines(tmp_path, config: Configur
     config_path.write_text(config.as_yaml())
     write_file(str(input_path), test_initial_log_data)
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Logprep INFO    : Log level set to 'INFO'")
+    wait_for_output(proc, "Runner     INFO    : Startup complete")
     wait_for_interval(4 * CHECK_INTERVAL)
     assert test_initial_log_data[0] in output_path.read_text()

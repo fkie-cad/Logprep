@@ -44,9 +44,9 @@ input:
     kafka_config:
       bootstrap.servers: "127.0.0.1:9092"
       group.id: "cgroup"
-      auto.commit: "true"
-      session.timeout: "6000"
-      offset.reset.policy: "smallest"
+      enable.auto.commit: "true"
+      session.timeout.ms: "6000"
+      auto.offset.reset: "smallest"
       enable.auto.offset.store: "true"
 output:
   kafka_output:
