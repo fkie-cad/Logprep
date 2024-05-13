@@ -8,7 +8,7 @@ from unittest import mock
 import responses
 
 from logprep.generator.http.controller import Controller
-from tests.unit.event_generator.http.util import create_test_event_files
+from tests.unit.generator.http.util import create_test_event_files
 
 
 class TestController:
@@ -90,7 +90,7 @@ class TestController:
             assert call.request.headers.get("Content-Type") == expected_http_header
             assert call.response.status_code == 200
 
-    @mock.patch("logprep.event_generator.http.controller.ThreadPoolExecutor")
+    @mock.patch("logprep.generator.http.controller.ThreadPoolExecutor")
     def test_run_with_multiple_threads(self, mock_executor_class, tmp_path):
         self.contoller = Controller(
             input_dir="",

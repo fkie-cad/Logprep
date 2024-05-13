@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 from logprep.generator.kafka.document_sender import DocumentSender
 from logprep.generator.kafka.kafka_connector import KafkaProducer
-from tests.testdata.event_generator.kafka.kafka_config_dict import get_config
+from tests.testdata.generator.kafka.kafka_config_dict import get_config
 
 
 class MockedProducer:
@@ -29,15 +29,13 @@ class TestDocumentSender:
     def setup_method(self):
         mocked_kafka = MagicMock()
         mocked_kafka.Producer = MockedProducer
-        with patch(
-            "logprep.event_generator.kafka.kafka_connector.Producer", return_value=mocked_kafka
-        ):
+        with patch("logprep.generator.kafka.kafka_connector.Producer", return_value=mocked_kafka):
             self._document_sender = DocumentSender(get_config(), MagicMock())
 
     def test_init(self):
         assert isinstance(self._document_sender._kafka_producer, KafkaProducer)
 
-    @mock.patch("logprep.event_generator.kafka.document_sender.perf_counter")
+    @mock.patch("logprep.generator.kafka.document_sender.perf_counter")
     def test_send_zero(self, time_mock):
         time_mock.return_value = 0
         self._document_sender._kafka_producer._producer = MockedProducer()
@@ -47,7 +45,7 @@ class TestDocumentSender:
         assert count == 0
         assert self._document_sender._kafka_producer._producer.produced == []
 
-    @mock.patch("logprep.event_generator.kafka.document_sender.perf_counter")
+    @mock.patch("logprep.generator.kafka.document_sender.perf_counter")
     def test_send_one_of_zero(self, time_mock):
         time_mock.return_value = 0
         self._document_sender._kafka_producer._producer = MockedProducer()
@@ -55,7 +53,7 @@ class TestDocumentSender:
         assert count == 0
         assert self._document_sender._kafka_producer._producer.produced == []
 
-    @mock.patch("logprep.event_generator.kafka.document_sender.perf_counter")
+    @mock.patch("logprep.generator.kafka.document_sender.perf_counter")
     def test_send_one(self, time_mock):
         time_mock.return_value = 0
         self._document_sender._kafka_producer._producer = MockedProducer()
@@ -66,7 +64,7 @@ class TestDocumentSender:
         self._assert_uuid4_was_added_and_remove_it()
         assert self._document_sender._kafka_producer._producer.produced == [{"foo": "1"}]
 
-    @mock.patch("logprep.event_generator.kafka.document_sender.perf_counter")
+    @mock.patch("logprep.generator.kafka.document_sender.perf_counter")
     def test_send_multiple(self, time_mock):
         time_mock.return_value = 0
         self._document_sender._kafka_producer._producer = MockedProducer()
@@ -80,7 +78,7 @@ class TestDocumentSender:
             {"bar": "2"},
         ]
 
-    @mock.patch("logprep.event_generator.kafka.document_sender.perf_counter")
+    @mock.patch("logprep.generator.kafka.document_sender.perf_counter")
     def test_send_more_than_available(self, time_mock):
         time_mock.return_value = 0
         self._document_sender._kafka_producer._producer = MockedProducer()

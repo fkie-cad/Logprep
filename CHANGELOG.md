@@ -11,7 +11,7 @@
 
 ### Improvements
 
-* rename `logprep.event_generator` module to `logprep.generator`
+* rename `logprep.generator` module to `logprep.generator`
 
 ### Bugfix
 

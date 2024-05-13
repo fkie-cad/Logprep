@@ -14,7 +14,7 @@ from logprep.generator.kafka.configuration import (
 
 EXPECTED_CONFIG = Configuration(
     # profile=False,
-    source_file=PosixPath("tests/testdata/event_generator/kafka/wineventlog_raw.jsonl"),
+    source_file=PosixPath("tests/testdata/generator/kafka/wineventlog_raw.jsonl"),
     count=400000,
     source_count=5,
     logging_level="DEBUG",
@@ -38,13 +38,13 @@ EXPECTED_CONFIG = Configuration(
 class TestConfiguration:
     def test_load_configuration_with_source_file(self):
         config = load_config(
-            Path("tests/testdata/event_generator/kafka/config.yml"),
-            Path("tests/testdata/event_generator/kafka/wineventlog_raw.jsonl"),
+            Path("tests/testdata/generator/kafka/config.yml"),
+            Path("tests/testdata/generator/kafka/wineventlog_raw.jsonl"),
         )
         assert config == EXPECTED_CONFIG
 
     def test_load_configuration_without_source_file(self):
         expected = EXPECTED_CONFIG.model_copy()
         expected.source_file = None
-        config = load_config(Path("tests/testdata/event_generator/kafka/config.yml"))
+        config = load_config(Path("tests/testdata/generator/kafka/config.yml"))
         assert config == expected
