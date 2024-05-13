@@ -13,14 +13,14 @@ class TestLogprepFormatter:
     def test_default_log_config(self):
         logging.config.dictConfig(DEFAULT_LOG_CONFIG)
         logger = logging.getLogger("test")
-        assert logger
+        assert isinstance(logger.root.handlers[0].formatter, LogprepFormatter)
 
     def test_formatter_init_with_default(self):
         default_formatter_config = DEFAULT_LOG_CONFIG["formatters"]["logprep"]
         formatter = LogprepFormatter(
             fmt=default_formatter_config["format"], datefmt=default_formatter_config["datefmt"]
         )
-        assert formatter
+        assert isinstance(formatter, LogprepFormatter)
 
     def test_format_returns_str(self):
         default_formatter_config = DEFAULT_LOG_CONFIG["formatters"]["logprep"]

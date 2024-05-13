@@ -149,7 +149,6 @@ class Runner:
         self._logger.debug("Runner iterating")
         self._iterate()
         self._logger.info("Shutting down")
-        self._logger.info("Initiated shutdown")
         self._manager.stop()
         self._logger.info("Shutdown complete")
 
