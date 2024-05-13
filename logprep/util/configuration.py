@@ -362,7 +362,7 @@ class LoggerConfig:
          to avoid exposing sensitive information in the logs.
     """
     format: str = field(default="", validator=[validators.instance_of(str)], eq=False)
-    """The format of the log message as supportet bei the :code:`LogprepFormatter`.
+    """The format of the log message as supported by the :code:`LogprepFormatter`.
     Defaults to :code:`"%(asctime)-15s %(name)-10s %(levelname)-8s: %(message)s"`.
     
     .. autoclass:: logprep.util.logging.LogprepFormatter
