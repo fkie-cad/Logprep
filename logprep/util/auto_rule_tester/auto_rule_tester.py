@@ -39,11 +39,6 @@ The output is printed to the console, highlighting differences between `raw` and
 
     logprep test unit $CONFIG
 
-..  code-block:: bash
-    :caption: With PEX file
-
-    logprep.pex test unit $CONFIG
-
 Where :code:`$CONFIG` is the path to a configuration file
 (see :ref:`configuration`).
 

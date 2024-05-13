@@ -9,9 +9,4 @@ The following command can be used to verify the configuration without running Lo
 
     logprep test config $CONFIG
 
-..  code-block:: bash
-    :caption: With PEX file
-
-     logprep.pex test config $CONFIG
-
 Where :code:`$CONFIG` is the path to a configuration file (see :ref:`configuration`).
