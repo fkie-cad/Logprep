@@ -324,8 +324,8 @@ class MetricsConfig:
 
 @define(kw_only=True)
 class LoggerConfig:
-    """the logger config class used in Configuration
-    the schema for this class is derived from the python logging module:
+    """The logger config class used in Configuration.
+    The schema for this class is derived from the python logging module:
     https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
     """
 
