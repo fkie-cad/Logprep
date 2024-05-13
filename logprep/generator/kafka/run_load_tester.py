@@ -3,10 +3,10 @@
 from multiprocessing import Manager
 from pathlib import Path
 
-from logprep.event_generator.kafka.configuration import load_config
-from logprep.event_generator.kafka.logger import create_logger
-from logprep.event_generator.kafka.process_runner import run_processes
-from logprep.event_generator.kafka.util import print_results, print_startup_info
+from logprep.generator.kafka.configuration import load_config
+from logprep.generator.kafka.logger import create_logger
+from logprep.generator.kafka.process_runner import run_processes
+from logprep.generator.kafka.util import print_results, print_startup_info
 
 
 class LoadTester:

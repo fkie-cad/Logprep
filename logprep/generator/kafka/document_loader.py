@@ -6,8 +6,8 @@ from logging import Logger
 
 import ndjson
 
-from logprep.event_generator.kafka.configuration import Configuration
-from logprep.event_generator.kafka.kafka_connector import KafkaConsumer
+from logprep.generator.kafka.configuration import Configuration
+from logprep.generator.kafka.kafka_connector import KafkaConsumer
 
 
 class DocumentLoader:

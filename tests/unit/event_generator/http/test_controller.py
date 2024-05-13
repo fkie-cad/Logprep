@@ -7,7 +7,7 @@ from unittest import mock
 
 import responses
 
-from logprep.event_generator.http.controller import Controller
+from logprep.generator.http.controller import Controller
 from tests.unit.event_generator.http.util import create_test_event_files
 
 

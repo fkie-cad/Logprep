@@ -5,8 +5,8 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from logprep.event_generator.kafka.configuration import load_config
-from logprep.event_generator.kafka.util import (
+from logprep.generator.kafka.configuration import load_config
+from logprep.generator.kafka.util import (
     get_avg_size_mb,
     print_results,
     print_startup_info,

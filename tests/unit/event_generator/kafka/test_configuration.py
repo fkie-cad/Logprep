@@ -4,7 +4,7 @@
 # pylint: disable=missing-function-docstring
 from pathlib import Path, PosixPath
 
-from logprep.event_generator.kafka.configuration import (
+from logprep.generator.kafka.configuration import (
     Configuration,
     Consumer,
     Kafka,

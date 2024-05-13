@@ -10,11 +10,10 @@ from pathlib import Path
 from typing import List, Optional
 from unittest.mock import MagicMock, patch
 
+from logprep.generator.kafka.document_loader import DocumentLoader
+from logprep.generator.kafka.kafka_connector import KafkaConsumer
+from logprep.generator.kafka.logger import create_logger
 from tests.testdata.event_generator.kafka.kafka_config_dict import get_config
-
-from logprep.event_generator.kafka.document_loader import DocumentLoader
-from logprep.event_generator.kafka.kafka_connector import KafkaConsumer
-from logprep.event_generator.kafka.logger import create_logger
 
 
 class MockedRecord:

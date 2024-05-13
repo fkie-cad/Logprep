@@ -10,7 +10,7 @@ import msgspec
 import pytest
 import yaml
 
-from logprep.event_generator.http.input import EventClassConfig, Input
+from logprep.generator.http.input import EventClassConfig, Input
 from tests.unit.event_generator.http.util import create_test_event_files
 
 

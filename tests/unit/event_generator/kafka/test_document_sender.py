@@ -8,10 +8,9 @@ import json
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
+from logprep.generator.kafka.document_sender import DocumentSender
+from logprep.generator.kafka.kafka_connector import KafkaProducer
 from tests.testdata.event_generator.kafka.kafka_config_dict import get_config
-
-from logprep.event_generator.kafka.document_sender import DocumentSender
-from logprep.event_generator.kafka.kafka_connector import KafkaProducer
 
 
 class MockedProducer:
