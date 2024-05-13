@@ -21,6 +21,7 @@
 ### Bugfix
 
 * fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen by making loglevel configurable for loggers `opensearch` and `elasticsearch`
+* fixes the logprep quickstart profile
 
 ## 11.2.1
 
