@@ -9,8 +9,8 @@ import warnings
 import click
 from colorama import Fore
 
-from logprep.event_generator.http.controller import Controller
-from logprep.event_generator.kafka.run_load_tester import LoadTester
+from logprep.generator.http.controller import Controller
+from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
 from logprep.util import defaults
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester

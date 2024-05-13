@@ -10,7 +10,7 @@ import pandas as pd
 import yaml
 from pandas import DatetimeIndex
 
-from logprep.event_generator.http.reporter import Reporter
+from logprep.generator.http.reporter import Reporter
 
 
 class TestReporter:
@@ -95,7 +95,7 @@ class TestReporter:
         )
         # mock time to prevent a flipping test. If the time datapoints jump from one second the
         # next then the calculation for the "per second" metrics won't be as expected/accurate.
-        with mock.patch("logprep.event_generator.http.reporter.datetime") as mock_now:
+        with mock.patch("logprep.generator.http.reporter.datetime") as mock_now:
             for i in range(10):
                 mock_now.datetime.now.return_value = datetime.datetime(
                     year=2024, month=1, day=31, hour=9, minute=29, second=42, microsecond=i

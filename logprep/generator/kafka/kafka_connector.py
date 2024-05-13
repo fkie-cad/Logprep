@@ -5,7 +5,7 @@ from typing import Optional
 
 from confluent_kafka import Consumer, Producer
 
-from logprep.event_generator.kafka.configuration import Kafka
+from logprep.generator.kafka.configuration import Kafka
 
 
 class KafkaProducer:

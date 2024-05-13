@@ -287,7 +287,7 @@ class TestRunLogprepCli:
                 run_logprep.run(("tests/testdata/config/config.yml",))
         mock_info.assert_has_calls([mock.call("Log level set to 'INFO'")])
 
-    @mock.patch("logprep.event_generator.kafka.run_load_tester.LoadTester.run")
+    @mock.patch("logprep.generator.kafka.run_load_tester.LoadTester.run")
     def test_generate_kafka_starts_kafka_load_tester(self, mock_kafka_load_tester):
         tester_config = "some_config.yml"
         result = self.cli_runner.invoke(cli, ["generate", "kafka", tester_config])
