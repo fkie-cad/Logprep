@@ -179,7 +179,7 @@ class TestClusterer(BaseProcessorTestCase):
         empty_rules_path.mkdir()
         config.update({"generic_rules": [empty_rules_path.as_posix()]})
         config.update({"specific_rules": [empty_rules_path.as_posix()]})
-        clusterer = Factory.create({"test instance": config}, self.logger)
+        clusterer = Factory.create({"test instance": config})
 
         rule_0 = {
             "filter": "no_match",
