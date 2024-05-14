@@ -204,5 +204,5 @@ class TestPipelineManager:
         }
         PipelineManager(config)
         assert HttpConnector.messages._maxsize == 100
-        http_input = Factory.create(config.input, mock.MagicMock())
+        http_input = Factory.create(config.input)
         assert http_input.messages._maxsize == 100

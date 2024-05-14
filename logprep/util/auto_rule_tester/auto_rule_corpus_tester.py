@@ -91,7 +91,6 @@ import sys
 import tempfile
 from functools import cached_property
 from json import JSONDecodeError
-from logging.config import dictConfig
 from pathlib import Path
 from pprint import pprint
 from typing import List

@@ -728,7 +728,7 @@ class Configuration:
 
     def _load_rule_definitions(self, processor_definition: dict) -> dict:
         processor_definition = deepcopy(processor_definition)
-        _ = Factory.create(processor_definition, logger=getLogger(__name__))
+        _ = Factory.create(processor_definition)
         processor_name, processor_config = processor_definition.popitem()
         for rule_tree_name in ("specific_rules", "generic_rules"):
             rules_targets = self._resolve_directories(processor_config.get(rule_tree_name, []))
@@ -803,7 +803,7 @@ class Configuration:
         try:
             if not self.input:
                 raise RequiredConfigurationKeyMissingError("input")
-            Factory.create(self.input, logger=getLogger(__name__))
+            Factory.create(self.input)
         except Exception as error:  # pylint: disable=broad-except
             errors.append(error)
         if not self.output:
@@ -811,12 +811,12 @@ class Configuration:
         else:
             for output_name, output_config in self.output.items():
                 try:
-                    Factory.create({output_name: output_config}, logger=getLogger(__name__))
+                    Factory.create({output_name: output_config})
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
         for processor_config in self.pipeline:
             try:
-                processor = Factory.create(deepcopy(processor_config), logger=getLogger(__name__))
+                processor = Factory.create(deepcopy(processor_config))
                 self._verify_rules(processor)
             except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
                 errors.append(error)

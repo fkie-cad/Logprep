@@ -416,7 +416,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             config = deepcopy(self.CONFIG)
             config["specific_rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
-            Factory.create(configuration, self.logger)
+            Factory.create(configuration)
 
     def test_add_generic_fields_from_file_invalid(self):
         with pytest.raises(
@@ -426,7 +426,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             config = deepcopy(self.CONFIG)
             config["generic_rules"] = [RULES_DIR_INVALID]
             configuration = {"test processor": config}
-            Factory.create(configuration, self.logger)
+            Factory.create(configuration)
 
 
 class BaseTestGenericAdderSQLTestCase(BaseProcessorTestCase):
@@ -773,9 +773,9 @@ class TestGenericAdderProcessorSQLWithoutAddedTargetAndTableNeverEmpty(
 
         if raised_error:
             with pytest.raises(raised_error[0], match=raised_error[1]):
-                Factory.create({"Test Instance Name": config}, self.logger)
+                Factory.create({"Test Instance Name": config})
         else:
-            Factory.create({"Test Instance Name": config}, self.logger)
+            Factory.create({"Test Instance Name": config})
 
 
 class TestGenericAdderProcessorSQLWithAddedTarget(BaseTestGenericAdderSQLTestCase):
