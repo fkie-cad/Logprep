@@ -9,6 +9,8 @@
 
 ### Improvements
 
+* remove logger from Components and Factory signatures
+
 ## 11.3.0
 
 ### Features
