@@ -28,8 +28,6 @@ Processor Configuration
 .. automodule:: logprep.processor.list_comparison.rule
 """
 
-from logging import Logger
-
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
@@ -61,8 +59,8 @@ class ListComparison(Processor):
 
     rule_class = ListComparisonRule
 
-    def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "Processor.Config"):
+        super().__init__(name, configuration)
         self.setup()
 
     def setup(self):

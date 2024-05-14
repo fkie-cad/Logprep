@@ -3,8 +3,6 @@
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
 
-from logging import getLogger
-
 from logprep.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
@@ -31,9 +29,7 @@ class TestFatalOutputError(ExceptionBaseTest):
     counted_metric_name = "number_of_errors"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_output", "default": False}}, logger=getLogger()
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_output", "default": False}})
         self.exception_args = (self.object, "the error message")
 
 
@@ -45,10 +41,7 @@ class TestCriticalOutputError(ExceptionBaseTest):
     counted_metric_name = "number_of_errors"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_output", "default": False}},
-            logger=getLogger(),
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_output", "default": False}})
         self.exception_args = (self.object, "the error message", b"raw input")
 
 
@@ -60,10 +53,7 @@ class TestOutputError(ExceptionBaseTest):
     counted_metric_name = "number_of_errors"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_output", "default": False}},
-            logger=getLogger(),
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_output", "default": False}})
         self.exception_args = (self.object, "the error message")
 
 
@@ -75,10 +65,7 @@ class TestOutputWarning(ExceptionBaseTest):
     counted_metric_name = "number_of_warnings"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_output", "default": False}},
-            logger=getLogger(),
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_output", "default": False}})
         self.exception_args = (self.object, "the error message")
 
 
@@ -90,10 +77,7 @@ class TestInputError(ExceptionBaseTest):
     counted_metric_name = "number_of_errors"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
         self.exception_args = (self.object, "the error message")
 
 
@@ -105,10 +89,7 @@ class TestCriticalInputError(ExceptionBaseTest):
     counted_metric_name = "number_of_errors"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
         self.exception_args = (self.object, "the error message", b"raw input")
 
 
@@ -120,10 +101,7 @@ class TestCriticalInputParsingError(ExceptionBaseTest):
     counted_metric_name = "number_of_errors"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
         self.exception_args = (self.object, "the error message", b"raw input")
 
 
@@ -135,10 +113,7 @@ class TestFatalInputError(ExceptionBaseTest):
     counted_metric_name = "number_of_errors"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
         self.exception_args = (self.object, "the error message")
 
 
@@ -150,10 +125,7 @@ class TestInputWarning(ExceptionBaseTest):
     counted_metric_name = "number_of_warnings"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
         self.exception_args = (self.object, "the error message")
 
 
@@ -165,8 +137,5 @@ class TestSourceDisconnectedWarning(ExceptionBaseTest):
     counted_metric_name = "number_of_warnings"
 
     def setup_method(self):
-        self.object = Factory.create(
-            {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
-        )
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
         self.exception_args = (self.object, "the error message")

@@ -28,8 +28,8 @@ Example
             auto.offset.reset: "earliest"
 """
 # pylint: enable=line-too-long
+import logging
 from functools import cached_property, partial
-from logging import Logger
 from socket import getfqdn
 from typing import Callable, Optional, Tuple, Union
 
@@ -74,6 +74,8 @@ SPECIAL_OFFSETS = {
 }
 
 DEFAULT_RETURN = 0
+
+logger = logging.getLogger("KafkaInput")
 
 
 class ConfluentKafkaInput(Input):
@@ -237,8 +239,8 @@ class ConfluentKafkaInput(Input):
 
     __slots__ = ["_last_valid_records"]
 
-    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "Connector.Config") -> None:
+        super().__init__(name, configuration)
         self._last_valid_records = {}
 
     @cached_property
@@ -251,7 +253,7 @@ class ConfluentKafkaInput(Input):
             confluent_kafka consumer object
         """
         injected_config = {
-            "logger": self._logger,
+            "logger": logger,
             "on_commit": self._commit_callback,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
@@ -278,7 +280,7 @@ class ConfluentKafkaInput(Input):
             the error that occurred
         """
         self.metrics.number_of_errors += 1
-        self._logger.error(f"{self.describe()}: {error}")
+        logger.error(f"{self.describe()}: {error}")
 
     def _stats_callback(self, stats: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
@@ -451,10 +453,11 @@ class ConfluentKafkaInput(Input):
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
             offset, partition = topic_partition.offset, topic_partition.partition
-            self._logger.info(
-                f"{consumer.memberid()} was assigned to "
-                f"topic: {topic_partition.topic} | "
-                f"partition {partition}"
+            logger.info(
+                "%s was assigned to topic: %s | partition %s",
+                consumer.memberid(),
+                topic_partition.topic,
+                partition,
             )
             if offset in SPECIAL_OFFSETS:
                 offset = 0
@@ -466,10 +469,11 @@ class ConfluentKafkaInput(Input):
     def _revoke_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
-            self._logger.warning(
-                f"{consumer.memberid()} to be revoked from "
-                f"topic: {topic_partition.topic} | "
-                f"partition {topic_partition.partition}"
+            logger.warning(
+                "%s to be revoked from topic: %s | partition %s",
+                consumer.memberid(),
+                topic_partition.topic,
+                topic_partition.partition,
             )
         self.output_connector._write_backlog()
         self.batch_finished_callback()
@@ -477,11 +481,11 @@ class ConfluentKafkaInput(Input):
     def _lost_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
-            self._logger.warning(
-                f"{consumer.memberid()} has lost "
-                f"topic: {topic_partition.topic} | "
-                f"partition {topic_partition.partition}"
-                "- try to reassign"
+            logger.warning(
+                "%s has lost topic: %s | partition %s - try to reassign",
+                consumer.memberid(),
+                topic_partition.topic,
+                topic_partition.partition,
             )
             topic_partition.offset = OFFSET_STORED
         self._consumer.assign(topic_partitions)

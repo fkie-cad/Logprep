@@ -44,8 +44,8 @@ from logging import Logger
 from typing import List
 
 from attr import define, field, validators
-from logprep.abc.processor import Processor
 
+from logprep.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
@@ -73,8 +73,8 @@ class Clusterer(Processor):
 
     rule_class = ClustererRule
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: Processor.Config):
+        super().__init__(name, configuration)
         self.matching_rules = []
         self.sps = SignaturePhaseStreaming()
         self.has_custom_tests = True

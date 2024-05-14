@@ -46,7 +46,7 @@ class TestDummyInput(BaseInputTestCase):
     def test_repeat_documents_repeats_documents(self):
         config = copy.deepcopy(self.CONFIG)
         config["repeat_documents"] = True
-        connector = Factory.create(configuration={"Test Instance Name": config}, logger=self.logger)
+        connector = Factory.create(configuration={"Test Instance Name": config})
         connector._config.documents = [{"order": 0}, {"order": 1}, {"order": 2}]
 
         for order in range(0, 9):

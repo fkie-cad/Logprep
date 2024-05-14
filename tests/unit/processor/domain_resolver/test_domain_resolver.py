@@ -87,7 +87,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_domain_ip_map_greater_cache(self):
         config = deepcopy(self.CONFIG)
         config.update({"max_cached_domains": 1})
-        self.object = Factory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config})
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -119,7 +119,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_and_added_with_debug_cache(self, _):
         config = deepcopy(self.CONFIG)
         config.update({"debug_cache": True})
-        self.object = Factory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config})
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -139,7 +139,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_from_cache_and_added_with_debug_cache(self, _):
         config = deepcopy(self.CONFIG)
         config.update({"debug_cache": True})
-        self.object = Factory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config})
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -161,7 +161,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_and_added_with_cache_disabled(self, _):
         config = deepcopy(self.CONFIG)
         config.update({"cache_enabled": False})
-        self.object = Factory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config})
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -189,7 +189,7 @@ sth.ac.at
         responses.add(responses.GET, "http://does_not_matter", response_content)
         config = deepcopy(self.CONFIG)
         config.update({"tld_lists": ["http://does_not_matter"]})
-        domain_resolver = Factory.create({"test instance": config}, self.logger)
+        domain_resolver = Factory.create({"test instance": config})
         document = {"url": "http://www.google.ac.at/some/text"}
         expected = {"url": "http://www.google.ac.at/some/text", "resolved_ip": "1.2.3.4"}
         domain_resolver.process(document)
@@ -199,7 +199,7 @@ sth.ac.at
     def test_invalid_dots_domain_to_ip_produces_warning(self):
         config = deepcopy(self.CONFIG)
         config.update({"tld_list": TLD_LIST})
-        domain_resolver = Factory.create({"test instance": config}, self.logger)
+        domain_resolver = Factory.create({"test instance": config})
 
         assert self.object.metrics.number_of_processed_events == 0
         document = {"url": "google..invalid.de"}

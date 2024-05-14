@@ -182,7 +182,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = Factory.create(configuration=config, logger=self.logger)
+        domain_label_extractor = Factory.create(configuration=config)
         document = {"url": {"domain": "domain.fubarbo"}}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
@@ -203,7 +203,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = Factory.create(config, self.logger)
+        domain_label_extractor = Factory.create(config)
         document = {"url": {"domain": "domain.fubarbo"}, "special_tags": ["source"]}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},

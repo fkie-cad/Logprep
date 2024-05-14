@@ -20,8 +20,7 @@ DEFAULT_LOG_CONFIG = {
             "class": "logging.StreamHandler",
             "formatter": "logprep",
             "stream": "ext://sys.stdout",
-        },
-        "string": {"class": "logging.StreamHandler", "level": "WARNING"},
+        }
     },
     "loggers": {
         "root": {"level": "INFO", "handlers": ["console"]},
@@ -29,11 +28,6 @@ DEFAULT_LOG_CONFIG = {
         "urllib3.connectionpool": {"level": "ERROR"},
         "elasticsearch": {"level": "ERROR"},
         "opensearch": {"level": "ERROR"},
-        "corpustester": {
-            "level": "WARNING",
-            "handlers": ["string"],
-            "propagate": "1",
-        },
     },
     "filters": {},
     "disable_existing_loggers": False,

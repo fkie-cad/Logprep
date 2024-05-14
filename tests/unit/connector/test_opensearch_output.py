@@ -382,7 +382,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             "message_backlog_size": 1,
             "timeout": 5000,
         }
-        output: OpensearchOutput = Factory.create({"opensearch_output": config}, mock.MagicMock())
+        output: OpensearchOutput = Factory.create({"opensearch_output": config})
         uuid_str = str(uuid.uuid4())
         result = output._search_context.search(
             index="defaultindex", body={"query": {"match": {"foo": uuid_str}}}

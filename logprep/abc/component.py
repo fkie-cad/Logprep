@@ -2,7 +2,6 @@
 
 from abc import ABC
 from functools import cached_property
-from logging import Logger
 from typing import Callable
 
 import msgspec
@@ -43,7 +42,6 @@ class Component(ABC):
     name: str
     _scheduler = Scheduler()
 
-    _logger: Logger
     _config: Config
     _decoder: msgspec.json.Decoder = msgspec.json.Decoder()
     _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
@@ -53,8 +51,7 @@ class Component(ABC):
         """Labels for the metrics"""
         return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
 
-    def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
-        self._logger = logger
+    def __init__(self, name: str, configuration: "Component.Config"):
         self._config = configuration
         self.name = name
 

@@ -3,6 +3,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
+import logging
 import socket
 from copy import deepcopy
 from unittest import mock
@@ -16,6 +17,7 @@ from logprep.abc.input import (
     FatalInputError,
     InputWarning,
 )
+from logprep.connector.confluent_kafka.input import logger
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from tests.unit.connector.base import BaseInputTestCase
@@ -114,7 +116,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_batch_finished_callback_calls_offsets_handler_for_setting(self, _, settings, handlers):
         input_config = deepcopy(self.CONFIG)
-        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+        kafka_input = Factory.create({"test": input_config})
         kafka_input._config.kafka_config.update(settings)
         kafka_consumer = kafka_input._consumer
         message = "test message"
@@ -140,7 +142,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self, _, settings, handler
     ):
         input_config = deepcopy(self.CONFIG)
-        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+        kafka_input = Factory.create({"test": input_config})
         kafka_input._config.kafka_config.update(settings)
         kafka_consumer = kafka_input._consumer
         return_sequence = [KafkaException("test error"), None]
@@ -246,7 +248,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             "statistics.interval.ms": "30000",
             "bootstrap.servers": "testserver:9092",
             "group.id": "testgroup",
-            "logger": self.object._logger,
+            "logger": logger,
             "on_commit": self.object._commit_callback,
             "stats_cb": self.object._stats_callback,
             "error_cb": self.object._error_callback,
@@ -257,7 +259,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_client_id_can_be_overwritten(self, mock_consumer):
         input_config = deepcopy(self.CONFIG)
-        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+        kafka_input = Factory.create({"test": input_config})
         kafka_input._config.kafka_config["client.id"] = "thisclientid"
         kafka_input.setup()
         mock_consumer.assert_called()
@@ -266,7 +268,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_statistics_interval_can_be_overwritten(self, mock_consumer):
-        kafka_input = Factory.create({"test": self.CONFIG}, logger=self.logger)
+        kafka_input = Factory.create({"test": self.CONFIG})
         kafka_input._config.kafka_config["statistics.interval.ms"] = "999999999"
         kafka_input.setup()
         mock_consumer.assert_called()
@@ -284,7 +286,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         config.get("kafka_config").pop("group.id")
         expected_error_message = r"keys are missing: {'(bootstrap.servers|group.id)', '(bootstrap.servers|group.id)'}"  # pylint: disable=line-too-long
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
-            Factory.create({"test": config}, logger=self.logger)
+            Factory.create({"test": config})
 
     @pytest.mark.parametrize(
         "metric_name",

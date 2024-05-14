@@ -11,18 +11,14 @@ from logprep.factory_error import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from logging import Logger
-
     from logprep.abc.component import Component
 
 
 class Factory:
     """Create components for logprep."""
 
-    _logger: "Logger" = logging.getLogger("Factory")
-
     @classmethod
-    def create(cls, configuration: dict, logger: "Logger") -> "Component":
+    def create(cls, configuration: dict) -> "Component":
         """Create component."""
         if configuration == {} or configuration is None:
             raise InvalidConfigurationError("The component definition is empty.")
@@ -48,4 +44,4 @@ class Factory:
                 component_name, component_configuration_dict
             )
             component_configuration.metric_labels = copy.deepcopy(metric_labels)
-            return component(component_name, component_configuration, logger)
+            return component(component_name, component_configuration)

@@ -54,7 +54,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
     def test_producer_property_instanciates_kafka_producer(self, _):
-        kafka_output = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
+        kafka_output = Factory.create({"test connector": self.CONFIG})
         assert kafka_output._producer == "The Producer"
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
@@ -158,4 +158,4 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         config.get("kafka_config").pop("bootstrap.servers")
         expected_error_message = r"keys are missing: {'bootstrap.servers'}"
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
-            Factory.create({"test": config}, logger=self.logger)
+            Factory.create({"test": config})
