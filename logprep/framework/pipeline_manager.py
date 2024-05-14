@@ -16,6 +16,8 @@ from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
 
+logger = logging.getLogger("Manager")
+
 
 class PipelineManager:
     """Manage pipelines via multi-processing."""
@@ -50,7 +52,6 @@ class PipelineManager:
 
     def __init__(self, configuration: Configuration):
         self.metrics = self.Metrics(labels={"component": "manager"})
-        self._logger = logging.getLogger("Manager")
         if multiprocessing.current_process().name == "MainProcess":
             self._set_http_input_queue(configuration)
         self._pipelines: list[multiprocessing.Process] = []
@@ -121,9 +122,10 @@ class PipelineManager:
                 self.prometheus_exporter.mark_process_dead(failed_pipeline.pid)
             self._pipelines.insert(index, self._create_pipeline(pipeline_index))
             exit_code = failed_pipeline.exitcode
-            self._logger.warning(
-                f"Restarting failed pipeline on index {pipeline_index} "
-                f"with exit code: {exit_code}"
+            logger.warning(
+                "Restarting failed pipeline on index %s " "with exit code: %s",
+                pipeline_index,
+                exit_code,
             )
 
     def stop(self):
@@ -143,7 +145,7 @@ class PipelineManager:
 
     def _create_pipeline(self, index) -> multiprocessing.Process:
         pipeline = Pipeline(pipeline_index=index, config=self._configuration, lock=self._lock)
-        self._logger.info("Created new pipeline")
+        logger.info("Created new pipeline")
         process = multiprocessing.Process(target=pipeline.run, daemon=True)
         process.stop = pipeline.stop
         process.start()

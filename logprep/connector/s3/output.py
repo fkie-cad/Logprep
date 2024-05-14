@@ -38,10 +38,10 @@ Example
 
 """
 
+import logging
 import re
 from collections import defaultdict
 from functools import cached_property
-from logging import Logger
 from time import time
 from typing import Any, DefaultDict, Optional
 from uuid import uuid4
@@ -80,6 +80,9 @@ def _handle_s3_error(func):
         return None
 
     return _inner
+
+
+logger = logging.getLogger("S3Output")
 
 
 class S3Output(Output):
@@ -160,8 +163,8 @@ class S3Output(Output):
 
     _base_prefix: str
 
-    def __init__(self, name: str, configuration: "S3Output.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "S3Output.Config"):
+        super().__init__(name, configuration)
         self._message_backlog = defaultdict(list)
         self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
 
@@ -306,7 +309,7 @@ class S3Output(Output):
         if not self._message_backlog:
             return
 
-        self._logger.info("Writing %s documents to s3", self._backlog_size)
+        logger.info("Writing %s documents to s3", self._backlog_size)
         for prefix_mb, document_batch in self._message_backlog.items():
             self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
         self._message_backlog.clear()
@@ -319,7 +322,7 @@ class S3Output(Output):
 
     @_handle_s3_error
     def _write_document_batch(self, document_batch: dict, identifier: str) -> None:
-        self._logger.debug(f'Writing "{identifier}" to s3 bucket "{self._config.bucket}"')
+        logger.debug('Writing "%s" to s3 bucket "%s"', identifier, self._config.bucket)
         s3_obj = self._s3_resource.Object(self._config.bucket, identifier)
         s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
         self.metrics.number_of_successful_writes += len(document_batch)

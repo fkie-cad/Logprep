@@ -35,7 +35,6 @@ import logging
 import re
 import ssl
 from functools import cached_property
-from logging import Logger
 from typing import List, Optional, Pattern, Tuple, Union
 
 import elasticsearch as search
@@ -49,6 +48,8 @@ from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import Metric
 from logprep.util.helper import get_dict_size_in_byte
 from logprep.util.time import TimeParser
+
+logger = logging.getLogger("ElasticsearchOutput")
 
 
 class ElasticsearchOutput(Output):
@@ -111,8 +112,8 @@ class ElasticsearchOutput(Output):
 
     _size_error_pattern: Pattern[str]
 
-    def __init__(self, name: str, configuration: "ElasticsearchOutput.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "ElasticsearchOutput.Config"):
+        super().__init__(name, configuration)
         self._message_backlog = []
         self._size_error_pattern = re.compile(
             r".*coordinating_operation_bytes=(?P<size>\d+), "
@@ -477,7 +478,7 @@ class ElasticsearchOutput(Output):
                 f"Discarded message that is larger than the allowed size limit "
                 f"({size / 10 ** 6} MB/{self._config.maximum_message_size_mb} MB)"
             )
-            self._logger.warning(error_message)
+            logger.warning(error_message)
 
             error_document = {
                 "processed_snipped": f'{self._encoder.encode(message).decode("utf-8")[:1000]} ...',

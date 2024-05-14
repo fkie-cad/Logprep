@@ -57,8 +57,8 @@ class JsonlOutput(Output):
         "failed_events",
     ]
 
-    def __init__(self, name: str, configuration: "Output.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "Output.Config"):
+        super().__init__(name, configuration)
         self.events = []
         self.failed_events = []
 

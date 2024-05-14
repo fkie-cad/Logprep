@@ -25,6 +25,7 @@ Example
 """
 
 import json
+import logging
 from datetime import datetime
 from functools import cached_property, partial
 from socket import getfqdn
@@ -47,6 +48,8 @@ DEFAULTS = {
 }
 
 DEFAULT_RETURN = 0
+
+logger = logging.getLogger("KafkaOutput")
 
 
 class ConfluentKafkaOutput(Output):
@@ -175,7 +178,7 @@ class ConfluentKafkaOutput(Output):
     @cached_property
     def _producer(self):
         injected_config = {
-            "logger": self._logger,
+            "logger": logger,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
@@ -194,7 +197,7 @@ class ConfluentKafkaOutput(Output):
             the error that occurred
         """
         self.metrics.number_of_errors += 1
-        self._logger.error(f"{self.describe()}: {error}")
+        logger.error("%s: %s", self.describe(), error)
 
     def _stats_callback(self, stats: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()

@@ -39,7 +39,6 @@ import json
 import os
 import re
 from functools import reduce
-from logging import Logger
 from pathlib import Path
 from time import time
 from typing import List, Optional, Tuple, Union
@@ -123,7 +122,7 @@ class Normalizer(Processor):
     _encoder = msgspec.json.Encoder()
     _decoder = msgspec.json.Decoder()
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config):
         self._event = None
         self._conflicting_fields = []
 
@@ -147,7 +146,7 @@ class Normalizer(Processor):
         if self._html_replace_fields:
             getter = GetterFactory.from_string(self._html_replace_fields)
             self._html_replace_fields = getter.get_yaml()
-        super().__init__(name=name, configuration=configuration, logger=logger)
+        super().__init__(name=name, configuration=configuration)
 
     # pylint: enable=arguments-differ
 

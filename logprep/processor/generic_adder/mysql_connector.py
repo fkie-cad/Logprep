@@ -1,11 +1,13 @@
 """This module is used to connect to a MySQL database and to retrieve data from a SQL table."""
 
+import logging
 import time
-from logging import Logger
 from typing import Optional
 
 import mysql
 import mysql.connector as db
+
+logger = logging.getLogger("MySQLConnector")
 
 
 class MySQLConnector:
@@ -31,11 +33,9 @@ class MySQLConnector:
     _last_table_checksum: Optional[int]
     """Checksum of the database table that was obtained on the last update check"""
 
-    _logger: Logger
-
     _cursor: mysql.connector.connection.CursorBase
 
-    def __init__(self, sql_config: dict, logger: Logger):
+    def __init__(self, sql_config: dict):
         """Initialize the MySQLConnector.
 
         Parameters
@@ -51,7 +51,6 @@ class MySQLConnector:
             True if the SQL table has changed, False otherwise.
 
         """
-        self._logger = logger
 
         self.connection = None
         self.cursor = None
@@ -183,5 +182,5 @@ class MySQLConnector:
 
             return table
         except db.Error as error:
-            self._logger.warning(f"Error retrieving entry from database: {error}")
+            logger.warning(f"Error retrieving entry from database: {error}")
             return {}

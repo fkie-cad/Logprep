@@ -77,13 +77,13 @@ Behaviour of HTTP Requests
     * Responds with 405
 """
 
+import logging
 import multiprocessing as mp
 import queue
 import re
 import zlib
 from abc import ABC
 from base64 import b64encode
-from logging import Logger
 from typing import Callable, Mapping, Tuple, Union
 
 import falcon.asgi
@@ -100,6 +100,8 @@ from logprep.abc.input import FatalInputError, Input
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util import http
 from logprep.util.credentials import CredentialsFactory
+
+logger = logging.getLogger("HTTPInput")
 
 
 def basic_auth(func: Callable):
@@ -411,8 +413,8 @@ class HttpConnector(Input):
         "jsonl": JSONLHttpEndpoint,
     }
 
-    def __init__(self, name: str, configuration: "HttpConnector.Config", logger: Logger) -> None:
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "HttpConnector.Config") -> None:
+        super().__init__(name, configuration)
         port = self._config.uvicorn_config["port"]
         host = self._config.uvicorn_config["host"]
         ssl_options = any(
@@ -433,10 +435,11 @@ class HttpConnector(Input):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."
             )
-        self._logger.debug(
-            f"HttpInput Connector started on target {self.target} and "
-            f"queue {id(self.messages)} "
-            f"with queue_size: {self.messages._maxsize}"  # pylint: disable=protected-access
+        logger.debug(
+            "HttpInput Connector started on target %s and queue %s with queue_size: %s",
+            self.target,
+            id(self.messages),
+            self.messages._maxsize,  # pylint: disable=protected-access
         )
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:

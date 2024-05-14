@@ -35,6 +35,7 @@ Processor Configuration
 """
 
 import ipaddress
+import logging
 import os
 import tempfile
 from functools import cached_property
@@ -51,6 +52,8 @@ from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRu
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
+
+logger = logging.getLogger("DomainLabelExtractor")
 
 
 class DomainLabelExtractor(Processor):
@@ -88,7 +91,7 @@ class DomainLabelExtractor(Processor):
         super().setup()
         if self._config.tld_lists:
             downloaded_tld_lists_paths = []
-            self._logger.debug("start tldlists download...")
+            logger.debug("start tldlists download...")
             for index, tld_list in enumerate(self._config.tld_lists):
                 logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
                 os.makedirs(logprep_tmp_dir, exist_ok=True)
@@ -99,7 +102,7 @@ class DomainLabelExtractor(Processor):
                         list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
                 downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
             self._config.tld_lists = downloaded_tld_lists_paths
-            self._logger.debug("finished tldlists download...")
+            logger.debug("finished tldlists download...")
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
