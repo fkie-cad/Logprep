@@ -2,7 +2,7 @@
 import pytest
 import responses
 
-from logprep.event_generator.http.output import Output
+from logprep.generator.http.output import Output
 
 TARGET_URL = "https://www.test.de"
 

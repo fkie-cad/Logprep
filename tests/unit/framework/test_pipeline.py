@@ -1,8 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import logging
+import multiprocessing
 from copy import deepcopy
-from logging import DEBUG, getLogger
+from logging import DEBUG
 from multiprocessing import Lock
 from unittest import mock
 
@@ -56,7 +58,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline = Pipeline(
             pipeline_index=1,
             config=self.logprep_config,
-            log_queue=mock.MagicMock(),
             lock=self.lock,
         )
 
@@ -94,10 +95,10 @@ class TestPipeline(ConfigurationForTests):
     def test_empty_documents_are_not_forwarded_to_other_processors(self, _):
         input_data = [{"do_not_delete": "1"}, {"delete_me": "2"}, {"do_not_delete": "3"}]
         connector_config = {"dummy": {"type": "dummy_input", "documents": input_data}}
-        input_connector = original_create(connector_config, mock.MagicMock())
+        input_connector = original_create(connector_config)
         self.pipeline._input = input_connector
         self.pipeline._output = {
-            "dummy": original_create({"dummy": {"type": "dummy_output"}}, mock.MagicMock()),
+            "dummy": original_create({"dummy": {"type": "dummy_output"}}),
         }
         deleter_config = {
             "deleter processor": {
@@ -106,13 +107,14 @@ class TestPipeline(ConfigurationForTests):
                 "generic_rules": [],
             }
         }
-        deleter_processor = original_create(deleter_config, mock.MagicMock())
+        deleter_processor = original_create(deleter_config)
         deleter_rule = DeleterRule._create_from_dict(
             {"filter": "delete_me", "deleter": {"delete": True}}
         )
         deleter_processor._specific_tree.add_rule(deleter_rule)
         self.pipeline._pipeline = [mock.MagicMock(), deleter_processor, mock.MagicMock()]
-        self.pipeline.logger.setLevel(DEBUG)
+        logger = logging.getLogger("Pipeline")
+        logger.setLevel(DEBUG)
         while self.pipeline._input._documents:
             self.pipeline.process_pipeline()
         assert len(self.pipeline._input._documents) == 0, "all events were processed"
@@ -153,10 +155,8 @@ class TestPipeline(ConfigurationForTests):
         input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
         expected_output_data = deepcopy(input_data)
         connector_config = {"type": "dummy_input", "documents": input_data}
-        self.pipeline._input = original_create({"dummy": connector_config}, mock.MagicMock())
-        self.pipeline._output = {
-            "dummy": original_create({"dummy": {"type": "dummy_output"}}, mock.MagicMock())
-        }
+        self.pipeline._input = original_create({"dummy": connector_config})
+        self.pipeline._output = {"dummy": original_create({"dummy": {"type": "dummy_output"}})}
         self.pipeline.run()
         assert self.pipeline._output["dummy"].events == expected_output_data
 
@@ -305,7 +305,7 @@ class TestPipeline(ConfigurationForTests):
 
     @mock.patch("logging.Logger.error")
     def test_critical_output_error_is_logged_and_counted(self, mock_log_error, _):
-        dummy_output = original_create({"dummy_output": {"type": "dummy_output"}}, mock.MagicMock())
+        dummy_output = original_create({"dummy_output": {"type": "dummy_output"}})
         dummy_output.store_failed = mock.MagicMock()
 
         def raise_critical(event):
@@ -326,7 +326,7 @@ class TestPipeline(ConfigurationForTests):
 
     @mock.patch("logging.Logger.warning")
     def test_warning_output_error_is_logged(self, mock_warning, _):
-        dummy_output = original_create({"dummy_output": {"type": "dummy_output"}}, mock.MagicMock())
+        dummy_output = original_create({"dummy_output": {"type": "dummy_output"}})
 
         def raise_warning(event):
             raise OutputWarning(self.pipeline._output["dummy"], "mock output warning")
@@ -348,9 +348,7 @@ class TestPipeline(ConfigurationForTests):
         def raise_fatal_input_error(event):
             raise FatalInputError(self.pipeline._input, "fatal input error")
 
-        self.pipeline._input = original_create(
-            {"dummy": {"type": "dummy_input", "documents": []}}, getLogger()
-        )
+        self.pipeline._input = original_create({"dummy": {"type": "dummy_input", "documents": []}})
         self.pipeline._input.get_next = mock.MagicMock(side_effect=raise_fatal_input_error)
         self.pipeline._shut_down = mock.MagicMock()
         self.pipeline.run()
@@ -478,8 +476,9 @@ class TestPipeline(ConfigurationForTests):
                 "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
             }
         }
-        self.pipeline._input = original_create(input_config, self.pipeline.logger)
+        self.pipeline._input = original_create(input_config)
         self.pipeline._input.pipeline_index = 1
+        self.pipeline._input.messages = multiprocessing.Queue(-1)
         self.pipeline._input.setup()
         self.pipeline._input.messages.put({"message": "test message"})
         assert self.pipeline._input.messages.qsize() == 1

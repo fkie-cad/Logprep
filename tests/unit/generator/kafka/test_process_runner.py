@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from pydantic import BaseModel
 
-from logprep.event_generator.kafka.process_runner import get_record_cnt_for_process
+from logprep.generator.kafka.process_runner import get_record_cnt_for_process
 
 
 class ConfigurationTest(BaseModel):

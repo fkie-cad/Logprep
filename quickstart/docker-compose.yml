@@ -78,6 +78,9 @@ services:
   logprep:
     build:
       context: ..
+      args:
+        LOGPREP_VERSION: dev
+        PYTHON_VERSION: "3.11"
     image: logprep
     container_name: logprep
     profiles:
@@ -90,8 +93,11 @@ services:
       - opensearch
     volumes:
       - ../quickstart/:/home/logprep/quickstart/
+    tmpfs:
+      - /tmp/logprep/prometheus_multiproc 
     entrypoint:
       - logprep
+      - run
       - /home/logprep/quickstart/exampledata/config/pipeline.yml
   grafana:
     image: bitnami/grafana:latest

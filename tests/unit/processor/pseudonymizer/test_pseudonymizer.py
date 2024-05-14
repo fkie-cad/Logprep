@@ -747,9 +747,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         config |= config_change
         if error:
             with pytest.raises(error, match=msg):
-                Factory.create({"name": config}, self.logger)
+                Factory.create({"name": config})
         else:
-            Factory.create({"name": config}, self.logger)
+            Factory.create({"name": config})
 
     @pytest.mark.parametrize("testcase, rule, event, expected, regex_mapping", test_cases)
     def test_testcases(self, testcase, rule, event, expected, regex_mapping):
@@ -762,7 +762,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
     def test_tld_extractor_uses_file(self):
         config = deepcopy(self.CONFIG)
         config["tld_lists"] = [TLD_LIST]
-        object_with_tld_list = Factory.create({"pseudonymizer": config}, self.logger)
+        object_with_tld_list = Factory.create({"pseudonymizer": config})
         assert len(object_with_tld_list._tld_extractor.suffix_list_urls) == 1
         assert object_with_tld_list._tld_extractor.suffix_list_urls[0].endswith(
             "tests/testdata/mock_external/tld_list.dat",

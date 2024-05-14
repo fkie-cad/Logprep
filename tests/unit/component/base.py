@@ -31,7 +31,7 @@ class BaseComponentTestCase(ABC):
 
     def setup_method(self) -> None:
         config = {"Test Instance Name": self.CONFIG}
-        self.object = Factory.create(configuration=config, logger=self.logger)
+        self.object = Factory.create(configuration=config)
         assert "metrics" not in self.object.__dict__, "metrics should be a cached_property"
         self.metric_attributes = asdict(
             self.object.metrics,

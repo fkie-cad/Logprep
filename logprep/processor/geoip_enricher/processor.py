@@ -26,6 +26,7 @@ Processor Configuration
 .. automodule:: logprep.processor.geoip_enricher.rule
 """
 
+import logging
 import os
 import tempfile
 from functools import cached_property
@@ -42,6 +43,8 @@ from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
+
+logger = logging.getLogger("GeoipEnricher")
 
 
 class GeoipEnricher(FieldManager):
@@ -71,7 +74,7 @@ class GeoipEnricher(FieldManager):
         super().setup()
         db_path = Path(self._config.db_path)
         if not db_path.exists():
-            self._logger.debug("start geoip database download...")
+            logger.debug("start geoip database download...")
             logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
             os.makedirs(logprep_tmp_dir, exist_ok=True)
             db_path_file = logprep_tmp_dir / f"{self.name}.mmdb"
@@ -81,7 +84,7 @@ class GeoipEnricher(FieldManager):
                     db_path_file.write_bytes(
                         GetterFactory.from_string(str(self._config.db_path)).get_raw()
                     )
-            self._logger.debug("finished geoip database download.")
+            logger.debug("finished geoip database download.")
             self._config.db_path = str(db_path_file.absolute())
 
     def _try_getting_geoip_data(self, ip_string):

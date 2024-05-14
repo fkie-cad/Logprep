@@ -31,6 +31,7 @@ Processor Configuration
 .. automodule:: logprep.processor.grokker.rule
 """
 
+import logging
 import re
 from pathlib import Path
 from zipfile import ZipFile
@@ -46,6 +47,8 @@ from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
+
+logger = logging.getLogger("Grokker")
 
 
 class Grokker(FieldManager):
@@ -120,10 +123,10 @@ class Grokker(FieldManager):
 
     def _download_zip_file(self, source_file: str, target_dir: Path):
         if not target_dir.exists():
-            self._logger.debug("start grok pattern download...")
+            logger.debug("start grok pattern download...")
             archive = Path(f"{target_dir}.zip")
             archive.touch()
             archive.write_bytes(GetterFactory.from_string(source_file).get_raw())
-            self._logger.debug("finished grok pattern download.")
+            logger.debug("finished grok pattern download.")
             with ZipFile(str(archive), mode="r") as zip_file:
                 zip_file.extractall(target_dir)

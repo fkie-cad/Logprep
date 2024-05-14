@@ -466,7 +466,7 @@ class AutoRuleTester:
     @staticmethod
     def _get_processor_instance(name, processor_cfg, logger_):
         cfg = {name: processor_cfg}
-        processor = Factory.create(cfg, logger_)
+        processor = Factory.create(cfg)
         return processor
 
     @staticmethod

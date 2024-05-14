@@ -162,6 +162,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
             self._create_template_replacer(config)
 
     def _create_template_replacer(self, config):
-        template_replacer = Factory.create({"test instance": config}, self.logger)
+        template_replacer = Factory.create({"test instance": config})
         template_replacer.setup()
         return template_replacer

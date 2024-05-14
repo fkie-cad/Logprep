@@ -84,6 +84,7 @@ cache-related metrics like the number of hits and misses and the current cache l
 .. automodule:: logprep.processor.amides.rule
 """
 
+import logging
 from functools import cached_property, lru_cache
 from multiprocessing import current_process
 from pathlib import Path
@@ -101,6 +102,8 @@ from logprep.processor.amides.rule import AmidesRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
+
+logger = logging.getLogger("Amides")
 
 
 class Amides(FieldManager):
@@ -213,13 +216,13 @@ class Amides(FieldManager):
 
     def _load_and_unpack_models(self):
         if not Path(self._config.models_path).exists():
-            self._logger.debug("Getting AMIDES models archive...")
+            logger.debug("Getting AMIDES models archive...")
             models_archive = Path(f"{current_process().name}-{self.name}.zip")
             models_archive.touch()
             models_archive.write_bytes(
                 GetterFactory.from_string(str(self._config.models_path)).get_raw()
             )
-            self._logger.debug("Finished getting AMIDES models archive...")
+            logger.debug("Finished getting AMIDES models archive...")
             self._config.models_path = str(models_archive.absolute())
 
         with ZipFile(self._config.models_path, mode="r") as zip_file:

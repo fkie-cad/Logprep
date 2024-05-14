@@ -1,5 +1,6 @@
 ## Upcoming Changes
 
+
 ## next release
 
 ### Breaking
@@ -8,10 +9,9 @@
 
 ### Features
 
-* add fine-grained logger configuration for OpenSearch/ElasticSearch libraries
-
 ### Improvements
 
+* remove logger from Components and Factory signatures
 * align processor architecture to use methods like `write_to_target`, `add_field_to` and `get_dotted_field_value` when reading and writing from and to events
   * required substantial refactoring of the `hyperscan_resolver`, `generic_resolver` and `template_replacer` 
 * change `pseudonymizer`, `pre_detector`, `selective_extractor` processors and `pipeline` to handle `extra_data` the same way
@@ -19,9 +19,26 @@
   * required substantial refactoring of the `clusterer`
 * handle missing fields in processors via `_handle_missing_fields` from the field_manager
 
+## 11.3.0
+
+### Features
+
+* add gzip handling to `http_input` connector
+* adds advanced logging configuration
+  * add configurable log format
+  * add configurable datetime formate in logs
+  * makes `hostname` available in custom log formats
+  * add fine grained log level configuration for every logger instance
+
+### Improvements
+
+* rename `logprep.event_generator` module to `logprep.generator`
+* shorten logger instance names
+
 ### Bugfix
 
-* fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen
+* fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen by making loglevel configurable for loggers `opensearch` and `elasticsearch`
+* fixes the logprep quickstart profile
 
 ## 11.2.1
 

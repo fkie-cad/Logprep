@@ -62,13 +62,8 @@ class DummyOutput(Output):
         "_exceptions",
     ]
 
-    def __init__(
-        self,
-        name: str,
-        configuration: "Connector.Config",
-        logger: Logger,
-    ):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "Connector.Config"):
+        super().__init__(name, configuration)
         self.events = []
         self.failed_events = []
         self.setup_called_count = 0

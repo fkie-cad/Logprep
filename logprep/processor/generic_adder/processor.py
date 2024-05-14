@@ -39,7 +39,6 @@ import json
 import os
 import re
 import time
-from logging import Logger
 from typing import Optional
 
 from attr import define, field, validators
@@ -136,7 +135,7 @@ class GenericAdder(Processor):
     _db_file_path: Optional[str]
     """Path to file containing table from SQL database"""
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config):
         """Initialize a generic adder instance.
         Performs a basic processor initialization. Furthermore, a SQL database and a SQL table are
         being initialized if a SQL configuration exists.
@@ -146,10 +145,8 @@ class GenericAdder(Processor):
            Name for the generic adder.
         configuration : Processor.Config
            Configuration for SQL adding and rule loading.
-        logger : logging.Logger
-           Logger to use.
         """
-        super().__init__(name, configuration, logger)
+        super().__init__(name, configuration)
 
         self._db_table = None
         sql_config = configuration.sql_config
@@ -157,7 +154,7 @@ class GenericAdder(Processor):
             self._initialize_sql(sql_config)
 
     def _initialize_sql(self, sql_config):
-        self._db_connector = MySQLConnector(sql_config, self._logger) if sql_config else None
+        self._db_connector = MySQLConnector(sql_config) if sql_config else None
         if self._db_connector:
             self._file_lock_path = sql_config.get("file_lock_path", "sql_update.lock")
             self._db_file_path = sql_config.get("db_file_path", "sql_db_table.json")

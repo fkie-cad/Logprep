@@ -91,9 +91,6 @@ class Pipeline:
     _logprep_config: Configuration
     """ the logprep configuration dict """
 
-    _log_queue: multiprocessing.Queue
-    """ the handler for the logs """
-
     _continue_iterating: Value
     """ a flag to signal if iterating continues """
 
@@ -145,7 +142,7 @@ class Pipeline:
         outputs = {}
         for output_name in output_names:
             output_config = output_configs.get(output_name)
-            outputs |= {output_name: Factory.create({output_name: output_config}, self.logger)}
+            outputs |= {output_name: Factory.create({output_name: output_config})}
         return outputs
 
     @cached_property
@@ -157,18 +154,13 @@ class Pipeline:
         input_connector_config[connector_name].update(
             {"version_information": self._event_version_information}
         )
-        return Factory.create(input_connector_config, self.logger)
+        return Factory.create(input_connector_config)
 
     def __init__(
-        self,
-        config: Configuration,
-        pipeline_index: int = None,
-        log_queue: multiprocessing.Queue = None,
-        lock: Lock = None,
+        self, config: Configuration, pipeline_index: int = None, lock: Lock = None
     ) -> None:
-        self._log_queue = log_queue
-        self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
-        self.logger.addHandler(logging.handlers.QueueHandler(log_queue))
+        self.logger = logging.getLogger("Pipeline")
+        self.logger.name = f"Pipeline{pipeline_index}"
         self._logprep_config = config
         self._timeout = config.timeout
         self._continue_iterating = Value(c_bool)
@@ -202,12 +194,12 @@ class Pipeline:
         self.logger.info("Finished building pipeline")
 
     def _create_processor(self, entry: dict) -> "Processor":
-        processor = Factory.create(entry, self.logger)
+        processor = Factory.create(entry)
         processor.setup()
         self.logger.debug(f"Created '{processor}' processor")
         return processor
 
-    def run(self) -> None:
+    def run(self) -> None:  # pylint: disable=method-hidden
         """Start processing processors in the Pipeline."""
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True

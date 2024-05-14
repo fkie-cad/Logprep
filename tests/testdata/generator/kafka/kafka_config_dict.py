@@ -1,7 +1,7 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-function-docstring
-from logprep.event_generator.kafka.configuration import validate
+from logprep.generator.kafka.configuration import validate
 
 
 def get_config():

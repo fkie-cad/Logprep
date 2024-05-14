@@ -41,13 +41,11 @@ Processor Configuration
 """
 
 import math
-from logging import Logger
 from typing import Tuple
 
-from attrs import validators, field, define
+from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
-
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
     LogRecord,
@@ -55,7 +53,7 @@ from logprep.processor.clusterer.signature_calculation.signature_phase import (
     SignaturePhaseStreaming,
 )
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class Clusterer(FieldManager):
@@ -74,8 +72,8 @@ class Clusterer(FieldManager):
 
     rule_class = ClustererRule
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: Processor.Config):
+        super().__init__(name=name, configuration=configuration)
         self.sps = SignaturePhaseStreaming()
         self.has_custom_tests = True
 

@@ -26,7 +26,6 @@ Processor Configuration
 .. automodule:: logprep.processor.labeler.rule
 """
 
-from logging import Logger
 from typing import Optional
 
 from attr import define, field, validators
@@ -61,14 +60,9 @@ class Labeler(Processor):
 
     rule_class = LabelerRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: Processor.Config,
-        logger: Logger,
-    ):
+    def __init__(self, name: str, configuration: Processor.Config):
         self._schema = LabelingSchema.create_from_file(configuration.schema)
-        super().__init__(name, configuration=configuration, logger=logger)
+        super().__init__(name, configuration=configuration)
 
     def setup(self):
         super().setup()

@@ -34,7 +34,7 @@ Processor Configuration
 .. automodule:: logprep.processor.template_replacer.rule
 """
 
-from typing import Optional, List, Any
+from typing import Any, List, Optional
 
 from attr import define, field, validators
 
@@ -42,7 +42,7 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class TemplateReplacerError(BaseException):

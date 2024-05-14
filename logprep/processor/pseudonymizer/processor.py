@@ -45,7 +45,6 @@ Processor Configuration
 import re
 from functools import cached_property, lru_cache
 from itertools import chain
-from logging import Logger
 from typing import Optional, Pattern
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -214,8 +213,8 @@ class Pseudonymizer(FieldManager):
     def _pseudonymize_url_cached(self):
         return lru_cache(maxsize=self._config.max_cached_pseudonymized_urls)(self._pseudonymize_url)
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: Processor.Config):
+        super().__init__(name=name, configuration=configuration)
 
     def setup(self):
         super().setup()

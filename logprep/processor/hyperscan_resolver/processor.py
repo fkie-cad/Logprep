@@ -32,7 +32,6 @@ Processor Configuration
 """
 
 import errno
-from logging import Logger
 from os import makedirs, path
 from typing import Any, Dict, Tuple, Union
 
@@ -40,7 +39,7 @@ from attr import define, field
 
 from logprep.processor.base.exceptions import FieldExistsWarning, SkipImportError
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
 
 # pylint: disable=no-name-in-module
@@ -92,13 +91,8 @@ class HyperscanResolver(FieldManager):
 
     rule_class = HyperscanResolverRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: FieldManager.Config,
-        logger: Logger,
-    ):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: FieldManager.Config):
+        super().__init__(name=name, configuration=configuration)
         self._hyperscan_databases = {}
 
         hyperscan_db_path = configuration.hyperscan_db_path

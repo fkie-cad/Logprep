@@ -1,7 +1,7 @@
 """Abstract module for processors"""
 
+import logging
 from abc import abstractmethod
-from logging import DEBUG, Logger
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
@@ -26,6 +26,8 @@ from logprep.util.json_handling import list_json_files_in_directory
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
+
+logger = logging.getLogger("Processor")
 
 
 class Processor(Component):
@@ -85,8 +87,8 @@ class Processor(Component):
     _extra_data: List[Tuple[dict, Tuple[dict]]]
     _strategy = None
 
-    def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "Processor.Config"):
+        super().__init__(name, configuration)
         self._specific_tree = RuleTree(
             processor_name=self.name,
             processor_config=self._config,
@@ -155,7 +157,7 @@ class Processor(Component):
 
         """
         self._extra_data = []
-        self._logger.debug(f"{self.describe()} processing event {event}")
+        logger.debug(f"{self.describe()} processing event {event}")
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
         return self._extra_data if self._extra_data else None
@@ -252,16 +254,16 @@ class Processor(Component):
         for specific_rules_target in specific_rules_targets:
             rules = self.rule_class.create_rules_from_target(specific_rules_target, self.name)
             for rule in rules:
-                self._specific_tree.add_rule(rule, self._logger)
+                self._specific_tree.add_rule(rule)
         for generic_rules_target in generic_rules_targets:
             rules = self.rule_class.create_rules_from_target(generic_rules_target, self.name)
             for rule in rules:
-                self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
+                self._generic_tree.add_rule(rule)
+        if logger.isEnabledFor(logging.DEBUG):  # pragma: no cover
             number_specific_rules = self._specific_tree.number_of_rules
-            self._logger.debug(f"{self.describe()} loaded {number_specific_rules} specific rules")
+            logger.debug(f"{self.describe()} loaded {number_specific_rules} specific rules")
             number_generic_rules = self._generic_tree.number_of_rules
-            self._logger.debug(f"{self.describe()} loaded {number_generic_rules} generic rules")
+            logger.debug(f"{self.describe()} loaded {number_generic_rules} generic rules")
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
@@ -283,9 +285,9 @@ class Processor(Component):
         else:
             add_and_overwrite(event, "tags", sorted(list({*tags, *failure_tags})))
         if isinstance(error, ProcessingWarning):
-            self._logger.warning(str(error))
+            logger.warning(str(error))
         else:
-            self._logger.warning(str(ProcessingWarning(str(error), rule, event)))
+            logger.warning(str(ProcessingWarning(str(error), rule, event)))
 
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(

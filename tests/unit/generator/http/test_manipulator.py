@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from logprep.event_generator.http.input import EventClassConfig
-from logprep.event_generator.http.manipulator import Manipulator
+from logprep.generator.http.input import EventClassConfig
+from logprep.generator.http.manipulator import Manipulator
 
 
 @pytest.fixture(name="manipulator_with_timestamps")

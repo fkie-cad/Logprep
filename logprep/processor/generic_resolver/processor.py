@@ -26,14 +26,13 @@ Processor Configuration
 """
 
 import re
-from logging import Logger
 from typing import Union
 
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class GenericResolverError(BaseException):
@@ -52,13 +51,8 @@ class GenericResolver(FieldManager):
 
     rule_class = GenericResolverRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: FieldManager.Config,
-        logger: Logger,
-    ):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: FieldManager.Config):
+        super().__init__(name=name, configuration=configuration)
         self._replacements_from_file = {}
 
     def _apply_rules(self, event, rule):

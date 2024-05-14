@@ -352,7 +352,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             self.object.setup()
 
     def test_setup_registers_flush_timout_tasks(self):
-        # this test fails if opensearch is running on localhost
+        self.object._config.hosts = ["opensearch:9092"]
         job_count = len(Component._scheduler.jobs)
         with pytest.raises(FatalOutputError):
             self.object.setup()
@@ -382,7 +382,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             "message_backlog_size": 1,
             "timeout": 5000,
         }
-        output: OpensearchOutput = Factory.create({"opensearch_output": config}, mock.MagicMock())
+        output: OpensearchOutput = Factory.create({"opensearch_output": config})
         uuid_str = str(uuid.uuid4())
         result = output._search_context.search(
             index="defaultindex", body={"query": {"match": {"foo": uuid_str}}}
