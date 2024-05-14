@@ -104,6 +104,8 @@ from logprep.util.configuration import Configuration
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.json_handling import parse_json
 
+logger = logging.getLogger("corpustester")
+
 
 def align_extra_output_formats(extra_outputs):
     """
@@ -148,13 +150,6 @@ class RuleCorpusTester:
         report: List = Factory(list)
         warnings: str = field(default="")
 
-    def __init__(self, config_paths: tuple[str], input_test_data_path: str):
-        self._original_config_paths = config_paths
-        self._input_test_data_path = input_test_data_path
-        self.log_capture_string = io.StringIO()
-        self.logger = logging.getLogger("corpustester")
-        self.logger.handlers[0].setStream(self.log_capture_string)
-
     @cached_property
     def _tmp_dir(self):
         return tempfile.mkdtemp()
@@ -192,8 +187,12 @@ class RuleCorpusTester:
             }
         patched_config.pipeline = config.pipeline
         pipeline = Pipeline(config=patched_config)
-        logging.getLogger("root").handlers = logging.getLogger("corpustester").handlers
         return pipeline
+
+    def __init__(self, config_paths: tuple[str], input_test_data_path: str):
+        self._original_config_paths = config_paths
+        self._input_test_data_path = input_test_data_path
+        self.log_capture_string = sys.stdout
 
     def run(self):
         """
@@ -219,20 +218,12 @@ class RuleCorpusTester:
         for test_case_id, test_case in self._test_cases.items():
             _ = [processor.setup() for processor in self._pipeline._pipeline]
             parsed_event, extra_outputs = self._pipeline.process_pipeline()
-            test_case.warnings = self._retrieve_log_capture()
             extra_outputs = align_extra_output_formats(extra_outputs)
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
             self._compare_logprep_outputs(test_case_id, parsed_event)
             self._compare_extra_data_output(test_case_id, extra_outputs)
             self._print_pass_fail_statements(test_case_id)
-
-    def _retrieve_log_capture(self):
-        log_capture = self.log_capture_string.getvalue()
-        # set new log_capture to clear previous entries
-        self.log_capture_string = io.StringIO()
-        self.logger.handlers[0].setStream(self.log_capture_string)
-        return log_capture
 
     def _compare_logprep_outputs(self, test_case_id, logprep_output):
         test_case = self._test_cases.get(test_case_id, {})
@@ -340,9 +331,6 @@ class RuleCorpusTester:
             status = f"{Style.BRIGHT}{Fore.RESET} SKIPPED - (no expected output given)"
         elif len(test_case.report) > 0:
             status = f"{Style.BRIGHT}{Fore.RED} FAILED"
-        elif test_case.warnings:
-            status = f"{Style.BRIGHT}{Fore.YELLOW} PASSED - (with warnings)"
-
         print(f"{Fore.BLUE} Test Case: {Fore.CYAN}{test_case_id} {status}{Style.RESET_ALL}")
 
     def _print_test_reports(self):
@@ -350,7 +338,7 @@ class RuleCorpusTester:
             return
         print(Style.BRIGHT + "# Test Cases Detailed Reports:" + Style.RESET_ALL)
         for test_case_id, test_case in self._test_cases.items():
-            if (test_case.warnings or test_case.report) and test_case.expected_output:
+            if test_case.report and test_case.expected_output:
                 self._print_long_test_result(test_case_id, test_case)
                 print()
 
@@ -358,13 +346,6 @@ class RuleCorpusTester:
         report_title = f"test report for '{test_case_id}'"
         print(f"{Fore.RED}{Style.BRIGHT}↓ {report_title} ↓ {Style.RESET_ALL}")
         print_logprep_output = True
-        if test_case.warnings and not test_case.report:
-            print(Fore.GREEN + "Test passed, but with following warnings:" + Fore.RESET)
-            print(test_case.warnings)
-            print_logprep_output = False
-        if test_case.warnings and test_case.report:
-            print(Fore.RED + "Logprep Warnings:" + Fore.RESET)
-            print(test_case.warnings)
         for statement in test_case.report:
             if isinstance(statement, (dict, list)):
                 pprint(statement)
