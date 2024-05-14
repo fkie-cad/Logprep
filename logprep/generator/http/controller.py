@@ -10,8 +10,8 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 
+from logprep.connector.http.output import Output
 from logprep.generator.http.input import Input
-from logprep.generator.http.output import Output
 from logprep.generator.http.reporter import Reporter
 
 
