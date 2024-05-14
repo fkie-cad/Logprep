@@ -148,7 +148,6 @@ class RuleCorpusTester:
         generated_extra_output: dict = field(validator=validators.instance_of(list), default=[])
         failed: bool = field(validator=validators.instance_of(bool), default=False)
         report: List = Factory(list)
-        warnings: str = field(default="")
 
     @cached_property
     def _tmp_dir(self):
