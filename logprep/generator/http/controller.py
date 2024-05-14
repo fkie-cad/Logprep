@@ -54,21 +54,10 @@ class Controller:
         return statistics
 
     def _generate_load(self, statistics):
-        if self.thread_count == 1:
-            self._generate_with_main_process(statistics)
-            return
-        self._generate_with_multiple_threads(statistics)
-
-    def _generate_with_multiple_threads(self, statistics):
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
             results = executor.map(self.output.send, self.input.load())
             for stats in results:
                 self._update_statistics(statistics, stats)
-
-    def _generate_with_main_process(self, statistics):
-        for batch in self.input.load():
-            stats = self.output.send(batch)
-            self._update_statistics(statistics, stats)
 
     def _update_statistics(self, statistics, new_statistics):
         statistics.update(new_statistics)
