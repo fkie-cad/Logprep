@@ -88,7 +88,9 @@ class TestPipelineManager:
         ok_pipeline.is_alive = mock.MagicMock(return_value=True)
         self.manager._pipelines = [failed_pipeline, ok_pipeline]
         self.manager.restart_failed_pipeline()
-        logger_mock.assert_called_with("Restarting failed pipeline on index 1 with exit code: -1")
+        logger_mock.assert_called_with(
+            "Restarting failed pipeline on index %s with exit code: %s", 1, -1
+        )
 
     def test_stop_terminates_processes_created(self):
         self.manager.set_count(3)

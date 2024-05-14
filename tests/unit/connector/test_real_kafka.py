@@ -64,9 +64,7 @@ class TestKafkaConnection:
                 "bootstrap.servers": "localhost:9092",
             },
         }
-        self.kafka_output = Factory.create(
-            {"test output": ouput_config}, logger=logging.getLogger()
-        )
+        self.kafka_output = Factory.create({"test output": ouput_config})
 
         input_config = {
             "type": "confluentkafka_input",

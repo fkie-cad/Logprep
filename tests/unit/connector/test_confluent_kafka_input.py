@@ -3,6 +3,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
+import logging
 import socket
 from copy import deepcopy
 from unittest import mock
@@ -24,6 +25,8 @@ from tests.unit.connector.test_confluent_kafka_common import (
 )
 
 KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
+
+logger = logging.getLogger("TestLogger")
 
 
 class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
@@ -246,7 +249,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             "statistics.interval.ms": "30000",
             "bootstrap.servers": "testserver:9092",
             "group.id": "testgroup",
-            "logger": self.object._logger,
+            "logger": logger,
             "on_commit": self.object._commit_callback,
             "stats_cb": self.object._stats_callback,
             "error_cb": self.object._error_callback,

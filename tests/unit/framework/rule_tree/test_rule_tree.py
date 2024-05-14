@@ -48,8 +48,7 @@ class TestRuleTree:
                     "specific_rules": [],
                     "tree_config": "tests/testdata/unit/tree_config.json",
                 }
-            },
-            mock.MagicMock(),
+            }
         )
         rule_tree = RuleTree(processor_config=processor._config)
 
