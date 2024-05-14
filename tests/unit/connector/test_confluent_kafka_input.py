@@ -17,6 +17,7 @@ from logprep.abc.input import (
     FatalInputError,
     InputWarning,
 )
+from logprep.connector.confluent_kafka.input import logger
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from tests.unit.connector.base import BaseInputTestCase
@@ -25,8 +26,6 @@ from tests.unit.connector.test_confluent_kafka_common import (
 )
 
 KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
-
-logger = logging.getLogger("TestLogger")
 
 
 class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):

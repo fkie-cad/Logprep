@@ -11,6 +11,7 @@ from unittest import mock
 import pytest
 
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
+from logprep.util.configuration import Configuration
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.getter import GetterFactory
 
@@ -489,6 +490,8 @@ class TestAutoRuleTester:
         os.makedirs(test_data_dir, exist_ok=True)
         write_test_case_data_tmp_files(test_data_dir, "test_case_one", test_case_data)
         config_path = ["tests/testdata/config/config.yml"]
+        config = Configuration.from_sources(config_path)
+        config.logger.setup_logging()
         corpus_tester = RuleCorpusTester(config_path, test_data_dir)
         corpus_tester.run()
         console_output, console_error = capsys.readouterr()
@@ -498,5 +501,7 @@ class TestAutoRuleTester:
             r"Logprep Warnings.*FieldExistsWarning.*test_case_one.*"
             r"Test Overview"
         )
-        assert re.match(warnings_inside_details_pattern, console_output, flags=re.DOTALL)
+        assert re.match(
+            warnings_inside_details_pattern, console_output, flags=re.DOTALL
+        ), console_output
         mock_exit.assert_called_with(1)

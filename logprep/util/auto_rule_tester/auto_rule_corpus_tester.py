@@ -192,7 +192,7 @@ class RuleCorpusTester:
             }
         patched_config.pipeline = config.pipeline
         pipeline = Pipeline(config=patched_config)
-        pipeline.logger = self.logger
+        logging.getLogger("root").handlers = logging.getLogger("corpustester").handlers
         return pipeline
 
     def run(self):
