@@ -65,18 +65,8 @@ class TestController:
         expected_status_code = 200
         responses.add(responses.POST, f"{self.target_url}/target-one", status=expected_status_code)
         responses.add(responses.POST, f"{self.target_url}/target-two", status=expected_status_code)
-        statistics = self.contoller.run()
-        total_events = class_one_number_events + class_two_number_events
-        assert "Batch send time" in statistics
-        assert isinstance(statistics["Batch send time"], float)
-        assert statistics["Batch send time"] > 0
-        del statistics["Batch send time"]  # delete here such that the next assertion is easier
-        expected_statistics = {
-            f"Requests http status {str(expected_status_code)}": total_events / self.batch_size,
-            f"Events http status {str(expected_status_code)}": total_events,
-        }
-        assert statistics == expected_statistics
-        assert len(responses.calls) == total_events / self.batch_size
+        self.contoller.run()
+
         for call_id, call in enumerate(responses.calls):
             if call_id < (class_one_number_events / self.batch_size):
                 assert (

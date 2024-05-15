@@ -23,7 +23,11 @@ class HttpOutput(Output):
     class Config(Output.Config):
         user: str = field(validator=validators.instance_of(str), default="")
         password: str = field(validator=validators.instance_of(str), default="")
-        events: int = field(validator=validators.instance_of(int), default=1)
+        events: int = field(
+            validator=validators.instance_of(int),
+            default=1,
+            converter=lambda x: 1 if x is None else int(x),
+        )
         target_url: str
 
     @property
