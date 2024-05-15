@@ -1290,5 +1290,8 @@ class TestLoggerConfig:
         config = LoggerConfig(**kwargs)
         assert config.loggers.get("logprep").get("level") == "DEBUG", "should be set"
         assert config.loggers.get("root").get("level") == "INFO", "should be default"
-        assert config.loggers.get("root").get("handlers") == ["console"], "should be default"
+        assert config.loggers.get("root").get("handlers") == [
+            "console",
+            "queue",
+        ], "should be default"
         assert config.loggers.get("opensearch").get("level") == "ERROR", "should be default"
