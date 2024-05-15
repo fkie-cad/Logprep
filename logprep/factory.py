@@ -1,7 +1,6 @@
 """This module contains a factory to create connectors and processors."""
 
 import copy
-import logging
 from typing import TYPE_CHECKING
 
 from logprep.configuration import Configuration

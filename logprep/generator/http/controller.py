@@ -11,8 +11,8 @@ from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 
 from logprep.connector.http.output import HttpOutput
+from logprep.factory import Factory
 from logprep.generator.http.input import Input
-from logprep.generator.http.reporter import Reporter
 
 
 class Controller:
@@ -27,9 +27,16 @@ class Controller:
         self.use_reporter: bool = kwargs.get("report")
         self.log: Logger = logging.getLogger("Generator")
         self.input: Input = Input(self.config)
-        self.output = HttpOutput(self.config)
-        if self.use_reporter:
-            self.reporter = Reporter(args=kwargs)
+        output_config = {
+            "generator_output": {
+                "type": "http_output",
+                "user": kwargs.get("user"),
+                "password": kwargs.get("password"),
+                "events": kwargs.get("events"),
+                "target_url": kwargs.get("target_url"),
+            }
+        }
+        self.output: HttpOutput = Factory.create(output_config)
 
     def run(self):
         """
@@ -45,9 +52,6 @@ class Controller:
             self.log.info("Gracefully shutting down...")
         self.input.clean_up_tempdir()
         run_duration = time.perf_counter() - run_time_start
-        if self.use_reporter:
-            self.reporter.set_run_duration(run_duration)
-            self.reporter.write_experiment_results()
         stats = json.dumps(statistics, sort_keys=True, indent=4, separators=(",", ": "))
         self.log.info("Completed with following http return code statistics: %s", stats)
         self.log.info("Execution time: %f seconds", run_duration)
@@ -55,11 +59,6 @@ class Controller:
 
     def _generate_load(self, statistics):
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
-            results = executor.map(self.output.send, self.input.load())
+            results = executor.map(self.output.store, self.input.load())
             for stats in results:
-                self._update_statistics(statistics, stats)
-
-    def _update_statistics(self, statistics, new_statistics):
-        statistics.update(new_statistics)
-        if self.use_reporter:
-            self.reporter.update(new_statistics)
+                statistics.update(stats)

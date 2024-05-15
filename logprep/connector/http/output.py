@@ -6,65 +6,89 @@ import logging
 import time
 from functools import cached_property
 
-import msgspec
 import requests
+from attrs import define, field, validators
+
+from logprep.abc.output import Output
 
 requests.packages.urllib3.disable_warnings()  # pylint: disable=no-member
 
+logger = logging.getLogger("HttpOutput")
 
-class HttpOutput:
+
+class HttpOutput(Output):
     """Output that sends http post requests to a given endpoint with configured credentials"""
+
+    @define(kw_only=True)
+    class Config(Output.Config):
+        user: str = field(validator=validators.instance_of(str), default="")
+        password: str = field(validator=validators.instance_of(str), default="")
+        events: int = field(validator=validators.instance_of(int), default=1)
+        target_url: str
+
+    @property
+    def user(self):
+        return self._config.user
+
+    @property
+    def password(self):
+        return self._config.password
 
     @cached_property
     def _headers(self):
         return {"Content-Type": "application/x-ndjson; charset=utf-8"}
 
-    def __init__(self, config: dict):
-        self.config = config
-        self.user = config.get("user")
-        self.password = config.get("password")
-        self.log = logging.getLogger("Output")
-        self._encoder = msgspec.json.Encoder()
-        self.max_events = config.get("events")
+    def __init__(self, name: str, config: "HttpOutput.Config"):
+        super().__init__(name, config)
         self.event_sent = 0
 
-    def send(self, batch) -> dict:
+    def store_custom(self, batch: tuple[str, dict] | dict) -> dict:
         """
         Send a batch of events to an endpoint and return the received status code times the number
         of events.
         """
-        send_time_start = time.perf_counter()
-        event_target, request_data = batch
-        stats = self._send_post_request(event_target, len(request_data.splitlines()), request_data)
-        stats.update({"Batch send time": time.perf_counter() - send_time_start})
-        return stats
+        if isinstance(batch, tuple):
+            event_target, request_data = batch
+        else:
+            event_target = self._config.target_url
+            request_data = batch
+        self._send_post_request(event_target, self._config.events, request_data)
+        self.metrics.number_of_processed_events += 1
+
+    def store(self, batch) -> dict:
+        self.store_custom(batch)
+
+    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+        self.metrics.number_of_failed_events += 1
+        pass
 
     def _send_post_request(self, event_target: str, number_events: int, request_data: str) -> dict:
         """Send a post request with given data to the specified endpoint"""
         try:
-            response = requests.post(
-                f"{event_target}",
-                headers=self._headers,
-                data=request_data,
-                verify=False,
-                auth=(self.user, self.password),
-                timeout=2,
-            )
-            stats = {
-                f"Requests http status {str(response.status_code)}": 1,
-                f"Events http status {str(response.status_code)}": number_events,
-            }
-            self.log.debug("Servers response code is: %i", response.status_code)
+            try:
+                response = requests.post(
+                    f"{event_target}",
+                    headers=self._headers,
+                    data=request_data,
+                    verify=False,
+                    auth=(self.user, self.password),
+                    timeout=2,
+                )
+                logger.debug("Servers response code is: %i", response.status_code)
+                response.raise_for_status()
+                if self.input_connector is not None:
+                    self.input_connector.batch_finished_callback()
+            except requests.RequestException as error:
+                self.store_failed(str(error), request_data, request_data)
+                if not isinstance(error, requests.exceptions.HTTPError):
+                    raise error
         except requests.exceptions.ConnectionError as error:
-            stats = {
-                "Requests ConnectionError": 1,
-                "Events ConnectionError": number_events,
-            }
-            self.log.error(error)
+            logger.error(error)
+            # TODO update connection error metric
         except requests.exceptions.MissingSchema as error:
             raise ConnectionError(
-                f"No schema set in target-url: {self.config.get('target_url')}"
+                f"No schema set in target-url: {self._config.get('target_url')}"
             ) from error
         except requests.exceptions.ReadTimeout as error:
-            stats = {"Requests Timeout": 1, "Events Timeout": number_events}
-        return stats
+            # TODO update timout metric
+            pass

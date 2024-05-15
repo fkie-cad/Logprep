@@ -11,6 +11,7 @@ from logprep.connector.dummy.output import DummyOutput
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.connector.file.input import FileInput
 from logprep.connector.http.input import HttpInput
+from logprep.connector.http.output import HttpOutput
 from logprep.connector.json.input import JsonInput
 from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.jsonl.output import JsonlOutput
@@ -94,6 +95,7 @@ class Registry:
         "jsonl_output": JsonlOutput,
         "opensearch_output": OpensearchOutput,
         "http_input": HttpInput,
+        "http_output": HttpOutput,
         "s3_output": S3Output,
     }
 
