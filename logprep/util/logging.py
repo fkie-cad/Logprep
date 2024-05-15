@@ -2,6 +2,7 @@
 
 import logging
 import multiprocessing as mp
+from logging.handlers import QueueListener
 from socket import gethostname
 
 logqueue = mp.Queue(-1)
@@ -33,3 +34,18 @@ class LogprepFormatter(logging.Formatter):
     def format(self, record):
         record.hostname = gethostname()
         return super().format(record)
+
+
+class LogprepMPQueueListener(QueueListener):
+    """Logprep specific QueueListener that uses a multiprocessing instead of threading"""
+
+    _process: mp.Process
+
+    def start(self):
+        self._process = mp.Process(target=self._monitor, daemon=True)
+        self._process.start()
+
+    def stop(self):
+        self.enqueue_sentinel()
+        self._process.join()
+        self._process = None

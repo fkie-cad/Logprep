@@ -217,5 +217,6 @@ class TestPipelineManager:
         manager = PipelineManager(self.config)
         assert manager.loghandler is not None
         assert manager.loghandler.queue == logqueue
-        assert manager.loghandler._thread.is_alive()
-        assert manager.loghandler._thread.daemon
+        assert manager.loghandler._thread is None
+        assert manager.loghandler._process.is_alive()
+        assert manager.loghandler._process.daemon

@@ -15,7 +15,7 @@ from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
-from logprep.util.logging import logqueue
+from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Manager")
 
@@ -71,7 +71,7 @@ class PipelineManager:
         console_logger = logging.getLogger("console")
         if console_logger.handlers:
             console_handler = console_logger.handlers.pop()  # last handler is console
-            self.loghandler = logging.handlers.QueueListener(logqueue, console_handler)
+            self.loghandler = LogprepMPQueueListener(logqueue, console_handler)
             self.loghandler.start()
 
     def _set_http_input_queue(self, configuration):
