@@ -2,7 +2,7 @@
 import pytest
 import responses
 
-from logprep.connector.http.output import Output
+from logprep.connector.http.output import HttpOutput
 
 TARGET_URL = "https://www.test.de"
 
@@ -10,7 +10,7 @@ TARGET_URL = "https://www.test.de"
 @pytest.fixture(name="output")
 def get_output():
     config = {"target_url": TARGET_URL, "user": "user", "password": "password"}
-    return Output(config=config)
+    return HttpOutput(config=config)
 
 
 class TestOutput:

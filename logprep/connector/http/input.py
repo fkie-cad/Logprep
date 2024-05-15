@@ -203,7 +203,7 @@ class HttpEndpoint(ABC):
         collect_meta: bool,
         metafield_name: str,
         credentials: dict,
-        metrics: "HttpConnector.Metrics",
+        metrics: "HttpInput.Metrics",
     ) -> None:
         self.messages = messages
         self.collect_meta = collect_meta
@@ -300,7 +300,7 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         self.messages.put({**event, **metadata}, block=False)
 
 
-class HttpConnector(Input):
+class HttpInput(Input):
     """Connector to accept log messages as http post requests"""
 
     @define(kw_only=True)
@@ -413,7 +413,7 @@ class HttpConnector(Input):
         "jsonl": JSONLHttpEndpoint,
     }
 
-    def __init__(self, name: str, configuration: "HttpConnector.Config") -> None:
+    def __init__(self, name: str, configuration: "HttpInput.Config") -> None:
         super().__init__(name, configuration)
         port = self._config.uvicorn_config["port"]
         host = self._config.uvicorn_config["host"]

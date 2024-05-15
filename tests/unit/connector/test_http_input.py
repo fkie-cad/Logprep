@@ -15,7 +15,7 @@ import uvicorn
 from requests.auth import HTTPBasicAuth
 
 from logprep.abc.input import FatalInputError
-from logprep.connector.http.input import HttpConnector
+from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from tests.unit.connector.base import BaseInputTestCase
@@ -48,9 +48,7 @@ input:
 class TestHttpConnector(BaseInputTestCase):
 
     def setup_method(self):
-        HttpConnector.messages = multiprocessing.Queue(
-            maxsize=self.CONFIG.get("message_backlog_size")
-        )
+        HttpInput.messages = multiprocessing.Queue(maxsize=self.CONFIG.get("message_backlog_size"))
         super().setup_method()
         self.object.pipeline_index = 1
         self.object.setup()
@@ -87,7 +85,7 @@ class TestHttpConnector(BaseInputTestCase):
         self.object.shut_down()
 
     def test_create_connector(self):
-        assert isinstance(self.object, HttpConnector)
+        assert isinstance(self.object, HttpInput)
 
     def test_no_pipeline_index(self):
         connector_config = deepcopy(self.CONFIG)

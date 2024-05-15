@@ -12,7 +12,7 @@ import requests
 requests.packages.urllib3.disable_warnings()  # pylint: disable=no-member
 
 
-class Output:
+class HttpOutput:
     """Output that sends http post requests to a given endpoint with configured credentials"""
 
     @cached_property

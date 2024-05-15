@@ -10,7 +10,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 
-from logprep.connector.http.output import Output
+from logprep.connector.http.output import HttpOutput
 from logprep.generator.http.input import Input
 from logprep.generator.http.reporter import Reporter
 
@@ -27,7 +27,7 @@ class Controller:
         self.use_reporter: bool = kwargs.get("report")
         self.log: Logger = logging.getLogger("Generator")
         self.input: Input = Input(self.config)
-        self.output = Output(self.config)
+        self.output = HttpOutput(self.config)
         if self.use_reporter:
             self.reporter = Reporter(args=kwargs)
 
