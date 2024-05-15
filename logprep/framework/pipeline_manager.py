@@ -68,9 +68,11 @@ class PipelineManager:
             self.prometheus_exporter = None
 
     def _setup_logging(self):
-        console_handler = logging.getLogger("console").handlers.pop()  # last handler is console
-        self.loghandler = LogprepMPQueueListener(logqueue, console_handler)
-        self.loghandler.start()
+        console_logger = logging.getLogger("console")
+        if console_logger.handlers:
+            console_handler = console_logger.handlers.pop()  # last handler is console
+            self.loghandler = LogprepMPQueueListener(logqueue, console_handler)
+            self.loghandler.start()
 
     def _set_http_input_queue(self, configuration):
         """
