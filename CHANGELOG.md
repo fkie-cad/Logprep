@@ -10,6 +10,8 @@
 ### Improvements
 
 * remove logger from Components and Factory signatures
+* add `LogprepMPQueueListener` to outsource logging to a separate process
+* add a single `Queuehandler` handler to root logger to ensure all logs were handled by `LogprepMPQueueListener`
 
 ## 11.3.0
 
