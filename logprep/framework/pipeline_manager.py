@@ -15,7 +15,7 @@ from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
-from logprep.util.logging import LogprepMPQueueListener, logqueue
+from logprep.util.logging import logqueue
 
 logger = logging.getLogger("Manager")
 

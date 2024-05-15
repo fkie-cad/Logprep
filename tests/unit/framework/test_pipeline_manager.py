@@ -3,6 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 from copy import deepcopy
 from logging import Logger
+from logging.config import dictConfig
 from unittest import mock
 
 from logprep.connector.http.input import HttpConnector
@@ -10,6 +11,8 @@ from logprep.factory import Factory
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
+from logprep.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.util.logging import logqueue
 from tests.testdata.metadata import path_to_config
 
 
@@ -208,3 +211,11 @@ class TestPipelineManager:
         assert HttpConnector.messages._maxsize == 100
         http_input = Factory.create(config.input)
         assert http_input.messages._maxsize == 100
+
+    def test_pipeline_manager_setups_logging(self):
+        dictConfig(DEFAULT_LOG_CONFIG)
+        manager = PipelineManager(self.config)
+        assert manager.loghandler is not None
+        assert manager.loghandler.queue == logqueue
+        assert manager.loghandler._thread.is_alive()
+        assert manager.loghandler._thread.daemon
