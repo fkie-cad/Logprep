@@ -15,6 +15,7 @@ from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
+from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Manager")
 
@@ -52,8 +53,10 @@ class PipelineManager:
 
     def __init__(self, configuration: Configuration):
         self.metrics = self.Metrics(labels={"component": "manager"})
+        self.loghandler = None
         if multiprocessing.current_process().name == "MainProcess":
             self._set_http_input_queue(configuration)
+            self._setup_logging()
         self._pipelines: list[multiprocessing.Process] = []
         self._configuration = configuration
 
@@ -63,6 +66,11 @@ class PipelineManager:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
         else:
             self.prometheus_exporter = None
+
+    def _setup_logging(self):
+        console_handler = logging.getLogger("console").handlers.pop()  # last handler is console
+        self.loghandler = LogprepMPQueueListener(logqueue, console_handler)
+        self.loghandler.start()
 
     def _set_http_input_queue(self, configuration):
         """

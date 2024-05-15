@@ -151,6 +151,8 @@ class Runner:
         self._logger.info("Shutting down")
         self._manager.stop()
         self._logger.info("Shutdown complete")
+        if self._manager.loghandler is not None:
+            self._manager.loghandler.stop()
 
     def _iterate(self):
         for _ in self._keep_iterating():
