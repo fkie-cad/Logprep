@@ -71,7 +71,7 @@ class PipelineManager:
         console_logger = logging.getLogger("console")
         if console_logger.handlers:
             console_handler = console_logger.handlers.pop()  # last handler is console
-            self.loghandler = LogprepMPQueueListener(logqueue, console_handler)
+            self.loghandler = logging.handlers.QueueListener(logqueue, console_handler)
             self.loghandler.start()
 
     def _set_http_input_queue(self, configuration):

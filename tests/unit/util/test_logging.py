@@ -1,5 +1,9 @@
+# pylint: disable=missing-docstring
 import logging
 import logging.config
+import logging.handlers
+import multiprocessing as mp
+import queue
 from socket import gethostname
 
 import pytest
@@ -8,12 +12,42 @@ from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.logging import LogprepFormatter
 
 
-class TestLogprepFormatter:
+def setup_module():
+    logging.config.dictConfig(DEFAULT_LOG_CONFIG)
 
-    def test_default_log_config(self):
-        logging.config.dictConfig(DEFAULT_LOG_CONFIG)
+
+class TestLogDictConfig:
+    """this tests the logprep.util.defaults.DEFAULT_LOG_CONFIG dict"""
+
+    def test_console_logger_uses_logprep_formatter(self):
         logger = logging.getLogger("console")
-        assert isinstance(logger.root.handlers[0].formatter, LogprepFormatter)
+        assert isinstance(logger.handlers[0].formatter, LogprepFormatter)
+
+    def test_root_logger_has_only_quehandler(self):
+        logger = logging.getLogger("root")
+        assert isinstance(logger.handlers[0], logging.handlers.QueueHandler)
+
+    def test_queuhandler_uses_multiprocessing_queue(self):
+        logger = logging.getLogger("root")
+        assert isinstance(logger.handlers[0].queue, mp.queues.Queue)
+        assert not isinstance(logger.handlers[0].queue, queue.Queue)
+
+    @pytest.mark.parametrize(
+        ("logger_name", "expected_level"),
+        [
+            ("filelock", "ERROR"),
+            ("urllib3.connectionpool", "ERROR"),
+            ("elasticsearch", "ERROR"),
+            ("opensearch", "ERROR"),
+        ],
+    )
+    def test_default_log_levels(self, logger_name, expected_level):
+        loglevel = logging.getLogger(logger_name).level
+        loglevel = logging.getLevelName(loglevel)
+        assert loglevel == expected_level
+
+
+class TestLogprepFormatter:
 
     def test_formatter_init_with_default(self):
         default_formatter_config = DEFAULT_LOG_CONFIG["formatters"]["logprep"]
