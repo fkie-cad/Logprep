@@ -7,6 +7,7 @@ import queue
 from socket import gethostname
 
 import pytest
+from _pytest.logging import LogCaptureHandler
 
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.logging import LogprepFormatter
@@ -25,8 +26,11 @@ class TestLogDictConfig:
 
     def test_root_logger_has_only_quehandler(self):
         logger = logging.getLogger("root")
-        assert len(logger.handlers) == 1, "only one handler should be set"
+        assert len(logger.handlers) == 3, "queuehandler and 2 logcapture handlers from pytest"
         assert isinstance(logger.handlers[0], logging.handlers.QueueHandler)
+        # these handlers are pytest handlers and won't be available in production
+        assert isinstance(logger.handlers[1], LogCaptureHandler)
+        assert isinstance(logger.handlers[2], LogCaptureHandler)
 
     def test_queuhandler_uses_multiprocessing_queue(self):
         logger = logging.getLogger("root")
