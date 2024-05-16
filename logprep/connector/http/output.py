@@ -3,7 +3,6 @@ Output Module that takes a batch of events and sends them to a http endpoint wit
 """
 
 import logging
-import time
 from functools import cached_property
 
 import requests
@@ -11,63 +10,57 @@ from attrs import define, field, validators
 
 from logprep.abc.output import Output
 
-requests.packages.urllib3.disable_warnings()  # pylint: disable=no-member
-
 logger = logging.getLogger("HttpOutput")
 
 
 class HttpOutput(Output):
-    """Output that sends http post requests to a given endpoint with configured credentials"""
+    """Output that sends http post requests to paths under a given endpoint
+    with configured credentials"""
 
     @define(kw_only=True)
     class Config(Output.Config):
+        """Configuration for the HttpOutput."""
+
         user: str = field(validator=validators.instance_of(str), default="")
+        """User that is used for the basic auth http request"""
         password: str = field(validator=validators.instance_of(str), default="")
-        events: int = field(
-            validator=validators.instance_of(int),
-            default=1,
-            converter=lambda x: 1 if x is None else int(x),
-        )
+        """Password that is used for the basic auth http request"""
         target_url: str
+        """URL of the endpoint that receives the events"""
 
     @property
     def user(self):
+        """Return the user that is used for the http request"""
         return self._config.user
 
     @property
     def password(self):
+        """Return the password that is used for the http request"""
         return self._config.password
 
     @cached_property
     def _headers(self):
         return {"Content-Type": "application/x-ndjson; charset=utf-8"}
 
-    def __init__(self, name: str, config: "HttpOutput.Config"):
-        super().__init__(name, config)
-        self.event_sent = 0
-
-    def store_custom(self, batch: tuple[str, dict] | dict) -> dict:
+    def store_custom(self, document: dict, target: str):
         """
         Send a batch of events to an endpoint and return the received status code times the number
         of events.
         """
-        if isinstance(batch, tuple):
-            event_target, request_data = batch
-        else:
-            event_target = self._config.target_url
-            request_data = batch
-        self._send_post_request(event_target, self._config.events, request_data)
+        self._send_post_request(target, document)
         self.metrics.number_of_processed_events += 1
-        # TODO generate statistics based on metrics
 
-    def store(self, batch) -> dict:
-        self.store_custom(batch)
+    def store(self, document: tuple[str, dict] | dict) -> dict:
+        if isinstance(document, tuple):
+            target, document = document
+        else:
+            target = self._config.target_url
+        self.store_custom(document, target)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         self.metrics.number_of_failed_events += 1
-        pass
 
-    def _send_post_request(self, event_target: str, number_events: int, request_data: str) -> dict:
+    def _send_post_request(self, event_target: str, request_data: str) -> dict:
         """Send a post request with given data to the specified endpoint"""
         try:
             try:

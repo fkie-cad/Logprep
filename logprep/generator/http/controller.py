@@ -32,7 +32,6 @@ class Controller:
                 "type": "http_output",
                 "user": kwargs.get("user"),
                 "password": kwargs.get("password"),
-                "events": kwargs.get("events"),
                 "target_url": kwargs.get("target_url"),
             }
         }
