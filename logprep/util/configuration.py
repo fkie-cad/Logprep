@@ -204,7 +204,6 @@ import logging
 import os
 from copy import deepcopy
 from itertools import chain
-from logging import getLogger
 from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
