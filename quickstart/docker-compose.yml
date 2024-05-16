@@ -181,16 +181,12 @@ services:
       POSTGRESQL_DATABASE: keycloak
       POSTGRESQL_USERNAME: keycloak
     volumes:
-      # use this folder to persist your postgresql data by dumping the database to it after changes
-      # outside the container: chmod 777 quickstart/exampledata/config/keycloak
-      # inside the container: pg_dump keycloak -U keycloak -W --file /docker-entrypoint-initdb.d/keycloak_db.sql
-      # - ../quickstart/exampledata/config/keycloak:/docker-entrypoint-initdb.d
       - keycloak-db-volume:/var/lib/postgresql/data
     networks:
       - ucl
       - keycloak
   fda-api:
-    image: registry.gitlab.com/z-e-u-s/fda/fda-backend:0.24.0
+    image: registry.gitlab.com/z-e-u-s/fda/fda-backend:0.25.0
     container_name: fda-api
     read_only: true
     environment:
@@ -234,10 +230,6 @@ services:
     image: "postgres:14"
     read_only: true
     volumes:
-      # use this folder to persist your postgresql data by dumping the database to it after changes
-      # outside the container: chmod 777 quickstart/exampledata/config/fda
-      # inside the container: pg_dump -p 25432 fda -U fda -W --file /docker-entrypoint-initdb.d/fda_db.sql
-      - ../quickstart/exampledata/config/fda:/docker-entrypoint-initdb.d
       - fda-db-volume:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: fda
@@ -256,7 +248,7 @@ services:
     networks:
       - fda
   fda-frontend:
-    image: registry.gitlab.com/z-e-u-s/fda/fda-frontend:0.24.0
+    image: registry.gitlab.com/z-e-u-s/fda/fda-frontend:0.25.0
     container_name: fda-frontend
     depends_on:
       fda-api:
@@ -269,7 +261,7 @@ services:
     networks:
       - fda
   ucl-api:
-    image: registry.gitlab.com/z-e-u-s/ucl/ucl-backend:0.24.0
+    image: registry.gitlab.com/z-e-u-s/ucl/ucl-backend:0.25.0
     container_name: ucl-api
     read_only: true
     environment:
@@ -296,8 +288,6 @@ services:
       KEYCLOAK_VERIFY_CERTIFICATE: "False"
       KEYCLOAK_VALIDATE_ISSUER: "False"
       # FDA_BASE_URL: http://fda-frontend
-    ports:
-      - "3005:8000"
     depends_on:
       ucl-db:
         condition: service_healthy
@@ -333,7 +323,7 @@ services:
     networks:
       - ucl
   ucl-frontend:
-    image: registry.gitlab.com/z-e-u-s/ucl/ucl-frontend:0.24.0
+    image: registry.gitlab.com/z-e-u-s/ucl/ucl-frontend:0.25.0
     container_name: ucl-frontend
     depends_on:
       ucl-api:
