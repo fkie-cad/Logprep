@@ -28,6 +28,11 @@
         "**/.profile": true
     },
     "python.analysis.typeCheckingMode": "off",
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.analysis.enablePytestSupport": true,
+    "python.testing.pytestArgs": [
+        "-vv"
+    ],
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true
