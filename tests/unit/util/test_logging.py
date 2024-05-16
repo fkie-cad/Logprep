@@ -25,6 +25,7 @@ class TestLogDictConfig:
 
     def test_root_logger_has_only_quehandler(self):
         logger = logging.getLogger("root")
+        assert len(logger.handlers) == 1, "only one handler should be set"
         assert isinstance(logger.handlers[0], logging.handlers.QueueHandler)
 
     def test_queuhandler_uses_multiprocessing_queue(self):
