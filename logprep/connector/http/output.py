@@ -4,11 +4,13 @@ Output Module that takes a batch of events and sends them to a http endpoint wit
 
 import logging
 from functools import cached_property
+from typing import Iterable
 
 import requests
 from attrs import define, field, validators
 
 from logprep.abc.output import Output
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
 
 logger = logging.getLogger("HttpOutput")
 
@@ -16,6 +18,18 @@ logger = logging.getLogger("HttpOutput")
 class HttpOutput(Output):
     """Output that sends http post requests to paths under a given endpoint
     with configured credentials"""
+
+    @define(kw_only=True)
+    class Metrics(Output.Metrics):
+        """Tracks statistics about this connector"""
+
+        number_of_http_requests: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of incomming requests",
+                name="number_of_http_requests",
+            )
+        )
+        """Number of outgoing requests"""
 
     @define(kw_only=True)
     class Config(Output.Config):
@@ -42,17 +56,25 @@ class HttpOutput(Output):
     def _headers(self):
         return {"Content-Type": "application/x-ndjson; charset=utf-8"}
 
-    def store_custom(self, document: dict, target: str):
+    def store_custom(self, document: dict | tuple | list, target: str) -> None:
         """
         Send a batch of events to an endpoint and return the received status code times the number
         of events.
         """
-        self._send_post_request(target, document)
-        self.metrics.number_of_processed_events += 1
+        if isinstance(document, dict):
+            self._send_post_request(target, self._encoder.encode(document))
+            self.metrics.number_of_processed_events += 1
+        elif isinstance(document, (tuple, list)):
+            self._send_post_request(target, self._encoder.encode_lines(document))
+            self.metrics.number_of_processed_events += len(document)
+        else:
+            error = TypeError(f"Document type {type(document)} is not supported")
+            self.store_failed(str(error), document, document)
 
     def store(self, document: tuple[str, dict] | dict) -> dict:
         if isinstance(document, tuple):
             target, document = document
+            target = f"{self._config.target_url}{target}"
         else:
             target = self._config.target_url
         self.store_custom(document, target)
@@ -60,19 +82,19 @@ class HttpOutput(Output):
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         self.metrics.number_of_failed_events += 1
 
-    def _send_post_request(self, event_target: str, request_data: str) -> dict:
+    def _send_post_request(self, event_target: str, request_data: bytes) -> dict:
         """Send a post request with given data to the specified endpoint"""
         try:
             try:
                 response = requests.post(
                     f"{event_target}",
                     headers=self._headers,
-                    data=request_data,
                     verify=False,
                     auth=(self.user, self.password),
                     timeout=2,
                 )
                 logger.debug("Servers response code is: %i", response.status_code)
+                self.metrics.number_of_http_requests += 1
                 response.raise_for_status()
                 if self.input_connector is not None:
                     self.input_connector.batch_finished_callback()
