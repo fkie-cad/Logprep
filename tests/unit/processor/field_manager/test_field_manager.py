@@ -420,6 +420,22 @@ test_cases = [  # testcase, rule, event, expected
             "target_field": "first",
         },
     ),
+    (
+        "extend_target_list preserves list ordering",
+        {
+            "filter": "(foo) OR (test)",
+            "field_manager": {
+                "id": "5cfa7a26-94af-49de-bc82-460c42e9dc56",
+                "source_fields": ["foo", "test"],
+                "target_field": "existing_list",
+                "delete_source_fields": False,
+                "overwrite_target": False,
+                "extend_target_list": True,
+            },
+        },
+        {"existing_list": ["hello", "world"], "foo": "bar", "test": "value"},
+        {"existing_list": ["hello", "world", "bar", "value"], "foo": "bar", "test": "value"},
+    ),
 ]
 
 failure_test_cases = [
