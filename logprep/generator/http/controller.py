@@ -42,6 +42,7 @@ class Controller:
         """
         Iterate over all event classes, trigger their processing and count the return statistics
         """
+        # TODO use a logprep pipeline to handle processing
         self.log.info("Started Data Processing")
         self.input.reformat_dataset()
         run_time_start = time.perf_counter()

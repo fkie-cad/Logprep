@@ -27,11 +27,6 @@ class TestController:
             thread_count=1,
         )
 
-    def teardown_method(self):
-        experiment_dir = self.contoller.reporter.experiment_dir
-        if os.path.isdir(experiment_dir):
-            shutil.rmtree(experiment_dir)
-
     @responses.activate
     def test_run(self, tmp_path):
         dataset_path = tmp_path / "dataset"

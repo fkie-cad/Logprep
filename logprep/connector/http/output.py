@@ -58,6 +58,7 @@ class HttpOutput(Output):
             request_data = batch
         self._send_post_request(event_target, self._config.events, request_data)
         self.metrics.number_of_processed_events += 1
+        # TODO generate statistics based on metrics
 
     def store(self, batch) -> dict:
         self.store_custom(batch)
