@@ -156,7 +156,7 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
-        self._extra_data = []
+        self._extra_data.clear()
         logger.debug(f"{self.describe()} processing event {event}")
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
