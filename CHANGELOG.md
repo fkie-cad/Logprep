@@ -7,6 +7,7 @@
 ### Features
 
 * add fine-grained logger configuration for OpenSearch/ElasticSearch libraries
+* add UCL into the Quickstart Setup
 
 ### Improvements
 
