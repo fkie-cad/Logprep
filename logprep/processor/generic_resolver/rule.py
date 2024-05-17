@@ -121,9 +121,6 @@ class GenericResolverRule(FieldManagerRule):
         a regex pattern which can be used to resolve values.
         The resolve list in the file at :code:`path` is then used in conjunction with
         the regex pattern in :code:`pattern`."""
-        # append_to_list: bool = field(validator=validators.instance_of(bool), default=False)
-        # """Makes the generic resolver write resolved values
-        # into a list so that multiple different values can be written into the same field."""
 
     @property
     def field_mapping(self) -> dict:

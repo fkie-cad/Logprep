@@ -213,9 +213,6 @@ class Pseudonymizer(FieldManager):
     def _pseudonymize_url_cached(self):
         return lru_cache(maxsize=self._config.max_cached_pseudonymized_urls)(self._pseudonymize_url)
 
-    def __init__(self, name: str, configuration: Processor.Config):
-        super().__init__(name=name, configuration=configuration)
-
     def setup(self):
         super().setup()
         self._replace_regex_keywords_by_regex_expression()

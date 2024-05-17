@@ -110,8 +110,6 @@ class GenericAdderRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for GenericAdderRule"""
 
-        overwrite_target: bool = field(validator=validators.instance_of(bool), default=False)
-        """Overwrite the target field value if exists. Defaults to :code:`False`"""
         extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the values
         of the source fields.
