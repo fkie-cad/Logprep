@@ -5,7 +5,17 @@
 
 ### Breaking
 
-* change `pseudonyms` in pseudonymizer rules to `mapping` and change `target` in clusterer rules to `source_fields` like in the field_mapper
+* `pseudonymizer` change rule config field `pseudonyms` to `mapping`
+* `clusterer` change rule config field `target` to `source_fields`
+* `generic_resolver` change rule config field `append_to_list` to `extend_target_list`
+* `hyperscan_resolver` change rule config field `append_to_list` to `extend_target_list`
+* `calculator` now adds the error tag `_calculator_missing_field_warning` to the events tag field instead of `_calculator_failure` in case of missing field in events
+* `domain_label_extractor` now writes `_domain_label_extractor_missing_field_warning` tag to event tags in case of missing fields
+* `geoip_enricher` now writes `_geoip_enricher_missing_field_warning` tag to event tags in case of missing fields
+* `grokker` now writes `_grokker_missing_field_warning` tag to event tags instead of `_grokker_failure` in case of missing fields
+* `requester` now writes `_requester_missing_field_warning` tag to event tags instead of `_requester_failure` in case of missing fields
+* `timestamp_differ` now writes `_timestamp_differ_missing_field_warning` tag to event tags instead of `_timestamp_differ_failure` in case of missing fields
+* `timestamper` now writes `_timestamper_missing_field_warning` tag to event tags instead of `_timestamper_failure` in case of missing fields
 
 ### Features
 
