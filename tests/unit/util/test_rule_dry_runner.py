@@ -86,7 +86,6 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=True,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 
@@ -106,7 +105,6 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=True,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 
@@ -126,7 +124,6 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=False,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 
@@ -155,7 +152,6 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=True,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 
@@ -181,7 +177,6 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=True,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 

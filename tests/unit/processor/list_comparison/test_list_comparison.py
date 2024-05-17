@@ -270,7 +270,7 @@ Hans
             "generic_rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
-        processor = Factory.create({"custom_lister": config}, self.logger)
+        processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class._create_from_dict(rule_dict)
         processor._specific_tree.add_rule(rule)
         processor.setup()

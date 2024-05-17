@@ -17,6 +17,7 @@ from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
     InvalidConfigurationErrors,
+    LoggerConfig,
     MetricsConfig,
 )
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
@@ -46,7 +47,7 @@ class TestConfiguration:
             ("config_refresh_interval", type(None), None),
             ("process_count", int, 1),
             ("timeout", float, 5.0),
-            ("logger", dict, {"level": "INFO"}),
+            ("logger", LoggerConfig, LoggerConfig(**{"level": "INFO"})),
             ("pipeline", list, []),
             ("input", dict, {}),
             ("output", dict, {}),
@@ -78,7 +79,6 @@ class TestConfiguration:
             ("config_refresh_interval", 0, 900),
             ("process_count", 1, 2),
             ("timeout", 1.0, 2.0),
-            ("logger", {"level": "INFO"}, {"level": "DEBUG"}),
             (
                 "metrics",
                 {"enabled": False, "port": 8000, "uvicorn_config": {"access_log": True}},
@@ -125,6 +125,40 @@ output:
                 assert asdict(attribute_from_test) == second_value
             else:
                 assert attribute_from_test == second_value
+
+    def test_get_last_value_logger_config(self, tmp_path):
+        attribute = "logger"
+        first_value = {"level": "INFO"}
+        second_value = {"level": "DEBUG"}
+        first_config = tmp_path / "pipeline.yml"
+        first_config.write_text(
+            f"""
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+{attribute}: {first_value}
+"""
+        )
+        second_config = tmp_path / "pipeline2.yml"
+        second_config.write_text(
+            f"""
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+{attribute}: {second_value}
+"""
+        )
+        config = Configuration.from_sources([str(first_config), str(second_config)])
+        assert config.logger.level == "DEBUG"
+        assert config.logger.loggers.get("root").get("level") == "DEBUG"
 
     @pytest.mark.parametrize(
         "attribute, value, expected_error, expected_message",
@@ -1241,3 +1275,21 @@ class TestInvalidConfigurationErrors:
         error = InvalidConfigurationErrors(error_list)
         assert len(error.errors) == len(expected_error_list)
         assert error.errors == expected_error_list
+
+
+class TestLoggerConfig:
+
+    @pytest.mark.parametrize("kwargs", [{"level": "DEBUG"}, {"level": "INFO"}])
+    def test_logger_config_sets_global_level(self, kwargs):
+        config = LoggerConfig(**kwargs)
+        assert config.loggers.get("root").get("level") == kwargs.get("level")
+        assert config.loggers.get("opensearch").get("level") == "ERROR"
+
+    @pytest.mark.parametrize("kwargs", [{"loggers": {"logprep": {"level": "DEBUG"}}}])
+    def test_loggers_config_only_sets_level(self, kwargs):
+        config = LoggerConfig(**kwargs)
+        assert config.loggers.get("root").get("level") == "INFO", "should be default"
+        assert config.loggers.get("root").get("handlers") == [
+            "queue",
+        ], "should be default"
+        assert config.loggers.get("opensearch").get("level") == "ERROR", "should be default"

@@ -115,7 +115,7 @@ class TestRunner:
     def test_set_config_refresh_interval(self, new_value, expected_value, runner):
         with mock.patch.object(runner, "_manager"):
             runner._config_refresh_interval = new_value
-            runner._keep_iterating = partial(mock_keep_iterating, 1)
+            runner._exit_received = True
             runner.start()
             if expected_value is None:
                 assert len(runner.scheduler.jobs) == 0
@@ -262,11 +262,12 @@ class TestRunner:
         runner.stop()
         assert runner._exit_received
 
-    @mock.patch("logprep.runner.Runner._keep_iterating", new=partial(mock_keep_iterating, 1))
     def test_start_sets_version_metric(self, runner: Runner):
         runner._configuration.version = "very custom version"
+        runner._exit_received = True
         with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
-            runner.start()
+            with mock.patch.object(runner, "_manager"):
+                runner.start()
         mock_add.assert_called()
         mock_add.assert_has_calls(
             (

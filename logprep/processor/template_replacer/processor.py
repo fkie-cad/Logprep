@@ -89,8 +89,8 @@ class TemplateReplacer(Processor):
 
     rule_class = TemplateReplacerRule
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: Processor.Config):
+        super().__init__(name=name, configuration=configuration)
         pattern = configuration.pattern
         template_path = configuration.template
         self._target_field = pattern["target_field"]

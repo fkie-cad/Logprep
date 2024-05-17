@@ -229,8 +229,8 @@ class FileInput(Input):
         interval: int = field(default=1, validator=validators.instance_of((int, float)))
         """Defines the refresh interval, how often the file is checked for changes"""
 
-    def __init__(self, name: str, configuration: "FileInput.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "FileInput.Config"):
+        super().__init__(name, configuration)
         self.stop_flag = threading.Event()
 
     def _calc_file_fingerprint(self, file_pointer: TextIO, fingerprint_length: int = None) -> tuple:

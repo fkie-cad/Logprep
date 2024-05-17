@@ -3,6 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 from copy import deepcopy
 from logging import Logger
+from logging.config import dictConfig
 from unittest import mock
 
 from logprep.connector.http.input import HttpConnector
@@ -10,6 +11,8 @@ from logprep.factory import Factory
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
+from logprep.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.util.logging import logqueue
 from tests.testdata.metadata import path_to_config
 
 
@@ -23,12 +26,6 @@ class TestPipelineManager:
 
     def teardown_method(self):
         self.manager._pipelines = []
-
-    def test_get_count_returns_count_of_pipelines(self):
-        for count in range(5):
-            self.manager.set_count(count)
-
-            assert self.manager.get_count() == count
 
     def test_decrease_to_count_removes_required_number_of_pipelines(self):
         self.manager._increase_to_count(3)
@@ -94,7 +91,9 @@ class TestPipelineManager:
         ok_pipeline.is_alive = mock.MagicMock(return_value=True)
         self.manager._pipelines = [failed_pipeline, ok_pipeline]
         self.manager.restart_failed_pipeline()
-        logger_mock.assert_called_with("Restarting failed pipeline on index 1 with exit code: -1")
+        logger_mock.assert_called_with(
+            "Restarting failed pipeline on index %s with exit code: %s", 1, -1
+        )
 
     def test_stop_terminates_processes_created(self):
         self.manager.set_count(3)
@@ -149,11 +148,6 @@ class TestPipelineManager:
         config.metrics = MetricsConfig(enabled=True, port=8000)
         manager = PipelineManager(config)
         assert isinstance(manager.prometheus_exporter, PrometheusExporter)
-
-    def test_stop_closes_log_queue(self):
-        with mock.patch.object(self.manager, "log_queue") as log_queue_mock:
-            self.manager.stop()
-            log_queue_mock.close.assert_called()
 
     def test_set_count_increases_number_of_pipeline_starts_metric(self):
         self.manager.metrics.number_of_pipeline_starts = 0
@@ -215,5 +209,14 @@ class TestPipelineManager:
         }
         PipelineManager(config)
         assert HttpConnector.messages._maxsize == 100
-        http_input = Factory.create(config.input, mock.MagicMock())
+        http_input = Factory.create(config.input)
         assert http_input.messages._maxsize == 100
+
+    def test_pipeline_manager_setups_logging(self):
+        dictConfig(DEFAULT_LOG_CONFIG)
+        manager = PipelineManager(self.config)
+        assert manager.loghandler is not None
+        assert manager.loghandler.queue == logqueue
+        assert manager.loghandler._thread is None
+        assert manager.loghandler._process.is_alive()
+        assert manager.loghandler._process.daemon

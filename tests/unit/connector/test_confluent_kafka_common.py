@@ -26,7 +26,7 @@ class CommonConfluentKafkaTestCase:
         kafka_config = deepcopy(self.CONFIG)
         kafka_config.update({"unknown_option": "bad value"})
         with pytest.raises(TypeError, match=r"unexpected keyword argument"):
-            _ = Factory.create({"test connector": kafka_config}, logger=self.logger)
+            _ = Factory.create({"test connector": kafka_config})
 
     def test_error_callback_logs_error(self):
         self.object.metrics.number_of_errors = 0

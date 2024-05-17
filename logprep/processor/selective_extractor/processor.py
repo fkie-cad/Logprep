@@ -29,7 +29,6 @@ Processor Configuration
 .. automodule:: logprep.processor.selective_extractor.rule
 """
 
-from logging import Logger
 from typing import List, Tuple
 
 from logprep.processor.field_manager.processor import FieldManager
@@ -47,13 +46,8 @@ class SelectiveExtractor(FieldManager):
 
     rule_class = SelectiveExtractorRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: FieldManager.Config,
-        logger: Logger,
-    ):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: FieldManager.Config):
+        super().__init__(name=name, configuration=configuration)
         self._extra_data = []
 
     def process(self, event: dict) -> List[Tuple[List, str, str]]:

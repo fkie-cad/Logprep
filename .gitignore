@@ -5,7 +5,6 @@ __pycache__/
 htmlcov/
 doc/build/
 doc/source/module_reference/
-*.pex
 *.out
 .coverage*
 tests/testdata/external/
@@ -24,3 +23,4 @@ dist/
 error_file
 experiments
 **/_static/*.xlsx
+logprep.log

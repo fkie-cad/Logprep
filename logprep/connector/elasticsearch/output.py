@@ -35,7 +35,6 @@ import logging
 import re
 import ssl
 from functools import cached_property
-from logging import Logger
 from typing import List, Optional, Pattern, Tuple, Union
 
 import elasticsearch as search
@@ -49,6 +48,8 @@ from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import Metric
 from logprep.util.helper import get_dict_size_in_byte
 from logprep.util.time import TimeParser
+
+logger = logging.getLogger("ElasticsearchOutput")
 
 
 class ElasticsearchOutput(Output):
@@ -102,11 +103,8 @@ class ElasticsearchOutput(Output):
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) Path to a SSL ca certificate to verify the ssl context."""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) Timout after :code:`message_backlog` is flushed if
+        """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
-        loglevel: Optional[str] = field(validator=validators.instance_of(str), default="INFO")
-        """(Optional) Log level for the underlying library. Enables fine-grained control over the
-        logging, e.g. stacktraces can be activated or deactivated. Defaults to :code:`INFO`."""
 
     __slots__ = ["_message_backlog", "_size_error_pattern"]
 
@@ -114,8 +112,8 @@ class ElasticsearchOutput(Output):
 
     _size_error_pattern: Pattern[str]
 
-    def __init__(self, name: str, configuration: "ElasticsearchOutput.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "ElasticsearchOutput.Config"):
+        super().__init__(name, configuration)
         self._message_backlog = []
         self._size_error_pattern = re.compile(
             r".*coordinating_operation_bytes=(?P<size>\d+), "
@@ -172,7 +170,6 @@ class ElasticsearchOutput(Output):
         elasticsearch.Elasticsearch
             the eleasticsearch context
         """
-        logging.getLogger("elasticsearch").setLevel(self._config.loglevel)
         return search.Elasticsearch(
             self._config.hosts,
             scheme=self.schema,
@@ -481,7 +478,7 @@ class ElasticsearchOutput(Output):
                 f"Discarded message that is larger than the allowed size limit "
                 f"({size / 10 ** 6} MB/{self._config.maximum_message_size_mb} MB)"
             )
-            self._logger.warning(error_message)
+            logger.warning(error_message)
 
             error_document = {
                 "processed_snipped": f'{self._encoder.encode(message).decode("utf-8")[:1000]} ...',

@@ -32,7 +32,6 @@ Processor Configuration
 """
 
 import errno
-from logging import Logger
 from os import makedirs, path
 from typing import Any, Dict, Tuple
 
@@ -92,13 +91,8 @@ class HyperscanResolver(Processor):
 
     rule_class = HyperscanResolverRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: Processor.Config,
-        logger: Logger,
-    ):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: Processor.Config):
+        super().__init__(name=name, configuration=configuration)
         self._hyperscan_databases = {}
 
         hyperscan_db_path = configuration.hyperscan_db_path

@@ -73,8 +73,8 @@ class Output(Connector):
             "name": self.name,
         }
 
-    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "Connector.Config"):
+        super().__init__(name, configuration)
         self.input_connector = None
 
     @abstractmethod

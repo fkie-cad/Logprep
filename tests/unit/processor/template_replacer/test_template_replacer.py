@@ -81,7 +81,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
+        self.object = Factory.create({"test instance": config})
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"message": "foo"},
@@ -96,7 +96,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_non_existing_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
+        self.object = Factory.create({"test instance": config})
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
 
         self.object.process(document)
@@ -108,7 +108,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_partly_existing_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
+        self.object = Factory.create({"test instance": config})
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"bar": "foo"},
@@ -124,7 +124,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_existing_dotted_message_dict_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
+        self.object = Factory.create({"test instance": config})
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"message": {"foo": "bar"}},
@@ -139,7 +139,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_incompatible_existing_dotted_message_parent_via_template(self, caplog):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
+        self.object = Factory.create({"test instance": config})
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": "foo",
@@ -155,4 +155,4 @@ class TestTemplateReplacer(BaseProcessorTestCase):
             {"template": "tests/testdata/unit/template_replacer/replacer_template_invalid.yml"}
         )
         with pytest.raises(TemplateReplacerError, match="Not enough delimiters"):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})

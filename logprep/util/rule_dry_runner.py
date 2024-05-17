@@ -13,11 +13,6 @@ The output is displayed in the console and changes made by Logprep are being hig
 
     logprep test dry-run $CONFIG $EVENTS
 
-..  code-block:: bash
-    :caption: With a PEX file
-
-    logprep.pex test dry-run $CONFIG $EVENTS
-
 Where :code:`$CONFIG` is the path to a configuration file
 (see :ref:`configuration`).
 The only required section in the configuration is :code:`pipeline`
@@ -29,23 +24,23 @@ A single log message can be provided with a file containing a plain json or wrap
 (beginning with `[` and ending with `]`).
 For multiple events it must be a list wrapped inside brackets, while each log object separated by a
 comma.
-By specifying the parameter :code:`--dry-run-input-type jsonl` a list of JSON lines can be used
+By specifying the parameter :code:`--input-type jsonl` a list of JSON lines can be used
 instead.
-Additional output, like pseudonyms, will be printed if :code:`--dry-run-full-output` is added.
+Additional output, like pseudonyms, will be printed if :code:`--full-output` is added.
 
 ..  code-block:: bash
     :caption: Example for execution with a JSON lines file (dry-run-input-type jsonl) printing all results, including pseudonyms (dry-run-full-output)
 
-    logprep.pex tests/testdata/config/config-dry-run.yml --dry-run tests/testdata/input_logdata/wineventlog_raw.jsonl --dry-run-input-type jsonl --dry-run-full-output
+    logprep test dry-run ./tests/testdata/config/config.yml tests/testdata/input_logdata/wineventlog_raw.jsonl --input-type jsonl --full-output 1
 """
 
 import json
+import logging
 import shutil
 import tempfile
 from copy import deepcopy
 from difflib import ndiff
 from functools import cached_property
-from pathlib import Path
 
 from colorama import Back, Fore
 from ruamel.yaml import YAML
@@ -95,13 +90,13 @@ class DryRunner:
         return document_getter.get_jsonl()
 
     def __init__(
-        self, input_file_path: str, config: Configuration, full_output: bool, use_json: bool, logger
+        self, input_file_path: str, config: Configuration, full_output: bool, use_json: bool
     ):
         self._input_file_path = input_file_path
         self._config = config
         self._full_output = full_output
         self._use_json = use_json
-        self._logger = logger
+        self._logger = logging.getLogger("DryRunner")
 
     def run(self):
         """Run the dry runner."""

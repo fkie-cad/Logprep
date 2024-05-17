@@ -39,11 +39,6 @@ The output is printed to the console, highlighting differences between `raw` and
 
     logprep test unit $CONFIG
 
-..  code-block:: bash
-    :caption: With PEX file
-
-    logprep.pex test unit $CONFIG
-
 Where :code:`$CONFIG` is the path to a configuration file
 (see :ref:`configuration`).
 
@@ -466,7 +461,7 @@ class AutoRuleTester:
     @staticmethod
     def _get_processor_instance(name, processor_cfg, logger_):
         cfg = {name: processor_cfg}
-        processor = Factory.create(cfg, logger_)
+        processor = Factory.create(cfg)
         return processor
 
     @staticmethod

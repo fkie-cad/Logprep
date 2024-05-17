@@ -92,7 +92,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             self.patchers.append(patcher)
         super().setup_method()
         config = {"Test Instance Name": self.CONFIG}
-        self.object = Factory.create(configuration=config, logger=self.logger)
+        self.object = Factory.create(configuration=config)
         self.specific_rules = self.set_rules(self.specific_rules_dirs)
         self.generic_rules = self.set_rules(self.generic_rules_dirs)
 
@@ -163,7 +163,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             {"generic_rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
         )
         with pytest.raises(TypeError, match="not .*MagicMock.*"):
-            Factory.create({"http_rule_processor": myconfig}, self.logger)
+            Factory.create({"http_rule_processor": myconfig})
 
     def test_no_redundant_rules_are_added_to_rule_tree(self):
         """
@@ -222,26 +222,26 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: "i am not a list"})
         with pytest.raises(TypeError, match=r"must be <class 'list'>"):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})
 
     @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
     def test_validation_raises_if_elements_does_not_exist(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: ["/i/do/not/exist"]})
         with pytest.raises(FileNotFoundError):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})
 
     def test_validation_raises_if_tree_config_is_not_a_str(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": 12})
         with pytest.raises(TypeError, match=r"must be <class 'str'>"):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})
 
     def test_validation_raises_if_tree_config_is_not_exist(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "/i/am/not/a/file/path"})
         with pytest.raises(FileNotFoundError):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})
 
     @responses.activate
     def test_accepts_tree_config_from_http(self):
@@ -249,7 +249,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
-        processor = Factory.create({"test instance": config}, self.logger)
+        processor = Factory.create({"test instance": config})
         assert (
             processor._specific_tree._processor_config.tree_config
             == "http://does.not.matter.bla/tree_config.yml"
@@ -263,7 +263,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
         with pytest.raises(requests.HTTPError):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})
 
     @pytest.mark.parametrize(
         "metric_name, metric_class",

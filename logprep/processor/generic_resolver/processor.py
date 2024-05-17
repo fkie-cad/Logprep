@@ -51,13 +51,8 @@ class GenericResolver(Processor):
 
     rule_class = GenericResolverRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: Processor.Config,
-        logger: Logger,
-    ):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: Processor.Config):
+        super().__init__(name, configuration)
         self._replacements_from_file = {}
 
     def _apply_rules(self, event, rule):

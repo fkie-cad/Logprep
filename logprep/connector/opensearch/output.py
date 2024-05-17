@@ -41,7 +41,7 @@ from opensearchpy.serializer import JSONSerializer
 from logprep.abc.output import Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 
-logging.getLogger("opensearch").setLevel(logging.WARNING)
+logger = logging.getLogger("OpenSearchOutput")
 
 
 class MSGPECSerializer(JSONSerializer):
@@ -100,7 +100,6 @@ class OpensearchOutput(ElasticsearchOutput):
 
     @cached_property
     def _search_context(self):
-        logging.getLogger("opensearch").setLevel(self._config.loglevel)
         return search.OpenSearch(
             self._config.hosts,
             scheme=self.schema,

@@ -467,7 +467,7 @@ class TestGrokker(BaseProcessorTestCase):
         config |= {
             "custom_patterns_dir": "",
         }
-        grokker = Factory.create({"grokker": config}, self.logger)
+        grokker = Factory.create({"grokker": config})
         assert len(grokker.rules) > 0
 
     def test_loads_custom_patterns(self):

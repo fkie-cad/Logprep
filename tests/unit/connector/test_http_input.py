@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import gzip
+import json
 import multiprocessing
 import random
 import re
@@ -89,7 +91,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_no_pipeline_index(self):
         connector_config = deepcopy(self.CONFIG)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         try:
             connector.setup()
             assert False
@@ -98,7 +100,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_not_first_pipeline(self):
         connector_config = deepcopy(self.CONFIG)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 2
         connector.setup()
         assert connector.http_server is None
@@ -256,7 +258,7 @@ class TestHttpConnector(BaseInputTestCase):
         connector_config = deepcopy(self.CONFIG)
         connector_config["collect_meta"] = True
         connector_config["metafield_name"] = "custom"
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
         connector.setup()
         target = connector.target
@@ -271,7 +273,7 @@ class TestHttpConnector(BaseInputTestCase):
         message = {"message": "my message"}
         connector_config = deepcopy(self.CONFIG)
         connector_config["uvicorn_config"]["port"] = 9001
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
         connector.setup()
         target = connector.target
@@ -283,7 +285,7 @@ class TestHttpConnector(BaseInputTestCase):
         except requests.exceptions.ConnectionError as e:
             assert e.response is None
         connector_config = deepcopy(self.CONFIG)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
         connector.setup()
         target = connector.target
@@ -303,7 +305,7 @@ class TestHttpConnector(BaseInputTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
         connector.setup()
         test_event = "the content"
@@ -322,7 +324,7 @@ class TestHttpConnector(BaseInputTestCase):
     def test_endpoint_has_basic_auth(self, credentials_file_path):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         with mock.patch.dict("os.environ", mock_env):
-            new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
+            new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
             resp = requests.post(url=f"{self.target}/auth-json-file", timeout=0.5)
@@ -343,7 +345,7 @@ class TestHttpConnector(BaseInputTestCase):
             assert resp.status_code == 200
 
     def test_two_connector_instances_share_the_same_queue(self):
-        new_connector = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
+        new_connector = Factory.create({"test connector": self.CONFIG})
         assert self.object.messages is new_connector.messages
 
     def test_messages_is_multiprocessing_queue(self):
@@ -367,12 +369,12 @@ class TestHttpConnector(BaseInputTestCase):
     def test_sets_target_to_https_schema_if_ssl_options(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config["uvicorn_config"]["ssl_keyfile"] = "path/to/keyfile"
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         assert connector.target.startswith("https://")
 
     def test_sets_target_to_http_schema_if_no_ssl_options(self):
         connector_config = deepcopy(self.CONFIG)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         assert connector.target.startswith("http://")
 
     def test_get_event_sets_message_backlog_size_metric(self):
@@ -392,3 +394,16 @@ class TestHttpConnector(BaseInputTestCase):
                 url=f"{self.target}/json", json={"message": f"my message{number}"}, timeout=0.5
             )
         assert self.object.metrics.number_of_http_requests == random_number
+
+    @pytest.mark.parametrize("endpoint", ["json", "plaintext", "jsonl"])
+    def test_endpoint_handles_gzip_compression(self, endpoint):
+        data = {"message": "my log message"}
+        data = gzip.compress(json.dumps(data).encode())
+        headers = {"Content-Encoding": "gzip"}
+        resp = requests.post(
+            url=f"{self.target}/{endpoint}",
+            data=data,
+            headers=headers,
+            timeout=0.5,
+        )
+        assert resp.status_code == 200

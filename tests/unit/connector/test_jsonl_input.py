@@ -56,7 +56,7 @@ class TestJsonlInput(BaseInputTestCase):
         config = copy.deepcopy(self.CONFIG)
         config["repeat_documents"] = True
         mock_parse.return_value = [{"order": 0}, {"order": 1}, {"order": 2}]
-        object = Factory.create(configuration={"Test Instance Name": config}, logger=self.logger)
+        object = Factory.create(configuration={"Test Instance Name": config})
 
         for order in range(0, 9):
             event, _ = object.get_next(self.timeout)
