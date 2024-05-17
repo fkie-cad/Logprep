@@ -113,7 +113,7 @@ class TestRuleTree:
         rule3 = PreDetectorRule._create_from_dict(rule_dict)
         assert rule_tree.get_rule_id(rule) == 0
         assert rule_tree.get_rule_id(rule2) == 1
-        assert rule_tree.get_rule_id(rule3) == None
+        assert rule_tree.get_rule_id(rule3) is None
 
     def test_match_simple(self, rule_dict):
         rule_tree = RuleTree()
