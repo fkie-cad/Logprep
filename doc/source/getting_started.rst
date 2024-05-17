@@ -204,7 +204,8 @@ If you want to try out the FDA and UCL you first have to do some preparations.
 1. Sign into the keycloak admin panel and create a logprep user in the :code:`logprep` realm.
    Make sure that the user is part of the :code:`logprep-admin` group and has a password.
 2. You have to login to the FDA with the previously created user and create a release, as well
-   as your first logclass.
+   as your first logclass. The logclass has to be available in order for logprep to load it's
+   configuration.
 3. If desired you can also create Use-Cases in the UCL. Similar to step two you have to sign in with
    your created logprep user and then configure required Use-Cases.
 4. Set the env :code:`LOGPREP_CREDENTIALS_FILE` to :code:`quickstart/exampledata/config/credentials.yml`
