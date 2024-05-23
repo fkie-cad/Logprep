@@ -201,13 +201,22 @@ Utilizing FDA and UCL
 
 If you want to try out the FDA and UCL you first have to do some preparations.
 
+
+0. Run the quickstart setup with the :code:`oauth2` profile:
+   :code:`docker compose --profile oauth2 up -d`.
 1. Sign into the keycloak admin panel and create a logprep user in the :code:`logprep` realm.
-   Make sure that the user is part of the :code:`logprep-admin` group and has a password.
+   Make sure that the user is part of the :code:`logprep-admin` group and has a password. If you
+   choose a password other than :code:`logprep` you have to update the credentials file
+   :code:`quickstart/exampledata/config/credentials.yml`, such that the password of
+   :code:`http://localhost:3001` and :code:`http://localhost:3002` reflects your choice.
 2. You have to login to the FDA with the previously created user and create a release, as well
-   as your first logclass. The logclass has to be available in order for logprep to load it's
-   configuration.
+   as your first logclass. It is also necessary to add an example event to this logclass in order
+   to initialize the first mapping flow. The logclass and its mapping flow has to be available in
+   order for logprep to load it's configuration.
 3. If desired you can also create Use-Cases in the UCL. Similar to step two you have to sign in with
    your created logprep user and then configure required Use-Cases.
+   At the current moment these configuration are not yet processed by logprep though, as the ucl
+   only provides a mock endpoint which doesn't contain your Use-Case configurations.
 4. Set the env :code:`LOGPREP_CREDENTIALS_FILE` to :code:`quickstart/exampledata/config/credentials.yml`
 
 Once you have set everything up you can run logprep with the following command.
@@ -218,3 +227,9 @@ you should ensure that the :code:`stage` and :code:`loglcass` are set properly.
 .. code-block:: bash
 
      logprep run quickstart/exampledata/config/pipeline.yml "http://localhost:3002/api/v1/pipelines?stage=prod&logclass=ExampleClass" "http://localhost:3001/api/v1/general-predetection"
+
+.. note::
+
+     If you did use the quickstart setup before and run into problems it is advised to first pull
+     all images again to update them to the latest version:
+     :code:`docker compose -f ./quickstart/docker-compose.yml pull`.
