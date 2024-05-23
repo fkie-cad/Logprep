@@ -83,8 +83,7 @@ class Clusterer(FieldManager):
     def _apply_rules(self, event, rule):
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
-        cluster_source_field = source_field_values[0]
-        if self._is_clusterable(event, cluster_source_field):
+        if self._is_clusterable(event, rule.source_fields[0]):
             self._cluster(event, rule)
 
     def _is_clusterable(self, event: dict, source_field: str) -> bool:
