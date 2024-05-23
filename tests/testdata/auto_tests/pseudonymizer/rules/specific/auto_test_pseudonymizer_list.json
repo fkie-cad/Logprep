@@ -2,7 +2,7 @@
   {
     "filter": "some_field: FOO\\BAR",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "some_field": "RE_DOMAIN_BACKSLASH_USERNAME"
       }
     },

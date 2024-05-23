@@ -208,7 +208,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                     "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
         self._load_specific_rule(rule)
@@ -232,7 +232,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                     "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
         self._load_specific_rule(rule)
@@ -260,7 +260,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                     "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
         self._load_specific_rule(rule)
@@ -332,6 +332,26 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         expected = {"to": {"resolve": "something no"}}
         document = {"to": {"resolve": "something no"}}
+
+        self.object.process(document)
+
+        assert document == expected
+
+    def test_resolve_dotted_field_is_missing(self):
+        rule = {
+            "filter": "to.other_field",
+            "generic_resolver": {
+                "field_mapping": {"to.resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        }
+        self._load_specific_rule(rule)
+
+        expected = {
+            "to": {"other_field": "something no"},
+            "tags": ["_generic_resolver_missing_field_warning"],
+        }
+        document = {"to": {"other_field": "something no"}}
 
         self.object.process(document)
 

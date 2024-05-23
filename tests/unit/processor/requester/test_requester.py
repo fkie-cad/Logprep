@@ -319,7 +319,7 @@ failure_test_cases = [
             "requester": {"url": "http://${missingfield}", "method": "GET"},
         },
         {"message": "the message"},
-        {"message": "the message", "tags": ["_requester_failure"]},
+        {"message": "the message", "tags": ["_requester_missing_field_warning"]},
         {},
         ".*ProcessingWarning.*",
     ),

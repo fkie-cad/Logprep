@@ -5,11 +5,29 @@
 
 ### Breaking
 
+* `pseudonymizer` change rule config field `pseudonyms` to `mapping`
+* `clusterer` change rule config field `target` to `source_fields`
+* `generic_resolver` change rule config field `append_to_list` to `extend_target_list`
+* `hyperscan_resolver` change rule config field `append_to_list` to `extend_target_list`
+* `calculator` now adds the error tag `_calculator_missing_field_warning` to the events tag field instead of `_calculator_failure` in case of missing field in events
+* `domain_label_extractor` now writes `_domain_label_extractor_missing_field_warning` tag to event tags in case of missing fields
+* `geoip_enricher` now writes `_geoip_enricher_missing_field_warning` tag to event tags in case of missing fields
+* `grokker` now writes `_grokker_missing_field_warning` tag to event tags instead of `_grokker_failure` in case of missing fields
+* `requester` now writes `_requester_missing_field_warning` tag to event tags instead of `_requester_failure` in case of missing fields
+* `timestamp_differ` now writes `_timestamp_differ_missing_field_warning` tag to event tags instead of `_timestamp_differ_failure` in case of missing fields
+* `timestamper` now writes `_timestamper_missing_field_warning` tag to event tags instead of `_timestamper_failure` in case of missing fields
+
 ### Features
 
 ### Improvements
 
 * remove logger from Components and Factory signatures
+* align processor architecture to use methods like `write_to_target`, `add_field_to` and `get_dotted_field_value` when reading and writing from and to events
+  * required substantial refactoring of the `hyperscan_resolver`, `generic_resolver` and `template_replacer` 
+* change `pseudonymizer`, `pre_detector`, `selective_extractor` processors and `pipeline` to handle `extra_data` the same way
+* refactor `clusterer`, `pre_detector` and `pseudonymizer` processors and change `rule_tree` so that the processor do not require `process` override
+  * required substantial refactoring of the `clusterer`
+* handle missing fields in processors via `_handle_missing_fields` from the field_manager
 * add `LogprepMPQueueListener` to outsource logging to a separate process
 * add a single `Queuehandler` to root logger to ensure all logs were handled by `LogprepMPQueueListener`
 

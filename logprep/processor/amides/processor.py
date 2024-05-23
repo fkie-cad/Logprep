@@ -99,17 +99,18 @@ from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric,
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
 from logprep.processor.amides.rule import AmidesRule
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
 
 logger = logging.getLogger("Amides")
 
 
-class Amides(Processor):
+class Amides(FieldManager):
     """Proof-of-concept implementation of the Adaptive Misuse Detection System (AMIDES)."""
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """Amides processor configuration class."""
 
         max_cache_entries: int = field(default=1048576, validator=validators.instance_of(int))
@@ -232,7 +233,7 @@ class Amides(Processor):
 
     def _apply_rules(self, event: dict, rule: AmidesRule):
         cmdline = get_dotted_field_value(event, rule.source_fields[0])
-        if not cmdline:
+        if self._handle_missing_fields(event, rule, rule.source_fields, [cmdline]):
             return
 
         self.metrics.total_cmdlines += 1

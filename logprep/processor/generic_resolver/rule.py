@@ -74,14 +74,14 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule
+from logprep.processor.field_manager.rule import FieldManagerRule
 
 
-class GenericResolverRule(Rule):
+class GenericResolverRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(FieldManagerRule.Config):
         """RuleConfig for GenericResolver"""
 
         field_mapping: dict = field(
@@ -121,9 +121,6 @@ class GenericResolverRule(Rule):
         a regex pattern which can be used to resolve values.
         The resolve list in the file at :code:`path` is then used in conjunction with
         the regex pattern in :code:`pattern`."""
-        append_to_list: bool = field(validator=validators.instance_of(bool), default=False)
-        """Makes the generic resolver write resolved values
-        into a list so that multiple different values can be written into the same field."""
 
     @property
     def field_mapping(self) -> dict:
@@ -139,8 +136,3 @@ class GenericResolverRule(Rule):
     def resolve_from_file(self) -> dict:
         """Returns the resolve file"""
         return self._config.resolve_from_file
-
-    @property
-    def append_to_list(self) -> bool:
-        """Returns if it should append to a list"""
-        return self._config.append_to_list

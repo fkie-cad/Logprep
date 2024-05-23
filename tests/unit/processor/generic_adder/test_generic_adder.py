@@ -492,8 +492,11 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
 
     def test_check_if_file_not_stale_after_enough_time_has_passed_but_file_has_been_changed(self):
         time.sleep(0.2)  # nosemgrep
+        with open(self.object._db_file_path, "r", encoding="utf-8") as db_file:
+            file_temp = db_file.read()
         now = time.time()
-        os.utime(self.object._db_file_path, (now, now))  # Simulates change of file
+        with open(self.object._db_file_path, "w", encoding="utf-8") as db_file:
+            db_file.write(file_temp)
         assert not self.object._check_if_file_not_exists_or_stale(now)
 
     def test_check_if_file_stale_after_removing_it_when_it_was_not_stale(self):

@@ -2,7 +2,7 @@
   {
     "filter": "file.target.path",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "file.target.path": "RE_WHOLE_FIELD"
       }
     },

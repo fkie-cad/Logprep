@@ -3,7 +3,7 @@
 import logging
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from attr import define, field, validators
 
@@ -76,6 +76,7 @@ class Processor(Component):
         "_event",
         "_specific_tree",
         "_generic_tree",
+        "_extra_data",
     ]
 
     rule_class: "Rule"
@@ -83,6 +84,7 @@ class Processor(Component):
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
+    _extra_data: List[Tuple[dict, Tuple[dict]]]
     _strategy = None
 
     def __init__(self, name: str, configuration: "Processor.Config"):
@@ -102,6 +104,7 @@ class Processor(Component):
             specific_rules_targets=self._config.specific_rules,
         )
         self.has_custom_tests = False
+        self._extra_data = []
 
     @property
     def _specific_rules(self):
@@ -153,9 +156,11 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
+        self._extra_data.clear()
         logger.debug(f"{self.describe()} processing event {event}")
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
+        return self._extra_data if self._extra_data else None
 
     def _process_rule_tree(self, event: dict, tree: "RuleTree"):
         applied_rules = set()

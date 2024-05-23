@@ -2,7 +2,7 @@
   {
     "filter": "client.ip",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "client.ip": "RE_WHOLE_FIELD"
       }
     },

@@ -170,7 +170,8 @@ class TestAmides(BaseProcessorTestCase):
         assert document.get("amides")
         with caplog.at_level(logging.WARNING):
             self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        assert re.match(r".*missing source_fields: \['process.command_line'].*", caplog.messages[0])
+        assert re.match(".*FieldExistsWarning.*", caplog.messages[1])
 
     def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
         model_uri = "file://tests/testdata/unit/amides/model.zip"

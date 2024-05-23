@@ -12,7 +12,6 @@ from pathlib import Path
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -299,7 +298,10 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
 
     def test_does_nothing_if_source_field_not_exits(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-        expected = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
+        expected = {
+            "url": {"domain": "test.domain.de", "subdomain": "exists already"},
+            "tags": ["_domain_label_extractor_missing_field_warning"],
+        }
         rule_dict = {
             "filter": "url",
             "domain_label_extractor": {

@@ -120,7 +120,7 @@ def align_extra_output_formats(extra_outputs):
                 reformatted_extra_outputs.append({str(target): document})
         else:
             for output in extra_output:
-                reformatted_extra_outputs.append({str(output[1]): output[0][0]})
+                reformatted_extra_outputs.append({str(output[1]): output[0]})
     return reformatted_extra_outputs
 
 

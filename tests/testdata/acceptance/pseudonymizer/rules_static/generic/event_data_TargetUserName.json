@@ -2,7 +2,7 @@
   {
     "filter": "winlog.event_data.TargetUserName",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "winlog.event_data.TargetUserName": "RE_WHOLE_FIELD"
       }
     },

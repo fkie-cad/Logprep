@@ -230,10 +230,9 @@ class GenericAdder(Processor):
         use_db = rule.db_target and self._db_table
         if use_db:
             self._update_db_table()
-
-        items_to_add = [] if use_db else rule.add.items()
-        if use_db and rule.db_pattern:
-            self._try_adding_from_db(event, items_to_add, rule)
+            items_to_add = self._get_items_to_add_from_db(event, rule)
+        else:
+            items_to_add = rule.add.items()
 
         # Add the items to the event
         for dotted_field, value in items_to_add:
@@ -250,8 +249,11 @@ class GenericAdder(Processor):
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
-    def _try_adding_from_db(self, event: dict, items_to_add: list, rule: GenericAdderRule):
+    def _get_items_to_add_from_db(self, event: dict, rule: GenericAdderRule) -> list:
         """Get the sub part of the value from the event using a regex pattern"""
+        items_to_add = []
+        if not rule.db_pattern:
+            return items_to_add
 
         value_to_check_in_db = get_dotted_field_value(event, rule.db_target)
         match_with_value_in_db = rule.db_pattern.match(value_to_check_in_db)
@@ -267,3 +269,4 @@ class GenericAdder(Processor):
 
             for item in add_from_db:
                 items_to_add.append(item)
+        return items_to_add

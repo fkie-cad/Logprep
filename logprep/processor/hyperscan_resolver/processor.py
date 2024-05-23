@@ -33,13 +33,13 @@ Processor Configuration
 
 import errno
 from os import makedirs, path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 
 from attr import define, field
 
-from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning, SkipImportError
-from logprep.util.helper import get_dotted_field_value
+from logprep.processor.field_manager.processor import FieldManager
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
 
 # pylint: disable=no-name-in-module
@@ -63,11 +63,11 @@ class HyperscanResolverError(BaseException):
         super().__init__(f"HyperscanResolver ({name}): {message}")
 
 
-class HyperscanResolver(Processor):
+class HyperscanResolver(FieldManager):
     """Resolve values in documents by referencing a mapping list."""
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """HyperscanResolver config"""
 
         hyperscan_db_path: str = field(validator=directory_validator)
@@ -91,7 +91,7 @@ class HyperscanResolver(Processor):
 
     rule_class = HyperscanResolverRule
 
-    def __init__(self, name: str, configuration: Processor.Config):
+    def __init__(self, name: str, configuration: FieldManager.Config):
         super().__init__(name=name, configuration=configuration)
         self._hyperscan_databases = {}
 
@@ -108,56 +108,47 @@ class HyperscanResolver(Processor):
         conflicting_fields = []
         hyperscan_db, pattern_id_to_dest_val_map = self._get_hyperscan_database(rule)
 
+        source_values = []
         for resolve_source, resolve_target in rule.field_mapping.items():
             src_val = get_dotted_field_value(event, resolve_source)
-            result = self._match_with_hyperscan(hyperscan_db, src_val)
-
-            if result:
-                has_conflict = False
-                resolved_value = pattern_id_to_dest_val_map[result[result.index(min(result))]]
-                split_dotted_keys = resolve_target.split(".")
-                dict_ = event
-
-                for idx, dotted_key_part in enumerate(split_dotted_keys):
-                    last_idx = len(split_dotted_keys) - 1
-                    key_is_new = dotted_key_part not in dict_
-                    if key_is_new and idx < last_idx:
-                        dict_[dotted_key_part] = {}
-
-                    if key_is_new and idx == last_idx:
-                        self._add_new_key_with_value(dict_, dotted_key_part, resolved_value, rule)
-                    elif isinstance(dict_[dotted_key_part], dict):
-                        dict_ = dict_[dotted_key_part]
-                    else:
-                        has_conflict = self._try_adding_value_to_existing_field(
-                            dict_, dotted_key_part, resolved_value, rule
-                        )
-
-                    if has_conflict:
-                        conflicting_fields.append(split_dotted_keys[idx])
+            source_values.append(src_val)
+            matches = self._match_with_hyperscan(hyperscan_db, src_val)
+            if matches:
+                dest_val = pattern_id_to_dest_val_map[matches[matches.index(min(matches))]]
+                if dest_val:
+                    add_success = self._add_uniquely_to_list(event, rule, resolve_target, dest_val)
+                    if not add_success:
+                        conflicting_fields.append(resolve_target)
+        self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_values)
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
     @staticmethod
-    def _try_adding_value_to_existing_field(
-        dict_: dict, dotted_key_part: str, resolved_value: str, rule: HyperscanResolverRule
+    def _add_uniquely_to_list(
+        event: dict,
+        rule: HyperscanResolverRule,
+        target: str,
+        content: Union[str, float, int, list, dict],
     ) -> bool:
-        current_value = dict_[dotted_key_part]
-        if rule.append_to_list and isinstance(current_value, list):
-            if resolved_value not in current_value:
-                current_value.append(resolved_value)
-            return False
-        return True
-
-    @staticmethod
-    def _add_new_key_with_value(
-        dict_: dict, dotted_key_part: str, resolved_value: str, rule: HyperscanResolverRule
-    ):
-        if rule.append_to_list:
-            dict_[dotted_key_part] = dict_.get("key", [])
-            dict_[dotted_key_part].append(resolved_value)
-        else:
-            dict_[dotted_key_part] = resolved_value
+        """Extend list if content is not already in the list"""
+        add_success = True
+        target_val = get_dotted_field_value(event, target)
+        target_is_list = isinstance(target_val, list)
+        if rule.extend_target_list and not target_is_list:
+            empty_list = []
+            add_success &= add_field_to(
+                event,
+                target,
+                empty_list,
+                overwrite_output_field=rule.overwrite_target,
+            )
+            if add_success:
+                target_is_list = True
+                target_val = empty_list
+        if target_is_list and content in target_val:
+            return add_success
+        add_success = add_field_to(event, target, content, extends_lists=rule.extend_target_list)
+        return add_success
 
     @staticmethod
     def _match_with_hyperscan(hyperscan_db: Database, src_val: str) -> list:

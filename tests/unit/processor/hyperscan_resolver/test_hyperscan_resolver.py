@@ -196,7 +196,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
                 "resolve_mapping_no_regex.yml",
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
 
@@ -218,7 +218,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
                 "resolve_mapping_no_regex.yml",
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
 
@@ -241,7 +241,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved", "other_to_resolve": "resolved"},
                 "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
                 "resolve_mapping_no_regex.yml",
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
 
@@ -284,6 +284,26 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
 
         expected = {"to": {"resolve": "something no"}}
         document = {"to": {"resolve": "something no"}}
+
+        self.object.process(document)
+
+        assert document == expected
+
+    def test_resolve_dotted_field_is_missing(self):
+        rule = {
+            "filter": "to.other_field",
+            "hyperscan_resolver": {
+                "field_mapping": {"to.resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        }
+        self._load_specific_rule(rule)
+
+        expected = {
+            "to": {"other_field": "something no"},
+            "tags": ["_hyperscan_resolver_missing_field_warning"],
+        }
+        document = {"to": {"other_field": "something no"}}
 
         self.object.process(document)
 
@@ -549,7 +569,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
 
@@ -572,7 +592,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_with_parenthesis.yml",
                     "pattern": r"\d*(?P<mapping>(([a-z])+)())\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
 
@@ -595,7 +615,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
 
@@ -618,7 +638,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[123]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
 
@@ -643,7 +663,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
 
@@ -669,7 +689,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
 

@@ -2,7 +2,7 @@
   {
     "filter": "winlog.event_id: 789 AND winlog.provider_name: \"Test123\"",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "winlog.event_data.param1": "RE_DOMAIN_BACKSLASH_USERNAME"
       }
     },

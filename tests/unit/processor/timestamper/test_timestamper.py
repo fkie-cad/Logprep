@@ -279,8 +279,8 @@ failure_test_cases = [
         "raises if source field is none",
         {"filter": "message", "timestamper": {"source_fields": ["@timestamp"]}},
         {"message": "this does not matter"},
-        {"message": "this does not matter", "tags": ["_timestamper_failure"]},
-        "'@timestamp' does not exist or is falsy value",
+        {"message": "this does not matter", "tags": ["_timestamper_missing_field_warning"]},
+        r"missing source_fields: \['@timestamp']",
     ),
 ]  # testcase, rule, event, expected
 

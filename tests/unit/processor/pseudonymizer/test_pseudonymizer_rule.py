@@ -11,7 +11,7 @@ def get_specific_rule_definition():
     return {
         "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
         "pseudonymizer": {
-            "pseudonyms": {
+            "mapping": {
                 "winlog.event_data.param1": "RE_WHOLE_FIELD",
                 "winlog.event_data.param2": "RE_WHOLE_FIELD",
             }
@@ -35,14 +35,14 @@ class TestPseudonomyzerRule:
                 "config is not a dict",
             ),
             (
-                {"filter": "message", "pseudonymizer": {"pseudonyms": {}}},
+                {"filter": "message", "pseudonymizer": {"mapping": {}}},
                 ValueError,
-                "Length of 'pseudonyms' must be >= 1: 0",
+                "Length of 'mapping' must be >= 1: 0",
             ),
             (
                 {
                     "filter": "message",
-                    "pseudonymizer": {"pseudonyms": {"field": "regex"}},
+                    "pseudonymizer": {"mapping": {"field": "regex"}},
                 },
                 None,
                 None,
@@ -68,7 +68,7 @@ class TestPseudonomyzerRule:
                 {
                     "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
                     "pseudonymizer": {
-                        "pseudonyms": {
+                        "mapping": {
                             "winlog.event_data.param1": "RE_WHOLE_FIELD",
                             "winlog.event_data.param2": "RE_WHOLE_FIELD",
                         }
@@ -82,7 +82,7 @@ class TestPseudonomyzerRule:
                 {
                     "filter": "otherfilter",
                     "pseudonymizer": {
-                        "pseudonyms": {
+                        "mapping": {
                             "winlog.event_data.param1": "RE_WHOLE_FIELD",
                             "winlog.event_data.param2": "RE_WHOLE_FIELD",
                         }
@@ -96,7 +96,7 @@ class TestPseudonomyzerRule:
                 {
                     "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
                     "pseudonymizer": {
-                        "pseudonyms": {
+                        "mapping": {
                             "winlog.event_data.param1": "RE_WHOLE_FIELD",
                             "winlog.event_data.paramother": "RE_WHOLE_FIELD",
                         }

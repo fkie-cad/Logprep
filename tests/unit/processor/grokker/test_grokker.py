@@ -333,8 +333,8 @@ failure_test_cases = [
         "only field does not exist",
         {"filter": "message", "grokker": {"mapping": {"unknown": "this is the %{USER:userfield}"}}},
         {"message": "this is the MyUser586"},
-        {"message": "this is the MyUser586", "tags": ["_grokker_failure"]},
-        "missing source_field: 'unknown'",
+        {"message": "this is the MyUser586", "tags": ["_grokker_missing_field_warning"]},
+        r"missing source_fields: \['unknown']",
     ),
     (
         "only one field does not exist",
@@ -351,9 +351,9 @@ failure_test_cases = [
         {
             "message": "this is the MyUser586",
             "userfield": "MyUser586",
-            "tags": ["_grokker_failure"],
+            "tags": ["_grokker_missing_field_warning"],
         },
-        "missing source_field: 'unknown'",
+        r"missing source_fields: \['unknown']",
     ),
     (
         "writes failure tag if no grok patterns matches",
