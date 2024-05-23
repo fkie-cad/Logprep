@@ -28,6 +28,8 @@
 * refactor `clusterer`, `pre_detector` and `pseudonymizer` processors and change `rule_tree` so that the processor do not require `process` override
   * required substantial refactoring of the `clusterer`
 * handle missing fields in processors via `_handle_missing_fields` from the field_manager
+* add `LogprepMPQueueListener` to outsource logging to a separate process
+* add a single `Queuehandler` to root logger to ensure all logs were handled by `LogprepMPQueueListener`
 
 ## 11.3.0
 

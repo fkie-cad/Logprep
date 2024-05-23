@@ -20,10 +20,15 @@ DEFAULT_LOG_CONFIG = {
             "class": "logging.StreamHandler",
             "formatter": "logprep",
             "stream": "ext://sys.stdout",
-        }
+        },
+        "queue": {
+            "class": "logging.handlers.QueueHandler",
+            "queue": "ext://logprep.util.logging.logqueue",
+        },
     },
     "loggers": {
-        "root": {"level": "INFO", "handlers": ["console"]},
+        "root": {"level": "INFO", "handlers": ["queue"]},
+        "console": {"handlers": ["console"]},
         "filelock": {"level": "ERROR"},
         "urllib3.connectionpool": {"level": "ERROR"},
         "elasticsearch": {"level": "ERROR"},
