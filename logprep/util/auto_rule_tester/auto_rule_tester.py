@@ -156,7 +156,6 @@ class PorcessorExtensions:
             PorcessorExtensions.color_based_print(diff)
         else:
             if t_idx is not None:
-                print(f'diff = f"{key} ::::: {rule[t_idx]}"')
                 diff = f"{key}: {rule[t_idx]}"
                 PorcessorExtensions.color_based_print(diff)
             else:
