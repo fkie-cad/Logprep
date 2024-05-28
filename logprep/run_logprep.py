@@ -154,6 +154,7 @@ def dry_run(configs: tuple[str], events: str, input_type: str, full_output: bool
     dry_runner.run()
 
 
+
 @test.command(short_help="Run the rule tests of the given configurations", name="unit")
 @click.argument("configs", nargs=-1)
 def test_rules(configs: tuple[str]) -> None:
@@ -162,7 +163,7 @@ def test_rules(configs: tuple[str]) -> None:
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    _get_configuration(configs)
+    _ = _get_configuration(configs)
     for config in configs:
         tester = AutoRuleTester(config)
         tester.run()
@@ -183,6 +184,9 @@ def test_ruleset(configs: tuple[str], testdata: str):
     _ = _get_configuration(configs)
     tester = RuleCorpusTester(configs, testdata)
     tester.run()
+
+
+    
 
 
 @cli.group(short_help="Generate load for a running logprep instance")

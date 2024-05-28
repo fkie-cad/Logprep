@@ -136,10 +136,8 @@ class PorcessorExtensions:
             Processor that should be of type PreDetector.
         extra_output : dict
             Extra output containing MITRE information coming from PreDetector.
-        errors : list
-            List of errors.
-        warnings : list
-            List of warnings.
+        problems : dict
+            dict of errors and warnings.
 
         """
         mitre_errors, id_warnings = self._get_errors(processor, extra_output)
@@ -150,8 +148,6 @@ class PorcessorExtensions:
         print()
         for key, rule in rules.items():
             self._print_diff_test(key, rule, t_idx)
-        #else:
-        #        print_fcolor(Fore.LIGHTRED_EX, "None")
 
     @staticmethod
     def _print_diff_test( key, rule, t_idx=None):
@@ -160,6 +156,7 @@ class PorcessorExtensions:
             PorcessorExtensions.color_based_print(diff)
         else:
             if t_idx is not None:
+                print(f'diff = f"{key} ::::: {rule[t_idx]}"')
                 diff = f"{key}: {rule[t_idx]}"
                 PorcessorExtensions.color_based_print(diff)
             else:
@@ -215,7 +212,7 @@ class AutoRuleTester:
 
         self._success = True
 
-        self._result = {"+ successful_rule_tests_cnt": 0, "- failed_rule_tests_cnt": 0, "~ warning_cnt": 0, "rule_test_coverage": 0, "total_tests": 0} 
+        self._result = {"+ successful_rule_tests_cnt": 0, "- failed_rule_tests_cnt": 0, "~ warning_cnt": 0, "rule_test_coverage": 0.0, "total_tests": 0} 
         self._problems = {"warnings": [], "errors": []}
 
         self._pd_extra = PorcessorExtensions()
@@ -248,7 +245,6 @@ class AutoRuleTester:
 
     def _run_tests_for_rules(self, rules_pn: dict):
         self._check_which_rule_files_miss_tests(rules_pn)
-        #self._set_rules_dirs_to_empty()
 
         processors_no_ct = self._get_processors()
 
@@ -312,7 +308,8 @@ class AutoRuleTester:
     def _eval_file_rule_test(self, rule_test: dict, processor: "Processor", r_idx: int):
         self._filename_printed = False
         for t_idx, test in enumerate(rule_test["tests"]):
-            if test.get("target_rule_idx") is not None and test.get("target_rule_idx") != r_idx:
+            rule_nr = test.get("target_rule_idx") if test.get("target_rule_idx") != None else "0" 
+            if rule_nr is not None and rule_nr != r_idx:
                 continue
             try:
                 extra_output = processor.process(test["raw"])
@@ -329,7 +326,7 @@ class AutoRuleTester:
                 self._pd_extra.update_errors(processor, extra_output, self._problems)
 
             if print_diff or self._problems.get("warnings") or self._problems.get("errors"):
-                print_fcolor(Fore.MAGENTA, f"RULE FILE {rule_test['file']} & RULE {t_idx}:")
+                print_fcolor(Fore.MAGENTA, f"RULE FILE {rule_test['file']} & RULE {rule_nr}:")
 
             if print_diff or self._problems.get("errors"):
                 self._pd_extra.print_rules({"DIFF": diff})
@@ -362,14 +359,8 @@ class AutoRuleTester:
     def _print_error_on_exception(self, error: BaseException, rule_test: dict, t_idx: int):
         print_fcolor(Fore.MAGENTA, f"RULE FILE {rule_test['file']} & RULE {t_idx}:")
         print_fcolor(Fore.RED, f"Exception: {error}")
-        self._print_stack_trace(error)
-
-    def _print_stack_trace(self, error: BaseException):
         if self._enable_print_stack_trace:
-            print("Stack Trace:")
-            tbk = traceback.format_tb(error.__traceback__)
-            for line in tbk:
-                print(line)
+            print("\n".join(traceback.format_tb(error.__traceback__)))
 
     @staticmethod
     def _check_if_different(diff):
@@ -385,7 +376,6 @@ class AutoRuleTester:
 
         rule_tests = {"with tests": [], "without tests": []}
         for _, processor_test_cfg in rules_pn.items():
-            processor_type = processor_test_cfg["type"]
             rules = processor_test_cfg["rules"]
             
             for rule in rules:
@@ -409,7 +399,6 @@ class AutoRuleTester:
 
     def _get_diff_raw_test(self, test: dict) -> list:
         self._gpr.replace_grok_keywords(test["processed"], test)
-
         self._sort_lists_in_nested_dict(test)
 
         raw = json.dumps(test["raw"], sort_keys=True, indent=4)
@@ -475,7 +464,7 @@ class AutoRuleTester:
         try:
             multi_rule = self._pd_extra._load_json_or_yaml(file_path)
             if  not all(d.get("target_rule_idx") is not None for d in rule_tests) and len(rule_tests) > 1:
-                raise Exception(f"Not all dictionaries in {file_path} contain the mandatory key target_rule_idx: Cant build corret test set for rules.")
+                raise Exception(f"Not all dictionaries in {file_path} contain the mandatory key target_rule_idx: Cant build correct test set for rules.")
         except ValueError as error:
             self._problems["errors"].append(str(error))
             return
@@ -496,15 +485,11 @@ class AutoRuleTester:
         rules_dirs = defaultdict(dict)
         for processor in self._config_yml["pipeline"]:
             processor_name, processor_cfg = next(iter(processor.items()))
-            rules_to_add = []
+            
             print("\nProcessor Config:")
             pprint(processor_cfg)
 
-            if processor_cfg.get("rules"):
-                rules_to_add.append(("rules", processor_cfg["rules"]))
-            elif processor_cfg.get("generic_rules") and processor_cfg.get("specific_rules"):
-                rules_to_add.append(("generic_rules", processor_cfg["generic_rules"][0]))
-                rules_to_add.append(("specific_rules", processor_cfg["specific_rules"][0]))
+            rules_to_add = self._get_rules_to_add(processor_cfg)
 
             if not rules_dirs[processor_name]:
                 rules_dirs[processor_name] = defaultdict(dict)
@@ -518,3 +503,14 @@ class AutoRuleTester:
                 rules_dirs[processor_name]["rule_dirs"][rule_to_add[0]] += rule_to_add[1]
 
         return rules_dirs
+
+    def _get_rules_to_add(self, processor_cfg):
+        rules_to_add = []
+
+        if processor_cfg.get("rules"):
+            rules_to_add.append(("rules", processor_cfg["rules"]))
+        elif processor_cfg.get("generic_rules") and processor_cfg.get("specific_rules"):
+            rules_to_add.append(("generic_rules", processor_cfg["generic_rules"][0]))
+            rules_to_add.append(("specific_rules", processor_cfg["specific_rules"][0]))
+
+        return rules_to_add
