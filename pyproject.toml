@@ -68,7 +68,6 @@ dependencies = [
   "scipy>=1.9.2",
   "joblib",
   "pygrok",
-  "pyyaml",
   "requests>=2.31.0",
   "ruamel.yaml",
   "schedule",
@@ -82,7 +81,6 @@ dependencies = [
   "boto3",
   "pydantic",
   "ndjson",
-  "arrow",
   "click",
   "pandas",
   "tabulate",
@@ -109,7 +107,7 @@ doc = [
   "sphinx-copybutton",
   "nbsphinx",
   "ipython",
-  "openpyxl"
+  "openpyxl",
 ]
 
 [project.urls]
