@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+from collections import Counter
 from unittest import mock
 
 import pytest
@@ -101,3 +102,12 @@ class TestOutput(BaseOutputTestCase):
         self.object.metrics.number_of_failed_events = 0
         self.object.store_custom(123, input_data)
         assert self.object.metrics.number_of_failed_events == 1, testcase
+
+    @responses.activate
+    def test_store_counts_http_status_codes(self):
+        responses.add(responses.POST, f"{TARGET_URL}/", status=200)
+        samples = self.object.metrics.status_codes.tracker.collect()
+        assert not samples[0].samples, "no status codes before store"
+        self.object.store_custom({"message": "my event message"}, TARGET_URL)
+        samples = self.object.metrics.status_codes.tracker.collect()
+        assert samples[0].samples[0].value == 1.0

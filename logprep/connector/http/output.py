@@ -25,11 +25,20 @@ class HttpOutput(Output):
 
         number_of_http_requests: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of incomming requests",
+                description="Number of outgoing requests",
                 name="number_of_http_requests",
             )
         )
         """Number of outgoing requests"""
+
+        status_codes: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of status codes",
+                name="status_codes",
+                inject_label_values=False,
+            ),
+        )
+        """Number of status codes"""
 
     @define(kw_only=True)
     class Config(Output.Config):
@@ -71,7 +80,7 @@ class HttpOutput(Output):
             error = TypeError(f"Document type {type(document)} is not supported")
             self.store_failed(str(error), document, document)
 
-    def store(self, document: tuple[str, dict] | dict) -> dict:
+    def store(self, document: tuple[str, dict] | dict) -> None:
         if isinstance(document, tuple):
             target, document = document
             target = f"{self._config.target_url}{target}"
@@ -79,7 +88,14 @@ class HttpOutput(Output):
             target = self._config.target_url
         self.store_custom(document, target)
 
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+    def store_failed(
+        self,
+        error_message: str,
+        document_received: dict,
+        document_processed: dict,
+    ) -> None:
+        logger.error("Failed to send event: %s", error_message)
+        logger.debug("Failed event: %s", document_received)
         self.metrics.number_of_failed_events += 1
 
     def _send_post_request(self, event_target: str, request_data: bytes) -> dict:
@@ -95,6 +111,7 @@ class HttpOutput(Output):
                 )
                 logger.debug("Servers response code is: %i", response.status_code)
                 self.metrics.number_of_http_requests += 1
+                self.metrics.status_codes.add_with_labels(1, {"description": response.status_code})
                 response.raise_for_status()
                 if self.input_connector is not None:
                     self.input_connector.batch_finished_callback()
