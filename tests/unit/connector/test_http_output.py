@@ -22,6 +22,7 @@ class TestOutput(BaseOutputTestCase):
     expected_metrics = [
         *BaseOutputTestCase.expected_metrics,
         "logprep_number_of_http_requests",
+        "logprep_status_codes",
     ]
 
     @responses.activate
