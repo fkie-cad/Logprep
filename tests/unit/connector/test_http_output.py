@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 import json
-from collections import Counter
 from unittest import mock
 
 import pytest
@@ -25,6 +24,8 @@ class TestOutput(BaseOutputTestCase):
         *BaseOutputTestCase.expected_metrics,
         "logprep_number_of_http_requests",
         "logprep_status_codes",
+        "logprep_timeouts",
+        "logprep_connection_errors",
     ]
 
     @responses.activate
