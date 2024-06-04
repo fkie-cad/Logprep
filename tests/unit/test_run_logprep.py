@@ -354,7 +354,7 @@ class TestGeneratorCLI:
                 "5000",
                 "--shuffle",
                 "False",
-                "--thread_count",
+                "--thread-count",
                 "2",
                 "--batch-size",
                 "1000",
@@ -368,7 +368,7 @@ class TestGeneratorCLI:
                 "False",
             ],
         )
-        assert result.exit_code == 0
+        assert result.exit_code == 0, result.stdout
         mock_generator.assert_called_with(
             input_dir="/some-path",
             target_url="some-domain",
