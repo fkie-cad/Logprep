@@ -119,59 +119,52 @@ class FieldManager(Processor):
         if state.single_source_element and not state.extend:
             source_fields_values = source_fields_values.pop()
 
-        if (
-            state.extend
-            and state.overwrite
-            and not state.single_source_element
-            and not state.target_is_list
-        ):
-            add_and_overwrite(event, target_field, source_fields_values)
-            return
+        match state:
+            case State(
+                extend=True, overwrite=True, single_source_element=False, target_is_list=False
+            ):
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
 
-        if (
-            state.extend
-            and not state.overwrite
-            and not state.single_source_element
-            and not state.target_is_list
-            and state.target_is_none
-        ):
-            flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
-            source_fields_values = [*flattened_source_fields]
-            add_and_overwrite(event, target_field, source_fields_values)
-            return
+            case State(
+                extend=True,
+                overwrite=False,
+                single_source_element=False,
+                target_is_list=False,
+                target_is_none=True,
+            ):
+                flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
+                source_fields_values = [*flattened_source_fields]
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
 
-        if (
-            state.extend
-            and not state.overwrite
-            and not state.single_source_element
-            and not state.target_is_list
-        ):
-            source_fields_values = [target_field_value, *source_fields_values]
-            add_and_overwrite(event, target_field, source_fields_values)
-            return
+            case State(
+                extend=True, overwrite=False, single_source_element=False, target_is_list=False
+            ):
+                source_fields_values = [target_field_value, *source_fields_values]
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
 
-        if (
-            state.extend
-            and not state.overwrite
-            and not state.single_source_element
-            and state.target_is_list
-        ):
-            flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
-            source_fields_values = [*target_field_value, *flattened_source_fields]
-            add_and_overwrite(event, target_field, source_fields_values)
-            return
+            case State(
+                extend=True, overwrite=False, single_source_element=False, target_is_list=True
+            ):
+                flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
+                source_fields_values = [*target_field_value, *flattened_source_fields]
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
 
-        if state.overwrite and state.extend:
-            flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
-            source_fields_values = [*flattened_source_fields]
-            add_and_overwrite(event, target_field, source_fields_values)
-            return
+            case State(overwrite=True, extend=True):
+                flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
+                source_fields_values = [*flattened_source_fields]
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
 
-        success = add_field_to(
-            event, target_field, source_fields_values, state.extend, state.overwrite
-        )
-        if not success:
-            raise FieldExistsWarning(rule, event, [target_field])
+            case _:
+                success = add_field_to(
+                    event, target_field, source_fields_values, state.extend, state.overwrite
+                )
+                if not success:
+                    raise FieldExistsWarning(rule, event, [target_field])
 
     def _overwrite_from_source_values(self, source_fields_values):
         lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
