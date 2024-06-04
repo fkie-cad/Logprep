@@ -18,8 +18,8 @@ logger: Logger = logging.getLogger("Generator")
 
 class Controller:
     """
-    Controls the workflow of the generator by reading inputs, manipulating events and sending them to
-    outputs
+    Controls the workflow of the generator by reading inputs, manipulating events
+    and sending them to outputs
     """
 
     def __init__(self, **kwargs):
