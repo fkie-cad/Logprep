@@ -1,8 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import logging
 import os
-import shutil
 from unittest import mock
 
 import responses
@@ -103,14 +103,7 @@ class TestController:
         )
         self.contoller.input.input_root_path = dataset_path
         mock_executor_instance = mock.MagicMock()
-        mock_statistics = {
-            "Events http status 200": 1,
-            "Requests https status 200": 2,
-            "Batch send time": 1,
-        }
-        mock_executor_instance.map.return_value = [mock_statistics]
         mock_executor_class.return_value.__enter__.return_value = mock_executor_instance
-        stats = self.contoller.run()
+        self.contoller.run()
         mock_executor_class.assert_called_with(max_workers=2)
         mock_executor_instance.map.assert_called()
-        assert stats == mock_statistics

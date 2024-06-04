@@ -4,13 +4,12 @@ Output Module that takes a batch of events and sends them to a http endpoint wit
 
 import logging
 from functools import cached_property
-from typing import Iterable
 
 import requests
 from attrs import define, field, validators
 
 from logprep.abc.output import Output
-from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.metrics.metrics import CounterMetric
 
 logger = logging.getLogger("HttpOutput")
 
@@ -44,9 +43,17 @@ class HttpOutput(Output):
     class Config(Output.Config):
         """Configuration for the HttpOutput."""
 
-        user: str = field(validator=validators.instance_of(str), default="")
+        user: str = field(
+            validator=validators.instance_of(str),
+            default="",
+            converter=lambda x: "" if x is None else x,
+        )
         """User that is used for the basic auth http request"""
-        password: str = field(validator=validators.instance_of(str), default="")
+        password: str = field(
+            validator=validators.instance_of(str),
+            default="",
+            converter=lambda x: "" if x is None else x,
+        )
         """Password that is used for the basic auth http request"""
         target_url: str
         """URL of the endpoint that receives the events"""

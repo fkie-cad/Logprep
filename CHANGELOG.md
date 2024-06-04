@@ -20,6 +20,7 @@
 ### Features
 
 * add UCL into the Quickstart Setup
+* add logprep http output connector
 
 ### Improvements
 
@@ -32,6 +33,12 @@
 * handle missing fields in processors via `_handle_missing_fields` from the field_manager
 * add `LogprepMPQueueListener` to outsource logging to a separate process
 * add a single `Queuehandler` to root logger to ensure all logs were handled by `LogprepMPQueueListener`
+* refactor `http_generator` to use a logprep http output connector
+
+### Bugfix
+
+* rename `--thread_count` parameter to `--thread-count` in http generator
+* make `--username` and `--password` parameters optional in http generator
 
 ## 11.3.0
 

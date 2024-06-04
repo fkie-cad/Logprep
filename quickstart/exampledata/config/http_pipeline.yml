@@ -1,4 +1,4 @@
-version: 1
+version: 2
 process_count: 2
 config_refresh_interval: 10
 
@@ -23,22 +23,22 @@ metrics:
     workers: 1
 input:
   httpinput:
-      type: http_input
-      message_backlog_size: 1500
-      collect_meta: True
-      metafield_name: "@metadata"
-      uvicorn_config:
-          host: 0.0.0.0
-          port: 9000
-          workers: 2
-          access_log: true
-          server_header: false
-          date_header: false
-      endpoints:
-          /auth-json: json
-          /json: json
-          /lab/123/(ABC|DEF)/pl.*: plaintext
-          /lab/123/ABC/auditlog: jsonl
+    type: http_input
+    message_backlog_size: 150
+    collect_meta: True
+    metafield_name: "@metadata"
+    uvicorn_config:
+      host: 0.0.0.0
+      port: 9000
+      workers: 2
+      access_log: true
+      server_header: false
+      date_header: false
+    endpoints:
+      /auth-json: json
+      /json: json
+      /lab/123/(ABC|DEF)/pl.*: plaintext
+      /lab/123/ABC/auditlog: jsonl
 output:
   kafka:
     type: confluentkafka_output

@@ -208,9 +208,9 @@ def generate_kafka(config, file):
     required=True,
     type=str,
 )
-@click.option("--user", help="Username for the target domain", required=True, type=str)
+@click.option("--user", help="Username for the target domain", required=False, type=str)
 @click.option(
-    "--password", help="Credentials for the user of the target domain", required=True, type=str
+    "--password", help="Credentials for the user of the target domain", required=False, type=str
 )
 @click.option(
     "--batch-size",
@@ -236,7 +236,7 @@ def generate_kafka(config, file):
     type=bool,
 )
 @click.option(
-    "--thread_count",
+    "--thread-count",
     help="Number of threads that should be used to send events in parallel to the target. If "
     "thread_count is set to '1' then multithreading is deactivated and the main process will "
     "be used.",
