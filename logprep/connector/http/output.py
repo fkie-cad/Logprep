@@ -97,8 +97,8 @@ class HttpOutput(Output):
         for metric in metrics:
             samples = filter(
                 lambda x: x.name.endswith("_total")
-                and "warning" not in x.name  # blocklisted metric
-                and "error" not in x.name,  # blocklisted metric
+                and "number_of_warnings" not in x.name  # blocklisted metric
+                and "number_of_errors" not in x.name,  # blocklisted metric
                 getattr(self.metrics, metric.name).tracker.collect()[0].samples,
             )
             for sample in samples:
@@ -116,11 +116,7 @@ class HttpOutput(Output):
         Send a batch of events to an endpoint and return the received status code times the number
         of events.
         """
-        if isinstance(document, (tuple, list, dict)):
-            self._send_post_request(target, document)
-        else:
-            error = TypeError(f"Document type {type(document)} is not supported")
-            self.store_failed(str(error), document, document)
+        self._send_post_request(target, document)
 
     def store(self, document: tuple[str, dict] | dict) -> None:
         if isinstance(document, tuple):
@@ -131,7 +127,7 @@ class HttpOutput(Output):
         self.store_custom(document, target)
 
     def store_failed(self, error_message, document_received, document_processed) -> None:
-        pass
+        self.metrics.number_of_failed_events += 1
 
     def _send_post_request(self, event_target: str, documents: dict | tuple | list) -> dict:
         """Send a post request with given data to the specified endpoint"""
@@ -142,6 +138,11 @@ class HttpOutput(Output):
         elif isinstance(documents, dict):
             request_data = self._encoder.encode(documents)
             document_count = 1
+        else:
+            error = TypeError(f"Document type {type(documents)} is not supported")
+            self.metrics.number_of_failed_events += 1
+            logger.error(str(error))
+            return
         try:
             try:
                 logger.debug(request_data)

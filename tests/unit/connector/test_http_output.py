@@ -33,7 +33,7 @@ class TestOutput(BaseOutputTestCase):
         self.object.metrics.number_of_processed_events = 0
         responses.add(responses.POST, f"{TARGET_URL}/123", status=200)
         events = [{"event1_key": "event1_value"}, {"event2_key": "event2_value"}]
-        batch = (f"{TARGET_URL}/123", events)
+        batch = ("/123", events)
         self.object.store(batch)
         assert self.object.metrics.number_of_processed_events == 2
 
@@ -44,7 +44,7 @@ class TestOutput(BaseOutputTestCase):
         self.object.metrics.number_of_http_requests = 0
         responses.add(responses.POST, f"{TARGET_URL}/123", status=404)
         events = [{"event1_key": "event1_value"}, {"event2_key": "event2_value"}]
-        batch = (f"{TARGET_URL}/123", events)
+        batch = ("/123", events)
         self.object.store(batch)
         assert self.object.metrics.number_of_failed_events == 2
         assert self.object.metrics.number_of_processed_events == 0
@@ -130,19 +130,22 @@ class TestOutput(BaseOutputTestCase):
     @responses.activate
     def test_store_counts_connection_error(self):
         responses.add(responses.POST, f"{TARGET_URL}/", body=requests.exceptions.ConnectionError())
-        samples = self.object.metrics.status_codes.tracker.collect()
-        assert not samples[0].samples, "no status codes before store"
         self.object.store_custom({"message": "my event message"}, TARGET_URL)
         stats = json.loads(self.object.statistics)
         assert stats.get("Requests Connection Errors") == 1
-        assert stats.get("Requests total") == 0
+        assert stats.get("Requests total") == 1
 
     @responses.activate
     def test_store_counts_connection_timeouts(self):
         responses.add(responses.POST, f"{TARGET_URL}/", body=requests.exceptions.ReadTimeout())
-        samples = self.object.metrics.status_codes.tracker.collect()
-        assert not samples[0].samples, "no status codes before store"
         self.object.store_custom({"message": "my event message"}, TARGET_URL)
         stats = json.loads(self.object.statistics)
         assert stats.get("Requests Timeouts") == 1
-        assert stats.get("Requests total") == 0
+        assert stats.get("Requests total") == 1
+
+    @responses.activate
+    def test_store_counts_processed_events(self):
+        responses.add(responses.POST, f"{TARGET_URL}/")
+        self.object.metrics.number_of_processed_events = 0
+        self.object.store({"message": "my event message"})
+        assert self.object.metrics.number_of_processed_events == 1
