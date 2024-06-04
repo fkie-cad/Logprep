@@ -2,6 +2,7 @@
 Output Module that takes a batch of events and sends them to a http endpoint with given credentials
 """
 
+import json
 import logging
 from functools import cached_property
 
@@ -38,6 +39,22 @@ class HttpOutput(Output):
             ),
         )
         """Number of status codes"""
+
+        connection_errors: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of connection errors",
+                name="connection_errors",
+            ),
+        )
+        """Number of connection errors"""
+
+        timeouts: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of timeouts",
+                name="timeouts",
+            ),
+        )
+        """Number of timeouts"""
 
     @define(kw_only=True)
     class Config(Output.Config):
@@ -128,11 +145,59 @@ class HttpOutput(Output):
                     raise error
         except requests.exceptions.ConnectionError as error:
             logger.error(error)
-            # TODO update connection error metric
+            self.metrics.connection_errors += 1
+            if isinstance(error, requests.exceptions.Timeout):
+                self.metrics.timeouts += 1
         except requests.exceptions.MissingSchema as error:
             raise ConnectionError(
                 f"No schema set in target-url: {self._config.get('target_url')}"
             ) from error
-        except requests.exceptions.ReadTimeout as error:
-            # TODO update timout metric
-            pass
+        except requests.exceptions.Timeout as error:
+            # other timeouts than connection timeouts are handled here
+            logger.error(error)
+            self.metrics.timeouts += 1
+
+    @property
+    def statistics(self) -> str:
+        """Return the statistics of this connector as a formatted string."""
+        status_code_stats = self.metrics.status_codes.tracker.collect()[0].samples
+        status_code_stats = {
+            f'Requests http status {sample.labels.get("description")}': int(sample.value)
+            for sample in status_code_stats
+            if sample.name.endswith("total")
+        }
+        sucessfull_events_stats = self.metrics.number_of_processed_events.tracker.collect()[
+            0
+        ].samples
+        sucessfull_events_stats = {
+            "Events successfull": int(sample.value)
+            for sample in sucessfull_events_stats
+            if sample.name.endswith("total")
+        }
+        failed_events_stats = self.metrics.number_of_failed_events.tracker.collect()[0].samples
+        failed_events_stats = {
+            "Events failed": int(sample.value)
+            for sample in failed_events_stats
+            if sample.name.endswith("total")
+        }
+        connection_errors_stats = self.metrics.connection_errors.tracker.collect()[0].samples
+        connection_errors_stats = {
+            "Requests Connection Errors": int(sample.value)
+            for sample in connection_errors_stats
+            if sample.name.endswith("total")
+        }
+        timeout_stats = self.metrics.timeouts.tracker.collect()[0].samples
+        timeout_stats = {
+            "Requests Timeouts": int(sample.value)
+            for sample in timeout_stats
+            if sample.name.endswith("total")
+        }
+        stats = {
+            **sucessfull_events_stats,
+            **status_code_stats,
+            **failed_events_stats,
+            **connection_errors_stats,
+            **timeout_stats,
+        }
+        stats = json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
+        return stats

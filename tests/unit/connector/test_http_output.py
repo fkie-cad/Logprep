@@ -1,8 +1,10 @@
 # pylint: disable=missing-docstring
+import json
 from collections import Counter
 from unittest import mock
 
 import pytest
+import requests
 import responses
 
 from tests.unit.connector.base import BaseOutputTestCase
@@ -107,8 +109,32 @@ class TestOutput(BaseOutputTestCase):
     @responses.activate
     def test_store_counts_http_status_codes(self):
         responses.add(responses.POST, f"{TARGET_URL}/", status=200)
+        responses.add(responses.POST, f"{TARGET_URL}/notfound", status=404)
+        responses.add(responses.POST, f"{TARGET_URL}/transport-error", status=429)
+        responses.add(responses.POST, f"{TARGET_URL}/sucess", status=200)
+        self.object.store_custom({"message": "my event message"}, TARGET_URL)
+        self.object.store_custom({"message": "my event message"}, f"{TARGET_URL}/sucess")
+        self.object.store_custom({"message": "my event message"}, f"{TARGET_URL}/notfound")
+        self.object.store_custom({"message": "my event message"}, f"{TARGET_URL}/transport-error")
+        stats = json.loads(self.object.statistics)
+        assert stats.get("Requests http status 200") == 2
+        assert stats.get("Requests http status 404") == 1
+        assert stats.get("Requests http status 429") == 1
+
+    @responses.activate
+    def test_store_counts_connection_error(self):
+        responses.add(responses.POST, f"{TARGET_URL}/", body=requests.exceptions.ConnectionError())
         samples = self.object.metrics.status_codes.tracker.collect()
         assert not samples[0].samples, "no status codes before store"
         self.object.store_custom({"message": "my event message"}, TARGET_URL)
+        stats = json.loads(self.object.statistics)
+        assert stats.get("Requests Connection Errors") == 1
+
+    @responses.activate
+    def test_store_counts_connection_timeouts(self):
+        responses.add(responses.POST, f"{TARGET_URL}/", body=requests.exceptions.ReadTimeout())
         samples = self.object.metrics.status_codes.tracker.collect()
-        assert samples[0].samples[0].value == 1.0
+        assert not samples[0].samples, "no status codes before store"
+        self.object.store_custom({"message": "my event message"}, TARGET_URL)
+        stats = json.loads(self.object.statistics)
+        assert stats.get("Requests Timeouts") == 1

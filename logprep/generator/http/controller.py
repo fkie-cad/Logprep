@@ -62,38 +62,11 @@ class Controller:
             logger.info("Gracefully shutting down...")
         self.input.clean_up_tempdir()
         run_duration = time.perf_counter() - run_time_start
-        stats = self._get_statistics()
+        stats = self.output.statistics
         logger.info("Completed with following statistics: %s", stats)
         logger.info("Execution time: %f seconds", run_duration)
         if self.loghandler is not None:
             self.loghandler.stop()
-        return stats
-
-    def _get_statistics(self) -> str:
-        status_code_stats = self.output.metrics.status_codes.tracker.collect()[0].samples
-        status_code_stats = {
-            f'Requests http status {sample.labels.get("description")}': sample.value
-            for sample in status_code_stats
-            if sample.name.endswith("total")
-        }
-        sucessfull_events_stats = self.output.metrics.number_of_processed_events.tracker.collect()[
-            0
-        ].samples
-        sucessfull_events_stats = {
-            "Events successfull": sample.value
-            for sample in sucessfull_events_stats
-            if sample.name.endswith("total")
-        }
-        failed_events_stats = self.output.metrics.number_of_failed_events.tracker.collect()[
-            0
-        ].samples
-        failed_events_stats = {
-            "Events failed": sample.value
-            for sample in failed_events_stats
-            if sample.name.endswith("total")
-        }
-        stats = sucessfull_events_stats | status_code_stats | failed_events_stats
-        stats = json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
         return stats
 
     def _generate_load(self):
