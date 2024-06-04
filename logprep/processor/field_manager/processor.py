@@ -135,8 +135,7 @@ class FieldManager(Processor):
             and not state.target_is_list
             and state.target_is_none
         ):
-            lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
-            flattened_source_fields = self._get_flatten_list(lists, not_lists)
+            flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
             source_fields_values = [*flattened_source_fields]
             add_and_overwrite(event, target_field, source_fields_values)
             return
@@ -157,15 +156,13 @@ class FieldManager(Processor):
             and not state.single_source_element
             and state.target_is_list
         ):
-            lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
-            flattened_source_fields = self._get_flatten_list(lists, not_lists)
+            flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
             source_fields_values = [*target_field_value, *flattened_source_fields]
             add_and_overwrite(event, target_field, source_fields_values)
             return
 
         if state.overwrite and state.extend:
-            lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
-            flattened_source_fields = self._get_flatten_list(lists, not_lists)
+            flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
             source_fields_values = [*flattened_source_fields]
             add_and_overwrite(event, target_field, source_fields_values)
             return
@@ -175,6 +172,11 @@ class FieldManager(Processor):
         )
         if not success:
             raise FieldExistsWarning(rule, event, [target_field])
+
+    def _overwrite_from_source_values(self, source_fields_values):
+        lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
+        flattened_source_fields = self._get_flatten_list(lists, not_lists)
+        return flattened_source_fields
 
     def _handle_missing_fields(self, event, rule, source_fields, field_values):
         if rule.ignore_missing_fields:
