@@ -161,10 +161,17 @@ class FieldManager(Processor):
             return
 
         if state.overwrite and state.extend:
+            lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
+            flattened_source_fields = self._get_flatten_list(lists, not_lists)
+            source_fields_values = [*flattened_source_fields]
             add_and_overwrite(event, target_field, source_fields_values)
             return
 
-        add_field_to(event, target_field, source_fields_values, state.extend, state.overwrite)
+        success = add_field_to(
+            event, target_field, source_fields_values, state.extend, state.overwrite
+        )
+        if not success:
+            raise FieldExistsWarning(rule, event, [target_field])
 
     def _handle_missing_fields(self, event, rule, source_fields, field_values):
         if rule.ignore_missing_fields:

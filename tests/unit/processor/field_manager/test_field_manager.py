@@ -187,7 +187,7 @@ test_cases = [  # testcase, rule, event, expected
             "field3": ["value5", "value6"],
             "new_field": ["i exist"],
         },
-        {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
+        {"new_field": ["i exist", "value1", "value2", "value3", "value5", "value6", "value4"]},
     ),
     (
         (
@@ -209,7 +209,7 @@ test_cases = [  # testcase, rule, event, expected
             "field3": ["value5", "value6", "value4"],
             "new_field": ["i exist"],
         },
-        {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
+        {"new_field": ["i exist", "value1", "value2", "value3", "value5", "value6", "value4"]},
     ),
     (
         (
@@ -232,7 +232,7 @@ test_cases = [  # testcase, rule, event, expected
             "field3": ["value5", "value6", "value4"],
             "new_field": ["i exist"],
         },
-        {"new_field": ["value1", "value2", "value3", "value4", "value5", "value6"]},
+        {"new_field": ["value1", "value2", "value3", "value5", "value6", "value4"]},
     ),
     (
         "real world example from documentation",
