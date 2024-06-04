@@ -214,9 +214,7 @@ class Input:
             event_batch = sorted(event_batch, key=lambda x: x[0])
         log_classes = itertools.groupby(event_batch, key=lambda x: x[0])
         for target_path, events in log_classes:
-            request_data = "\n".join(self._encoder.encode(event).decode() for _, event in events)
-            event_target = f"{self.config.get('target_url')}{target_path}"
-            yield event_target, request_data
+            yield target_path, list(events)
 
     def _process_event_line(self, line):
         """
