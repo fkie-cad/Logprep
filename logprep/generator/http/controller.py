@@ -59,7 +59,7 @@ class Controller:
             logger.info("Gracefully shutting down...")
         self.input.clean_up_tempdir()
         run_duration = time.perf_counter() - run_time_start
-        stats = self.output.metrics.status_codes.tracker.collect()[0].samples
+        stats = self.output.metrics.status_codes.tracker.collect()[0].values
         logger.info("Completed with following http return code statistics: %s", stats)
         logger.info("Execution time: %f seconds", run_duration)
         self.loghandler.stop()
