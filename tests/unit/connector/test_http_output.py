@@ -121,6 +121,7 @@ class TestOutput(BaseOutputTestCase):
         assert stats.get("Requests http status 200") == 2
         assert stats.get("Requests http status 404") == 1
         assert stats.get("Requests http status 429") == 1
+        assert stats.get("Requests total") == 4
 
     @responses.activate
     def test_store_counts_connection_error(self):
@@ -130,6 +131,7 @@ class TestOutput(BaseOutputTestCase):
         self.object.store_custom({"message": "my event message"}, TARGET_URL)
         stats = json.loads(self.object.statistics)
         assert stats.get("Requests Connection Errors") == 1
+        assert stats.get("Requests total") == 0
 
     @responses.activate
     def test_store_counts_connection_timeouts(self):
@@ -139,3 +141,4 @@ class TestOutput(BaseOutputTestCase):
         self.object.store_custom({"message": "my event message"}, TARGET_URL)
         stats = json.loads(self.object.statistics)
         assert stats.get("Requests Timeouts") == 1
+        assert stats.get("Requests total") == 0

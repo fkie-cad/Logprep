@@ -25,36 +25,36 @@ class HttpOutput(Output):
 
         number_of_http_requests: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of outgoing requests",
+                description="Requests total",
                 name="number_of_http_requests",
             )
         )
-        """Number of outgoing requests"""
+        """Requests total"""
 
         status_codes: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of status codes",
+                description="Requests http status",
                 name="status_codes",
                 inject_label_values=False,
             ),
         )
-        """Number of status codes"""
+        """Requests http status"""
 
         connection_errors: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of connection errors",
+                description="Requests Connection Errors",
                 name="connection_errors",
             ),
         )
-        """Number of connection errors"""
+        """Requests Connection Errors"""
 
         timeouts: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of timeouts",
+                description="Requests Timeouts",
                 name="timeouts",
             ),
         )
-        """Number of timeouts"""
+        """Requests Timeouts"""
 
     @define(kw_only=True)
     class Config(Output.Config):
@@ -89,17 +89,33 @@ class HttpOutput(Output):
     def _headers(self):
         return {"Content-Type": "application/x-ndjson; charset=utf-8"}
 
+    @property
+    def statistics(self) -> str:
+        """Return the statistics of this connector as a formatted string."""
+        stats: dict = {}
+        metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
+        for metric in metrics:
+            samples = filter(
+                lambda x: x.name.endswith("_total"),
+                getattr(self.metrics, metric.name).tracker.collect()[0].samples,
+            )
+            for sample in samples:
+                key = (
+                    getattr(self.metrics, metric.name).description
+                    if metric.name != "status_codes"
+                    else sample.labels.get("description")
+                )
+                stats[key] = int(sample.value)
+        stats = json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
+        return stats
+
     def store_custom(self, document: dict | tuple | list, target: str) -> None:
         """
         Send a batch of events to an endpoint and return the received status code times the number
         of events.
         """
-        if isinstance(document, dict):
-            self._send_post_request(target, self._encoder.encode(document))
-            self.metrics.number_of_processed_events += 1
-        elif isinstance(document, (tuple, list)):
-            self._send_post_request(target, self._encoder.encode_lines(document))
-            self.metrics.number_of_processed_events += len(document)
+        if isinstance(document, (tuple, list, dict)):
+            self._send_post_request(target, document)
         else:
             error = TypeError(f"Document type {type(document)} is not supported")
             self.store_failed(str(error), document, document)
@@ -112,18 +128,18 @@ class HttpOutput(Output):
             target = self._config.target_url
         self.store_custom(document, target)
 
-    def store_failed(
-        self,
-        error_message: str,
-        document_received: dict,
-        document_processed: dict,
-    ) -> None:
-        logger.error("Failed to send event: %s", error_message)
-        logger.debug("Failed event: %s", document_received)
-        self.metrics.number_of_failed_events += 1
+    def store_failed(self, error_message, document_received, document_processed) -> None:
+        pass
 
-    def _send_post_request(self, event_target: str, request_data: bytes) -> dict:
+    def _send_post_request(self, event_target: str, documents: dict | tuple | list) -> dict:
         """Send a post request with given data to the specified endpoint"""
+        document_count = 0
+        if isinstance(documents, (tuple, list)):
+            request_data = self._encoder.encode_lines(documents)
+            document_count = len(documents)
+        elif isinstance(documents, dict):
+            request_data = self._encoder.encode(documents)
+            document_count = 1
         try:
             try:
                 response = requests.post(
@@ -135,12 +151,20 @@ class HttpOutput(Output):
                 )
                 logger.debug("Servers response code is: %i", response.status_code)
                 self.metrics.number_of_http_requests += 1
-                self.metrics.status_codes.add_with_labels(1, {"description": response.status_code})
+                self.metrics.status_codes.add_with_labels(
+                    1,
+                    {
+                        "description": f"{self.metrics.status_codes.description} {response.status_code}"
+                    },
+                )
                 response.raise_for_status()
+                self.metrics.number_of_processed_events += document_count
                 if self.input_connector is not None:
                     self.input_connector.batch_finished_callback()
             except requests.RequestException as error:
-                self.store_failed(str(error), request_data, request_data)
+                logger.error("Failed to send event: %s", str(error))
+                logger.debug("Failed event: %s", documents)
+                self.metrics.number_of_failed_events += document_count
                 if not isinstance(error, requests.exceptions.HTTPError):
                     raise error
         except requests.exceptions.ConnectionError as error:
@@ -156,48 +180,3 @@ class HttpOutput(Output):
             # other timeouts than connection timeouts are handled here
             logger.error(error)
             self.metrics.timeouts += 1
-
-    @property
-    def statistics(self) -> str:
-        """Return the statistics of this connector as a formatted string."""
-        status_code_stats = self.metrics.status_codes.tracker.collect()[0].samples
-        status_code_stats = {
-            f'Requests http status {sample.labels.get("description")}': int(sample.value)
-            for sample in status_code_stats
-            if sample.name.endswith("total")
-        }
-        sucessfull_events_stats = self.metrics.number_of_processed_events.tracker.collect()[
-            0
-        ].samples
-        sucessfull_events_stats = {
-            "Events successfull": int(sample.value)
-            for sample in sucessfull_events_stats
-            if sample.name.endswith("total")
-        }
-        failed_events_stats = self.metrics.number_of_failed_events.tracker.collect()[0].samples
-        failed_events_stats = {
-            "Events failed": int(sample.value)
-            for sample in failed_events_stats
-            if sample.name.endswith("total")
-        }
-        connection_errors_stats = self.metrics.connection_errors.tracker.collect()[0].samples
-        connection_errors_stats = {
-            "Requests Connection Errors": int(sample.value)
-            for sample in connection_errors_stats
-            if sample.name.endswith("total")
-        }
-        timeout_stats = self.metrics.timeouts.tracker.collect()[0].samples
-        timeout_stats = {
-            "Requests Timeouts": int(sample.value)
-            for sample in timeout_stats
-            if sample.name.endswith("total")
-        }
-        stats = {
-            **sucessfull_events_stats,
-            **status_code_stats,
-            **failed_events_stats,
-            **connection_errors_stats,
-            **timeout_stats,
-        }
-        stats = json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
-        return stats

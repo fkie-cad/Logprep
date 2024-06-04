@@ -3,7 +3,6 @@ This generator will parse example events, manipulate their timestamps and send t
 a defined output
 """
 
-import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
