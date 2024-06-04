@@ -40,11 +40,15 @@ class TestOutput(BaseOutputTestCase):
     @responses.activate
     def test_404_status_code(self):
         self.object.metrics.number_of_failed_events = 0
+        self.object.metrics.number_of_processed_events = 0
+        self.object.metrics.number_of_http_requests = 0
         responses.add(responses.POST, f"{TARGET_URL}/123", status=404)
         events = [{"event1_key": "event1_value"}, {"event2_key": "event2_value"}]
         batch = (f"{TARGET_URL}/123", events)
         self.object.store(batch)
-        assert self.object.metrics.number_of_failed_events == 1
+        assert self.object.metrics.number_of_failed_events == 2
+        assert self.object.metrics.number_of_processed_events == 0
+        assert self.object.metrics.number_of_http_requests == 1
 
     @responses.activate
     def test_store_calls_batch_finished_callback(self):

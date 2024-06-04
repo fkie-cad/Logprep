@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
-import json
 import os
 import re
 from collections import defaultdict

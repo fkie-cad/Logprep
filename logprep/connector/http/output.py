@@ -96,7 +96,9 @@ class HttpOutput(Output):
         metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
         for metric in metrics:
             samples = filter(
-                lambda x: x.name.endswith("_total"),
+                lambda x: x.name.endswith("_total")
+                and "warning" not in x.name  # blocklisted metric
+                and "error" not in x.name,  # blocklisted metric
                 getattr(self.metrics, metric.name).tracker.collect()[0].samples,
             )
             for sample in samples:
@@ -142,15 +144,16 @@ class HttpOutput(Output):
             document_count = 1
         try:
             try:
+                logger.debug(request_data)
                 response = requests.post(
-                    f"{event_target}",
+                    url=event_target,
                     headers=self._headers,
                     verify=False,
                     auth=(self.user, self.password),
                     timeout=2,
+                    data=request_data,
                 )
                 logger.debug("Servers response code is: %i", response.status_code)
-                self.metrics.number_of_http_requests += 1
                 self.metrics.status_codes.add_with_labels(
                     1,
                     {
@@ -159,12 +162,14 @@ class HttpOutput(Output):
                 )
                 response.raise_for_status()
                 self.metrics.number_of_processed_events += document_count
+                self.metrics.number_of_http_requests += 1
                 if self.input_connector is not None:
                     self.input_connector.batch_finished_callback()
             except requests.RequestException as error:
                 logger.error("Failed to send event: %s", str(error))
                 logger.debug("Failed event: %s", documents)
                 self.metrics.number_of_failed_events += document_count
+                self.metrics.number_of_http_requests += 1
                 if not isinstance(error, requests.exceptions.HTTPError):
                     raise error
         except requests.exceptions.ConnectionError as error:

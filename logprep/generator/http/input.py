@@ -9,6 +9,7 @@ import tempfile
 import time
 from datetime import datetime, timedelta
 from functools import cached_property
+from operator import itemgetter
 from pathlib import Path
 from typing import Generator, List
 
@@ -214,7 +215,7 @@ class Input:
             event_batch = sorted(event_batch, key=lambda x: x[0])
         log_classes = itertools.groupby(event_batch, key=lambda x: x[0])
         for target_path, events in log_classes:
-            yield target_path, list(events)
+            yield target_path, list(map(itemgetter(1), events))
 
     def _process_event_line(self, line):
         """
