@@ -204,7 +204,13 @@ class FieldManager(Processor):
 
     @staticmethod
     def _get_flatten_list(lists: List[List], not_lists: List[Any]) -> List:
-        return list(itertools.chain(*lists, not_lists))
+        duplicates = []
+        flatten_list = []
+        for field_value in list(itertools.chain(*lists, not_lists)):
+            if field_value not in duplicates:
+                duplicates.append(field_value)
+                flatten_list.append(field_value)
+        return flatten_list
 
     @staticmethod
     def _filter_missing_fields(source_field_values, targets):
