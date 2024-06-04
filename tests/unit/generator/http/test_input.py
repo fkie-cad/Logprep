@@ -35,8 +35,8 @@ class TestInput:
         self.input.batch_size = batch_size
         self.input.reformat_dataset()
         loader = self.input.load()
-        _, event_str = next(loader)
-        assert len(event_str.splitlines()) == number_of_events
+        _, events = next(loader)
+        assert len(events) == number_of_events
         with pytest.raises(StopIteration):
             _ = next(loader)
 
@@ -49,8 +49,8 @@ class TestInput:
         self.input.batch_size = batch_size
         self.input.reformat_dataset()
         loader = self.input.load()
-        _, event_str = next(loader)
-        assert len(event_str.splitlines()) == number_of_events
+        _, events = next(loader)
+        assert len(events) == number_of_events
         with pytest.raises(StopIteration):
             _ = next(loader)
 
@@ -63,10 +63,10 @@ class TestInput:
         self.input.batch_size = batch_size
         self.input.reformat_dataset()
         loader = self.input.load()
-        _, first_batch_str = next(loader)
-        assert len(first_batch_str.splitlines()) == 100
-        _, second_batch_str = next(loader)
-        assert len(second_batch_str.splitlines()) == 50
+        _, first_batch_events = next(loader)
+        assert len(first_batch_events) == 100
+        _, second_batch_events = next(loader)
+        assert len(second_batch_events) == 50
         with pytest.raises(StopIteration):
             _ = next(loader)
 
@@ -83,11 +83,11 @@ class TestInput:
         self.input.reformat_dataset()
         loader = self.input.load()
         _, first_batch = next(loader)
-        assert len(first_batch.splitlines()) == 100
+        assert len(first_batch) == 100
         _, second_batch = next(loader)
-        assert len(second_batch.splitlines()) == 100
+        assert len(second_batch) == 100
         _, third_batch = next(loader)
-        assert len(third_batch.splitlines()) == 100
+        assert len(third_batch) == 100
         with pytest.raises(StopIteration):
             _ = next(loader)
 
@@ -116,14 +116,14 @@ class TestInput:
         sum_of_all_events = 0
         loader = self.input.load()
         _, first_batch = next(loader)
-        assert len(first_batch.splitlines()) == 50
-        sum_of_all_events += len(first_batch.splitlines())
+        assert len(first_batch) == 50
+        sum_of_all_events += len(first_batch)
         _, second_batch = next(loader)
-        assert len(second_batch.splitlines()) == 50
-        sum_of_all_events += len(second_batch.splitlines())
+        assert len(second_batch) == 50
+        sum_of_all_events += len(second_batch)
         _, third_batch = next(loader)
-        assert len(third_batch.splitlines()) == 100
-        sum_of_all_events += len(third_batch.splitlines())
+        assert len(third_batch) == 100
+        sum_of_all_events += len(third_batch)
         with pytest.raises(StopIteration):
             _ = next(loader)
         assert sum_of_all_events == number_of_events_class_one + number_of_events_class_two
@@ -170,11 +170,11 @@ class TestInput:
         self.input.reformat_dataset()
         loader = self.input.load()
         target, events = next(loader)
-        assert len(events.splitlines()) == 50
-        assert target == f"{self.test_url}/target-one"
+        assert len(events) == 50
+        assert target == "/target-one"
         target, events = next(loader)
-        assert len(events.splitlines()) == 50
-        assert target == f"{self.test_url}/target-two"
+        assert len(events) == 50
+        assert target == "/target-two"
 
     @pytest.mark.parametrize(
         "config, expected_error, error_message",
@@ -289,19 +289,16 @@ class TestInput:
         self.input.reformat_dataset()
         event_id = 0
         previous_event_id = -1  # count through event id's and check if they always increase
-        expected_target = f"{self.test_url}/target-class-one"
-        for batch in self.input.load():
-            target, events = batch
+        expected_target = "/target-class-one"
+        for target, events in self.input.load():
             assert target == expected_target
-            events = events.splitlines()
-            for event in events:
-                parsed_event = json.loads(event)
-                event_id = parsed_event.get("id")
+            for target, event in events:
+                event_id = event.get("id")
                 assert event_id > previous_event_id
                 previous_event_id = event_id
             if event_id == 149:  # end of first log class reached (resetting for second class)
                 previous_event_id = -1
-                expected_target = f"{self.test_url}/target-class-two"
+                expected_target = "/target-class-two"
 
     def test_load_returns_event_in_shuffled_order(self, tmp_path):
         example_event = {"some": "event"}
@@ -329,12 +326,9 @@ class TestInput:
         os.makedirs(self.input._temp_dir, exist_ok=True)
         self.input.reformat_dataset()
         target_event_ids = defaultdict(list)
-        for batch in self.input.load():
-            target, events = batch
-            events = events.splitlines()
-            for event in events:
-                parsed_event = json.loads(event)
-                target_event_ids[target].append(parsed_event.get("id"))
+        for target, events in self.input.load():
+            for target, event in events:
+                target_event_ids[target].append(event.get("id"))
         for target, event_ids in target_event_ids.items():
             is_sorted = all(a <= b for a, b in zip(event_ids, event_ids[1:]))
             assert not is_sorted, f"Target {target} is sorted"
@@ -401,5 +395,5 @@ class TestInput:
         self.input.reformat_dataset()
         event_counter = 0
         for target, events in self.input.load():
-            event_counter += len(events.splitlines())
+            event_counter += len(events)
         assert event_counter == config.get("events")
