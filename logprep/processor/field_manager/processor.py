@@ -135,6 +135,9 @@ class FieldManager(Processor):
             and not state.target_is_list
             and state.target_is_none
         ):
+            lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
+            flattened_source_fields = self._get_flatten_list(lists, not_lists)
+            source_fields_values = [*flattened_source_fields]
             add_and_overwrite(event, target_field, source_fields_values)
             return
 
