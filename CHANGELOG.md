@@ -16,10 +16,13 @@
 * `requester` now writes `_requester_missing_field_warning` tag to event tags instead of `_requester_failure` in case of missing fields
 * `timestamp_differ` now writes `_timestamp_differ_missing_field_warning` tag to event tags instead of `_timestamp_differ_failure` in case of missing fields
 * `timestamper` now writes `_timestamper_missing_field_warning` tag to event tags instead of `_timestamper_failure` in case of missing fields
+* rename `--thread_count` parameter to `--thread-count` in http generator
+* removed `--report` parameter and feature from http generator
 
 ### Features
 
 * add UCL into the Quickstart Setup
+* add logprep http output connector
 
 ### Improvements
 
@@ -32,6 +35,11 @@
 * handle missing fields in processors via `_handle_missing_fields` from the field_manager
 * add `LogprepMPQueueListener` to outsource logging to a separate process
 * add a single `Queuehandler` to root logger to ensure all logs were handled by `LogprepMPQueueListener`
+* refactor `http_generator` to use a logprep http output connector
+
+### Bugfix
+
+* make `--username` and `--password` parameters optional in http generator
 
 ## 11.3.0
 

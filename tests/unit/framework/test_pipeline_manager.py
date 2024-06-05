@@ -6,7 +6,7 @@ from logging import Logger
 from logging.config import dictConfig
 from unittest import mock
 
-from logprep.connector.http.input import HttpConnector
+from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.exporter import PrometheusExporter
@@ -208,7 +208,7 @@ class TestPipelineManager:
             }
         }
         PipelineManager(config)
-        assert HttpConnector.messages._maxsize == 100
+        assert HttpInput.messages._maxsize == 100
         http_input = Factory.create(config.input)
         assert http_input.messages._maxsize == 100
 

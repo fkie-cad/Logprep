@@ -1,8 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import logging
 import os
-import shutil
 from unittest import mock
 
 import responses
@@ -26,11 +26,6 @@ class TestController:
             password="pass",
             thread_count=1,
         )
-
-    def teardown_method(self):
-        experiment_dir = self.contoller.reporter.experiment_dir
-        if os.path.isdir(experiment_dir):
-            shutil.rmtree(experiment_dir)
 
     @responses.activate
     def test_run(self, tmp_path):
@@ -65,18 +60,8 @@ class TestController:
         expected_status_code = 200
         responses.add(responses.POST, f"{self.target_url}/target-one", status=expected_status_code)
         responses.add(responses.POST, f"{self.target_url}/target-two", status=expected_status_code)
-        statistics = self.contoller.run()
-        total_events = class_one_number_events + class_two_number_events
-        assert "Batch send time" in statistics
-        assert isinstance(statistics["Batch send time"], float)
-        assert statistics["Batch send time"] > 0
-        del statistics["Batch send time"]  # delete here such that the next assertion is easier
-        expected_statistics = {
-            f"Requests http status {str(expected_status_code)}": total_events / self.batch_size,
-            f"Events http status {str(expected_status_code)}": total_events,
-        }
-        assert statistics == expected_statistics
-        assert len(responses.calls) == total_events / self.batch_size
+        self.contoller.run()
+
         for call_id, call in enumerate(responses.calls):
             if call_id < (class_one_number_events / self.batch_size):
                 assert (
@@ -118,14 +103,7 @@ class TestController:
         )
         self.contoller.input.input_root_path = dataset_path
         mock_executor_instance = mock.MagicMock()
-        mock_statistics = {
-            "Events http status 200": 1,
-            "Requests https status 200": 2,
-            "Batch send time": 1,
-        }
-        mock_executor_instance.map.return_value = [mock_statistics]
         mock_executor_class.return_value.__enter__.return_value = mock_executor_instance
-        stats = self.contoller.run()
+        self.contoller.run()
         mock_executor_class.assert_called_with(max_workers=2)
         mock_executor_instance.map.assert_called()
-        assert stats == mock_statistics

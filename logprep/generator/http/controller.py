@@ -3,74 +3,70 @@ This generator will parse example events, manipulate their timestamps and send t
 a defined output
 """
 
-import json
 import logging
 import time
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 
+from logprep.connector.http.output import HttpOutput
+from logprep.factory import Factory
 from logprep.generator.http.input import Input
-from logprep.generator.http.output import Output
-from logprep.generator.http.reporter import Reporter
+from logprep.util.logging import LogprepMPQueueListener, logqueue
+
+logger: Logger = logging.getLogger("Generator")
 
 
 class Controller:
     """
-    Controls the workflow of the generator by reading inputs, manipulating events and sending them to
-    outputs
+    Controls the workflow of the generator by reading inputs, manipulating events
+    and sending them to outputs
     """
 
     def __init__(self, **kwargs):
         self.config = kwargs
+        self.loghandler = None
+        self._setup_logging()
         self.thread_count: int = kwargs.get("thread_count")
-        self.use_reporter: bool = kwargs.get("report")
-        self.log: Logger = logging.getLogger("Generator")
         self.input: Input = Input(self.config)
-        if self.use_reporter:
-            self.reporter = Reporter(args=kwargs)
+        output_config = {
+            "generator_output": {
+                "type": "http_output",
+                "user": kwargs.get("user"),
+                "password": kwargs.get("password"),
+                "target_url": kwargs.get("target_url"),
+            }
+        }
+        self.output: HttpOutput = Factory.create(output_config)
 
-    def run(self):
+    def _setup_logging(self):
+        console_logger = logging.getLogger("console")
+        if self.config.get("loglevel"):
+            logging.getLogger().setLevel(self.config.get("loglevel"))
+        if console_logger.handlers:
+            console_handler = console_logger.handlers.pop()  # last handler is console
+            self.loghandler = LogprepMPQueueListener(logqueue, console_handler)
+            self.loghandler.start()
+
+    def run(self) -> str:
         """
         Iterate over all event classes, trigger their processing and count the return statistics
         """
-        self.log.info("Started Data Processing")
+        logger.info("Started Data Processing")
         self.input.reformat_dataset()
         run_time_start = time.perf_counter()
-        statistics = Counter()
         try:
-            self._generate_load(statistics)
+            self._generate_load()
         except KeyboardInterrupt:
-            self.log.info("Gracefully shutting down...")
+            logger.info("Gracefully shutting down...")
         self.input.clean_up_tempdir()
         run_duration = time.perf_counter() - run_time_start
-        if self.use_reporter:
-            self.reporter.set_run_duration(run_duration)
-            self.reporter.write_experiment_results()
-        stats = json.dumps(statistics, sort_keys=True, indent=4, separators=(",", ": "))
-        self.log.info("Completed with following http return code statistics: %s", stats)
-        self.log.info("Execution time: %f seconds", run_duration)
-        return statistics
+        stats = self.output.statistics
+        logger.info("Completed with following statistics: %s", stats)
+        logger.info("Execution time: %f seconds", run_duration)
+        if self.loghandler is not None:
+            self.loghandler.stop()
+        return stats
 
-    def _generate_load(self, statistics):
-        output = Output(self.config)
-        if self.thread_count == 1:
-            self._generate_with_main_process(output, statistics)
-            return
-        self._generate_with_multiple_threads(output, statistics)
-
-    def _generate_with_multiple_threads(self, output, statistics):
+    def _generate_load(self):
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
-            results = executor.map(output.send, self.input.load())
-            for stats in results:
-                self._update_statistics(statistics, stats)
-
-    def _generate_with_main_process(self, output, statistics):
-        for batch in self.input.load():
-            stats = output.send(batch)
-            self._update_statistics(statistics, stats)
-
-    def _update_statistics(self, statistics, new_statistics):
-        statistics.update(new_statistics)
-        if self.use_reporter:
-            self.reporter.update(new_statistics)
+            executor.map(self.output.store, self.input.load())

@@ -63,3 +63,10 @@ logprep only guaranties that one output has received data by calling the
    :undoc-members:
    :inherited-members:
    :noindex:
+
+.. automodule:: logprep.connector.http.output
+.. autoclass:: logprep.connector.http.output.HttpOutput.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:

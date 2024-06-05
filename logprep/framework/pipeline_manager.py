@@ -10,7 +10,7 @@ import multiprocessing.queues
 from attr import define, field
 
 from logprep.abc.component import Component
-from logprep.connector.http.input import HttpConnector
+from logprep.connector.http.input import HttpInput
 from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
@@ -81,10 +81,10 @@ class PipelineManager:
         """
         input_config = next(iter(configuration.input.values()))
         is_http_input = input_config.get("type") == "http_input"
-        if not is_http_input and HttpConnector.messages is not None:
+        if not is_http_input and HttpInput.messages is not None:
             return
         message_backlog_size = input_config.get("message_backlog_size", 15000)
-        HttpConnector.messages = multiprocessing.Queue(maxsize=message_backlog_size)
+        HttpInput.messages = multiprocessing.Queue(maxsize=message_backlog_size)
 
     def set_count(self, count: int):
         """Set the pipeline count.
