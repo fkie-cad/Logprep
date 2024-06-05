@@ -169,7 +169,8 @@ class FieldManager(Processor):
     def _overwrite_from_source_values(self, source_fields_values):
         lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
         flattened_source_fields = self._get_flatten_list(lists, not_lists)
-        return flattened_source_fields
+        ordered_list = self._get_ordered_flatten_list(flattened_source_fields, source_fields_values)
+        return ordered_list
 
     def _handle_missing_fields(self, event, rule, source_fields, field_values):
         if rule.ignore_missing_fields:
@@ -209,6 +210,24 @@ class FieldManager(Processor):
                 duplicates.append(field_value)
                 flatten_list.append(field_value)
         return flatten_list
+
+    @staticmethod
+    def _get_ordered_flatten_list(flatten_list, source_field_values):
+        ordered_flatten_list = []
+        flat_source_fields = []
+        duplicates = []
+        for item in source_field_values:
+            if isinstance(item, list):
+                flat_source_fields.extend(item)
+            else:
+                flat_source_fields.append(item)
+
+        for field_value in flat_source_fields:
+            if field_value not in duplicates:
+                duplicates.append(field_value)
+                if field_value in flatten_list:
+                    ordered_flatten_list.append(field_value)
+        return ordered_flatten_list
 
     @staticmethod
     def _filter_missing_fields(source_field_values, targets):

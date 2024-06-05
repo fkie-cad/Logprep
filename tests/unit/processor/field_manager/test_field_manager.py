@@ -187,7 +187,7 @@ test_cases = [  # testcase, rule, event, expected
             "field3": ["value5", "value6"],
             "new_field": ["i exist"],
         },
-        {"new_field": ["i exist", "value1", "value2", "value3", "value5", "value6", "value4"]},
+        {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
     ),
     (
         (
@@ -209,7 +209,7 @@ test_cases = [  # testcase, rule, event, expected
             "field3": ["value5", "value6", "value4"],
             "new_field": ["i exist"],
         },
-        {"new_field": ["i exist", "value1", "value2", "value3", "value5", "value6", "value4"]},
+        {"new_field": ["i exist", "value1", "value2", "value3", "value5", "value4", "value6"]},
     ),
     (
         (
@@ -232,7 +232,7 @@ test_cases = [  # testcase, rule, event, expected
             "field3": ["value5", "value6", "value4"],
             "new_field": ["i exist"],
         },
-        {"new_field": ["value1", "value2", "value3", "value5", "value6", "value4"]},
+        {"new_field": ["value1", "value2", "value3", "value5", "value4", "value6"]},
     ),
     (
         "real world example from documentation",
@@ -273,8 +273,8 @@ test_cases = [  # testcase, rule, event, expected
                     "127.0.0.1",
                     "fe89::",
                     "192.168.5.1",
-                    "180.22.66.3",
                     "8.8.8.8",
+                    "180.22.66.3",
                     "10.10.2.33",
                     "180.22.66.1",
                     "223.2.3.2",
