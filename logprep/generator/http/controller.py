@@ -27,7 +27,6 @@ class Controller:
         self.loghandler = None
         self._setup_logging()
         self.thread_count: int = kwargs.get("thread_count")
-        self.use_reporter: bool = kwargs.get("report")
         self.input: Input = Input(self.config)
         output_config = {
             "generator_output": {

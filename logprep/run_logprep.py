@@ -265,13 +265,6 @@ def generate_kafka(config, file):
     required=False,
     default="INFO",
 )
-@click.option(
-    "--report",
-    help="Whether or not detailed statistics with a markdown report should be generated or not.",
-    required=False,
-    default=True,
-    type=bool,
-)
 def generate_http(**kwargs):
     """
     Generates events based on templated sample files stored inside a dataset directory.
