@@ -23,6 +23,7 @@
 
 * add UCL into the Quickstart Setup
 * add logprep http output connector
+* add pseudonymization tools to logprep -> see: `logprep pseudo --help`
 
 ### Improvements
 
