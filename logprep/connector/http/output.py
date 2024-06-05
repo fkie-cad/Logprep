@@ -34,7 +34,7 @@ of the :code:`target_url`.
 .. security-best-practice::
    :title: Http Output Connector - SSL
 
-   TThis connector does not verify the SSL Context, which could lead to exposing sensitive data.
+   This connector does not verify the SSL Context, which could lead to exposing sensitive data.
 
 .. warning::
     The :code:`store_failed` method only counts the number of failed events and does not send them
