@@ -69,4 +69,4 @@ class Controller:
 
     def _generate_load(self):
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
-            results = executor.map(self.output.store, self.input.load())
+            executor.map(self.output.store, self.input.load())
