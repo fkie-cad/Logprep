@@ -291,7 +291,7 @@ class TestInput:
         expected_target = "/target-class-one"
         for target, events in self.input.load():
             assert target == expected_target
-            for target, event in events:
+            for event in events:
                 event_id = event.get("id")
                 assert event_id > previous_event_id
                 previous_event_id = event_id
@@ -326,7 +326,7 @@ class TestInput:
         self.input.reformat_dataset()
         target_event_ids = defaultdict(list)
         for target, events in self.input.load():
-            for target, event in events:
+            for event in events:
                 target_event_ids[target].append(event.get("id"))
         for target, event_ids in target_event_ids.items():
             is_sorted = all(a <= b for a, b in zip(event_ids, event_ids[1:]))
