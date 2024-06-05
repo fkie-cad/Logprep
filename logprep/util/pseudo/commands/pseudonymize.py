@@ -1,4 +1,5 @@
 import click
+
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 
 
@@ -7,6 +8,7 @@ from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 @click.argument("depseudo-key", type=str)
 @click.argument("string", type=str)
 def pseudonymize(analyst_key: str, depseudo_key: str, string: str):
+    """pseudonymize a string using the given keys."""
     encrypter = DualPKCS1HybridEncrypter()
     encrypter.load_public_keys(
         keyfile_analyst=f"{analyst_key}.crt",

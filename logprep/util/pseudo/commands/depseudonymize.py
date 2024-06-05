@@ -1,6 +1,6 @@
 import click
 
-from ..depseudonymizer.depseudonymizer import Depseudonymizer
+from logprep.util.pseudo.depseudonymizer.depseudonymizer import Depseudonymizer
 
 
 @click.command()
@@ -8,6 +8,7 @@ from ..depseudonymizer.depseudonymizer import Depseudonymizer
 @click.argument("depseudo-key", type=str)
 @click.argument("pseudo-string", type=str)
 def depseudonymize(analyst_key: str, depseudo_key: str, pseudo_string: str):
+    """depseudonymize a string using the given keys."""
     depseudo = Depseudonymizer(pseudo_string)
     keys = {}
     for key_file_name in analyst_key, depseudo_key:

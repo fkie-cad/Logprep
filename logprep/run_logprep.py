@@ -12,13 +12,13 @@ from colorama import Fore
 
 from logprep.generator.http.controller import Controller
 from logprep.generator.kafka.run_load_tester import LoadTester
-from logprep.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.helper import get_versions_string, print_fcolor
+from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.util.rule_dry_runner import DryRunner
 
 warnings.simplefilter("always", DeprecationWarning)
@@ -302,8 +302,8 @@ def print_config(configs: tuple[str], output) -> None:
 @cli.group(short_help="pseudonymization toolbox")
 def pseudo():
     """
-    Generate events offers two different options to create sample events that can be send to either
-    a kafka instance or a http endpoint.
+    The pseudo command group offers a set of commands to
+    generate keys, pseudonymize and depseudonymize
     """
 
 
