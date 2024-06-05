@@ -31,7 +31,6 @@ Processor Configuration
 
 import itertools
 from collections import namedtuple
-from typing import Any, List, Tuple
 
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -167,11 +166,14 @@ class FieldManager(Processor):
                     raise FieldExistsWarning(rule, event, [target_field])
 
     def _overwrite_from_source_values(self, source_fields_values):
-        lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
-        ordered_flattened_list = self._get_ordered_flatten_list(
-            source_fields_values, lists, not_lists
-        )
-        return ordered_flattened_list
+        duplicates = []
+        ordered_flatten_list = []
+        flat_source_fields = self._get_flatten_source_fields(source_fields_values)
+        for field_value in flat_source_fields:
+            if field_value not in duplicates:
+                duplicates.append(field_value)
+                ordered_flatten_list.append(field_value)
+        return ordered_flatten_list
 
     def _handle_missing_fields(self, event, rule, source_fields, field_values):
         if rule.ignore_missing_fields:
@@ -187,19 +189,6 @@ class FieldManager(Processor):
             return True
         return False
 
-    def _get_ordered_flatten_list(
-        self, source_fields_values, lists: List[List], not_lists: List[Any]
-    ) -> List:
-        duplicates = []
-        ordered_flatten_list = []
-        flat_source_fields = self._get_flatten_source_fields(source_fields_values)
-        for field_value in flat_source_fields:
-            if field_value not in duplicates:
-                duplicates.append(field_value)
-                if field_value in list(itertools.chain(*lists, not_lists)):
-                    ordered_flatten_list.append(field_value)
-        return ordered_flatten_list
-
     @staticmethod
     def _get_field_values(event, source):
         return [get_dotted_field_value(event, source_field) for source_field in source]
@@ -208,12 +197,6 @@ class FieldManager(Processor):
         missing_fields = [key for key, value in zip(source_fields, field_values) if value is None]
         error = BaseException(f"{self.name}: missing source_fields: {missing_fields}")
         return error
-
-    @staticmethod
-    def _separate_lists_form_other_types(field_values: List[Any]) -> Tuple[List[List], List[Any]]:
-        field_values_lists = list(filter(lambda x: isinstance(x, list), field_values))
-        field_values_not_list = list(filter(lambda x: not isinstance(x, list), field_values))
-        return field_values_lists, field_values_not_list
 
     @staticmethod
     def _get_flatten_source_fields(source_fields_values):
