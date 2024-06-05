@@ -12,6 +12,7 @@ from colorama import Fore
 
 from logprep.generator.http.controller import Controller
 from logprep.generator.kafka.run_load_tester import LoadTester
+from logprep.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
@@ -296,6 +297,19 @@ def print_config(configs: tuple[str], output) -> None:
         print(config.as_json(indent=2))
     else:
         print(config.as_yaml())
+
+
+@cli.group(short_help="pseudonymization toolbox")
+def pseudo():
+    """
+    Generate events offers two different options to create sample events that can be send to either
+    a kafka instance or a http endpoint.
+    """
+
+
+pseudo.add_command(cmd=generate_keys.generate, name="generate")
+pseudo.add_command(cmd=pseudonymize.pseudonymize, name="pseudonymize")
+pseudo.add_command(cmd=depseudonymize.depseudonymize, name="depseudonymize")
 
 
 def signal_handler(__: int, _) -> None:
