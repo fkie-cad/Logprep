@@ -162,7 +162,6 @@ class HttpOutput(Output):
 
     def store_custom(self, document: dict | tuple | list, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
-        document_count = 0
         if isinstance(document, (tuple, list)):
             request_data = self._encoder.encode_lines(document)
             document_count = len(document)
