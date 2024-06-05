@@ -326,7 +326,6 @@ class TestGeneratorCLI:
             events=None,
             shuffle=False,
             thread_count=1,
-            report=True,
             replace_timestamp=True,
             tag="loadtest",
             loglevel="INFO",
@@ -364,8 +363,6 @@ class TestGeneratorCLI:
                 "test-tag",
                 "--loglevel",
                 "DEBUG",
-                "--report",
-                "False",
             ],
         )
         assert result.exit_code == 0, result.stdout
@@ -378,7 +375,6 @@ class TestGeneratorCLI:
             events=5000,
             shuffle=False,
             thread_count=2,
-            report=False,
             replace_timestamp=False,
             tag="test-tag",
             loglevel="DEBUG",
