@@ -168,9 +168,10 @@ class FieldManager(Processor):
 
     def _overwrite_from_source_values(self, source_fields_values):
         lists, not_lists = self._separate_lists_form_other_types(source_fields_values)
-        flattened_source_fields = self._get_flatten_list(lists, not_lists)
-        ordered_list = self._get_ordered_flatten_list(flattened_source_fields, source_fields_values)
-        return ordered_list
+        ordered_flattened_list = self._get_ordered_flatten_list(
+            source_fields_values, lists, not_lists
+        )
+        return ordered_flattened_list
 
     def _handle_missing_fields(self, event, rule, source_fields, field_values):
         if rule.ignore_missing_fields:
@@ -185,6 +186,19 @@ class FieldManager(Processor):
             )
             return True
         return False
+
+    def _get_ordered_flatten_list(
+        self, source_fields_values, lists: List[List], not_lists: List[Any]
+    ) -> List:
+        duplicates = []
+        ordered_flatten_list = []
+        flat_source_fields = self._get_flatten_source_fields(source_fields_values)
+        for field_value in flat_source_fields:
+            if field_value not in duplicates:
+                duplicates.append(field_value)
+                if field_value in list(itertools.chain(*lists, not_lists)):
+                    ordered_flatten_list.append(field_value)
+        return ordered_flatten_list
 
     @staticmethod
     def _get_field_values(event, source):
@@ -202,32 +216,14 @@ class FieldManager(Processor):
         return field_values_lists, field_values_not_list
 
     @staticmethod
-    def _get_flatten_list(lists: List[List], not_lists: List[Any]) -> List:
-        duplicates = []
-        flatten_list = []
-        for field_value in list(itertools.chain(*lists, not_lists)):
-            if field_value not in duplicates:
-                duplicates.append(field_value)
-                flatten_list.append(field_value)
-        return flatten_list
-
-    @staticmethod
-    def _get_ordered_flatten_list(flatten_list, source_field_values):
-        ordered_flatten_list = []
+    def _get_flatten_source_fields(source_fields_values):
         flat_source_fields = []
-        duplicates = []
-        for item in source_field_values:
+        for item in source_fields_values:
             if isinstance(item, list):
                 flat_source_fields.extend(item)
             else:
                 flat_source_fields.append(item)
-
-        for field_value in flat_source_fields:
-            if field_value not in duplicates:
-                duplicates.append(field_value)
-                if field_value in flatten_list:
-                    ordered_flatten_list.append(field_value)
-        return ordered_flatten_list
+        return flat_source_fields
 
     @staticmethod
     def _filter_missing_fields(source_field_values, targets):
