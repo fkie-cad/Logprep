@@ -16,6 +16,7 @@
 * `requester` now writes `_requester_missing_field_warning` tag to event tags instead of `_requester_failure` in case of missing fields
 * `timestamp_differ` now writes `_timestamp_differ_missing_field_warning` tag to event tags instead of `_timestamp_differ_failure` in case of missing fields
 * `timestamper` now writes `_timestamper_missing_field_warning` tag to event tags instead of `_timestamper_failure` in case of missing fields
+* rename `--thread_count` parameter to `--thread-count` in http generator
 
 ### Features
 
@@ -37,7 +38,6 @@
 
 ### Bugfix
 
-* rename `--thread_count` parameter to `--thread-count` in http generator
 * make `--username` and `--password` parameters optional in http generator
 
 ## 11.3.0
