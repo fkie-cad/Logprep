@@ -1,5 +1,44 @@
 """
-Output Module that takes a batch of events and sends them to a http endpoint with given credentials
+HTTPOutput
+==========
+
+A http output connector that sends http post requests to paths under a given endpoint
+
+
+HTTP Output Connector Config Example
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+An example config file would look like:
+
+..  code-block:: yaml
+    :linenos:
+
+    output:
+      myhttpoutput:
+        type: http_output
+        target_url: http://the.target.url:8080
+        username: user
+        password: password
+
+The :code:`store` method of this connector can be fed with a :code:`dictionary` or a :code:`tuple`.
+If a :code:`tuple` is passed, the first element is the target path and
+the second element is the event or a list of events.
+If a :code:`dictionary` is passed, the event will be send to the configured root
+of the :code:`target_url`.
+
+.. security-best-practice::
+   :title: Http Output Connector - Usage
+
+   This Connector is currently only used in the log generator and does not have a stable interface.
+   Do not use this in production.
+
+.. security-best-practice::
+   :title: Http Output Connector - SSL
+
+   TThis connector does not verify the SSL Context, which could lead to exposing sensitive data.
+
+.. warning::
+    The :code:`store_failed` method only counts the number of failed events and does not send them
+    to a dead letter queue.
 """
 
 import json
@@ -110,14 +149,7 @@ class HttpOutput(Output):
                 stats[key] = int(sample.value)
         return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
-    def store_custom(self, document: dict | tuple | list, target: str) -> None:
-        """
-        Send a batch of events to an endpoint and return the received status code times the number
-        of events.
-        """
-        self._send_post_request(target, document)
-
-    def store(self, document: tuple[str, dict] | dict) -> None:
+    def store(self, document: tuple[str, dict | list[dict]] | dict) -> None:
         if isinstance(document, tuple):
             target, document = document
             target = f"{self._config.target_url}{target}"
@@ -128,17 +160,17 @@ class HttpOutput(Output):
     def store_failed(self, error_message, document_received, document_processed) -> None:
         self.metrics.number_of_failed_events += 1
 
-    def _send_post_request(self, event_target: str, documents: dict | tuple | list) -> dict:
+    def store_custom(self, document: dict | tuple | list, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
         document_count = 0
-        if isinstance(documents, (tuple, list)):
-            request_data = self._encoder.encode_lines(documents)
-            document_count = len(documents)
-        elif isinstance(documents, dict):
-            request_data = self._encoder.encode(documents)
+        if isinstance(document, (tuple, list)):
+            request_data = self._encoder.encode_lines(document)
+            document_count = len(document)
+        elif isinstance(document, dict):
+            request_data = self._encoder.encode(document)
             document_count = 1
         else:
-            error = TypeError(f"Document type {type(documents)} is not supported")
+            error = TypeError(f"Document type {type(document)} is not supported")
             self.metrics.number_of_failed_events += 1
             logger.error(str(error))
             return
@@ -146,7 +178,7 @@ class HttpOutput(Output):
             try:
                 logger.debug(request_data)
                 response = requests.post(
-                    url=event_target,
+                    url=target,
                     headers=self._headers,
                     verify=False,
                     auth=(self.user, self.password),
@@ -167,7 +199,7 @@ class HttpOutput(Output):
                     self.input_connector.batch_finished_callback()
             except requests.RequestException as error:
                 logger.error("Failed to send event: %s", str(error))
-                logger.debug("Failed event: %s", documents)
+                logger.debug("Failed event: %s", document)
                 self.metrics.number_of_failed_events += document_count
                 self.metrics.number_of_http_requests += 1
                 if not isinstance(error, requests.exceptions.HTTPError):

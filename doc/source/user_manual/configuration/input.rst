@@ -39,7 +39,7 @@ Input
    :noindex:
 
 .. automodule:: logprep.connector.http.input
-.. autoclass:: logprep.connector.http.input.HttpConnector.Config
+.. autoclass:: logprep.connector.http.input.HttpInput.Config
    :members:
    :undoc-members:
    :inherited-members:
