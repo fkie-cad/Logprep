@@ -108,8 +108,7 @@ class HttpOutput(Output):
                     else sample.labels.get("description")
                 )
                 stats[key] = int(sample.value)
-        stats = json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
-        return stats
+        return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
     def store_custom(self, document: dict | tuple | list, target: str) -> None:
         """
