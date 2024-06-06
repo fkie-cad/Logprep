@@ -18,6 +18,7 @@ from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.helper import get_versions_string, print_fcolor
+from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.util.rule_dry_runner import DryRunner
 
 warnings.simplefilter("always", DeprecationWarning)
@@ -296,6 +297,19 @@ def print_config(configs: tuple[str], output) -> None:
         print(config.as_json(indent=2))
     else:
         print(config.as_yaml())
+
+
+@cli.group(short_help="pseudonymization toolbox")
+def pseudo():
+    """
+    The pseudo command group offers a set of commands to
+    generate keys, pseudonymize and depseudonymize
+    """
+
+
+pseudo.add_command(cmd=generate_keys.generate, name="generate")
+pseudo.add_command(cmd=pseudonymize.pseudonymize, name="pseudonymize")
+pseudo.add_command(cmd=depseudonymize.depseudonymize, name="depseudonymize")
 
 
 def signal_handler(__: int, _) -> None:
