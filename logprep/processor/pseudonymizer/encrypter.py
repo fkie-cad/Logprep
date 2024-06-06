@@ -63,21 +63,24 @@ class DualPKCS1HybridEncrypter(Encrypter):
 
         input_str_enc = aes_key_input_str.encrypt(input_str.encode("utf-8"))
 
-        # encrpyt session key with depseudo key
+        # encrpyt session key with AES depseudo key
         depseudo_key = get_random_bytes(16)
         aes_key_depseudo = AES.new(depseudo_key, AES.MODE_GCM)
         session_key_enc = aes_key_depseudo.encrypt(session_key)
 
-        # encrypt aes_key_depseudo with depseudo public key
-
-        cipher_rsa_analyst = PKCS1_OAEP.new(self._pubkey_analyst)
+        # encrypt AES depseudo key with depseudo public key
+        cipher_rsa_analyst = PKCS1_OAEP.new(self._pubkey_depseudo)
         depseudo_key_enc = cipher_rsa_analyst.encrypt(depseudo_key)
 
-        cipher_rsa_depseudo = PKCS1_OAEP.new(self._pubkey_depseudo)
+        # encrypt encrypted session key with analyst public key
+        cipher_rsa_depseudo = PKCS1_OAEP.new(self._pubkey_analyst)
         session_key_enc_enc = cipher_rsa_depseudo.encrypt(session_key_enc)
-        output = (
+
+        # concatenate, encode, and return
+        return (
             f'{base64.b64encode(session_key_enc_enc).decode("ascii")}||'
+            f'{base64.b64encode(aes_key_depseudo.nonce).decode("ascii")}||'
             f'{base64.b64encode(depseudo_key_enc).decode("ascii")}||'
+            f'{base64.b64encode(aes_key_input_str.nonce).decode("ascii")}||'
             f'{base64.b64encode(input_str_enc).decode("ascii")}'
         )
-        return output

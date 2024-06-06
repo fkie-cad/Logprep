@@ -44,19 +44,29 @@ class TestDepseudonymizer:
             pubkey_depseudo=pubkey_depseudo,
         )
         assert encrypted_value != "1"
-        # split key from pseudonym
-        session_key_enc_enc, depseudo_key_enc, input_str_enc = [
-            base64.b64decode(encoded) for encoded in encrypted_value.split("||")
-        ]
-        # get session key and depseudo key
-        session_key_enc: bytes = cipher_rsa_depseudo.decrypt(session_key_enc_enc)
-        depseudo_key: bytes = cipher_rsa_analyst.decrypt(depseudo_key_enc)
-        aes_key = AES.new(depseudo_key, AES.MODE_GCM)
+        # split and decode encrypted value
+        (
+            session_key_enc_enc,
+            aes_key_depseudo_nonce,
+            depseudo_key_enc,
+            aes_key_input_str_nonce,
+            input_str_enc,
+        ) = [base64.b64decode(encoded) for encoded in encrypted_value.split("||")]
+
+        # decrypt encrypted encrypted session key with analyst private key
+        session_key_enc: bytes = cipher_rsa_analyst.decrypt(session_key_enc_enc)
+
+        # decrypt AES depseudo key with depseudo private key
+        depseudo_key: bytes = cipher_rsa_depseudo.decrypt(depseudo_key_enc)
+
+        # decrpyt session key with AES depseudo key
+        aes_key = AES.new(depseudo_key, AES.MODE_GCM, aes_key_depseudo_nonce)
         session_key: bytes = aes_key.decrypt(session_key_enc)
 
-        # decrypt ciphertext
-        aes_key_input_str = AES.new(session_key, AES.MODE_GCM)
+        # decrypt ciphertext with AES session key
+        aes_key_input_str = AES.new(session_key, AES.MODE_GCM, aes_key_input_str_nonce)
         decrypted_value: str = aes_key_input_str.decrypt(input_str_enc).decode("utf-8")
+
         assert decrypted_value == "1"
 
     def test_depseudonymizer_populates_properties(self, analyst_keys, depseudo_keys):
