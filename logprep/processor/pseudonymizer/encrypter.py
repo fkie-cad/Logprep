@@ -65,7 +65,7 @@ class DualPKCS1HybridEncrypter(Encrypter):
         cipher_rsa_depseudo = PKCS1_OAEP.new(self._pubkey_depseudo)
         enc_session_key = cipher_rsa_depseudo.encrypt(enc_session_key)
 
-        cipher_aes = AES.new(session_key, AES.MODE_GCM)  # nosemgrep
+        cipher_aes = AES.new(session_key, AES.MODE_CTR)  # nosemgrep
         ciphertext = cipher_aes.encrypt(input_str.encode("utf-8"))
 
         output_bytes = enc_session_key + cipher_aes.nonce + ciphertext
