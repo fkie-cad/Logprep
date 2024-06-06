@@ -18,6 +18,7 @@
 * `timestamper` now writes `_timestamper_missing_field_warning` tag to event tags instead of `_timestamper_failure` in case of missing fields
 * rename `--thread_count` parameter to `--thread-count` in http generator
 * removed `--report` parameter and feature from http generator
+* when using `extend_target_list` in the `field manager`the ordering of the given source fields is now preserved 
 
 ### Features
 
