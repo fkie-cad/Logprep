@@ -1,3 +1,4 @@
+# pylint: disable=missing-docstring
 from logprep.util.pseudo.keygenerator.generate_rsa_key import generate_keys
 
 

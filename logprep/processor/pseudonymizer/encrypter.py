@@ -43,7 +43,7 @@ class DualPKCS1HybridEncrypter(Encrypter):
     def encrypt(self, input_str: str) -> str:
         """Encrypt a string using hybrid encryption.
 
-        The input string is encrypted with AES in CTR mode using a random
+        The input string is encrypted with AES in GCM mode using a random
         session key. The session key is then encrypted using PKCS#1 OAEP (RSA)
         with the public keys of the analyst and the de-pseudonymizer. This
         required the latter RSA key to be lager than the former.
@@ -57,16 +57,27 @@ class DualPKCS1HybridEncrypter(Encrypter):
         if not self._pubkey_analyst or not self._pubkey_depseudo:
             raise ValueError("Cannot encrypt because public keys are not loaded")
 
+        # encrypt input string with AES session key
         session_key = get_random_bytes(16)
+        aes_key_input_str = AES.new(session_key, AES.MODE_GCM)
+
+        input_str_enc = aes_key_input_str.encrypt(input_str.encode("utf-8"))
+
+        # encrpyt session key with depseudo key
+        depseudo_key = get_random_bytes(16)
+        aes_key_depseudo = AES.new(depseudo_key, AES.MODE_GCM)
+        session_key_enc = aes_key_depseudo.encrypt(session_key)
+
+        # encrypt aes_key_depseudo with depseudo public key
 
         cipher_rsa_analyst = PKCS1_OAEP.new(self._pubkey_analyst)
-        enc_session_key = cipher_rsa_analyst.encrypt(session_key)
+        depseudo_key_enc = cipher_rsa_analyst.encrypt(depseudo_key)
 
         cipher_rsa_depseudo = PKCS1_OAEP.new(self._pubkey_depseudo)
-        enc_session_key = cipher_rsa_depseudo.encrypt(enc_session_key)
-
-        cipher_aes = AES.new(session_key, AES.MODE_CTR)  # nosemgrep
-        ciphertext = cipher_aes.encrypt(input_str.encode("utf-8"))
-
-        output_bytes = enc_session_key + cipher_aes.nonce + ciphertext
-        return base64.b64encode(output_bytes).decode("ascii")
+        session_key_enc_enc = cipher_rsa_depseudo.encrypt(session_key_enc)
+        output = (
+            f'{base64.b64encode(session_key_enc_enc).decode("ascii")}||'
+            f'{base64.b64encode(depseudo_key_enc).decode("ascii")}||'
+            f'{base64.b64encode(input_str_enc).decode("ascii")}'
+        )
+        return output
