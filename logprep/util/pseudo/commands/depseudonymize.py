@@ -1,3 +1,5 @@
+"""Command line tool to depseudonymize a string using the given keys."""
+
 import click
 
 from logprep.util.pseudo.depseudonymizer.depseudonymizer import Depseudonymizer

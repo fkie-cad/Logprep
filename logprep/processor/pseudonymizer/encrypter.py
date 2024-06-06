@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
+
 from logprep.util.getter import GetterFactory
 
 
@@ -39,10 +40,7 @@ class DualPKCS1HybridEncrypter(Encrypter):
         pub_key_depseudo_str = GetterFactory.from_string(keyfile_depseudo).get()
         self._pubkey_depseudo = RSA.import_key(pub_key_depseudo_str)
 
-    def encrypt(
-        self,
-        input_str: str,
-    ) -> str:
+    def encrypt(self, input_str: str) -> str:
         """Encrypt a string using hybrid encryption.
 
         The input string is encrypted with AES in CTR mode using a random
@@ -67,7 +65,7 @@ class DualPKCS1HybridEncrypter(Encrypter):
         cipher_rsa_depseudo = PKCS1_OAEP.new(self._pubkey_depseudo)
         enc_session_key = cipher_rsa_depseudo.encrypt(enc_session_key)
 
-        cipher_aes = AES.new(session_key, AES.MODE_CTR)  # nosemgrep
+        cipher_aes = AES.new(session_key, AES.MODE_GCM)  # nosemgrep
         ciphertext = cipher_aes.encrypt(input_str.encode("utf-8"))
 
         output_bytes = enc_session_key + cipher_aes.nonce + ciphertext

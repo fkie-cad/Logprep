@@ -128,3 +128,47 @@ To find out more about the usage of the http event generator execute:
 
     logprep generate http --help
 
+
+Pseudonymization Tools
+----------------------
+
+Logprep provides tools to pseudonymize and depseudonymize values. This can be useful for testing
+and debugging purposes. But this can also be used to depseudonymize values pseudonymized by
+Logpreps :code:`Pseudonymizer` Processor.
+
+These tools can be used to pseudonymize given strings using the same method as used in Logprep
+and provides functionality to depseudonymize values using a pair of keys. 
+
+generate keys
+^^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    logprep pseudo generate -f analyst 1024
+    logprep pseudo generate -f depseudo 2048
+
+this will generate four files to pseudonymize in the next step.
+the depseudo key has to be longer than the analyst key due to the hash padding involved in the procedure.
+
+* get help with :code:`logprep pseudo generate --help`
+
+pseudonymize
+^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    logprep pseudo pseudonymize analyst depseudo mystring
+
+This will pseudonymize the provided string using the analyst and depseudo keys.
+ get help with :code:`logperp pseudo pseudonymize --help`
+
+depseudonymize
+^^^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    python ./pseudo.py depseudonymize analyst depseudo <output from above>
+
+This will depseudonymize the provided string using the analyst and depseudo keys.  
+  
+* get help with :code:`logprep pseudo depseudonymize --help`
