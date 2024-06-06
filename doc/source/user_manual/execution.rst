@@ -167,7 +167,7 @@ depseudonymize
 
 .. code-block:: bash
 
-    python ./pseudo.py depseudonymize analyst depseudo <output from above>
+    logprep pseudo depseudonymize analyst depseudo <output from above>
 
 This will depseudonymize the provided string using the analyst and depseudo keys.  
   
