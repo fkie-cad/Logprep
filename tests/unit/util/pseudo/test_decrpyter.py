@@ -7,7 +7,6 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 
 from logprep.util.pseudo.decrypter import (
-    Decrypter,
     DecrypterError,
     DualPKCS1HybridCTRDecrypter,
     DualPKCS1HybridGCMDecrypter,
