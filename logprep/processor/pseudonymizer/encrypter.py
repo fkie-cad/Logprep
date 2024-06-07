@@ -13,17 +13,13 @@ from logprep.util.getter import GetterFactory
 class Encrypter(ABC):
     """Base class to encrypt strings into Base64-encoded ciphertexts."""
 
-    @abstractmethod
-    def encrypt(self, input_str: str) -> str:
-        """Encrypt a string into a Base64-encoded ciphertext."""
-
-
-class DualPKCS1HybridEncrypter(Encrypter):
-    """Hybrid encryption that encrypts a string with AES and dual PKCS#1"""
-
     def __init__(self):
         self._pubkey_analyst = None
         self._pubkey_depseudo = None
+
+    @abstractmethod
+    def encrypt(self, input_str: str) -> str:
+        """Encrypt a string into a Base64-encoded ciphertext."""
 
     def load_public_keys(self, keyfile_analyst: str, keyfile_depseudo: str):
         """Load the two required RSA public keys from files.
@@ -40,19 +36,26 @@ class DualPKCS1HybridEncrypter(Encrypter):
         pub_key_depseudo_str = GetterFactory.from_string(keyfile_depseudo).get()
         self._pubkey_depseudo = RSA.import_key(pub_key_depseudo_str)
 
+
+class DualPKCS1HybridGCMEncrypter(Encrypter):
+    """Hybrid encryption that encrypts a string with AES in GCM Mode and dual PKCS#1"""
+
     def encrypt(self, input_str: str) -> str:
         """Encrypt a string using hybrid encryption.
 
         The input string is encrypted with AES in GCM mode using a random
-        session key. The session key is then encrypted using PKCS#1 OAEP (RSA)
-        with the public keys of the analyst and the de-pseudonymizer. This
-        required the latter RSA key to be lager than the former.
+        session key. The session key is then encrypted with a depseudo AES key
+        in GCM mode. The depseudo key is then encrypted with the public key
+        of the analyst and the encrypted session key is encrypted with the
+        public key of the depseudonymizer personel. This decouples the analyst
+        key length from the depseudo key length.
 
         Returns
         -------
         str
             String representation of the Base64-encoded concatenation of the
-            double-encrypted session key, the AES nonce, and the AES ciphertext
+            double-encrypted session key, the depseudo key AES nonce, the encrypted
+            depseudo key, the AES nonce of the session key and the AES ciphertext
         """
         if not self._pubkey_analyst or not self._pubkey_depseudo:
             raise ValueError("Cannot encrypt because public keys are not loaded")
@@ -83,3 +86,37 @@ class DualPKCS1HybridEncrypter(Encrypter):
             + aes_key_input_str.nonce
             + input_str_enc
         ).decode("ascii")
+
+
+class DualPKCS1HybridCTREncrypter(Encrypter):
+    """Hybrid encryption that encrypts a string with AES in CTR mode and dual PKCS#1"""
+
+    def encrypt(self, input_str: str) -> str:
+        """Encrypt a string using hybrid encryption.
+
+        The input string is encrypted with AES in CTR mode using a random
+        session key. The session key is then encrypted using PKCS#1 OAEP (RSA)
+        with the public keys of the analyst and the de-pseudonymizer. This
+        required the latter RSA key to be lager than the former.
+
+        Returns
+        -------
+        str
+            String representation of the Base64-encoded concatenation of the
+            double-encrypted session key, the AES nonce, and the AES ciphertext
+        """
+        if not self._pubkey_analyst or not self._pubkey_depseudo:
+            raise ValueError("Cannot encrypt because public keys are not loaded")
+
+        session_key = get_random_bytes(16)
+
+        cipher_rsa_analyst = PKCS1_OAEP.new(self._pubkey_analyst)
+        enc_session_key = cipher_rsa_analyst.encrypt(session_key)
+
+        cipher_rsa_depseudo = PKCS1_OAEP.new(self._pubkey_depseudo)
+        enc_session_key = cipher_rsa_depseudo.encrypt(enc_session_key)
+
+        cipher_aes = AES.new(session_key, AES.MODE_CTR)  # nosemgrep
+        ciphertext = cipher_aes.encrypt(input_str.encode("utf-8"))
+
+        return base64.b64encode(enc_session_key + cipher_aes.nonce + ciphertext).decode("ascii")

@@ -6,10 +6,14 @@ import pytest
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 
-from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
+from logprep.processor.pseudonymizer.encrypter import (
+    DualPKCS1HybridCTREncrypter,
+    DualPKCS1HybridGCMEncrypter,
+)
 from logprep.util.pseudo.depseudonymizer.depseudonymizer import (
+    Decrypter,
     DepseudonymizeError,
-    Depseudonymizer,
+    DualPKCS1HybridGCMDecrypter,
 )
 from logprep.util.pseudo.keygenerator.generate_rsa_key import generate_keys
 
@@ -24,28 +28,36 @@ def get_depseudo_keys():
     return generate_keys(key_length=2048)
 
 
-def encrypt(plaintext, pubkey_analyst, pubkey_depseudo):
+def encrypt_ctr_mode(plaintext, pubkey_analyst, pubkey_depseudo):
 
-    encrypter = DualPKCS1HybridEncrypter()
+    encrypter = DualPKCS1HybridCTREncrypter()
     encrypter._pubkey_analyst = RSA.import_key(pubkey_analyst.decode("utf-8"))
     encrypter._pubkey_depseudo = RSA.import_key(pubkey_depseudo.decode("utf-8"))
     return encrypter.encrypt(plaintext)
 
 
-class TestDepseudonymizer:
+def encrypt_gcm_mode(plaintext, pubkey_analyst, pubkey_depseudo):
+
+    encrypter = DualPKCS1HybridGCMEncrypter()
+    encrypter._pubkey_analyst = RSA.import_key(pubkey_analyst.decode("utf-8"))
+    encrypter._pubkey_depseudo = RSA.import_key(pubkey_depseudo.decode("utf-8"))
+    return encrypter.encrypt(plaintext)
+
+
+class TestDepseudonymizerGCMEncryption:
     def test_depseudonymize_manual(self, analyst_keys, depseudo_keys):
         privkey_analyst, pubkey_analyst = analyst_keys
         privkey_depseudo, pubkey_depseudo = depseudo_keys
         cipher_rsa_analyst = PKCS1_OAEP.new(RSA.import_key(privkey_analyst.decode("utf-8")))
         cipher_rsa_depseudo = PKCS1_OAEP.new(RSA.import_key(privkey_depseudo.decode("utf-8")))
-        encrypted_value = encrypt(
+        encrypted_value = encrypt_gcm_mode(
             plaintext="1",
             pubkey_analyst=pubkey_analyst,
             pubkey_depseudo=pubkey_depseudo,
         )
         assert encrypted_value != "1"
         # split and decode encrypted value
-        encrypted_value = base64.b64decode(encrypted_value)
+        encrypted_value: bytes = base64.b64decode(encrypted_value)
         session_key_enc_enc = encrypted_value[:128]
         aes_key_depseudo_nonce = encrypted_value[128:144]
         depseudo_key_enc = encrypted_value[144:400]
@@ -71,13 +83,13 @@ class TestDepseudonymizer:
     def test_depseudonymizer_populates_properties(self, analyst_keys, depseudo_keys):
         _, pubkey_analyst = analyst_keys
         _, pubkey_depseudo = depseudo_keys
-        encrypted_value = encrypt(
+        encrypted_value = encrypt_gcm_mode(
             plaintext="1",
             pubkey_analyst=pubkey_analyst,
             pubkey_depseudo=pubkey_depseudo,
         )
 
-        depseudo = Depseudonymizer(encrypted_value)
+        depseudo = DualPKCS1HybridGCMDecrypter(encrypted_value)
         encrypted_value_b64decoded = base64.b64decode(encrypted_value)
         assert depseudo.session_key_enc_enc == encrypted_value_b64decoded[:128]
         assert depseudo.aes_key_depseudo_nonce == encrypted_value_b64decoded[128:144]
@@ -90,31 +102,31 @@ class TestDepseudonymizer:
     ):
         _, pubkey_analyst = analyst_keys
         _, pubkey_depseudo = depseudo_keys
-        encrypted_value = encrypt(
+        encrypted_value = encrypt_gcm_mode(
             plaintext="1",
             pubkey_analyst=pubkey_analyst,
             pubkey_depseudo=pubkey_depseudo,
         )
 
-        depseudo = Depseudonymizer(encrypted_value)
+        depseudo = DualPKCS1HybridGCMDecrypter(encrypted_value)
         with pytest.raises(DepseudonymizeError, match=r"No depseudo key"):
-            depseudo.depseudonymize()
+            depseudo.decrypt()
 
     def test_depseudonymizer_depseudonymize_raises_if_no_analyst_key(
         self, analyst_keys, depseudo_keys
     ):
         _, pubkey_analyst = analyst_keys
         privkey_depseudo, pubkey_depseudo = depseudo_keys
-        encrypted_value = encrypt(
+        encrypted_value = encrypt_gcm_mode(
             plaintext="1",
             pubkey_analyst=pubkey_analyst,
             pubkey_depseudo=pubkey_depseudo,
         )
 
-        depseudo = Depseudonymizer(encrypted_value)
+        depseudo = DualPKCS1HybridGCMDecrypter(encrypted_value)
         depseudo.depseudo_key = privkey_depseudo.decode("utf-8")
         with pytest.raises(DepseudonymizeError, match=r"No analyst key"):
-            depseudo.depseudonymize()
+            depseudo.decrypt()
 
     @pytest.mark.parametrize(
         "plaintext",
@@ -136,13 +148,13 @@ class TestDepseudonymizer:
     def test_depseudonymizer_depseudonymize_messages(self, analyst_keys, depseudo_keys, plaintext):
         privkey_analyst, pubkey_analyst = analyst_keys
         privkey_depseudo, pubkey_depseudo = depseudo_keys
-        encrypted_value = encrypt(
+        encrypted_value = encrypt_gcm_mode(
             plaintext=plaintext,
             pubkey_analyst=pubkey_analyst,
             pubkey_depseudo=pubkey_depseudo,
         )
 
-        depseudo = Depseudonymizer(encrypted_value)
+        depseudo = DualPKCS1HybridGCMDecrypter(encrypted_value)
         depseudo.depseudo_key = privkey_depseudo.decode("utf-8")
         depseudo.analyst_key = privkey_analyst.decode("utf-8")
-        assert depseudo.depseudonymize() == plaintext
+        assert depseudo.decrypt() == plaintext

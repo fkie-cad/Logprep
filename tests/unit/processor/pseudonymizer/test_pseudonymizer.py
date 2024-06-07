@@ -10,6 +10,10 @@ from pathlib import Path
 import pytest
 
 from logprep.factory import Factory
+from logprep.processor.pseudonymizer.encrypter import (
+    DualPKCS1HybridCTREncrypter,
+    DualPKCS1HybridGCMEncrypter,
+)
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/mock_external/tld_list.dat"
@@ -1051,3 +1055,13 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
         assert "_pseudonymizer_missing_field_warning" in event.get("tags", [])
         assert len(extra_output) == 1, "only ONE pseudonym is set"
+
+    @pytest.mark.parametrize(
+        "mode, encrypter_class",
+        [("CTR", DualPKCS1HybridCTREncrypter), ("GCM", DualPKCS1HybridGCMEncrypter)],
+    )
+    def test_uses_encrypter(self, mode, encrypter_class):
+        config = deepcopy(self.CONFIG)
+        config["mode"] = mode
+        object_with_encrypter = Factory.create({"pseudonymizer": config})
+        assert isinstance(object_with_encrypter._encrypter, encrypter_class)

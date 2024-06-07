@@ -1,6 +1,7 @@
 """module to depseudonymize"""
 
 import base64
+from abc import abstractmethod
 from dataclasses import dataclass
 
 from Crypto.Cipher import AES, PKCS1_OAEP
@@ -13,7 +14,7 @@ class DepseudonymizeError(Exception):
 
 
 @dataclass
-class Depseudonymizer:
+class Decrypter:
     """class to depseudonymize a pseudonymized string
 
     Parameters
@@ -33,50 +34,6 @@ class Depseudonymizer:
 
     def __post_init__(self) -> None:
         self.pseudonymized_string = base64.b64decode(self.pseudonymized_string)
-
-    @property
-    def session_key_enc_enc(self) -> bytes:
-        """the double encrypted session key
-
-        Returns
-        -------
-        bytes
-            the first 16 bytes of the pseudonymized_string
-        """
-        return self.pseudonymized_string[:128]
-
-    @property
-    def depseudo_key_enc(self) -> bytes:
-        """the encrypted depseudo key
-
-        Returns
-        -------
-        bytes
-            the first 16 bytes of the pseudonymized_string
-        """
-        return self.pseudonymized_string[144:400]
-
-    @property
-    def aes_key_depseudo_nonce(self) -> bytes:
-        """the cipher nonce
-
-        Returns
-        -------
-        bytes
-            The 2 bytes after the session key
-        """
-        return self.pseudonymized_string[128:144]
-
-    @property
-    def aes_key_input_str_nonce(self) -> bytes:
-        """the cipher nonce
-
-        Returns
-        -------
-        bytes
-            The 2 bytes after the session key
-        """
-        return self.pseudonymized_string[400:416]
 
     @property
     def ciphertext(self) -> bytes:
@@ -135,7 +92,60 @@ class Depseudonymizer:
         """
         self._analyst_key = RSA.import_key(analyst_key)
 
-    def depseudonymize(self) -> str:
+    @abstractmethod
+    def decrypt(self) -> str:
+        """abstract method to decrypt the pseudonymized string"""
+
+
+@dataclass
+class DualPKCS1HybridGCMDecrypter(Decrypter):
+    """class to depseudonymize a pseudonymized string in GCM mode"""
+
+    @property
+    def session_key_enc_enc(self) -> bytes:
+        """the double encrypted session key
+
+        Returns
+        -------
+        bytes
+            the first 16 bytes of the pseudonymized_string
+        """
+        return self.pseudonymized_string[:128]
+
+    @property
+    def depseudo_key_enc(self) -> bytes:
+        """the encrypted depseudo key
+
+        Returns
+        -------
+        bytes
+            the first 16 bytes of the pseudonymized_string
+        """
+        return self.pseudonymized_string[144:400]
+
+    @property
+    def aes_key_depseudo_nonce(self) -> bytes:
+        """the cipher nonce
+
+        Returns
+        -------
+        bytes
+            The 2 bytes after the session key
+        """
+        return self.pseudonymized_string[128:144]
+
+    @property
+    def aes_key_input_str_nonce(self) -> bytes:
+        """the cipher nonce
+
+        Returns
+        -------
+        bytes
+            The 2 bytes after the session key
+        """
+        return self.pseudonymized_string[400:416]
+
+    def decrypt(self) -> str:
         """depseudonymizes after setting the depseudo and analyst keys
 
         Returns
