@@ -2,7 +2,7 @@
 
 import click
 
-from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridCTREncrypter
+from logprep.util.pseudo.commands.encrypter import DualPKCS1HybridCTREncrypter
 
 
 @click.command()

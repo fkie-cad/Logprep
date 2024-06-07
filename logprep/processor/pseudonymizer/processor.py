@@ -56,15 +56,15 @@ from urlextract import URLExtract
 from logprep.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.processor.pseudonymizer.encrypter import (
-    DualPKCS1HybridCTREncrypter,
-    DualPKCS1HybridGCMEncrypter,
-    Encrypter,
-)
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.pseudo.commands.encrypter import (
+    DualPKCS1HybridCTREncrypter,
+    DualPKCS1HybridGCMEncrypter,
+    Encrypter,
+)
 from logprep.util.validators import list_of_urls_validator
 
 

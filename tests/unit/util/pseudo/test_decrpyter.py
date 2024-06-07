@@ -6,7 +6,7 @@ import pytest
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 
-from logprep.processor.pseudonymizer.encrypter import (
+from logprep.util.pseudo.commands.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
 )
