@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from logprep.factory import Factory
-from logprep.util.pseudo.commands.encrypter import (
+from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
 )

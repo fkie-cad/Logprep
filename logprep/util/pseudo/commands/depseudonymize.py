@@ -2,16 +2,29 @@
 
 import click
 
-from logprep.util.pseudo.depseudonymizer.depseudonymizer import Decrypter
+from logprep.util.pseudo.decrypter import (
+    DualPKCS1HybridCTRDecrypter,
+    DualPKCS1HybridGCMDecrypter,
+)
 
 
 @click.command()
 @click.argument("analyst-key", type=str)
 @click.argument("depseudo-key", type=str)
 @click.argument("pseudo-string", type=str)
-def depseudonymize(analyst_key: str, depseudo_key: str, pseudo_string: str):
+@click.option(
+    "--mode",
+    type=click.Choice(["gcm", "ctr"]),
+    default="ctr",
+    help="The mode to use for decryption",
+)
+def depseudonymize(analyst_key: str, depseudo_key: str, pseudo_string: str, mode: str):
     """depseudonymize a string using the given keys."""
-    depseudo = Decrypter(pseudo_string)
+    depseudo = (
+        DualPKCS1HybridGCMDecrypter(pseudo_string)
+        if mode == "gcm"
+        else DualPKCS1HybridCTRDecrypter(pseudo_string)
+    )
     keys = {}
     for key_file_name in analyst_key, depseudo_key:
         with open(f"{key_file_name}.key", "r", encoding="utf8") as key_file:

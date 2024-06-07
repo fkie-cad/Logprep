@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 from Crypto.PublicKey import RSA
 
-from logprep.util.pseudo.commands.encrypter import (
+from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
 )

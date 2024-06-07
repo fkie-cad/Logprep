@@ -9,7 +9,7 @@ from Crypto.Cipher.PKCS1_OAEP import PKCS1OAEP_Cipher
 from Crypto.PublicKey import RSA
 
 
-class DepseudonymizeError(Exception):
+class DecrypterError(Exception):
     """Depseudonymizer custom Exception"""
 
 
@@ -34,17 +34,6 @@ class Decrypter:
 
     def __post_init__(self) -> None:
         self.pseudonymized_string = base64.b64decode(self.pseudonymized_string)
-
-    @property
-    def ciphertext(self) -> bytes:
-        """the cipher text
-
-        Returns
-        -------
-        bytes
-            All bytes after the first 18 bytes
-        """
-        return self.pseudonymized_string[416:]
 
     @property
     def depseudo_key(self) -> PKCS1OAEP_Cipher:
@@ -97,9 +86,89 @@ class Decrypter:
         """abstract method to decrypt the pseudonymized string"""
 
 
+class DualPKCS1HybridCTRDecrypter(Decrypter):
+    """class to depseudonymize a pseudonymized string
+
+    Parameters
+    ----------
+
+    pseudonymized_string: str
+        The base64 encoded pseudonymized string.
+        Base64 decoding is done in __post_init__ method
+    """
+
+    @property
+    def encrypted_session_key(self) -> bytes:
+        """the encrypted session key
+
+        Returns
+        -------
+        bytes
+            the first 16 bytes of the pseudonymized_string
+        """
+        return self.pseudonymized_string[:256]
+
+    @property
+    def cipher_nonce(self) -> bytes:
+        """the cipher nonce
+
+        Returns
+        -------
+        bytes
+            The 2 bytes after the session key
+        """
+        return self.pseudonymized_string[256:264]
+
+    @property
+    def ciphertext(self) -> bytes:
+        """the cipher text
+
+        Returns
+        -------
+        bytes
+            All bytes after the first 18 bytes
+        """
+        return self.pseudonymized_string[264:]
+
+    def decrypt(self) -> str:
+        """depseudonymizes after setting the depseudo and analyst keys
+
+        Returns
+        -------
+        str
+            the depseudonymized string
+
+        Raises
+        ------
+        DepseudonymizeError
+            if depseudo_key or analyst_key is not set
+        """
+        if self._depseudo_key is None:
+            raise DecrypterError("No depseudo key")
+        if self._analyst_key is None:
+            raise DecrypterError("No analyst key")
+        cipher_rsa_depseudo = PKCS1_OAEP.new(self._depseudo_key)
+        cipher_rsa_analyst = PKCS1_OAEP.new(self._analyst_key)
+        depseudo_decrypted_session_key = cipher_rsa_depseudo.decrypt(self.encrypted_session_key)
+        analyst_decrypted_session_key = cipher_rsa_analyst.decrypt(depseudo_decrypted_session_key)
+        cipher_aes = AES.new(analyst_decrypted_session_key, AES.MODE_CTR, nonce=self.cipher_nonce)
+        return cipher_aes.decrypt(self.ciphertext).decode("utf-8")
+
+
 @dataclass
 class DualPKCS1HybridGCMDecrypter(Decrypter):
     """class to depseudonymize a pseudonymized string in GCM mode"""
+
+    @property
+    def ciphertext(self) -> bytes:
+        """the cipher text
+
+        Returns
+        -------
+        bytes
+            All bytes after the first 18 bytes
+        """
+        return self.pseudonymized_string[416:]
 
     @property
     def session_key_enc_enc(self) -> bytes:
@@ -159,9 +228,9 @@ class DualPKCS1HybridGCMDecrypter(Decrypter):
             if depseudo_key or analyst_key is not set
         """
         if self._depseudo_key is None:
-            raise DepseudonymizeError("No depseudo key")
+            raise DecrypterError("No depseudo key")
         if self._analyst_key is None:
-            raise DepseudonymizeError("No analyst key")
+            raise DecrypterError("No analyst key")
         cipher_rsa_depseudo = PKCS1_OAEP.new(self._depseudo_key)
         cipher_rsa_analyst = PKCS1_OAEP.new(self._analyst_key)
         # decrypt encrypted encrypted session key with analyst private key
