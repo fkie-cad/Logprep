@@ -1,5 +1,8 @@
 """Command line tool to depseudonymize a string using the given keys."""
 
+import logging
+import sys
+
 import click
 
 from logprep.util.pseudo.decrypter import (
@@ -31,4 +34,8 @@ def depseudonymize(analyst_key: str, depseudo_key: str, pseudo_string: str, mode
             keys[key_file_name] = key_file.read()
     depseudo.depseudo_key = keys[depseudo_key]
     depseudo.analyst_key = keys[analyst_key]
-    print(depseudo.decrypt())
+    try:
+        print(depseudo.decrypt())
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)

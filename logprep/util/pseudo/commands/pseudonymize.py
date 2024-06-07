@@ -20,11 +20,7 @@ from logprep.util.pseudo.encrypter import (
 )
 def pseudonymize(analyst_key: str, depseudo_key: str, string: str, mode: str):
     """pseudonymize a string using the given keys."""
-    encrypter = (
-        DualPKCS1HybridGCMEncrypter(string)
-        if mode == "gcm"
-        else DualPKCS1HybridCTREncrypter(string)
-    )
+    encrypter = DualPKCS1HybridGCMEncrypter() if mode == "gcm" else DualPKCS1HybridCTREncrypter()
     encrypter.load_public_keys(
         keyfile_analyst=f"{analyst_key}.crt",
         keyfile_depseudo=f"{depseudo_key}.crt",
