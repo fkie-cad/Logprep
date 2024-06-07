@@ -58,29 +58,28 @@ class DualPKCS1HybridEncrypter(Encrypter):
             raise ValueError("Cannot encrypt because public keys are not loaded")
 
         # encrypt input string with AES session key
-        session_key = get_random_bytes(16)
+        session_key: bytes = get_random_bytes(16)
         aes_key_input_str = AES.new(session_key, AES.MODE_GCM)
-
-        input_str_enc = aes_key_input_str.encrypt(input_str.encode("utf-8"))
+        input_str_enc: bytes = aes_key_input_str.encrypt(input_str.encode("utf-8"))
 
         # encrpyt session key with AES depseudo key
-        depseudo_key = get_random_bytes(16)
+        depseudo_key: bytes = get_random_bytes(16)
         aes_key_depseudo = AES.new(depseudo_key, AES.MODE_GCM)
-        session_key_enc = aes_key_depseudo.encrypt(session_key)
+        session_key_enc: bytes = aes_key_depseudo.encrypt(session_key)
 
         # encrypt AES depseudo key with depseudo public key
         cipher_rsa_analyst = PKCS1_OAEP.new(self._pubkey_depseudo)
-        depseudo_key_enc = cipher_rsa_analyst.encrypt(depseudo_key)
+        depseudo_key_enc: bytes = cipher_rsa_analyst.encrypt(depseudo_key)
 
         # encrypt encrypted session key with analyst public key
         cipher_rsa_depseudo = PKCS1_OAEP.new(self._pubkey_analyst)
-        session_key_enc_enc = cipher_rsa_depseudo.encrypt(session_key_enc)
+        session_key_enc_enc: bytes = cipher_rsa_depseudo.encrypt(session_key_enc)
 
         # concatenate, encode, and return
-        return (
-            f'{base64.b64encode(session_key_enc_enc).decode("ascii")}||'
-            f'{base64.b64encode(aes_key_depseudo.nonce).decode("ascii")}||'
-            f'{base64.b64encode(depseudo_key_enc).decode("ascii")}||'
-            f'{base64.b64encode(aes_key_input_str.nonce).decode("ascii")}||'
-            f'{base64.b64encode(input_str_enc).decode("ascii")}'
-        )
+        return base64.b64encode(
+            session_key_enc_enc
+            + aes_key_depseudo.nonce
+            + depseudo_key_enc
+            + aes_key_input_str.nonce
+            + input_str_enc
+        ).decode("ascii")

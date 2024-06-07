@@ -45,13 +45,12 @@ class TestDepseudonymizer:
         )
         assert encrypted_value != "1"
         # split and decode encrypted value
-        (
-            session_key_enc_enc,
-            aes_key_depseudo_nonce,
-            depseudo_key_enc,
-            aes_key_input_str_nonce,
-            input_str_enc,
-        ) = [base64.b64decode(encoded) for encoded in encrypted_value.split("||")]
+        encrypted_value = base64.b64decode(encrypted_value)
+        session_key_enc_enc = encrypted_value[:128]
+        aes_key_depseudo_nonce = encrypted_value[128:144]
+        depseudo_key_enc = encrypted_value[144:400]
+        aes_key_input_str_nonce = encrypted_value[400:416]
+        input_str_enc = encrypted_value[416:]
 
         # decrypt encrypted encrypted session key with analyst private key
         session_key_enc: bytes = cipher_rsa_analyst.decrypt(session_key_enc_enc)
@@ -80,10 +79,11 @@ class TestDepseudonymizer:
 
         depseudo = Depseudonymizer(encrypted_value)
         encrypted_value_b64decoded = base64.b64decode(encrypted_value)
-        assert depseudo.pseudonymized_string == encrypted_value_b64decoded
-        assert depseudo.encrypted_session_key == encrypted_value_b64decoded[:256]
-        assert depseudo.cipher_nonce == encrypted_value_b64decoded[256:264]
-        assert depseudo.ciphertext == encrypted_value_b64decoded[264:]
+        assert depseudo.session_key_enc_enc == encrypted_value_b64decoded[:128]
+        assert depseudo.aes_key_depseudo_nonce == encrypted_value_b64decoded[128:144]
+        assert depseudo.depseudo_key_enc == encrypted_value_b64decoded[144:400]
+        assert depseudo.aes_key_input_str_nonce == encrypted_value_b64decoded[400:416]
+        assert depseudo.ciphertext == encrypted_value_b64decoded[416:]
 
     def test_depseudonymizer_depseudonymize_raises_if_no_depseudo_key(
         self, analyst_keys, depseudo_keys
