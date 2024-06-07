@@ -2,15 +2,19 @@
 Pseudonymizer
 =============
 
-The `pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
+The :code:`pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
 privacy regulations can be adhered to.
 
 .. security-best-practice::
    :title: Processor - Pseudonymizer
 
-   The `pseudonymizer` works with two public keys for different roles.
+   The :code:`pseudonymizer` works with two public keys for different roles.
    It is suggested to ensure that two different keys are being used such that the separation of the
    roles can be maintained.
+
+   It is suggested to use the :code:`GCM` mode for encryption as it decouples the key length of the
+   depseudo and analyst keys. This leads to additional 152 bytes of overhead for the encryption
+   compared to the :code:`CTR` mode encrypter.
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^

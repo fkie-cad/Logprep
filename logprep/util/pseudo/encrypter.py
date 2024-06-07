@@ -50,6 +50,9 @@ class DualPKCS1HybridGCMEncrypter(Encrypter):
         public key of the depseudonymizer personel. This decouples the analyst
         key length from the depseudo key length.
 
+        This leads to additional 152 bytes of overhead for the encryption
+        compared to the ctr mode encrypter.
+
         Returns
         -------
         str
