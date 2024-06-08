@@ -1215,6 +1215,22 @@ endpoints:
             ):
                 _ = Configuration.from_sources([str(config_path)])
 
+    def test_verify_calls_processor_setup(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        with mock.patch("logprep.abc.processor.Processor.setup") as mocked_setup:
+            config._verify()
+            mocked_setup.assert_called()
+
+    def test_verify_prints_file_not_found_errors_with_filename(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        with mock.patch(
+            "logprep.abc.processor.Processor.setup", side_effect=lambda: open("not_existing_file")
+        ):
+            with pytest.raises(
+                InvalidConfigurationError, match="File not found: not_existing_file"
+            ):
+                config._verify()
+
 
 class TestInvalidConfigurationErrors:
     @pytest.mark.parametrize(
