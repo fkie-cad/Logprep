@@ -38,6 +38,7 @@
 * add `LogprepMPQueueListener` to outsource logging to a separate process
 * add a single `Queuehandler` to root logger to ensure all logs were handled by `LogprepMPQueueListener`
 * refactor `http_generator` to use a logprep http output connector
+* ensure all `cached_properties` are populated during setup time
 
 ### Bugfix
 
