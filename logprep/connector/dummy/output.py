@@ -66,12 +66,8 @@ class DummyOutput(Output):
         super().__init__(name, configuration)
         self.events = []
         self.failed_events = []
-        self.setup_called_count = 0
         self.shut_down_called_count = 0
         self._exceptions = configuration.exceptions
-
-    def setup(self):
-        self.setup_called_count += 1
 
     def store(self, document: dict):
         """Store the document in the output destination.

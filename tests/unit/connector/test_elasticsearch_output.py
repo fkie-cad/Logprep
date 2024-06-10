@@ -357,3 +357,12 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         self.object._config.message_backlog_size = 1
         self.object.store({"event": "test_event"})
         assert len(self.object._message_backlog) == 0
+
+    @mock.patch(
+        "logprep.connector.elasticsearch.output.ElasticsearchOutput._search_context",
+        new=mock.MagicMock(),
+    )
+    @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
+    def test_setup_populates_cached_properties(self, mock_getmembers):
+        self.object.setup()
+        mock_getmembers.assert_called_with(self.object)

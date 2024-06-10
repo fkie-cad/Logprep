@@ -18,6 +18,10 @@ class TestListComparison(BaseProcessorTestCase):
         "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
     }
 
+    def setup_method(self):
+        super().setup_method()
+        self.object.setup()
+
     def test_element_in_list(self):
         document = {"user": "Franz"}
         expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}

@@ -1,5 +1,7 @@
 """ abstract module for components"""
 
+import functools
+import inspect
 from abc import ABC
 from functools import cached_property
 from typing import Callable
@@ -78,8 +80,14 @@ class Component(ABC):
 
     def setup(self):
         """Set the component up."""
-        # initialize metrics
-        _ = self.metrics
+        self._populate_cached_properties()
+
+    def _populate_cached_properties(self):
+        _ = [
+            getattr(self, name)
+            for name, value in inspect.getmembers(self)
+            if isinstance(value, functools.cached_property)
+        ]
 
     def shut_down(self):
         """Stop processing of this component.

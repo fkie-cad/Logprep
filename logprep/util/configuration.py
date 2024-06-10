@@ -816,9 +816,12 @@ class Configuration:
         for processor_config in self.pipeline:
             try:
                 processor = Factory.create(deepcopy(processor_config))
+                processor.setup()
                 self._verify_rules(processor)
             except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
                 errors.append(error)
+            except FileNotFoundError as error:
+                errors.append(InvalidConfigurationError(f"File not found: {error.filename}"))
             try:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except

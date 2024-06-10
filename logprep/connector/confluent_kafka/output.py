@@ -315,9 +315,8 @@ class ConfluentKafkaOutput(Output):
             self._producer.flush(timeout=self._config.flush_timeout)
 
     def setup(self):
-        super().setup()
         try:
-            _ = self._producer
+            super().setup()
         except (KafkaException, ValueError) as error:
             raise FatalOutputError(self, str(error)) from error
 
