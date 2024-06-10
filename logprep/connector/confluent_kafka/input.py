@@ -491,9 +491,8 @@ class ConfluentKafkaInput(Input):
         self._consumer.assign(topic_partitions)
 
     def setup(self) -> None:
-        super().setup()
         try:
-            _ = self._consumer
+            super().setup()
         except (KafkaException, ValueError) as error:
             raise FatalInputError(self, str(error)) from error
 

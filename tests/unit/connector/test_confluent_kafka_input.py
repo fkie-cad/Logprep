@@ -3,7 +3,6 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
-import logging
 import socket
 from copy import deepcopy
 from unittest import mock
