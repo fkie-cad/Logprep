@@ -23,7 +23,7 @@ def teardown_function():
 
 
 def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
-    pipeline = get_full_pipeline(exclude=["normalizer"])
+    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.output.update({"kafka": {"type": "dummy_output", "default": False}})
     config_path = tmp_path / "generated_config.yml"
@@ -42,7 +42,7 @@ def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
 
 
 def test_start_of_logprep_with_full_configuration_http():
-    pipeline = get_full_pipeline(exclude=["normalizer"])
+    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.output.update({"kafka": {"type": "dummy_output", "default": False}})
     endpoint = "http://localhost:32000"
@@ -122,7 +122,10 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     # requester is excluded because it tries to connect to non-existing server
     # selective_extractor is excluded because of output mismatch (rules expect kafka as output)
     # normalizer is excluded because of deprecation
-    pipeline = get_full_pipeline(exclude=["requester", "selective_extractor", "normalizer"])
+    # geoip_enricher is excluded because of missing maxmind license
+    pipeline = get_full_pipeline(
+        exclude=["requester", "selective_extractor", "normalizer", "geoip_enricher"]
+    )
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.version = "my_custom_version"
     config.config_refresh_interval = 300
