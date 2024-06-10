@@ -220,3 +220,25 @@ class TestPipelineManager:
         assert manager.loghandler._thread is None
         assert manager.loghandler._process.is_alive()
         assert manager.loghandler._process.daemon
+
+    def test_restart_failed_pipeline_increases_restart_count_if_pipeline_fails(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        assert pipeline_manager.restart_count == 0
+        pipeline_manager.restart_failed_pipeline()
+        assert pipeline_manager.restart_count == 1
+
+    def test_restart_failed_pipeline_resets_restart_count_if_pipeline_recovers(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        assert pipeline_manager.restart_count == 0
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        pipeline_manager.restart_failed_pipeline()
+        assert pipeline_manager.restart_count == 1
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        pipeline_manager.restart_failed_pipeline()
+        assert pipeline_manager.restart_count == 2
+        pipeline_manager._pipelines[0].is_alive.return_value = True
+        pipeline_manager.restart_failed_pipeline()
+        assert pipeline_manager.restart_count == 0

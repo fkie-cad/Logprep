@@ -127,6 +127,7 @@ class PipelineManager:
         ]
 
         if not failed_pipelines:
+            self.restart_count = 0
             return
 
         for index, failed_pipeline in failed_pipelines:
