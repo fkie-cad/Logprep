@@ -19,6 +19,8 @@
 * rename `--thread_count` parameter to `--thread-count` in http generator
 * removed `--report` parameter and feature from http generator
 * when using `extend_target_list` in the `field manager`the ordering of the given source fields is now preserved 
+* logprep now exits with a negative exit code if pipeline restart fails 5 times
+  - this was implemented because further restart behaviour should be configured on level of a system init service or container orchestrating service like k8s
 
 ### Features
 
