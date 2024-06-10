@@ -20,12 +20,12 @@ class Decrypter:
     Parameters
     ----------
 
-    pseudonymized_string: str
+    pseudonymized_string: bytes
         The base64 encoded pseudonymized string.
         Base64 decoding is done in __post_init__ method
     """
 
-    pseudonymized_string: str
+    pseudonymized_string: bytes | str
     """the pseudonymized string"""
 
     _analyst_key: PKCS1OAEP_Cipher = None
@@ -233,7 +233,7 @@ class DualPKCS1HybridGCMDecrypter(Decrypter):
             raise DecrypterError("No analyst key")
         cipher_rsa_depseudo = PKCS1_OAEP.new(self._depseudo_key)
         cipher_rsa_analyst = PKCS1_OAEP.new(self._analyst_key)
-        # decrypt encrypted encrypted session key with analyst private key
+        # decrypt double encrypted session key with analyst private key
         session_key_enc: bytes = cipher_rsa_analyst.decrypt(self.session_key_enc_enc)
 
         # decrypt AES depseudo key with depseudo private key

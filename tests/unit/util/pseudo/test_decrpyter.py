@@ -64,7 +64,7 @@ class TestDualPKCS1HybridGCMDecrypter:
         aes_key_input_str_nonce = encrypted_value[400:416]
         input_str_enc = encrypted_value[416:]
 
-        # decrypt encrypted encrypted session key with analyst private key
+        # decrypt double encrypted session key with analyst private key
         session_key_enc: bytes = cipher_rsa_analyst.decrypt(session_key_enc_enc)
 
         # decrypt AES depseudo key with depseudo private key
