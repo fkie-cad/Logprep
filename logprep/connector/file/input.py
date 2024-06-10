@@ -326,6 +326,7 @@ class FileInput(Input):
         Right now this input connector is only started in the first process.
         It needs the class attribute pipeline_index before running setup in Pipeline
         Initiation"""
+        super().setup()
         if not hasattr(self, "pipeline_index"):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."

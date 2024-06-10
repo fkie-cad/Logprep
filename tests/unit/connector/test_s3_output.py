@@ -4,7 +4,6 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 import logging
-from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from math import isclose
@@ -318,3 +317,9 @@ class TestS3Output(BaseOutputTestCase):
     @staticmethod
     def _calculate_backlog_size(s3_output):
         return sum(len(values) for values in s3_output._message_backlog.values())
+
+    @mock.patch("logprep.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
+    def test_setup_populates_cached_properties(self, mock_getmembers):
+        self.object.setup()
+        mock_getmembers.assert_called_with(self.object)

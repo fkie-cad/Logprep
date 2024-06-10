@@ -117,3 +117,8 @@ class BaseComponentTestCase(ABC):
         difference = fullnames.difference(set(self.expected_metrics))
         assert not difference, f"{difference} are not defined in `expected_metrics`"
         assert fullnames == set(self.expected_metrics)
+
+    @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
+    def test_setup_populates_cached_properties(self, mock_getmembers):
+        self.object.setup()
+        mock_getmembers.assert_called_with(self.object)

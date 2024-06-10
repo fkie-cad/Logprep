@@ -80,8 +80,6 @@ class Component(ABC):
 
     def setup(self):
         """Set the component up."""
-        # initialize metrics
-        _ = self.metrics
         self._populate_cached_properties()
 
     def _populate_cached_properties(self):
