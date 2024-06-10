@@ -387,6 +387,9 @@ class TestPseudoCLI:
 
     @pytest.mark.parametrize("mode", ["gcm", "ctr"])
     def test_pseudonymize_depseudonymize_with_mode(self, mode, tmp_path):
+        (tmp_path / "analyst").touch()
+        (tmp_path / "depseudo").touch()
+
         runner = CliRunner()
         result = runner.invoke(cli, ["pseudo", "generate", "-f", f"{tmp_path}/analyst", "1024"])
         assert result.exit_code == 0
@@ -404,7 +407,7 @@ class TestPseudoCLI:
                 "string",
             ],
         )
-        assert result.exit_code == 0
+        assert result.exit_code == 0, result.output
         pseudonymized_string = result.output.strip()
         result = runner.invoke(
             cli,
