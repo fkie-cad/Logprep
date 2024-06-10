@@ -9,8 +9,8 @@ from logprep.util.pseudo.encrypter import (
 
 
 @click.command()
-@click.argument("analyst-key", type=str)
-@click.argument("depseudo-key", type=str)
+@click.argument("analyst-key", type=click.Path(exists=True))
+@click.argument("depseudo-key", type=click.Path(exists=True))
 @click.argument("string", type=str)
 @click.option(
     "--mode",

@@ -47,7 +47,7 @@ class DualPKCS1HybridGCMEncrypter(Encrypter):
         session key. The session key is then encrypted with a depseudo AES key
         in GCM mode. The depseudo key is then encrypted with the public key
         of the analyst and the encrypted session key is encrypted with the
-        public key of the depseudonymizer personel. This decouples the analyst
+        public key of the depseudonymizer personnel. This decouples the analyst
         key length from the depseudo key length.
 
         This leads to additional 152 bytes of overhead for the encryption
@@ -68,7 +68,7 @@ class DualPKCS1HybridGCMEncrypter(Encrypter):
         aes_key_input_str = AES.new(session_key, AES.MODE_GCM)
         input_str_enc: bytes = aes_key_input_str.encrypt(input_str.encode("utf-8"))
 
-        # encrpyt session key with AES depseudo key
+        # encrypt session key with AES depseudo key
         depseudo_key: bytes = get_random_bytes(16)
         aes_key_depseudo = AES.new(depseudo_key, AES.MODE_GCM)
         session_key_enc: bytes = aes_key_depseudo.encrypt(session_key)
@@ -119,7 +119,7 @@ class DualPKCS1HybridCTREncrypter(Encrypter):
         cipher_rsa_depseudo = PKCS1_OAEP.new(self._pubkey_depseudo)
         enc_session_key = cipher_rsa_depseudo.encrypt(enc_session_key)
 
-        cipher_aes = AES.new(session_key, AES.MODE_CTR)  # nosemgrep
+        cipher_aes = AES.new(session_key, AES.MODE_CTR)
         ciphertext = cipher_aes.encrypt(input_str.encode("utf-8"))
 
         return base64.b64encode(enc_session_key + cipher_aes.nonce + ciphertext).decode("ascii")

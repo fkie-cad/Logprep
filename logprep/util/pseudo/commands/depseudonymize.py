@@ -12,8 +12,8 @@ from logprep.util.pseudo.decrypter import (
 
 
 @click.command()
-@click.argument("analyst-key", type=str)
-@click.argument("depseudo-key", type=str)
+@click.argument("analyst-key", type=click.Path(exists=True))
+@click.argument("depseudo-key", type=click.Path(exists=True))
 @click.argument("pseudo-string", type=str)
 @click.option(
     "--mode",
@@ -36,6 +36,6 @@ def depseudonymize(analyst_key: str, depseudo_key: str, pseudo_string: str, mode
     depseudo.analyst_key = keys[analyst_key]
     try:
         print(depseudo.decrypt())
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
