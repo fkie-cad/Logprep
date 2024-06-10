@@ -15,6 +15,7 @@ from requests.exceptions import HTTPError, SSLError
 
 from logprep.runner import Runner
 from logprep.util.configuration import Configuration
+from logprep.util.defaults import EXITCODES
 from tests.testdata.metadata import path_to_config
 
 
@@ -298,3 +299,10 @@ class TestRunner:
             "logprep": f"{version('logprep')}",
             "config": runner._configuration.version,
         }
+
+    def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exeeded(
+        self, runner: Runner
+    ):
+        runner._manager.restart_count = 5
+        with pytest.raises(SystemExit, match=EXITCODES.PIPELINE_ERROR):
+            runner.start()
