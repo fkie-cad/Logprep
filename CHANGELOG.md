@@ -42,6 +42,7 @@
 ### Bugfix
 
 * make `--username` and `--password` parameters optional in http generator
+* fixes a bug where `FileNotFoundError` is raised during processing
 
 ## 11.3.0
 
