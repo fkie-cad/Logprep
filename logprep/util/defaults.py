@@ -1,5 +1,18 @@
 """Default values for logprep."""
 
+from enum import Enum
+
+
+class EXITCODES(Enum):
+    """Exit codes for logprep."""
+
+    SUCCESS = 0
+    ERROR = 1
+    CONFIGURATION_ERROR = 2
+    PIPELINE_ERROR = 3
+
+
+DEFAULT_RESTART_COUNT = 5
 DEFAULT_CONFIG_LOCATION = "file:///etc/logprep/pipeline.yml"
 DEFAULT_LOG_FORMAT = "%(asctime)-15s %(process)-6s %(name)-10s %(levelname)-8s: %(message)s"
 DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"

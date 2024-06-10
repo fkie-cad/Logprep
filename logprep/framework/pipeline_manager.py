@@ -6,6 +6,8 @@ import logging
 import logging.handlers
 import multiprocessing
 import multiprocessing.queues
+import random
+import time
 
 from attr import define, field
 
@@ -15,6 +17,7 @@ from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
+from logprep.util.defaults import DEFAULT_RESTART_COUNT
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Manager")
@@ -52,6 +55,8 @@ class PipelineManager:
         """Number of failed pipelines"""
 
     def __init__(self, configuration: Configuration):
+        self.restart_count = 0
+        self.restart_timeout_ms = random.randint(100, 1000)
         self.metrics = self.Metrics(labels={"component": "manager"})
         self.loghandler = None
         if multiprocessing.current_process().name == "MainProcess":
@@ -137,6 +142,9 @@ class PipelineManager:
                 pipeline_index,
                 exit_code,
             )
+        self.restart_count += 1
+        time.sleep(self.restart_timeout_ms / 1000)
+        self.restart_timeout_ms = self.restart_timeout_ms * self.restart_count
 
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
