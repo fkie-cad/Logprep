@@ -2,6 +2,7 @@
 # pylint: disable=not-an-iterable
 # pylint: disable=missing-docstring
 
+import tempfile
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
 
@@ -42,7 +43,7 @@ def config():
         "output": {
             "jsonl_output": {
                 "type": "jsonl_output",
-                "output_file": "tests/testdata/acceptance/amides/amides_output.jsonl",
+                "output_file": f"{tempfile.gettempdir()}/amides_output.jsonl",
             }
         },
     }
