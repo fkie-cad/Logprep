@@ -395,3 +395,12 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             index="defaultindex", body={"query": {"match": {"foo": uuid_str}}}
         )
         assert len(result["hits"]["hits"]) > len_before
+
+    @mock.patch(
+        "logprep.connector.opensearch.output.OpensearchOutput._search_context",
+        new=mock.MagicMock(),
+    )
+    @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
+    def test_setup_populates_cached_properties(self, mock_getmembers):
+        self.object.setup()
+        mock_getmembers.assert_called_with(self.object)

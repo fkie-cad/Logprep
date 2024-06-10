@@ -180,9 +180,8 @@ class TestAutoRuleTester:
         auto_rule_tester._reset_trees(
             processor
         )  # Called every time by auto tester before adding rules instead
-        mock_setup.assert_called_once()
         auto_rule_tester._load_rules(processor, "specific_rules")
-        assert mock_setup.call_count == 2
+        mock_setup.assert_called_once()
 
     def test_full_auto_rule_test_run(self, auto_rule_tester, capsys):
         with pytest.raises(SystemExit):
