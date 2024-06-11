@@ -266,25 +266,25 @@ class TestRunner:
         runner.stop()
         assert runner._exit_received
 
-    # def test_start_sets_version_metric(self, runner: Runner):
-    #     runner._configuration.version = "very custom version"
-    #     runner._exit_received = True
-    #     with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
-    #         with mock.patch.object(runner, "_manager"):
-    #             with pytest.raises(SystemExit, match="0"):
-    #                 runner.start()
-    #     mock_add.assert_called()
-    #     mock_add.assert_has_calls(
-    #         (
-    #             mock.call(
-    #                 1,
-    #                 {
-    #                     "logprep": f"{version('logprep')}",
-    #                     "config": runner._configuration.version,
-    #                 },
-    #             ),
-    #         )
-    #     )
+    def test_start_sets_version_metric(self, runner: Runner):
+        runner._configuration.version = "very custom version"
+        runner._exit_received = True
+        with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
+            with mock.patch.object(runner, "_manager"):
+                with pytest.raises(SystemExit, match="0"):
+                    runner.start()
+        mock_add.assert_called()
+        mock_add.assert_has_calls(
+            (
+                mock.call(
+                    1,
+                    {
+                        "logprep": f"{version('logprep')}",
+                        "config": runner._configuration.version,
+                    },
+                ),
+            )
+        )
 
     # def test_start_calls_manager_stop_after_breaking_the_loop(self, runner: Runner):
     #     with mock.patch.object(runner, "_manager") as mock_manager:
