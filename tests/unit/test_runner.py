@@ -300,9 +300,9 @@ class TestRunner:
     #         "config": runner._configuration.version,
     #     }
 
-    # def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exeeded(
-    #     self, runner: Runner
-    # ):
-    #     runner._manager.restart_count = 5
-    #     with pytest.raises(SystemExit, match=EXITCODES.PIPELINE_ERROR):
-    #         runner.start()
+    def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exeeded(
+        self, runner: Runner
+    ):
+        runner._manager.restart_count = 5
+        with pytest.raises(SystemExit, match=EXITCODES.PIPELINE_ERROR):
+            runner.start()
