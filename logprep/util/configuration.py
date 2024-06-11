@@ -1,5 +1,5 @@
 """
-Configuration is done via YAML or JSON files or http api ressources.
+Configuration is done via YAML or JSON files or http api resources.
 Logprep searches for the file :code:`/etc/logprep/pipeline.yml` if no
 configuration file is passed.
 
@@ -10,7 +10,7 @@ You can pass multiple configuration files via valid file paths or urls.
 
     logprep run /different/path/file.yml
     logprep run http://url-to-our-yaml-file-or-api
-    logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/conector.yaml
+    logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/connector.yaml
 
 
 .. security-best-practice::
@@ -492,7 +492,8 @@ class Configuration:
     restart_count: int = field(
         validator=validators.instance_of(int), default=DEFAULT_RESTART_COUNT, eq=False
     )
-    """Number of restarts before logprep exits. Defaults to :code:`5`."""
+    """Number of restarts before logprep exits. Defaults to :code:`5`.
+    If this value is set to a negative number, logprep will always restart immediately."""
     timeout: float = field(
         validator=[validators.instance_of(float), validators.gt(0)], default=5.0, eq=False
     )
@@ -549,7 +550,7 @@ class Configuration:
        :location: config.metrics.uvicorn_config
        :suggested-value: metrics.uvicorn_config.access_log: true, metrics.uvicorn_config.server_header: false, metrics.uvicorn_config.data_header: false
 
-       Additionaly to the below it is recommended to configure `ssl on the metrics server endpoint
+       Additionally to the below it is recommended to configure `ssl on the metrics server endpoint
        <https://www.uvicorn.org/settings/#https>`_
 
        .. code-block:: yaml

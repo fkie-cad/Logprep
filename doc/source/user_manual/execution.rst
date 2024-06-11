@@ -59,11 +59,11 @@ It must have the following format:
     :caption: Example configuration file for the kafka load-tester
 
     logging_level: LOG_LEVEL  # Default: "INFO"
-    source_count: INTERGER  # Number of documents to obtain form Kafka
-    count: INTERGER  # Number of documents to send
-    process_count: INTERGER  # Number of processes (default: 1)
+    source_count: INTEGER  # Number of documents to obtain form Kafka
+    count: INTEGER  # Number of documents to send
+    process_count: INTEGER  # Number of processes (default: 1)
     profile: BOOL  # Shows profiling data (default: false)
-    target_send_per_sec: INTERGER  # Desired number of documents to send per second with each process. Setting it to 0 sends as much as possible (default: 0).
+    target_send_per_sec: INTEGER  # Desired number of documents to send per second with each process. Setting it to 0 sends as much as possible (default: 0).
 
     kafka:
     bootstrap_servers:  # List of bootstrap servers
@@ -73,7 +73,7 @@ It must have the following format:
         group_id: STRING  # Should be different from the group_id of the Logprep Consumer, otherwise the offset in Logprep will be changed!
         timeout: FLOAT  # Timeout for retrieving documents (default: 1.0)
     producer:  # Kafka producer
-        acks: STRING/INTERGER # Determines if sending should be acknowledged (default: 0)
+        acks: STRING/INTEGER # Determines if sending should be acknowledged (default: 0)
         compression_type: STRING  # Compression type (default: "none")
         topic: STRING  # Topic to send documents to
         queue_buffering_max_messages: INTEGER # Batch for sending documents (default: 10000)
