@@ -366,3 +366,28 @@ class TestElasticsearchOutput(BaseOutputTestCase):
     def test_setup_populates_cached_properties(self, mock_getmembers):
         self.object.setup()
         mock_getmembers.assert_called_with(self.object)
+
+    @mock.patch(
+        "elasticsearch.helpers.bulk",
+        side_effect=search.TransportError(429, "rejected_execution_exception", {}),
+    )
+    @mock.patch("time.sleep")
+    def test_write_backlog_failes_if_all_retries_are_exceeded(self, _, mock_sleep):
+        self.object._config.maximum_message_size_mb = 1
+        self.object._message_backlog = [{"some": "event"}]
+        with pytest.raises(FatalOutputError, match="All retries failed"):
+            self.object._write_backlog()
+        assert mock_sleep.call_count == 5
+
+    @mock.patch("time.sleep")
+    def test_write_backlog_is_successful_after_two_retries(self, mock_sleep):
+        side_effects = [
+            search.TransportError(429, "rejected_execution_exception", {}),
+            search.TransportError(429, "rejected_execution_exception", {}),
+            None,
+        ]
+        with mock.patch("elasticsearch.helpers.bulk", side_effect=side_effects):
+            self.object._config.maximum_message_size_mb = 1
+            self.object._message_backlog = [{"some": "event"}]
+            self.object._write_backlog()
+            assert mock_sleep.call_count == 2
