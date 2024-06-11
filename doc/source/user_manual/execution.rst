@@ -178,12 +178,13 @@ Restart Behavior
 
 Logprep reacts on failures during pipeline execution by restarting 5 (default) times.
 This restart count can be configured in the configuration file with the parameter
-:code:`restart_count`.
+:code:`restart_count`. If the restart count is set to a negative number, the restart count
+is infinite and logprep will restart the pipelines immediately after a failure.
 On logprep start a random timeout seed is calculated between 100 and 1000 milliseconds.
 This seed is then doubled after each restart and is used as sleep period
 between pipeline restart tryouts.
 
-If the pipeline restart succeeds, the restart count is resetted to 0.
+If the pipeline restart succeeds, the restart count is reset to 0.
 
 
 Exit Codes
