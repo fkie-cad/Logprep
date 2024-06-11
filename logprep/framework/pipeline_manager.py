@@ -145,7 +145,7 @@ class PipelineManager:
             )
         self.restart_count += 1
         time.sleep(self.restart_timeout_ms / 1000)
-        self.restart_timeout_ms = self.restart_timeout_ms * self.restart_count
+        self.restart_timeout_ms = self.restart_timeout_ms * 2
 
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
