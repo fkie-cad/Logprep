@@ -163,11 +163,19 @@ class Runner:
             if self._exit_received:
                 break
             self.scheduler.run_pending()
-            if self._manager.restart_count >= self._configuration.restart_count:
+            if self._should_exit():
                 self.exit_code = EXITCODES.PIPELINE_ERROR
                 self._logger.error("Restart count exceeded. Exiting.")
                 break
             self._manager.restart_failed_pipeline()
+
+    def _should_exit(self):
+        return all(
+            (
+                self._configuration.restart_count >= 0,
+                self._manager.restart_count >= self._configuration.restart_count,
+            )
+        )
 
     def reload_configuration(self):
         """Reloads the configuration"""

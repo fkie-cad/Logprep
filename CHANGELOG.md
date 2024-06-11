@@ -20,13 +20,16 @@
 * removed `--report` parameter and feature from http generator
 * when using `extend_target_list` in the `field manager`the ordering of the given source fields is now preserved 
 * logprep now exits with a negative exit code if pipeline restart fails 5 times
-  * this was implemented because further restart behaviour should be configured on level of a system init service or container orchestrating service like k8s
+  * this was implemented because further restart behavior should be configured on level of a system init service or container orchestrating service like k8s
+  * the `restart_count` parameter is configurable. If you want the old behavior back, you can set this parameter to a negative number
+* logprep now exits with a exit code of 2 on configuration errors
 
 ### Features
 
-* add UCL into the Quickstart Setup
+* add UCL into the quickstart setup
 * add logprep http output connector
 * add pseudonymization tools to logprep -> see: `logprep pseudo --help`
+* add `restart_count` parameter to configuration
 
 ### Improvements
 

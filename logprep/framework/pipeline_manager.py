@@ -142,6 +142,8 @@ class PipelineManager:
                 pipeline_index,
                 exit_code,
             )
+        if self._configuration.restart_count < 0:
+            return
         self.restart_count += 1
         time.sleep(self.restart_timeout_ms / 1000)
         self.restart_timeout_ms = self.restart_timeout_ms * 2

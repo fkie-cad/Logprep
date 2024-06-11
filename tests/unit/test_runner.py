@@ -300,10 +300,19 @@ class TestRunner:
             "config": runner._configuration.version,
         }
 
-    def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exeeded(
+    def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exceeded(
         self, runner: Runner
     ):
         with mock.patch.object(runner, "_manager") as mock_manager:
             mock_manager.restart_count = 5
             with pytest.raises(SystemExit, match=str(EXITCODES.PIPELINE_ERROR.value)):
                 runner.start()
+
+    def test_runner_does_not_exits_on_negative_restart_count_parameter(self, runner: Runner):
+        with mock.patch.object(runner, "_manager") as mock_manager:
+            runner._keep_iterating = partial(mock_keep_iterating, 3)
+            mock_manager.restart_count = 5
+            runner._configuration.restart_count = -1
+            with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
+                runner.start()
+            mock_manager.restart_failed_pipeline.call_count = 3

@@ -242,3 +242,15 @@ class TestPipelineManager:
         pipeline_manager._pipelines[0].is_alive.return_value = True
         pipeline_manager.restart_failed_pipeline()
         assert pipeline_manager.restart_count == 0
+
+    @mock.patch("time.sleep")
+    def test_restart_failed_pipeline_restarts_immediately_on_negative_restart_count_parameter(
+        self, mock_time_sleep
+    ):
+        config = deepcopy(self.config)
+        config.restart_count = -1
+        pipeline_manager = PipelineManager(config)
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        pipeline_manager.restart_failed_pipeline()
+        mock_time_sleep.assert_not_called()
