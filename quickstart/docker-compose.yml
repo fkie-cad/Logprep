@@ -66,14 +66,14 @@ services:
       test:
         [
           "CMD-SHELL",
-          "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe"
+          "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe",
         ]
     networks:
       - kafka
   kafka-exporter:
     image: bitnami/kafka-exporter
     container_name: kafkaexporter
-    command: [ "--kafka.server=kafka:9092" ]
+    command: ["--kafka.server=kafka:9092"]
     ports:
       - "9308:9308"
     depends_on:
@@ -101,7 +101,7 @@ services:
     volumes:
       - ../quickstart/:/home/logprep/quickstart/
     tmpfs:
-      - /tmp/logprep/prometheus_multiproc 
+      - /tmp/logprep/prometheus_multiproc
     entrypoint:
       - logprep
       - run
@@ -128,7 +128,7 @@ services:
       - prometheus
     extra_hosts:
       # enables prometheus to access the host system (eg when logprep is running locally in the terminal)
-      - "host.docker.internal:172.17.0.1"
+      - "host.docker.internal:192.168.223.41"
   config:
     image: nginx:latest
     container_name: config
@@ -281,9 +281,9 @@ services:
       WEB_CONCURRENCY: 4
       SECURE_SSL_REDIRECT: "False"
       UCL_BASE_URL: http://localhost:8000/api/v1
-      DJANGO_SECRET_KEY: 'django-insecure-secret_key'
+      DJANGO_SECRET_KEY: "django-insecure-secret_key"
       ALLOWED_HOSTS: "*"
-      CORS_ALLOWED_ORIGINS: http://localhost   # neccessary if CORS_ORIGIN_ALLOW_ALL=FALSE
+      CORS_ALLOWED_ORIGINS: http://localhost # neccessary if CORS_ORIGIN_ALLOW_ALL=FALSE
       CORS_ORIGIN_ALLOW_ALL: "True"
       DJANGO_DEBUG: "True"
       KEYCLOAK_SERVER_URL: http://keycloak:8080
@@ -298,7 +298,7 @@ services:
       ucl-db:
         condition: service_healthy
     entrypoint:
-       - ./docker/docker-entrypoint.sh
+      - ./docker/docker-entrypoint.sh
     security_opt:
       - no-new-privileges:true
     tmpfs:
@@ -308,7 +308,7 @@ services:
       - keycloak
   ucl-db:
     container_name: ucl-db
-    image: 'postgres:14'
+    image: "postgres:14"
     read_only: true
     volumes:
       - ucl-db-volume:/var/lib/postgresql/data
@@ -317,7 +317,7 @@ services:
       POSTGRES_PASSWORD: ucl
       POSTGRES_DB: ucl
     healthcheck:
-      test: 'pg_isready --username=$$POSTGRES_USER && psql --username=$$POSTGRES_USER --list'
+      test: "pg_isready --username=$$POSTGRES_USER && psql --username=$$POSTGRES_USER --list"
       interval: 8s
       timeout: 5s
       retries: 10
@@ -351,8 +351,32 @@ volumes:
 
 networks:
   opensearch:
+    ipam:
+      config:
+        - subnet: 192.168.223.0/29
+          gateway: 192.168.223.1
   fda:
+    ipam:
+      config:
+        - subnet: 192.168.223.8/29
+          gateway: 192.168.223.9
   ucl:
+    ipam:
+      config:
+        - subnet: 192.168.223.16/29
+          gateway: 192.168.223.17
   keycloak:
+    ipam:
+      config:
+        - subnet: 192.168.223.24/29
+          gateway: 192.168.223.25
   kafka:
+    ipam:
+      config:
+        - subnet: 192.168.223.32/29
+          gateway: 192.168.223.33
   prometheus:
+    ipam:
+      config:
+        - subnet: 192.168.223.40/29
+          gateway: 192.168.223.41
