@@ -109,29 +109,29 @@ class TestRunner:
             runner.reload_configuration()
         mock_restart.assert_called()
 
-    # @pytest.mark.parametrize(
-    #     "new_value, expected_value",
-    #     [(None, None), (0, 5), (1, 5), (2, 5), (3, 5), (10, 10), (42, 42)],
-    # )
-    # def test_set_config_refresh_interval(self, new_value, expected_value, runner):
-    #     with mock.patch.object(runner, "_manager"):
-    #         runner._config_refresh_interval = new_value
-    #         runner._exit_received = True
-    #         with pytest.raises(SystemExit, match="0"):
-    #             runner.start()
-    #         if expected_value is None:
-    #             assert len(runner.scheduler.jobs) == 0
-    #         else:
-    #             assert runner.scheduler.jobs[0].interval == expected_value
+    @pytest.mark.parametrize(
+        "new_value, expected_value",
+        [(None, None), (0, 5), (1, 5), (2, 5), (3, 5), (10, 10), (42, 42)],
+    )
+    def test_set_config_refresh_interval(self, new_value, expected_value, runner):
+        with mock.patch.object(runner, "_manager"):
+            runner._config_refresh_interval = new_value
+            runner._exit_received = True
+            with pytest.raises(SystemExit, match="0"):
+                runner.start()
+            if expected_value is None:
+                assert len(runner.scheduler.jobs) == 0
+            else:
+                assert runner.scheduler.jobs[0].interval == expected_value
 
-    # @mock.patch("schedule.Scheduler.run_pending")
-    # def test_iteration_calls_run_pending(self, mock_run_pending, runner):
-    #     with mock.patch.object(runner, "_manager") as mock_manager:
-    #         mock_manager.restart_count = 0
-    #         runner._keep_iterating = partial(mock_keep_iterating, 3)
-    #         with pytest.raises(SystemExit, match="0"):
-    #             runner.start()
-    #         mock_run_pending.call_count = 3
+    @mock.patch("schedule.Scheduler.run_pending")
+    def test_iteration_calls_run_pending(self, mock_run_pending, runner):
+        with mock.patch.object(runner, "_manager") as mock_manager:
+            mock_manager.restart_count = 0
+            runner._keep_iterating = partial(mock_keep_iterating, 3)
+            with pytest.raises(SystemExit, match="0"):
+                runner.start()
+            mock_run_pending.call_count = 3
 
     def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(
         self, runner: Runner, configuration: Configuration, config_path: Path
@@ -294,15 +294,15 @@ class TestRunner:
         mock_manager.stop.assert_called()
         mock_manager.restart_failed_pipeline.assert_not_called()
 
-    # def test_metric_labels_returns_versions(self, runner: Runner):
-    #     assert runner._metric_labels == {
-    #         "logprep": f"{version('logprep')}",
-    #         "config": runner._configuration.version,
-    #     }
+    def test_metric_labels_returns_versions(self, runner: Runner):
+        assert runner._metric_labels == {
+            "logprep": f"{version('logprep')}",
+            "config": runner._configuration.version,
+        }
 
-    def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exeeded(
-        self, runner: Runner
-    ):
-        runner._manager.restart_count = 5
-        with pytest.raises(SystemExit, match=EXITCODES.PIPELINE_ERROR):
-            runner.start()
+    # def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exeeded(
+    #     self, runner: Runner
+    # ):
+    #     runner._manager.restart_count = 5
+    #     with pytest.raises(SystemExit, match=EXITCODES.PIPELINE_ERROR):
+    #         runner.start()
