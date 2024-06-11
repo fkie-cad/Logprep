@@ -117,7 +117,7 @@ class TestRunner:
         with mock.patch.object(runner, "_manager"):
             runner._config_refresh_interval = new_value
             runner._exit_received = True
-            with pytest.raises(SystemExit, match="0"):
+            with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
                 runner.start()
             if expected_value is None:
                 assert len(runner.scheduler.jobs) == 0
@@ -129,7 +129,7 @@ class TestRunner:
         with mock.patch.object(runner, "_manager") as mock_manager:
             mock_manager.restart_count = 0
             runner._keep_iterating = partial(mock_keep_iterating, 3)
-            with pytest.raises(SystemExit, match="0"):
+            with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
                 runner.start()
             mock_run_pending.call_count = 3
 
@@ -271,7 +271,7 @@ class TestRunner:
         runner._exit_received = True
         with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
             with mock.patch.object(runner, "_manager"):
-                with pytest.raises(SystemExit, match="0"):
+                with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
                     runner.start()
         mock_add.assert_called()
         mock_add.assert_has_calls(
@@ -289,7 +289,7 @@ class TestRunner:
     def test_start_calls_manager_stop_after_breaking_the_loop(self, runner: Runner):
         with mock.patch.object(runner, "_manager") as mock_manager:
             runner._exit_received = True
-            with pytest.raises(SystemExit, match="0"):
+            with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
                 runner.start()
         mock_manager.stop.assert_called()
         mock_manager.restart_failed_pipeline.assert_not_called()
@@ -300,9 +300,10 @@ class TestRunner:
             "config": runner._configuration.version,
         }
 
-    # def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exeeded(
-    #     self, runner: Runner
-    # ):
-    #     runner._manager.restart_count = 5
-    #     with pytest.raises(SystemExit, match=EXITCODES.PIPELINE_ERROR):
-    #         runner.start()
+    def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exeeded(
+        self, runner: Runner
+    ):
+        with mock.patch.object(runner, "_manager") as mock_manager:
+            mock_manager.restart_count = 5
+            with pytest.raises(SystemExit, match=str(EXITCODES.PIPELINE_ERROR.value)):
+                runner.start()
