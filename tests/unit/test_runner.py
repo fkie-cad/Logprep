@@ -286,13 +286,13 @@ class TestRunner:
             )
         )
 
-    # def test_start_calls_manager_stop_after_breaking_the_loop(self, runner: Runner):
-    #     with mock.patch.object(runner, "_manager") as mock_manager:
-    #         runner._exit_received = True
-    #         with pytest.raises(SystemExit, match="0"):
-    #             runner.start()
-    #     mock_manager.stop.assert_called()
-    #     mock_manager.restart_failed_pipeline.assert_not_called()
+    def test_start_calls_manager_stop_after_breaking_the_loop(self, runner: Runner):
+        with mock.patch.object(runner, "_manager") as mock_manager:
+            runner._exit_received = True
+            with pytest.raises(SystemExit, match="0"):
+                runner.start()
+        mock_manager.stop.assert_called()
+        mock_manager.restart_failed_pipeline.assert_not_called()
 
     # def test_metric_labels_returns_versions(self, runner: Runner):
     #     assert runner._metric_labels == {
