@@ -128,7 +128,7 @@ services:
       - prometheus
     extra_hosts:
       # enables prometheus to access the host system (eg when logprep is running locally in the terminal)
-      - "host.docker.internal:172.17.0.1"
+      - "host.docker.internal:192.168.223.41"
   config:
     image: nginx:latest
     container_name: config
