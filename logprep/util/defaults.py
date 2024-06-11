@@ -7,9 +7,13 @@ class EXITCODES(Enum):
     """Exit codes for logprep."""
 
     SUCCESS = 0
+    """Successful execution."""
     ERROR = 1
+    """General unspecified error."""
     CONFIGURATION_ERROR = 2
+    """An error in the configuration."""
     PIPELINE_ERROR = 3
+    """An error during pipeline processing."""
 
 
 DEFAULT_RESTART_COUNT = 5

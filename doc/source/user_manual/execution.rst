@@ -172,3 +172,23 @@ depseudonymize
 This will depseudonymize the provided string using the analyst and depseudo keys.  
   
 * get help with :code:`logprep pseudo depseudonymize --help`
+
+Restart Behavior
+----------------
+
+Logprep reacts on failures during pipeline execution by restarting 5 times.
+On logprep start a random timeout seed is calculated between 100 and 1000 milliseconds.
+This seed is then doubled after each restart and is used as sleep period
+between pipeline restart tryouts.
+
+If the pipeline restart succeeds, the restart count is resetted to 0.
+
+
+Exit Codes
+----------
+
+.. autoclass:: logprep.util.defaults.EXITCODES
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
