@@ -176,7 +176,9 @@ This will depseudonymize the provided string using the analyst and depseudo keys
 Restart Behavior
 ----------------
 
-Logprep reacts on failures during pipeline execution by restarting 5 times.
+Logprep reacts on failures during pipeline execution by restarting 5 (default) times.
+This restart count can be configured in the configuration file with the parameter
+:code:`restart_count`.
 On logprep start a random timeout seed is calculated between 100 and 1000 milliseconds.
 This seed is then doubled after each restart and is used as sleep period
 between pipeline restart tryouts.

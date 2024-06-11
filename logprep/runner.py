@@ -163,7 +163,7 @@ class Runner:
             if self._exit_received:
                 break
             self.scheduler.run_pending()
-            if self._manager.restart_count >= 5:
+            if self._manager.restart_count >= self._configuration.restart_count:
                 self.exit_code = EXITCODES.PIPELINE_ERROR
                 self._logger.error("Restart count exceeded. Exiting.")
                 break

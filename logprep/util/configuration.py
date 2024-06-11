@@ -29,6 +29,7 @@ Configuration File Structure
 
     version: config-1.0
     process_count: 2
+    restart_count: 5
     timeout: 5
     logger:
         level: INFO
@@ -224,6 +225,7 @@ from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFac
 from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
     DEFAULT_LOG_CONFIG,
+    DEFAULT_RESTART_COUNT,
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
 )
 from logprep.util.getter import GetterFactory, GetterNotFoundError
@@ -487,6 +489,10 @@ class Configuration:
         validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
     )
     """Number of logprep processes to start. Defaults to :code:`1`."""
+    restart_count: int = field(
+        validator=validators.instance_of(int), default=DEFAULT_RESTART_COUNT, eq=False
+    )
+    """Number of restarts before logprep exits. Defaults to :code:`5`."""
     timeout: float = field(
         validator=[validators.instance_of(float), validators.gt(0)], default=5.0, eq=False
     )
