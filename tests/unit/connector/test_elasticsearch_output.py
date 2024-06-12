@@ -256,7 +256,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
                 {"invalid": "error"},
                 [{"foo": "*" * 500}],
                 1,
-                TypeError,
+                FatalOutputError,
             ),
             (
                 429,

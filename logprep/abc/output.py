@@ -3,7 +3,6 @@ New output endpoint types are created by implementing it.
 """
 
 from abc import abstractmethod
-from logging import Logger
 from typing import Optional
 
 from attrs import define, field, validators
@@ -39,7 +38,7 @@ class CriticalOutputError(OutputError):
 
 
 class FatalOutputError(OutputError):
-    """Must not be catched."""
+    """Must not be caught."""
 
 
 class Output(Connector):

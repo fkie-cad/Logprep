@@ -18,7 +18,7 @@
 * `timestamper` now writes `_timestamper_missing_field_warning` tag to event tags instead of `_timestamper_failure` in case of missing fields
 * rename `--thread_count` parameter to `--thread-count` in http generator
 * removed `--report` parameter and feature from http generator
-* when using `extend_target_list` in the `field manager`the ordering of the given source fields is now preserved 
+* when using `extend_target_list` in the `field manager`the ordering of the given source fields is now preserved
 * logprep now exits with a negative exit code if pipeline restart fails 5 times
   * this was implemented because further restart behavior should be configured on level of a system init service or container orchestrating service like k8s
   * the `restart_count` parameter is configurable. If you want the old behavior back, you can set this parameter to a negative number
@@ -31,12 +31,13 @@
 * add pseudonymization tools to logprep -> see: `logprep pseudo --help`
 * add `restart_count` parameter to configuration
 * add option `mode` to `pseudonymizer` processor and to pseudonymization tools to chose the AES Mode for encryption and decryption
+* add retry mechanism to opensearch parallel bulk, if opensearch returns 429 `rejected_execution_exception`
 
 ### Improvements
 
 * remove logger from Components and Factory signatures
 * align processor architecture to use methods like `write_to_target`, `add_field_to` and `get_dotted_field_value` when reading and writing from and to events
-  * required substantial refactoring of the `hyperscan_resolver`, `generic_resolver` and `template_replacer` 
+  * required substantial refactoring of the `hyperscan_resolver`, `generic_resolver` and `template_replacer`
 * change `pseudonymizer`, `pre_detector`, `selective_extractor` processors and `pipeline` to handle `extra_data` the same way
 * refactor `clusterer`, `pre_detector` and `pseudonymizer` processors and change `rule_tree` so that the processor do not require `process` override
   * required substantial refactoring of the `clusterer`

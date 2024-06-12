@@ -31,6 +31,8 @@ Example
 """
 
 import logging
+import random
+import time
 from functools import cached_property
 
 import opensearchpy as search
@@ -38,7 +40,7 @@ from attrs import define, field, validators
 from opensearchpy import helpers
 from opensearchpy.serializer import JSONSerializer
 
-from logprep.abc.output import Output
+from logprep.abc.output import Output, FatalOutputError
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 
 logger = logging.getLogger("OpenSearchOutput")
@@ -87,12 +89,10 @@ class OpensearchOutput(ElasticsearchOutput):
             default=4, validator=[validators.instance_of(int), validators.gt(1)]
         )
         """Number of threads to use for bulk requests."""
-
         queue_size: int = field(
             default=4, validator=[validators.instance_of(int), validators.gt(1)]
         )
         """Number of queue size to use for bulk requests."""
-
         chunk_size: int = field(
             default=500, validator=[validators.instance_of(int), validators.gt(1)]
         )
@@ -137,15 +137,30 @@ class OpensearchOutput(ElasticsearchOutput):
             self._handle_transport_error(error)
 
     def _parallel_bulk(self, client, actions, *args, **kwargs):
-        for success, item in helpers.parallel_bulk(
-            client,
-            actions=actions,
-            chunk_size=self._config.chunk_size,
-            queue_size=self._config.queue_size,
-            raise_on_error=True,
-            raise_on_exception=True,
-        ):
-            if not success:
-                result = item[list(item.keys())[0]]
-                if "error" in result:
-                    raise result.get("error")
+        bulk_delays = 1
+        for _ in range(self._config.max_retries + 1):
+            try:
+                for success, item in helpers.parallel_bulk(
+                    client,
+                    actions=actions,
+                    chunk_size=self._config.chunk_size,
+                    queue_size=self._config.queue_size,
+                    raise_on_error=True,
+                    raise_on_exception=True,
+                ):
+                    if not success:
+                        result = item[list(item.keys())[0]]
+                        if "error" in result:
+                            raise result.get("error")
+                break
+            except search.ConnectionError as error:
+                raise error
+            except search.exceptions.TransportError as error:
+                if self._message_exceeds_max_size_error(error):
+                    raise error
+                time.sleep(bulk_delays)
+                bulk_delays += random.randint(500, 1000) / 1000
+        else:
+            raise FatalOutputError(
+                self, "Opensearch too many requests, all parallel bulk retries failed"
+            )
