@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}-logprep
+    app.kubernetes.io/application: logprep
+data:
+  {{- range $key, $value := .Values.configurations }}
+  {{ $value.name }}: |-
+  {{- toYaml $value.data | nindent 4 }}
+  {{- end }}
