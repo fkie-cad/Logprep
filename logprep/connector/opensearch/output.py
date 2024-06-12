@@ -138,7 +138,7 @@ class OpensearchOutput(ElasticsearchOutput):
 
     def _parallel_bulk(self, client, actions, *args, **kwargs):
         bulk_delays = 1
-        for _ in range(self._config.max_retries + 1):
+         for _ in range(self._config.max_retries + 1):
             try:
                 for success, item in helpers.parallel_bulk(
                     client,
@@ -152,7 +152,7 @@ class OpensearchOutput(ElasticsearchOutput):
                         result = item[list(item.keys())[0]]
                         if "error" in result:
                             raise result.get("error")
-                return
+                break
             except search.ConnectionError as error:
                 raise error
             except search.exceptions.TransportError as error:
@@ -160,6 +160,7 @@ class OpensearchOutput(ElasticsearchOutput):
                     raise error
                 time.sleep(bulk_delays)
                 bulk_delays += random.randint(500, 1000) / 1000
-        raise FatalOutputError(
-            self, "Opensearch too many requests, all parallel bulk retries failed"
-        )
+        else:
+            raise FatalOutputError(
+                self, "Opensearch too many requests, all parallel bulk retries failed"
+            )
