@@ -402,8 +402,8 @@ class TestPseudoCLI:
                 "pseudonymize",
                 "--mode",
                 f"{mode}",
-                f"{tmp_path}/analyst",
-                f"{tmp_path}/depseudo",
+                f"{tmp_path}/analyst.crt",
+                f"{tmp_path}/depseudo.crt",
                 "string",
             ],
         )
@@ -416,8 +416,8 @@ class TestPseudoCLI:
                 "depseudonymize",
                 "--mode",
                 f"{mode}",
-                f"{tmp_path}/analyst",
-                f"{tmp_path}/depseudo",
+                f"{tmp_path}/analyst.key",
+                f"{tmp_path}/depseudo.key",
                 f"{pseudonymized_string}",
             ],
         )
