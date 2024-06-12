@@ -158,8 +158,9 @@ class TestOpenSearchOutput(BaseOutputTestCase):
 
     @mock.patch(
         "opensearchpy.helpers.parallel_bulk",
-        side_effect=search.ConnectionError,
+        side_effect=search.ConnectionError(-1),
     )
+    @mock.patch("time.sleep", mock.MagicMock())  # to speed up test execution
     def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
         self.object._config.message_backlog_size = 1
         self.object._handle_connection_error = mock.MagicMock()
@@ -269,7 +270,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"invalid": "error"},
                 [{"foo": "*" * 500}],
                 1,
-                TypeError,
+                FatalOutputError,
             ),
             (
                 429,

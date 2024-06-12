@@ -149,6 +149,8 @@ class OpensearchOutput(ElasticsearchOutput):
             try:
                 self._parallel_bulk(actions, client, *args, **kwargs)
                 return
+            except search.ConnectionError as error:
+                raise error
             except search.exceptions.TransportError as error:
                 if self._message_exceeds_max_size_error(error):
                     raise error
