@@ -138,7 +138,7 @@ class OpensearchOutput(ElasticsearchOutput):
 
     def _parallel_bulk(self, client, actions, *args, **kwargs):
         bulk_delays = 1
-         for _ in range(self._config.max_retries + 1):
+        for _ in range(self._config.max_retries + 1):
             try:
                 for success, item in helpers.parallel_bulk(
                     client,
