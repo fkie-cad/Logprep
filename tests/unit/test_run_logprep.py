@@ -381,3 +381,45 @@ class TestGeneratorCLI:
             loglevel="DEBUG",
         )
         mock_controller.run.assert_called()
+
+
+class TestPseudoCLI:
+
+    @pytest.mark.parametrize("mode", ["gcm", "ctr"])
+    def test_pseudonymize_depseudonymize_with_mode(self, mode, tmp_path):
+        (tmp_path / "analyst").touch()
+        (tmp_path / "depseudo").touch()
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pseudo", "generate", "-f", f"{tmp_path}/analyst", "1024"])
+        assert result.exit_code == 0
+        result = runner.invoke(cli, ["pseudo", "generate", "-f", f"{tmp_path}/depseudo", "2048"])
+        assert result.exit_code == 0
+        result = runner.invoke(
+            cli,
+            [
+                "pseudo",
+                "pseudonymize",
+                "--mode",
+                f"{mode}",
+                f"{tmp_path}/analyst.crt",
+                f"{tmp_path}/depseudo.crt",
+                "string",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        pseudonymized_string = result.output.strip()
+        result = runner.invoke(
+            cli,
+            [
+                "pseudo",
+                "depseudonymize",
+                "--mode",
+                f"{mode}",
+                f"{tmp_path}/analyst.key",
+                f"{tmp_path}/depseudo.key",
+                f"{pseudonymized_string}",
+            ],
+        )
+        assert result.exit_code == 0
+        assert result.output.strip() == "string"
