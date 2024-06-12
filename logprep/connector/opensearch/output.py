@@ -97,13 +97,6 @@ class OpensearchOutput(ElasticsearchOutput):
             default=500, validator=[validators.instance_of(int), validators.gt(1)]
         )
         """Chunk size to use for bulk requests."""
-        bulk_retries: int = field(
-            default=5, validator=[validators.instance_of(int), validators.gt(1)]
-        )
-        """Number of retries to use for bulk requests, if OpenSearch returns a 429
-        rejected_execution_exception. Between each retry there will be a small delay, starting
-        with one second. With each consecutive retry 500 to 1000 ms will be added to the delay,
-        chosen randomly. :code:`bulk_retries` is optional and has a default value of 5."""
 
     @cached_property
     def _search_context(self):
@@ -131,7 +124,7 @@ class OpensearchOutput(ElasticsearchOutput):
     def _bulk(self, client, actions, *args, **kwargs):
         try:
             if self._config.parallel_bulk:
-                self._parallel_bulk_with_retries(client, actions, *args, **kwargs)
+                self._parallel_bulk(client, actions, *args, **kwargs)
                 return
             helpers.bulk(client, actions, *args, **kwargs)
         except search.SerializationError as error:
@@ -143,11 +136,22 @@ class OpensearchOutput(ElasticsearchOutput):
         except search.exceptions.TransportError as error:
             self._handle_transport_error(error)
 
-    def _parallel_bulk_with_retries(self, client, actions, *args, **kwargs):
+    def _parallel_bulk(self, client, actions, *args, **kwargs):
         bulk_delays = 1
-        for _ in range(self._config.bulk_retries):
+        for _ in range(self._config.max_retries + 1):
             try:
-                self._parallel_bulk(actions, client, *args, **kwargs)
+                for success, item in helpers.parallel_bulk(
+                    client,
+                    actions=actions,
+                    chunk_size=self._config.chunk_size,
+                    queue_size=self._config.queue_size,
+                    raise_on_error=True,
+                    raise_on_exception=True,
+                ):
+                    if not success:
+                        result = item[list(item.keys())[0]]
+                        if "error" in result:
+                            raise result.get("error")
                 return
             except search.ConnectionError as error:
                 raise error
@@ -159,17 +163,3 @@ class OpensearchOutput(ElasticsearchOutput):
         raise FatalOutputError(
             self, "Opensearch too many requests, all parallel bulk retries failed"
         )
-
-    def _parallel_bulk(self, actions, client, *args, **kwargs):
-        for success, item in helpers.parallel_bulk(
-            client,
-            actions=actions,
-            chunk_size=self._config.chunk_size,
-            queue_size=self._config.queue_size,
-            raise_on_error=True,
-            raise_on_exception=True,
-        ):
-            if not success:
-                result = item[list(item.keys())[0]]
-                if "error" in result:
-                    raise result.get("error")

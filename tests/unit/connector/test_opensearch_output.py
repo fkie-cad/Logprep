@@ -413,12 +413,13 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     @mock.patch("time.sleep")
     def test_write_backlog_fails_if_all_retries_are_exceeded(self, _, mock_sleep):
         self.object._config.maximum_message_size_mb = 1
+        self.object._config.max_retries = 5
         self.object._message_backlog = [{"some": "event"}]
         with pytest.raises(
             FatalOutputError, match="Opensearch too many requests, all parallel bulk retries failed"
         ):
             self.object._write_backlog()
-        assert mock_sleep.call_count == 5
+        assert mock_sleep.call_count == 6  # one initial try + 5 retries
         assert self.object._message_backlog == [{"some": "event"}]
 
     @mock.patch("time.sleep")
@@ -430,6 +431,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         ]
         with mock.patch("opensearchpy.helpers.parallel_bulk", side_effect=side_effects):
             self.object._config.maximum_message_size_mb = 1
+            self.object._config.max_retries = 5
             self.object._message_backlog = [{"some": "event"}]
             self.object._write_backlog()
             assert mock_sleep.call_count == 2
