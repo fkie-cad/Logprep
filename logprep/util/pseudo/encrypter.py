@@ -7,6 +7,7 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
+from logprep.util.defaults import DEFAULT_AES_KEY_LENGTH
 from logprep.util.getter import GetterFactory
 
 
@@ -64,12 +65,12 @@ class DualPKCS1HybridGCMEncrypter(Encrypter):
             raise ValueError("Cannot encrypt because public keys are not loaded")
 
         # encrypt input string with AES session key
-        session_key: bytes = get_random_bytes(16)
+        session_key: bytes = get_random_bytes(DEFAULT_AES_KEY_LENGTH)
         aes_key_input_str = AES.new(session_key, AES.MODE_GCM)
         input_str_enc: bytes = aes_key_input_str.encrypt(input_str.encode("utf-8"))
 
         # encrypt session key with AES depseudo key
-        depseudo_key: bytes = get_random_bytes(16)
+        depseudo_key: bytes = get_random_bytes(DEFAULT_AES_KEY_LENGTH)
         aes_key_depseudo = AES.new(depseudo_key, AES.MODE_GCM)
         session_key_enc: bytes = aes_key_depseudo.encrypt(session_key)
 
@@ -82,13 +83,13 @@ class DualPKCS1HybridGCMEncrypter(Encrypter):
         session_key_enc_enc: bytes = cipher_rsa_depseudo.encrypt(session_key_enc)
 
         # concatenate, encode, and return
-        return base64.b64encode(
-            session_key_enc_enc
-            + aes_key_depseudo.nonce
-            + depseudo_key_enc
-            + aes_key_input_str.nonce
-            + input_str_enc
-        ).decode("ascii")
+        return (
+            f"{base64.b64encode(session_key_enc_enc).decode('ascii')}:"
+            f"{base64.b64encode(aes_key_depseudo.nonce).decode('ascii')}:"
+            f"{base64.b64encode(depseudo_key_enc).decode('ascii')}:"
+            f"{base64.b64encode(aes_key_input_str.nonce).decode('ascii')}:"
+            f"{base64.b64encode(input_str_enc).decode('ascii')}"
+        )
 
 
 class DualPKCS1HybridCTREncrypter(Encrypter):
@@ -122,4 +123,8 @@ class DualPKCS1HybridCTREncrypter(Encrypter):
         cipher_aes = AES.new(session_key, AES.MODE_CTR)
         ciphertext = cipher_aes.encrypt(input_str.encode("utf-8"))
 
-        return base64.b64encode(enc_session_key + cipher_aes.nonce + ciphertext).decode("ascii")
+        return (
+            f"{base64.b64encode(enc_session_key).decode('ascii')}:"
+            f"{base64.b64encode(cipher_aes.nonce).decode('ascii')}:"
+            f"{base64.b64encode(ciphertext).decode('ascii')}"
+        )

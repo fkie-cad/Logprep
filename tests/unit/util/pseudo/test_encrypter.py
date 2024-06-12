@@ -33,8 +33,6 @@ MOCK_PUBKEY_2048 = b"""-----BEGIN PUBLIC KEY-----
     -----END PUBLIC KEY-----
     """
 
-BASE64_REGEX = r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
-
 
 class TestDualPKCS1HybridCTREncrypter:
     def test_encrypt_without_loaded_keys(self):
@@ -93,8 +91,8 @@ class TestDualPKCS1HybridCTREncrypter:
         encrypter = DualPKCS1HybridCTREncrypter()
         encrypter.load_public_keys("foo", "bar")
         output = encrypter.encrypt("foo")
-        assert len(output) == (256 + 8 + len("foo")) * 4 / 3
-        assert re.match(BASE64_REGEX, str(output))
+        assert len(output.split(":")) == 3
+        assert not output.endswith("foo")
 
 
 class TestDualPKCS1HybridGCMEncrypter:
@@ -124,5 +122,5 @@ class TestDualPKCS1HybridGCMEncrypter:
         encrypter = DualPKCS1HybridGCMEncrypter()
         encrypter.load_public_keys("foo", "bar")
         output = encrypter.encrypt("foo")
-        assert len(base64.b64decode(output)) == 416 + len("foo")
-        assert re.match(BASE64_REGEX, str(output))
+        assert len(output.split(":")) == 5
+        assert not output.endswith("foo")
