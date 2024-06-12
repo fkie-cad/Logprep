@@ -24,6 +24,13 @@ class CTRPseudonym:
     ciphertext: bytes
     """ciphertext"""
 
+    def __str__(self):
+        return (
+            f"{base64.b64encode(self.encrypted_session_key).decode('ascii')}:"
+            f"{base64.b64encode(self.cipher_nonce).decode('ascii')}:"
+            f"{base64.b64encode(self.ciphertext).decode('ascii')}"
+        )
+
 
 @dataclass
 class GCMPseudonym:
@@ -39,6 +46,15 @@ class GCMPseudonym:
     """AES input string nonce"""
     ciphertext: bytes
     """ciphertext"""
+
+    def __str__(self):
+        return (
+            f"{base64.b64encode(self.session_key_enc_enc).decode('ascii')}:"
+            f"{base64.b64encode(self.aes_key_depseudo_nonce).decode('ascii')}:"
+            f"{base64.b64encode(self.depseudo_key_enc).decode('ascii')}:"
+            f"{base64.b64encode(self.aes_key_input_str_nonce).decode('ascii')}:"
+            f"{base64.b64encode(self.ciphertext).decode('ascii')}"
+        )
 
 
 @dataclass
