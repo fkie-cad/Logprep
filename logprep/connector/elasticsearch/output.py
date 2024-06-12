@@ -95,7 +95,9 @@ class ElasticsearchOutput(Output):
         """(Optional) Timeout for the connection (default is 500ms)."""
         max_retries: int = field(validator=validators.instance_of(int), default=0)
         """(Optional) Maximum number of retries for documents rejected with code 429 (default is 0).
-        Increases backoff time by 2 seconds per try, but never exceeds 600 seconds."""
+        Increases backoff time by 2 seconds per try, but never exceeds 600 seconds. When using
+        parallel_bulk in the opensearch connector then the backoff time starts with 1 second. With
+        each consecutive retry 500 to 1000 ms will be added to the delay, chosen randomly """
         user: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) User used for authentication."""
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
