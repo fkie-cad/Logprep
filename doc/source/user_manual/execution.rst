@@ -134,7 +134,7 @@ Pseudonymization Tools
 
 Logprep provides tools to pseudonymize and depseudonymize values. This can be useful for testing
 and debugging purposes. But this can also be used to depseudonymize values pseudonymized by
-Logpreps :code:`Pseudonymizer` Processor.
+Logprep :code:`Pseudonymizer` Processor.
 
 These tools can be used to pseudonymize given strings using the same method as used in Logprep
 and provides functionality to depseudonymize values using a pair of keys. 
@@ -157,10 +157,10 @@ pseudonymize
 
 .. code-block:: bash
 
-    logprep pseudo pseudonymize analyst depseudo mystring
+    logprep pseudo pseudonymize analyst.crt depseudo.crt mystring
 
 This will pseudonymize the provided string using the analyst and depseudo keys.
- get help with :code:`logperp pseudo pseudonymize --help`
+ get help with :code:`logprep pseudo pseudonymize --help`
 
 depseudonymize
 ^^^^^^^^^^^^^^

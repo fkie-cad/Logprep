@@ -2,15 +2,19 @@
 Pseudonymizer
 =============
 
-The `pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
+The :code:`pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
 privacy regulations can be adhered to.
 
 .. security-best-practice::
    :title: Processor - Pseudonymizer
 
-   The `pseudonymizer` works with two public keys for different roles.
+   The :code:`pseudonymizer` works with two public keys for different roles.
    It is suggested to ensure that two different keys are being used such that the separation of the
    roles can be maintained.
+
+   It is suggested to use the :code:`GCM` mode for encryption as it decouples the key length of the
+   depseudo and analyst keys. This leads to additional 152 bytes of overhead for the encryption
+   compared to the :code:`CTR` mode encrypter.
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,6 +34,7 @@ Processor Configuration
         hash_salt: secret_salt
         regex_mapping: /path/to/regex_mapping.json
         max_cached_pseudonyms: 1000000
+        mode: GCM
         tld_lists:
             -/path/to/tld_list.dat
 
@@ -55,11 +60,15 @@ from urlextract import URLExtract
 from logprep.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.pseudo.encrypter import (
+    DualPKCS1HybridCTREncrypter,
+    DualPKCS1HybridGCMEncrypter,
+    Encrypter,
+)
 from logprep.util.validators import list_of_urls_validator
 
 
@@ -133,6 +142,13 @@ class Pseudonymizer(FieldManager):
         a default list will be retrieved online and cached in a local directory. For local
         files the path has to be given with :code:`file:///path/to/file.dat`."""
 
+        mode: str = field(
+            validator=[validators.instance_of(str), validators.in_(("GCM", "CTR"))], default="GCM"
+        )
+        """Optional mode of operation for the encryption. Can be either 'GCM' or 'CTR'.
+        Default is 'GCM'.
+        """
+
     @define(kw_only=True)
     class Metrics(Processor.Metrics):
         """Tracks statistics about the Pseudonymizer"""
@@ -190,10 +206,13 @@ class Pseudonymizer(FieldManager):
         return SHA256Hasher()
 
     @cached_property
-    def _encrypter(self) -> DualPKCS1HybridEncrypter:
-        _encrypter = DualPKCS1HybridEncrypter()
-        _encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
-        return _encrypter
+    def _encrypter(self) -> Encrypter:
+        if self._config.mode == "CTR":
+            encrypter = DualPKCS1HybridCTREncrypter()
+        else:
+            encrypter = DualPKCS1HybridGCMEncrypter()
+        encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
+        return encrypter
 
     @cached_property
     def _tld_extractor(self) -> TLDExtract:

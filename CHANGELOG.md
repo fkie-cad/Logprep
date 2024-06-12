@@ -30,6 +30,7 @@
 * add logprep http output connector
 * add pseudonymization tools to logprep -> see: `logprep pseudo --help`
 * add `restart_count` parameter to configuration
+* add option `mode` to `pseudonymizer` processor and to pseudonymization tools to chose the AES Mode for encryption and decryption
 
 ### Improvements
 
