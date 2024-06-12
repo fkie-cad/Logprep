@@ -15,6 +15,7 @@ from click.testing import CliRunner
 from logprep import run_logprep
 from logprep.run_logprep import cli
 from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.defaults import EXITCODES
 
 
 class TestRunLogprepCli:
@@ -119,14 +120,14 @@ class TestRunLogprepCli:
     def test_exits_after_getter_error_for_not_existing_protocol(self):
         args = ["run", "almighty_protocol://tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
-        assert result.exit_code == 1
+        assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
         assert "No getter for protocol 'almighty_protocol'" in result.output
 
     @mock.patch("logprep.util.configuration.Configuration._verify")
     def test_test_config_verifies_configuration_successfully(self, mock_verify):
         args = ["test", "config", "tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
-        assert result.exit_code == 0
+        assert result.exit_code == EXITCODES.SUCCESS.value
         mock_verify.assert_called()
         assert "The verification of the configuration was successful" in result.stdout
 
@@ -135,7 +136,7 @@ class TestRunLogprepCli:
         mock_verify.side_effect = InvalidConfigurationError
         args = ["test", "config", "tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
-        assert result.exit_code == 1
+        assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
         mock_verify.assert_called()
         assert "The verification of the configuration was successful" not in result.stdout
 
@@ -194,8 +195,8 @@ class TestRunLogprepCli:
     def test_run_version_arg_prints_with_http_config_without_exposing_secret_data(self):
         config_path = "tests/testdata/config/config.yml"
         mock_env = {
-            "LOGPREP_CONFIG_ATUH_USERNAME": "username",
-            "LOGPREP_CONFIG_ATUH_PASSWORD": "password",
+            "LOGPREP_CONFIG_AUTH_USERNAME": "username",
+            "LOGPREP_CONFIG_AUTH_PASSWORD": "password",
         }
         responses.add(
             responses.GET,
@@ -212,10 +213,10 @@ class TestRunLogprepCli:
         assert "username" not in result.output
         assert "password" not in result.output
 
-    def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self, capsys):
+    def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self):
         non_existing_config_file = "/tmp/does/not/exist.yml"
         result = self.cli_runner.invoke(cli, ["run", non_existing_config_file])
-        assert result.exit_code == 1
+        assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
         expected_lines = (
             f"One or more of the given config file(s) does not exist: "
             f"{non_existing_config_file}\n"
@@ -235,7 +236,7 @@ class TestRunLogprepCli:
             mock_verify.side_effect = InvalidConfigurationError
             config_path = "tests/testdata/config/config.yml"
             result = self.cli_runner.invoke(cli, ["run", config_path])
-            assert result.exit_code == 1
+            assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
 
     def test_logprep_exits_on_any_exception_during_verify(self):
         with mock.patch("logprep.util.configuration.Configuration._verify") as mock_verify:
@@ -249,7 +250,7 @@ class TestRunLogprepCli:
             mock_verify.side_effect = requests.RequestException("connection refused")
             config_path = "http://localhost/does-not-exists"
             result = self.cli_runner.invoke(cli, ["run", config_path])
-            assert result.exit_code == 1
+            assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
 
     @mock.patch("logprep.util.rule_dry_runner.DryRunner.run")
     def test_test_dry_run_starts_dry_runner(self, mock_dry_runner):

@@ -16,7 +16,7 @@ from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.util.rule_dry_runner import DryRunner
@@ -30,7 +30,7 @@ EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 
 def _print_version(config: "Configuration") -> None:
     print(get_versions_string(config))
-    sys.exit(0)
+    sys.exit(EXITCODES.SUCCESS.value)
 
 
 def _get_configuration(config_paths: list[str]) -> Configuration:
@@ -42,7 +42,7 @@ def _get_configuration(config_paths: list[str]) -> Configuration:
         return config
     except InvalidConfigurationError as error:
         print(f"InvalidConfigurationError: {error}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(EXITCODES.CONFIGURATION_ERROR.value)
 
 
 @click.group(name="logprep")
@@ -91,7 +91,7 @@ def run(configs: tuple[str], version=None) -> None:
             logger.critical(f"A critical error occurred: {error}")
         if runner:
             runner.stop()
-        sys.exit(1)
+        sys.exit(EXITCODES.ERROR.value)
     # pylint: enable=broad-except
 
 

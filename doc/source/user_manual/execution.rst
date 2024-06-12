@@ -59,11 +59,11 @@ It must have the following format:
     :caption: Example configuration file for the kafka load-tester
 
     logging_level: LOG_LEVEL  # Default: "INFO"
-    source_count: INTERGER  # Number of documents to obtain form Kafka
-    count: INTERGER  # Number of documents to send
-    process_count: INTERGER  # Number of processes (default: 1)
+    source_count: INTEGER  # Number of documents to obtain form Kafka
+    count: INTEGER  # Number of documents to send
+    process_count: INTEGER  # Number of processes (default: 1)
     profile: BOOL  # Shows profiling data (default: false)
-    target_send_per_sec: INTERGER  # Desired number of documents to send per second with each process. Setting it to 0 sends as much as possible (default: 0).
+    target_send_per_sec: INTEGER  # Desired number of documents to send per second with each process. Setting it to 0 sends as much as possible (default: 0).
 
     kafka:
     bootstrap_servers:  # List of bootstrap servers
@@ -73,7 +73,7 @@ It must have the following format:
         group_id: STRING  # Should be different from the group_id of the Logprep Consumer, otherwise the offset in Logprep will be changed!
         timeout: FLOAT  # Timeout for retrieving documents (default: 1.0)
     producer:  # Kafka producer
-        acks: STRING/INTERGER # Determines if sending should be acknowledged (default: 0)
+        acks: STRING/INTEGER # Determines if sending should be acknowledged (default: 0)
         compression_type: STRING  # Compression type (default: "none")
         topic: STRING  # Topic to send documents to
         queue_buffering_max_messages: INTEGER # Batch for sending documents (default: 10000)
@@ -172,3 +172,26 @@ depseudonymize
 This will depseudonymize the provided string using the analyst and depseudo keys.  
   
 * get help with :code:`logprep pseudo depseudonymize --help`
+
+Restart Behavior
+----------------
+
+Logprep reacts on failures during pipeline execution by restarting 5 (default) times.
+This restart count can be configured in the configuration file with the parameter
+:code:`restart_count`. If the restart count is set to a negative number, the restart count
+is infinite and logprep will restart the pipelines immediately after a failure.
+On logprep start a random timeout seed is calculated between 100 and 1000 milliseconds.
+This seed is then doubled after each restart and is used as sleep period
+between pipeline restart tryouts.
+
+If the pipeline restart succeeds, the restart count is reset to 0.
+
+
+Exit Codes
+----------
+
+.. autoclass:: logprep.util.defaults.EXITCODES
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:

@@ -6,6 +6,8 @@ import logging
 import logging.handlers
 import multiprocessing
 import multiprocessing.queues
+import random
+import time
 
 from attr import define, field
 
@@ -52,6 +54,8 @@ class PipelineManager:
         """Number of failed pipelines"""
 
     def __init__(self, configuration: Configuration):
+        self.restart_count = 0
+        self.restart_timeout_ms = random.randint(100, 1000)
         self.metrics = self.Metrics(labels={"component": "manager"})
         self.loghandler = None
         if multiprocessing.current_process().name == "MainProcess":
@@ -122,6 +126,7 @@ class PipelineManager:
         ]
 
         if not failed_pipelines:
+            self.restart_count = 0
             return
 
         for index, failed_pipeline in failed_pipelines:
@@ -137,6 +142,11 @@ class PipelineManager:
                 pipeline_index,
                 exit_code,
             )
+        if self._configuration.restart_count < 0:
+            return
+        self.restart_count += 1
+        time.sleep(self.restart_timeout_ms / 1000)
+        self.restart_timeout_ms = self.restart_timeout_ms * 2
 
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
