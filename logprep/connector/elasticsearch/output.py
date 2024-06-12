@@ -44,9 +44,8 @@ from elasticsearch import ElasticsearchException, helpers
 from opensearchpy import OpenSearchException
 from urllib3.exceptions import TimeoutError  # pylint: disable=redefined-builtin
 
-from logprep.abc.output import FatalOutputError, Output, TooManyRequestsOutputError
+from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import Metric
-from logprep.util.decorators import retry_throttle
 from logprep.util.helper import get_dict_size_in_byte
 from logprep.util.time import TimeParser
 
@@ -312,7 +311,6 @@ class ElasticsearchOutput(Output):
             self._write_backlog()
 
     @Metric.measure_time()
-    @retry_throttle(on_error=TooManyRequestsOutputError, retry_fail_error=FatalOutputError)
     def _write_backlog(self):
         if not self._message_backlog:
             return
@@ -433,7 +431,7 @@ class ElasticsearchOutput(Output):
             self._message_backlog = error_documents + messages_under_size_limit
             self._bulk(self._search_context, self._message_backlog)
         else:
-            raise TooManyRequestsOutputError(self, error.error)
+            raise FatalOutputError(self, error.error)
 
     def _message_exceeds_max_size_error(self, error):
         if error.status_code == 429:

@@ -41,10 +41,6 @@ class FatalOutputError(OutputError):
     """Must not be caught."""
 
 
-class TooManyRequestsOutputError(OutputError):
-    """Raised if output returns too many requests."""
-
-
 class Output(Connector):
     """Connect to a output destination."""
 
