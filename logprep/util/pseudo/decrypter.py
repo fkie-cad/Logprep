@@ -108,7 +108,7 @@ class Decrypter:
 
     @abstractmethod
     def decrypt(self) -> str:
-        """abstract method to decrypt the pseudonymized string"""
+        """abstract method to decrypt the pseudonym"""
 
 
 @dataclass
@@ -118,9 +118,9 @@ class DualPKCS1HybridCTRDecrypter(Decrypter):
     Parameters
     ----------
 
-    pseudonymized_string: str
+    pseudonym: CTRPseudonym | GCMPseudonym
         The base64 encoded pseudonymized string.
-        Base64 decoding is done in __post_init__ method
+        Conversion to CTRPseudonym is done in __post_init__ method
     """
 
     def __post_init__(self) -> None:
@@ -161,7 +161,15 @@ class DualPKCS1HybridCTRDecrypter(Decrypter):
 
 @dataclass
 class DualPKCS1HybridGCMDecrypter(Decrypter):
-    """class to depseudonymize a pseudonymized string in GCM mode"""
+    """class to depseudonymize a pseudonymized string
+
+    Parameters
+    ----------
+
+    pseudonym: CTRPseudonym | GCMPseudonym
+        The base64 encoded pseudonymized string.
+        Conversion to GCMPseudonym is done in __post_init__ method
+    """
 
     def __post_init__(self) -> None:
         self.pseudonym = GCMPseudonym(
