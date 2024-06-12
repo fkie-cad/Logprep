@@ -4,6 +4,13 @@
 ## next release
 
 ### Breaking
+### Features
+### Improvements
+### Bugfix
+
+## 12.0.0
+
+### Breaking
 
 * `pseudonymizer` change rule config field `pseudonyms` to `mapping`
 * `clusterer` change rule config field `target` to `source_fields`
