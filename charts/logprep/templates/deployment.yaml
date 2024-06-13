@@ -1,0 +1,111 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+    app.kubernetes.io/application: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+        app.kubernetes.io/application: {{ .Chart.Name }}
+        {{ toYaml .Values.pod_extra_labels | nindent 8 }}
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "false"
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      containers:
+        - name: logprep
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+          resources:
+            limits:
+              memory: {{ .Values.resources.limits.memory | quote }}
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+            requests:
+              memory: {{ .Values.resources.requests.memory | quote }}
+              cpu: {{ .Values.resources.requests.cpu | quote }}
+          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: Always
+          ports:
+            - name: prometheus
+              containerPort: 8000
+          command:
+            - logprep
+            - run
+            {{- range $key, $value := .Values.configurations }}
+            - configurations/{{ $value.name }}
+            {{- end }}
+          env:
+            - name: DEBUG # to get python stacktrace on error
+              value: "1"
+            - name: LOGPREP_CREDENTIALS_FILE
+              value: "/home/logprep/credentials.yml"
+            - name: REQUESTS_CA_BUNDLE
+              value: /home/logprep/auth/ca-cert-chain
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: /prometheus
+          volumeMounts:
+            - name: logprep-temp
+              mountPath: /tmp
+            - name: prometheus-multiproc
+              mountPath: /prometheus
+            - name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
+              mountPath: /home/logprep/configurations
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8000
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /metrics
+              port: 8000
+            failureThreshold: 12
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 10
+      volumes:
+        - name: logprep-temp
+          emptyDir:
+            medium: "Memory"
+        - name: prometheus-multiproc
+          emptyDir:
+            medium: "Memory"
+        - name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
+          configMap:
+            name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "kubernetes.io/name"
+                    operator: In
+                    values:
+                      - {{ .Release.Name }}-{{ .Chart.Name }}
+              topologyKey: "kubernetes.io/hostname"
