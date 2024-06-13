@@ -1,0 +1,9 @@
+# CHART_PATH/tests/deployment_test.yaml
+suite: deployment
+templates:
+  - deployment.yaml
+tests:
+  - it: should be a Deployment
+    asserts:
+      - isKind:
+          of: Deployment
