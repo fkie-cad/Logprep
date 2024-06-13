@@ -9,6 +9,7 @@ Welcome to the Documentation of Logprep!
    getting_started
    user_manual/index
    development/index
+   examples/index
 
 ==================
 Indices and Tables
