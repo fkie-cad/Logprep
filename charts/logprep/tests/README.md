@@ -1,4 +1,4 @@
-### Helm Unittests
+### Helm unit tests
 
 install test plugin with:
 
@@ -6,7 +6,7 @@ install test plugin with:
 $ helm plugin install https://github.com/helm-unittest/helm-unittest.git
 ```
 
-run unittests with
+run unit tests with
 
 ```bash
 $ helm unittest ./charts/logprep

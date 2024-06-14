@@ -1,4 +1,4 @@
-# CHART_PATH/tests/deployment_test.yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
 suite: deployment
 templates:
   - deployment.yaml
