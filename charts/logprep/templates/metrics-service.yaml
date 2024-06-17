@@ -1,0 +1,18 @@
+{{- if .Values.exporter.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+    app.kubernetes.io/application: {{ .Chart.Name }}
+  name: {{ .Release.Name }}-{{ .Chart.Name }}-metrics-service
+spec:
+  ports:
+    - name: metrics
+      port: {{ .Values.exporter.service_port }}
+      targetPort: {{ .Values.exporter.port }}
+      appProtocol: http
+  selector:
+    app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+{{- end}}

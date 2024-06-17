@@ -36,6 +36,9 @@ class Documents:
     def __iter__(self):
         return iter(self._documents)
 
+    def __getitem__(self, index):
+        return self._documents[index]
+
 
 @define
 class Document:

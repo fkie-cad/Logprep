@@ -30,6 +30,11 @@ credentials: {}
 imagePullSecrets:
   - name: harbor-registry-secret
 
+exporter:
+  enabled: true
+  port: 8000
+  service_port: 8001
+
 configurations:
   - name: logprep-config
     data:
@@ -43,9 +48,6 @@ configurations:
         loggers:
           "py.warnings": { "level": "ERROR" }
           "Runner": { "level": "DEBUG" }
-      metrics:
-        enabled: true
-        port: 8001
 
       pipeline:
         - labelername:
