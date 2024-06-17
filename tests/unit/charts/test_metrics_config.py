@@ -96,3 +96,15 @@ class TestMetricsService(TestBaseChartTest):
         volume = [vol for vol in volumes if vol["name"] == "metrics-config"]
         assert volume
         assert volume[0]["configMap"]["name"] == "logprep-logprep-metrics-config"
+
+    def test_prometheus_multiproc_environment_variable(self):
+        assert False
+
+    def test_prometheus_multiproc_environment_mount(self):
+        assert False
+
+    def test_readiness_probes(self):
+        assert False
+
+    def test_pod_monitors(self):
+        assert False
