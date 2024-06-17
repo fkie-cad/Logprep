@@ -30,6 +30,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger("Processor")
 
 
+@define(kw_only=True)
+class ProcessorResult:
+    """Result object to be returned by erevy processor. It contains all extra_data and errors."""
+
+    extra_data = field(validator=validators.instance_of(list))
+    errors = field(validator=validators.instance_of(list))
+
+
 class Processor(Component):
     """Abstract Processor Class to define the Interface"""
 
@@ -76,7 +84,7 @@ class Processor(Component):
         "_event",
         "_specific_tree",
         "_generic_tree",
-        "_extra_data",
+        "result",
     ]
 
     rule_class: "Rule"
@@ -84,8 +92,8 @@ class Processor(Component):
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
-    _extra_data: List[Tuple[dict, Tuple[dict]]]
     _strategy = None
+    result: ProcessorResult
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
@@ -104,7 +112,7 @@ class Processor(Component):
             specific_rules_targets=self._config.specific_rules,
         )
         self.has_custom_tests = False
-        self._extra_data = []
+        self.result = ProcessorResult(extra_data=[], errors=[])
 
     @property
     def _specific_rules(self):
@@ -156,11 +164,11 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
-        self._extra_data.clear()
+        self.result = ProcessorResult(extra_data=[], errors=[])
         logger.debug(f"{self.describe()} processing event {event}")
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
-        return self._extra_data if self._extra_data else None
+        return self.result
 
     def _process_rule_tree(self, event: dict, tree: "RuleTree"):
         applied_rules = set()
@@ -195,9 +203,9 @@ class Processor(Component):
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
-            raise error  # is needed to prevent wrapping it in itself
+            self.result.errors.append(error)  # is needed to prevent wrapping it in itself
         except BaseException as error:
-            raise ProcessingCriticalError(str(error), rule, event) from error
+            self.result.errors.append(ProcessingCriticalError(str(error), rule, event))
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:

@@ -21,9 +21,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.hyperscan_resolver")
 
-from logprep.processor.hyperscan_resolver.processor import (
-    HyperscanResolver,
-)
+from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 
 
 class TestHyperscanResolverProcessor(BaseProcessorTestCase):
@@ -646,10 +644,8 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         document = {"to_resolve": "12ab34"}
 
-        with pytest.raises(
-            ProcessingCriticalError, match=r"No patter to compile for hyperscan database!"
-        ):
-            self.object.process(document)
+        result = self.object.process(document)
+        assert isinstance(result.errors[0], ProcessingCriticalError)
 
     def test_resolve_no_conflict_from_file_and_list_has_conflict(
         self,

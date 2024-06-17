@@ -579,7 +579,7 @@ class TestPipelineWithActualInput:
         event, extra_outputs = pipeline.process_pipeline()
         assert event["label"] == {"reporter": ["windows"]}
         assert "arrival_time" in event
-        assert extra_outputs == []
+        assert extra_outputs[0].extra_data == []
 
     def test_process_event_processes_without_input_and_without_output(self):
         event = {"applyrule": "yes"}

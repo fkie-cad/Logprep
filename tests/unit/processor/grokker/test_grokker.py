@@ -438,8 +438,9 @@ class TestGrokker(BaseProcessorTestCase):
                 assert re.match(rf".*{error}", caplog.text)
                 assert event == expected, testcase
         else:
-            with pytest.raises(error):
-                self.object.process(event)
+
+            result = self.object.process(event)
+            assert isinstance(result.errors[0], ProcessingCriticalError)
 
     def test_load_custom_patterns_from_http_as_zip_file(self):
         rule = {

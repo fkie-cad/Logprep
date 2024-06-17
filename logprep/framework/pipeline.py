@@ -277,9 +277,9 @@ class Pipeline:
                 break
         return extra_outputs
 
-    def _store_extra_data(self, extra_data: List[tuple]) -> None:
+    def _store_extra_data(self, processor_result) -> None:
         self.logger.debug("Storing extra data")
-        for document, outputs in extra_data:
+        for document, outputs in processor_result.extra_data:
             for output in outputs:
                 for output_name, target in output.items():
                     self._output[output_name].store_custom(document, target)

@@ -38,7 +38,7 @@ from attr import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import TimeParser
 
 
@@ -98,7 +98,7 @@ class PreDetector(Processor):
             and not self._ip_alerter.is_in_alerts_list(rule, event)
         ):
             self._get_detection_result(event, rule)
-        for detection, _ in self._extra_data:
+        for detection, _ in self.result.extra_data:
             detection["creation_timestamp"] = TimeParser.now().isoformat()
             timestamp = get_dotted_field_value(event, "@timestamp")
             if timestamp is not None:
@@ -111,7 +111,7 @@ class PreDetector(Processor):
             add_field_to(event, "pre_detection_id", pre_detection_id)
 
         detection_result = self._generate_detection_result(pre_detection_id, event, rule)
-        self._extra_data.append((detection_result, self._config.outputs))
+        self.result.extra_data.append((detection_result, self._config.outputs))
 
     @staticmethod
     def _generate_detection_result(pre_detection_id: str, event: dict, rule: PreDetectorRule):
