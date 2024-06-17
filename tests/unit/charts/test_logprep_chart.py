@@ -29,6 +29,17 @@ class TestBaseChartTest:
             )
 
 
+class TestLogprepChart(TestBaseChartTest):
+
+    def setup_class(self):
+        self.manifests = self.render_chart("logprep")
+
+    def test_manifests_are_rendered(self):
+        assert self.manifests
+        assert len(self.manifests) > 0
+        assert len(self.manifests) == 2
+
+
 class TestDefaultValues(TestBaseChartTest):
 
     def setup_class(self):
@@ -41,3 +52,4 @@ class TestDefaultValues(TestBaseChartTest):
     def test_application_label_is_set(self):
         for manifest in self.manifests:
             assert manifest["metadata.labels"]["app.kubernetes.io/name"] == "logprep-logprep"
+            assert manifest["metadata.labels"]["app.kubernetes.io/application"] == "logprep"
