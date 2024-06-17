@@ -8,15 +8,8 @@ from tests.unit.charts.test_base import TestBaseChartTest
 
 class TestMetricsService(TestBaseChartTest):
 
-    def setup_class(self):
-        self.manifests = self.render_chart("logprep")
-
-    @property
-    def service(self):
-        return self.manifests.by_query("kind: Service")[0]
-
     def test_service_name(self):
-        assert self.service["metadata.name"] == "logprep-logprep-metrics-service"
+        assert self.metrics_service["metadata.name"] == "logprep-logprep-metrics-service"
 
     def test_service_is_not_rendered_if_metrics_disabled(self):
         manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
@@ -25,19 +18,22 @@ class TestMetricsService(TestBaseChartTest):
     def test_service_sets_port(self):
         logprep_values = {"exporter": {"port": 9000, "service_port": 9001}}
         self.manifests = self.render_chart("logprep", logprep_values)
-        assert self.service["spec.ports"][0]["port"] == 9001
-        assert self.service["spec.ports"][0]["targetPort"] == 9000
+        assert self.metrics_service["spec.ports"][0]["port"] == 9001
+        assert self.metrics_service["spec.ports"][0]["targetPort"] == 9000
 
     def test_service_sets_defaults(self):
-        assert self.service["spec.ports"][0]["port"] == 8001
-        assert self.service["spec.ports"][0]["targetPort"] == 8000
+        assert self.metrics_service["spec.ports"][0]["port"] == 8001
+        assert self.metrics_service["spec.ports"][0]["targetPort"] == 8000
 
     def test_service_sets_selector(self):
         deployment = self.manifests.by_query("kind: Deployment")[0]
         deployment_selected_label = deployment["spec.template.metadata.labels"][
             "app.kubernetes.io/name"
         ]
-        assert self.service["spec.selector"]["app.kubernetes.io/name"] == deployment_selected_label
+        assert (
+            self.metrics_service["spec.selector"]["app.kubernetes.io/name"]
+            == deployment_selected_label
+        )
 
     def test_metrics_config_file_is_set(self):
         expected_metrics_config = {

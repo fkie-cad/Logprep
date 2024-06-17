@@ -28,11 +28,21 @@ class TestBaseChartTest:
                 )
             )
 
-
-class TestLogprepChart(TestBaseChartTest):
-
     def setup_class(self):
         self.manifests = self.render_chart("logprep")
+
+    @property
+    def deployment(self):
+        return self.manifests.by_query("kind: Deployment")[0]
+
+    @property
+    def metrics_service(self):
+        return self.manifests.by_query(
+            "kind: Service AND metadata.name: logprep-logprep-metrics-service"
+        )[0]
+
+
+class TestLogprepChart(TestBaseChartTest):
 
     def test_manifests_are_rendered(self):
         assert self.manifests
@@ -41,9 +51,6 @@ class TestLogprepChart(TestBaseChartTest):
 
 
 class TestDefaultValues(TestBaseChartTest):
-
-    def setup_class(self):
-        self.manifests = self.render_chart("logprep")
 
     def test_labels_are_set(self):
         for manifest in self.manifests:
