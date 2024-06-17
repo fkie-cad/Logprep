@@ -35,6 +35,14 @@ exporter:
   port: 8000
   service_port: 8001
 
+logger:
+  level: INFO
+  format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
+  datefmt: "%Y-%m-%d %H:%M:%S"
+  loggers:
+    "py.warnings": { "level": "ERROR" }
+    "Runner": { "level": "DEBUG" }
+
 configurations:
   - name: logprep-config
     data:
