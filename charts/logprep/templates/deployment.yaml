@@ -68,6 +68,9 @@ spec:
               mountPath: /prometheus
             - name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
               mountPath: /home/logprep/configurations
+            - name: metrics-config
+              mountPath: /home/logprep/configurations/metrics-config.yaml
+              subPath: metrics-config.yaml
           readinessProbe:
             httpGet:
               path: /metrics
@@ -99,6 +102,9 @@ spec:
         - name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
           configMap:
             name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
+        - name: metrics-config
+          configMap:
+            name: {{ .Release.Name }}-{{ .Chart.Name }}-metrics-config
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

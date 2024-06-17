@@ -88,6 +88,45 @@ class TestMetricsService(TestBaseChartTest):
         ]
         assert self.service["spec.selector"]["app.kubernetes.io/name"] == deployment_selected_label
 
-    def test_metrics_config_is_set(self):
-        assert False
-        # test if metrics config is populated correctly in logprep configurations
+    def test_metrics_config_file_is_set(self):
+        expected_metrics_config = {
+            "metrics": {
+                "enabled": True,
+                "port": 8000,
+            }
+        }
+        expected_metrics_config = yaml.dump(expected_metrics_config)
+        metrics_config = self.manifests.by_query(
+            "kind: ConfigMap AND metadata.name: logprep-logprep-metrics-config"
+        )
+        assert metrics_config
+        metrics_config = metrics_config[0]
+        assert metrics_config["data"]["metrics-config.yaml"] == expected_metrics_config
+
+    def test_metrics_config_file_is_set_if_exporter_not_enabled(self):
+        self.manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
+        metrics_config = self.manifests.by_query(
+            "kind: ConfigMap AND metadata.name: logprep-logprep-metrics-config"
+        )
+        assert metrics_config
+        metrics_config = metrics_config[0]
+        assert "enabled: false" in metrics_config["data"]["metrics-config.yaml"]
+
+    def test_deployment_mounts_metrics_config(self):
+        deployment = self.manifests.by_query("kind: Deployment")[0]
+        volume_mounts = deployment["spec.template.spec.containers"][0]["volumeMounts"]
+        volume_mount = [mount for mount in volume_mounts if mount["name"] == "metrics-config"][0]
+        assert volume_mount
+        assert volume_mount["mountPath"] == "/home/logprep/configurations/metrics-config.yaml"
+        assert volume_mount["subPath"] == "metrics-config.yaml"
+
+    def test_metrics_config_volume_is_populeted(self):
+        deployment = self.manifests.by_query("kind: Deployment")[0]
+        metrics_config = self.manifests.by_query(
+            "kind: ConfigMap AND metadata.name: logprep-logprep-metrics-config"
+        )
+        metrics_config_name = metrics_config[0]["metadata"]["name"]
+        volumes = deployment["spec.template.spec.volumes"]
+        volume = [vol for vol in volumes if vol["name"] == "metrics-config"][0]
+        assert volume
+        assert volume["configMap"]["name"] == metrics_config_name
