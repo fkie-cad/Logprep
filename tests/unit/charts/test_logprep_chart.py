@@ -37,7 +37,7 @@ class TestLogprepChart(TestBaseChartTest):
     def test_manifests_are_rendered(self):
         assert self.manifests
         assert len(self.manifests) > 0
-        assert len(self.manifests) == 3
+        assert len(self.manifests) == 4
 
 
 class TestDefaultValues(TestBaseChartTest):
@@ -120,7 +120,7 @@ class TestMetricsService(TestBaseChartTest):
         assert volume_mount["mountPath"] == "/home/logprep/configurations/metrics-config.yaml"
         assert volume_mount["subPath"] == "metrics-config.yaml"
 
-    def test_metrics_config_volume_is_populeted(self):
+    def test_metrics_config_volume_is_populated(self):
         deployment = self.manifests.by_query("kind: Deployment")[0]
         metrics_config = self.manifests.by_query(
             "kind: ConfigMap AND metadata.name: logprep-logprep-metrics-config"
@@ -130,3 +130,10 @@ class TestMetricsService(TestBaseChartTest):
         volume = [vol for vol in volumes if vol["name"] == "metrics-config"][0]
         assert volume
         assert volume["configMap"]["name"] == metrics_config_name
+
+    def test_metrics_config_is_used_to_start_logprep(self):
+        deployment = self.manifests.by_query("kind: Deployment")[0]
+        container = deployment["spec.template.spec.containers"][0]
+        volume_mounts = container["volumeMounts"]
+        volume_mount = [mount for mount in volume_mounts if mount["name"] == "metrics-config"][0]
+        assert volume_mount["mountPath"] in " ".join(container["command"])

@@ -50,8 +50,9 @@ spec:
             - logprep
             - run
             {{- range $key, $value := .Values.configurations }}
-            - configurations/{{ $value.name }}
+            - /home/logprep/configurations/{{ $value.name }}
             {{- end }}
+            - /home/logprep/configurations/metrics-config.yaml
           env:
             - name: DEBUG # to get python stacktrace on error
               value: "1"
