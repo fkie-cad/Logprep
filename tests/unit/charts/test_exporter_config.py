@@ -13,7 +13,7 @@ class TestExporterConfig(TestBaseChartTest):
     def test_service_name(self):
         assert self.exporter_service["metadata.name"] == "logprep-logprep-exporter"
 
-    def test_service_is_not_rendered_if_metrics_disabled(self):
+    def test_service_is_not_rendered_if_exporter_disabled(self):
         manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
         assert len(manifests.by_query("kind: Service")) == 0
 
@@ -37,29 +37,29 @@ class TestExporterConfig(TestBaseChartTest):
             == deployment_selected_label
         )
 
-    def test_metrics_config_file_is_set(self):
-        expected_metrics_config = {
+    def test_exporter_config_file_is_set(self):
+        expected_exporter_config = {
             "metrics": {
                 "enabled": True,
                 "port": 8000,
             }
         }
-        expected_metrics_config = yaml.dump(expected_metrics_config)
-        metrics_config = self.manifests.by_query(
+        expected_exporter_config = yaml.dump(expected_exporter_config)
+        exporter_config = self.manifests.by_query(
             "kind: ConfigMap AND metadata.name: logprep-logprep-exporter"
         )
-        assert metrics_config
-        metrics_config = metrics_config[0]
-        assert metrics_config["data"]["exporter-config.yaml"] == expected_metrics_config
+        assert exporter_config
+        exporter_config = exporter_config[0]
+        assert exporter_config["data"]["exporter-config.yaml"] == expected_exporter_config
 
-    def test_metrics_config_file_is_set_if_exporter_not_enabled(self):
+    def test_exporter_config_file_is_set_if_exporter_not_enabled(self):
         self.manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
-        metrics_config = self.manifests.by_query(
+        exporter_config = self.manifests.by_query(
             "kind: ConfigMap AND metadata.name: logprep-logprep-exporter"
         )
-        assert metrics_config
-        metrics_config = metrics_config[0]
-        assert "enabled: false" in metrics_config["data"]["exporter-config.yaml"]
+        assert exporter_config
+        exporter_config = exporter_config[0]
+        assert "enabled: false" in exporter_config["data"]["exporter-config.yaml"]
 
     def test_deployment_mounts_exporter_config(self):
         deployment = self.manifests.by_query("kind: Deployment")[0]
@@ -98,40 +98,40 @@ class TestExporterConfig(TestBaseChartTest):
         assert volume[0]["configMap"]["name"] == "logprep-logprep-exporter"
 
     @pytest.mark.parametrize(
-        "metrics_config, expected",
+        "exporter_config, expected",
         [
             ({"exporter": {"enabled": True}}, True),
             ({"exporter": {"enabled": False}}, False),
         ],
     )
-    def test_prometheus_multiproc_environment_variable(self, metrics_config, expected):
-        self.manifests = self.render_chart("logprep", metrics_config)
+    def test_prometheus_multiproc_environment_variable(self, exporter_config, expected):
+        self.manifests = self.render_chart("logprep", exporter_config)
         env_var = self.deployment["spec.template.spec.containers.0.env.2"]
         assert (env_var["name"] == "PROMETHEUS_MULTIPROC_DIR") == expected
 
     @pytest.mark.parametrize(
-        "metrics_config, expected",
+        "exporter_config, expected",
         [
             ({"exporter": {"enabled": True}}, True),
             ({"exporter": {"enabled": False}}, False),
         ],
     )
-    def test_prometheus_multiproc_environment_volume(self, metrics_config, expected):
-        self.manifests = self.render_chart("logprep", metrics_config)
+    def test_prometheus_multiproc_environment_volume(self, exporter_config, expected):
+        self.manifests = self.render_chart("logprep", exporter_config)
         volume_mount = self.deployment["spec.template.spec.containers.0.volumeMounts.1"]
         assert (volume_mount["name"] == "prometheus-multiproc") == expected
         volumes = self.deployment["spec.template.spec.volumes.1"]
         assert (volumes["name"] == "prometheus-multiproc") == expected
 
     @pytest.mark.parametrize(
-        "metrics_config, expected",
+        "exporter_config, expected",
         [
             ({"exporter": {"enabled": True}}, True),
             ({"exporter": {"enabled": False}}, False),
         ],
     )
-    def test_probes_are_only_populated_if_exporter_enabled(self, metrics_config, expected):
-        self.manifests = self.render_chart("logprep", metrics_config)
+    def test_probes_are_only_populated_if_exporter_enabled(self, exporter_config, expected):
+        self.manifests = self.render_chart("logprep", exporter_config)
         deployment = self.manifests.by_query("kind: Deployment")[0]
         container = deployment["spec.template.spec.containers"][0]
         assert bool(container.get("livenessProbe")) == expected
@@ -139,14 +139,14 @@ class TestExporterConfig(TestBaseChartTest):
         assert bool(container.get("startupProbe")) == expected
 
     @pytest.mark.parametrize(
-        "metrics_config, expected",
+        "exporter_config, expected",
         [
             ({"exporter": {"enabled": True}}, True),
             ({"exporter": {"enabled": False}}, False),
         ],
     )
-    def test_pod_monitor_are_populated(self, metrics_config, expected):
-        self.manifests = self.render_chart("logprep", metrics_config)
+    def test_pod_monitor_are_populated(self, exporter_config, expected):
+        self.manifests = self.render_chart("logprep", exporter_config)
         assert bool(self.manifests.by_query("kind: PodMonitor")) == expected
 
     def test_pod_monitor_uses_exporter_port(self):
