@@ -81,20 +81,18 @@ class TestMetricsService(TestBaseChartTest):
         assert volume["configMap"]["name"] == metrics_config_name
 
     def test_metrics_config_is_used_to_start_logprep(self):
-        deployment = self.manifests.by_query("kind: Deployment")[0]
-        container = deployment["spec.template.spec.containers"][0]
+        container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "metrics-config"][0]
         assert volume_mount["mountPath"] in " ".join(container["command"])
 
     def test_metrics_config_is_mounted_if_exporter_not_enabled(self):
         self.manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
-        deployment = self.manifests.by_query("kind: Deployment")[0]
-        container = deployment["spec.template.spec.containers"][0]
+        container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "metrics-config"][0]
         assert volume_mount["mountPath"] in " ".join(container["command"])
-        volumes = deployment["spec.template.spec.volumes"]
+        volumes = self.deployment["spec.template.spec.volumes"]
         volume = [vol for vol in volumes if vol["name"] == "metrics-config"]
         assert volume
         assert volume[0]["configMap"]["name"] == "logprep-logprep-metrics-config"
@@ -108,8 +106,7 @@ class TestMetricsService(TestBaseChartTest):
     )
     def test_prometheus_multiproc_environment_variable(self, metrics_config, expected):
         self.manifests = self.render_chart("logprep", metrics_config)
-        deployment = self.manifests.by_query("kind: Deployment")[0]
-        env_var = deployment["spec.template.spec.containers.0.env.3"]
+        env_var = self.deployment["spec.template.spec.containers.0.env.2"]
         assert (env_var["name"] == "PROMETHEUS_MULTIPROC_DIR") == expected
 
     @pytest.mark.parametrize(
@@ -121,14 +118,25 @@ class TestMetricsService(TestBaseChartTest):
     )
     def test_prometheus_multiproc_environment_volume(self, metrics_config, expected):
         self.manifests = self.render_chart("logprep", metrics_config)
-        deployment = self.manifests.by_query("kind: Deployment")[0]
-        volume_mount = deployment["spec.template.spec.containers.0.volumeMounts.1"]
+        volume_mount = self.deployment["spec.template.spec.containers.0.volumeMounts.1"]
         assert (volume_mount["name"] == "prometheus-multiproc") == expected
-        volumes = deployment["spec.template.spec.volumes.1"]
+        volumes = self.deployment["spec.template.spec.volumes.1"]
         assert (volumes["name"] == "prometheus-multiproc") == expected
 
-    def test_readiness_probes(self):
-        assert False
+    @pytest.mark.parametrize(
+        "metrics_config, expected",
+        [
+            ({"exporter": {"enabled": True}}, True),
+            ({"exporter": {"enabled": False}}, False),
+        ],
+    )
+    def test_probes_are_only_populated_if_exporter_enabled(self, metrics_config, expected):
+        self.manifests = self.render_chart("logprep", metrics_config)
+        deployment = self.manifests.by_query("kind: Deployment")[0]
+        container = deployment["spec.template.spec.containers"][0]
+        assert bool(container.get("livenessProbe")) == expected
+        assert bool(container.get("readinessProbe")) == expected
+        assert bool(container.get("startupProbe")) == expected
 
     def test_pod_monitors(self):
         assert False

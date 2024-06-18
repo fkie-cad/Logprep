@@ -58,12 +58,12 @@ spec:
               value: "1"
             - name: LOGPREP_CREDENTIALS_FILE
               value: "/home/logprep/credentials.yml"
-            - name: REQUESTS_CA_BUNDLE
-              value: /home/logprep/auth/ca-cert-chain
             {{- if .Values.exporter.enabled }}
             - name: PROMETHEUS_MULTIPROC_DIR
               value: /prometheus
             {{- end }}
+            - name: REQUESTS_CA_BUNDLE
+              value: /home/logprep/auth/ca-cert-chain
           volumeMounts:
             - name: logprep-temp
               mountPath: /tmp
@@ -76,6 +76,7 @@ spec:
             - name: metrics-config
               mountPath: /home/logprep/configurations/metrics-config.yaml
               subPath: metrics-config.yaml
+          {{- if .Values.exporter.enabled }}
           readinessProbe:
             httpGet:
               path: /metrics
@@ -97,6 +98,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 10
+          {{- end }}
       volumes:
         - name: logprep-temp
           emptyDir:
