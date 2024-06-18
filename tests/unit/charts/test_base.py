@@ -51,21 +51,6 @@ class TestLogprepChart(TestBaseChartTest):
         assert len(self.manifests) > 0
         assert len(self.manifests) == 6
 
-    def test_deployment_pod_affinity(self):
-        assert False
-
-    def test_temp_directory(self):
-        assert False
-
-    def test_certificate_store(self):
-        assert False
-
-    def test_security_context(self):
-        assert False
-
-    def test_resources(self):
-        assert False
-
 
 class TestDefaultValues(TestBaseChartTest):
 

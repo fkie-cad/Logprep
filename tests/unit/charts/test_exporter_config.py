@@ -106,7 +106,7 @@ class TestExporterConfig(TestBaseChartTest):
     )
     def test_prometheus_multiproc_environment_variable(self, exporter_config, expected):
         self.manifests = self.render_chart("logprep", exporter_config)
-        env_var = self.deployment["spec.template.spec.containers.0.env.2"]
+        env_var = self.deployment["spec.template.spec.containers.0.env.1"]
         assert (env_var["name"] == "PROMETHEUS_MULTIPROC_DIR") == expected
 
     @pytest.mark.parametrize(
