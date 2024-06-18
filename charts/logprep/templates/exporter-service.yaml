@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
     app.kubernetes.io/application: {{ .Chart.Name }}
-  name: {{ .Release.Name }}-{{ .Chart.Name }}-metrics-service
+  name: {{ .Release.Name }}-{{ .Chart.Name }}-exporter
 spec:
   ports:
     - name: metrics

@@ -2,12 +2,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-{{ .Chart.Name }}-metrics-config
+  name: {{ .Release.Name }}-{{ .Chart.Name }}-exporter
   labels:
-    app.kubernetes.io/name: {{ .Release.Name }}-logprep
+    app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
     app.kubernetes.io/application: logprep
 data:
-  metrics-config.yaml: |
+  exporter-config.yaml: |
     metrics:
       enabled: {{ .Values.exporter.enabled }}
       port: {{ default 8000 .Values.exporter.port }}

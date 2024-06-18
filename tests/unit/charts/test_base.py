@@ -36,10 +36,10 @@ class TestBaseChartTest:
         return self.manifests.by_query("kind: Deployment")[0]
 
     @property
-    def metrics_service(self):
-        return self.manifests.by_query(
-            "kind: Service AND metadata.name: logprep-logprep-metrics-service"
-        )[0]
+    def exporter_service(self):
+        return self.manifests.by_query("kind: Service AND metadata.name: logprep-logprep-exporter")[
+            0
+        ]
 
 
 class TestLogprepChart(TestBaseChartTest):

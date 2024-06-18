@@ -8,10 +8,10 @@ from logprep.util.configuration import yaml
 from tests.unit.charts.test_base import TestBaseChartTest
 
 
-class TestMetricsService(TestBaseChartTest):
+class TestExporterConfig(TestBaseChartTest):
 
     def test_service_name(self):
-        assert self.metrics_service["metadata.name"] == "logprep-logprep-metrics-service"
+        assert self.exporter_service["metadata.name"] == "logprep-logprep-exporter"
 
     def test_service_is_not_rendered_if_metrics_disabled(self):
         manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
@@ -20,12 +20,12 @@ class TestMetricsService(TestBaseChartTest):
     def test_service_sets_port(self):
         logprep_values = {"exporter": {"port": 9000, "service_port": 9001}}
         self.manifests = self.render_chart("logprep", logprep_values)
-        assert self.metrics_service["spec.ports"][0]["port"] == 9001
-        assert self.metrics_service["spec.ports"][0]["targetPort"] == 9000
+        assert self.exporter_service["spec.ports"][0]["port"] == 9001
+        assert self.exporter_service["spec.ports"][0]["targetPort"] == 9000
 
     def test_service_sets_defaults(self):
-        assert self.metrics_service["spec.ports"][0]["port"] == 8001
-        assert self.metrics_service["spec.ports"][0]["targetPort"] == 8000
+        assert self.exporter_service["spec.ports"][0]["port"] == 8001
+        assert self.exporter_service["spec.ports"][0]["targetPort"] == 8000
 
     def test_service_sets_selector(self):
         deployment = self.manifests.by_query("kind: Deployment")[0]
@@ -33,7 +33,7 @@ class TestMetricsService(TestBaseChartTest):
             "app.kubernetes.io/name"
         ]
         assert (
-            self.metrics_service["spec.selector"]["app.kubernetes.io/name"]
+            self.exporter_service["spec.selector"]["app.kubernetes.io/name"]
             == deployment_selected_label
         )
 
@@ -46,56 +46,56 @@ class TestMetricsService(TestBaseChartTest):
         }
         expected_metrics_config = yaml.dump(expected_metrics_config)
         metrics_config = self.manifests.by_query(
-            "kind: ConfigMap AND metadata.name: logprep-logprep-metrics-config"
+            "kind: ConfigMap AND metadata.name: logprep-logprep-exporter"
         )
         assert metrics_config
         metrics_config = metrics_config[0]
-        assert metrics_config["data"]["metrics-config.yaml"] == expected_metrics_config
+        assert metrics_config["data"]["exporter-config.yaml"] == expected_metrics_config
 
     def test_metrics_config_file_is_set_if_exporter_not_enabled(self):
         self.manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
         metrics_config = self.manifests.by_query(
-            "kind: ConfigMap AND metadata.name: logprep-logprep-metrics-config"
+            "kind: ConfigMap AND metadata.name: logprep-logprep-exporter"
         )
         assert metrics_config
         metrics_config = metrics_config[0]
-        assert "enabled: false" in metrics_config["data"]["metrics-config.yaml"]
+        assert "enabled: false" in metrics_config["data"]["exporter-config.yaml"]
 
-    def test_deployment_mounts_metrics_config(self):
+    def test_deployment_mounts_exporter_config(self):
         deployment = self.manifests.by_query("kind: Deployment")[0]
         volume_mounts = deployment["spec.template.spec.containers"][0]["volumeMounts"]
-        volume_mount = [mount for mount in volume_mounts if mount["name"] == "metrics-config"][0]
+        volume_mount = [mount for mount in volume_mounts if mount["name"] == "exporter-config"][0]
         assert volume_mount
-        assert volume_mount["mountPath"] == "/home/logprep/configurations/metrics-config.yaml"
-        assert volume_mount["subPath"] == "metrics-config.yaml"
+        assert volume_mount["mountPath"] == "/home/logprep/configurations/exporter-config.yaml"
+        assert volume_mount["subPath"] == "exporter-config.yaml"
 
-    def test_metrics_config_volume_is_populated(self):
+    def test_exporter_config_volume_is_populated(self):
         deployment = self.manifests.by_query("kind: Deployment")[0]
-        metrics_config = self.manifests.by_query(
-            "kind: ConfigMap AND metadata.name: logprep-logprep-metrics-config"
+        exporter_config = self.manifests.by_query(
+            "kind: ConfigMap AND metadata.name: logprep-logprep-exporter"
         )
-        metrics_config_name = metrics_config[0]["metadata"]["name"]
+        exporter_config_name = exporter_config[0]["metadata"]["name"]
         volumes = deployment["spec.template.spec.volumes"]
-        volume = [vol for vol in volumes if vol["name"] == "metrics-config"][0]
+        volume = [vol for vol in volumes if vol["name"] == "exporter-config"][0]
         assert volume
-        assert volume["configMap"]["name"] == metrics_config_name
+        assert volume["configMap"]["name"] == exporter_config_name
 
-    def test_metrics_config_is_used_to_start_logprep(self):
+    def test_exporter_config_is_used_to_start_logprep(self):
         container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
-        volume_mount = [mount for mount in volume_mounts if mount["name"] == "metrics-config"][0]
+        volume_mount = [mount for mount in volume_mounts if mount["name"] == "exporter-config"][0]
         assert volume_mount["mountPath"] in " ".join(container["command"])
 
-    def test_metrics_config_is_mounted_if_exporter_not_enabled(self):
+    def test_exporter_config_is_mounted_if_exporter_not_enabled(self):
         self.manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
         container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
-        volume_mount = [mount for mount in volume_mounts if mount["name"] == "metrics-config"][0]
+        volume_mount = [mount for mount in volume_mounts if mount["name"] == "exporter-config"][0]
         assert volume_mount["mountPath"] in " ".join(container["command"])
         volumes = self.deployment["spec.template.spec.volumes"]
-        volume = [vol for vol in volumes if vol["name"] == "metrics-config"]
+        volume = [vol for vol in volumes if vol["name"] == "exporter-config"]
         assert volume
-        assert volume[0]["configMap"]["name"] == "logprep-logprep-metrics-config"
+        assert volume[0]["configMap"]["name"] == "logprep-logprep-exporter"
 
     @pytest.mark.parametrize(
         "metrics_config, expected",
