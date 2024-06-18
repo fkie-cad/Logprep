@@ -2,6 +2,8 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
 
+import pytest
+
 from logprep.util.configuration import yaml
 from tests.unit.charts.test_base import TestBaseChartTest
 
@@ -97,11 +99,33 @@ class TestMetricsService(TestBaseChartTest):
         assert volume
         assert volume[0]["configMap"]["name"] == "logprep-logprep-metrics-config"
 
-    def test_prometheus_multiproc_environment_variable(self):
-        assert False
+    @pytest.mark.parametrize(
+        "metrics_config, expected",
+        [
+            ({"exporter": {"enabled": True}}, True),
+            ({"exporter": {"enabled": False}}, False),
+        ],
+    )
+    def test_prometheus_multiproc_environment_variable(self, metrics_config, expected):
+        self.manifests = self.render_chart("logprep", metrics_config)
+        deployment = self.manifests.by_query("kind: Deployment")[0]
+        env_var = deployment["spec.template.spec.containers.0.env.3"]
+        assert (env_var["name"] == "PROMETHEUS_MULTIPROC_DIR") == expected
 
-    def test_prometheus_multiproc_environment_mount(self):
-        assert False
+    @pytest.mark.parametrize(
+        "metrics_config, expected",
+        [
+            ({"exporter": {"enabled": True}}, True),
+            ({"exporter": {"enabled": False}}, False),
+        ],
+    )
+    def test_prometheus_multiproc_environment_volume(self, metrics_config, expected):
+        self.manifests = self.render_chart("logprep", metrics_config)
+        deployment = self.manifests.by_query("kind: Deployment")[0]
+        volume_mount = deployment["spec.template.spec.containers.0.volumeMounts.1"]
+        assert (volume_mount["name"] == "prometheus-multiproc") == expected
+        volumes = deployment["spec.template.spec.volumes.1"]
+        assert (volumes["name"] == "prometheus-multiproc") == expected
 
     def test_readiness_probes(self):
         assert False

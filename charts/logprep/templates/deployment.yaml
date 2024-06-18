@@ -60,13 +60,17 @@ spec:
               value: "/home/logprep/credentials.yml"
             - name: REQUESTS_CA_BUNDLE
               value: /home/logprep/auth/ca-cert-chain
+            {{- if .Values.exporter.enabled }}
             - name: PROMETHEUS_MULTIPROC_DIR
               value: /prometheus
+            {{- end }}
           volumeMounts:
             - name: logprep-temp
               mountPath: /tmp
+            {{- if .Values.exporter.enabled }}
             - name: prometheus-multiproc
               mountPath: /prometheus
+            {{- end }}
             - name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
               mountPath: /home/logprep/configurations
             - name: metrics-config
@@ -97,9 +101,11 @@ spec:
         - name: logprep-temp
           emptyDir:
             medium: "Memory"
+        {{- if .Values.exporter.enabled }}
         - name: prometheus-multiproc
           emptyDir:
             medium: "Memory"
+        {{- end }}
         - name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
           configMap:
             name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
