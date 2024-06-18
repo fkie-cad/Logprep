@@ -47,7 +47,7 @@ class TestLogprepChart(TestBaseChartTest):
     def test_manifests_are_rendered(self):
         assert self.manifests
         assert len(self.manifests) > 0
-        assert len(self.manifests) == 4
+        assert len(self.manifests) == 5
 
     def test_deployment_pod_affinity(self):
         assert False

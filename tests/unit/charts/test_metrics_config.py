@@ -138,5 +138,32 @@ class TestMetricsService(TestBaseChartTest):
         assert bool(container.get("readinessProbe")) == expected
         assert bool(container.get("startupProbe")) == expected
 
-    def test_pod_monitors(self):
-        assert False
+    @pytest.mark.parametrize(
+        "metrics_config, expected",
+        [
+            ({"exporter": {"enabled": True}}, True),
+            ({"exporter": {"enabled": False}}, False),
+        ],
+    )
+    def test_pod_monitor_are_populated(self, metrics_config, expected):
+        self.manifests = self.render_chart("logprep", metrics_config)
+        assert bool(self.manifests.by_query("kind: PodMonitor")) == expected
+
+    def test_pod_monitor_uses_exporter_port(self):
+        logprep_values = {"exporter": {"port": 9000, "service_port": 9001}}
+        self.manifests = self.render_chart("logprep", logprep_values)
+        pod_monitor = self.manifests.by_query("kind: PodMonitor")[0]
+        assert pod_monitor["spec.podMetricsEndpoints.0.targetPort"] == 9000
+
+    def test_pod_monitor_uses_scrape_interval(self):
+        logprep_values = {"exporter": {"port": 9000, "scrape_interval": "10s"}}
+        self.manifests = self.render_chart("logprep", logprep_values)
+        pod_monitor = self.manifests.by_query("kind: PodMonitor")[0]
+        assert pod_monitor["spec.podMetricsEndpoints.0.interval"] == "10s"
+
+    def test_defaults(self):
+        pod_monitor = self.manifests.by_query("kind: PodMonitor")[0]
+        assert pod_monitor["metadata.name"] == "logprep-logprep"
+        assert pod_monitor["spec.selector.matchLabels"]["kubernetes.io/name"] == "logprep-logprep"
+        assert pod_monitor["spec.podMetricsEndpoints.0.targetPort"] == 8000
+        assert pod_monitor["spec.podMetricsEndpoints.0.interval"] == "30s"

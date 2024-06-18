@@ -1,13 +1,6 @@
 replicas: 1
 serviceAccount: basic-secret
 
-monitoring:
-  enable: true
-  podMonitor:
-    endpoints:
-      - targetPort: 8000
-        interval: 30s
-
 image:
   registry: ghcr.io
   repository: fkie-cad/logprep
@@ -30,10 +23,15 @@ credentials: {}
 imagePullSecrets:
   - name: harbor-registry-secret
 
+# If enabled, the exporter will be started on the specified port and
+# the metrics service and a prometheus PodMonitor will be deployed.
+# You have to ensure, that the prometheus operator is installed and
+# the PodMonitor resource is available.
 exporter:
   enabled: true
   port: 8000
   service_port: 8001
+  scrape_interval: 30s
 
 logger:
   level: INFO

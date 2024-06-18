@@ -1,0 +1,20 @@
+{{ if .Values.exporter.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
+  labels:
+    kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+    kubernetes.io/application: {{ .Chart.Name }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+  podMetricsEndpoints:
+    - targetPort: {{ .Values.exporter.port }}
+      interval: {{ .Values.exporter.scrape_interval}}
+{{ end }}
+
