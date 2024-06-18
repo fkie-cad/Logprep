@@ -167,3 +167,20 @@ class TestExporterConfig(TestBaseChartTest):
         assert pod_monitor["spec.selector.matchLabels"]["kubernetes.io/name"] == "logprep-logprep"
         assert pod_monitor["spec.podMetricsEndpoints.0.targetPort"] == 8000
         assert pod_monitor["spec.podMetricsEndpoints.0.interval"] == "30s"
+
+    @pytest.mark.parametrize(
+        "exporter_config, expected",
+        [
+            ({"exporter": {"enabled": True}}, True),
+            ({"exporter": {"enabled": False}}, False),
+        ],
+    )
+    def test_container_port_is_set(self, exporter_config, expected):
+        self.manifests = self.render_chart("logprep", exporter_config)
+        ports = self.deployment["spec.template.spec.containers.0.ports.0"]
+        assert bool(ports) == expected
+
+    def test_container_ports_is_populated_from_values(self):
+        self.manifests = self.render_chart("logprep", {"exporter": {"port": 1337}})
+        port = self.deployment["spec.template.spec.containers.0.ports.0.containerPort"]
+        assert port == 1337

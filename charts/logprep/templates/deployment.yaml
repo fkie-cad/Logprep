@@ -43,9 +43,11 @@ spec:
               cpu: {{ .Values.resources.requests.cpu | quote }}
           image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: Always
+          {{- if .Values.exporter.enabled}}
           ports:
-            - name: prometheus
-              containerPort: 8000
+            - name: exporter
+              containerPort: {{ .Values.exporter.port }}
+          {{- end}}
           command:
             - logprep
             - run
