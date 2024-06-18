@@ -40,7 +40,6 @@ from logprep.abc.output import (
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.metrics.metrics import HistogramMetric, Metric
-from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.configuration import Configuration
 from logprep.util.pipeline_profiler import PipelineProfiler
 
@@ -261,18 +260,17 @@ class Pipeline:
         event_received = self._encoder.encode(event)
         extra_outputs = []
         for processor in self._pipeline:
-            try:
-                if result := processor.process(event):
-                    if self._output:
-                        self._store_extra_data(result)
-                    extra_outputs.append(result)
-            except ProcessingWarning as error:
-                self.logger.warning(str(error))
-            except ProcessingCriticalError as error:
-                self.logger.error(str(error))
+            if result := processor.process(event):
                 if self._output:
-                    self._store_failed_event(error, copy.deepcopy(event), event_received)
-                    event.clear()
+                    self._store_extra_data(result)
+                extra_outputs.append(result)
+                if len(result.warnings) > 0:
+                    self.logger.warning(str(result.warnings))
+                if result.error is not None:
+                    self.logger.error(str(result.error))
+                    if self._output:
+                        self._store_failed_event(result.error, copy.deepcopy(event), event_received)
+                        event.clear()
             if not event:
                 break
         return extra_outputs

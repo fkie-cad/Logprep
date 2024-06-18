@@ -3,7 +3,6 @@
 # pylint: disable=protected-access
 # pylint: disable=too-many-statements
 import hashlib
-import logging
 import os
 import re
 import shutil
@@ -117,17 +116,17 @@ class TestGeoipEnricher(BaseProcessorTestCase):
 
     def test_no_geoip_data_added_if_source_field_is_none(self):
         document = {"client": {"ip": None}}
-
         self.object.process(document)
-
         assert document.get("geoip") is None
 
-    def test_source_field_is_none_emits_missing_fields_warning(self, caplog):
+    def test_source_field_is_none_emits_missing_fields_warning(self):
         document = {"client": {"ip": None}}
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
-        with caplog.at_level(logging.WARNING):
-            self.object._apply_rules(document, self.object.rules[0])
-        assert re.match(r".*missing source_fields: \['client\.ip'].*", caplog.text)
+        self.object._apply_rules(document, self.object.rules[0])
+        assert len(self.object.result.warnings) == 1
+        assert re.match(
+            r".*missing source_fields: \['client\.ip'].*", str(self.object.result.warnings[0])
+        )
         assert document == expected
 
     def test_nothing_to_enrich(self):
@@ -161,12 +160,11 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert geoip["properties"].get("country") == "MyCountry"
         assert geoip["properties"].get("accuracy_radius") == 1337
 
-    def test_enrich_an_event_geoip_with_existing_differing_geoip(self, caplog):
+    def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
-
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*geoip.type", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert re.match(".*FieldExistsWarning.*geoip.type", str(result.warnings[0]))
 
     def test_configured_dotted_output_field(self):
         document = {"source": {"ip": "8.8.8.8"}}

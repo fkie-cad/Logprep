@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import hashlib
-import logging
 import re
 from copy import deepcopy
 from multiprocessing import current_process
@@ -157,7 +156,7 @@ class TestAmides(BaseProcessorTestCase):
         # end strange mock
         assert self.object.metrics.cached_results == 1
 
-    def test_process_event_raise_duplication_error(self, caplog):
+    def test_process_event_raise_duplication_error(self):
         self.object.setup()
         document = {
             "winlog": {
@@ -168,10 +167,12 @@ class TestAmides(BaseProcessorTestCase):
         }
         self.object.process(document)
         assert document.get("amides")
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(r".*missing source_fields: \['process.command_line'].*", caplog.messages[0])
-        assert re.match(".*FieldExistsWarning.*", caplog.messages[1])
+        result = self.object.process(document)
+        assert len(result.warnings) > 0
+        assert re.match(
+            r".*missing source_fields: \['process.command_line'].*", str(result.warnings)
+        )
+        assert re.match(".*FieldExistsWarning.*", str(result.warnings))
 
     def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
         model_uri = "file://tests/testdata/unit/amides/model.zip"

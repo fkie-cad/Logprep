@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
-import logging
 import re
 from copy import deepcopy
 from unittest import mock
@@ -429,18 +428,17 @@ class TestGrokker(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
-    def test_testcases_failure_handling(self, caplog, testcase, rule, event, expected, error):
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
         self._load_specific_rule(rule)
         self.object.setup()
         if isinstance(error, str):
-            with caplog.at_level(logging.WARNING):
-                self.object.process(event)
-                assert re.match(rf".*{error}", caplog.text)
-                assert event == expected, testcase
-        else:
-
             result = self.object.process(event)
-            assert isinstance(result.errors[0], ProcessingCriticalError)
+            assert len(result.warnings) == 1
+            assert re.match(rf".*{error}", str(result.warnings[0]))
+            assert event == expected, testcase
+        else:
+            result = self.object.process(event)
+            assert isinstance(result.error, ProcessingCriticalError)
 
     def test_load_custom_patterns_from_http_as_zip_file(self):
         rule = {

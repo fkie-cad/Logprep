@@ -3,7 +3,6 @@
 # pylint: disable=unused-argument
 # pylint: disable=too-many-arguments
 import json
-import logging
 import os
 import re
 import tempfile
@@ -15,7 +14,7 @@ import pytest
 
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError, FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
@@ -403,12 +402,12 @@ class TestGenericAdder(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
     def test_generic_adder_testcases_failure_handling(
-        self, testcase, rule, event, expected, error_message, caplog
+        self, testcase, rule, event, expected, error_message
     ):
         self._load_specific_rule(rule)
-        with caplog.at_level(logging.WARNING):
-            self.object.process(event)
-        assert re.match(rf".*FieldExistsWarning.*{error_message}", caplog.text)
+        result = self.object.process(event)
+        assert len(result.warnings) == 1
+        assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))
         assert event == expected, testcase
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
@@ -608,9 +607,9 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         document = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
 
         self.object.process(document)
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
 
         assert document == expected
 
