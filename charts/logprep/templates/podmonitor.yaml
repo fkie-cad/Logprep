@@ -5,8 +5,7 @@ kind: PodMonitor
 metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}
   labels:
-    kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
-    kubernetes.io/application: {{ .Chart.Name }}
+    {{- include "logprep.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:

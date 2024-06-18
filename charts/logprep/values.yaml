@@ -9,10 +9,22 @@ image:
 resources:
   limits:
     memory: "2Gi"
-    cpu: "1000m"
+    cpu: "1"
   requests:
     memory: "2Gi"
     cpu: "250m"
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: true
+
+# Boolean to signal to use affinity to avoid deploying multiple instances of the
+# pod on the same node
+affinity: false
 
 # inject extra labels to the pod metadata
 pod_extra_labels:

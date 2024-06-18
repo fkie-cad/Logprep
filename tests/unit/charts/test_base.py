@@ -6,6 +6,8 @@ import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Dict, Optional
 
+import pytest
+
 from logprep.util.configuration import yaml
 from logprep.util.event import Documents
 
@@ -71,7 +73,16 @@ class TestDefaultValues(TestBaseChartTest):
         for manifest in self.manifests:
             assert "metadata.labels" in manifest
 
-    def test_application_label_is_set(self):
+    @pytest.mark.parametrize(
+        "label, label_value",
+        [
+            ("app.kubernetes.io/version", "12.0.0"),
+            ("app.kubernetes.io/name", "logprep-logprep"),
+            ("app.kubernetes.io/application", "logprep"),
+            ("app.kubernetes.io/managed-by", "Helm"),
+            ("app.kubernetes.io/instance", "logprep"),
+        ],
+    )
+    def test_common_labels_are_set(self, label, label_value):
         for manifest in self.manifests:
-            assert manifest["metadata.labels"]["app.kubernetes.io/name"] == "logprep-logprep"
-            assert manifest["metadata.labels"]["app.kubernetes.io/application"] == "logprep"
+            assert manifest["metadata.labels"][label] == label_value

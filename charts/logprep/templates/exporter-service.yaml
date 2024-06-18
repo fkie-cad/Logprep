@@ -4,8 +4,7 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
-    app.kubernetes.io/application: {{ .Chart.Name }}
+    {{- include "logprep.labels" . | nindent 4 }}
   name: {{ .Release.Name }}-{{ .Chart.Name }}-exporter
 spec:
   ports:

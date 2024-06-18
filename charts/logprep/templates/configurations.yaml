@@ -4,8 +4,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
   labels:
-    app.kubernetes.io/name: {{ .Release.Name }}-logprep
-    app.kubernetes.io/application: logprep
+    {{- include "logprep.labels" . | nindent 4 }}
 data:
   {{- range $key, $value := .Values.configurations }}
   {{ $value.name }}: |-

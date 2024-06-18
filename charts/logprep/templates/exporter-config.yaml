@@ -4,8 +4,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}-exporter
   labels:
-    app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
-    app.kubernetes.io/application: logprep
+    {{- include "logprep.labels" . | nindent 4 }}
 data:
   exporter-config.yaml: |
     metrics:
