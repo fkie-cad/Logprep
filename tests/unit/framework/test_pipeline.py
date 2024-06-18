@@ -24,6 +24,7 @@ from logprep.abc.output import (
     Output,
     OutputWarning,
 )
+from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
@@ -385,8 +386,14 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         processor_with_extra_data = mock.MagicMock()
         processor_with_extra_data.process = mock.MagicMock()
-        processor_with_extra_data.process.return_value = [({"foo": "bar"}, ({"dummy": "target"},))]
-        self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
+        processor_with_extra_data.process.return_value = ProcessorResult(
+            extra_data=[({"foo": "bar"}, ({"dummy": "target"},))]
+        )
+        self.pipeline._pipeline = [
+            mock.MagicMock(),
+            processor_with_extra_data,
+            mock.MagicMock(),
+        ]
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 1
         assert self.pipeline._output["dummy"].store_custom.call_count == 1
@@ -398,12 +405,14 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         processor_with_extra_data = mock.MagicMock()
         processor_with_extra_data.process = mock.MagicMock()
-        processor_with_extra_data.process.return_value = [
-            (
-                {"foo": "bar"},
-                ({"dummy": "target"}, {"dummy1": "second_target"}),
-            )
-        ]
+        processor_with_extra_data.process.return_value = ProcessorResult(
+            extra_data=[
+                (
+                    {"foo": "bar"},
+                    ({"dummy": "target"}, {"dummy1": "second_target"}),
+                )
+            ]
+        )
         self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 1
@@ -419,7 +428,9 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         processor_with_extra_data = mock.MagicMock()
         processor_with_extra_data.process = mock.MagicMock()
-        processor_with_extra_data.process.return_value = [({"foo": "bar"}, ({"dummy": "target"},))]
+        processor_with_extra_data.process.return_value = ProcessorResult(
+            extra_data=[({"foo": "bar"}, ({"dummy": "target"},))]
+        )
         self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 1
@@ -602,11 +613,13 @@ class TestPipelineWithActualInput:
         event, extra_outputs = pipeline.process_pipeline()
         assert event["label"] == {"reporter": ["windows"]}
         assert "arrival_time" in event
-        assert extra_outputs == []
+        assert extra_outputs == [ProcessorResult(extra_data=[], errors=[])] * len(
+            pipeline._pipeline
+        )
         event, extra_outputs = pipeline.process_pipeline()
         assert "pseudonym" in event.get("winlog", {}).get("event_data", {}).get("IpAddress")
         assert "arrival_time" in event
-        assert len(extra_outputs) == 1
+        assert len(extra_outputs) == len(pipeline._pipeline)
 
     def test_pipeline_hmac_error_message_without_output_connector(self):
         self.config.input["test_input"]["documents"] = [{"applyrule": "yes"}]

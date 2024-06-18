@@ -78,7 +78,6 @@ the log message.
 
 If one or more test cases fail this tester ends with an exit code of 1, otherwise 0.
 """
-import io
 
 # pylint: enable=anomalous-backslash-in-string
 # pylint: disable=protected-access
@@ -216,8 +215,8 @@ class RuleCorpusTester:
         print(Style.BRIGHT + "# Test Cases Summary:" + Style.RESET_ALL)
         for test_case_id, test_case in self._test_cases.items():
             _ = [processor.setup() for processor in self._pipeline._pipeline]
-            parsed_event, extra_outputs = self._pipeline.process_pipeline()
-            extra_outputs = align_extra_output_formats(extra_outputs)
+            parsed_event, results = self._pipeline.process_pipeline()
+            extra_outputs = align_extra_output_formats([res.extra_data for res in results])
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
             self._compare_logprep_outputs(test_case_id, parsed_event)

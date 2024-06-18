@@ -17,7 +17,7 @@ from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Lock, Value, current_process
-from typing import Any, List, Tuple
+from typing import Any, Tuple
 
 import attrs
 import msgspec
@@ -218,7 +218,7 @@ class Pipeline:
     def process_pipeline(self) -> Tuple[dict, list]:
         """Retrieve next event, process event with full pipeline and store or return results"""
         Component.run_pending_tasks()
-        extra_outputs = []
+        results = []
         event = None
         try:
             event = self._get_event()
@@ -230,10 +230,10 @@ class Pipeline:
             self._store_failed_event(error, "", error_event)
             self.logger.error(f"{error}, event was written to error output")
         if event:
-            extra_outputs = self.process_event(event)
+            results = self.process_event(event)
         if event and self._output:
             self._store_event(event)
-        return event, extra_outputs
+        return event, results
 
     def _store_event(self, event: dict) -> None:
         for output_name, output in self._output.items():
@@ -262,10 +262,10 @@ class Pipeline:
         extra_outputs = []
         for processor in self._pipeline:
             try:
-                if extra_data := processor.process(event):
+                if result := processor.process(event):
                     if self._output:
-                        self._store_extra_data(extra_data)
-                    extra_outputs.append(extra_data)
+                        self._store_extra_data(result)
+                    extra_outputs.append(result)
             except ProcessingWarning as error:
                 self.logger.warning(str(error))
             except ProcessingCriticalError as error:

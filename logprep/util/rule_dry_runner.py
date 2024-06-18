@@ -103,8 +103,8 @@ class DryRunner:
         transformed_cnt = 0
         output_count = 0
         for input_document in self._input_documents:
-            test_output, test_output_custom = self._pipeline.process_pipeline()
-            test_output_custom = align_extra_output_formats(test_output_custom)
+            test_output, results = self._pipeline.process_pipeline()
+            test_output_custom = align_extra_output_formats([res.extra_data for res in results])
             if test_output:
                 output_count += 1
             diff = self._print_output_results(input_document, test_output, test_output_custom)

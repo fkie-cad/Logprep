@@ -358,7 +358,7 @@ class AutoRuleTester:
                 continue
 
             try:
-                extra_output = processor.process(test["raw"])
+                result = processor.process(test["raw"])
             except BaseException as error:
                 self._print_error_on_exception(error, rule_test, t_idx)
                 self._success = False
@@ -372,7 +372,7 @@ class AutoRuleTester:
             warnings = []
 
             if isinstance(processor, PreDetector):
-                self._pd_extra.update_errors(processor, extra_output, errors, warnings)
+                self._pd_extra.update_errors(processor, result.extra_data, errors, warnings)
 
             if print_diff or warnings or errors:
                 self._print_filename(rule_test)

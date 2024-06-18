@@ -3,7 +3,7 @@
 import logging
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional
 
 from attr import define, field, validators
 
@@ -32,10 +32,10 @@ logger = logging.getLogger("Processor")
 
 @define(kw_only=True)
 class ProcessorResult:
-    """Result object to be returned by erevy processor. It contains all extra_data and errors."""
+    """Result object to be returned by every processor. It contains all extra_data and errors."""
 
-    extra_data = field(validator=validators.instance_of(list))
-    errors = field(validator=validators.instance_of(list))
+    extra_data = field(validator=validators.instance_of(list), factory=list)
+    errors = field(validator=validators.instance_of(list), factory=list)
 
 
 class Processor(Component):
@@ -112,7 +112,7 @@ class Processor(Component):
             specific_rules_targets=self._config.specific_rules,
         )
         self.has_custom_tests = False
-        self.result = ProcessorResult(extra_data=[], errors=[])
+        self.result = ProcessorResult()
 
     @property
     def _specific_rules(self):
@@ -164,7 +164,7 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
-        self.result = ProcessorResult(extra_data=[], errors=[])
+        self.result = ProcessorResult()
         logger.debug(f"{self.describe()} processing event {event}")
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
@@ -213,7 +213,8 @@ class Processor(Component):
                 pop_dotted_field_value(event, dotted_field)
 
     @abstractmethod
-    def _apply_rules(self, event, rule): ...  # pragma: no cover
+    def _apply_rules(self, event, rule):
+        ...  # pragma: no cover
 
     def test_rules(self) -> dict:
         """Perform custom rule tests.
