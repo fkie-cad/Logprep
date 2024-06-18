@@ -53,9 +53,12 @@ spec:
             - /home/logprep/configurations/{{ $value.name }}
             {{- end }}
             - /home/logprep/configurations/exporter-config.yaml
+            - /home/logprep/configurations/logger-config.yaml
           env:
+            {{- if eq .Values.logger.level "DEBUG" }}
             - name: DEBUG # to get python stacktrace on error
               value: "1"
+            {{- end }}
             - name: LOGPREP_CREDENTIALS_FILE
               value: "/home/logprep/credentials.yml"
             {{- if .Values.exporter.enabled }}
@@ -76,6 +79,9 @@ spec:
             - name: exporter-config
               mountPath: /home/logprep/configurations/exporter-config.yaml
               subPath: exporter-config.yaml
+            - name: logger-config
+              mountPath: /home/logprep/configurations/logger-config.yaml
+              subPath: logger-config.yaml
           {{- if .Values.exporter.enabled }}
           readinessProbe:
             httpGet:
@@ -114,6 +120,9 @@ spec:
         - name: exporter-config
           configMap:
             name: {{ .Release.Name }}-{{ .Chart.Name }}-exporter
+        - name: logger-config
+          configMap:
+            name: {{ .Release.Name }}-{{ .Chart.Name }}-logger
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

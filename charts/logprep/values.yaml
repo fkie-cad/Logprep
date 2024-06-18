@@ -33,13 +33,9 @@ exporter:
   service_port: 8001
   scrape_interval: 30s
 
+# Logprep logging configuration. For more information see: https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
 logger:
   level: INFO
-  format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
-  datefmt: "%Y-%m-%d %H:%M:%S"
-  loggers:
-    "py.warnings": { "level": "ERROR" }
-    "Runner": { "level": "DEBUG" }
 
 configurations:
   - name: logprep-config
@@ -47,13 +43,6 @@ configurations:
       version: 1
       process_count: 2
       timeout: 0.1
-      logger:
-        level: INFO
-        format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
-        datefmt: "%Y-%m-%d %H:%M:%S"
-        loggers:
-          "py.warnings": { "level": "ERROR" }
-          "Runner": { "level": "DEBUG" }
 
       pipeline:
         - labelername:
