@@ -13,8 +13,8 @@ from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
-    ProcessingWarning,
     ProcessingError,
+    ProcessingWarning,
 )
 from logprep.util import getter
 from logprep.util.helper import (

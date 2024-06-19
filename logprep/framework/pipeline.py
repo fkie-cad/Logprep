@@ -265,7 +265,7 @@ class Pipeline:
                     self._store_extra_data(result)
                 extra_outputs.append(result)
                 if len(result.warnings) > 0:
-                    self.logger.warning(str(result.warnings))
+                    self.logger.warning(", ".join([warning.args[0] for warning in result.warnings]))
                 if result.error is not None:
                     self.logger.error(str(result.error))
                     if self._output:
