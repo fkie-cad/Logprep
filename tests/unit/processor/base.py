@@ -15,7 +15,7 @@ import responses
 from attrs import asdict
 from ruamel.yaml import YAML
 
-from logprep.abc.processor import Processor
+from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
@@ -285,3 +285,8 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         pairs = itertools.combinations(metric_attributes.values(), 2)
         for metric1, metric2 in pairs:
             assert metric1.name != metric2.name, f"{metric1.name} == {metric2.name}"
+
+    def test_process_return_result_object(self):
+        event = {"some": "event"}
+        result = self.object.process(event)
+        assert isinstance(result, ProcessorResult)
