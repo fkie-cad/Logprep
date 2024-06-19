@@ -103,4 +103,5 @@ class TestInputConfig(TestBaseChartTest):
             assert False, "http-input port not found"
 
     def test_http_input_config_probes_are_set(self):
-        assert False
+        self.manifests = self.render_chart("logprep", {"input": http_input_config})
+        startup_probe = self.deployment["spec.template.spec.containers"][0]["startupProbe"]

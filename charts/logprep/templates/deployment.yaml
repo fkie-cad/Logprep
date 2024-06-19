@@ -98,7 +98,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /metrics
-              port: 8000
+              port: {{ .Values.exporter.port }}
             initialDelaySeconds: 5
             timeoutSeconds: 10
             periodSeconds: 5
@@ -106,13 +106,13 @@ spec:
           startupProbe:
             httpGet:
               path: /metrics
-              port: 8000
+              port: {{ .Values.exporter.port }}
             failureThreshold: 12
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /metrics
-              port: 8000
+              port: {{ .Values.exporter.port }}
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 10

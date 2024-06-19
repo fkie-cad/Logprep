@@ -192,3 +192,12 @@ class TestExporterConfig(TestBaseChartTest):
         self.manifests = self.render_chart("logprep", {"exporter": {"port": 1337}})
         port = self.deployment["spec.template.spec.containers.0.ports.0.containerPort"]
         assert port == 1337
+
+    def test_probe_ports_are_populated_from_values(self):
+        self.manifests = self.render_chart("logprep", {"exporter": {"port": 1337}})
+        liveness_probe = self.deployment["spec.template.spec.containers.0.livenessProbe"]
+        assert liveness_probe["httpGet"]["port"] == 1337
+        readiness_probe = self.deployment["spec.template.spec.containers.0.readinessProbe"]
+        assert readiness_probe["httpGet"]["port"] == 1337
+        startup_probe = self.deployment["spec.template.spec.containers.0.startupProbe"]
+        assert startup_probe["httpGet"]["port"] == 1337
