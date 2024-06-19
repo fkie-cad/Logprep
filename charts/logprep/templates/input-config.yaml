@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}-input
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+data:
+  input-config.yaml: |
+    input:
+      {{- if .Values.input }}
+      {{- toYaml .Values.input | nindent 6}}
+      {{- else }}
+      type: file_input
+      logfile_path: /dev/stdin
+      start: end
+      watch_file: true
+      interval: 1
+      {{- end }}

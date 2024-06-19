@@ -46,6 +46,7 @@ spec:
             {{- end }}
             - /home/logprep/configurations/exporter-config.yaml
             - /home/logprep/configurations/logger-config.yaml
+            - /home/logprep/configurations/input-config.yaml
           env:
             {{- if eq .Values.logger.level "DEBUG" }}
             - name: DEBUG # to get python stacktrace on error
@@ -78,6 +79,9 @@ spec:
             - name: logger-config
               mountPath: /home/logprep/configurations/logger-config.yaml
               subPath: logger-config.yaml
+            - name: input-config
+              mountPath: /home/logprep/configurations/input-config.yaml
+              subPath: input-config.yaml
             {{- if .Values.secrets.certificates }}
             - name: certificates
               mountPath: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
@@ -127,6 +131,9 @@ spec:
         - name: logger-config
           configMap:
             name: {{ .Release.Name }}-{{ .Chart.Name }}-logger
+        - name: input-config
+          configMap:
+            name: {{ .Release.Name }}-{{ .Chart.Name }}-input
         {{- if .Values.secrets.certificates }}
         - name: certificates
           secret:

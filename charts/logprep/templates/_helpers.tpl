@@ -72,21 +72,3 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
-{{/*
-Snippet for deployment affinity
-*/}}
-{{- define "logprep.affinity" -}}
-affinity:
-  podAntiAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchExpressions:
-            {{- $selectors := include "logprep.selectorLabels" . | fromYaml}}
-            {{- range $key, $value := $selectors }}
-            - key: {{ $key }}
-              operator: In
-              values:
-                - {{ $value }}
-            {{- end }}
-        topologyKey: "kubernetes.io/hostname"
-{{- end }}

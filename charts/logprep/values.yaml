@@ -57,55 +57,12 @@ exporter:
 logger:
   level: INFO
 
+input: {}
+
+output:
+  type: console_output
+
 configurations:
   - name: logprep-config
     data:
-      version: 1
-      process_count: 2
-      timeout: 0.1
-
       pipeline: []
-
-      input:
-        kafka:
-          type: confluentkafka_input
-          topic: consumer
-          kafka_config:
-            bootstrap.servers: 127.0.0.1:9092
-            group.id: cgroup3
-            enable.auto.commit: "true"
-            auto.commit.interval.ms: "10000"
-            enable.auto.offset.store: "false"
-            queued.min.messages: "100000"
-            queued.max.messages.kbytes: "65536"
-            statistics.interval.ms: "60000"
-          preprocessing:
-            version_info_target_field: Logprep_version_info
-            log_arrival_time_target_field: event.ingested
-            hmac:
-              target: <RAW_MSG>
-              key: "thisisasecureandrandomkey"
-              output_field: Full_event
-      output:
-        opensearch:
-          type: opensearch_output
-          hosts:
-            - 127.0.0.1:9200
-          default_index: processed
-          error_index: errors
-          message_backlog_size: 10000
-          timeout: 10000
-          flush_timeout: 60
-          max_retries: 3
-          parallel_bulk: false
-          user: admin
-          secret: admin
-        kafka:
-          type: confluentkafka_output
-          default: false
-          topic: producer
-          error_topic: errors
-          flush_timeout: 300
-          kafka_config:
-            bootstrap.servers: 127.0.0.1:9092
-            statistics.interval.ms: "60000"
