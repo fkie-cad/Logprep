@@ -78,6 +78,7 @@ the log message.
 
 If one or more test cases fail this tester ends with an exit code of 1, otherwise 0.
 """
+import itertools
 
 # pylint: enable=anomalous-backslash-in-string
 # pylint: disable=protected-access
@@ -92,7 +93,7 @@ from functools import cached_property
 from json import JSONDecodeError
 from pathlib import Path
 from pprint import pprint
-from typing import List
+from typing import List, Dict
 
 from attr import Factory, define, field, validators
 from colorama import Fore, Style
@@ -106,20 +107,15 @@ from logprep.util.json_handling import parse_json
 logger = logging.getLogger("corpustester")
 
 
-def align_extra_output_formats(extra_outputs):
+def convert_extra_data_format(extra_outputs) -> List[Dict]:
     """
-    Aligns the different output formats into one common format of the selective_extractor,
-    predetector and pseudonymizer.
+    Converts the format of the extra data outputs such that it is a list of dicts, where the
+    output target is the key and the values are the actual outputs.
     """
     reformatted_extra_outputs = []
     for extra_output in extra_outputs:
-        if isinstance(extra_output, tuple):
-            documents, target = extra_output
-            for document in documents:
-                reformatted_extra_outputs.append({str(target): document})
-        else:
-            for output in extra_output:
-                reformatted_extra_outputs.append({str(output[1]): output[0]})
+        for output in extra_output:
+            reformatted_extra_outputs.append({str(output[1]): output[0]})
     return reformatted_extra_outputs
 
 
@@ -147,6 +143,7 @@ class RuleCorpusTester:
         generated_extra_output: dict = field(validator=validators.instance_of(list), default=[])
         failed: bool = field(validator=validators.instance_of(bool), default=False)
         report: List = Factory(list)
+        warnings: str = field(default="")
 
     @cached_property
     def _tmp_dir(self):
@@ -190,7 +187,6 @@ class RuleCorpusTester:
     def __init__(self, config_paths: tuple[str], input_test_data_path: str):
         self._original_config_paths = config_paths
         self._input_test_data_path = input_test_data_path
-        self.log_capture_string = sys.stdout
 
     def run(self):
         """
@@ -216,9 +212,11 @@ class RuleCorpusTester:
         for test_case_id, test_case in self._test_cases.items():
             _ = [processor.setup() for processor in self._pipeline._pipeline]
             parsed_event, results = self._pipeline.process_pipeline()
-            extra_outputs = align_extra_output_formats([res.extra_data for res in results])
+            extra_outputs = convert_extra_data_format([res.extra_data for res in results])
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
+            test_case.warnings = [result.warnings for result in results if result.warnings]
+            test_case.warnings = list(itertools.chain(*test_case.warnings))
             self._compare_logprep_outputs(test_case_id, parsed_event)
             self._compare_extra_data_output(test_case_id, extra_outputs)
             self._print_pass_fail_statements(test_case_id)
@@ -329,6 +327,8 @@ class RuleCorpusTester:
             status = f"{Style.BRIGHT}{Fore.RESET} SKIPPED - (no expected output given)"
         elif len(test_case.report) > 0:
             status = f"{Style.BRIGHT}{Fore.RED} FAILED"
+        elif test_case.warnings:
+            status = f"{Style.BRIGHT}{Fore.YELLOW} PASSED - (with warnings)"
         print(f"{Fore.BLUE} Test Case: {Fore.CYAN}{test_case_id} {status}{Style.RESET_ALL}")
 
     def _print_test_reports(self):
@@ -336,7 +336,7 @@ class RuleCorpusTester:
             return
         print(Style.BRIGHT + "# Test Cases Detailed Reports:" + Style.RESET_ALL)
         for test_case_id, test_case in self._test_cases.items():
-            if test_case.report and test_case.expected_output:
+            if (test_case.warnings or test_case.report) and test_case.expected_output:
                 self._print_long_test_result(test_case_id, test_case)
                 print()
 
@@ -344,6 +344,14 @@ class RuleCorpusTester:
         report_title = f"test report for '{test_case_id}'"
         print(f"{Fore.RED}{Style.BRIGHT}↓ {report_title} ↓ {Style.RESET_ALL}")
         print_logprep_output = True
+        if test_case.warnings and not test_case.report:
+            print(Fore.GREEN + "Test passed, but with following warnings:" + Fore.RESET)
+            print(test_case.warnings)
+            print_logprep_output = False
+        if test_case.warnings and test_case.report:
+            print(Fore.RED + "Logprep Warnings:" + Fore.RESET)
+            for warning in test_case.warnings:
+                print(warning)
         for statement in test_case.report:
             if isinstance(statement, (dict, list)):
                 pprint(statement)
