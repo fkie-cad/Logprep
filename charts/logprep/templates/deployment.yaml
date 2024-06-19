@@ -33,11 +33,15 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: Always
-          {{- if .Values.exporter.enabled}}
           ports:
+            {{- if .Values.exporter.enabled }}
             - name: exporter
               containerPort: {{ .Values.exporter.port }}
-          {{- end}}
+            {{- end }}
+            {{- if eq .Values.input.type "http_input" }}
+            - name: http-input
+              containerPort: {{ .Values.input.uvicorn_config.port }}
+            {{- end }}
           command:
             - logprep
             - run

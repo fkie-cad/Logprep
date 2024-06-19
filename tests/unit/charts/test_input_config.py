@@ -7,6 +7,27 @@ import pytest
 from logprep.util.configuration import yaml
 from tests.unit.charts.test_base import TestBaseChartTest
 
+http_input_config = {
+    "type": "http_input",
+    "message_backlog_size": 150,
+    "collect_meta": True,
+    "metafield_name": "@metadata",
+    "uvicorn_config": {
+        "host": "0.0.0.0",
+        "port": 9999,
+        "workers": 2,
+        "access_log": True,
+        "server_header": False,
+        "date_header": False,
+    },
+    "endpoints": {
+        "/auth-json": "json",
+        "/json": "json",
+        "/lab/123/(ABC|DEF)/pl.*": "plaintext",
+        "/lab/123/ABC/auditlog": "jsonl",
+    },
+}
+
 
 class TestInputConfig(TestBaseChartTest):
 
@@ -14,13 +35,21 @@ class TestInputConfig(TestBaseChartTest):
         assert False
 
     def test_input_config_file_is_set(self):
-        expected_input_config = {
+        logprep_values = {
             "input": {
                 "documents": [],
                 "type": "dummy_input",
             }
         }
-        self.manifests = self.render_chart("logprep", expected_input_config)
+        expected_input_config = {
+            "input": {
+                "dummy": {
+                    "documents": [],
+                    "type": "dummy_input",
+                }
+            }
+        }
+        self.manifests = self.render_chart("logprep", logprep_values)
         expected_input_config = yaml.dump(expected_input_config)
         input_config = self.manifests.by_query(
             "kind: ConfigMap AND metadata.name: logprep-logprep-input"
@@ -55,26 +84,6 @@ class TestInputConfig(TestBaseChartTest):
         assert volume_mount["mountPath"] in " ".join(container["command"])
 
     def test_http_input_config_service_is_created(self):
-        http_input_config = {
-            "type": "http_input",
-            "message_backlog_size": 150,
-            "collect_meta": True,
-            "metafield_name": "@metadata",
-            "uvicorn_config": {
-                "host": "0.0.0.0",
-                "port": 9999,
-                "workers": 2,
-                "access_log": True,
-                "server_header": False,
-                "date_header": False,
-            },
-            "endpoints": {
-                "/auth-json": "json",
-                "/json": "json",
-                "/lab/123/(ABC|DEF)/pl.*": "plaintext",
-                "/lab/123/ABC/auditlog": "jsonl",
-            },
-        }
         self.manifests = self.render_chart("logprep", {"input": http_input_config})
         service = self.manifests.by_query(
             "kind: Service AND metadata.name: logprep-logprep-http-input"
@@ -82,6 +91,16 @@ class TestInputConfig(TestBaseChartTest):
         assert service
         assert service[0]["spec"]["ports"][0]["port"] == 9999
         assert service[0]["spec"]["ports"][0]["targetPort"] == 9999
+
+    def test_http_input_config_sets_deployment_port(self):
+        self.manifests = self.render_chart("logprep", {"input": http_input_config})
+        ports = self.deployment["spec.template.spec.containers"][0]["ports"]
+        for port in ports:
+            if port["name"] == "http-input":
+                assert port["containerPort"] == 9999
+                break
+        else:
+            assert False, "http-input port not found"
 
     def test_http_input_config_probes_are_set(self):
         assert False

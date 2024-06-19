@@ -57,11 +57,16 @@ exporter:
 logger:
   level: INFO
 
+# The logprep input connector configuration
 input: {}
 
-output:
-  type: console_output
+# The logprep output connector configuration
+output: {}
 
+# Additional logprep configurations
+# Note: The configuration keys 'logger', 'metrics', 'input' and 'output' will overwrite the
+# corresponding keys in these configurations as they will be merged into
+# the final configuration.
 configurations:
   - name: logprep-config
     data:

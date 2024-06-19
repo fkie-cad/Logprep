@@ -9,11 +9,13 @@ data:
   input-config.yaml: |
     input:
       {{- if .Values.input }}
-      {{- toYaml .Values.input | nindent 6}}
+      {{- trimSuffix "_input" .Values.input.type | nindent 6}}:
+      {{- toYaml .Values.input | nindent 8}}
       {{- else }}
-      type: file_input
-      logfile_path: /dev/stdin
-      start: end
-      watch_file: true
-      interval: 1
+      stdin:
+        type: file_input
+        logfile_path: /dev/stdin
+        start: end
+        watch_file: true
+        interval: 1
       {{- end }}

@@ -106,8 +106,16 @@ class TestExporterConfig(TestBaseChartTest):
     )
     def test_prometheus_multiproc_environment_variable(self, exporter_config, expected):
         self.manifests = self.render_chart("logprep", exporter_config)
-        env_var = self.deployment["spec.template.spec.containers.0.env.1"]
-        assert (env_var["name"] == "PROMETHEUS_MULTIPROC_DIR") == expected
+        env = self.deployment["spec.template.spec.containers.0.env"]
+        if env:
+            for env_var in env:
+                if env_var["name"] == "PROMETHEUS_MULTIPROC_DIR":
+                    assert expected
+                    break
+            else:
+                assert not expected, "PROMETHEUS_MULTIPROC_DIR not found"
+        else:
+            assert not expected
 
     @pytest.mark.parametrize(
         "exporter_config, expected",
