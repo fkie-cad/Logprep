@@ -64,7 +64,7 @@ exporter:
 # See: https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
 # for available configuration options.
 logger:
-  level: INFO
+  level: DEBUG
 
 # The logprep input connector configuration
 # Note: The Name of the input is derived from the `type` of the input.
