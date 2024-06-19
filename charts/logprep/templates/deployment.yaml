@@ -16,7 +16,9 @@ spec:
     metadata:
       labels:
         {{- include "logprep.labels" . | nindent 8 }}
+        {{- if .Values.pod_extra_labels -}}
         {{ toYaml .Values.pod_extra_labels | nindent 8 }}
+        {{- end }}
       annotations:
         sidecar.istio.io/rewriteAppHTTPProbers: "false"
     spec:
@@ -49,14 +51,18 @@ spec:
             - name: DEBUG # to get python stacktrace on error
               value: "1"
             {{- end }}
+            {{- if .Values.secrets.credentials }}
             - name: LOGPREP_CREDENTIALS_FILE
-              value: "/home/logprep/credentials.yml"
+              value: "/home/logprep/credentials/{{ .Values.secrets.credentials.name }}"
+            {{- end }}
             {{- if .Values.exporter.enabled }}
             - name: PROMETHEUS_MULTIPROC_DIR
               value: /prometheus
             {{- end }}
+            {{- if .Values.secrets.certificates }}
             - name: REQUESTS_CA_BUNDLE
-              value: /home/logprep/auth/ca-cert-chain
+              value: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
+            {{- end }}
           volumeMounts:
             - name: logprep-temp
               mountPath: /tmp
@@ -72,6 +78,14 @@ spec:
             - name: logger-config
               mountPath: /home/logprep/configurations/logger-config.yaml
               subPath: logger-config.yaml
+            {{- if .Values.secrets.certificates }}
+            - name: certificates
+              mountPath: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
+            {{- end }}
+            {{- if .Values.secrets.credentials }}
+            - name: credentials
+              mountPath: /home/logprep/credentials/{{ .Values.secrets.credentials.name }}
+            {{- end }}
           {{- if .Values.exporter.enabled }}
           readinessProbe:
             httpGet:
@@ -113,6 +127,16 @@ spec:
         - name: logger-config
           configMap:
             name: {{ .Release.Name }}-{{ .Chart.Name }}-logger
+        {{- if .Values.secrets.certificates }}
+        - name: certificates
+          secret:
+            secretName: {{ .Values.secrets.certificates.name }}
+        {{- end }}
+        {{- if .Values.secrets.credentials }}
+        - name: credentials
+          secret:
+            secretName: {{ .Values.secrets.credentials.name }}
+        {{- end }}
       {{- if .Values.affinity }}
       affinity:
         podAntiAffinity:

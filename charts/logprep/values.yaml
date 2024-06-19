@@ -22,18 +22,26 @@ securityContext:
   runAsUser: 1000
   readOnlyRootFilesystem: true
 
+# Optional secrets that will be mounted into the pod
+# Listed secrets are handled specially by the logprep deployment.
+# Additional secrets will be mounted as usual.
+# secrets:
+#   certificates:
+#     name: ca-cert # Name of the secret containing the ca certificate (or chain) in one data block
+#   credentials:
+#     name: logprep-credentials # Name of the secret containing the logprep credentials file
+#   imagePullSecret:
+#     name: logprep-image-pull-secret # Name of the secret containing the image pull secret
+secrets: {}
+
 # Boolean to signal to use affinity to avoid deploying multiple instances of the
 # pod on the same node
 affinity: false
 
 # inject extra labels to the pod metadata
-pod_extra_labels:
-  sidecar.istio.io/inject: "true"
+pod_extra_labels: {}
 
 credentials: {}
-
-imagePullSecrets:
-  - name: harbor-registry-secret
 
 # If enabled, the exporter will be started on the specified port and
 # the metrics service and a prometheus PodMonitor will be deployed.
@@ -56,15 +64,7 @@ configurations:
       process_count: 2
       timeout: 0.1
 
-      pipeline:
-        - labelername:
-            type: labeler
-            schema: quickstart/exampledata/rules/labeler/schema.json
-            include_parent_labels: true
-            specific_rules:
-              - quickstart/exampledata/rules/labeler/specific
-            generic_rules:
-              - quickstart/exampledata/rules/labeler/generic
+      pipeline: []
 
       input:
         kafka:

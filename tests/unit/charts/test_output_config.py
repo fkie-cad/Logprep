@@ -10,6 +10,9 @@ from tests.unit.charts.test_base import TestBaseChartTest
 
 class TestOutputConfig(TestBaseChartTest):
 
+    def test_todo(self):
+        assert False
+
     def test_exporter_config_file_is_set(self):
         expected_logger_config = {
             "logger": {
