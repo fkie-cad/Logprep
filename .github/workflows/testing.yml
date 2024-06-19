@@ -1,0 +1,28 @@
+name: Testing
+
+on:
+  workflow_call:
+
+jobs:
+  python:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12.3"]
+        test-type: ["unit", "acceptance"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip wheel
+          pip install .[dev]
+      - name: Perform ${{ matrix.test-type }} test
+        env:
+          PYTEST_ADDOPTS: "--color=yes"
+        run: |
+          pytest -vv -s tests/${{ matrix.test-type }}
