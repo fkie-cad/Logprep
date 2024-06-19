@@ -101,7 +101,7 @@ class TestExporterConfig(TestBaseChartTest):
         "exporter_config, expected",
         [
             ({"exporter": {"enabled": True}}, True),
-            ({"exporter": {"enabled": False}}, False),
+            ({"exporter": {"enabled": False}}, True),
         ],
     )
     def test_prometheus_multiproc_environment_variable(self, exporter_config, expected):
@@ -121,7 +121,7 @@ class TestExporterConfig(TestBaseChartTest):
         "exporter_config, expected",
         [
             ({"exporter": {"enabled": True}}, True),
-            ({"exporter": {"enabled": False}}, False),
+            ({"exporter": {"enabled": False}}, True),
         ],
     )
     def test_prometheus_multiproc_environment_volume(self, exporter_config, expected):

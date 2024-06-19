@@ -27,8 +27,6 @@ RUN useradd -s /bin/sh -m -c "logprep user" logprep
 USER logprep
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
-ENV PROMETHEUS_MULTIPROC_DIR=/tmp/logprep/prometheus_multiproc/
-ENV TLDEXTRACT_CACHE=/tmp/logprep/tld_extract_cache/
 WORKDIR /home/logprep
 
 ENTRYPOINT ["logprep"]

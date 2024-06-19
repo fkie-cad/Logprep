@@ -65,10 +65,8 @@ spec:
             - name: LOGPREP_CREDENTIALS_FILE
               value: "/home/logprep/credentials/{{ .Values.secrets.credentials.name }}"
             {{- end }}
-            {{- if .Values.exporter.enabled }}
             - name: PROMETHEUS_MULTIPROC_DIR
               value: /prometheus
-            {{- end }}
             {{- if .Values.secrets.certificates }}
             - name: REQUESTS_CA_BUNDLE
               value: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
@@ -76,10 +74,8 @@ spec:
           volumeMounts:
             - name: logprep-temp
               mountPath: /tmp
-            {{- if .Values.exporter.enabled }}
             - name: prometheus-multiproc
               mountPath: /prometheus
-            {{- end }}
             - name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
               mountPath: /home/logprep/configurations
             - name: exporter-config
@@ -142,11 +138,9 @@ spec:
         - name: logprep-temp
           emptyDir:
             medium: "Memory"
-        {{- if .Values.exporter.enabled }}
         - name: prometheus-multiproc
           emptyDir:
             medium: "Memory"
-        {{- end }}
         - name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
           configMap:
             name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
