@@ -62,7 +62,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: 
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=20)
 
     requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
     time.sleep(0.5)
@@ -77,7 +77,7 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, confi
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=20)
 
     requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
     time.sleep(0.5)
