@@ -53,3 +53,35 @@ class TestInputConfig(TestBaseChartTest):
         volume_mounts = container["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "input-config"][0]
         assert volume_mount["mountPath"] in " ".join(container["command"])
+
+    def test_http_input_config_service_is_created(self):
+        http_input_config = {
+            "type": "http_input",
+            "message_backlog_size": 150,
+            "collect_meta": True,
+            "metafield_name": "@metadata",
+            "uvicorn_config": {
+                "host": "0.0.0.0",
+                "port": 9999,
+                "workers": 2,
+                "access_log": True,
+                "server_header": False,
+                "date_header": False,
+            },
+            "endpoints": {
+                "/auth-json": "json",
+                "/json": "json",
+                "/lab/123/(ABC|DEF)/pl.*": "plaintext",
+                "/lab/123/ABC/auditlog": "jsonl",
+            },
+        }
+        self.manifests = self.render_chart("logprep", {"input": http_input_config})
+        service = self.manifests.by_query(
+            "kind: Service AND metadata.name: logprep-logprep-http-input"
+        )
+        assert service
+        assert service[0]["spec"]["ports"][0]["port"] == 9999
+        assert service[0]["spec"]["ports"][0]["targetPort"] == 9999
+
+    def test_http_input_config_probes_are_set(self):
+        assert False

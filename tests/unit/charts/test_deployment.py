@@ -211,3 +211,6 @@ class TestDeployment(TestBaseChartTest):
             "app.kubernetes.io/name": "logprep-logprep",
             "app.kubernetes.io/instance": "logprep",
         }
+
+    def test_image_pull_secret(self):
+        assert False
