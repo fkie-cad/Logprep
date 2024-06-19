@@ -25,6 +25,10 @@ spec:
       securityContext:
         fsGroup: {{ .Values.securityContext.runAsUser }}
         runAsUser: {{ .Values.securityContext.runAsUser }}
+      imagePullSecrets:
+        {{- if .Values.secrets.imagePullSecret }}
+        - name: {{ .Values.secrets.imagePullSecret.name }}
+        {{- end }}
       containers:
         - name: logprep
           securityContext:

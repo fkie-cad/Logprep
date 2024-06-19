@@ -212,5 +212,13 @@ class TestDeployment(TestBaseChartTest):
             "app.kubernetes.io/instance": "logprep",
         }
 
-    def test_image_pull_secret(self):
-        assert False
+    @pytest.mark.parametrize(
+        "logprep_values, expected",
+        [({}, False), ({"secrets": {"imagePullSecret": {"name": "my-secret"}}}, "my-secret")],
+    )
+    def test_image_pull_secret(self, logprep_values, expected):
+        self.manifests = self.render_chart("logprep", logprep_values)
+        image_pull_secret = self.deployment["spec.template.spec.imagePullSecrets.0"]
+        assert bool(image_pull_secret) == bool(expected)
+        if expected:
+            assert image_pull_secret.get("name") == expected
