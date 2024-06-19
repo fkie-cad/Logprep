@@ -240,7 +240,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline.process_pipeline()
-        mock_warning.assert_called_with(str([processing_warning]))
+        mock_warning.assert_called_with(str(processing_warning))
         assert self.pipeline._output["dummy"].store.call_count == 2, "all events are processed"
 
     @mock.patch("logging.Logger.error")
