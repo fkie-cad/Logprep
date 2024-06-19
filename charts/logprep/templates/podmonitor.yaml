@@ -1,4 +1,5 @@
 {{ if .Values.exporter.enabled }}
+# you have to install the CRD for PodMonitor before you can use it
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor

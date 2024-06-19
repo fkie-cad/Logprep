@@ -40,7 +40,7 @@ class TestOutputConfig(TestBaseChartTest):
         volume_mounts = deployment["spec.template.spec.containers"][0]["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "output-config"][0]
         assert volume_mount
-        assert volume_mount["mountPath"] == "/home/logprep/configurations/output-config.yaml"
+        assert volume_mount["mountPath"] == "/home/logprep/output-config.yaml"
         assert volume_mount["subPath"] == "output-config.yaml"
 
     def test_output_config_volume_is_populated(self):

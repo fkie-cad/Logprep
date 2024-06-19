@@ -60,7 +60,7 @@ class TestInputConfig(TestBaseChartTest):
         volume_mounts = deployment["spec.template.spec.containers"][0]["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "input-config"][0]
         assert volume_mount
-        assert volume_mount["mountPath"] == "/home/logprep/configurations/input-config.yaml"
+        assert volume_mount["mountPath"] == "/home/logprep/input-config.yaml"
         assert volume_mount["subPath"] == "input-config.yaml"
 
     def test_input_config_volume_is_populated(self):

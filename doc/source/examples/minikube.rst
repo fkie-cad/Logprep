@@ -54,5 +54,10 @@ with the following commands:
 Deploy the example
 ------------------
 
+At first you have to install the prometheus PodMonitor CRD:
 
+.. code-block:: bash
+    :caption: Install the prometheus PodMonitor CRD
+
+    kubectl apply -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml
 

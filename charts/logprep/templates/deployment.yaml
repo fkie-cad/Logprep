@@ -48,10 +48,10 @@ spec:
             {{- range $key, $value := .Values.configurations }}
             - /home/logprep/configurations/{{ $value.name }}
             {{- end }}
-            - /home/logprep/configurations/exporter-config.yaml
-            - /home/logprep/configurations/logger-config.yaml
-            - /home/logprep/configurations/input-config.yaml
-            - /home/logprep/configurations/output-config.yaml
+            - /home/logprep/exporter-config.yaml
+            - /home/logprep/logger-config.yaml
+            - /home/logprep/input-config.yaml
+            - /home/logprep/output-config.yaml
           env:
             {{- if eq .Values.logger.level "DEBUG" }}
             - name: DEBUG # to get python stacktrace on error
@@ -79,16 +79,16 @@ spec:
             - name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
               mountPath: /home/logprep/configurations
             - name: exporter-config
-              mountPath: /home/logprep/configurations/exporter-config.yaml
+              mountPath: /home/logprep/exporter-config.yaml
               subPath: exporter-config.yaml
             - name: logger-config
-              mountPath: /home/logprep/configurations/logger-config.yaml
+              mountPath: /home/logprep/logger-config.yaml
               subPath: logger-config.yaml
             - name: input-config
-              mountPath: /home/logprep/configurations/input-config.yaml
+              mountPath: /home/logprep/input-config.yaml
               subPath: input-config.yaml
             - name: output-config
-              mountPath: /home/logprep/configurations/output-config.yaml
+              mountPath: /home/logprep/output-config.yaml
               subPath: output-config.yaml
             {{- if .Values.secrets.certificates }}
             - name: certificates

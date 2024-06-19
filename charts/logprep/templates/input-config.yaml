@@ -14,7 +14,7 @@ data:
       {{- else }}
       stdin:
         type: file_input
-        logfile_path: /dev/stdin
+        logfile_path: /proc/1/fdinfo/0
         start: end
         watch_file: true
         interval: 1

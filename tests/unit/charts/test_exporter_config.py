@@ -66,7 +66,7 @@ class TestExporterConfig(TestBaseChartTest):
         volume_mounts = deployment["spec.template.spec.containers"][0]["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "exporter-config"][0]
         assert volume_mount
-        assert volume_mount["mountPath"] == "/home/logprep/configurations/exporter-config.yaml"
+        assert volume_mount["mountPath"] == "/home/logprep/exporter-config.yaml"
         assert volume_mount["subPath"] == "exporter-config.yaml"
 
     def test_exporter_config_volume_is_populated(self):
@@ -153,7 +153,7 @@ class TestExporterConfig(TestBaseChartTest):
             ({"exporter": {"enabled": False}}, False),
         ],
     )
-    def test_pod_monitor_are_populated(self, exporter_config, expected):
+    def test_pod_monitor_is_populated(self, exporter_config, expected):
         self.manifests = self.render_chart("logprep", exporter_config)
         assert bool(self.manifests.by_query("kind: PodMonitor")) == expected
 

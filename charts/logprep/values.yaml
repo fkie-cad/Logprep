@@ -1,11 +1,17 @@
-replicas: 1
+# the service account to use for the deployment
 serviceAccount: basic-secret
 
+# The replica count
+replicas: 1
+
+# The image repository and tag
+# An image pull secret can be specified in the secrets section
 image:
   registry: ghcr.io
   repository: fkie-cad/logprep
   tag: py3.11-stable
 
+# The pod resources
 resources:
   limits:
     memory: "2Gi"
@@ -14,6 +20,7 @@ resources:
     memory: "2Gi"
     cpu: "250m"
 
+# The default security context for the pod
 securityContext:
   capabilities:
     drop:
@@ -53,20 +60,35 @@ exporter:
   service_port: 8001
   scrape_interval: 30s
 
-# Logprep logging configuration. For more information see: https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
+# Logprep logging configuration.
+# See: https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
+# for available configuration options.
 logger:
   level: INFO
 
 # The logprep input connector configuration
+# Note: The Name of the input is derived from the `type` of the input.
+# In example, if the type is `file_input`, the name of the input will be `file`.
+# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/input.html
+# for available configuration options.
 input: {}
 
 # The logprep output connector configuration
+# Note: This is only the default output. Additional outputs can be configured in
+# the configurations section. The Name of the default output is derived from the
+# `type` of the output. In example, if the type is `elasticsearch_output`, the
+# name of the output will be `elasticsearch`. Keep this in mind if you specify
+# additional outputs in the configurations section.
+# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/output.html
+# for available configuration options.
 output: {}
 
 # Additional logprep configurations
 # Note: The configuration keys 'logger', 'metrics', 'input' and 'output' will overwrite the
 # corresponding keys in these configurations as they will be merged into
 # the final configuration.
+# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
+# for available configuration options.
 configurations:
   - name: logprep-config
     data:
