@@ -197,7 +197,10 @@ class TestExporterConfig(TestBaseChartTest):
         self.manifests = self.render_chart("logprep", {"exporter": {"port": 1337}})
         liveness_probe = self.deployment["spec.template.spec.containers.0.livenessProbe"]
         assert liveness_probe["httpGet"]["port"] == 1337
+        assert liveness_probe["httpGet"]["path"] == "/metrics"
         readiness_probe = self.deployment["spec.template.spec.containers.0.readinessProbe"]
         assert readiness_probe["httpGet"]["port"] == 1337
+        assert readiness_probe["httpGet"]["path"] == "/metrics"
         startup_probe = self.deployment["spec.template.spec.containers.0.startupProbe"]
         assert startup_probe["httpGet"]["port"] == 1337
+        assert startup_probe["httpGet"]["path"] == "/metrics"

@@ -94,7 +94,17 @@ spec:
             - name: credentials
               mountPath: /home/logprep/credentials/{{ .Values.secrets.credentials.name }}
             {{- end }}
-          {{- if .Values.exporter.enabled }}
+          {{- if or .Values.exporter.enabled (eq .Values.input.type "http_input") }}
+          {{- if eq .Values.input.type "http_input" }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.input.uvicorn_config.port }}
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          {{- else }}
           readinessProbe:
             httpGet:
               path: /metrics
@@ -103,6 +113,9 @@ spec:
             timeoutSeconds: 10
             periodSeconds: 5
             failureThreshold: 3
+          {{- end }}
+          {{- end }}
+          {{- if .Values.exporter.enabled }}
           startupProbe:
             httpGet:
               path: /metrics
