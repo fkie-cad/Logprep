@@ -25,4 +25,4 @@ jobs:
         env:
           PYTEST_ADDOPTS: "--color=yes"
         run: |
-          pytest -vv -s tests/${{ matrix.test-type }}
+          pytest -vv tests/${{ matrix.test-type }}
