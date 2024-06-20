@@ -68,12 +68,11 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         logprep_log_config = json.loads(
             os.environ.get("LOGPREP_LOG_CONFIG", json.dumps(DEFAULT_LOG_CONFIG))
         )
-        # uvicorn_config = uvicorn.Config(**uvicorn_config, app=app, log_config=logprep_log_config)
-        uvicorn_config = uvicorn.Config(**uvicorn_config, app=app)
+        uvicorn_config = uvicorn.Config(**uvicorn_config, app=app, log_config=logprep_log_config)
         logging.getLogger("uvicorn.access").name = self._logger_name
         logging.getLogger("uvicorn.error").name = self._logger_name
         self.server = uvicorn.Server(uvicorn_config)
-        self.thread = threading.Thread(daemon=daemon, target=self.server.run)
+        self.thread = threading.Thread(daemon=False, target=self.server.run)
 
     def start(self):
         """Collect all configs, initiate application server and webserver
