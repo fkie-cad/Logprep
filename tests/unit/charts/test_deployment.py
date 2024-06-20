@@ -260,3 +260,10 @@ class TestDeployment(TestBaseChartTest):
         )
         configs: dict = cm[0]["data"]
         assert "http://external-config.bla" not in configs
+
+    def test_pod_annotations(self):
+        logprep_values = {"podAnnotations": {"key1": "value1", "key2": "value2"}}
+        self.manifests = self.render_chart("logprep", logprep_values)
+        annotations = self.deployment["spec.template.metadata.annotations"]
+        assert annotations["key1"] == "value1"
+        assert annotations["key2"] == "value2"

@@ -16,11 +16,8 @@ spec:
     metadata:
       labels:
         {{- include "logprep.labels" . | nindent 8 }}
-        {{- if .Values.pod_extra_labels -}}
-        {{ toYaml .Values.pod_extra_labels | nindent 8 }}
-        {{- end }}
       annotations:
-        sidecar.istio.io/rewriteAppHTTPProbers: "false"
+        {{ toYaml .Values.podAnnotations| nindent 8 }}
     spec:
       securityContext:
         fsGroup: {{ .Values.securityContext.runAsUser }}

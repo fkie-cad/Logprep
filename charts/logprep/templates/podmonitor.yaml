@@ -8,7 +8,7 @@ metadata:
   labels:
     {{- include "logprep.labels" . | nindent 4 }}
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    {{- toYaml .Values.exporter.annotations | nindent 4 }}
 spec:
   selector:
     matchLabels:
