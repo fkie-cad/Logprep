@@ -4,7 +4,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: {{ .Release.Name }}-{{ .Chart.Name }}
+  name: {{ include "logprep.fullname" . }}
   labels:
     {{- include "logprep.labels" . | nindent 4 }}
   annotations:
@@ -12,7 +12,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+      {{- include "logprep.selectorLabels" . | nindent 6 }}
   podMetricsEndpoints:
     - targetPort: {{ .Values.exporter.port }}
       interval: {{ .Values.exporter.scrape_interval}}

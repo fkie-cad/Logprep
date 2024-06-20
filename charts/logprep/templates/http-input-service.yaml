@@ -6,7 +6,7 @@ kind: Service
 metadata:
   labels:
     {{- include "logprep.labels" . | nindent 4 }}
-  name: {{ .Release.Name }}-{{ .Chart.Name }}-http-input
+  name: {{ include "logprep.fullname" . }}-http-input
 spec:
   ports:
     - name: http-input
@@ -14,6 +14,6 @@ spec:
       targetPort: {{ .Values.input.uvicorn_config.port }}
       appProtocol: http
   selector:
-    app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+    app.kubernetes.io/name: {{ include "logprep.fullname" . }}
 {{- end}}
 {{- end}}

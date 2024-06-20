@@ -5,7 +5,7 @@ kind: Service
 metadata:
   labels:
     {{- include "logprep.labels" . | nindent 4 }}
-  name: {{ .Release.Name }}-{{ .Chart.Name }}-exporter
+  name: {{ include "logprep.fullname" . }}-exporter
 spec:
   ports:
     - name: metrics
@@ -13,5 +13,5 @@ spec:
       targetPort: {{ .Values.exporter.port }}
       appProtocol: http
   selector:
-    app.kubernetes.io/name: {{ .Release.Name }}-{{ .Chart.Name }}
+    app.kubernetes.io/name: {{ include "logprep.fullname" . }}
 {{- end}}

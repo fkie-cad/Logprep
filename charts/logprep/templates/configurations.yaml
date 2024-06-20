@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-{{ .Chart.Name }}-configurations
+  name: {{ include "logprep.fullname" . }}-configurations
   labels:
     {{- include "logprep.labels" . | nindent 4 }}
 data:
