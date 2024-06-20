@@ -84,14 +84,14 @@ class TestExporterConfig(TestBaseChartTest):
         container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "exporter-config"][0]
-        assert volume_mount["mountPath"] in " ".join(container["command"])
+        assert volume_mount["subPath"] in " ".join(container["command"])
 
     def test_exporter_config_is_mounted_if_exporter_not_enabled(self):
         self.manifests = self.render_chart("logprep", {"exporter": {"enabled": False}})
         container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "exporter-config"][0]
-        assert volume_mount["mountPath"] in " ".join(container["command"])
+        assert volume_mount["subPath"] in " ".join(container["command"])
         volumes = self.deployment["spec.template.spec.volumes"]
         volume = [vol for vol in volumes if vol["name"] == "exporter-config"]
         assert volume

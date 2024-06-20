@@ -78,7 +78,7 @@ class TestInputConfig(TestBaseChartTest):
         container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "input-config"][0]
-        assert volume_mount["mountPath"] in " ".join(container["command"])
+        assert volume_mount["subPath"] in " ".join(container["command"])
 
     def test_http_input_config_service_is_created(self):
         self.manifests = self.render_chart("logprep", {"input": http_input_config})

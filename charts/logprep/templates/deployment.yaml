@@ -50,12 +50,12 @@ spec:
             - logprep
             - run
             {{- range $key, $value := .Values.configurations }}
-            - /home/logprep/configurations/{{ $value.name }}
+            - configurations/{{ $value.name }}
             {{- end }}
-            - /home/logprep/exporter-config.yaml
-            - /home/logprep/logger-config.yaml
-            - /home/logprep/input-config.yaml
-            - /home/logprep/output-config.yaml
+            - input-config.yaml
+            - output-config.yaml
+            - logger-config.yaml
+            - exporter-config.yaml
           env:
             {{- if eq .Values.logger.level "DEBUG" }}
             - name: DEBUG # to get python stacktrace on error

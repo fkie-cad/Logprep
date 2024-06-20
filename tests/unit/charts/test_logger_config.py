@@ -52,7 +52,7 @@ class TestLoggerConfig(TestBaseChartTest):
         container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]
         volume_mount = [mount for mount in volume_mounts if mount["name"] == "logger-config"][0]
-        assert volume_mount["mountPath"] in " ".join(container["command"])
+        assert volume_mount["subPath"] in " ".join(container["command"])
 
     @pytest.mark.parametrize(
         "logger_config, expected",
