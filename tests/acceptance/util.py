@@ -263,6 +263,7 @@ def wait_for_output(proc, expected_output, test_timeout=10):
     @timeout(test_timeout)
     def wait_for_output_inner(proc, expected_output):
         output = proc.stdout.readline()
+        print(f"wait_for_output: {output.decode('utf-8')}")
         while not re.search(expected_output, output.decode("utf8")):
             output = proc.stdout.readline()
 
