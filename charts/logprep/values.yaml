@@ -48,8 +48,6 @@ affinity: false
 # inject extra labels to the pod metadata
 pod_extra_labels: {}
 
-credentials: {}
-
 # If enabled, the exporter will be started on the specified port and
 # the metrics service and a prometheus PodMonitor will be deployed.
 # You have to ensure, that the prometheus operator is installed and
@@ -87,6 +85,16 @@ output: {}
 # Note: The configuration keys 'logger', 'metrics', 'input' and 'output' will overwrite the
 # corresponding keys in these configurations as they will be merged into
 # the final configuration.
+# for configurations with data from an external API put the url in the name field and leave the data field undefined
+#
+# Example:
+#
+# configurations:
+#   - name: logprep-config
+#     data:
+#       pipeline: []
+#   - name: http://bla-bla.bla
+#
 # See https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
 # for available configuration options.
 configurations:

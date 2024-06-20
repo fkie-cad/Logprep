@@ -222,3 +222,41 @@ class TestDeployment(TestBaseChartTest):
         assert bool(image_pull_secret) == bool(expected)
         if expected:
             assert image_pull_secret.get("name") == expected
+
+    def test_configuration_with_http_endpoints_command_is_appended(self):
+        logprep_values = {
+            "configurations": [
+                {"name": "config1", "data": {"process_count": 2}},
+                {"name": "http://external-config.bla"},
+            ]
+        }
+        self.manifests = self.render_chart("logprep", logprep_values)
+        command = self.deployment["spec.template.spec.containers.0.command"]
+        assert command[3] == "http://external-config.bla"
+
+    def test_configuration_with_http_endpoints_volume_mount_is_not_populated(self):
+        logprep_values = {
+            "configurations": [
+                {"name": "config1", "data": {"process_count": 2}},
+                {"name": "http://external-config.bla"},
+            ]
+        }
+        self.manifests = self.render_chart("logprep", logprep_values)
+        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
+        for mount in mounts:
+            if "http://external-config.bla" in mount["mountPath"]:
+                assert False, "http://external-config.bla should not be there"
+
+    def test_configuration_with_http_endpoints_configmap_entry_is_not_populated(self):
+        logprep_values = {
+            "configurations": [
+                {"name": "config1", "data": {"process_count": 2}},
+                {"name": "http://external-config.bla"},
+            ]
+        }
+        self.manifests = self.render_chart("logprep", logprep_values)
+        cm = self.manifests.by_query(
+            "kind: ConfigMap AND metadata.name: logprep-logprep-configurations"
+        )
+        configs: dict = cm[0]["data"]
+        assert "http://external-config.bla" not in configs
