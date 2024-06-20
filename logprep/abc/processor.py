@@ -37,11 +37,8 @@ class ProcessorResult:
 
     data = field(validator=validators.instance_of(list), factory=list)
     errors = field(
-        validator=validators.optional(validators.instance_of(ProcessingError)), default=None
-    )
-    warnings = field(
         validator=validators.deep_iterable(
-            member_validator=validators.instance_of(ProcessingWarning),
+            member_validator=validators.instance_of((ProcessingError, ProcessingWarning)),
             iterable_validator=validators.instance_of(list),
         ),
         factory=list,
@@ -213,9 +210,9 @@ class Processor(Component):
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
-            self.result.errors = error  # is needed to prevent wrapping it in itself
+            self.result.errors.append(error)  # is needed to prevent wrapping it in itself
         except BaseException as error:
-            self.result.errors = ProcessingCriticalError(str(error), rule, event)
+            self.result.errors.append(ProcessingCriticalError(str(error), rule, event))
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:
@@ -303,9 +300,9 @@ class Processor(Component):
         else:
             add_and_overwrite(event, "tags", sorted(list({*tags, *failure_tags})))
         if isinstance(error, ProcessingWarning):
-            self.result.warnings.append(error)
+            self.result.errors.append(error)
         else:
-            self.result.warnings.append(ProcessingWarning(str(error), rule, event))
+            self.result.errors.append(ProcessingWarning(str(error), rule, event))
 
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(

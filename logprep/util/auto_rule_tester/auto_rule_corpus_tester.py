@@ -215,7 +215,7 @@ class RuleCorpusTester:
             extra_outputs = convert_extra_data_format([res.data for res in results])
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
-            test_case.warnings = [result.warnings for result in results if result.warnings]
+            test_case.warnings = [result.errors for result in results if result.errors]
             test_case.warnings = list(itertools.chain(*test_case.warnings))
             self._compare_logprep_outputs(test_case_id, parsed_event)
             self._compare_extra_data_output(test_case_id, extra_outputs)

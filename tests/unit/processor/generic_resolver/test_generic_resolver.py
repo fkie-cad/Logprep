@@ -294,8 +294,8 @@ class TestGenericResolver(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"to_resolve": "ab"}
         result = self.object.process(document)
-        assert isinstance(result.errors, ProcessingCriticalError)
-        assert "Mapping group is missing in mapping" in result.errors.args[0]
+        assert isinstance(result.errors[0], ProcessingCriticalError)
+        assert "Mapping group is missing in mapping" in result.errors[0].args[0]
 
     def test_resolve_generic_match_from_file_and_file_does_not_exist(self):
         rule = {
@@ -308,8 +308,8 @@ class TestGenericResolver(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"to": {"resolve": "something HELLO1"}}
         result = self.object.process(document)
-        assert isinstance(result.errors, ProcessingCriticalError)
-        assert "Additions file 'foo' not found" in result.errors.args[0]
+        assert isinstance(result.errors[0], ProcessingCriticalError)
+        assert "Additions file 'foo' not found" in result.errors[0].args[0]
 
     def test_resolve_dotted_field_no_conflict_no_match(self):
         rule = {
@@ -420,8 +420,8 @@ class TestGenericResolver(BaseProcessorTestCase):
             "re": {"solved": "I already exist!"},
         }
         result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], FieldExistsWarning)
         assert document == expected
 
     def test_resolve_generic_and_multiple_match_first_only(self):

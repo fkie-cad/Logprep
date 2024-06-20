@@ -378,8 +378,8 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "tags": ["_hyperscan_resolver_failure"],
         }
         result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], FieldExistsWarning)
         assert document == expected
 
     def test_resolve_with_multiple_match_first_only(self):
@@ -639,7 +639,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"to_resolve": "12ab34"}
         result = self.object.process(document)
-        assert isinstance(result.errors, ProcessingCriticalError)
+        assert isinstance(result.errors[0], ProcessingCriticalError)
 
     def test_resolve_no_conflict_from_file_and_list_has_conflict(
         self,

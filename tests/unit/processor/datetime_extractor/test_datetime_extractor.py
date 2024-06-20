@@ -181,8 +181,8 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], FieldExistsWarning)
 
     @staticmethod
     def _parse_local_tz(tz_local_name):

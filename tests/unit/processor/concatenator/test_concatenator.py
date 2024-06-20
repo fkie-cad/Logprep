@@ -186,8 +186,8 @@ class TestConcatenator(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
         result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], FieldExistsWarning)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
         assert document.get("tags") == ["_concatenator_failure"]

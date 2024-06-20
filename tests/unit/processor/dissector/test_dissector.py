@@ -731,6 +731,6 @@ class TestDissector(BaseProcessorTestCase):
     def test_testcases_failure_handling(self, testcase, rule, event, expected):
         self._load_specific_rule(rule)
         result = self.object.process(event)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], ProcessingWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], ProcessingWarning)
         assert event == expected, testcase

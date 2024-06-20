@@ -235,7 +235,7 @@ class TestPipeline(ConfigurationForTests):
         mock_rule = mock.MagicMock()
         processing_warning = ProcessingWarning("not so bad", mock_rule, {"message": "test"})
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            warnings=[processing_warning]
+            errors=[processing_warning]
         )
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
@@ -254,12 +254,12 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = (input_event1, None)
         mock_rule = mock.MagicMock()
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            errors=ProcessingCriticalError("really bad things happened", mock_rule, input_event1)
+            errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event1)]
         )
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = (input_event2, None)
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            errors=ProcessingCriticalError("really bad things happened", mock_rule, input_event2)
+            errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event2)]
         )
 
         self.pipeline.process_pipeline()

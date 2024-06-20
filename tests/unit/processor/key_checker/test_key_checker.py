@@ -273,5 +273,5 @@ class TestKeyChecker(BaseProcessorTestCase):
             "missing_fields": ["i.exists.already"],
         }
         result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], FieldExistsWarning)

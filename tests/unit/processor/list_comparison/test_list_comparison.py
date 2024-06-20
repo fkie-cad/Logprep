@@ -159,8 +159,8 @@ class TestListComparison(BaseProcessorTestCase):
         self._load_specific_rule(rule_dict)
         self.object.setup()
         result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], FieldExistsWarning)
         assert document == expected
 
     def test_intermediate_output_field_is_wrong_type(self):
@@ -188,8 +188,8 @@ class TestListComparison(BaseProcessorTestCase):
         self._load_specific_rule(rule_dict)
         self.object.setup()
         result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], FieldExistsWarning)
         assert document == expected
 
     def test_check_in_dotted_subfield(self):
@@ -244,8 +244,8 @@ class TestListComparison(BaseProcessorTestCase):
         self._load_specific_rule(rule_dict)
         self.object.setup()
         result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], FieldExistsWarning)
         assert document == expected
 
     @responses.activate

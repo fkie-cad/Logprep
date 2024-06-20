@@ -13,7 +13,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning, FieldExistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -232,8 +232,8 @@ sth.ac.at
         document = {"client": "google.de"}
 
         result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert len(result.errors) == 1
+        assert isinstance(result.errors[0], FieldExistsWarning)
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     def test_no_duplication_error(self, _):
