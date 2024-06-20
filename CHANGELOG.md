@@ -9,10 +9,13 @@ This release limits the maximum python version to `3.12.3` because of the issue
 ### Breaking
 ### Features
 ### Improvements
+
 * a result object was added which is returned by every processor
   * includes generated extra_data, warnings and errors
 
 ### Bugfix
+
+* fixes a bug where it could happen that a config value could be overwritten by a default in a later configuration in a multi source config scenario
 
 ## 12.0.0
 
