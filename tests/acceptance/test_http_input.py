@@ -36,7 +36,7 @@ def config_fixture():
             "type": "http_input",
             "uvicorn_config": {
                 "host": "127.0.0.1",
-                "port": 9000,
+                "port": 12681,
                 "ssl_certfile": "tests/testdata/acceptance/http_input/cert.crt",
                 "ssl_keyfile": "tests/testdata/acceptance/http_input/cert.key",
             },
@@ -62,9 +62,9 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: 
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=20)
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:12681", test_timeout=15)
 
-    requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
+    requests.post("https://127.0.0.1:12681/plaintext", data="my message", verify=False, timeout=5)
     time.sleep(0.5)
     assert "my message" in output_path.read_text()
 
@@ -77,8 +77,8 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, confi
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=20)
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:12681", test_timeout=15)
 
-    requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
+    requests.post("https://127.0.0.1:12681/plaintext", data="my message", verify=False, timeout=5)
     time.sleep(0.5)
     assert "my message" in output_path.read_text()
