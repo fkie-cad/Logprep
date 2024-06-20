@@ -26,6 +26,7 @@ jobs:
         run: |
           pip install --upgrade pip wheel
           pip install .[dev]
+          pip list
       - name: Perform ${{ matrix.test-type }} test
         env:
           PYTEST_ADDOPTS: "--color=yes"
