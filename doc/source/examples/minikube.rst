@@ -61,3 +61,10 @@ At first you have to install the prometheus PodMonitor CRD:
 
     kubectl apply -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml
 
+
+Next you can install logprep using:
+
+.. code-block:: bash
+    :caption: Install logprep
+
+    helm install logprep charts/logprep

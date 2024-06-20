@@ -1,14 +1,14 @@
-===============
-Getting Started
-===============
-
+============
 Installation
 ============
+
+PIP
+===
 
 Python should be present on the system. Currently, Python 3.10 - 3.12 are supported.
 To install Logprep you have following options:
 
-**1. Option:** Installation via PyPI:
+**1. Option:** latest stable release
 
 This option is recommended if you just want to use the latest release of logprep.
 
@@ -18,7 +18,19 @@ This option is recommended if you just want to use the latest release of logprep
 
 To see if the installation was successful run :code:`logprep --version`.
 
-**2. Option:** Installation via Git Repository:
+**2. Option:** latest development release
+
+This option is recommended if you just want to try out the latest developments.
+
+..  code-block:: bash
+
+    pip install git+https://github.com/fkie-cad/Logprep.git@latest
+
+To see if the installation was successful run :code:`logprep --version`.
+
+
+GIT
+===
 
 This option is recommended if you are interested in the latest developments and might want to
 contribute to them.
@@ -32,17 +44,8 @@ contribute to them.
 To see if the installation was successful run
 :code:`logprep --version`.
 
-**3. Option:** Installation via Github Release
-
-This option is recommended if you just want to try out the latest developments.
-
-..  code-block:: bash
-
-    pip install git+https://github.com/fkie-cad/Logprep.git@latest
-
-To see if the installation was successful run :code:`logprep --version`.
-
-**4. Option:** Docker build
+Docker
+======
 
 This option can be used to build a container image from a specific commit
 
@@ -53,16 +56,9 @@ This option can be used to build a container image from a specific commit
 
 To see if the installation was successful run :code:`docker run logprep --version`.
 
-Run Logprep
-===========
+Helm
+====
 
-If you have installed it via PyPI or the Github Development release just run:
+This option can be used to deploy logprep on a kubernetes cluster.
 
-..  code-block:: bash
-
-    logprep run $CONFIG
-
-Where :code:`$CONFIG` is the path to a configuration file.
-For more information on running logprep with different configruation files or running
-logprep with configruation from an api see the :ref:`configuration` section.
-
+tbd
