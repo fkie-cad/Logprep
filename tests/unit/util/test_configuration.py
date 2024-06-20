@@ -1215,6 +1215,56 @@ endpoints:
             ):
                 _ = Configuration.from_sources([str(config_path)])
 
+    def test_no_config_parameter_is_overwritten_with_a_default(self, tmp_path):
+        prometheus_multiproc_dir: Path = tmp_path / "prometheus_multiproc_dir"
+        prometheus_multiproc_dir.mkdir()
+        exporter_config = tmp_path / "exporter-config"
+        exporter_config.write_text(
+            """
+metrics:
+  enabled: true
+  port: 8000
+"""
+        )
+        input_config = tmp_path / "input-config"
+        input_config.write_text(
+            """
+input:
+  stdin:
+    type: file_input
+    logfile_path: /proc/1/fdinfo/0
+    start: end
+    watch_file: true
+    interval: 1
+"""
+        )
+
+        output_config = tmp_path / "output-config"
+        output_config.write_text(
+            """
+output:
+  console:
+    type: console_output
+"""
+        )
+        with mock.patch.dict(
+            "os.environ", {"PROMETHEUS_MULTIPROC_DIR": str(prometheus_multiproc_dir)}
+        ):
+            config1 = Configuration.from_sources(
+                [str(input_config), str(output_config), str(exporter_config)]
+            )
+            assert config1.metrics.enabled
+
+            config1 = Configuration.from_sources(
+                [str(exporter_config), str(input_config), str(output_config)]
+            )
+            assert config1.metrics.enabled
+
+            config1 = Configuration.from_sources(
+                [str(input_config), str(exporter_config), str(output_config)]
+            )
+            assert config1.metrics.enabled
+
     def test_verify_calls_processor_setup(self, config_path):
         config = Configuration.from_sources([str(config_path)])
         with mock.patch("logprep.abc.processor.Processor.setup") as mocked_setup:
