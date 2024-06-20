@@ -305,20 +305,6 @@ class MissingEnvironmentError(InvalidConfigurationError):
 
 
 @define(kw_only=True, frozen=True)
-class ConfigItem:
-
-    @staticmethod
-    def is_default(attribute: str, value: Any) -> bool:
-        return value == attribute.default
-
-    def __bool__(self):
-        return any(
-            self.is_default(attribute.name, attribute.value)
-            for attribute, value in filter(lambda x: x.repr, self.__attrs_attrs__)
-        )
-
-
-@define(kw_only=True, frozen=True)
 class MetricsConfig:
     """the metrics config class used in Configuration"""
 
