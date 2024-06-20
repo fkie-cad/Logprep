@@ -172,7 +172,10 @@ class TestExporterConfig(TestBaseChartTest):
     def test_defaults(self):
         pod_monitor = self.manifests.by_query("kind: PodMonitor")[0]
         assert pod_monitor["metadata.name"] == "logprep-logprep"
-        assert pod_monitor["spec.selector.matchLabels"]["kubernetes.io/name"] == "logprep-logprep"
+        assert (
+            pod_monitor["spec.selector.matchLabels"]["app.kubernetes.io/name"] == "logprep-logprep"
+        )
+        assert pod_monitor["spec.selector.matchLabels"]["app.kubernetes.io/instance"] == "logprep"
         assert pod_monitor["spec.podMetricsEndpoints.0.targetPort"] == 8000
         assert pod_monitor["spec.podMetricsEndpoints.0.interval"] == "30s"
 
