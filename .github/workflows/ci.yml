@@ -8,38 +8,8 @@ on:
     types: [opened, synchronize]
 
 jobs:
-
   test:
-    runs-on: ubuntu-22.04
-
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip wheel
-          pip install .[dev]
-
-      - name: Perform unit tests
-        env:
-          PYTEST_ADDOPTS: "--color=yes"
-        run: |
-          pytest  -vv tests/unit
-      
-      - name: Perform acceptance tests
-        env:
-          PYTEST_ADDOPTS: "--color=yes"
-        run: |
-          pytest  -vv tests/acceptance
+    uses: ./.github/workflows/testing.yml
 
   build-docs:
     runs-on: ubuntu-22.04
@@ -117,7 +87,7 @@ jobs:
   containerbuild:
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12.3"]
 
     runs-on: ubuntu-latest
     steps:

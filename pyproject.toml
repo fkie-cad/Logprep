@@ -12,7 +12,7 @@ fallback_version = "unset"
 [project]
 name = "logprep"
 description = "Logprep allows to collect, process and forward log messages from various data sources."
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.12.4"
 readme = "README.md"
 dynamic = ["version"]
 license = { file = "LICENSE" }
