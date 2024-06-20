@@ -438,7 +438,7 @@ class TestGrokker(BaseProcessorTestCase):
             assert event == expected, testcase
         else:
             result = self.object.process(event)
-            assert isinstance(result.error, ProcessingCriticalError)
+            assert isinstance(result.errors, ProcessingCriticalError)
 
     def test_load_custom_patterns_from_http_as_zip_file(self):
         rule = {

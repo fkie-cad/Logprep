@@ -35,8 +35,8 @@ logger = logging.getLogger("Processor")
 class ProcessorResult:
     """Result object to be returned by every processor. It contains all extra_data and errors."""
 
-    extra_data = field(validator=validators.instance_of(list), factory=list)
-    error = field(
+    data = field(validator=validators.instance_of(list), factory=list)
+    errors = field(
         validator=validators.optional(validators.instance_of(ProcessingError)), default=None
     )
     warnings = field(
@@ -213,9 +213,9 @@ class Processor(Component):
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
-            self.result.error = error  # is needed to prevent wrapping it in itself
+            self.result.errors = error  # is needed to prevent wrapping it in itself
         except BaseException as error:
-            self.result.error = ProcessingCriticalError(str(error), rule, event)
+            self.result.errors = ProcessingCriticalError(str(error), rule, event)
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:

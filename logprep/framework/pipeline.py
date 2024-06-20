@@ -264,12 +264,14 @@ class Pipeline:
                 if self._output:
                     self._store_extra_data(result)
                 extra_outputs.append(result)
-                if len(result.warnings) > 0:
+                if result.warnings:
                     self.logger.warning(", ".join([warning.args[0] for warning in result.warnings]))
-                if result.error is not None:
-                    self.logger.error(str(result.error))
+                if result.errors is not None:
+                    self.logger.error(str(result.errors))
                     if self._output:
-                        self._store_failed_event(result.error, copy.deepcopy(event), event_received)
+                        self._store_failed_event(
+                            result.errors, copy.deepcopy(event), event_received
+                        )
                         event.clear()
             if not event:
                 break
@@ -277,7 +279,7 @@ class Pipeline:
 
     def _store_extra_data(self, processor_result) -> None:
         self.logger.debug("Storing extra data")
-        for document, outputs in processor_result.extra_data:
+        for document, outputs in processor_result.data:
             for output in outputs:
                 for output_name, target in output.items():
                     self._output[output_name].store_custom(document, target)

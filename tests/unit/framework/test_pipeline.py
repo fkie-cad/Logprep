@@ -254,12 +254,12 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = (input_event1, None)
         mock_rule = mock.MagicMock()
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            error=ProcessingCriticalError("really bad things happened", mock_rule, input_event1)
+            errors=ProcessingCriticalError("really bad things happened", mock_rule, input_event1)
         )
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = (input_event2, None)
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            error=ProcessingCriticalError("really bad things happened", mock_rule, input_event2)
+            errors=ProcessingCriticalError("really bad things happened", mock_rule, input_event2)
         )
 
         self.pipeline.process_pipeline()
@@ -410,7 +410,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            extra_data=[({"foo": "bar"}, ({"dummy": "target"},))]
+            data=[({"foo": "bar"}, ({"dummy": "target"},))]
         )
         self.pipeline._pipeline.append(deepcopy(self.pipeline._pipeline[0]))
         self.pipeline.process_pipeline()
@@ -424,7 +424,7 @@ class TestPipeline(ConfigurationForTests):
         add_empty_processor_result_to_process_mocks(self.pipeline._pipeline)
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            extra_data=[
+            data=[
                 (
                     {"foo": "bar"},
                     ({"dummy": "target"}, {"dummy1": "second_target"}),
@@ -447,7 +447,7 @@ class TestPipeline(ConfigurationForTests):
         add_empty_processor_result_to_process_mocks(self.pipeline._pipeline)
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            extra_data=[({"foo": "bar"}, ({"dummy": "target"},))]
+            data=[({"foo": "bar"}, ({"dummy": "target"},))]
         )
         self.pipeline._pipeline.append(deepcopy(self.pipeline._pipeline[0]))
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
@@ -610,7 +610,7 @@ class TestPipelineWithActualInput:
         event, extra_outputs = pipeline.process_pipeline()
         assert event["label"] == {"reporter": ["windows"]}
         assert "arrival_time" in event
-        assert extra_outputs[0].extra_data == []
+        assert extra_outputs[0].data == []
 
     def test_process_event_processes_without_input_and_without_output(self):
         event = {"applyrule": "yes"}

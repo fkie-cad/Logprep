@@ -372,7 +372,7 @@ class AutoRuleTester:
             warnings = []
 
             if isinstance(processor, PreDetector):
-                self._pd_extra.update_errors(processor, result.extra_data, errors, warnings)
+                self._pd_extra.update_errors(processor, result.data, errors, warnings)
 
             if print_diff or warnings or errors:
                 self._print_filename(rule_test)

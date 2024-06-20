@@ -4,7 +4,10 @@
 # pylint: disable=wrong-import-position
 from collections import OrderedDict
 
-from logprep.processor.base.exceptions import ProcessingCriticalError, FieldExistsWarning
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+)
 from logprep.processor.generic_resolver.processor import GenericResolver
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -291,8 +294,8 @@ class TestGenericResolver(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"to_resolve": "ab"}
         result = self.object.process(document)
-        assert isinstance(result.error, ProcessingCriticalError)
-        assert "Mapping group is missing in mapping" in result.error.args[0]
+        assert isinstance(result.errors, ProcessingCriticalError)
+        assert "Mapping group is missing in mapping" in result.errors.args[0]
 
     def test_resolve_generic_match_from_file_and_file_does_not_exist(self):
         rule = {
@@ -305,8 +308,8 @@ class TestGenericResolver(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"to": {"resolve": "something HELLO1"}}
         result = self.object.process(document)
-        assert isinstance(result.error, ProcessingCriticalError)
-        assert "Additions file 'foo' not found" in result.error.args[0]
+        assert isinstance(result.errors, ProcessingCriticalError)
+        assert "Additions file 'foo' not found" in result.errors.args[0]
 
     def test_resolve_dotted_field_no_conflict_no_match(self):
         rule = {

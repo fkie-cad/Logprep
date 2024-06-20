@@ -93,7 +93,7 @@ from functools import cached_property
 from json import JSONDecodeError
 from pathlib import Path
 from pprint import pprint
-from typing import List, Dict
+from typing import Dict, List
 
 from attr import Factory, define, field, validators
 from colorama import Fore, Style
@@ -212,7 +212,7 @@ class RuleCorpusTester:
         for test_case_id, test_case in self._test_cases.items():
             _ = [processor.setup() for processor in self._pipeline._pipeline]
             parsed_event, results = self._pipeline.process_pipeline()
-            extra_outputs = convert_extra_data_format([res.extra_data for res in results])
+            extra_outputs = convert_extra_data_format([res.data for res in results])
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
             test_case.warnings = [result.warnings for result in results if result.warnings]

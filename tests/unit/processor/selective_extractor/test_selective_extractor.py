@@ -27,7 +27,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         document = {"message": "test_message", "other": "field"}
         tuple_list = self.object.process(document)
         assert isinstance(tuple_list, ProcessorResult)
-        assert len(tuple_list.extra_data) > 0
+        assert len(tuple_list.data) > 0
 
     def test_process_returns_tuple_list_with_extraction_fields_from_rule(self):
         field_name = f"{uuid.uuid4()}"
@@ -43,7 +43,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         self.object._specific_tree.add_rule(rule)
         document = {field_name: "the value"}
         tuple_list = self.object.process(document)
-        for filtered_event, _ in tuple_list.extra_data:
+        for filtered_event, _ in tuple_list.data:
             if field_name in filtered_event:
                 break
         else:
@@ -61,7 +61,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {field_name: "test_message", "other": "field"}
         result = self.object.process(document)
-        output = result.extra_data[0][1][0]
+        output = result.data[0][1][0]
         assert "my topic" in output.values()
 
     def test_process_returns_selective_extractor_target_output(self):
@@ -76,7 +76,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {field_name: "test_message", "other": "field"}
         result = self.object.process(document)
-        output = result.extra_data[0][1][0]
+        output = result.data[0][1][0]
         assert "opensearch" in output.keys()
 
     def test_process_returns_extracted_fields(self):
@@ -90,7 +90,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         result = self.object.process(document)
-        for filtered_event, *_ in result.extra_data:
+        for filtered_event, *_ in result.data:
             if filtered_event == {"message": "test_message"}:
                 break
         else:
@@ -128,19 +128,19 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         document = {"message": "test_message", "other": {"message": "my message value"}}
         result = self.object.process(document)
 
-        for extracted_event, *_ in result.extra_data:
+        for extracted_event, *_ in result.data:
             if extracted_event.get("other", {}).get("message") is not None:
                 break
         else:
             assert False, f"other.message not in {result}"
 
     def test_process_clears_internal_filtered_events_list_before_every_event(self):
-        assert len(self.object.result.extra_data) == 0
+        assert len(self.object.result.data) == 0
         document = {"message": "test_message", "other": {"message": "my message value"}}
         _ = self.object.process(document)
-        assert len(self.object.result.extra_data) == 1
+        assert len(self.object.result.data) == 1
         _ = self.object.process(document)
-        assert len(self.object.result.extra_data) == 1
+        assert len(self.object.result.data) == 1
 
     def test_process_extracts_dotted_fields_complains_on_missing_fields(self):
         rule = {

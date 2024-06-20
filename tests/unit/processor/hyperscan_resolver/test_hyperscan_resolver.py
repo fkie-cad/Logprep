@@ -7,7 +7,10 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingCriticalError, FieldExistsWarning
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+)
 
 pytest.importorskip("hyperscan")
 
@@ -636,7 +639,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"to_resolve": "12ab34"}
         result = self.object.process(document)
-        assert isinstance(result.error, ProcessingCriticalError)
+        assert isinstance(result.errors, ProcessingCriticalError)
 
     def test_resolve_no_conflict_from_file_and_list_has_conflict(
         self,
