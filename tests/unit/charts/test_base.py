@@ -51,6 +51,14 @@ class TestLogprepChart(TestBaseChartTest):
         assert len(self.manifests) > 0
         assert len(self.manifests) == 8
 
+    def test_extra_labels_are_populated(self):
+        logprep_values = {"extraLabels": {"foo": "bar"}}
+        self.manifests = self.render_chart("logprep", logprep_values)
+        for manifest in self.manifests:
+            assert "metadata.labels" in manifest
+            assert "foo" in manifest["metadata.labels"]
+            assert manifest["metadata.labels.foo"] == "bar"
+
 
 class TestDefaultValues(TestBaseChartTest):
 

@@ -42,6 +42,9 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/application: {{ include "logprep.name" . }}
+{{- range $key, $value := .Values.extraLabels }}
+{{ $key}}: {{ $value | quote }}
+{{- end }}
 {{- end }}
 
 {{/*

@@ -45,8 +45,8 @@ secrets: {}
 # pod on the same node
 affinity: false
 
-# inject extra labels to the pod metadata
-pod_extra_labels: {}
+# inject extra labels to all resources metadata
+extraLabels: {}
 
 # If enabled, the exporter will be started on the specified port and
 # the metrics service and a prometheus PodMonitor will be deployed.
