@@ -712,7 +712,7 @@ class Configuration:
             setattr(
                 self,
                 attribute.name,
-                self._get_last_non_falsy_value(self._configs, attribute.name),
+                self._get_last_non_default_value(self._configs, attribute.name),
             )
         versions = (config.version for config in self._configs if config.version)
         self.version = ", ".join(versions)
@@ -790,11 +790,18 @@ class Configuration:
         return resolved_sources
 
     @staticmethod
-    def _get_last_non_falsy_value(configs: list["Configuration"], attribute: str) -> Any:
+    def _get_last_non_default_value(configs: list["Configuration"], attribute: str) -> Any:
         if configs:
+            config = configs[0]
+            attrs_attribute = [attr for attr in config.__attrs_attrs__ if attr.name == attribute][0]
+            default_for_attribute = (
+                attrs_attribute.default.factory()
+                if hasattr(attrs_attribute.default, "factory")
+                else attrs_attribute.default
+            )
             values = [getattr(config, attribute) for config in configs]
             for value in reversed(values):
-                if value:
+                if value != default_for_attribute:
                     return value
             return values[-1]
         return getattr(Configuration(), attribute)
