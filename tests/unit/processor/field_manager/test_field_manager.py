@@ -70,9 +70,7 @@ test_cases = [  # testcase, rule, event, expected
                 "delete_source_fields": True,
             },
         },
-        {
-            "message": "This is a message",
-        },
+        {"message": "This is a message"},
         {"new_field": ["This is a message"]},
     ),
     (
@@ -469,9 +467,9 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "Value B", "new_field": ["Value A", "Value B"]},
     ),
     (
-        "Convert existing target to list",
+        "Convert existing target to list with multiple source fields",
         {
-            "filter": "message",
+            "filter": "field1 OR field2 OR field3",
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
