@@ -468,6 +468,29 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "Value B", "new_field": "Value A"},
         {"message": "Value B", "new_field": ["Value A", "Value B"]},
     ),
+    (
+        "Convert existing target to list",
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+            },
+        },
+        {
+            "field1": "Value B",
+            "field2": "Value C",
+            "field3": "Value D",
+            "new_field": "Value A",
+        },
+        {
+            "field1": "Value B",
+            "field2": "Value C",
+            "field3": "Value D",
+            "new_field": ["Value A", "Value B", "Value C", "Value D"],
+        },
+    ),
 ]
 
 failure_test_cases = [
