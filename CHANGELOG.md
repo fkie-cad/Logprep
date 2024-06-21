@@ -17,6 +17,7 @@ This release limits the maximum python version to `3.12.3` because of the issue
 
 * fixes a bug where it could happen that a config value could be overwritten by a default in a later configuration in a multi source config scenario
 * fixes a bug in the `field_manager` where extending a non list target leads to a processing failure
+* fixes a bug in `pseudonymizer` where a missing regex_mapping from an existing config_file causes logprep to crash continuously
 
 ## 12.0.0
 
