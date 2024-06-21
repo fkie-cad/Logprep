@@ -58,6 +58,7 @@ from tldextract import TLDExtract
 from urlextract import URLExtract
 
 from logprep.abc.processor import Processor
+from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
@@ -241,6 +242,10 @@ class Pseudonymizer(FieldManager):
             for dotted_field, regex_keyword in rule.pseudonyms.items():
                 if regex_keyword in self._regex_mapping:
                     rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
+                else:
+                    raise InvalidConfigurationError(
+                        f"Regex keyword '{regex_keyword}' not found in regex_mapping '{self._config.regex_mapping}'"
+                    )
 
     def _apply_rules(self, event: dict, rule: PseudonymizerRule):
         source_dict = {}
