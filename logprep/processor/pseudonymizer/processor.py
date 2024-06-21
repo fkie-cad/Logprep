@@ -242,7 +242,7 @@ class Pseudonymizer(FieldManager):
             for dotted_field, regex_keyword in rule.pseudonyms.items():
                 if regex_keyword in self._regex_mapping:
                     rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
-                else:
+                elif isinstance(regex_keyword, str):  # after the first run, the regex is compiled
                     raise InvalidConfigurationError(
                         f"Regex keyword '{regex_keyword}' not found in regex_mapping '{self._config.regex_mapping}'"
                     )
