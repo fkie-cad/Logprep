@@ -137,9 +137,11 @@ class FieldManager(Processor):
                 add_and_overwrite(event, target_field, source_fields_values)
                 return
 
-            case State(
-                extend=True, overwrite=False, single_source_element=False, target_is_list=False
-            ):
+            case State(extend=True, overwrite=False, target_is_list=False, target_is_none=True):
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
+
+            case State(extend=True, overwrite=False, target_is_list=False):
                 source_fields_values = [target_field_value, *source_fields_values]
                 add_and_overwrite(event, target_field, source_fields_values)
                 return

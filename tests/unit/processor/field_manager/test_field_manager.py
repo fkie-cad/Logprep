@@ -70,9 +70,7 @@ test_cases = [  # testcase, rule, event, expected
                 "delete_source_fields": True,
             },
         },
-        {
-            "message": "This is a message",
-        },
+        {"message": "This is a message"},
         {"new_field": ["This is a message"]},
     ),
     (
@@ -112,6 +110,25 @@ test_cases = [  # testcase, rule, event, expected
             "new_field": "i exist",
         },
         {"new_field": ["value1", "value2", "value3"]},
+    ),
+    (
+        "moves multiple fields and replaces existing target field with list including the existing value",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "field_manager": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": "value1",
+            "field2": "value2",
+            "field3": "value3",
+            "new_field": "i exist",
+        },
+        {"new_field": ["i exist", "value1", "value2", "value3"]},
     ),
     (
         "moves multiple fields and writes them to a existing list",
@@ -435,6 +452,42 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"existing_list": ["hello", "world"], "foo": "bar", "test": "value"},
         {"existing_list": ["hello", "world", "bar", "value"], "foo": "bar", "test": "value"},
+    ),
+    (
+        "Convert existing target to list",
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+            },
+        },
+        {"message": "Value B", "new_field": "Value A"},
+        {"message": "Value B", "new_field": ["Value A", "Value B"]},
+    ),
+    (
+        "Convert existing target to list with multiple source fields",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "field_manager": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+            },
+        },
+        {
+            "field1": "Value B",
+            "field2": "Value C",
+            "field3": "Value D",
+            "new_field": "Value A",
+        },
+        {
+            "field1": "Value B",
+            "field2": "Value C",
+            "field3": "Value D",
+            "new_field": ["Value A", "Value B", "Value C", "Value D"],
+        },
     ),
 ]
 
