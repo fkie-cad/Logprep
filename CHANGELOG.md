@@ -8,6 +8,9 @@ This release limits the maximum python version to `3.12.3` because of the issue
 
 ### Breaking
 ### Features
+
+* add input data validation for `timestamper` processor
+
 ### Improvements
 
 * a result object was added which is returned by every processor
