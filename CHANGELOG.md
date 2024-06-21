@@ -11,8 +11,8 @@
 * add a `number_of_successful_writes` metric to the s3 connector, which counts how many events were successfully written to s3
 * make the s3 connector work with the new `_write_backlog` method introduced by the `confluent_kafka` commit bugfix in v9.0.0
 * add option to Opensearch Output Connector to use parallel bulk implementation (default is True)
-* make confluent kafka output store offsets only for successfully delivered events
 * add `input_connector_metadata` preprocessor that allows input connectors to add a `_metadata` field to events.
+* make confluent kafka output store offsets only for successfully delivered events if configured for that.
 
 ### Improvements
 

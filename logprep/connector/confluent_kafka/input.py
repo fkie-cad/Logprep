@@ -480,7 +480,7 @@ class ConfluentKafkaInput(Input):
         return TopicPartition(
             self._config.topic,
             partition=last_partition,
-            offset=last_offset,
+            offset=last_offset if isinstance(last_offset, int) else last_offset[0],
         )
 
     def batch_finished_callback(self, metadata: Optional[dict] = None) -> None:

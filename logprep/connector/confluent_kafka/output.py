@@ -25,10 +25,12 @@ Example
             queue.buffering.max.ms: 0.5
 """
 import json
+from collections import defaultdict
 from datetime import datetime
 from functools import cached_property, partial
+from logging import Logger
 from socket import getfqdn
-from typing import Optional
+from typing import Optional, DefaultDict
 
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
@@ -153,10 +155,17 @@ class ConfluentKafkaOutput(Output):
         """The topic to which processed messages will be sent."""
         error_topic: str
         """The topic to which error messages will be sent."""
-        flush_timeout: float
+        producer_flush_timeout: float
         """Timeout for sending all messages from the producer queue to kafka."""
         send_timeout: int = field(validator=validators.instance_of(int), default=0)
         """Timeout for sending messages to kafka. Values above 0 make it blocking."""
+        flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
+        """(Optional) Timeout after :code:`_sent_offset_backlog` is flushed if 
+        :code:`sent_offset_backlog_size` is not reached."""
+        fire_and_forget: bool = field(validator=validators.instance_of(bool), default=False)
+        """If True, offsets will be set after sending messages instead of waiting for delivery."""
+        sent_offset_backlog_size: int = field(validator=validators.instance_of(int), default=1)
+        """ (Optional) count of delivered messages before batch_finished_callback is called."""
         kafka_config: Optional[dict] = field(
             validator=[
                 validators.instance_of(dict),
@@ -180,6 +189,23 @@ class ConfluentKafkaOutput(Output):
             :template: defaults-renderer.tmpl
 
         """
+
+    __slots__ = [
+        "_sent_offset_backlog",
+        "_delivered_offset_backlog",
+    ]
+
+    _sent_offset_backlog: DefaultDict[str, list]
+    _delivered_offset_backlog: DefaultDict[str, list]
+
+    def __init__(self, name: str, configuration: "ConfluentKafkaOutput.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        self._sent_offset_backlog = defaultdict(list)
+        self._delivered_offset_backlog = defaultdict(list)
+
+    @property
+    def _sent_offset_backlog_size(self):
+        return sum(map(len, self._sent_offset_backlog.values()))
 
     @cached_property
     def _producer(self):
@@ -253,6 +279,7 @@ class ConfluentKafkaOutput(Output):
         """
         self.metrics.number_of_processed_events += 1
         self._send_to_kafka(document, self._config.topic)
+        self._add_offset_to_sent_backlog(document)
 
     @Metric.measure_time()
     def store_custom(self, document: dict, target: str) -> None:
@@ -290,6 +317,7 @@ class ConfluentKafkaOutput(Output):
 
         """
         try:
+            set_offsets &= not self._config.fire_and_forget
             callback = self.delivered_callback(document) if set_offsets else None
             self._producer.produce(
                 target,
@@ -299,11 +327,17 @@ class ConfluentKafkaOutput(Output):
             self._producer.poll(self._config.send_timeout)
         except BufferError:
             # block program until buffer is empty
-            self._producer.flush(timeout=self._config.flush_timeout)
+            self._producer.flush(timeout=self._config.producer_flush_timeout)
         except BaseException as error:
             raise CriticalOutputError(
                 self, f"Error storing output document -> {error}", document
             ) from error
+
+        if self._config.fire_and_forget:
+            return
+
+        if self._sent_offset_backlog_size >= self._config.sent_offset_backlog_size:
+            self._write_backlog()
 
     @Metric.measure_time()
     def store_failed(
@@ -335,15 +369,58 @@ class ConfluentKafkaOutput(Output):
             "timestamp": str(datetime.now()),
         }
         try:
+            callback = (
+                self.delivered_callback(document_processed)
+                if not self._config.fire_and_forget
+                else None
+            )
             self._producer.produce(
                 self._config.error_topic,
                 value=json.dumps(value, separators=(",", ":")).encode("utf-8"),
-                on_delivery=self.delivered_callback(document_processed),
+                on_delivery=callback
             )
             self._producer.poll(self._config.send_timeout)
         except BufferError:
             # block program until buffer is empty
-            self._producer.flush(timeout=self._config.flush_timeout)
+            self._producer.flush(timeout=self._config.producer_flush_timeout)
+        self._add_offset_to_sent_backlog(document_received)
+
+    def _add_offset_to_sent_backlog(self, document):
+        if not self._config.fire_and_forget:
+            metadata = document.get("_metadata", {})
+            partition = metadata.get("last_partition", None)
+            offset = metadata.get("last_offset", None)
+            if not (partition is None and offset is None):
+                self._sent_offset_backlog[partition].append(offset)
+
+    @staticmethod
+    def _get_last_committable_offsets(
+        sent_offset_backlog: DefaultDict[str, list],
+        delivered_offset_backlog: DefaultDict[str, list],
+    ) -> dict:
+        last_committable = {}
+        for partition, offsets in delivered_offset_backlog.items():
+            if not offsets:
+                continue
+
+            if len(offsets) == 1:
+                last_committable[partition] = offsets[0]
+                continue
+
+            offsets.sort()
+            prev_offset = offsets[0]
+            for offset in offsets[1:]:
+                if offset > prev_offset + 1:
+                    unexpected_gap = False
+                    for missing_offset in range(prev_offset + 1, offset):
+                        if missing_offset in sent_offset_backlog.get(partition, []):
+                            last_committable[partition] = prev_offset
+                            unexpected_gap = True
+                    if unexpected_gap:
+                        break
+                last_committable[partition] = offset
+                prev_offset = offset
+        return last_committable
 
     def delivered_callback(self, document):
         """Callback that can called when a single message has been successfully delivered.
@@ -369,7 +446,7 @@ class ConfluentKafkaOutput(Output):
         def store_offsets_on_success(error, _):
             """Set offset via message stored in closure if no error occurred.
 
-            "delivered_callback_frequency" can be configured to prevent setting the callback for
+            "sent_offset_backlog_size" can be configured to prevent setting the callback for
             every single message that was successfully delivered.
             Setting this higher than 1 might be useful if auto-commit is disabled.
 
@@ -377,16 +454,31 @@ class ConfluentKafkaOutput(Output):
             if error:
                 raise FatalOutputError(output=self, message=error)
             self.metrics.number_of_successfully_delivered_events += 1
-            self.input_connector.batch_finished_callback(metadata=partition_offset)
+            last_partition = partition_offset["last_partition"]
+            last_offset = partition_offset["last_offset"]
+            self._delivered_offset_backlog[last_partition].append(last_offset)
 
         return store_offsets_on_success
 
     @Metric.measure_time()
     def _write_backlog(self):
-        self._producer.flush(self._config.flush_timeout)
+        self._producer.flush(self._config.producer_flush_timeout)
+        if self._config.fire_and_forget:
+            return
+
+        last_commitable_offsets = self._get_last_committable_offsets(
+            self._sent_offset_backlog, self._delivered_offset_backlog
+        )
+        for partition, offset in last_commitable_offsets.items():
+            committable_offset = {"last_partition": partition, "last_offset": offset}
+            self.input_connector.batch_finished_callback(metadata=committable_offset)
+        self._delivered_offset_backlog.clear()
+        self._sent_offset_backlog.clear()
 
     def setup(self):
         super().setup()
+        flush_timeout = self._config.flush_timeout
+        self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
         try:
             _ = self._producer
         except (KafkaException, ValueError) as error:
@@ -395,4 +487,4 @@ class ConfluentKafkaOutput(Output):
     def shut_down(self) -> None:
         """ensures that all messages are flushed"""
         if self._producer is not None:
-            self._producer.flush(self._config.flush_timeout)
+            self._write_backlog()

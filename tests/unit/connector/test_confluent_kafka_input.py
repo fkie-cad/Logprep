@@ -103,8 +103,11 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         ],
     )
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_calls_offsets_handler_for_setting(self, _, settings, handlers):
+    def test_batch_finished_callback_calls_offsets_handler_for_setting_without_metadata(
+        self, _, settings, handlers
+    ):
         input_config = deepcopy(self.CONFIG)
+        input_config["use_metadata_for_offsets"] = False
         kafka_input = Factory.create({"test": input_config}, logger=self.logger)
         kafka_input._config.kafka_config.update(settings)
         kafka_consumer = kafka_input._consumer
@@ -409,9 +412,62 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_input.output_connector = mock.MagicMock()
         kafka_input.batch_finished_callback = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
+        kafka_input.output_connector._sent_offset_backlog = {}
+        kafka_input.output_connector._delivered_offset_backlog = {}
         kafka_input._revoke_callback(mock_consumer, mock_partitions)
         kafka_input.output_connector._write_backlog.assert_called()
         kafka_input.batch_finished_callback.assert_called()
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_revoke_callback_writes_output_backlog_and_does_not_call_batch_finished_callback_metadata(
+        self, mock_consumer
+    ):
+        input_config = deepcopy(self.CONFIG)
+        input_config["use_metadata_for_offsets"] = True
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+
+        kafka_input.output_connector = mock.MagicMock()
+        kafka_input.batch_finished_callback = mock.MagicMock()
+        mock_partitions = [mock.MagicMock()]
+        kafka_input.output_connector._sent_offset_backlog = {0: [0]}
+        kafka_input.output_connector._delivered_offset_backlog = {0: [0]}
+        kafka_input._revoke_callback(mock_consumer, mock_partitions)
+        kafka_input.output_connector._write_backlog.assert_called()
+        kafka_input.batch_finished_callback.assert_not_called()
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_handle_offsets_uses_delivered_offsets_if_use_metadata(self, _):
+        input_config = deepcopy(self.CONFIG)
+        input_config["use_metadata_for_offsets"] = True
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+
+        kafka_input.output_connector = mock.MagicMock()
+        metadata = {"last_partition": 0, "last_offset": 0}
+        kafka_input._handle_offsets(kafka_input._consumer.store_offsets, metadata)
+        offsets = [TopicPartition(kafka_input._config.topic, partition=0, offset=0)]
+        kafka_input._consumer.store_offsets.assert_called_with(offsets=offsets)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_handle_offsets_raises_Exception_if_use_metadata_but_no_metadata(self, _):
+        input_config = deepcopy(self.CONFIG)
+        input_config["use_metadata_for_offsets"] = True
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+
+        kafka_input.output_connector = mock.MagicMock()
+        metadata = {}
+        with pytest.raises(FatalInputError, match="'last_partition' and 'last_offset' required"):
+            kafka_input._handle_offsets(kafka_input._consumer.store_offsets, metadata)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_handle_offsets_uses__last_valid_records_if_not_use_metadata(self, _):
+        input_config = deepcopy(self.CONFIG)
+        input_config["use_metadata_for_offsets"] = False
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+
+        kafka_input.output_connector = mock.MagicMock()
+        kafka_input._last_valid_records = {0: "MESSAGE_OBJECT"}
+        kafka_input._handle_offsets(kafka_input._consumer.store_offsets, {})
+        kafka_input._consumer.store_offsets.assert_called_with(message="MESSAGE_OBJECT")
 
     @pytest.mark.parametrize(
         "metadata",

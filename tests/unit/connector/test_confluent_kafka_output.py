@@ -27,7 +27,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "type": "confluentkafka_output",
         "topic": "test_input_raw",
         "error_topic": "test_error_topic",
-        "flush_timeout": 0.1,
+        "producer_flush_timeout": 30,
         "kafka_config": {
             "bootstrap.servers": "testserver:9092",
         },
@@ -146,15 +146,113 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         assert self.object.metrics.number_of_processed_events == 1
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_delivered_callback_with_metadata_calls_callback(
-        self, _
-    ):  # pylint: disable=arguments-differ
+    def test_delivered_callback_adds_offset(self, _):  # pylint: disable=arguments-differ
         self.object.input_connector = mock.MagicMock()
         self.object.input_connector._last_delivered_record = mock.MagicMock()
         metadata = {"_metadata": {"last_partition": 0, "last_offset": 0}}
         callback = self.object.delivered_callback(metadata)
         callback(None, "msg")
-        self.object.input_connector.batch_finished_callback.assert_called()
+        assert self.object._delivered_offset_backlog == {0: [0]}
+
+    @pytest.mark.parametrize(
+        "sent, delivered, callback",
+        [
+            ({"_metadata": {"last_partition": 0}}, {"_metadata": {"last_partition": 0}}, True),
+            ({"_metadata": {"last_partition": 0}}, None, False),
+            (None, {"_metadata": {"last_partition": 0}}, False),
+            (None, None, False),
+        ],
+    )
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_send_to_kafka_calls_callback_if_no_fire_and_forget(
+        self, _, sent, delivered, callback
+    ):  # pylint: disable=arguments-differ
+        output_config = deepcopy(self.CONFIG)
+        output_config["fire_and_forget"] = False
+        kafka_output = Factory.create({"test": output_config}, logger=self.logger)
+
+        kafka_output.input_connector = mock.MagicMock()
+        doc = {"_metadata": {"last_partition": 0, "last_offset": 0}}
+        kafka_output._sent_offset_backlog = {0: [sent]} if sent else {}
+        kafka_output._delivered_offset_backlog = {0: [delivered]} if delivered else {}
+        kafka_output._send_to_kafka(doc, "foo")
+        if callback:
+            kafka_output.input_connector.batch_finished_callback.assert_called()
+        else:
+            kafka_output.input_connector.batch_finished_callback.assert_not_called()
+
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_send_to_kafka_does_not_call_callback_if_fire_and_forget(self, _):
+        # pylint: disable=arguments-differ
+        output_config = deepcopy(self.CONFIG)
+        output_config["fire_and_forget"] = True
+        kafka_output = Factory.create({"test": output_config}, logger=self.logger)
+
+        kafka_output.input_connector = mock.MagicMock()
+        kafka_output._send_to_kafka({"foo": "bar"}, "baz_topic")
+        kafka_output.input_connector.batch_finished_callback.assert_not_called()
+
+    @pytest.mark.parametrize("fire_and_forget", [True, False])
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_write_backlog_does_not_call_callback_if_fire_and_forget(self, _, fire_and_forget):
+        # pylint: disable=arguments-differ
+        output_config = deepcopy(self.CONFIG)
+        output_config["fire_and_forget"] = fire_and_forget
+        kafka_output = Factory.create({"test": output_config}, logger=self.logger)
+        kafka_output._sent_offset_backlog = {0: [0]}
+        kafka_output._delivered_offset_backlog = kafka_output._sent_offset_backlog
+        kafka_output.input_connector = mock.MagicMock()
+        kafka_output._write_backlog()
+        if fire_and_forget:
+            kafka_output.input_connector.batch_finished_callback.assert_not_called()
+        else:
+            kafka_output.input_connector.batch_finished_callback.assert_called()
+
+    @pytest.mark.parametrize(
+        "sent_backlog, delivered_backlog, expected_offsets",
+        [
+            ({}, {}, {}),
+            ({0: [0]}, {}, {}),
+            ({}, {0: [0]}, {0: 0}),
+            ({}, {0: []}, {}),
+            ({0: [0]}, {0: [0]}, {0: 0}),
+            ({0: [0, 1, 2]}, {0: [0, 1, 2]}, {0: 2}),
+            ({0: [0, 2]}, {0: [0, 1, 2]}, {0: 2}),
+            ({0: [0, 1, 2]}, {0: [0, 2]}, {0: 0}),
+            ({0: [0, 2]}, {0: [0, 2]}, {0: 2}),
+            ({0: [0], 1: [0]}, {0: [0], 1: [0]}, {0: 0, 1: 0}),
+            ({0: [0, 1, 2, 3], 1: [0, 1, 2, 3]}, {0: [0, 2, 3], 1: [0, 1, 3]}, {0: 0, 1: 1}),
+        ],
+    )
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_get_last_committable_offsets(
+        self, _, sent_backlog, delivered_backlog, expected_offsets
+    ):
+        last_committable_offsets = self.object._get_last_committable_offsets(
+            sent_backlog, delivered_backlog
+        )
+        assert last_committable_offsets == expected_offsets
+
+    @pytest.mark.parametrize(
+        "doc, sent_backlog, fire_and_forget",
+        [
+            ({"_metadata": {"last_partition": 0, "last_offset": 0}}, {0: [0]}, False),
+            ({"foo": "bar"}, {}, False),
+            ({"_metadata": {"last_partition": 0, "last_offset": 0}}, {}, True),
+            ({"foo": "bar"}, {}, True),
+        ],
+    )
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_do_not_add_offset_to_sent_backlog_if_not_fire_and_forget(
+        self, _, doc, sent_backlog, fire_and_forget
+    ):
+        # pylint: disable=arguments-differ
+        output_config = deepcopy(self.CONFIG)
+        output_config["fire_and_forget"] = fire_and_forget
+        kafka_output = Factory.create({"test": output_config}, logger=self.logger)
+
+        kafka_output._add_offset_to_sent_backlog(doc)
+        assert kafka_output._sent_offset_backlog == sent_backlog
 
     @pytest.mark.parametrize(
         "metadata",
