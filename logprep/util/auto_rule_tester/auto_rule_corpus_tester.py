@@ -211,11 +211,17 @@ class RuleCorpusTester:
         print(Style.BRIGHT + "# Test Cases Summary:" + Style.RESET_ALL)
         for test_case_id, test_case in self._test_cases.items():
             _ = [processor.setup() for processor in self._pipeline._pipeline]
-            parsed_event, results = self._pipeline.process_pipeline()
-            extra_outputs = convert_extra_data_format([res.data for res in results])
+            parsed_event, result = self._pipeline.process_pipeline()
+            extra_outputs = convert_extra_data_format(
+                result.results[processor_result].data
+                for processor_result in range(len(result.results) - 1)
+            )
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
-            test_case.warnings = [result.errors for result in results if result.errors]
+            test_case.warnings = [
+                result.results[processor_result].errors
+                for processor_result in range(len(result.results) - 1)
+            ]
             test_case.warnings = list(itertools.chain(*test_case.warnings))
             self._compare_logprep_outputs(test_case_id, parsed_event)
             self._compare_extra_data_output(test_case_id, extra_outputs)

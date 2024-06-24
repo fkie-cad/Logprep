@@ -6,6 +6,7 @@ They can be multi-processed.
 """
 
 import copy
+import itertools
 import logging
 import logging.handlers
 import multiprocessing
@@ -17,7 +18,7 @@ from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Lock, Value, current_process
-from typing import Any, Tuple
+from typing import Any, List, Tuple
 
 import attrs
 import msgspec
@@ -37,12 +38,23 @@ from logprep.abc.output import (
     Output,
     OutputWarning,
 )
-from logprep.abc.processor import Processor
+from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
 from logprep.metrics.metrics import HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.configuration import Configuration
 from logprep.util.pipeline_profiler import PipelineProfiler
+
+
+@attrs.define(kw_only=True)
+class PipelineResult:
+    """Result object to be returned after processing the event.
+    It contains all generated data and includes errors and warnings."""
+
+    results: List[ProcessorResult] = attrs.field(validator=attrs.validators.instance_of(list))
+
+    def __iter__(self):
+        return iter(self.results)
 
 
 def _handle_pipeline_error(func):
@@ -218,8 +230,10 @@ class Pipeline:
     def process_pipeline(self) -> Tuple[dict, list]:
         """Retrieve next event, process event with full pipeline and store or return results"""
         Component.run_pending_tasks()
-        results = []
         event = None
+        result = []
+        event_received = self._encoder.encode(event)
+
         try:
             event = self._get_event()
         except CriticalInputParsingError as error:
@@ -230,10 +244,24 @@ class Pipeline:
             self._store_failed_event(error, "", error_event)
             self.logger.error(f"{error}, event was written to error output")
         if event:
-            results = self.process_event(event)
+            result: PipelineResult = self.process_event(event)
+            for processor_result in result:
+                if processor_result.errors:
+                    if ProcessingWarning in processor_result:
+                        self.logger.warning(
+                            ", ".join([error.args[0] for error in processor_result.errors])
+                        )
+                    if ProcessingError in processor_result:
+                        self.logger.error(
+                            ", ".join([error.args[0] for error in processor_result.errors])
+                        )
+                        if self._output:
+                            self._store_failed_event(
+                                processor_result.errors, copy.deepcopy(event), event_received
+                            )
         if event and self._output:
             self._store_event(event)
-        return event, results
+        return event, result
 
     def _store_event(self, event: dict) -> None:
         for output_name, output in self._output.items():
@@ -258,29 +286,18 @@ class Pipeline:
     def process_event(self, event: dict):
         """process all processors for one event"""
 
-        event_received = self._encoder.encode(event)
-        extra_outputs = []
+        results = []
+
         for processor in self._pipeline:
-            if result := processor.process(event):
+            result: ProcessorResult = processor.process(event)
+            results.append(result)
+            if result.data:
                 if self._output:
                     self._store_extra_data(result)
-                extra_outputs.append(result)
-                if result.errors:
-                    for error in result.errors:
-                        if isinstance(error, ProcessingWarning):
-                            self.logger.warning(
-                                ", ".join([error.args[0] for error in result.errors])
-                            )
-                        if isinstance(error, ProcessingError):
-                            self.logger.error(", ".join([error.args[0] for error in result.errors]))
-                            if self._output:
-                                self._store_failed_event(
-                                    error, copy.deepcopy(event), event_received
-                                )
-                                event.clear()
-            if not event:
+            if ProcessingError in result:
+                event.clear()
                 break
-        return extra_outputs
+        return PipelineResult(results=results)
 
     def _store_extra_data(self, processor_result) -> None:
         self.logger.debug("Storing extra data")

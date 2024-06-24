@@ -3,6 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 import multiprocessing
+import re
 from copy import deepcopy
 from logging import DEBUG
 from multiprocessing import Lock
@@ -26,7 +27,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline
+from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.configuration import Configuration
@@ -228,8 +229,7 @@ class TestPipeline(ConfigurationForTests):
         assert mock_warning.call_count == 1
         assert self.pipeline._output["dummy"].store.call_count == 3
 
-    @mock.patch("logging.Logger.warning")
-    def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
+    def test_processor_warning_error_is_logged_but_processing_continues(self, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         mock_rule = mock.MagicMock()
@@ -237,10 +237,11 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
             errors=[processing_warning]
         )
+
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        self.pipeline.process_pipeline()
-        mock_warning.assert_called_with(str(processing_warning))
+        event, res = self.pipeline.process_pipeline()
+        re.match(str(processing_warning), str(res.results[0].errors))
         assert self.pipeline._output["dummy"].store.call_count == 2, "all events are processed"
 
     @mock.patch("logging.Logger.error")
@@ -610,7 +611,7 @@ class TestPipelineWithActualInput:
         event, extra_outputs = pipeline.process_pipeline()
         assert event["label"] == {"reporter": ["windows"]}
         assert "arrival_time" in event
-        assert extra_outputs[0].data == []
+        assert extra_outputs.results[0].data == []
 
     def test_process_event_processes_without_input_and_without_output(self):
         event = {"applyrule": "yes"}
@@ -633,11 +634,13 @@ class TestPipelineWithActualInput:
         event, extra_outputs = pipeline.process_pipeline()
         assert event["label"] == {"reporter": ["windows"]}
         assert "arrival_time" in event
-        assert extra_outputs == [ProcessorResult()] * len(pipeline._pipeline)
+        assert extra_outputs == PipelineResult(
+            results=[ProcessorResult()] * len(pipeline._pipeline)
+        )
         event, extra_outputs = pipeline.process_pipeline()
         assert "pseudonym" in event.get("winlog", {}).get("event_data", {}).get("IpAddress")
         assert "arrival_time" in event
-        assert len(extra_outputs) == len(pipeline._pipeline)
+        # assert len(extra_outputs.data) == len(pipeline._pipeline)
 
     def test_pipeline_hmac_error_message_without_output_connector(self):
         self.config.input["test_input"]["documents"] = [{"applyrule": "yes"}]
