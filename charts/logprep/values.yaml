@@ -101,7 +101,7 @@ output: {}
 #   - name: logprep-config
 #     data:
 #       pipeline: []
-#   - name: http://bla-bla.bla
+#   - name: https://rule-server.de
 #
 # See https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
 # for available configuration options.
