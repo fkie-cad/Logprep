@@ -1,19 +1,13 @@
 ## Upcoming Changes
 
-
 ## next release
 ### Breaking
 
+* This release limits the maximum python version to `3.12.3` because of the issue
+[#612](https://github.com/fkie-cad/Logprep/issues/612).
 * Remove `normalizer` processor, as it's functionality was replaced by the `grokker`, `timestamper`
 and `field_manager` processors
 
-### Features
-
-
-This release limits the maximum python version to `3.12.3` because of the issue
-[#612](https://github.com/fkie-cad/Logprep/issues/612).
-
-### Breaking
 ### Features
 ### Improvements
 
