@@ -92,7 +92,7 @@ output: {}
 # Additional logprep configurations
 # Note: The configuration keys 'logger', 'metrics', 'input' and 'output' will overwrite the
 # corresponding keys in these configurations as they will be merged into
-# the final configuration.
+# the final configuration, after the configurations that are specified here.
 # for configurations with data from an external API put the url in the name field and leave the data field undefined
 #
 # Example:
