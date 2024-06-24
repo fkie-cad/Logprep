@@ -1,9 +1,9 @@
 """This module implements a pipeline profiler that can be activated in the config."""
 
 import cProfile
+import os
 import pstats
 from datetime import datetime
-import os
 
 
 class PipelineProfiler:

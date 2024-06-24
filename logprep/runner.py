@@ -1,48 +1,25 @@
 """This module contains the logprep runner and is responsible for signal handling."""
+
 # pylint: disable=logging-fstring-interpolation
 
 import logging
-import signal
-from ctypes import c_bool
-from multiprocessing import Value, current_process
+import sys
+from importlib.metadata import version
+from typing import Generator
 
-import requests
+from attrs import define, field
 from schedule import Scheduler
 
+from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
-from logprep.util.configuration import Configuration, InvalidConfigurationError
-
-
-class RunnerError(Exception):
-    """Base class for Runner related exceptions."""
-
-
-class MustNotConfigureTwiceError(RunnerError):
-    """Raise if the configuration has been set more than once."""
-
-
-class NotALoggerError(RunnerError):
-    """Raise if the logger was assigned a non-logger object ."""
-
-
-class MustConfigureALoggerError(RunnerError):
-    """Raise if no logger has been configured."""
-
-
-class MustConfigureBeforeRunningError(RunnerError):
-    """Raise if the runner has been started before it has been configured."""
-
-
-class MustNotCreateMoreThanOneManagerError(RunnerError):
-    """Raise if more than once managers have been created."""
-
-
-class CannotReloadWhenConfigIsUnsetError(RunnerError):
-    """Raise if the configuration was reloaded but not set."""
-
-
-class UseGetRunnerToCreateRunnerSingleton(RunnerError):
-    """ "Raise if the runner was not created as a singleton."""
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.util.configuration import (
+    ConfigGetterException,
+    Configuration,
+    ConfigVersionDidNotChangeError,
+    InvalidConfigurationError,
+)
+from logprep.util.defaults import EXITCODES
 
 
 class Runner:
@@ -55,171 +32,182 @@ class Runner:
     configuration (a YAML file, see documentation for details). Finally, call the start method
     to start processing.
 
-    The Runner should only raise exceptions derived from RunnerError but other components may raise
-    exceptions that are not catched by it. Hence, we recommend to simply catch Exception and
-    log it as an unhandled exception.
-
     Example
     -------
     For a complete example take a Look at run_logprep.py - for simply getting a Runner started
     this should suffice:
 
-    >>> runner = Runner.get_runner()
-    >>> runner.set_logger(logging.getLogger())
-    >>> runner.load_configuration(path_to_configuration)
+    >>> configuration = Configuration.from_sources(["path/to/config.yml"])
+    >>> runner = Runner.get_runner(configuration)
     >>> runner.start()
 
     """
 
+    scheduler: Scheduler
+
     _runner = None
+
+    _configuration: Configuration
+
+    _metrics: "Runner.Metrics"
+
+    _exit_received: bool = False
 
     scheduler: Scheduler
 
+    @define(kw_only=True)
+    class Metrics(Component.Metrics):
+        """Metrics for the Logprep Runner."""
+
+        version_info: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep version information",
+                name="version_info",
+                labels={"logprep": "unset", "config": "unset"},
+                inject_label_values=False,
+            )
+        )
+        """Logprep version info."""
+        config_refresh_interval: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep config refresh interval",
+                name="config_refresh_interval",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates the configuration refresh interval in seconds."""
+        number_of_config_refreshes: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Indicates how often the logprep configuration was updated.",
+                name="number_of_config_refreshes",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates how often the logprep configuration was updated."""
+        number_of_config_refresh_failures: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description=(
+                    "Indicates how often the logprep configuration "
+                    "could not be updated due to failures during the update."
+                ),
+                name="number_of_config_refreshes",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates how often the logprep configuration could not be updated
+          due to failures during the update."""
+
+    @property
+    def _metric_labels(self) -> dict[str, str]:
+        labels = {
+            "logprep": f"{version('logprep')}",
+            "config": f"{self._configuration.version}",
+        }
+        return labels
+
+    @property
+    def _config_refresh_interval(self) -> int:
+        """Indicates the configuration refresh interval in seconds."""
+        return self._configuration.config_refresh_interval
+
+    @_config_refresh_interval.setter
+    def _config_refresh_interval(self, value: int | None) -> None:
+        """Set the configuration refresh interval in seconds."""
+        if value is None:
+            self._configuration.config_refresh_interval = None
+        elif value <= 5:
+            self._configuration.config_refresh_interval = 5
+        else:
+            self._configuration.config_refresh_interval = value
+
     # Use this method to obtain a runner singleton for production
     @staticmethod
-    def get_runner():
+    def get_runner(configuration: Configuration) -> "Runner":
         """Create a Runner singleton."""
         if Runner._runner is None:
-            Runner._runner = Runner(bypass_check_to_obtain_non_singleton_instance=True)
+            Runner._runner = Runner(configuration)
         return Runner._runner
 
     # For production, use the get_runner method to create/get access to a singleton!
-    def __init__(self, bypass_check_to_obtain_non_singleton_instance=False):
-        self._configuration = None
-        self._yaml_path = None
-        self._logger = logging.getLogger("Logprep Runner")
-        self._config_refresh_interval = None
-
-        self._manager = None
-        self.scheduler = Scheduler()
-
-        # noinspection PyTypeChecker
-        self._continue_iterating = Value(c_bool)
-        self._continue_iterating.value = False
-
-        if not bypass_check_to_obtain_non_singleton_instance:
-            raise UseGetRunnerToCreateRunnerSingleton
-
-    def load_configuration(self, yaml_file: str):
-        """Load the configuration from a YAML file (cf. documentation).
-
-        This will raise an exception if the configuration is not valid.
-
-        Parameters
-        ----------
-        yaml_file: str
-            Path to a configuration YAML file.
-
-        Raises
-        ------
-        MustNotConfigureTwiceError
-            If '_configuration' was already set.
-
-        """
-        if self._configuration is not None:
-            raise MustNotConfigureTwiceError
-
-        configuration = Configuration.create_from_yaml(yaml_file)
-        configuration.verify(self._logger)
-
-        self._yaml_path = yaml_file
+    def __init__(self, configuration: Configuration) -> None:
+        self.exit_code = EXITCODES.SUCCESS
         self._configuration = configuration
-        self._config_refresh_interval = configuration.get("config_refresh_interval")
+        self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
+        self._logger = logging.getLogger("Runner")
+
+        self._manager = PipelineManager(configuration)
+        self.scheduler = Scheduler()
 
     def start(self):
         """Start processing.
 
         This runs until an SIGTERM, SIGINT or KeyboardInterrupt signal is received, or an unhandled
         error occurs.
-
-        Raises
-        ------
-        MustConfigureBeforeRunningError
-            If '_configuration' was not set before starting the Runner.
-        MustConfigureALoggerError
-            If '_logger' was not set before reloading the configuration.
-
         """
-        if self._configuration is None:
-            raise MustConfigureBeforeRunningError
-        if self._logger is None:
-            raise MustConfigureALoggerError
 
-        self._create_manager()
-        self._manager.set_configuration(self._configuration)
-        self._manager.set_count(self._configuration["process_count"])
-        self._logger.debug("Pipeline manager initiated")
-
-        with self._continue_iterating.get_lock():
-            self._continue_iterating.value = True
+        self._set_version_info_metric()
         self._schedule_config_refresh_job()
-        if self._manager.prometheus_exporter:
-            self._manager.prometheus_exporter.run()
+        self._manager.restart()
         self._logger.info("Startup complete")
         self._logger.debug("Runner iterating")
-        for _ in self._keep_iterating():
-            self._loop()
-        self.stop()
-
-        self._logger.info("Initiated shutdown")
+        self._iterate()
+        self._logger.info("Shutting down")
         self._manager.stop()
         self._logger.info("Shutdown complete")
+        if self._manager.loghandler is not None:
+            self._manager.loghandler.stop()
+        sys.exit(self.exit_code.value)
 
-    def _loop(self):
-        self.scheduler.run_pending()
-        self._manager.restart_failed_pipeline()
+    def _iterate(self):
+        for _ in self._keep_iterating():
+            if self._exit_received:
+                break
+            self.scheduler.run_pending()
+            if self._should_exit():
+                self.exit_code = EXITCODES.PIPELINE_ERROR
+                self._logger.error("Restart count exceeded. Exiting.")
+                break
+            self._manager.restart_failed_pipeline()
 
-    def reload_configuration(self, refresh=False):
-        """Reload the configuration from the configured yaml path.
+    def _should_exit(self):
+        return all(
+            (
+                self._configuration.restart_count >= 0,
+                self._manager.restart_count >= self._configuration.restart_count,
+            )
+        )
 
-        Raises
-        ------
-        CannotReloadWhenConfigIsUnsetError
-            If '_configuration' was never set before reloading the configuration.
-
-        """
-        if self._configuration is None:
-            raise CannotReloadWhenConfigIsUnsetError
+    def reload_configuration(self):
+        """Reloads the configuration"""
         try:
-            new_configuration = Configuration.create_from_yaml(self._yaml_path)
-            self._config_refresh_interval = new_configuration.get("config_refresh_interval")
-            self._schedule_config_refresh_job()
-        except (requests.RequestException, FileNotFoundError) as error:
-            self._logger.warning(f"Failed to load configuration: {error}")
-            current_refresh_interval = self._config_refresh_interval
-            if isinstance(current_refresh_interval, (float, int)):
-                new_refresh_interval = current_refresh_interval / 4
-                self._config_refresh_interval = new_refresh_interval
-            self._schedule_config_refresh_job()
-            return
-        if refresh:
-            version_differ = new_configuration.get("version") != self._configuration.get("version")
-            if not version_differ:
-                self._logger.info(
-                    "Configuration version didn't change. Continue running with current version."
-                )
-                self._logger.info(
-                    f"Configuration version: {self._configuration.get('version', 'unset')}"
-                )
-                return
-        try:
-            new_configuration.verify(self._logger)
-
-            # Only reached when configuration is verified successfully
-            self._configuration = new_configuration
-            self._schedule_config_refresh_job()
-            self._manager.stop()
-            self._manager.set_configuration(self._configuration)
-            self._manager.set_count(self._configuration["process_count"])
+            self._configuration.reload()
             self._logger.info("Successfully reloaded configuration")
-            self._logger.info(
-                f"Configuration version: {self._configuration.get('version', 'unset')}"
-            )
+            self.metrics.number_of_config_refreshes += 1
+            self._manager.restart()
+            self._schedule_config_refresh_job()
+            self._logger.info(f"Configuration version: {self._configuration.version}")
+            self._set_version_info_metric()
+        except ConfigGetterException as error:
+            self._logger.warning(f"Failed to load configuration: {error}")
+            self.metrics.number_of_config_refresh_failures += 1
+            self._config_refresh_interval = int(self._config_refresh_interval / 4)
+            self._schedule_config_refresh_job()
+        except ConfigVersionDidNotChangeError as error:
+            self._logger.info(str(error))
         except InvalidConfigurationError as error:
-            self._logger.error(
-                "Invalid configuration, leaving old"
-                f" configuration in place: {self._yaml_path}: {str(error)}"
-            )
+            self._logger.error(str(error))
+            self.metrics.number_of_config_refresh_failures += 1
+
+    def _set_version_info_metric(self):
+        self.metrics.version_info.add_with_labels(
+            1,
+            {"logprep": f"{version('logprep')}", "config": self._configuration.version},
+        )
+
+    def stop(self):
+        """Stop the logprep runner. Is called by the signal handler
+        in run_logprep.py."""
+        self._exit_received = True
 
     def _schedule_config_refresh_job(self):
         refresh_interval = self._config_refresh_interval
@@ -227,43 +215,12 @@ class Runner:
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, (float, int)):
-            refresh_interval = 5 if refresh_interval < 5 else refresh_interval
-            scheduler.every(refresh_interval).seconds.do(self.reload_configuration, refresh=True)
+            self.metrics.config_refresh_interval += refresh_interval
+            scheduler.every(refresh_interval).seconds.do(self.reload_configuration)
             self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 
-    def _create_manager(self):
-        if self._manager is not None:
-            raise MustNotCreateMoreThanOneManagerError
-        self._manager = PipelineManager()
+    def _keep_iterating(self) -> Generator:
+        """Indicates whether the runner should keep iterating."""
 
-    def stop(self):
-        """Stop the current process"""
-        if current_process().name == "MainProcess":
-            if self._logger is not None:
-                self._logger.info("Shutting down")
-        with self._continue_iterating.get_lock():
-            self._continue_iterating.value = False
-
-    def _keep_iterating(self):
-        """generator function"""
-        while True:
-            with self._continue_iterating.get_lock():
-                iterate = self._continue_iterating.value
-                if not iterate:
-                    return
-                yield iterate
-
-
-def signal_handler(signal_number: int, _):
-    """Handle signals for stopping the runner and reloading the configuration."""
-    if signal_number == signal.SIGUSR1:
-        print("Info: Reloading config")
-        Runner.get_runner().reload_configuration()
-    else:
-        Runner.get_runner().stop()
-
-
-# Register signals
-signal.signal(signal.SIGTERM, signal_handler)
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGUSR1, signal_handler)
+        while 1:  # pragma: no cover
+            yield 1

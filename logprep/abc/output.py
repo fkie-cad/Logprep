@@ -3,19 +3,28 @@ New output endpoint types are created by implementing it.
 """
 
 from abc import abstractmethod
-from logging import Logger
 from typing import Optional
 
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
+from logprep.abc.exceptions import LogprepException
 from logprep.abc.input import Input
 
 
-class OutputError(BaseException):
+class OutputError(LogprepException):
     """Base class for Output related exceptions."""
 
     def __init__(self, output: "Output", message: str) -> None:
+        output.metrics.number_of_errors += 1
+        super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
+
+
+class OutputWarning(LogprepException):
+    """Base class for Output related warnings."""
+
+    def __init__(self, output: "Output", message: str) -> None:
+        output.metrics.number_of_warnings += 1
         super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
 
 
@@ -25,24 +34,11 @@ class CriticalOutputError(OutputError):
     def __init__(self, output, message, raw_input):
         if raw_input:
             output.store_failed(str(self), raw_input, {})
-        output.metrics.number_of_errors += 1
         super().__init__(output, f"{message} for event: {raw_input}")
 
 
 class FatalOutputError(OutputError):
-    """Must not be catched."""
-
-    def __init__(self, output, message) -> None:
-        output.metrics.number_of_errors += 1
-        super().__init__(output, message)
-
-
-class WarningOutputError(OutputError):
-    """May be catched but must be displayed to the user/logged."""
-
-    def __init__(self, output, message) -> None:
-        output.metrics.number_of_warnings += 1
-        super().__init__(output, message)
+    """Must not be caught."""
 
 
 class Output(Connector):
@@ -61,14 +57,24 @@ class Output(Connector):
 
     input_connector: Optional[Input]
 
-    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
-        self.input_connector = None
-
     @property
     def default(self):
         """returns the default parameter"""
         return self._config.default
+
+    @property
+    def metric_labels(self) -> dict:
+        """Return the metric labels for this component."""
+        return {
+            "component": "output",
+            "description": self.describe(),
+            "type": self._config.type,
+            "name": self.name,
+        }
+
+    def __init__(self, name: str, configuration: "Connector.Config"):
+        super().__init__(name, configuration)
+        self.input_connector = None
 
     @abstractmethod
     def store(self, document: dict) -> Optional[bool]:
@@ -87,3 +93,6 @@ class Output(Connector):
     @abstractmethod
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Store an event when an error occurred during the processing."""
+
+    def _write_backlog(self):
+        """Write the backlog to the output destination."""

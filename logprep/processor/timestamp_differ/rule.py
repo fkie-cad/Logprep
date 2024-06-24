@@ -43,6 +43,7 @@ Examples for timestamp_differ:
 .. datatemplate:import-module:: tests.unit.processor.timestamp_differ.test_timestamp_differ
    :template: testcase-renderer.tmpl
 """
+
 import re
 
 from attr import field

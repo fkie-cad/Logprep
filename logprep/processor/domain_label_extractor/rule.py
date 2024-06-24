@@ -55,6 +55,7 @@ will result in the following output
    :inherited-members:
    :noindex:
 """
+
 from attr import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule

@@ -134,7 +134,7 @@ class RuleMatchingTester:
         }
         logger = logging.getLogger()
         logger.disabled = True
-        processor = Factory.create(processor_cfg, logger)
+        processor = Factory.create(processor_cfg)
         return processor
 
     def _print_results(self):

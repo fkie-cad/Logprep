@@ -1,14 +1,17 @@
 """logprep time helpers module"""
+
 from datetime import datetime, tzinfo
 from typing import Union
 from zoneinfo import ZoneInfo
 
 import ciso8601
 
+from logprep.abc.exceptions import LogprepException
+
 UTC = ZoneInfo("UTC")
 
 
-class TimeParserException(Exception):
+class TimeParserException(LogprepException):
     """exception class for time parsing"""
 
 

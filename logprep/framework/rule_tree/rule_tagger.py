@@ -1,4 +1,5 @@
 """ This module implements functionality to add tags to filter expressions. """
+
 from typing import Union, List
 
 from logprep.filter.expression.filter_expression import (

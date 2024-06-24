@@ -138,7 +138,8 @@ class TestElasticsearchOutput(BaseOutputTestCase):
     ):
         self.object._config.message_backlog_size = 1
         self.object._handle_serialization_error = mock.MagicMock()
-        self.object._write_to_search_context({"dummy": "event"})
+        self.object._message_backlog.append({"dummy": "event"})
+        self.object._write_to_search_context()
         self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
@@ -148,7 +149,8 @@ class TestElasticsearchOutput(BaseOutputTestCase):
     def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
         self.object._config.message_backlog_size = 1
         self.object._handle_connection_error = mock.MagicMock()
-        self.object._write_to_search_context({"dummy": "event"})
+        self.object._message_backlog.append({"dummy": "event"})
+        self.object._write_to_search_context()
         self.object._handle_connection_error.assert_called()
 
     @mock.patch(
@@ -158,7 +160,8 @@ class TestElasticsearchOutput(BaseOutputTestCase):
     def test_write_to_search_context_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
         self.object._config.message_backlog_size = 1
         self.object._handle_bulk_index_error = mock.MagicMock()
-        self.object._write_to_search_context({"dummy": "event"})
+        self.object._message_backlog.append({"dummy": "event"})
+        self.object._write_to_search_context()
         self.object._handle_bulk_index_error.assert_called()
 
     @mock.patch("elasticsearch.helpers.bulk")
@@ -213,7 +216,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "bar"}, {"bar": "baz"}],
                 0,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -237,7 +240,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -245,7 +248,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -253,7 +256,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
                 {"invalid": "error"},
                 [{"foo": "*" * 500}],
                 1,
-                TypeError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -261,7 +264,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
                 {"error": {"reason": "wrong_reason"}},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -289,7 +292,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
                 },
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
         ],
     )
@@ -354,3 +357,12 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         self.object._config.message_backlog_size = 1
         self.object.store({"event": "test_event"})
         assert len(self.object._message_backlog) == 0
+
+    @mock.patch(
+        "logprep.connector.elasticsearch.output.ElasticsearchOutput._search_context",
+        new=mock.MagicMock(),
+    )
+    @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
+    def test_setup_populates_cached_properties(self, mock_getmembers):
+        self.object.setup()
+        mock_getmembers.assert_called_with(self.object)

@@ -2,17 +2,15 @@ version: 1
 process_count: 2
 timeout: 0.1
 logger:
-  level: DEBUG
-
+  level: INFO
+  format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
+  datefmt: "%Y-%m-%d %H:%M:%S"
+  loggers:
+    "py.warnings": {"level": "ERROR"}
+    "Runner": {"level": "DEBUG"}
 metrics:
   enabled: true
-  period: 1
-  cumulative: false
-  aggregate_processes: false
-  measure_time:
-    enabled: true
-    append_to_event: false
-  port: 8000
+  port: 8001
 
 pipeline:
   - labelername:
@@ -36,7 +34,7 @@ pipeline:
       specific_rules:
         - quickstart/exampledata/rules/dropper/specific
       generic_rules:
-        - quickstart/exampledata/rules/dropper/specific
+        - quickstart/exampledata/rules/dropper/generic
         - filter: "test_dropper"
           dropper:
             drop:
@@ -78,7 +76,6 @@ pipeline:
       generic_rules:
         - quickstart/exampledata/rules/pseudonymizer/generic/
       max_cached_pseudonyms: 1000000
-      max_caching_days: 1
 
   - calculator:
       type: calculator
@@ -96,8 +93,19 @@ input:
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       group.id: cgroup3
-      enable.auto.commit: "false"
+      enable.auto.commit: "true"
+      auto.commit.interval.ms: "10000"
       enable.auto.offset.store: "false"
+      queued.min.messages: "100000"
+      queued.max.messages.kbytes: "65536"
+      statistics.interval.ms: "60000"
+    preprocessing:
+      version_info_target_field: Logprep_version_info
+      log_arrival_time_target_field: event.ingested
+      hmac:
+        target: <RAW_MSG>
+        key: "thisisasecureandrandomkey"
+        output_field: Full_event
 
 output:
   opensearch:
@@ -106,10 +114,11 @@ output:
       - 127.0.0.1:9200
     default_index: processed
     error_index: errors
-    message_backlog_size: 1000
+    message_backlog_size: 10000
     timeout: 10000
     flush_timeout: 60
     max_retries: 3
+    parallel_bulk: false
     user: admin
     secret: admin
   kafka:
@@ -120,3 +129,4 @@ output:
     flush_timeout: 300
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
+      statistics.interval.ms: "60000"

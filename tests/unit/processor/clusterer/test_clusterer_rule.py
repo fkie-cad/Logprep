@@ -10,7 +10,7 @@ def rule_definition():
     return {
         "filter": "message",
         "clusterer": {
-            "target": "message",
+            "source_fields": ["message"],
             "pattern": r"test (signature) test",
             "repl": "<+>\1</+>",
         },
@@ -34,7 +34,18 @@ class TestClustererRule:
                 {
                     "filter": "message",
                     "clusterer": {
-                        "target": "message",
+                        "source_fields": ["message"],
+                        "pattern": r"test (signature) test",
+                        "repl": "<+>\1</+>",
+                    },
+                },
+                True,
+            ),
+            (
+                "Should be equal cause the same with default source field",
+                {
+                    "filter": "message",
+                    "clusterer": {
                         "pattern": r"test (signature) test",
                         "repl": "<+>\1</+>",
                     },
@@ -46,7 +57,7 @@ class TestClustererRule:
                 {
                     "filter": "other_message",
                     "clusterer": {
-                        "target": "message",
+                        "source_fields": ["message"],
                         "pattern": r"test (signature) test",
                         "repl": "<+>\1</+>",
                     },
@@ -54,11 +65,11 @@ class TestClustererRule:
                 False,
             ),
             (
-                "Should be not equal cause other target",
+                "Should be not equal cause other source fields",
                 {
                     "filter": "message",
                     "clusterer": {
-                        "target": "other message",
+                        "source_fields": ["other message"],
                         "pattern": r"test (signature) test",
                         "repl": "<+>\1</+>",
                     },
@@ -70,7 +81,7 @@ class TestClustererRule:
                 {
                     "filter": "message",
                     "clusterer": {
-                        "target": "message",
+                        "source_fields": ["message"],
                         "pattern": r"other test (signature) test",
                         "repl": "<+>\1</+>",
                     },
@@ -82,7 +93,7 @@ class TestClustererRule:
                 {
                     "filter": "message",
                     "clusterer": {
-                        "target": "message",
+                        "source_fields": ["message"],
                         "pattern": r"test (signature) test",
                         "repl": "other <+>\1</+>",
                     },

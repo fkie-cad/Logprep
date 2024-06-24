@@ -718,8 +718,8 @@ failure_test_cases = [  # testcase, rule, event, expected
 class TestDissector(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "dissector",
-        "generic_rules": ["tests/testdata/unit/dissector"],
-        "specific_rules": ["tests/testdata/unit/dissector"],
+        "generic_rules": ["tests/testdata/unit/dissector/generic_rules"],
+        "specific_rules": ["tests/testdata/unit/dissector/specific_rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)

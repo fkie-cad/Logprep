@@ -12,19 +12,19 @@ jobs:
     if: github.event.pull_request.merged == true
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Initialize Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.9
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip wheel
 
       - name: Build binary wheel and a source tarball
-        run: python setup.py sdist bdist_wheel
+        run: pip wheel --no-deps --wheel-dir ./dist .
 
       - uses: marvinpinto/action-automatic-releases@latest
         with:
@@ -39,12 +39,13 @@ jobs:
   containerbuild:
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12.3"]
 
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -53,9 +54,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image
+      - name: Build images
         uses: docker/build-push-action@v3
         with:
+          context: .
           push: true # Will only build if this is not here
           build-args: |
             LOGPREP_VERSION=latest

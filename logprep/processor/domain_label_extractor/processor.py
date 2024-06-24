@@ -5,7 +5,7 @@ DomainLabelExtractor
 The `domain_label_extractor` is a processor that splits a domain into it's corresponding labels
 like :code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`. If instead an IP
 is given in the target field an informational tag is added to the configured tags field. If
-neither a domain nor an ip address can be recognized an invalid error tag will be be added to the
+neither a domain nor an ip address can be recognized an invalid error tag will be added to the
 tag field in the event. The added tags contain each the target field name that was checked by the
 configured rule, such that it is possible to distinguish between different domain fields in one
 event. For example for the target field :code:`url.domain` following tags could be added:
@@ -33,7 +33,9 @@ Processor Configuration
 
 .. automodule:: logprep.processor.domain_label_extractor.rule
 """
+
 import ipaddress
+import logging
 import os
 import tempfile
 from functools import cached_property
@@ -44,19 +46,21 @@ from attr import define, field, validators
 from filelock import FileLock
 from tldextract import TLDExtract
 
-from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value, add_and_overwrite
 from logprep.util.validators import list_of_urls_validator
 
+logger = logging.getLogger("DomainLabelExtractor")
 
-class DomainLabelExtractor(Processor):
+
+class DomainLabelExtractor(FieldManager):
     """Splits a domain into it's parts/labels."""
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """DomainLabelExtractor config"""
 
         tagging_field_name: str = field(
@@ -87,7 +91,7 @@ class DomainLabelExtractor(Processor):
         super().setup()
         if self._config.tld_lists:
             downloaded_tld_lists_paths = []
-            self._logger.debug("start tldlists download...")
+            logger.debug("start tldlists download...")
             for index, tld_list in enumerate(self._config.tld_lists):
                 logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
                 os.makedirs(logprep_tmp_dir, exist_ok=True)
@@ -98,7 +102,7 @@ class DomainLabelExtractor(Processor):
                         list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
                 downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
             self._config.tld_lists = downloaded_tld_lists_paths
-            self._logger.debug("finished tldlists download...")
+            logger.debug("finished tldlists download...")
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
@@ -117,14 +121,18 @@ class DomainLabelExtractor(Processor):
         rule :
             Currently applied domain label extractor rule.
         """
-        domain = get_dotted_field_value(event, rule.source_fields[0])
+        source_field_values = self._get_field_values(event, rule.source_fields)
+        self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
+        domain = source_field_values[0]
         if domain is None:
             return
-        tagging_field = event.get(self._config.tagging_field_name, [])
+        tagging_field = get_dotted_field_value(event, self._config.tagging_field_name)
+        if tagging_field is None:
+            tagging_field = []
 
         if self._is_valid_ip(domain):
             tagging_field.append(f"ip_in_{rule.source_fields[0].replace('.', '_')}")
-            event[self._config.tagging_field_name] = tagging_field
+            add_and_overwrite(event, self._config.tagging_field_name, tagging_field)
             return
 
         labels = self._tld_extractor(domain)
@@ -141,10 +149,10 @@ class DomainLabelExtractor(Processor):
                 )
 
                 if not add_successful:
-                    raise FieldExistsWarning(self, rule, event, [output_field])
+                    raise FieldExistsWarning(rule, event, [output_field])
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
-            event[self._config.tagging_field_name] = tagging_field
+            add_and_overwrite(event, self._config.tagging_field_name, tagging_field)
 
     @staticmethod
     def _is_valid_ip(domain):

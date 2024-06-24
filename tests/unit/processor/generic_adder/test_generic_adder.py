@@ -15,9 +15,7 @@ import pytest
 
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from logprep.processor.base.exceptions import (
-    InvalidRuleDefinitionError,
-)
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
@@ -284,6 +282,19 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "dotted": {"added": {"field": "yet_another_value"}},
             },
         ),
+        (
+            "Extend list field with 'extend_target_list' enabled",
+            {
+                "filter": "*",
+                "generic_adder": {
+                    "add": {
+                        "some_added_field": ["some value"],
+                    },
+                },
+            },
+            {"extend_generic_test": "Test"},
+            {"extend_generic_test": "Test", "some_added_field": ["some value"]},
+        ),
     ]
 
     failure_test_cases = [  # testcase, rule, event, expected, error_message
@@ -405,7 +416,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             config = deepcopy(self.CONFIG)
             config["specific_rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
-            Factory.create(configuration, self.logger)
+            Factory.create(configuration)
 
     def test_add_generic_fields_from_file_invalid(self):
         with pytest.raises(
@@ -415,7 +426,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             config = deepcopy(self.CONFIG)
             config["generic_rules"] = [RULES_DIR_INVALID]
             configuration = {"test processor": config}
-            Factory.create(configuration, self.logger)
+            Factory.create(configuration)
 
 
 class BaseTestGenericAdderSQLTestCase(BaseProcessorTestCase):
@@ -481,8 +492,11 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
 
     def test_check_if_file_not_stale_after_enough_time_has_passed_but_file_has_been_changed(self):
         time.sleep(0.2)  # nosemgrep
+        with open(self.object._db_file_path, "r", encoding="utf-8") as db_file:
+            file_temp = db_file.read()
         now = time.time()
-        os.utime(self.object._db_file_path, (now, now))  # Simulates change of file
+        with open(self.object._db_file_path, "w", encoding="utf-8") as db_file:
+            db_file.write(file_temp)
         assert not self.object._check_if_file_not_exists_or_stale(now)
 
     def test_check_if_file_stale_after_removing_it_when_it_was_not_stale(self):
@@ -762,9 +776,9 @@ class TestGenericAdderProcessorSQLWithoutAddedTargetAndTableNeverEmpty(
 
         if raised_error:
             with pytest.raises(raised_error[0], match=raised_error[1]):
-                Factory.create({"Test Instance Name": config}, self.logger)
+                Factory.create({"Test Instance Name": config})
         else:
-            Factory.create({"Test Instance Name": config}, self.logger)
+            Factory.create({"Test Instance Name": config})
 
 
 class TestGenericAdderProcessorSQLWithAddedTarget(BaseTestGenericAdderSQLTestCase):

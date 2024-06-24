@@ -1,11 +1,6 @@
 {
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestArgs": [
-        "tests",
-        "-v",
-        "--log-cli-level=DEBUG"
-    ],
     "python.analysis.importFormat": "absolute",
     "editor.formatOnSave": true,
     "editor.rulers": [
@@ -14,7 +9,7 @@
         120
     ],
     "editor.codeActionsOnSave": {
-        "source.organizeImports": true
+        "source.organizeImports": "explicit"
     },
     "autoDocstring.docstringFormat": "numpy",
     "files.exclude": {
@@ -33,6 +28,11 @@
         "**/.profile": true
     },
     "python.analysis.typeCheckingMode": "off",
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.analysis.enablePytestSupport": true,
+    "python.testing.pytestArgs": [
+        "-vv"
+    ],
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true

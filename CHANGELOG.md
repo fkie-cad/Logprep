@@ -1,5 +1,6 @@
 ## Upcoming Changes
 
+
 ## next release
 ### Breaking
 
@@ -9,15 +10,312 @@ and `field_manager` processors
 ### Features
 
 
+This release limits the maximum python version to `3.12.3` because of the issue
+[#612](https://github.com/fkie-cad/Logprep/issues/612).
+
+### Breaking
+### Features
+### Improvements
+
+* a result object was added which is returned by every processor
+  * includes generated extra_data, warnings and errors
+
+### Bugfix
+
+* fixes a bug where it could happen that a config value could be overwritten by a default in a later configuration in a multi source config scenario
+* fixes a bug in the `field_manager` where extending a non list target leads to a processing failure
+
+## 12.0.0
+
+### Breaking
+
+* `pseudonymizer` change rule config field `pseudonyms` to `mapping`
+* `clusterer` change rule config field `target` to `source_fields`
+* `generic_resolver` change rule config field `append_to_list` to `extend_target_list`
+* `hyperscan_resolver` change rule config field `append_to_list` to `extend_target_list`
+* `calculator` now adds the error tag `_calculator_missing_field_warning` to the events tag field instead of `_calculator_failure` in case of missing field in events
+* `domain_label_extractor` now writes `_domain_label_extractor_missing_field_warning` tag to event tags in case of missing fields
+* `geoip_enricher` now writes `_geoip_enricher_missing_field_warning` tag to event tags in case of missing fields
+* `grokker` now writes `_grokker_missing_field_warning` tag to event tags instead of `_grokker_failure` in case of missing fields
+* `requester` now writes `_requester_missing_field_warning` tag to event tags instead of `_requester_failure` in case of missing fields
+* `timestamp_differ` now writes `_timestamp_differ_missing_field_warning` tag to event tags instead of `_timestamp_differ_failure` in case of missing fields
+* `timestamper` now writes `_timestamper_missing_field_warning` tag to event tags instead of `_timestamper_failure` in case of missing fields
+* rename `--thread_count` parameter to `--thread-count` in http generator
+* removed `--report` parameter and feature from http generator
+* when using `extend_target_list` in the `field manager`the ordering of the given source fields is now preserved
+* logprep now exits with a negative exit code if pipeline restart fails 5 times
+  * this was implemented because further restart behavior should be configured on level of a system init service or container orchestrating service like k8s
+  * the `restart_count` parameter is configurable. If you want the old behavior back, you can set this parameter to a negative number
+* logprep now exits with a exit code of 2 on configuration errors
+
 ### Features
 
-* add possibility to convert hex to int in `calculator` processor with new added function `from_hex`
+* add UCL into the quickstart setup
+* add logprep http output connector
+* add pseudonymization tools to logprep -> see: `logprep pseudo --help`
+* add `restart_count` parameter to configuration
+* add option `mode` to `pseudonymizer` processor and to pseudonymization tools to chose the AES Mode for encryption and decryption
+* add retry mechanism to opensearch parallel bulk, if opensearch returns 429 `rejected_execution_exception`
 
 ### Improvements
 
-* Remove direct dependency of `python-dateutil`
+* remove logger from Components and Factory signatures
+* align processor architecture to use methods like `write_to_target`, `add_field_to` and `get_dotted_field_value` when reading and writing from and to events
+  * required substantial refactoring of the `hyperscan_resolver`, `generic_resolver` and `template_replacer`
+* change `pseudonymizer`, `pre_detector`, `selective_extractor` processors and `pipeline` to handle `extra_data` the same way
+* refactor `clusterer`, `pre_detector` and `pseudonymizer` processors and change `rule_tree` so that the processor do not require `process` override
+  * required substantial refactoring of the `clusterer`
+* handle missing fields in processors via `_handle_missing_fields` from the field_manager
+* add `LogprepMPQueueListener` to outsource logging to a separate process
+* add a single `Queuehandler` to root logger to ensure all logs were handled by `LogprepMPQueueListener`
+* refactor `http_generator` to use a logprep http output connector
+* ensure all `cached_properties` are populated during setup time
 
 ### Bugfix
+
+* make `--username` and `--password` parameters optional in http generator
+* fixes a bug where `FileNotFoundError` is raised during processing
+
+## 11.3.0
+
+### Features
+
+* add gzip handling to `http_input` connector
+* adds advanced logging configuration
+  * add configurable log format
+  * add configurable datetime formate in logs
+  * makes `hostname` available in custom log formats
+  * add fine grained log level configuration for every logger instance
+
+### Improvements
+
+* rename `logprep.event_generator` module to `logprep.generator`
+* shorten logger instance names
+
+### Bugfix
+
+* fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen by making loglevel configurable for loggers `opensearch` and `elasticsearch`
+* fixes the logprep quickstart profile
+
+## 11.2.1
+
+### Bugfix
+
+* fixes bug, that leads to spawning exporter http server always on localhost
+
+## 11.2.0
+
+### Features
+
+* expose metrics via uvicorn webserver
+  * makes all uvicorn configuration options possible
+  * add security best practices to server configuration
+* add following metrics to `http_input` connector
+  * `nummer_of_http_requests`
+  * `message_backlog_size`
+
+### Bugfix
+
+* fixes a bug in grokker rules, where common field prefixes wasn't possible
+* fixes bug where missing key in credentials file leads to AttributeError
+
+## 11.1.0
+
+### Features
+
+* new documentation part with security best practices which compiles to `user_manual/security/best_practices.html`
+  * also comes with excel export functionality of given best practices
+* add basic auth to http_input
+
+### Bugfix
+
+* fixes a bug in http connector leading to only first process working
+* fixes the broken gracefull shutdown behaviour
+
+## 11.0.1
+### Bugfix
+
+* fixes a bug where the pipeline index increases on every restart of a failed pipeline
+* fixes closed log queue issue by run logging in an extra process
+
+## 11.0.0
+### Breaking
+
+* configuration of Authentication for getters is now done by new introduced credentials file
+
+### Features
+
+* introducing an additional file to define the credentials for every configuration source
+* retrieve oauth token automatically from different oauth endpoints
+* retrieve configruation with mTLS authentication
+* reimplementation of HTTP Input Connector with following Features:
+  * Wildcard based HTTP Request routing
+  * Regex based HTTP Request routing
+  * Improvements in thread-based runtime
+  * Configuration and possibility to add metadata
+
+### Improvements
+
+* remove `versioneer` dependency in favor of `setuptools-scm`
+
+### Bugfix
+
+* fix version string of release versions
+* fix version string of container builds for feature branches
+* fix merge of config versions for multiple configs
+
+
+## v10.0.4
+### Improvements
+
+* refactor logprep build process and requirements management
+
+### Bugfix
+
+* fix `generic_adder` not creating new field from type `list`
+
+## v10.0.3
+### Bugfix
+* fix loading of configuration inside the `AutoRuleCorpusTester` for `logprep test integration`
+* fix auto rule tester (`test unit`), which was broken after adding support for multiple configuration files and resolving paths in configuration files
+
+## v10.0.2
+### Bugfix
+* fix versioneer import
+* fix logprep does not complain about missing PROMETHEUS_MULTIPROC_DIR
+
+## v10.0.1
+### Bugfix
+
+* fix entrypoint in `setup.py` that corrupted the install
+
+
+## v10.0.0
+### Breaking
+
+* reimplement the logprep CLI, see `logprep --help` for more information.
+* remove feature to reload configuration by sending signal `SIGUSR1`
+* remove feature to validate rules because it is already included in `logprep test config`
+
+### Features
+
+* add a `number_of_successful_writes` metric to the s3 connector, which counts how many events were successfully written to s3
+* make the s3 connector work with the new `_write_backlog` method introduced by the `confluent_kafka` commit bugfix in v9.0.0
+* add option to Opensearch Output Connector to use parallel bulk implementation (default is True)
+* add feature to logprep to load config from multiple sources (files or uris)
+* add feature to logprep to print the resulting configruation with `logprep print json|yaml <Path to config>` in json or yaml
+* add an event generator that can send records to Kafka using data from a file or from Kafka
+* add an event generator that can send records to a HTTP endpoint using data from local dataset
+
+### Improvements
+
+* a do nothing option do dummy output to ensure dummy does not fill memory
+* make the s3 connector raise `FatalOutputError` instead of warnings
+* make the s3 connector blocking by removing threading
+* revert the change from v9.0.0 to always check the existence of a field for negated key-value based lucene filter expressions
+* make store_custom in s3, opensearch and elasticsearch connector not call `batch_finished_callback` to prevent data loss that could be caused by partially processed events
+* remove the `schema_and_rule_checker` module
+* rewrite Logprep Configuration object see documentation for more details
+* rewrite Runner
+* delete MultiProcessingPipeline class to simplify multiprocesing
+* add FDA to the quickstart setup
+* bump versions for `fastapi` and `aiohttp` to address CVEs
+
+### Bugfix
+
+* make the s3 connector actually use the `max_retries` parameter
+* fixed a bug which leads to a `FatalOutputError` on handling `CriticalInputError` in pipeline
+
+## v9.0.3
+### Breaking
+
+### Features
+
+* make `thread_count`, `queue_size` and `chunk_size` configurable for `parallel_bulk` in opensearch output connector
+
+### Improvements
+
+### Bugfix
+
+* fix `parallel_bulk` implementation not delivering messages to opensearch
+
+## v9.0.2
+
+### Bugfix
+
+* remove duplicate pseudonyms in extra outputs of pseudonymizer
+
+## v9.0.1
+### Breaking
+
+### Features
+
+### Improvements
+
+* use parallel_bulk api for opensearch output connector
+
+### Bugfix
+
+
+## v9.0.0
+### Breaking
+
+* remove possibility to inject auth credentials via url string, because of the risk leaking credentials in logs
+    - if you want to use basic auth, then you have to set the environment variables
+        * :code:`LOGPREP_CONFIG_AUTH_USERNAME=<your_username>`
+        * :code:`LOGPREP_CONFIG_AUTH_PASSWORD=<your_password>`
+    - if you want to use oauth, then you have to set the environment variables
+        * :code:`LOGPREP_CONFIG_AUTH_TOKEN=<your_token>`
+        * :code:`LOGPREP_CONFIG_AUTH_METHOD=oauth`
+
+### Features
+
+### Improvements
+
+* improve error message on empty rule filter
+* reimplemented `pseudonymizer` processor
+  - rewrote tests till 100% coverage
+  - cleaned up code
+  - reimplemented caching using pythons `lru_cache`
+  - add cache metrics
+  - removed `max_caching_days` config option
+  - add `max_cached_pseudonymized_urls` config option which defaults to 1000
+  - add lru caching for peudonymizatin of urls
+* improve loading times for the rule tree by optimizing the rule segmentation and sorting
+* add support for python 3.12 and remove support for python 3.9
+* always check the existence of a field for negated key-value based lucene filter expressions
+* add kafka exporter to quickstart setup
+
+### Bugfix
+
+* fix the rule tree parsing some rules incorrectly, potentially resulting in more matches
+* fix `confluent_kafka` commit issue after kafka did some rebalancing, fixes also negative offsets
+
+## v8.0.0
+### Breaking
+
+* reimplemented metrics so the former metrics configuration won't work anymore
+* metric content changed and existent grafana dashboards will break
+* new rule `id` could possibly break configurations if the same rule is used in both rule trees
+  - can be fixed by adding a unique `id` to each rule or delete the possibly redundant rule
+
+### Features
+
+* add possibility to convert hex to int in `calculator` processor with new added function `from_hex`
+* add metrics on rule level
+* add grafana example dashboards under `quickstart/exampledata/config/grafana/dashboards`
+* add new configuration field `id` for all rules to identify rules in metrics and logs
+  - if no `id` is given, the `id` will be generated in a stable way
+  - add verification of rule `id` uniqueness on processor level over both rule trees to ensure metrics are counted correctly on rule level
+
+### Improvements
+
+* reimplemented prometheus metrics exporter to provide gauges, histograms and counter metrics
+* removed shared counter, because it is redundant to the metrics
+* get exception stack trace by setting environment variable `DEBUG`
+
+### Bugfix
+
 
 ## v7.0.0
 ### Breaking
@@ -43,7 +341,7 @@ and `field_manager` processors
 
 ### Improvements
 
-* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections. 
+* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections.
 It contains the time at which a pre-detection was created by the processor.
 * add `prometheus` and `grafana` to the quickstart setup to support development
 * provide confluent kafka test setup to run tests against a real kafka cluster
@@ -92,7 +390,7 @@ zone only once
 
 ### Improvements
 
-* Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule 
+* Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule
 representation is not present anymore in the predetector output, the name `rule_filter` will stay
 in place of the `lucene_filter` name.
 * 'amides' processor now stores confidence values of processed events in the `amides.confidence` field.
@@ -107,7 +405,7 @@ In case of positive detection results, rule attributions are now inserted in the
 ## v6.5.1
 ### Bugfix
 
-* Fix creation of logprep temp dir 
+* Fix creation of logprep temp dir
 * Fix `dry_runner` to support extra outputs of the `selective_extractor`
 
 ## v6.5.0
@@ -118,7 +416,7 @@ In case of positive detection results, rule attributions are now inserted in the
 
 ### Bugfix
 
-* All temp files will now be stored inside the systems default temp directory 
+* All temp files will now be stored inside the systems default temp directory
 
 ## v6.4.0
 ### Improvements
@@ -144,7 +442,7 @@ grok-pattern compatibility with the normalizer and other grok tools
 notation.
 * Extend timestamper such that it can take multiple source_formats. First format that matches
 will be used, all following formats will be ignored
- 
+
 ### Improvements
 
 * Extend the `FieldManager` such that it can move/copy multiple source fields into multiple targets
@@ -211,7 +509,7 @@ between test cases.
 * Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
 * Add shorthand for converting datatypes to `dissector` dissect pattern language
 * Add support for multiple output connectors
-* Apply processors multiple times until no new rule matches anymore. This enables applying rules on 
+* Apply processors multiple times until no new rule matches anymore. This enables applying rules on
 results of previous rules.
 
 ### Improvements
@@ -271,7 +569,7 @@ events.
 ### Breaking
 
 * Splitting the general `connector` config into `input` and `output` to compose connector config independendly
-* Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
+* Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be
 under the subkey `preprocessing` of the `input` processor
 * Removal of Deprecated Feature: `delete` processor was renamed to `deleter`
 * Rename `writing_output` connector to `jsonl_output`
@@ -333,7 +631,7 @@ under the subkey `preprocessing` of the `input` processor
 
 ### Features
 
-* Normalizer can now write grok failure fields to an event when no grok pattern matches and if 
+* Normalizer can now write grok failure fields to an event when no grok pattern matches and if
 `failure_target_field` is specified in the configuration
 
 ### Bugfixes
@@ -344,26 +642,26 @@ under the subkey `preprocessing` of the `input` processor
 
 ### Features
 
-* Add feature to automatically add version information to all events, configured via the 
+* Add feature to automatically add version information to all events, configured via the
 `connector > consumer > preprocessing` configuration
 * Expose logprep and config version in metric targets
-* Dry-Run accepts now a single json without brackets for input type `json` 
+* Dry-Run accepts now a single json without brackets for input type `json`
 
 ### Improvements
 
-* Move the config hmac options to the new subkey `preprocessing`, maintain backward compatibility, 
+* Move the config hmac options to the new subkey `preprocessing`, maintain backward compatibility,
 but mark old version as deprecated.
-* Make the generic adder write the SQL table to a file and load it from there instead of loading it 
+* Make the generic adder write the SQL table to a file and load it from there instead of loading it
 from the database for every process of the multiprocessing pipeline.
-Furthermore, only connect to the SQL database on checking if the database table has changed and the 
+Furthermore, only connect to the SQL database on checking if the database table has changed and the
 file is stale.
 This reduces the SQL connections.
-Before, there was permanently one connection per multiprocessing pipeline active and now there is 
-only one connection per Logprep instance active when accessing the database. 
+Before, there was permanently one connection per multiprocessing pipeline active and now there is
+only one connection per Logprep instance active when accessing the database.
 
 ### Bugfixes
 
-* Fix SelectiveExtractor output. The internal extracted list wasn't cleared between each event, 
+* Fix SelectiveExtractor output. The internal extracted list wasn't cleared between each event,
 leading to duplication in the output of the processor. Now the events are cleared such that only
 the result of the current event is returned.
 
@@ -377,7 +675,7 @@ the result of the current event is returned.
 
 * Fix performance of the metrics tracking. Due to a store metrics statement at the wrong position
 the logprep performance was dramatically decreased when tracking metrics was activated.
-* Fix Auto Rule Tester which tried to access processor stats that do not exist anymore. 
+* Fix Auto Rule Tester which tried to access processor stats that do not exist anymore.
 
 ## v3.0.0
 
@@ -400,13 +698,13 @@ version if found
 * Fix processor initialization in auto rule tester
 * Fix generation of RST-Docs
 
-### Breaking 
+### Breaking
 
-* Metrics refactoring: 
+* Metrics refactoring:
   * The json output format of the previously known status_logger has changed
   * The configuration key word is now `metrics` instead of `status_logger`
   * The configuration for the time measurement is now part of the metrics configuration
-  * The metrics tracking still includes values about how many warnings and errors happened, but 
+  * The metrics tracking still includes values about how many warnings and errors happened, but
   not of what type. For that the regular logprep logging should be consolidated.
 
 ## v2.0.1
@@ -438,4 +736,3 @@ version if found
 ### Bugfixes
 
 * remove `ujson` dependency because of CVE
-

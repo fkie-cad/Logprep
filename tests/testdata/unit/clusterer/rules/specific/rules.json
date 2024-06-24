@@ -2,7 +2,7 @@
     {
         "filter": "message2",
         "clusterer": {
-            "target": "message",
+            "source_fields": ["message"],
             "pattern": "test (signature) test",
             "repl": "<+>\\1</+>"
         },

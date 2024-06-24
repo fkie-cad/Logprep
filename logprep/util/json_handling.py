@@ -1,9 +1,8 @@
 """ module for json handling helper methods"""
+
 import json
 import os
 from typing import List
-
-from yaml import safe_dump
 
 
 def list_json_files_in_directory(directory: str) -> List[str]:
@@ -32,22 +31,6 @@ def list_json_files_in_directory(directory: str) -> List[str]:
         ]:
             valid_file_paths.append(os.path.join(root, file_name))
     return valid_file_paths
-
-
-def dump_config_as_file(config_path, config):
-    """
-    Saves a config file based on the given config dictionary.
-
-    Parameters
-    ----------
-    config_path: str
-        The path were the File should be saved
-    config: dict
-        The configuration that should be saved
-    """
-
-    with open(config_path, "w", encoding="utf8") as generated_config_file:
-        safe_dump(config, generated_config_file)
 
 
 def parse_jsonl(jsonl_path):

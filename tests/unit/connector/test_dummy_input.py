@@ -5,7 +5,7 @@ import copy
 
 from pytest import raises
 
-from logprep.abc.input import SourceDisconnectedError
+from logprep.abc.input import SourceDisconnectedWarning
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
@@ -20,7 +20,7 @@ class TestDummyInput(BaseInputTestCase):
     CONFIG = {"type": "dummy_input", "documents": []}
 
     def test_fails_with_disconnected_error_if_input_was_empty(self):
-        with raises(SourceDisconnectedError):
+        with raises(SourceDisconnectedWarning):
             self.object.get_next(self.timeout)
 
     def test_returns_documents_in_order_provided(self):
@@ -46,9 +46,9 @@ class TestDummyInput(BaseInputTestCase):
     def test_repeat_documents_repeats_documents(self):
         config = copy.deepcopy(self.CONFIG)
         config["repeat_documents"] = True
-        object = Factory.create(configuration={"Test Instance Name": config}, logger=self.logger)
-        object._config.documents = [{"order": 0}, {"order": 1}, {"order": 2}]
+        connector = Factory.create(configuration={"Test Instance Name": config})
+        connector._config.documents = [{"order": 0}, {"order": 1}, {"order": 2}]
 
         for order in range(0, 9):
-            event, _ = object.get_next(self.timeout)
+            event, _ = connector.get_next(self.timeout)
             assert event.get("order") == order % 3

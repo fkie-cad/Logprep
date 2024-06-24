@@ -24,18 +24,18 @@ Processor Configuration
 
 .. automodule:: logprep.processor.timestamp_differ.rule
 """
+
 from datetime import datetime
 from functools import reduce
 from typing import Union
 
-from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
-from logprep.util.helper import add_field_to, get_source_fields_dict
+from logprep.util.helper import get_source_fields_dict
 from logprep.util.time import TimeParser, TimeParserException, UTC
 
 
-class TimestampDiffer(Processor):
+class TimestampDiffer(FieldManager):
     """A processor that calculates the time difference between two timestamps"""
 
     rule_class = TimestampDifferRule
@@ -43,6 +43,8 @@ class TimestampDiffer(Processor):
     def _apply_rules(self, event, rule):
         source_field_formats = rule.source_field_formats
         source_field_dict = get_source_fields_dict(event, rule)
+        if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
+            return
         if self._has_missing_values(event, rule, source_field_dict):
             return
         diff = None
@@ -59,15 +61,7 @@ class TimestampDiffer(Processor):
 
         if diff is not None:
             diff = self._apply_output_format(diff, rule)
-            add_successful = add_field_to(
-                event,
-                output_field=rule.target_field,
-                content=diff,
-                extends_lists=rule.extend_target_list,
-                overwrite_output_field=rule.overwrite_target,
-            )
-            if not add_successful:
-                raise FieldExistsWarning(self, rule, event, [rule.target_field])
+            self._write_target_field(event, rule, diff)
 
     @staticmethod
     def _create_timestamp_object(source: Union[str, int], format_str: str) -> datetime:

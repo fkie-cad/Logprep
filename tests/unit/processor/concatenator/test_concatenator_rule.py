@@ -220,7 +220,7 @@ class TestConcatenatorRule:
                     },
                 },
                 ValueError,
-                "Length of 'source_fields' must be => 2: 1",
+                "Length of 'source_fields' must be >= 2: 1",
             ),
             (
                 {

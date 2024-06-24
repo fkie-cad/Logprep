@@ -7,22 +7,18 @@ behavior, allowing a simpler construction of the rule tree.
 
 from typing import TYPE_CHECKING
 
-from logprep.filter.expression.filter_expression import (
-    Always,
-    Exists,
-    Not,
-)
-
+from logprep.abc.exceptions import LogprepException
+from logprep.filter.expression.filter_expression import Always, Exists, Not
 from logprep.framework.rule_tree.demorgan_resolver import DeMorganResolver
+from logprep.framework.rule_tree.rule_segmenter import RuleSegmenter
 from logprep.framework.rule_tree.rule_sorter import RuleSorter
 from logprep.framework.rule_tree.rule_tagger import RuleTagger
-from logprep.framework.rule_tree.rule_segmenter import RuleSegmenter
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule
 
 
-class RuleParserException(Exception):
+class RuleParserException(LogprepException):
     """Raise if rule parser encounters a problem."""
 
 
@@ -106,7 +102,6 @@ class RuleParser:
         RuleSorter.sort_rule_segments(dnf_rule_segments, priority_dict)
         self._add_exists_filter(dnf_rule_segments)
         self._rule_tagger.add(dnf_rule_segments)
-
         return dnf_rule_segments
 
     @staticmethod
@@ -127,16 +122,13 @@ class RuleParser:
         """
         for parsed_rule in parsed_rules:
             temp_parsed_rule = parsed_rule.copy()
-            skipped_counter = 0
-
-            for segment_index, segment in enumerate(temp_parsed_rule):
+            added_exists_filter_count = 0
+            for segment_idx, segment in enumerate(temp_parsed_rule):
                 if isinstance(segment, (Exists, Not, Always)):
-                    skipped_counter += 1
                     continue
 
                 exists_filter = Exists(segment.key)
                 if exists_filter in parsed_rule:
-                    skipped_counter += 1
                     continue
-
-                parsed_rule.insert(segment_index * 2 - skipped_counter, exists_filter)
+                parsed_rule.insert(segment_idx + added_exists_filter_count, exists_filter)
+                added_exists_filter_count += 1

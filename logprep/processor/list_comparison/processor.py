@@ -27,7 +27,6 @@ Processor Configuration
 
 .. automodule:: logprep.processor.list_comparison.rule
 """
-from logging import Logger
 
 from attr import define, field, validators
 
@@ -60,11 +59,8 @@ class ListComparison(Processor):
 
     rule_class = ListComparisonRule
 
-    def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
-        self.setup()
-
     def setup(self):
+        super().setup()
         for rule in [*self._specific_rules, *self._generic_rules]:
             rule.init_list_comparison(self._config.list_search_base_path)
 
@@ -88,9 +84,9 @@ class ListComparison(Processor):
 
         if comparison_result is not None:
             output_field = f"{ rule.target_field }.{ comparison_key }"
-            field_possible = add_field_to(event, output_field, comparison_result, True)
-            if not field_possible:
-                raise FieldExistsWarning(self, rule, event, [output_field])
+            add_successful = add_field_to(event, output_field, comparison_result, True)
+            if not add_successful:
+                raise FieldExistsWarning(rule, event, [output_field])
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict):
         """

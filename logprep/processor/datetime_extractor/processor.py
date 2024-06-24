@@ -28,20 +28,13 @@ Processor Configuration
 
 from datetime import datetime
 
-from logprep.abc.processor import Processor
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 
 
-class DateTimeExtractorError(BaseException):
-    """Base class for DateTimeExtractor related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"DateTimeExtractor ({name}): {message}")
-
-
-class DatetimeExtractor(Processor):
+class DatetimeExtractor(FieldManager):
     """Split timestamps into fields containing their parts."""
 
     _local_timezone_name: str
@@ -60,7 +53,10 @@ class DatetimeExtractor(Processor):
         datetime_field = rule.source_fields[0]
         destination_field = rule.target_field
 
-        if destination_field and self._field_exists(event, datetime_field):
+        if self._handle_missing_fields(event, rule, rule.source_fields, [datetime_field]):
+            return
+
+        if destination_field:
             datetime_value = get_dotted_field_value(event, datetime_field)
 
             parsed_timestamp = TimeParser.from_string(datetime_value)

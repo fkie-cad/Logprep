@@ -24,33 +24,38 @@ Processor Configuration
 
 .. automodule:: logprep.processor.calculator.rule
 """
+
 import re
 from functools import cached_property
 
 from pyparsing import ParseException
 
-from logprep.abc.processor import Processor
 from logprep.processor.calculator.fourFn import BNF
 from logprep.processor.calculator.rule import CalculatorRule
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.decorators import timeout
 from logprep.util.helper import get_source_fields_dict
 
 
-class Calculator(Processor):
+class Calculator(FieldManager):
     """A Processor to calculate with and without field values"""
 
     rule_class = CalculatorRule
 
     def _apply_rules(self, event, rule):
         source_field_dict = get_source_fields_dict(event, rule)
-        if not self._has_missing_values(event, rule, source_field_dict):
-            expression = self._template(rule.calc, source_field_dict)
-            try:
-                result = self._calculate(event, rule, expression)
-                if result is not None:
-                    self._write_target_field(event, rule, result)
-            except TimeoutError as error:
-                self._handle_warning_error(event, rule, error)
+        if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
+            return
+        if self._has_missing_values(event, rule, source_field_dict):
+            return
+
+        expression = self._template(rule.calc, source_field_dict)
+        try:
+            result = self._calculate(event, rule, expression)
+            if result is not None:
+                self._write_target_field(event, rule, result)
+        except TimeoutError as error:
+            self._handle_warning_error(event, rule, error)
 
     @cached_property
     def bnf(self) -> BNF:

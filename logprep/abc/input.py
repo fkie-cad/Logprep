@@ -9,21 +9,26 @@ import zlib
 from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
+from logprep.abc.exceptions import LogprepException
+from logprep.metrics.metrics import Metric
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser
-from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import dict_structure_validator
 
+if TYPE_CHECKING:  # pragma: no cover
+    from logprep.abc.output import Output
 
-class InputError(BaseException):
+
+class InputError(LogprepException):
     """Base class for Input related exceptions."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
+        input_connector.metrics.number_of_errors += 1
         super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
 
 
@@ -32,7 +37,6 @@ class CriticalInputError(InputError):
 
     def __init__(self, input_connector: "Input", message, raw_input):
         self.raw_input = raw_input
-        input_connector.metrics.number_of_errors += 1
         super().__init__(input_connector, f"{message} -> {raw_input}")
 
 
@@ -43,29 +47,17 @@ class CriticalInputParsingError(CriticalInputError):
 class FatalInputError(InputError):
     """Must not be catched."""
 
-    def __init__(self, input_connector: "Input", message: str) -> None:
-        input_connector.metrics.number_of_errors += 1
-        super().__init__(input_connector, message)
 
-
-class WarningInputError(InputError):
+class InputWarning(LogprepException):
     """May be catched but must be displayed to the user/logged."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
         input_connector.metrics.number_of_warnings += 1
-        super().__init__(input_connector, message)
+        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
 
 
-class SourceDisconnectedError(WarningInputError):
+class SourceDisconnectedWarning(InputWarning):
     """Lost (or failed to establish) contact with the source."""
-
-    def __init__(self, input_connector: "Input", message: str) -> None:
-        input_connector.metrics.number_of_errors += 1
-        super().__init__(input_connector, message)
-
-
-class InfoInputError(InputError):
-    """Informational exceptions, e.g. to inform that a timeout occurred"""
 
 
 @define(kw_only=True)
@@ -192,7 +184,8 @@ class Input(Connector):
         )
 
     pipeline_index: int
-    __slots__ = ["pipeline_index"]
+    output_connector: Optional["Output"]
+    __slots__ = ["pipeline_index", "output_connector"]
 
     @property
     def _add_hmac(self):
@@ -220,6 +213,16 @@ class Input(Connector):
             self._config.preprocessing.get("log_arrival_timedelta")
         )
         return log_arrival_time_target_field_present & log_arrival_timedelta_present
+
+    @property
+    def metric_labels(self) -> dict:
+        """Return the metric labels for this component."""
+        return {
+            "component": "input",
+            "description": self.describe(),
+            "type": self._config.type,
+            "name": self.name,
+        }
 
     @property
     def _add_env_enrichment(self):
@@ -255,7 +258,7 @@ class Input(Connector):
         (event, raw_event)
         """
 
-    @TimeMeasurement.measure_time()
+    @Metric.measure_time()
     def get_next(self, timeout: float) -> Tuple[Optional[dict], Optional[str]]:
         """Return the next document
 
@@ -278,6 +281,7 @@ class Input(Connector):
         non_critical_error_msg = None
         if event is None:
             return None, None
+        self.metrics.number_of_processed_events += 1
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
         if self._add_hmac:
@@ -290,7 +294,6 @@ class Input(Connector):
             self._add_arrival_timedelta_information_to_event(event)
         if self._add_env_enrichment:
             self._add_env_enrichment_to_event(event)
-        self.metrics.number_of_processed_events += 1
         return event, non_critical_error_msg
 
     def batch_finished_callback(self):

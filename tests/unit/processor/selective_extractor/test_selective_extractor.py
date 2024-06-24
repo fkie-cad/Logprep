@@ -15,7 +15,6 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
     }
 
     def test_selective_extractor_does_not_change_orig_doc(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"user": "test_user", "other": "field"}
         exp_document = {"user": "test_user", "other": "field"}
 
@@ -45,7 +44,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         document = {field_name: "the value"}
         tuple_list = self.object.process(document)
         for filtered_event, _ in tuple_list:
-            if field_name in filtered_event[0]:
+            if field_name in filtered_event:
                 break
         else:
             assert False
@@ -92,7 +91,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         result = self.object.process(document)
         for filtered_event, *_ in result:
-            if filtered_event[0] == {"message": "test_message"}:
+            if filtered_event == {"message": "test_message"}:
                 break
         else:
             assert False
@@ -130,7 +129,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         result = self.object.process(document)
 
         for extracted_event, *_ in result:
-            if extracted_event[0].get("other", {}).get("message") is not None:
+            if extracted_event.get("other", {}).get("message") is not None:
                 break
         else:
             assert False, f"other.message not in {result}"

@@ -8,6 +8,6 @@ User Manual
    introduction
    execution
    verification
-   validation
    testing_rules
    configuration/index
+   security_best_practices

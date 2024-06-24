@@ -151,7 +151,6 @@ class TestAutoRuleTester:
             "generic_rules": ["tests/testdata/unit/pseudonymizer/rules/generic/"],
             "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
             "max_cached_pseudonyms": 1000000,
-            "max_caching_days": 1,
         }
         mock_replace_regex_keywords_by_regex_expression.assert_not_called()
         processor = auto_rule_tester._get_processor_instance(
@@ -160,9 +159,8 @@ class TestAutoRuleTester:
         auto_rule_tester._reset_trees(
             processor
         )  # Called every time by auto tester before adding rules
-        mock_replace_regex_keywords_by_regex_expression.assert_called_once()
         auto_rule_tester._load_rules(processor, "specific_rules")
-        assert mock_replace_regex_keywords_by_regex_expression.call_count == 2
+        assert mock_replace_regex_keywords_by_regex_expression.call_count == 1
 
     @mock.patch("logprep.processor.list_comparison.processor.ListComparison.setup")
     def test_list_comparison_specific_setup_called_on_load_rules(
@@ -182,9 +180,8 @@ class TestAutoRuleTester:
         auto_rule_tester._reset_trees(
             processor
         )  # Called every time by auto tester before adding rules instead
-        mock_setup.assert_called_once()
         auto_rule_tester._load_rules(processor, "specific_rules")
-        assert mock_setup.call_count == 2
+        mock_setup.assert_called_once()
 
     def test_full_auto_rule_test_run(self, auto_rule_tester, capsys):
         with pytest.raises(SystemExit):

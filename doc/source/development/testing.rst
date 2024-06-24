@@ -5,32 +5,19 @@ Testing
 Executing Tests
 ===============
 
-For testing `tox` is being used.
+For testing `pytest` is being used. It is installed with the `requirements_dev.txt` file.
 
-`Tox` can be installed via the following command:
-
-..  code-block:: bash
-
-    python3 -m pip install tox
-
-By executing :code:`tox` in the root directory of the project a virtual test environment is created in which tests are being executed.
-
-Various test environments have been defined for `tox` that offer additional functionality.
-An overview can be obtained via :code:`tox -av`.
-
-Specific test environments can be executed via :code:`tox -e [name of the test environment]`.
-
-**Example:** Acceptance-Tests can be executed with the following command:
+Run acceptance tests with:
 
 ..  code-block:: bash
 
-    tox -e acceptance
+    pytest tests/acceptance --cov=logprep --cov-report=xml -vvv
 
-If something changes in the dependencies, the test environment must be recreated by adding the parameter `-r`.
+or unittests with:
 
 ..  code-block:: bash
 
-    tox -e acceptance -r
+    pytest tests/unit --cov=logprep --cov-report=xml -vvv
 
 Log Messages
 ============

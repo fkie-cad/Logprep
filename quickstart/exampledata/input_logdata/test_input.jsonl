@@ -1,7 +1,0 @@
-{"test_label": "execute", "something": "test"}
-{"test_dropper": "test", "keep_me": "keep_test", "something": "test", "drop_me": "test"}
-{"test_normalizer": "test", "something": "normalize_me"}
-{"test_normalizer": "test", "something_special": "normalize_me"}
-{"test_pseudonymizer": "test", "something": "pseudonymize_me"}
-{"test_pseudonymizer": "test", "something_special": "pseudonymize_me"}
-{"test_pre_detector": "test", "something": "test"}

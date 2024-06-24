@@ -5,6 +5,16 @@ Requester
 A processor to invoke http requests. Can be used to enrich events from an external api or
 to trigger external systems by and with event field values.
 
+.. security-best-practice::
+   :title: Processor - Requester
+
+   As the `requester` can execute arbitrary http requests it is advised to execute requests only
+   against known and trusted endpoints and that the communication is protected with a valid
+   SSL-Certificate. Do so by setting a certificate path with the option :code:`cert`.
+   To ensure that the communication is trusted it is also recommended to set either an
+   :code:`Authorization`-Header or a corresponding authentication with a username and password, via
+   :code:`auth`.
+
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
@@ -25,13 +35,14 @@ Processor Configuration
 
 .. automodule:: logprep.processor.requester.rule
 """
+
 import json
 import re
 
 import requests
 
-from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.requester.rule import RequesterRule
 from logprep.util.helper import (
     add_field_to,
@@ -42,7 +53,7 @@ from logprep.util.helper import (
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
 
-class Requester(Processor):
+class Requester(FieldManager):
     """A processor to invoke http requests with field data
     and parses response data to field values"""
 
@@ -50,6 +61,8 @@ class Requester(Processor):
 
     def _apply_rules(self, event, rule):
         source_field_dict = get_source_fields_dict(event, rule)
+        if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
+            return
         if self._has_missing_values(event, rule, source_field_dict):
             return
         kwargs = self._template_kwargs(rule.kwargs, source_field_dict)
@@ -84,7 +97,7 @@ class Requester(Processor):
                 if not successful:
                     conflicting_fields.append(rule.target_field)
         if conflicting_fields:
-            raise FieldExistsWarning(self, rule, event, [rule.target_field])
+            raise FieldExistsWarning(rule, event, [rule.target_field])
 
     def _request(self, event, rule, kwargs):
         try:

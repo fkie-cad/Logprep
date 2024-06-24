@@ -1,0 +1,15 @@
+logging_level: DEBUG
+
+source_count: 5
+count: 400000
+process_count: 2
+
+kafka:
+  bootstrap_servers:
+    - localhost:9092
+  consumer:
+    topic: consumer
+    group_id: load-tester
+  producer:
+    acks: 0
+    topic: load-tester

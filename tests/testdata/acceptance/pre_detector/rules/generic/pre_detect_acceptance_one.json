@@ -1,0 +1,24 @@
+[{
+  "filter": "winlog.provider_name: \"Service Control Manager\"",
+  "pre_detector": {
+    "id": "886a07aa-4c72-4fcb-a74a-b494443b3efd",
+    "title": "RULE_ONE",
+    "severity": "critical",
+    "mitre": ["mitre1", "mitre2"],
+    "case_condition": "directly"
+  },
+  "sigma_fields": true,
+  "description": ""
+},
+{
+  "filter": "winlog.event_id: 123",
+  "pre_detector": {
+    "id": "c46b8c22-41f5-4c45-b1a0-3fbe3a5c186d",
+    "title": "RULE_TWO",
+    "severity": "critical",
+    "mitre": ["mitre2", "mitre3"],
+    "case_condition": "directly"
+  },
+  "sigma_fields": true,
+  "description": ""
+}]

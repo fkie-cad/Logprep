@@ -2,7 +2,7 @@
   {
     "filter": "winlog.user.identifier",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "winlog.user.identifier": "RE_WHOLE_FIELD"
       }
     },

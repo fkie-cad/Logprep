@@ -1,6 +1,15 @@
 process_count: 1
 timeout: 0.1
 
+input:
+  autorule_input:
+    type: dummy_input
+    documents: []
+
+output:
+  dummy_output:
+    type: dummy_output
+
 pipeline:
   - labelername:
       type: labeler
@@ -29,7 +38,7 @@ pipeline:
       generic_rules:
         - tests/testdata/auto_tests/pre_detector/rules/generic/
       outputs:
-        - jsonl: sre
+        - dummy_output: sre
   - pseudonymizer:
       type: pseudonymizer
       pubkey_analyst: tests/testdata/auto_tests/pseudonymizer/example_analyst_pub.pem
@@ -37,13 +46,12 @@ pipeline:
       regex_mapping: tests/testdata/auto_tests/pseudonymizer/regex_mapping.yml
       hash_salt: a_secret_tasty_ingredient
       outputs:
-        - jsonl: pseudonyms
+        - dummy_output: pseudonyms
       specific_rules:
         - tests/testdata/auto_tests/pseudonymizer/rules/generic/
       generic_rules:
         - tests/testdata/auto_tests/pseudonymizer/rules/specific/
       max_cached_pseudonyms: 1000000
-      max_caching_days: 1
   - templatereplacername:
       type: template_replacer
       specific_rules:

@@ -2,6 +2,7 @@
 
 from typing import Union
 
+from logprep.abc.exceptions import LogprepException
 from logprep.filter.expression.filter_expression import (
     And,
     CompoundFilterExpression,
@@ -11,7 +12,7 @@ from logprep.filter.expression.filter_expression import (
 )
 
 
-class RuleSegmenterException(Exception):
+class RuleSegmenterException(LogprepException):
     """Raise if rule segmenter encounters a problem."""
 
 
@@ -191,10 +192,9 @@ class RuleSegmenter:
 class CnfToDnfConverter:
     """Converts simplified rules from the conjunctive normal form to the disjunctive normal form"""
 
-    @staticmethod
-    def convert_cnf_to_dnf(cnf: list):
+    @classmethod
+    def convert_cnf_to_dnf(cls, cnf: list) -> list:
         """Convert rule from conjunctive normal form into disjunctive normal form.
-
 
         This function handles the parsing of OR-subexpressions in AND-expression filters in a
         recursive manner.
@@ -214,22 +214,27 @@ class CnfToDnfConverter:
         result_list: list
             Given input list with resolved OR-subexpressions.
 
+        Raises
+        ------
+        RuleSegmenterException
+            Raises if converting the rule requires too much time, since the complexity of the
+            transformation to the disjunctive normal form is exponential.
+
         """
         dnf = []
+        or_segments = CnfToDnfConverter._pop_disjunctive_segment(cnf)
+        CnfToDnfConverter._resolve_disjunctive_segment(or_segments, cnf, dnf)
+        dnf_len = range(len(dnf))
+        for idx in dnf_len:
+            parsed_expression = dnf[idx]
+            if any(isinstance(segment, list) for segment in parsed_expression):
+                if parsed_expression in dnf:
+                    dnf[idx] = None
+                resolved_expressions = CnfToDnfConverter.convert_cnf_to_dnf(parsed_expression)
 
-        or_segment = CnfToDnfConverter._pop_disjunctive_segment(cnf)
-
-        CnfToDnfConverter._resolve_disjunctive_segment(or_segment, cnf, dnf)
-
-        for parsed_expression in dnf.copy():
-            for segment in parsed_expression:
-                if isinstance(segment, list):
-                    if parsed_expression in dnf:
-                        dnf.remove(parsed_expression)
-                    resolved_expressions = CnfToDnfConverter.convert_cnf_to_dnf(parsed_expression)
-
-                    for resolved_expression in resolved_expressions:
-                        dnf.append(resolved_expression)
+                for resolved_expression in resolved_expressions:
+                    dnf.append(resolved_expression)
+        dnf = [item for item in dnf if item is not None]
         return dnf
 
     @staticmethod

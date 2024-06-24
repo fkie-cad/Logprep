@@ -1,14 +1,16 @@
 """Module implements functionality to apply De Morgan's law on rule filter expressions"""
+
+from logprep.abc.exceptions import LogprepException
 from logprep.filter.expression.filter_expression import (
-    Not,
     And,
-    Or,
-    FilterExpression,
     CompoundFilterExpression,
+    FilterExpression,
+    Not,
+    Or,
 )
 
 
-class DeMorganResolverException(Exception):
+class DeMorganResolverException(LogprepException):
     """Raise if demorgan resolver encounters a problem."""
 
 

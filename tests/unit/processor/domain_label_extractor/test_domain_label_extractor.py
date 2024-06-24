@@ -12,7 +12,6 @@ from pathlib import Path
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -31,16 +30,6 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
     @property
     def specific_rules_dirs(self):
         return self.CONFIG.get("specific_rules")
-
-    def test_events_processed_count(self):
-        assert self.object.metrics.number_of_processed_events == 0
-        document = {"foo": "bar"}
-        for i in range(1, 11):
-            try:
-                self.object.process(document)
-            except ProcessingWarning:
-                pass
-            assert self.object.metrics.number_of_processed_events == i
 
     def test_domain_extraction_from_full_url(self):
         document = {"url": {"domain": "https://url.full.domain.de/path/file?param=1"}}
@@ -192,7 +181,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = Factory.create(configuration=config, logger=self.logger)
+        domain_label_extractor = Factory.create(configuration=config)
         document = {"url": {"domain": "domain.fubarbo"}}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
@@ -213,7 +202,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = Factory.create(config, self.logger)
+        domain_label_extractor = Factory.create(config)
         document = {"url": {"domain": "domain.fubarbo"}, "special_tags": ["source"]}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
@@ -309,7 +298,10 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
 
     def test_does_nothing_if_source_field_not_exits(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-        expected = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
+        expected = {
+            "url": {"domain": "test.domain.de", "subdomain": "exists already"},
+            "tags": ["_domain_label_extractor_missing_field_warning"],
+        }
         rule_dict = {
             "filter": "url",
             "domain_label_extractor": {

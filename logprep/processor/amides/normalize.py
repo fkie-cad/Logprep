@@ -1,14 +1,16 @@
 """This module enables command line normalization of incoming command lines."""
+
 from typing import List
+
 from logprep.processor.amides.features import (
-    Preprocessor,
-    Lowercase,
-    FilterDummyCharacters,
-    Tokenizer,
     AnyWordCharacter,
-    TokenFilter,
-    Strings,
+    FilterDummyCharacters,
+    Lowercase,
     NumericValues,
+    Preprocessor,
+    Strings,
+    TokenFilter,
+    Tokenizer,
 )
 
 
@@ -34,7 +36,7 @@ class CommandLineNormalizer:
     def normalize(self, cmdline: str) -> str:
         """Normalize given cmdline-string by
         (1) Removing dummy characters
-        (2) Spliting string into any-word-character tokens
+        (2) Splitting string into any-word-character tokens
         (3) Removing tokens longer than 30 characters and
         (hex-) numerical values longer than 3 characters.
 

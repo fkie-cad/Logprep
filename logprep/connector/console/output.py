@@ -14,6 +14,7 @@ Example
       my_console_output:
         type: console_output
 """
+
 import sys
 from pprint import pprint
 
@@ -30,7 +31,9 @@ class ConsoleOutput(Output):
             self.input_connector.batch_finished_callback()
 
     def store_custom(self, document: dict, target: str):
+        self.metrics.number_of_processed_events += 1
         pprint(document, stream=getattr(sys, target))
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+        self.metrics.number_of_failed_events += 1
         pprint(f"{error_message}: {document_received}, {document_processed}", stream=sys.stderr)

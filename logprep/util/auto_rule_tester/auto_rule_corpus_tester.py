@@ -11,7 +11,7 @@ To start the tester call:
 ..  code-block:: bash
     :caption: Run rule corpus test
 
-    logprep $CONFIG --auto-corpus-test --corpus-testdata $CORPUS_TEST_DATA
+    logprep test integration $CONFIG $CORPUS_TEST_DATA
 
 Where in the parameter :code:`CONFIG` should point to a valid logprep configuration and
 :code:`CORPUS_TEST_DATA` to a directory containing the test data with the different test cases.
@@ -91,12 +91,11 @@ import sys
 import tempfile
 from functools import cached_property
 from json import JSONDecodeError
-from logging import getLogger
 from pathlib import Path
 from pprint import pprint
 from typing import List
 
-from attr import define, validators, field, Factory
+from attr import Factory, define, field, validators
 from colorama import Fore, Style
 from deepdiff import DeepDiff, grep
 
@@ -104,6 +103,8 @@ from logprep.framework.pipeline import Pipeline
 from logprep.util.configuration import Configuration
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.json_handling import parse_json
+
+logger = logging.getLogger("corpustester")
 
 
 def align_extra_output_formats(extra_outputs):
@@ -119,7 +120,7 @@ def align_extra_output_formats(extra_outputs):
                 reformatted_extra_outputs.append({str(target): document})
         else:
             for output in extra_output:
-                reformatted_extra_outputs.append({str(output[1]): output[0][0]})
+                reformatted_extra_outputs.append({str(output[1]): output[0]})
     return reformatted_extra_outputs
 
 
@@ -129,7 +130,7 @@ class RuleCorpusTester:
     _tmp_dir: str
     """ Temporary directory where test files will be saved temporarily """
 
-    _original_config_path: str
+    _original_config_paths: tuple[str]
     """ Path to the original configuration that should be tested """
 
     _input_test_data_path: str
@@ -147,12 +148,6 @@ class RuleCorpusTester:
         generated_extra_output: dict = field(validator=validators.instance_of(list), default=[])
         failed: bool = field(validator=validators.instance_of(bool), default=False)
         report: List = Factory(list)
-        warnings: str = field(default="")
-
-    def __init__(self, config_path, input_test_data_path):
-        self._original_config_path = config_path
-        self._input_test_data_path = input_test_data_path
-        self.log_capture_string = None
 
     @cached_property
     def _tmp_dir(self):
@@ -174,30 +169,29 @@ class RuleCorpusTester:
         return dict(sorted(test_cases.items()))
 
     @cached_property
-    def _logprep_logger(self):
-        logprep_logger = getLogger("logprep-rule-corpus-tester")
-        logprep_logger.propagate = False
-        logprep_logger.setLevel(logging.WARNING)
-        self.log_capture_string = io.StringIO()
-        self.stream_handler = logging.StreamHandler(self.log_capture_string)
-        self.stream_handler.setLevel(logging.WARNING)
-        logprep_logger.addHandler(self.stream_handler)
-        return logprep_logger
-
-    @cached_property
     def _pipeline(self):
         merged_input_file_path = Path(self._tmp_dir) / "input.json"
         inputs = [test_case.input_document for test_case in self._test_cases.values()]
         merged_input_file_path.write_text(json.dumps(inputs), encoding="utf8")
-        path_to_patched_config = Configuration.patch_yaml_with_json_connectors(
-            self._original_config_path, self._tmp_dir, str(merged_input_file_path)
-        )
-        config = Configuration.create_from_yaml(path_to_patched_config)
-        config.verify_pipeline_without_processor_outputs(getLogger("logprep"))
-        del config["output"]
-        pipeline = Pipeline(config=config)
-        pipeline.logger = self._logprep_logger
+        patched_config = Configuration()
+        patched_config.input = {
+            "patched_input": {"type": "json_input", "documents_path": str(merged_input_file_path)}
+        }
+        config = Configuration.from_sources(self._original_config_paths)
+        input_config = config.input
+        connector_name = list(input_config.keys())[0]
+        if "preprocessing" in input_config[connector_name]:
+            patched_config.input["patched_input"] |= {
+                "preprocessing": input_config[connector_name]["preprocessing"]
+            }
+        patched_config.pipeline = config.pipeline
+        pipeline = Pipeline(config=patched_config)
         return pipeline
+
+    def __init__(self, config_paths: tuple[str], input_test_data_path: str):
+        self._original_config_paths = config_paths
+        self._input_test_data_path = input_test_data_path
+        self.log_capture_string = sys.stdout
 
     def run(self):
         """
@@ -223,23 +217,12 @@ class RuleCorpusTester:
         for test_case_id, test_case in self._test_cases.items():
             _ = [processor.setup() for processor in self._pipeline._pipeline]
             parsed_event, extra_outputs = self._pipeline.process_pipeline()
-            test_case.warnings = self._retrieve_log_capture()
             extra_outputs = align_extra_output_formats(extra_outputs)
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
             self._compare_logprep_outputs(test_case_id, parsed_event)
             self._compare_extra_data_output(test_case_id, extra_outputs)
             self._print_pass_fail_statements(test_case_id)
-
-    def _retrieve_log_capture(self):
-        log_capture = self.log_capture_string.getvalue()
-        # set new log_capture to clear previous entries
-        self.log_capture_string = io.StringIO()
-        self.stream_handler = logging.StreamHandler(self.log_capture_string)
-        self.stream_handler.setLevel(logging.WARNING)
-        self._logprep_logger.handlers.clear()
-        self._logprep_logger.addHandler(self.stream_handler)
-        return log_capture
 
     def _compare_logprep_outputs(self, test_case_id, logprep_output):
         test_case = self._test_cases.get(test_case_id, {})
@@ -347,9 +330,6 @@ class RuleCorpusTester:
             status = f"{Style.BRIGHT}{Fore.RESET} SKIPPED - (no expected output given)"
         elif len(test_case.report) > 0:
             status = f"{Style.BRIGHT}{Fore.RED} FAILED"
-        elif test_case.warnings:
-            status = f"{Style.BRIGHT}{Fore.YELLOW} PASSED - (with warnings)"
-
         print(f"{Fore.BLUE} Test Case: {Fore.CYAN}{test_case_id} {status}{Style.RESET_ALL}")
 
     def _print_test_reports(self):
@@ -357,7 +337,7 @@ class RuleCorpusTester:
             return
         print(Style.BRIGHT + "# Test Cases Detailed Reports:" + Style.RESET_ALL)
         for test_case_id, test_case in self._test_cases.items():
-            if (test_case.warnings or test_case.report) and test_case.expected_output:
+            if test_case.report and test_case.expected_output:
                 self._print_long_test_result(test_case_id, test_case)
                 print()
 
@@ -365,13 +345,6 @@ class RuleCorpusTester:
         report_title = f"test report for '{test_case_id}'"
         print(f"{Fore.RED}{Style.BRIGHT}↓ {report_title} ↓ {Style.RESET_ALL}")
         print_logprep_output = True
-        if test_case.warnings and not test_case.report:
-            print(Fore.GREEN + "Test passed, but with following warnings:" + Fore.RESET)
-            print(test_case.warnings)
-            print_logprep_output = False
-        if test_case.warnings and test_case.report:
-            print(Fore.RED + "Logprep Warnings:" + Fore.RESET)
-            print(test_case.warnings)
         for statement in test_case.report:
             if isinstance(statement, (dict, list)):
                 pprint(statement)

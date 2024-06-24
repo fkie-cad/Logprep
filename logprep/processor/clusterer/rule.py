@@ -105,20 +105,29 @@ from typing import Pattern
 
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule
+from logprep.processor.field_manager.rule import FieldManagerRule
 
 
-class ClustererRule(Rule):
+class ClustererRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(FieldManagerRule.Config):
         """RuleConfig for Clusterer"""
 
-        target: str = field(validator=validators.instance_of(str))
-        """Defines which field should be used for clustering."""
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.max_len(1),
+            ],
+            default=["message"],
+        )
+        """The field from where to get the value which should be clustered."""
+        overwrite_target: bool = field(validator=validators.instance_of(bool), default=True)
+        """Overwrite the target field value if exists. Defaults to :code:`True`"""
         pattern: Pattern = field(validator=validators.instance_of(Pattern), converter=re.compile)
-        """Defines the regex pattern that will be matched on the :code:`clusterer.target`."""
+        """Defines the regex pattern that will be matched on the :code:`clusterer.source_fields`."""
         repl: str = field(validator=validators.instance_of(str))
         """Anything within a capture group in :code:`clusterer.pattern` will be substituted with
         values defined in :code:`clusterer.repl`.

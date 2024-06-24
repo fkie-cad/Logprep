@@ -97,9 +97,11 @@ class GrokPatternLoader:
     @staticmethod
     def _update_pattern(grok_pattern_dict) -> dict:
         return {
-            grok: pattern.replace(non_supported_regex, supported_regex)
-            if non_supported_regex in pattern
-            else pattern
+            grok: (
+                pattern.replace(non_supported_regex, supported_regex)
+                if non_supported_regex in pattern
+                else pattern
+            )
             for grok, pattern in grok_pattern_dict.items()
             for non_supported_regex, supported_regex in PATTERN_CONVERSION
         }

@@ -33,8 +33,11 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def specific_rules_dirs(self):
         return self.CONFIG.get("specific_rules")
 
+    def setup_method(self):
+        super().setup_method()
+        self.object.setup()
+
     def test_replace_message_via_template(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "message": "foo",
@@ -46,7 +49,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         assert document["message"] == "Test %1 Test %2"
 
     def test_replace_non_existing_message_via_template(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
 
         self.object.process(document)
@@ -55,7 +57,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         assert document["message"] == "Test %1 Test %2"
 
     def test_replace_with_additional_hyphen(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test-Test", "event_id": 123},
             "message": "foo",
@@ -67,8 +68,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         assert document["message"] == "Test %1 Test %2 Test %3"
 
     def test_replace_fails_because_it_does_not_map_to_anything(self):
-        assert self.object.metrics.number_of_processed_events == 0
-
         document = {
             "winlog": {"channel": "System", "provider_name": "Test-Test", "event_id": 923},
             "message": "foo",
@@ -86,14 +85,13 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
+        template_replacer = self._create_template_replacer(config)
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"message": "foo"},
         }
 
-        self.object.process(document)
+        template_replacer.process(document)
 
         assert document.get("dotted")
         assert document["dotted"].get("message")
@@ -102,11 +100,10 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_non_existing_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
+        template_replacer = self._create_template_replacer(config)
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
 
-        self.object.process(document)
+        template_replacer.process(document)
 
         assert document.get("dotted")
         assert document["dotted"].get("message")
@@ -115,14 +112,13 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_partly_existing_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
+        template_replacer = self._create_template_replacer(config)
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"bar": "foo"},
         }
 
-        self.object.process(document)
+        template_replacer.process(document)
 
         assert document.get("dotted")
         assert document["dotted"].get("message")
@@ -132,14 +128,13 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_existing_dotted_message_dict_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
+        template_replacer = self._create_template_replacer(config)
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"message": {"foo": "bar"}},
         }
 
-        self.object.process(document)
+        template_replacer.process(document)
 
         assert document.get("dotted")
         assert document["dotted"].get("message")
@@ -148,15 +143,14 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_incompatible_existing_dotted_message_parent_via_template(self, caplog):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
+        template_replacer = self._create_template_replacer(config)
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": "foo",
         }
 
         with caplog.at_level(logging.WARNING):
-            self.object.process(document)
+            template_replacer.process(document)
         assert re.match(".*FieldExistsWarning.*", caplog.text)
 
     def test_replace_fails_with_invalid_template(self):
@@ -165,4 +159,9 @@ class TestTemplateReplacer(BaseProcessorTestCase):
             {"template": "tests/testdata/unit/template_replacer/replacer_template_invalid.yml"}
         )
         with pytest.raises(TemplateReplacerError, match="Not enough delimiters"):
-            Factory.create({"test instance": config}, self.logger)
+            self._create_template_replacer(config)
+
+    def _create_template_replacer(self, config):
+        template_replacer = Factory.create({"test instance": config})
+        template_replacer.setup()
+        return template_replacer

@@ -1,3 +1,4 @@
+version: 1
 process_count: 3
 timeout: 0.1
 
@@ -5,9 +6,15 @@ pipeline:
   - dissector:
       type: dissector
       specific_rules:
-        - tests/testdata/unit/dissector
+        - tests/testdata/unit/dissector/specific_rules/
       generic_rules:
-        - tests/testdata/unit/dissector
+        - tests/testdata/unit/dissector/generic_rules/
+  - calculatorname:
+      type: calculator
+      specific_rules:
+        - tests/testdata/unit/calculator/generic_rules
+      generic_rules:
+        - tests/testdata/unit/calculator/specific_rules
   - labelername:
       type: labeler
       schema: tests/testdata/unit/labeler/schemas/schema3.json
@@ -29,7 +36,6 @@ pipeline:
       generic_rules:
         - tests/testdata/unit/pseudonymizer/rules/generic/
       max_cached_pseudonyms: 1000000
-      max_caching_days: 1
 
 input:
   kafka_input:
@@ -38,12 +44,22 @@ input:
     kafka_config:
       bootstrap.servers: "127.0.0.1:9092"
       group.id: "cgroup"
-      auto.commit: "true"
-      session.timeout: "6000"
-      offset.reset.policy: "smallest"
+      enable.auto.commit: "true"
+      session.timeout.ms: "6000"
+      auto.offset.reset: "smallest"
       enable.auto.offset.store: "true"
 output:
   kafka_output:
+    type: confluentkafka_output
+    topic: producer
+    error_topic: producer_error
+    flush_timeout: 30
+    send_timeout: 2
+    kafka_config:
+      bootstrap.servers: "127.0.0.1:9092"
+      acks: "-1"
+      compression.type: none
+  kafka:
     type: confluentkafka_output
     topic: producer
     error_topic: producer_error

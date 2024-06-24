@@ -11,15 +11,10 @@ The output is displayed in the console and changes made by Logprep are being hig
 ..  code-block:: bash
     :caption: Directly with Python
 
-    PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG --dry-run $EVENTS
-
-..  code-block:: bash
-    :caption: With a PEX file
-
-    logprep.pex $CONFIG --dry-run $EVENTS
+    logprep test dry-run $CONFIG $EVENTS
 
 Where :code:`$CONFIG` is the path to a configuration file
-(see :doc:`configuration/configurationdata`).
+(see :ref:`configuration`).
 The only required section in the configuration is :code:`pipeline`
 (see tests/testdata/config/config-dry-run.yml for an example).
 The remaining options are set internally or are being ignored.
@@ -29,17 +24,18 @@ A single log message can be provided with a file containing a plain json or wrap
 (beginning with `[` and ending with `]`).
 For multiple events it must be a list wrapped inside brackets, while each log object separated by a
 comma.
-By specifying the parameter :code:`--dry-run-input-type jsonl` a list of JSON lines can be used
+By specifying the parameter :code:`--input-type jsonl` a list of JSON lines can be used
 instead.
-Additional output, like pseudonyms, will be printed if :code:`--dry-run-full-output` is added.
+Additional output, like pseudonyms, will be printed if :code:`--full-output` is added.
 
 ..  code-block:: bash
     :caption: Example for execution with a JSON lines file (dry-run-input-type jsonl) printing all results, including pseudonyms (dry-run-full-output)
 
-    logprep.pex tests/testdata/config/config-dry-run.yml --dry-run tests/testdata/input_logdata/wineventlog_raw.jsonl --dry-run-input-type jsonl --dry-run-full-output
+    logprep test dry-run ./tests/testdata/config/config.yml tests/testdata/input_logdata/wineventlog_raw.jsonl --input-type jsonl --full-output 1
 """
 
 import json
+import logging
 import shutil
 import tempfile
 from copy import deepcopy
@@ -50,7 +46,9 @@ from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline
-from logprep.util.auto_rule_tester.auto_rule_corpus_tester import align_extra_output_formats
+from logprep.util.auto_rule_tester.auto_rule_corpus_tester import (
+    align_extra_output_formats,
+)
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import color_print_line, color_print_title, recursive_compare
@@ -67,15 +65,22 @@ class DryRunner:
 
     @cached_property
     def _pipeline(self):
-        patched_config_path = Configuration.patch_yaml_with_json_connectors(
-            original_config_path=self._config_path,
-            output_dir=self._tmp_path,
-            input_file_path=self._input_file_path,
-        )
-        config = Configuration.create_from_yaml(patched_config_path)
-        config.verify_pipeline_without_processor_outputs(self._logger)
-        del config["output"]
-        return Pipeline(config=config)
+        patched_config = Configuration()
+        patched_config.input = {
+            "patched_input": {
+                "type": f"{'json' if self._use_json else 'jsonl'}_input",
+                "documents_path": str(self._input_file_path),
+            }
+        }
+        input_config = self._config.input
+        connector_name = list(input_config.keys())[0]
+        if "preprocessing" in input_config[connector_name]:
+            patched_config.input["patched_input"] |= {
+                "preprocessing": input_config[connector_name]["preprocessing"]
+            }
+        patched_config.pipeline = self._config.pipeline
+        pipeline = Pipeline(config=patched_config)
+        return pipeline
 
     @cached_property
     def _input_documents(self):
@@ -85,13 +90,13 @@ class DryRunner:
         return document_getter.get_jsonl()
 
     def __init__(
-        self, input_file_path: str, config_path: str, full_output: bool, use_json: bool, logger
+        self, input_file_path: str, config: Configuration, full_output: bool, use_json: bool
     ):
         self._input_file_path = input_file_path
-        self._config_path = config_path
+        self._config = config
         self._full_output = full_output
         self._use_json = use_json
-        self._logger = logger
+        self._logger = logging.getLogger("DryRunner")
 
     def run(self):
         """Run the dry runner."""

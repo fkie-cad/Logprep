@@ -1,147 +1,454 @@
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
-from typing import List
+# pylint: disable=protected-access
+# pylint: disable=attribute-defined-outside-init
 
-import numpy as np
-from attr import define
+import re
+from unittest import mock
 
-from logprep.metrics.metric import Metric, calculate_new_average, get_settable_metrics
+import pytest
+from attrs import define, field
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 
-
-@define(kw_only=True)
-class MockChildMetric(Metric):
-    metric_a: int = 0
-    metric_b: float = 0.0
-    _calculated_metric: int = 0
-    _private_ignore_metric: int = 0
-
-    @property
-    def combined_metric(self):
-        return self.metric_b + self.metric_a
-
-    @property
-    def calculated_metric(self):
-        return self._calculated_metric
-
-    @calculated_metric.setter
-    def calculated_metric(self, value):
-        self._calculated_metric = 2 * value
-
-
-@define(kw_only=True)
-class MockParentMetric(Metric):
-    data: List[MockChildMetric]
-    direct_non_list_metric: MockChildMetric
-    more_data: int = 0
+from logprep.abc.component import Component
+from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
 
 
 class TestMetric:
-    def test_metric_exposes_returns_correct_format(self):
-        mock_metric = MockChildMetric(labels={"test": "label"})
-        mock_metric.metric_a += 1
-        mock_metric.metric_b += 1
-        mock_metric.calculated_metric += 2
-        exposed_metrics = mock_metric.expose()
-        expected_metrics = {
-            "logprep_metric_a;test:label": 1,
-            "logprep_metric_b;test:label": 1.0,
-            "logprep_combined_metric;test:label": 2.0,
-            "logprep_calculated_metric;test:label": 4,
-        }
-        assert exposed_metrics == expected_metrics
+    def setup_method(self):
+        self.custom_registry = CollectorRegistry()
 
-    def test_expose_metric_ignores_private_attributes(self):
-        mock_metric = MockChildMetric(labels={"test": "label"})
-        exposed_metrics = mock_metric.expose()
-        private_metric = "_private_ignore_metric"
-        assert mock_metric.__getattribute__(private_metric) == 0
-        assert private_metric not in " ".join(exposed_metrics)
-
-    def test_expose_includes_child_metrics_given_in_lists(self):
-        mock_child_metric = MockChildMetric(labels={"type": "child"})
-        mock_child_metric_two = MockChildMetric(labels={"type": "child2"})
-        mock_parent_metric = MockParentMetric(
-            labels={"type": "parent"},
-            data=[mock_child_metric],
-            direct_non_list_metric=mock_child_metric_two,
+    def test_init_tracker_returns_collector(self):
+        metric = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
         )
-        mock_child_metric.metric_a += 1
-        mock_child_metric.metric_b += 1
-        mock_parent_metric.more_data += 1
-        mock_child_metric.calculated_metric += 2
-        mock_child_metric_two.metric_a += 1
-        mock_child_metric_two.calculated_metric += 1
+        metric.init_tracker()
+        assert isinstance(metric.tracker, Counter)
 
-        exposed_metrics = mock_parent_metric.expose()
-        expected_metrics = {
-            "logprep_calculated_metric;type:child": 4.0,
-            "logprep_calculated_metric;type:child2": 2.0,
-            "logprep_combined_metric;type:child": 2.0,
-            "logprep_combined_metric;type:child2": 1.0,
-            "logprep_metric_a;type:child": 1.0,
-            "logprep_metric_a;type:child2": 1.0,
-            "logprep_metric_b;type:child": 1.0,
-            "logprep_metric_b;type:child2": 0.0,
-            "logprep_more_data;type:parent": 1.0,
-        }
-        assert exposed_metrics == expected_metrics
-
-    def test_resets_statistic_sets_everything_to_zero(self):
-        mock_child_metric = MockChildMetric(labels={"type": "child"})
-        mock_child_metric_two = MockChildMetric(labels={"type": "child2"})
-        mock_parent_metric = MockParentMetric(
-            labels={"type": "parent"},
-            data=[mock_child_metric],
-            direct_non_list_metric=mock_child_metric_two,
+    def test_init_tracker_does_not_raise_if_initialized_twice(self):
+        metric1 = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
         )
-        mock_child_metric.metric_a += 1
-        mock_child_metric.metric_b += 1.2
-        mock_parent_metric.more_data += 1
-        mock_child_metric.calculated_metric += 2
-        mock_child_metric_two.metric_a += 1
-        mock_child_metric_two.calculated_metric += 1
+        metric2 = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        metric1.init_tracker()
+        metric2.init_tracker()
+        assert isinstance(metric1.tracker, Counter)
+        assert isinstance(metric2.tracker, Counter)
+        assert metric1.tracker == metric2.tracker
 
-        assert mock_child_metric.metric_a == 1
-        assert mock_child_metric.metric_b == 1.2
-        assert mock_child_metric.combined_metric == 2.2
-        assert mock_child_metric.calculated_metric == 4
-        assert mock_child_metric_two.metric_a == 1
-        assert mock_child_metric_two.metric_b == 0
-        assert mock_child_metric_two.combined_metric == 1
-        assert mock_child_metric_two.calculated_metric == 2
-        assert mock_parent_metric.more_data == 1
+    def test_counter_metric_sets_labels(self):
+        metric = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "pipeline-1"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        assert metric.tracker._labelnames == ("pipeline",)
 
-        mock_parent_metric.reset_statistics()
+    def test_initialize_without_labels_initializes_defaults(self):
+        metric = CounterMetric(
+            name="bla",
+            description="empty description",
+            registry=self.custom_registry,
+        )
+        with pytest.raises(ValueError, match="No label names were set when constructing"):
+            metric.init_tracker()
 
-        assert mock_child_metric.metric_a == 0
-        assert mock_child_metric.metric_b == 0.0
-        assert mock_child_metric.combined_metric == 0
-        assert mock_child_metric.calculated_metric == 0
-        assert mock_child_metric_two.metric_a == 0
-        assert mock_child_metric_two.metric_b == 0
-        assert mock_child_metric_two.combined_metric == 0
-        assert mock_child_metric_two.calculated_metric == 0
-        assert mock_parent_metric.more_data == 0
+    def test_initialize_with_empty_labels_initializes_default_labels(self):
+        metric = CounterMetric(
+            name="bla",
+            description="empty description",
+            registry=self.custom_registry,
+            labels={},
+        )
+        with pytest.raises(ValueError, match="No label names were set when constructing"):
+            metric.init_tracker()
 
-    def test_calculate_new_average_returns_correct_result(self):
-        samples = [2, 4, 6, 8, 1, 3, 9]
-        current_average = 0
-        for i, next_sample in enumerate(samples):
-            current_average, _ = calculate_new_average(current_average, next_sample, i)
+    def test_counter_metric_increments_correctly(self):
+        metric = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert 'logprep_bla_total{pipeline="1"} 1.0' in metric_output
 
-            real_mean = np.mean(samples[: i + 1])
-            assert current_average == real_mean
+    def test_counter_metric_increments_twice_adds_metric(self):
+        metric = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        metric += 1
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert 'logprep_bla_total{pipeline="1"} 2.0' in metric_output
 
-    def test_get_settable_metrics(self):
-        mock_child_metric = MockChildMetric(labels={"type": "child"})
-        metrics = get_settable_metrics(mock_child_metric)
-        expected_metrics = {
-            "_labels": {"type": "child"},
-            "_prefix": "logprep_",
-            "metric_a": 0,
-            "metric_b": 0.0,
-            "_calculated_metric": 0,
-            "_private_ignore_metric": 0,
-            "calculated_metric": 0,
-        }
-        assert metrics == expected_metrics
+    def test_same_counter_counts_on_same_tracker(self):
+        metric1 = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric2 = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric1.init_tracker()
+        metric2.init_tracker()
+        assert metric1.tracker._labelnames == metric2.tracker._labelnames
+        metric1 += 1
+        metric2 += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        result = re.findall(r'.*logprep_bla_total\{pipeline="1"\} 2\.0.*', metric_output)
+        assert len(result) == 1
+
+    def test_same_counter_with_different_label_values_counts_on_different_tracker(self):
+        metric1 = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric2 = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "2"},
+            registry=self.custom_registry,
+        )
+        metric1.init_tracker()
+        metric2.init_tracker()
+
+        assert metric1.tracker == metric2.tracker
+        metric1 += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        result = re.findall(r'.*logprep_bla_total\{pipeline="1"\} 1\.0.*', metric_output)
+        assert len(result) == 1
+        result = re.findall(r'.*logprep_bla_total\{pipeline="2"\} 0\.0.*', metric_output)
+        assert len(result) == 1
+
+    def test_init_tracker_raises_on_try_to_overwrite_tracker_with_different_type(self):
+        metric = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        with pytest.raises(ValueError, match="already exists with different type"):
+            metric = HistogramMetric(
+                name="bla",
+                description="empty description",
+                labels={"pipeline": "2"},
+                registry=self.custom_registry,
+            )
+            metric.init_tracker()
+
+    def test_add_with_labels_none_value_raises_typeerror(self):
+        metric = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        with pytest.raises(TypeError, match="not supported between instances of 'NoneType'"):
+            metric.add_with_labels(None, {"A": "a"})
+
+    def test_add_with_labels_none_labels_raises_typeerror(self):
+        metric = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        with pytest.raises(TypeError, match=" unsupported operand type(s) for |"):
+            metric.add_with_labels(1, None)
+
+
+class TestGaugeMetric:
+    def setup_method(self):
+        self.custom_registry = CollectorRegistry()
+
+    def test_init_tracker_returns_collector(self):
+        metric = GaugeMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        assert isinstance(metric.tracker, Gauge)
+
+    def test_gauge_metric_increments_correctly(self):
+        metric = GaugeMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert 'logprep_bla{pipeline="1"} 1.0' in metric_output
+
+    def test_gauge_metric_increment_twice_sets_metric(self):
+        metric = GaugeMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        metric += 1
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert 'logprep_bla{pipeline="1"} 1.0' in metric_output
+
+
+class TestHistogramMetric:
+    def setup_method(self):
+        self.custom_registry = CollectorRegistry()
+
+    def test_init_tracker_returns_collector(self):
+        metric = HistogramMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        assert isinstance(metric.tracker, Histogram)
+
+    def test_gauge_metric_increments_correctly(self):
+        metric = HistogramMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert re.search(r'logprep_bla_sum\{pipeline="1"\} 1\.0', metric_output)
+        assert re.search(r'logprep_bla_count\{pipeline="1"\} 1\.0', metric_output)
+        assert re.search(r'logprep_bla_bucket\{le=".*",pipeline="1"\} \d+', metric_output)
+
+    def test_gauge_metric_increment_twice_sets_metric(self):
+        metric = HistogramMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        metric += 1
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert re.search(r'logprep_bla_sum\{pipeline="1"\} 2\.0', metric_output)
+        assert re.search(r'logprep_bla_count\{pipeline="1"\} 2\.0', metric_output)
+        assert re.search(r'logprep_bla_bucket\{le=".*",pipeline="1"\} \d+', metric_output)
+
+
+class TestComponentMetrics:
+    @define(kw_only=True)
+    class Metrics(Component.Metrics):
+        """test class"""
+
+        custom_registry = CollectorRegistry()
+
+        test_metric_number_1: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                name="test_metric_number_1",
+                description="empty description",
+                registry=TestComponentMetrics.Metrics.custom_registry,
+            )
+        )
+        test_metric_without_label_values: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                name="test_metric_number_1",
+                description="empty description",
+                inject_label_values=False,
+                registry=TestComponentMetrics.Metrics.custom_registry,
+            )
+        )
+
+        test_metric_histogram: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                name="test_metric_histogram",
+                description="empty description",
+                registry=TestComponentMetrics.Metrics.custom_registry,
+            )
+        )
+
+    def setup_method(self):
+        TestComponentMetrics.Metrics.custom_registry = CollectorRegistry()
+        self.metrics = self.Metrics(
+            labels={
+                "component": "test",
+                "name": "test",
+                "type": "test_type",
+                "description": "test_description",
+            }
+        )
+        self.rule_type = "test_rule"
+
+    def test_init(self):
+        assert self.metrics.test_metric_number_1 is not None
+        assert isinstance(self.metrics.test_metric_number_1, CounterMetric)
+        assert self.metrics.test_metric_number_1.tracker is not None
+        assert isinstance(self.metrics.test_metric_number_1.tracker, Counter)
+
+    def test_label_values_injection(self):
+        assert self.metrics.test_metric_number_1.tracker._labelnames == (
+            "component",
+            "name",
+            "type",
+            "description",
+        )
+        metrics_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert (
+            'logprep_test_metric_number_1_total{component="test",description="test_description",name="test",type="test_type"} 0.0'
+            in metrics_output
+        )
+        assert '"None"' not in metrics_output, "default labels should not be present"
+
+    def test_no_label_values_injection(self):
+        assert self.metrics.test_metric_without_label_values.tracker._labelnames == (
+            "component",
+            "name",
+            "type",
+            "description",
+        )
+        metrics_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert "test_metric_without_label_values" not in metrics_output
+
+    @Metric.measure_time(metric_name="test_metric_histogram")
+    def decorated_function(self):
+        pass
+
+    @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
+    def test_measure_time_measures_and_appends_processing_times_but_not_hostname(self):
+        @Metric.measure_time(metric_name="test_metric_histogram")
+        def decorated_function_append(self, document):
+            pass
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
+        document = {"test": "event"}
+        decorated_function_append(self, document)
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
+        assert not re.search(
+            r"test_metric_histogram_bucket.* 2\.0", metric_output
+        )  # regex is greedy
+        assert "processing_times" in document
+        assert not "hostname" in document.get("processing_times")  # is only set by the pipeline
+        assert "test_rule" in document.get("processing_times")
+        assert document.get("processing_times").get("test_rule") > 0
+
+    @mock.patch("logprep.metrics.metrics.gethostname", return_value="testhost")
+    @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
+    def test_measure_time_measures_and_appends_pipeline_processing_times_and_hostname(
+        self, mock_gethostname
+    ):
+        # set logprep_config to mimic an attribute of a pipeline, is used to identify pipelines
+        self._logprep_config = "some value"
+
+        @Metric.measure_time(metric_name="test_metric_histogram")
+        def decorated_function_append(self, document):
+            pass
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
+        document = {"test": "event"}
+        decorated_function_append(self, document)
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
+        assert not re.search(
+            r"test_metric_histogram_bucket.* 2\.0", metric_output
+        )  # regex is greedy
+        assert "processing_times" in document
+        assert "pipeline" in document.get("processing_times")
+        assert "hostname" in document.get("processing_times")
+        assert document.get("processing_times").get("pipeline") > 0
+        assert document.get("processing_times").get("hostname") == "testhost"
+        mock_gethostname.assert_called_once()
+
+    def test_measure_time_measures(self):
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
+        self.decorated_function()
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
+        assert not re.search(
+            r"test_metric_histogram_bucket.* 2\.0", metric_output
+        )  # regex is greedy
+
+    @mock.patch("time.perf_counter", side_effect=[1, 2])
+    def test_measure_time_measures_but_does_not_append_to_empty_events(self, mock_perf_counter):
+        mock_env = {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}
+        with mock.patch.dict("os.environ", mock_env):
+
+            @Metric.measure_time(metric_name="test_metric_histogram")
+            def decorated_function_append(self, document):
+                pass
+
+            metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+            assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+            assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+            assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
+            document = {}
+            decorated_function_append(self, document)
+
+            metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+            assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+            assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
+            assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
+            assert not re.search(
+                r"test_metric_histogram_bucket.* 2\.0", metric_output
+            )  # regex is greedy
+            assert document == {}
+            # assert call on time.perf_counter to ensure that correct decorator was accessed
+            mock_perf_counter.assert_called()

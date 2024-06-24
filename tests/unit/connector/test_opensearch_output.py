@@ -5,7 +5,10 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-arguments
 import json
+import os
 import re
+import time
+import uuid
 from datetime import datetime
 from math import isclose
 from unittest import mock
@@ -17,6 +20,8 @@ from opensearchpy import helpers
 
 from logprep.abc.component import Component
 from logprep.abc.output import FatalOutputError
+from logprep.connector.opensearch.output import OpensearchOutput
+from logprep.factory import Factory
 from logprep.util.time import TimeParser
 from tests.unit.connector.base import BaseOutputTestCase
 
@@ -25,13 +30,16 @@ class NotJsonSerializableMock:
     pass
 
 
+in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
+
+helpers.parallel_bulk = mock.MagicMock()
 helpers.bulk = mock.MagicMock()
 
 
 class TestOpenSearchOutput(BaseOutputTestCase):
     CONFIG = {
         "type": "opensearch_output",
-        "hosts": ["host:123"],
+        "hosts": ["localhost:9200"],
         "default_index": "default_index",
         "error_index": "error_index",
         "message_backlog_size": 1,
@@ -41,7 +49,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_describe_returns_output(self):
         assert (
             self.object.describe()
-            == "OpensearchOutput (Test Instance Name) - Opensearch Output: ['host:123']"
+            == "OpensearchOutput (Test Instance Name) - Opensearch Output: ['localhost:9200']"
         )
 
     def test_store_sends_to_default_index(self):
@@ -136,7 +144,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert failed_document == expected
 
     @mock.patch(
-        "opensearchpy.helpers.bulk",
+        "opensearchpy.helpers.parallel_bulk",
         side_effect=search.SerializationError,
     )
     def test_write_to_search_context_calls_handle_serialization_error_if_serialization_error(
@@ -144,30 +152,34 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     ):
         self.object._config.message_backlog_size = 1
         self.object._handle_serialization_error = mock.MagicMock()
-        self.object._write_to_search_context({"dummy": "event"})
+        self.object._message_backlog.append({"dummy": "event"})
+        self.object._write_to_search_context()
         self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
-        "opensearchpy.helpers.bulk",
-        side_effect=search.ConnectionError,
+        "opensearchpy.helpers.parallel_bulk",
+        side_effect=search.ConnectionError(-1),
     )
+    @mock.patch("time.sleep", mock.MagicMock())  # to speed up test execution
     def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
         self.object._config.message_backlog_size = 1
         self.object._handle_connection_error = mock.MagicMock()
-        self.object._write_to_search_context({"dummy": "event"})
+        self.object._message_backlog.append({"dummy": "event"})
+        self.object._write_to_search_context()
         self.object._handle_connection_error.assert_called()
 
     @mock.patch(
-        "opensearchpy.helpers.bulk",
+        "opensearchpy.helpers.parallel_bulk",
         side_effect=helpers.BulkIndexError,
     )
     def test_write_to_search_context_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
         self.object._config.message_backlog_size = 1
         self.object._handle_bulk_index_error = mock.MagicMock()
-        self.object._write_to_search_context({"dummy": "event"})
+        self.object._message_backlog.append({"dummy": "event"})
+        self.object._write_to_search_context()
         self.object._handle_bulk_index_error.assert_called()
 
-    @mock.patch("opensearchpy.helpers.bulk")
+    @mock.patch("opensearchpy.helpers.parallel_bulk")
     def test__handle_bulk_index_error_calls_bulk(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
@@ -181,7 +193,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object._handle_bulk_index_error(mock_bulk_index_error)
         fake_bulk.assert_called()
 
-    @mock.patch("opensearchpy.helpers.bulk")
+    @mock.patch("opensearchpy.helpers.parallel_bulk")
     def test_handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
@@ -193,8 +205,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             }
         ]
         self.object._handle_bulk_index_error(mock_bulk_index_error)
-        call_args = fake_bulk.call_args[0][1]
-        error_document = call_args[0]
+        error_document = fake_bulk.call_args.kwargs.get("actions").pop()
         assert "reason" in error_document
         assert "@timestamp" in error_document
         assert "_index" in error_document
@@ -219,7 +230,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "bar"}, {"bar": "baz"}],
                 0,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -243,7 +254,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -251,7 +262,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -259,7 +270,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"invalid": "error"},
                 [{"foo": "*" * 500}],
                 1,
-                TypeError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -267,7 +278,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"error": {"reason": "wrong_reason"}},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -295,7 +306,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 },
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
         ],
     )
@@ -342,6 +353,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             self.object.setup()
 
     def test_setup_registers_flush_timout_tasks(self):
+        self.object._config.hosts = ["opensearch:9092"]
         job_count = len(Component._scheduler.jobs)
         with pytest.raises(FatalOutputError):
             self.object.setup()
@@ -360,3 +372,67 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object._config.message_backlog_size = 1
         self.object.store({"event": "test_event"})
         assert len(self.object._message_backlog) == 0
+
+    @pytest.mark.skip(reason="This test is only for local debugging")
+    def test_opensearch_parallel_bulk(self):
+        config = {
+            "type": "opensearch_output",
+            "hosts": ["localhost:9200"],
+            "default_index": "default_index",
+            "error_index": "error_index",
+            "message_backlog_size": 1,
+            "timeout": 5000,
+        }
+        output: OpensearchOutput = Factory.create({"opensearch_output": config})
+        uuid_str = str(uuid.uuid4())
+        result = output._search_context.search(
+            index="defaultindex", body={"query": {"match": {"foo": uuid_str}}}
+        )
+        len_before = len(result["hits"]["hits"])
+        output._message_backlog = [{"foo": uuid_str, "_index": "defaultindex"}]
+        output._write_backlog()
+        time.sleep(1)
+        result = output._search_context.search(
+            index="defaultindex", body={"query": {"match": {"foo": uuid_str}}}
+        )
+        assert len(result["hits"]["hits"]) > len_before
+
+    @mock.patch(
+        "logprep.connector.opensearch.output.OpensearchOutput._search_context",
+        new=mock.MagicMock(),
+    )
+    @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
+    def test_setup_populates_cached_properties(self, mock_getmembers):
+        self.object.setup()
+        mock_getmembers.assert_called_with(self.object)
+
+    @mock.patch(
+        "opensearchpy.helpers.parallel_bulk",
+        side_effect=search.TransportError(429, "rejected_execution_exception", {}),
+    )
+    @mock.patch("time.sleep")
+    def test_write_backlog_fails_if_all_retries_are_exceeded(self, _, mock_sleep):
+        self.object._config.maximum_message_size_mb = 1
+        self.object._config.max_retries = 5
+        self.object._message_backlog = [{"some": "event"}]
+        with pytest.raises(
+            FatalOutputError, match="Opensearch too many requests, all parallel bulk retries failed"
+        ):
+            self.object._write_backlog()
+        assert mock_sleep.call_count == 6  # one initial try + 5 retries
+        assert self.object._message_backlog == [{"some": "event"}]
+
+    @mock.patch("time.sleep")
+    def test_write_backlog_is_successful_after_two_retries(self, mock_sleep):
+        side_effects = [
+            search.TransportError(429, "rejected_execution_exception", {}),
+            search.TransportError(429, "rejected_execution_exception", {}),
+            [],
+        ]
+        with mock.patch("opensearchpy.helpers.parallel_bulk", side_effect=side_effects):
+            self.object._config.maximum_message_size_mb = 1
+            self.object._config.max_retries = 5
+            self.object._message_backlog = [{"some": "event"}]
+            self.object._write_backlog()
+            assert mock_sleep.call_count == 2
+            assert self.object._message_backlog == []

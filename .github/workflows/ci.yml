@@ -8,93 +8,21 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  build-pex:
-    runs-on: ubuntu-22.04
-
-    strategy:
-      matrix:
-        python-version: ["3.9"]
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ansible
-          pip install virtualenv
-          pip install wheel
-          pip install pex
-
-      - name: Repack confluent-kafka wheel
-        run: |
-          rm -rf tmp_pip_cache &&
-          mkdir tmp_pip_cache &&
-          cd tmp_pip_cache &&
-          python -m pip download $(cat ../requirements.txt | grep confluent-kafka) &&
-          unzip * &&
-          rm *.whl &&
-          python -m wheel pack .
-
-      - name: Build Pex File
-        run: |
-          pex . -r requirements.txt -o ./logprep.pex -c logprep --pex-root=tmp_pip_cache
-
-      - name: Upload PEX
-        uses: actions/upload-artifact@v3
-        with:
-          name: Logprep
-          path: logprep.pex
-
   test:
-    runs-on: ubuntu-22.04
-
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11"]
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip wheel
-          pip install -r requirements_dev.txt
-
-      - name: Perform unit tests
-        env:
-          PYTEST_ADDOPTS: "--color=yes"
-        run: |
-          pytest  -vv tests/unit
-
-      - name: Perform acceptance tests
-        env:
-          PYTEST_ADDOPTS: "--color=yes"
-        run: |
-          pytest  -vv tests/acceptance
+    uses: ./.github/workflows/testing.yml
 
   build-docs:
     runs-on: ubuntu-22.04
 
     strategy:
       matrix:
-        python-version: ["3.9"]
+        python-version: ["3.10"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
@@ -103,8 +31,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get -y install pandoc
           pip install --upgrade pip wheel
-          pip install -r requirements_dev.txt
-          pip install -r doc/requirements.txt
+          pip install .[doc]
 
       - name: build docs
         run: |
@@ -117,23 +44,22 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.9"]
+        python-version: ["3.10"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
       - name: Get changed python files
         id: changed-files
-        uses: tj-actions/changed-files@v18.7
+        uses: tj-actions/changed-files@v41
         with:
           files: |
             **/*.py
@@ -141,7 +67,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip wheel
-          pip install -r requirements_dev.txt
+          pip install .[dev]
 
       - name: check black formating
         run: |
@@ -158,19 +84,16 @@ jobs:
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v2
 
-      - name: Check semgrep rules
-        if: steps.changed-files.outputs.all_changed_files
-        run: semgrep -c .semgrep_rules -c r/python --error --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}
-
   containerbuild:
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12.3"]
 
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -180,8 +103,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build images
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
+          context: .
           push: true # Will only build if this is not here
           build-args: |
             LOGPREP_VERSION=dev

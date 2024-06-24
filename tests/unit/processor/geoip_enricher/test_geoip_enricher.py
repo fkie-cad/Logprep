@@ -15,7 +15,6 @@ import pytest
 import responses
 from geoip2.errors import AddressNotFoundError
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -103,7 +102,6 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         return self.CONFIG["specific_rules"]
 
     def test_geoip_data_added(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "1.2.3.4"}}
 
         self.object.process(document)
@@ -111,7 +109,6 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert document.get("geoip")
 
     def test_geoip_data_added_not_exists(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "127.0.0.1"}}
 
         self.object.process(document)
@@ -119,32 +116,27 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert document.get("geoip") is None
 
     def test_no_geoip_data_added_if_source_field_is_none(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": None}}
 
         self.object.process(document)
 
         assert document.get("geoip") is None
 
-    def test_source_field_is_none_raises_processing_warning(self):
-        assert self.object.metrics.number_of_processed_events == 0
+    def test_source_field_is_none_emits_missing_fields_warning(self, caplog):
         document = {"client": {"ip": None}}
-
-        with pytest.raises(
-            ProcessingWarning,
-            match=re.escape("Value of IP field 'client.ip' is 'None'"),
-        ):
+        expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
+        with caplog.at_level(logging.WARNING):
             self.object._apply_rules(document, self.object.rules[0])
+        assert re.match(r".*missing source_fields: \['client\.ip'].*", caplog.text)
+        assert document == expected
 
     def test_nothing_to_enrich(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"something": {"something": "1.2.3.4"}}
 
         self.object.process(document)
         assert "geoip" not in document
 
     def test_geoip_data_added_not_valid(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "333.333.333.333"}}
 
         self.object.process(document)
@@ -152,7 +144,6 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert document.get("geoip") is None
 
     def test_enrich_an_event_geoip(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "8.8.8.8"}}
 
         self.object.process(document)
@@ -171,7 +162,6 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert geoip["properties"].get("accuracy_radius") == 1337
 
     def test_enrich_an_event_geoip_with_existing_differing_geoip(self, caplog):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
 
         with caplog.at_level(logging.WARNING):
@@ -179,7 +169,6 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert re.match(".*FieldExistsWarning.*geoip.type", caplog.text)
 
     def test_configured_dotted_output_field(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"source": {"ip": "8.8.8.8"}}
 
         self.object.process(document)

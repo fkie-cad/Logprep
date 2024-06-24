@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
+# pylint: disable=unnecessary-dunder-call
 import base64
 import json
 import os
@@ -14,7 +15,6 @@ from logprep.abc.input import Input
 from logprep.abc.output import Output
 from logprep.factory import Factory
 from logprep.util.time import TimeParser
-from logprep.util.time_measurement import TimeMeasurement
 from tests.unit.component.base import BaseComponentTestCase
 
 
@@ -23,9 +23,13 @@ class BaseConnectorTestCase(BaseComponentTestCase):
     object: Connector = None
     logger = getLogger()
 
-    def setup_method(self) -> None:
-        config = {"Test Instance Name": self.CONFIG}
-        self.object = Factory.create(configuration=config, logger=self.logger)
+    expected_metrics = [
+        "logprep_processing_time_per_event",
+        "logprep_number_of_processed_events",
+        "logprep_number_of_failed_events",
+        "logprep_number_of_warnings",
+        "logprep_number_of_errors",
+    ]
 
     def test_is_a_connector_implementation(self):
         assert isinstance(self.object, Connector)
@@ -54,7 +58,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         assert connector._add_hmac is True
 
     def test_add_hmac_to_adds_hmac(self):
@@ -70,7 +74,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         processed_event, non_critical_error_msg = connector._add_hmac_to(
             {"message": "test message"}, b"test message"
         )
@@ -97,7 +101,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         processed_event, non_critical_error_msg = connector._add_hmac_to(
             {"message": "test message"}, None
         )
@@ -125,7 +129,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": "with_content"}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -160,7 +164,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -196,7 +200,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -230,7 +234,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": "with_content"}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -271,7 +275,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -287,7 +291,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector_config = deepcopy(self.CONFIG)
         assert not connector_config.get("preprocessing", {}).get("hmac")
         test_event = {"message": "with_content"}
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
             return_value=(test_event.copy(), raw_encoded_test_event)
@@ -305,7 +309,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -321,7 +325,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "version_info": "something random"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -335,7 +339,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "version_info": "something random"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -347,13 +351,13 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert result is None
 
     def test_connector_metrics_counts_processed_events(self):
-        assert self.object.metrics.number_of_processed_events == 0
+        self.object.metrics.number_of_processed_events = 0
         self.object._get_event = mock.MagicMock(return_value=({"message": "test"}, None))
         self.object.get_next(0.01)
         assert self.object.metrics.number_of_processed_events == 1
 
     def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
-        assert self.object.metrics.number_of_processed_events == 0
+        self.object.metrics.number_of_processed_events = 0
         self.object._get_event = mock.MagicMock(return_value=(None, None))
         self.object.get_next(0.01)
         assert self.object.metrics.number_of_processed_events == 0
@@ -366,7 +370,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         connector._get_event = mock.MagicMock(return_value=({"any": "content"}, None))
         result, _ = connector.get_next(0.01)
         target_field = preprocessing_config.get("preprocessing", {}).get(
@@ -386,7 +390,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "arrival_time": "does not matter"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -404,7 +408,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "@timestamp": "1999-09-09T09:09:09.448319+02:00"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -430,7 +434,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -445,7 +449,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -464,22 +468,11 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
         assert result == {"any": "content"}
-
-    def test_get_next_returns_event_with_active_time_measurement(self):
-        TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
-        TimeMeasurement.APPEND_TO_EVENT = True
-        return_value = ({"message": "test message"}, b'{"message": "test message"}')
-        self.object._get_event = mock.MagicMock(return_value=return_value)
-        event, _ = self.object.get_next(0.01)
-        assert isinstance(event, dict)
-        assert self.object.metrics.mean_processing_time_per_event > 0
-        TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
-        TimeMeasurement.APPEND_TO_EVENT = False
 
     def test_preprocessing_enriches_by_env_variable(self):
         preprocessing_config = {
@@ -491,7 +484,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         os.environ["TEST_ENV_VARIABLE"] = "test_value"
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
@@ -509,7 +502,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         os.environ["TEST_ENV_VARIABLE_FOO"] = "test_value_foo"
         os.environ["TEST_ENV_VARIABLE_BAR"] = "test_value_bar"
@@ -521,15 +514,43 @@ class BaseInputTestCase(BaseConnectorTestCase):
             "enriched_field2": "test_value_bar",
         }
 
+    def test_get_next_counts_number_of_processed_events(self):
+        self.object.metrics.number_of_processed_events = 0
+        return_value = ({"message": "test message"}, b'{"message": "test message"}')
+        self.object._get_event = mock.MagicMock(return_value=return_value)
+        self.object.get_next(0.01)
+        assert self.object.metrics.number_of_processed_events == 1
+
+    def test_get_next_doesnt_count_numer_of_processed_events_if_event_is_none(self):
+        self.object.metrics.number_of_processed_events = 0
+        self.object._get_event = mock.MagicMock(return_value=(None, None))
+        self.object.get_next(0.01)
+        assert self.object.metrics.number_of_processed_events == 0
+
+    def test_get_next_has_time_measurement(self):
+        mock_metric = mock.MagicMock()
+        self.object.metrics.processing_time_per_event = mock_metric
+        return_value = ({"message": "test message"}, b'{"message": "test message"}')
+        self.object._get_event = mock.MagicMock(return_value=return_value)
+        self.object.get_next(0.01)
+        assert isinstance(self.object.metrics.processing_time_per_event, mock.MagicMock)
+        # asserts entering context manager in metrics.metrics.Metric.measure_time
+        mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
+
 
 class BaseOutputTestCase(BaseConnectorTestCase):
     def test_is_output_instance(self):
         assert isinstance(self.object, Output)
 
     def test_store_counts_processed_events(self):
-        assert self.object.metrics.number_of_processed_events == 0
+        self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
+
+    def test_store_failed_counts_failed_events(self):
+        self.object.metrics.number_of_failed_events = 0
+        self.object.store_failed("error", {"message": "my event message"}, {})
+        assert self.object.metrics.number_of_failed_events == 1
 
     def test_store_calls_batch_finished_callback(self):
         self.object.input_connector = mock.MagicMock()

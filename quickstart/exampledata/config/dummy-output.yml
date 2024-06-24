@@ -1,0 +1,6 @@
+output:
+  opensearch:
+    type: dummy_output
+  kafka:
+    type: dummy_output
+    do_nothing: true

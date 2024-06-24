@@ -94,10 +94,11 @@ the IPs from the list is also available in the specified fields.
    :inherited-members:
    :noindex:
 """
-from functools import cached_property
-from typing import Union, Optional
 
-from attrs import define, field, validators, asdict
+from functools import cached_property
+from typing import Optional, Union
+
+from attrs import asdict, define, field, validators
 
 from logprep.processor.base.rule import Rule
 
@@ -144,11 +145,11 @@ class PreDetectorRule(Rule):
     # pylint: disable=C0111
     @cached_property
     def detection_data(self) -> dict:
-        detection_data = asdict(self._config)
+        detection_data = asdict(
+            self._config, filter=lambda attribute, _: attribute.name not in self.special_field_types
+        )
         if self._config.link is None:
             del detection_data["link"]
-        for special_field in Rule.special_field_types:
-            detection_data.pop(special_field)
         return detection_data
 
     @property

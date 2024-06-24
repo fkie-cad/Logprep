@@ -2,7 +2,7 @@
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^
 
-The pseudonymizer requires the additional field :code:`pseudonymizer.pseudonyms`.
+The pseudonymizer requires the additional field :code:`pseudonymizer.mapping`.
 It contains key value pairs that define what will be pseudonymized.
 
 They key represents the field that will be pseudonymized and the value contains a regex keyword.
@@ -23,7 +23,7 @@ in a capture group and therefore pseudonymizes it completely.
 
     filter: 'event_id: 1 AND source_name: "Test"'
     pseudonymizer:
-        pseudonyms:
+        mapping:
             event_data.param1: RE_WHOLE_FIELD
     description: '...'
 
@@ -44,37 +44,45 @@ in a capture group and therefore pseudonymizes it completely.
    :noindex:
 """
 
+import re
 from typing import List
 
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule
+from logprep.processor.field_manager.rule import FieldManagerRule
 
 
-class PseudonymizerRule(Rule):
+class PseudonymizerRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(FieldManagerRule.Config):
         """RuleConfig for Pseudonymizer"""
 
-        pseudonyms: dict = field(
-            validator=validators.deep_mapping(
-                key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of(str),
-            )
+        mapping: dict = field(
+            validator=[
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+                validators.min_len(1),
+            ]
         )
         """mapping of field to regex string"""
         url_fields: list = field(
-            validator=validators.deep_iterable(member_validator=validators.instance_of(str)),
+            validator=[
+                validators.deep_iterable(
+                    member_validator=validators.instance_of((str, type(None)))
+                ),
+            ],
             factory=list,
         )
         """url fields to pseudonymize"""
 
     # pylint: disable=C0111
     @property
-    def pseudonyms(self) -> dict:
-        return self._config.pseudonyms
+    def pseudonyms(self) -> dict[str, re.Pattern]:
+        return self._config.mapping
 
     @property
     def url_fields(self) -> List[str]:

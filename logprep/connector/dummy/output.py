@@ -16,13 +16,17 @@ Example
       my_dummy_output:
         type: dummy_output
 """
-from logging import Logger
-from typing import List
 
-from attr import field, define
+from logging import Logger
+from typing import TYPE_CHECKING, List
+
+from attr import define, field
 from attrs import validators
 
 from logprep.abc.output import Output
+
+if TYPE_CHECKING:
+    from logprep.abc.connector import Connector  # pragma: no cover
 
 
 class DummyOutput(Output):
@@ -33,6 +37,8 @@ class DummyOutput(Output):
     @define(kw_only=True)
     class Config(Output.Config):
         """Common Configurations"""
+
+        do_nothing: bool = field(default=False)
 
         exceptions: List[str] = field(
             validator=validators.deep_iterable(
@@ -56,21 +62,12 @@ class DummyOutput(Output):
         "_exceptions",
     ]
 
-    def __init__(
-        self,
-        name: str,
-        configuration: "Connector.Config",
-        logger: Logger,
-    ):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "Connector.Config"):
+        super().__init__(name, configuration)
         self.events = []
         self.failed_events = []
-        self.setup_called_count = 0
         self.shut_down_called_count = 0
         self._exceptions = configuration.exceptions
-
-    def setup(self):
-        self.setup_called_count += 1
 
     def store(self, document: dict):
         """Store the document in the output destination.
@@ -80,10 +77,12 @@ class DummyOutput(Output):
         document : dict
            Processed log event that will be stored.
         """
+        if self._config.do_nothing:
+            return
         if self._exceptions:
             exception = self._exceptions.pop(0)
             if exception is not None:
-                raise Exception(exception)
+                raise Exception(exception)  # pylint: disable=broad-exception-raised
         self.events.append(document)
         self.metrics.number_of_processed_events += 1
         if self.input_connector:
@@ -95,6 +94,9 @@ class DummyOutput(Output):
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Store an event when an error occurred during the processing."""
+        if self._config.do_nothing:
+            return
+        self.metrics.number_of_failed_events += 1
         self.failed_events.append((error_message, document_received, document_processed))
 
     def shut_down(self):

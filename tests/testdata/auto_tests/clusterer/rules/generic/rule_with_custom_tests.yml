@@ -1,6 +1,6 @@
 filter: message
 clusterer:
-  target: message
+  source_fields: [message]
   pattern: '(bytes|Bytes|Byte)'
   repl: 'byte'
 description: '...'

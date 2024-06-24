@@ -1,6 +1,8 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
+# pylint: disable=attribute-defined-outside-init
 
+import itertools
 import json
 from copy import deepcopy
 from logging import getLogger
@@ -10,15 +12,14 @@ from unittest import mock
 import pytest
 import requests
 import responses
+from attrs import asdict
 from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.util.helper import camel_to_snake
+from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.util.json_handling import list_json_files_in_directory
-from logprep.util.time_measurement import TimeMeasurement
 from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -84,15 +85,14 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         """
         setUp class for the imported TestCase
         """
-        TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
-        TimeMeasurement.APPEND_TO_EVENT = False
         self.patchers = []
         for name, kwargs in self.mocks.items():
             patcher = mock.patch(name, **kwargs)
             patcher.start()
             self.patchers.append(patcher)
+        super().setup_method()
         config = {"Test Instance Name": self.CONFIG}
-        self.object = Factory.create(configuration=config, logger=self.logger)
+        self.object = Factory.create(configuration=config)
         self.specific_rules = self.set_rules(self.specific_rules_dirs)
         self.generic_rules = self.set_rules(self.generic_rules_dirs)
 
@@ -105,17 +105,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_is_a_processor_implementation(self):
         assert isinstance(self.object, Processor)
 
-    def test_process(self):
-        assert self.object.metrics.number_of_processed_events == 0
-        document = {
-            "event_id": "1234",
-            "message": "user root logged in",
-        }
-        count = self.object.metrics.number_of_processed_events
-        self.object.process(document)
-
-        assert self.object.metrics.number_of_processed_events == count + 1
-
     def test_generic_specific_rule_trees(self):
         assert isinstance(self.object._generic_tree, RuleTree)
         assert isinstance(self.object._specific_tree, RuleTree)
@@ -123,19 +112,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_generic_specific_rule_trees_not_empty(self):
         assert self.object._generic_tree.get_size() > 0
         assert self.object._specific_tree.get_size() > 0
-
-    def test_event_processed_count(self):
-        assert isinstance(self.object.metrics.number_of_processed_events, int)
-
-    def test_events_processed_count_counts(self):
-        assert self.object.metrics.number_of_processed_events == 0
-        document = {"foo": "bar"}
-        for i in range(1, 11):
-            try:
-                self.object.process(document)
-            except ProcessingWarning:
-                pass
-            assert self.object.metrics.number_of_processed_events == i
 
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
@@ -187,7 +163,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             {"generic_rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
         )
         with pytest.raises(TypeError, match="not .*MagicMock.*"):
-            Factory.create({"http_rule_processor": myconfig}, self.logger)
+            Factory.create({"http_rule_processor": myconfig})
 
     def test_no_redundant_rules_are_added_to_rule_tree(self):
         """
@@ -227,24 +203,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         object_rules_count = len(self.object.rules)
         assert all_rules_count == object_rules_count
 
-    def test_process_is_measured(self):
-        TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
-        TimeMeasurement.APPEND_TO_EVENT = True
-        event = {"some": "event"}
-        self.object.process(event)
-        processing_times = event.get("processing_times")
-        assert processing_times
-
-    def test_process_measurements_appended_under_processor_config_name(self):
-        TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
-        TimeMeasurement.APPEND_TO_EVENT = True
-        event = {"some": "event"}
-        self.object.process(event)
-        processing_times = event.get("processing_times")
-        config_name = camel_to_snake(self.object.__class__.__name__)
-        assert processing_times[config_name]
-        assert isinstance(processing_times[config_name], float)
-
     @mock.patch("logging.Logger.debug")
     def test_process_writes_debug_messages(self, mock_debug):
         event = {}
@@ -264,43 +222,26 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: "i am not a list"})
         with pytest.raises(TypeError, match=r"must be <class 'list'>"):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})
 
     @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
     def test_validation_raises_if_elements_does_not_exist(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: ["/i/do/not/exist"]})
         with pytest.raises(FileNotFoundError):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})
 
     def test_validation_raises_if_tree_config_is_not_a_str(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": 12})
         with pytest.raises(TypeError, match=r"must be <class 'str'>"):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})
 
     def test_validation_raises_if_tree_config_is_not_exist(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "/i/am/not/a/file/path"})
         with pytest.raises(FileNotFoundError):
-            Factory.create({"test instance": config}, self.logger)
-
-    def test_processor_metrics_counts_processed_events(self):
-        assert self.object.metrics.number_of_processed_events == 0
-        event = {}
-        self.object.process(event)
-        assert self.object.metrics.number_of_processed_events == 1
-
-    @mock.patch("logprep.framework.rule_tree.rule_tree.RuleTree.get_matching_rules")
-    def test_metrics_update_mean_processing_times_and_sample_counter(self, get_matching_rules_mock):
-        get_matching_rules_mock.return_value = [mock.MagicMock()]
-        self.object._apply_rules = mock.MagicMock()
-        assert self.object.metrics.mean_processing_time_per_event == 0
-        assert self.object.metrics._mean_processing_time_sample_counter == 0
-        event = {"test": "event"}
-        self.object.process(event)
-        assert self.object.metrics.mean_processing_time_per_event > 0
-        assert self.object.metrics._mean_processing_time_sample_counter == 2
+            Factory.create({"test instance": config})
 
     @responses.activate
     def test_accepts_tree_config_from_http(self):
@@ -308,8 +249,11 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
-        processor = Factory.create({"test instance": config}, self.logger)
-        assert processor._specific_tree._config_path == "http://does.not.matter.bla/tree_config.yml"
+        processor = Factory.create({"test instance": config})
+        assert (
+            processor._specific_tree._processor_config.tree_config
+            == "http://does.not.matter.bla/tree_config.yml"
+        )
         tree_config = json.loads(tree_config)
         assert processor._specific_tree.priority_dict == tree_config.get("priority_dict")
 
@@ -319,4 +263,25 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
         with pytest.raises(requests.HTTPError):
-            Factory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config})
+
+    @pytest.mark.parametrize(
+        "metric_name, metric_class",
+        [
+            ("number_of_processed_events", CounterMetric),
+            ("processing_time_per_event", HistogramMetric),
+            ("number_of_warnings", CounterMetric),
+            ("number_of_errors", CounterMetric),
+        ],
+    )
+    def test_rule_has_metric(self, metric_name, metric_class):
+        metric_instance = getattr(self.object.rules[0].metrics, metric_name)
+        assert isinstance(metric_instance, metric_class)
+
+    def test_no_metrics_with_same_name(self):
+        metric_attributes = asdict(
+            self.object.rules[0].metrics, filter=self.asdict_filter, recurse=False
+        )
+        pairs = itertools.combinations(metric_attributes.values(), 2)
+        for metric1, metric2 in pairs:
+            assert metric1.name != metric2.name, f"{metric1.name} == {metric2.name}"

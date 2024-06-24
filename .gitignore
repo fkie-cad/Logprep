@@ -5,10 +5,8 @@ __pycache__/
 htmlcov/
 doc/build/
 doc/source/module_reference/
-*.pex
 *.out
 .coverage*
-.tox/
 tests/testdata/external/
 .profile/
 *.prof
@@ -22,3 +20,7 @@ logs
 sql_db_table.json
 build/
 dist/
+error_file
+experiments
+**/_static/*.xlsx
+logprep.log

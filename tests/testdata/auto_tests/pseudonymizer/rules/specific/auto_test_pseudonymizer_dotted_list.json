@@ -2,7 +2,7 @@
   {
     "filter": "dotted.field: FOO\\BAR",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "dotted.field": "RE_DOMAIN_BACKSLASH_USERNAME"
       }
     },

@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 
+from logprep.factory import Factory
 from logprep.filter.expression.filter_expression import Exists, StringFilterExpression
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
@@ -39,7 +40,17 @@ class TestRuleTree:
         assert rule_tree.root.expression is None
 
     def test_init_with_specifying_config(self):
-        rule_tree = RuleTree(config_path="tests/testdata/unit/tree_config.json")
+        processor = Factory.create(
+            {
+                "processor": {
+                    "type": "dissector",
+                    "generic_rules": [],
+                    "specific_rules": [],
+                    "tree_config": "tests/testdata/unit/tree_config.json",
+                }
+            }
+        )
+        rule_tree = RuleTree(processor_config=processor._config)
 
         assert isinstance(rule_tree.root, Node)
         assert rule_tree.rule_parser._rule_tagger._tag_map == {
@@ -81,8 +92,8 @@ class TestRuleTree:
         ):
             rule_tree.add_rule(rule, logger=mocked_logger)
         expected_call = mock.call.warning(
-            'Error parsing rule "winlog:"123"": Exception: mocked error.'
-            "\nIgnore and continue with next rule."
+            'Error parsing rule "None.yml": Exception: mocked error. '
+            "Ignore and continue with next rule."
         )
         assert expected_call in mocked_logger.mock_calls
 
@@ -97,6 +108,12 @@ class TestRuleTree:
         rule_tree.add_rule(rule2)
         assert rule_tree.get_rule_id(rule) == 0
         assert rule_tree.get_rule_id(rule2) == 1
+
+        rule_dict["filter"] = "winlog: 123 AND xfoo: baz"
+        rule3 = PreDetectorRule._create_from_dict(rule_dict)
+        assert rule_tree.get_rule_id(rule) == 0
+        assert rule_tree.get_rule_id(rule2) == 1
+        assert rule_tree.get_rule_id(rule3) is None
 
     def test_match_simple(self, rule_dict):
         rule_tree = RuleTree()
@@ -284,43 +301,3 @@ class TestRuleTree:
         assert len(rules_from_rule_tree) == 3
         for rule in rules:
             assert rule in rules_from_rule_tree
-
-    def test_rule_tree_metrics_counts_number_of_rules(self, rule_dict):
-        rule_tree = RuleTree()
-        assert rule_tree.metrics.number_of_rules == 0
-        rule_tree.add_rule(PreDetectorRule._create_from_dict(rule_dict))
-        assert rule_tree.metrics.number_of_rules == 1
-
-    def test_rule_tree_metrics_number_of_matches_returns_number_of_all_rule_matches(
-        self, rule_dict
-    ):
-        rule_tree = RuleTree()
-        rule_one = PreDetectorRule._create_from_dict(rule_dict)
-        rule_one.metrics._number_of_matches = 1
-
-        rule_dict["filter"] = "winlog: 123 AND xfoo: bar"
-        rule_two = PreDetectorRule._create_from_dict(rule_dict)
-        rule_two.metrics._number_of_matches = 2
-
-        rule_tree.add_rule(rule_one)
-        rule_tree.add_rule(rule_two)
-        assert rule_tree.metrics.number_of_matches == 1 + 2
-
-    def test_rule_tree_metrics_mean_processing_time_returns_mean_of_all_rule_mean_processing_times(
-        self, rule_dict
-    ):
-        rule_tree = RuleTree()
-        rule_one = PreDetectorRule._create_from_dict(rule_dict)
-        rule_one.metrics.update_mean_processing_time(1)
-
-        rule_dict["filter"] = "winlog: 123 AND xfoo: bar"
-        rule_two = PreDetectorRule._create_from_dict(rule_dict)
-        rule_two.metrics.update_mean_processing_time(2)
-
-        rule_tree.add_rule(rule_one)
-        rule_tree.add_rule(rule_two)
-        assert rule_tree.metrics.mean_processing_time == 1.5
-
-    def test_rule_tree_metrics_mean_processing_time_returns_zero_if_no_times_available(self):
-        rule_tree = RuleTree()
-        assert rule_tree.metrics.mean_processing_time == 0.0

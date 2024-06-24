@@ -15,7 +15,6 @@ Processor Configuration
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
-        hyperscan_db_path: tmp/path/scan.db
         tld_list: tmp/path/tld.dat
         timeout: 0.5
         max_cached_domains: 20000
@@ -32,7 +31,9 @@ Processor Configuration
 
 .. automodule:: logprep.processor.domain_resolver.rule
 """
+
 import datetime
+import logging
 import os
 import socket
 import tempfile
@@ -48,12 +49,15 @@ from filelock import FileLock
 from tldextract import TLDExtract
 
 from logprep.abc.processor import Processor
+from logprep.metrics.metrics import CounterMetric
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, add_field_to
 from logprep.util.validators import list_of_urls_validator
+
+logger = logging.getLogger("DomainResolver")
 
 
 class DomainResolver(Processor):
@@ -98,16 +102,36 @@ class DomainResolver(Processor):
         was retrieved from the cache or newly resolved, as well as the cache size."""
 
     @define(kw_only=True)
-    class DomainResolverMetrics(Processor.ProcessorMetrics):
+    class Metrics(Processor.Metrics):
         """Tracks statistics about the DomainResolver"""
 
-        total_urls: int = 0
+        total_urls: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of all resolved urls",
+                name="domain_resolver_total_urls",
+            )
+        )
         """Number of all resolved urls"""
-        resolved_new: int = 0
+        resolved_new: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of urls that had to be resolved newly",
+                name="domain_resolver_resolved_new",
+            )
+        )
         """Number of urls that had to be resolved newly"""
-        resolved_cached: int = 0
+        resolved_cached: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of urls that were resolved from cache",
+                name="domain_resolver_resolved_cached",
+            )
+        )
         """Number of urls that were resolved from cache"""
-        timeouts: int = 0
+        timeouts: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of timeouts that occurred while resolving a url",
+                name="domain_resolver_timeouts",
+            )
+        )
         """Number of timeouts that occurred while resolving a url"""
 
     __slots__ = ["_domain_ip_map"]
@@ -116,18 +140,8 @@ class DomainResolver(Processor):
 
     rule_class = DomainResolverRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: Processor.Config,
-        logger: Logger,
-    ):
-        super().__init__(name=name, configuration=configuration, logger=logger)
-        self.metrics = self.DomainResolverMetrics(
-            labels=self.metric_labels,
-            generic_rule_tree=self._generic_tree.metrics,
-            specific_rule_tree=self._specific_tree.metrics,
-        )
+    def __init__(self, name: str, configuration: Processor.Config):
+        super().__init__(name, configuration)
         self._domain_ip_map = {}
 
     @cached_property
@@ -153,7 +167,7 @@ class DomainResolver(Processor):
         super().setup()
         if self._config.tld_lists:
             downloaded_tld_lists_paths = []
-            self._logger.debug("start tldlists download...")
+            logger.debug("start tldlists download...")
             for index, tld_list in enumerate(self._config.tld_lists):
                 logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
                 os.makedirs(logprep_tmp_dir, exist_ok=True)
@@ -164,7 +178,7 @@ class DomainResolver(Processor):
                         list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
                 downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
             self._config.tld_lists = downloaded_tld_lists_paths
-            self._logger.debug("finished tldlists download...")
+            logger.debug("finished tldlists download...")
 
     def _apply_rules(self, event, rule):
         source_field = rule.source_fields[0]
@@ -207,10 +221,8 @@ class DomainResolver(Processor):
             self.metrics.timeouts += 1
 
     def _store_debug_infos(self, event, requires_storing):
-        event["resolved_ip_debug"] = {}
-        event_dbg = event["resolved_ip_debug"]
-        if requires_storing:
-            event_dbg["obtained_from_cache"] = False
-        else:
-            event_dbg["obtained_from_cache"] = True
-        event_dbg["cache_size"] = len(self._domain_ip_map.keys())
+        event_dbg = {
+            "obtained_from_cache": not requires_storing,
+            "cache_size": len(self._domain_ip_map.keys()),
+        }
+        add_field_to(event, "resolved_ip_debug", event_dbg, overwrite_output_field=True)

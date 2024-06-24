@@ -1,12 +1,17 @@
 """ abstract module for components"""
+
+import functools
+import inspect
 from abc import ABC
-from logging import Logger
+from functools import cached_property
 from typing import Callable
 
 import msgspec
 from attr import define, field, validators
+from attrs import asdict
 from schedule import Scheduler
 
+from logprep.metrics.metrics import Metric
 from logprep.util.helper import camel_to_snake
 
 
@@ -20,21 +25,42 @@ class Component(ABC):
         type: str = field(validator=validators.instance_of(str))
         """Type of the component"""
 
+    @define(kw_only=True)
+    class Metrics:
+        """Base Metric class to track and expose statistics about logprep"""
+
+        _labels: dict
+
+        def __attrs_post_init__(self):
+            for attribute in asdict(self):
+                attribute = getattr(self, attribute)
+                if isinstance(attribute, Metric):
+                    attribute.labels = self._labels
+                    attribute.init_tracker()
+
     # __dict__ is added to support functools.cached_property
     __slots__ = ["name", "_logger", "_config", "__dict__"]
 
     name: str
     _scheduler = Scheduler()
 
-    _logger: Logger
     _config: Config
     _decoder: msgspec.json.Decoder = msgspec.json.Decoder()
     _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
 
-    def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
-        self._logger = logger
+    @property
+    def metric_labels(self) -> dict:
+        """Labels for the metrics"""
+        return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
+
+    def __init__(self, name: str, configuration: "Component.Config"):
         self._config = configuration
         self.name = name
+
+    @cached_property
+    def metrics(self):
+        """create and return metrics object"""
+        return self.Metrics(labels=self.metric_labels)
 
     def __repr__(self):
         return camel_to_snake(self.__class__.__name__)
@@ -53,11 +79,15 @@ class Component(ABC):
         return f"{self.__class__.__name__} ({self.name})"
 
     def setup(self):
-        """Set the component up.
+        """Set the component up."""
+        self._populate_cached_properties()
 
-        This is optional.
-
-        """
+    def _populate_cached_properties(self):
+        _ = [
+            getattr(self, name)
+            for name, value in inspect.getmembers(self)
+            if isinstance(value, functools.cached_property)
+        ]
 
     def shut_down(self):
         """Stop processing of this component.

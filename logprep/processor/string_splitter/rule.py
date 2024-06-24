@@ -53,6 +53,14 @@ class StringSplitterRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for StringSplitterRule"""
 
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.min_len(1),
+                validators.max_len(1),
+            ],
+        )
         delimeter: str = field(validator=validators.instance_of(str), default=" ")
         """The delimeter for splitting. Defaults to whitespace"""
         mapping: dict = field(default="", init=False, repr=False, eq=False)

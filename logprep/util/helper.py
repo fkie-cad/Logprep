@@ -1,12 +1,19 @@
 """This module contains helper functions that are shared by different modules."""
+
 import re
 import sys
 from functools import lru_cache, partial, reduce
+from importlib.metadata import version
 from os import remove
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from colorama import Back, Fore
 from colorama.ansi import AnsiBack, AnsiFore
+
+from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
+
+if TYPE_CHECKING:  # pragma: no cover
+    from logprep.util.configuration import Configuration
 
 
 def color_print_line(
@@ -60,7 +67,7 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
         Original log-event that logprep is currently processing
     output_field: str
         Dotted subfield string indicating the target of the output value, e.g. destination.ip
-    content: str, list, dict
+    content: str, float, int, list, dict
         Value that should be written into the output_field, can be a str, list or dict object
     extends_lists: bool
         Flag that determines whether output_field lists should be extended
@@ -308,3 +315,21 @@ def get_dict_size_in_byte(dictionary: dict) -> int:
         elements_size = sum(map(get_dict_size_in_byte, dictionary))
         return size + elements_size
     return size
+
+
+def get_versions_string(config: "Configuration" = None) -> str:
+    """
+    Prints the version and exists. If a configuration was found then it's version
+    is printed as well
+    """
+    padding = 25
+    version_string = f"{'python version:'.ljust(padding)}{sys.version.split()[0]}"
+    version_string += f"\n{'logprep version:'.ljust(padding)}{version('logprep')}"
+    if config:
+        config_version = (
+            f"{config.version}, {', '.join(config.config_paths) if config.config_paths else 'None'}"
+        )
+    else:
+        config_version = f"no configuration found in {', '.join([DEFAULT_CONFIG_LOCATION])}"
+    version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
+    return version_string

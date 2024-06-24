@@ -31,10 +31,10 @@ Example
 """
 
 import json
+import logging
 import re
 import ssl
 from functools import cached_property
-from logging import Logger
 from typing import List, Optional, Pattern, Tuple, Union
 
 import elasticsearch as search
@@ -42,11 +42,14 @@ from attr import define, field
 from attrs import validators
 from elasticsearch import ElasticsearchException, helpers
 from opensearchpy import OpenSearchException
-from urllib3.exceptions import TimeoutError
+from urllib3.exceptions import TimeoutError  # pylint: disable=redefined-builtin
 
 from logprep.abc.output import FatalOutputError, Output
+from logprep.metrics.metrics import Metric
 from logprep.util.helper import get_dict_size_in_byte
 from logprep.util.time import TimeParser
+
+logger = logging.getLogger("ElasticsearchOutput")
 
 
 class ElasticsearchOutput(Output):
@@ -54,7 +57,14 @@ class ElasticsearchOutput(Output):
 
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
-        """Elastic/Opensearch Output Config"""
+        """Elastic/Opensearch Output Config
+
+        .. security-best-practice::
+           :title: Output Connectors - ElasticsearchOutput
+
+           It is suggested to enable a secure message transfer by setting :code:`user`,
+           :code:`secret` and a valid :code:`ca_cert`.
+        """
 
         hosts: List[str] = field(
             validator=validators.deep_iterable(
@@ -79,13 +89,15 @@ class ElasticsearchOutput(Output):
             converter=(lambda x: x * 10**6 if x else None),
             default=None,
         )
-        """(Optional) Maximum estimated size of a document in MB before discarding it if it causes 
+        """(Optional) Maximum estimated size of a document in MB before discarding it if it causes
         an error."""
         timeout: int = field(validator=validators.instance_of(int), default=500)
         """(Optional) Timeout for the connection (default is 500ms)."""
         max_retries: int = field(validator=validators.instance_of(int), default=0)
         """(Optional) Maximum number of retries for documents rejected with code 429 (default is 0).
-        Increases backoff time by 2 seconds per try, but never exceeds 600 seconds."""
+        Increases backoff time by 2 seconds per try, but never exceeds 600 seconds. When using
+        parallel_bulk in the opensearch connector then the backoff time starts with 1 second. With
+        each consecutive retry 500 to 1000 ms will be added to the delay, chosen randomly """
         user: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) User used for authentication."""
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
@@ -93,7 +105,7 @@ class ElasticsearchOutput(Output):
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) Path to a SSL ca certificate to verify the ssl context."""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) Timout after :code:`message_backlog` is flushed if 
+        """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
 
     __slots__ = ["_message_backlog", "_size_error_pattern"]
@@ -102,8 +114,8 @@ class ElasticsearchOutput(Output):
 
     _size_error_pattern: Pattern[str]
 
-    def __init__(self, name: str, configuration: "ElasticsearchOutput.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "ElasticsearchOutput.Config"):
+        super().__init__(name, configuration)
         self._message_backlog = []
         self._size_error_pattern = re.compile(
             r".*coordinating_operation_bytes=(?P<size>\d+), "
@@ -211,10 +223,16 @@ class ElasticsearchOutput(Output):
 
         self._add_dates(document)
         self.metrics.number_of_processed_events += 1
-        self._write_to_search_context(document)
+        self._message_backlog.append(document)
+        self._write_to_search_context()
 
     def store_custom(self, document: dict, target: str):
-        """Write document to Elasticsearch into the target index.
+        """Store document into backlog to be written into Elasticsearch with the target index.
+
+        Only add to backlog instead of writing the batch and calling batch_finished_callback,
+        since store_custom can be called before the event has been fully processed.
+        Setting the offset or comiting before fully processing an event can lead to data loss if
+        Logprep terminates.
 
         Parameters
         ----------
@@ -231,7 +249,7 @@ class ElasticsearchOutput(Output):
         document["_index"] = target
         self._add_dates(document)
         self.metrics.number_of_processed_events += 1
-        self._write_to_search_context(document)
+        self._message_backlog.append(document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Write errors into error topic for documents that failed processing.
@@ -246,6 +264,7 @@ class ElasticsearchOutput(Output):
             Document after processing until an error occurred.
 
         """
+        self.metrics.number_of_failed_events += 1
         error_document = {
             "error": error_message,
             "original": document_received,
@@ -254,7 +273,8 @@ class ElasticsearchOutput(Output):
             "_index": self._config.error_index,
         }
         self._add_dates(error_document)
-        self._write_to_search_context(error_document)
+        self._message_backlog.append(error_document)
+        self._write_to_search_context()
 
     def _build_failed_index_document(self, message_document: dict, reason: str):
         document = {
@@ -276,7 +296,7 @@ class ElasticsearchOutput(Output):
                 formatted_date = now.strftime(date_format_match[2:-1])
                 document["_index"] = re.sub(date_format_match, formatted_date, document["_index"])
 
-    def _write_to_search_context(self, document):
+    def _write_to_search_context(self):
         """Writes documents from a buffer into Elasticsearch indices.
 
         Writes documents in a bulk if the document buffer limit has been reached.
@@ -284,20 +304,15 @@ class ElasticsearchOutput(Output):
         The target index is determined per document by the value of the meta field '_index'.
         A configured default index is used if '_index' hasn't been set.
 
-        Parameters
-        ----------
-        document : dict
-           Document to store.
-
         Returns
         -------
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
-        self._message_backlog.append(document)
         if len(self._message_backlog) >= self._config.message_backlog_size:
             self._write_backlog()
 
+    @Metric.measure_time()
     def _write_backlog(self):
         if not self._message_backlog:
             return
@@ -308,11 +323,13 @@ class ElasticsearchOutput(Output):
             max_retries=self._config.max_retries,
             chunk_size=len(self._message_backlog),
         )
+        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
+            self.input_connector.batch_finished_callback()
         self._message_backlog.clear()
 
-    def _bulk(self, *args, **kwargs):
+    def _bulk(self, client, actions, *args, **kwargs):
         try:
-            helpers.bulk(*args, **kwargs)
+            helpers.bulk(client, actions, *args, **kwargs)
         except search.SerializationError as error:
             self._handle_serialization_error(error)
         except search.ConnectionError as error:
@@ -321,20 +338,18 @@ class ElasticsearchOutput(Output):
             self._handle_bulk_index_error(error)
         except search.exceptions.TransportError as error:
             self._handle_transport_error(error)
-        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-            self.input_connector.batch_finished_callback()
 
     def _handle_serialization_error(self, error: search.SerializationError):
         """Handle serialization error for elasticsearch bulk indexing.
 
         If at least one document in a chunk can't be serialized, no events will be sent.
         The chunk size is thus set to be the same size as the message backlog size.
-        Therefore, it won't result in duplicates once the the data is resent.
+        Therefore, it won't result in duplicates once the data is resent.
 
         Parameters
         ----------
         error : SerializationError
-           SerializationError for the error message.
+            SerializationError for the error message.
 
         Raises
         ------
@@ -401,7 +416,7 @@ class ElasticsearchOutput(Output):
 
         """
         if self._config.maximum_message_size_mb is None:
-            raise error
+            raise FatalOutputError(self, error.error)
 
         if self._message_exceeds_max_size_error(error):
             (
@@ -410,7 +425,7 @@ class ElasticsearchOutput(Output):
             ) = self._split_message_backlog_by_size_limit()
 
             if len(messages_over_size_limit) == 0:
-                raise error
+                raise FatalOutputError(self, error.error)
 
             error_documents = self._build_messages_for_large_error_documents(
                 messages_over_size_limit
@@ -418,7 +433,7 @@ class ElasticsearchOutput(Output):
             self._message_backlog = error_documents + messages_under_size_limit
             self._bulk(self._search_context, self._message_backlog)
         else:
-            raise error
+            raise FatalOutputError(self, error.error)
 
     def _message_exceeds_max_size_error(self, error):
         if error.status_code == 429:
@@ -426,7 +441,7 @@ class ElasticsearchOutput(Output):
                 return True
 
             if error.error == "rejected_execution_exception":
-                reason = error.info.get("error", {}).get("reason", {})
+                reason = error.info.get("error", {}).get("reason", "")
                 match = self._size_error_pattern.match(reason)
                 if match and int(match.group("size")) >= int(match.group("max_size")):
                     return True
@@ -465,7 +480,7 @@ class ElasticsearchOutput(Output):
                 f"Discarded message that is larger than the allowed size limit "
                 f"({size / 10 ** 6} MB/{self._config.maximum_message_size_mb} MB)"
             )
-            self._logger.warning(error_message)
+            logger.warning(error_message)
 
             error_document = {
                 "processed_snipped": f'{self._encoder.encode(message).decode("utf-8")[:1000]} ...',

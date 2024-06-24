@@ -24,9 +24,22 @@ class TestAmides(BaseProcessorTestCase):
         "num_rule_attributions": 10,
     }
 
+    expected_metrics = [
+        "logprep_amides_total_cmdlines",
+        "logprep_amides_new_results",
+        "logprep_amides_cached_results",
+        "logprep_amides_num_cache_entries",
+        "logprep_amides_cache_load",
+        "logprep_amides_mean_misuse_detection_time",
+        "logprep_amides_mean_rule_attribution_time",
+    ]
+
     def test_process_event_malicious_process_command_line(self):
+        self.object.metrics.total_cmdlines = 0
+        self.object.metrics.new_results = 0
+        self.object.metrics.num_cache_entries = 0
+        self.object.metrics.cache_load = 0.0
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
                 "event_id": 1,
@@ -36,7 +49,6 @@ class TestAmides(BaseProcessorTestCase):
         }
 
         self.object.process(document)
-        assert self.object.metrics.number_of_processed_events == 1
 
         result = document.get("amides")
         assert result
@@ -48,12 +60,13 @@ class TestAmides(BaseProcessorTestCase):
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.num_cache_entries == 1
         assert self.object.metrics.cache_load == 0.2
-        assert self.object.metrics.mean_misuse_detection_time != 0.0
-        assert self.object.metrics.mean_rule_attribution_time != 0.0
 
     def test_process_event_benign_process_command_line(self):
+        self.object.metrics.total_cmdlines = 0
+        self.object.metrics.new_results = 0
+        self.object.metrics.num_cache_entries = 0
+        self.object.metrics.cache_load = 0.0
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
                 "event_id": 1,
@@ -62,7 +75,6 @@ class TestAmides(BaseProcessorTestCase):
             },
         }
         self.object.process(document)
-        assert self.object.metrics.number_of_processed_events == 1
         result = document.get("amides")
         assert result
         assert result["confidence"] < self.CONFIG.get("decision_threshold") and not result.get(
@@ -72,8 +84,6 @@ class TestAmides(BaseProcessorTestCase):
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.num_cache_entries == 1
         assert self.object.metrics.cache_load == 0.2
-        assert self.object.metrics.mean_misuse_detection_time != 0.0
-        assert self.object.metrics.mean_rule_attribution_time == 0.0
 
     no_pc_events = [
         {"winlog": {"event_id": 6005, "provider_name": "Microsoft-Windows-Sysmon"}},
@@ -84,40 +94,44 @@ class TestAmides(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("document", no_pc_events)
     def test_process_event_no_process_creation_events(self, document):
+        self.object.metrics.total_cmdlines = 0
+        self.object.metrics.new_results = 0
+        self.object.metrics.num_cache_entries = 0
+        self.object.metrics.cache_load = 0.0
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
 
         self.object.process(document)
-        assert self.object.metrics.number_of_processed_events == 1
         assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.num_cache_entries == 0
         assert self.object.metrics.cache_load == 0.0
-        assert self.object.metrics.mean_misuse_detection_time == 0.0
-        assert self.object.metrics.mean_rule_attribution_time == 0.0
 
     def test_process_event_without_command_line_field(self):
+        self.object.metrics.total_cmdlines = 0
+        self.object.metrics.new_results = 0
+        self.object.metrics.num_cache_entries = 0
+        self.object.metrics.cache_load = 0.0
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"event_id": 1, "provider_name": "Microsoft-Windows-Sysmon"},
             "some": {"random": "data"},
         }
 
         self.object.process(document)
-        assert self.object.metrics.number_of_processed_events == 1
         assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.num_cache_entries == 0
         assert self.object.metrics.cache_load == 0.0
-        assert self.object.metrics.mean_misuse_detection_time == 0.0
-        assert self.object.metrics.mean_rule_attribution_time == 0.0
 
     def test_classification_results_from_cache(self):
+        self.object.metrics.total_cmdlines = 0
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
+        self.object.metrics.cache_load = 0.0
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
                 "event_id": 1,
@@ -129,20 +143,22 @@ class TestAmides(BaseProcessorTestCase):
 
         self.object.process(document)
         self.object.process(other_document)
-        assert self.object.metrics.number_of_processed_events == 2
 
         assert other_document.get("amides") == document.get("amides")
         assert self.object.metrics.total_cmdlines == 2
-        assert self.object.metrics.new_results == 1
+        # we mock the metrics with integer operations, so the assertions
+        # are a little bit weird:
+        # we assert for 2 because we add two times the same cache result
+        # the underlying metric implementation sets the values instead of adding
+        # them
+        assert self.object.metrics.new_results == 2
+        assert self.object.metrics.num_cache_entries == 2
+        assert self.object.metrics.cache_load == 0.4
+        # end strange mock
         assert self.object.metrics.cached_results == 1
-        assert self.object.metrics.num_cache_entries == 1
-        assert self.object.metrics.cache_load == 0.2
-        assert self.object.metrics.mean_misuse_detection_time != 0.0
-        assert self.object.metrics.mean_rule_attribution_time != 0.0
 
     def test_process_event_raise_duplication_error(self, caplog):
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
                 "event_id": 1,
@@ -154,7 +170,8 @@ class TestAmides(BaseProcessorTestCase):
         assert document.get("amides")
         with caplog.at_level(logging.WARNING):
             self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        assert re.match(r".*missing source_fields: \['process.command_line'].*", caplog.messages[0])
+        assert re.match(".*FieldExistsWarning.*", caplog.messages[1])
 
     def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
         model_uri = "file://tests/testdata/unit/amides/model.zip"

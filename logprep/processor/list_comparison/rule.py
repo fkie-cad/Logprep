@@ -32,7 +32,7 @@ target field :code:`List_comparison.example`.
 
 .. note::
 
-    Currently it is not possible to check in more than one source_field per rule
+    Currently, it is not possible to check in more than one :code:`source_field` per rule.
 
 .. autoclass:: logprep.processor.list_comparison.rule.ListComparisonRule.Config
    :members:
@@ -40,6 +40,7 @@ target field :code:`List_comparison.example`.
    :inherited-members:
    :noindex:
 """
+
 import os.path
 from string import Template
 from typing import List, Optional
@@ -72,8 +73,8 @@ class ListComparisonRule(FieldManagerRule):
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
-    def __init__(self, filter_rule: FilterExpression, config: dict):
-        super().__init__(filter_rule, config)
+    def __init__(self, filter_rule: FilterExpression, config: dict, processor_name: str):
+        super().__init__(filter_rule, config, processor_name)
         self._compare_sets = {}
 
     def _get_list_search_base_path(self, list_search_base_path):

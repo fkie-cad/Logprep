@@ -2,11 +2,8 @@
 # pylint: disable=line-too-long
 import pytest
 
-from logprep.util.json_handling import dump_config_as_file
-from tests.acceptance.util import (
-    get_test_output,
-    get_default_logprep_config,
-)
+from logprep.util.configuration import Configuration
+from tests.acceptance.util import get_default_logprep_config, get_test_output
 
 
 @pytest.fixture(name="config")
@@ -31,13 +28,13 @@ def config_fixture():
 
 
 class TestSelectiveExtractor:
-    def test_selective_extractor_full_pipeline_pass(self, tmp_path, config):
-        config_path = str(tmp_path / "generated_config.yml")
-        config["input"]["jsonl"][
+    def test_selective_extractor_full_pipeline_pass(self, tmp_path, config: Configuration):
+        config_path = tmp_path / "generated_config.yml"
+        config.input["jsonl"][
             "documents_path"
         ] = "tests/testdata/input_logdata/selective_extractor_events.jsonl"
-        dump_config_as_file(config_path, config)
-        test_output, test_custom, _ = get_test_output(config_path)
+        config_path.write_text(config.as_yaml())
+        test_output, test_custom, _ = get_test_output(str(config_path))
         assert test_output, "should not be empty"
         assert test_custom, "should not be empty"
         assert len(test_custom) == 2, "2 events extracted"
@@ -48,14 +45,14 @@ class TestSelectiveExtractor:
             "event": {"action": "less_evil_action"},
         } in test_output
 
-    def test_extraction_field_not_in_event(self, tmp_path, config):
+    def test_extraction_field_not_in_event(self, tmp_path, config: Configuration):
         # tests behaviour in case a field from the extraction list is not in the provided event
-        config_path = str(tmp_path / "generated_config.yml")
-        config["input"]["jsonl"][
+        config_path = tmp_path / "generated_config.yml"
+        config.input["jsonl"][
             "documents_path"
         ] = "tests/testdata/input_logdata/selective_extractor_events_2.jsonl"
-        dump_config_as_file(config_path, config)
-        test_output, test_custom, _ = get_test_output(config_path)
+        config_path.write_text(config.as_yaml())
+        test_output, test_custom, _ = get_test_output(str(config_path))
         assert test_output, "should not be empty"
         assert test_custom, "should not be empty"
         assert len(test_custom) == 1, "one extracted event"

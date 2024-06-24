@@ -62,6 +62,7 @@ A speaking example for event enrichment via external api:
    :inherited-members:
    :noindex:
 """
+
 import inspect
 import json
 import re

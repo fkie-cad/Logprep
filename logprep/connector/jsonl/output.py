@@ -57,8 +57,8 @@ class JsonlOutput(Output):
         "failed_events",
     ]
 
-    def __init__(self, name: str, configuration: "Output.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "Output.Config"):
+        super().__init__(name, configuration)
         self.events = []
         self.failed_events = []
 
@@ -89,8 +89,10 @@ class JsonlOutput(Output):
 
         if self._config.output_file_custom:
             JsonlOutput._write_json(self._config.output_file_custom, document)
+        self.metrics.number_of_processed_events += 1
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+        self.metrics.number_of_failed_events += 1
         self.failed_events.append((error_message, document_received, document_processed))
 
         if self._config.output_file_error:

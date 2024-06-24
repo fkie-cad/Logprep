@@ -27,8 +27,6 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         return self.CONFIG.get("generic_rules")
 
     def test_an_event_extracted_datetime_utc(self):
-        assert self.object.metrics.number_of_processed_events == 0
-
         timestamp = "2019-07-30T14:37:42.861Z"
         document = {"@timestamp": timestamp, "winlog": {"event_id": 123}}
 
@@ -52,8 +50,6 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         assert document == expected
 
     def test_an_event_extracted_datetime_plus_one(self):
-        assert self.object.metrics.number_of_processed_events == 0
-
         timestamp = "2019-07-30T14:37:42.861+01:00"
         document = {"@timestamp": timestamp, "winlog": {"event_id": 123}}
 
@@ -77,8 +73,6 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         assert document == expected
 
     def test_an_event_extracted_datetime_and_local_utc_without_delta(self):
-        assert self.object.metrics.number_of_processed_events == 0
-
         self.object._local_timezone = tzutc()
         self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
             self.object._local_timezone

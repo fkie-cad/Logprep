@@ -261,9 +261,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {
             "field2": "4",
             "field3": 2,
-            "tags": ["_calculator_failure"],
+            "tags": ["_calculator_missing_field_warning"],
         },
-        r"ProcessingWarning.*no value for fields: \['field1'\]",
+        r"ProcessingWarning.*missing source_fields: \['field1']",
     ),
     (
         "Tags failure if source_field is empty",
