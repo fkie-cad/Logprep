@@ -1,7 +1,0 @@
-[{
-  "filter": "some_field",
-  "normalize": {
-    "some_field": "some_normalized_field"
-  },
-  "description": "Test-rule with mismatching auto-test"
-}]

@@ -210,7 +210,7 @@ class FileInput(Input):
 
         logfile_path: str = field(validator=file_validator)
         """A path to a file in generic raw format, which can be in any string based
-        format. Needs to be parsed with normalizer or another processor"""
+        format. Needs to be parsed with dissector or another processor"""
 
         start: str = field(
             validator=[validators.instance_of(str), validators.in_(("begin", "end"))],

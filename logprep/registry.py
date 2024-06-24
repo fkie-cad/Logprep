@@ -37,7 +37,6 @@ from logprep.processor.ip_informer.processor import IpInformer
 from logprep.processor.key_checker.processor import KeyChecker
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.list_comparison.processor import ListComparison
-from logprep.processor.normalizer.processor import Normalizer
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.processor.requester.processor import Requester
@@ -73,7 +72,6 @@ class Registry:
         "key_checker": KeyChecker,
         "labeler": Labeler,
         "list_comparison": ListComparison,
-        "normalizer": Normalizer,
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,

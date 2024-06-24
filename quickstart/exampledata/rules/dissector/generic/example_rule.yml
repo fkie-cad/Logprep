@@ -1,0 +1,5 @@
+filter: message
+dissector:
+  mapping:
+    message: "%{generic.msg.part_one} %{generic.msg.part_two}"
+description: '...'

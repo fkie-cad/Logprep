@@ -1,12 +1,13 @@
 ## Upcoming Changes
 
-
 ## next release
-
-This release limits the maximum python version to `3.12.3` because of the issue
-[#612](https://github.com/fkie-cad/Logprep/issues/612).
-
 ### Breaking
+
+* This release limits the maximum python version to `3.12.3` because of the issue
+[#612](https://github.com/fkie-cad/Logprep/issues/612).
+* Remove `normalizer` processor, as it's functionality was replaced by the `grokker`, `timestamper`
+and `field_manager` processors
+
 ### Features
 ### Improvements
 
@@ -417,7 +418,6 @@ In case of positive detection results, rule attributions are now inserted in the
 * Bump `requests` to `>=2.31.0` to circumvent `CVE-2023-32681`
 * Include a lucene representation of the rule filter into the predetector results. The
 representation is not completely lucene compatible due to non-existing regex functionality.
-* Remove direct dependency of `python-dateutil`
 
 ### Bugfix
 
