@@ -276,6 +276,21 @@ failure_test_cases = [
         r"Could not parse timestamp",
     ),
     (
+        "attempt parsing valid ISO8601 with not matching pattern",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": ["%Y-%m-%dT%H:%M:%S"],
+            },
+        },
+        {
+            "message": "2019-09-07T15:50",
+        },
+        {"message": "2019-09-07T15:50", "tags": ["_timestamper_failure"]},
+        r"Could not parse timestamp",
+    ),
+    (
         "raises if source field is none",
         {"filter": "message", "timestamper": {"source_fields": ["@timestamp"]}},
         {"message": "this does not matter"},

@@ -98,6 +98,26 @@ class TimestamperRule(FieldManagerRule):
         in the ISO8601 format, such that only a timezone conversion should be applied.
         And the latter can be used if the timestamp is given in the UNIX Epoch Time.
         This supports the Unix timestamps in seconds and milliseconds.
+        Be aware that :code:`UNIX` and :code:`ISO8601` formats do not validate the completeness of
+        input string. If you want to ensure, the completeness of the input string, you have to use
+        the :code:`datetime.strptime` syntax.
+
+        For example, the following time formats are valid :code:`ISO8601` formats:
+
+        - :code:`hh:mm`
+        - :code:`hh:mm:ss`
+        - :code:`hh:mm:ss.sss`
+        - :code:`hhmmss.ssssss`
+        - :code:`hhmm`
+        - :code:`hhmmss`
+
+        The output string will always be in this format: :code:`2000-12-31T22:59:59Z`. As you can see
+        the output string has a time with seconds. If the input string does not have a time or the time
+        does not have seconds, the output string will have seconds or times set to zero.
+
+        If you don't want this behavior, you have to use the :code:`datetime.strptime` syntax.
+        With this syntax, the :code:`timestamper`errors out with a :code:`TimeParserException` and
+        a tag :code:`_timestamper_failure` will be added to the event.
         """
         source_timezone: ZoneInfo = field(
             validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
