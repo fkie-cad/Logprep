@@ -90,8 +90,9 @@ class TimestamperRule(FieldManagerRule):
             default=["ISO8601"],
             converter=lambda x: x if isinstance(x, list) else [x],
         )
-        """A list of possible source formats if source_fields is not an iso8601 compliant time format string
-        the format must be given in the syntax of the python builtin :code:`datetime.strptime`
+        """A list of possible source formats if source_fields is not an iso8601 compliant
+        time format string the format must be given in the syntax of the
+        python builtin :code:`datetime.strptime`
         (see: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes).
         Additionally, the value :code:`ISO8601` (default)  and :code:`UNIX` can be used in the list
         of the source_formats field. The former can be used if the timestamp already exists
@@ -111,9 +112,10 @@ class TimestamperRule(FieldManagerRule):
         - :code:`hhmm`
         - :code:`hhmmss`
 
-        The output string will always be in this format: :code:`2000-12-31T22:59:59Z`. As you can see
-        the output string has a time with seconds. If the input string does not have a time or the time
-        does not have seconds, the output string will have seconds or times set to zero.
+        The output string will always be in this format: :code:`2000-12-31T22:59:59Z`.
+        As you can see the output string has a time with seconds.
+        If the input string does not have a time or the time does not have seconds,
+        the output string will have seconds or times set to zero.
 
         If you don't want this behavior, you have to use the :code:`datetime.strptime` syntax.
         With this syntax, the :code:`timestamper`errors out with a :code:`TimeParserException` and
