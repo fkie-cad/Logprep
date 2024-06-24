@@ -116,4 +116,12 @@ output: {}
 configurations:
   - name: logprep-config
     data:
-      pipeline: []
+      pipeline:
+        - domain_resolver:
+            type: domain_resolver
+            specific_rules: []
+            generic_rules: []
+            timeout: 10.0
+            hash_salt: "123"
+            max_caching_days: 1
+            max_cached_domains: 20000
