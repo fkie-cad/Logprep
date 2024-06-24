@@ -10,3 +10,5 @@ data:
     metrics:
       enabled: {{ .Values.exporter.enabled }}
       port: {{ default 8000 .Values.exporter.port }}
+      uvicorn_config:
+        {{- toYaml .Values.exporter.webserver_config | nindent 8 }}

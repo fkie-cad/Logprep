@@ -57,6 +57,14 @@ podAnnotations: {}
 exporter:
   enabled: true
   port: 8000
+  # This is the configuration for the uvicorn server exporting the metrics.
+  # See: https://www.uvicorn.org/settings/ for available configuration options.
+  webserver_config:
+    access_log: true
+    date_header: false
+    host: 0.0.0.0
+    server_header: false
+    workers: 1
   service_port: 8001
   scrape_interval: 30s
   annotations:

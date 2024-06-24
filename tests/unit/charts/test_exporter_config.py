@@ -42,6 +42,13 @@ class TestExporterConfig(TestBaseChartTest):
             "metrics": {
                 "enabled": True,
                 "port": 8000,
+                "uvicorn_config": {
+                    "access_log": True,
+                    "date_header": False,
+                    "host": "0.0.0.0",
+                    "server_header": False,
+                    "workers": 1,
+                },
             }
         }
         expected_exporter_config = yaml.dump(expected_exporter_config)
