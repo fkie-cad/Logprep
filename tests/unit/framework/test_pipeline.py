@@ -55,7 +55,7 @@ class ConfigurationForTests:
 def add_empty_processor_result_to_process_mocks(pipeline):
     for index in range(len(pipeline)):
         pipeline[index].process = mock.MagicMock()
-        pipeline[index].process.return_value = ProcessorResult()
+        pipeline[index].process.return_value = ProcessorResult(name="mock_processor")
 
 
 @mock.patch("logprep.factory.Factory.create")
@@ -123,7 +123,9 @@ class TestPipeline(ConfigurationForTests):
         deleter_processor._specific_tree.add_rule(deleter_rule)
         processor_with_mock_result = mock.MagicMock()
         processor_with_mock_result.process = mock.MagicMock()
-        processor_with_mock_result.process.return_value = ProcessorResult()
+        processor_with_mock_result.process.return_value = ProcessorResult(
+            name="processor_with_mock_res"
+        )
         self.pipeline._pipeline = [
             processor_with_mock_result,
             deleter_processor,
@@ -235,7 +237,7 @@ class TestPipeline(ConfigurationForTests):
         mock_rule = mock.MagicMock()
         processing_warning = ProcessingWarning("not so bad", mock_rule, {"message": "test"})
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            errors=[processing_warning]
+            name="mock_processor", errors=[processing_warning]
         )
 
         self.pipeline.process_pipeline()
@@ -255,12 +257,14 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = (input_event1, None)
         mock_rule = mock.MagicMock()
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event1)]
+            name="",
+            errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event1)],
         )
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = (input_event2, None)
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event2)]
+            name="",
+            errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event2)],
         )
 
         self.pipeline.process_pipeline()
@@ -411,7 +415,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            data=[({"foo": "bar"}, ({"dummy": "target"},))]
+            name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
         )
         self.pipeline._pipeline.append(deepcopy(self.pipeline._pipeline[0]))
         self.pipeline.process_pipeline()
@@ -425,12 +429,13 @@ class TestPipeline(ConfigurationForTests):
         add_empty_processor_result_to_process_mocks(self.pipeline._pipeline)
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
+            name="",
             data=[
                 (
                     {"foo": "bar"},
                     ({"dummy": "target"}, {"dummy1": "second_target"}),
                 )
-            ]
+            ],
         )
         self.pipeline._pipeline.append(deepcopy(self.pipeline._pipeline[0]))
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
@@ -448,7 +453,7 @@ class TestPipeline(ConfigurationForTests):
         add_empty_processor_result_to_process_mocks(self.pipeline._pipeline)
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            data=[({"foo": "bar"}, ({"dummy": "target"},))]
+            name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
         )
         self.pipeline._pipeline.append(deepcopy(self.pipeline._pipeline[0]))
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
