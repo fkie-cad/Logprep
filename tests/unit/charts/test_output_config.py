@@ -2,7 +2,6 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
 
-import pytest
 
 from logprep.util.configuration import yaml
 from tests.unit.charts.test_base import TestBaseChartTest
