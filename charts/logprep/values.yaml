@@ -82,8 +82,8 @@ input: {}
 # The logprep output connector configuration
 # Note: This is only the default output. Additional outputs can be configured in
 # the configurations section. The Name of the default output is derived from the
-# `type` of the output. In example, if the type is `elasticsearch_output`, the
-# name of the output will be `elasticsearch`. Keep this in mind if you specify
+# `type` of the output. For example, if the type is `opensearch_output`, the
+# name of the output will be `opensearch`. Keep this in mind if you specify
 # additional outputs in the configurations section.
 # See https://logprep.readthedocs.io/en/latest/user_manual/configuration/output.html
 # for available configuration options.
