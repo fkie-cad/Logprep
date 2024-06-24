@@ -68,6 +68,7 @@ dependencies = [
   "joblib",
   "pyyaml",
   "requests>=2.31.0",
+  "regex",
   "ruamel.yaml",
   "schedule",
   "tldextract",
