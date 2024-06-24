@@ -1,7 +1,7 @@
 Kubernetes Example Deployment
 =============================
 
-For this example, we need a working kubernetes cluster. In this example we will use minikube
+For this example, we need a working kubernetes cluster. Here we will use minikube,
 but every other kubernetes environment should do the job.
 
 Setup Minikube
