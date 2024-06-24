@@ -39,9 +39,8 @@ class TestBaseChartTest:
 
     @property
     def exporter_service(self):
-        return self.manifests.by_query("kind: Service AND metadata.name: logprep-logprep-exporter")[
-            0
-        ]
+        query = "kind: Service AND metadata.name: logprep-logprep-exporter"
+        return self.manifests.by_query(query)[0]
 
 
 class TestLogprepChart(TestBaseChartTest):
