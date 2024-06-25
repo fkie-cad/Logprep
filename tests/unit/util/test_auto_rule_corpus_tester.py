@@ -10,6 +10,8 @@ from unittest import mock
 
 import pytest
 
+from logprep.abc.processor import ProcessorResult
+from logprep.framework.pipeline import PipelineResult
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.getter import GetterFactory
@@ -318,7 +320,9 @@ class TestAutoRuleTester:
             with mock.patch(
                 "logprep.util.auto_rule_tester.auto_rule_corpus_tester.Pipeline.process_pipeline"
             ) as mock_process_pipeline:
-                mock_process_pipeline.return_value = mock_output
+                mock_process_pipeline.return_value = mock_output, PipelineResult(
+                    results=[ProcessorResult(name="", data=mock_output)]
+                )
                 corpus_tester.run()
         else:
             corpus_tester.run()

@@ -214,13 +214,13 @@ class RuleCorpusTester:
             parsed_event, result = self._pipeline.process_pipeline()
             extra_outputs = convert_extra_data_format(
                 result.results[processor_result].data
-                for processor_result in range(len(result.results) - 1)
+                for processor_result in range(len(result.results))
             )
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
             test_case.warnings = [
                 result.results[processor_result].errors
-                for processor_result in range(len(result.results) - 1)
+                for processor_result in range(len(result.results))
             ]
             test_case.warnings = list(itertools.chain(*test_case.warnings))
             self._compare_logprep_outputs(test_case_id, parsed_event)

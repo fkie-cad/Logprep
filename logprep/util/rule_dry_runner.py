@@ -106,7 +106,7 @@ class DryRunner:
             test_output, result = self._pipeline.process_pipeline()
             test_output_custom = convert_extra_data_format(
                 result.results[processor_result].data
-                for processor_result in range(len(result.results) - 1)
+                for processor_result in range(len(result.results))
             )
             if test_output:
                 output_count += 1

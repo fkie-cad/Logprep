@@ -150,7 +150,9 @@ class TestPipeline(ConfigurationForTests):
         assert self.pipeline._store_event.call_count == 1
 
     def test_empty_documents_are_not_stored_in_the_output(self, _):
-        self.pipeline.process_event = lambda x: x.clear()
+        self.pipeline.process_event = mock.MagicMock(
+            side_effect=lambda x: (x.clear() or [ProcessorResult(name="")])
+        )
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline._store_event = mock.MagicMock()
@@ -639,13 +641,10 @@ class TestPipelineWithActualInput:
         event, extra_outputs = pipeline.process_pipeline()
         assert event["label"] == {"reporter": ["windows"]}
         assert "arrival_time" in event
-        assert extra_outputs == PipelineResult(
-            results=[ProcessorResult()] * len(pipeline._pipeline)
-        )
         event, extra_outputs = pipeline.process_pipeline()
         assert "pseudonym" in event.get("winlog", {}).get("event_data", {}).get("IpAddress")
         assert "arrival_time" in event
-        # assert len(extra_outputs.data) == len(pipeline._pipeline)
+        assert len(extra_outputs.results) == len(pipeline._pipeline)
 
     def test_pipeline_hmac_error_message_without_output_connector(self):
         self.config.input["test_input"]["documents"] = [{"applyrule": "yes"}]

@@ -296,6 +296,7 @@ class Pipeline:
                     self._store_extra_data(result)
             if ProcessingError in result:
                 event.clear()
+            if not event:
                 break
         return PipelineResult(results=results)
 
