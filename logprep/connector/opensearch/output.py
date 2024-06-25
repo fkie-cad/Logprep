@@ -2,8 +2,8 @@
 OpensearchOutput
 ================
 
-This section contains the connection settings for Elasticsearch, the default
-index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
+This section contains the connection settings for Opensearch, the default
+index, the error index and a buffer size. Documents are sent in batches to Opensearch to reduce
 the amount of times connections are created.
 
 The documents desired index is the field :code:`_index` in the document. It is deleted afterwards.
@@ -45,7 +45,6 @@ from opensearchpy import OpenSearchException, helpers
 from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.output import FatalOutputError, Output
-from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.metrics.metrics import Metric
 from logprep.util.helper import get_dict_size_in_byte
 from logprep.util.time import TimeParser
@@ -82,7 +81,7 @@ class OpensearchOutput(Output):
         """Opensearch Output Config
 
         .. security-best-practice::
-           :title: Output Connectors - ElasticsearchOutput
+           :title: Output Connectors - OpensearchOutput
 
            It is suggested to enable a secure message transfer by setting :code:`user`,
            :code:`secret` and a valid :code:`ca_cert`.
@@ -95,7 +94,7 @@ class OpensearchOutput(Output):
             ),
             default=[],
         )
-        """Addresses of elasticsearch/opensearch servers. Can be a list of hosts or one single host
+        """Addresses of opensearch/opensearch servers. Can be a list of hosts or one single host
         in the format HOST:PORT without specifying a schema. The schema is set automatically to
         https if a certificate is being used."""
         default_index: str = field(validator=validators.instance_of(str))
@@ -208,7 +207,7 @@ class OpensearchOutput(Output):
     def _replace_pattern(self):
         return re.compile(r"%{\S+?}")
 
-    def __init__(self, name: str, configuration: "ElasticsearchOutput.Config"):
+    def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
         super().__init__(name, configuration)
         self._message_backlog = []
         self._size_error_pattern = re.compile(
@@ -226,12 +225,12 @@ class OpensearchOutput(Output):
             raise FatalOutputError(self, error) from error
 
     def describe(self) -> str:
-        """Get name of Elasticsearch endpoint with the host.
+        """Get name of Opensearch endpoint with the host.
 
         Returns
         -------
         opensearch_output : OpensearchOutput
-            Acts as output connector for Elasticsearch.
+            Acts as output connector for Opensearch.
 
         """
         base_description = Output.describe(self)
@@ -259,7 +258,7 @@ class OpensearchOutput(Output):
         self._write_to_search_context()
 
     def store_custom(self, document: dict, target: str):
-        """Store document into backlog to be written into Elasticsearch with the target index.
+        """Store document into backlog to be written into Opensearch with the target index.
 
         Only add to backlog instead of writing the batch and calling batch_finished_callback,
         since store_custom can be called before the event has been fully processed.
@@ -275,7 +274,7 @@ class OpensearchOutput(Output):
         Raises
         ------
         CriticalOutputError
-            Raises if any error except a BufferError occurs while writing into elasticsearch.
+            Raises if any error except a BufferError occurs while writing into opensearch.
 
         """
         document["_index"] = target
@@ -329,10 +328,10 @@ class OpensearchOutput(Output):
                 document["_index"] = re.sub(date_format_match, formatted_date, document["_index"])
 
     def _write_to_search_context(self):
-        """Writes documents from a buffer into Elasticsearch indices.
+        """Writes documents from a buffer into Opensearch indices.
 
         Writes documents in a bulk if the document buffer limit has been reached.
-        This reduces connections to Elasticsearch.
+        This reduces connections to Opensearch.
         The target index is determined per document by the value of the meta field '_index'.
         A configured default index is used if '_index' hasn't been set.
 
@@ -404,7 +403,7 @@ class OpensearchOutput(Output):
             )
 
     def _handle_serialization_error(self, error: search.SerializationError):
-        """Handle serialization error for elasticsearch bulk indexing.
+        """Handle serialization error for opensearch bulk indexing.
 
         If at least one document in a chunk can't be serialized, no events will be sent.
         The chunk size is thus set to be the same size as the message backlog size.
@@ -424,7 +423,7 @@ class OpensearchOutput(Output):
         raise FatalOutputError(self, f"{error.args[1]} in document {error.args[0]}")
 
     def _handle_connection_error(self, error: search.ConnectionError):
-        """Handle connection error for elasticsearch bulk indexing.
+        """Handle connection error for opensearch bulk indexing.
 
         No documents will be sent if there is no connection to begin with.
         Therefore, it won't result in duplicates once the the data is resent.
@@ -444,9 +443,9 @@ class OpensearchOutput(Output):
         raise FatalOutputError(self, error.error)
 
     def _handle_bulk_index_error(self, error: helpers.BulkIndexError):
-        """Handle bulk indexing error for elasticsearch bulk indexing.
+        """Handle bulk indexing error for opensearch bulk indexing.
 
-        Documents that could not be sent to elastiscsearch due to index errors are collected and
+        Documents that could not be sent to opensearch due to index errors are collected and
         sent into an error index that should always accept all documents.
         This can lead to a rebuild of the pipeline if this causes another exception.
 
@@ -469,7 +468,7 @@ class OpensearchOutput(Output):
         self._bulk(self._search_context, error_documents)
 
     def _handle_transport_error(self, error: search.exceptions.TransportError):
-        """Handle transport error for elasticsearch bulk indexing.
+        """Handle transport error for opensearch bulk indexing.
 
         Discard messages that exceed the maximum size if they caused an error.
 

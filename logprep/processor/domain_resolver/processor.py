@@ -84,7 +84,7 @@ class DomainResolver(Processor):
         max_caching_days: int = field(validator=validators.instance_of(int))
         """Number of days a domains is cached after the last time it appeared.
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
-        repeatedly) and the load on subsequent components (i.e. Logstash or Elasticsearch).
+        repeatedly) and the load on subsequent components (i.e. Logstash or Opensearch).
         Setting the caching days to Null deactivates the caching. In case the cache size has been
         exceeded (see `domain_resolver.max_cached_domains`),the oldest cached pseudonyms will
         be discarded first.Thus, it is possible that a domain is re-added to the cache before

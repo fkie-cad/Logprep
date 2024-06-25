@@ -8,7 +8,6 @@ from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.console.output import ConsoleOutput
 from logprep.connector.dummy.input import DummyInput
 from logprep.connector.dummy.output import DummyOutput
-from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.connector.file.input import FileInput
 from logprep.connector.http.input import HttpInput
 from logprep.connector.http.output import HttpOutput
@@ -89,7 +88,6 @@ class Registry:
         "confluentkafka_input": ConfluentKafkaInput,
         "confluentkafka_output": ConfluentKafkaOutput,
         "console_output": ConsoleOutput,
-        "elasticsearch_output": ElasticsearchOutput,
         "jsonl_output": JsonlOutput,
         "opensearch_output": OpensearchOutput,
         "http_input": HttpInput,

@@ -35,7 +35,6 @@ classifiers = [
   "Topic :: System :: Logging",
 ]
 keywords = [
-  "elasticsearch",
   "kafka",
   "etl",
   "sre",
