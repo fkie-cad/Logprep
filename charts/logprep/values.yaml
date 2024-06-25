@@ -129,4 +129,4 @@ configurations:
 #       alfalfa
 #       admin
 #       admin2
-artifacts: {}
+artifacts: []

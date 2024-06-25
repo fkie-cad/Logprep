@@ -326,3 +326,19 @@ artifacts:
         assert config_map["data"]["regex_mapping.yml"]
         assert "adminxy" in config_map["data"]["adminlist.txt"]
         assert "RE_DOMAIN_BACKSLASH_USERNAME" in config_map["data"]["regex_mapping.yml"]
+
+    def test_artifacts_volume_definition(self):
+        logprep_values = {"artifacts": [{"name": "adminlist.txt", "data": "admin1\n"}]}
+        self.manifests = self.render_chart("logprep", logprep_values)
+        volumes = self.deployment["spec.template.spec.volumes"]
+        artifacts_volume = [volume for volume in volumes if volume["name"] == "artifacts"]
+        assert len(artifacts_volume) == 1
+        artifacts_volume = artifacts_volume[0]
+        assert artifacts_volume["configMap"]["name"] == "logprep-logprep-artifacts"
+
+    def test_artifacts_volume_not_populated_if_not_defined(self):
+        logprep_values = {"artifacts": []}
+        self.manifests = self.render_chart("logprep", logprep_values)
+        volumes = self.deployment["spec.template.spec.volumes"]
+        artifacts_volume = [volume for volume in volumes if volume["name"] == "artifacts"]
+        assert len(artifacts_volume) == 0

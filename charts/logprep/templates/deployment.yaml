@@ -163,6 +163,11 @@ spec:
         - name: output-config
           configMap:
             name: {{ include "logprep.fullname" . }}-output
+        {{- if .Values.artifacts }}
+        - name: artifacts
+          configMap:
+            name: {{ include "logprep.fullname" . }}-artifacts
+        {{- end }}
         {{- if .Values.secrets.certificates }}
         - name: certificates
           secret:
