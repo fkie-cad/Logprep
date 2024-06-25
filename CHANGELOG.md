@@ -14,7 +14,7 @@
 ### Improvements
 
 * a result object was added which is returned by every processor
-  * includes generated extra_data, warnings and errors
+  * includes the processor name, generated extra_data, warnings and errors
 * add documentation about behavior of the `timestamper` on `ISO8601` and `UNIX` time parsing
 * add unit tests for helm chart templates
 * add helm to github actions runner
