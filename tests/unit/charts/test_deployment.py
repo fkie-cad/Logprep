@@ -68,21 +68,21 @@ class TestDeployment(TestBaseChartTest):
                 assert expected
                 break
         else:
-            assert not expected
+            assert not expected, "certificates volume not found"
 
         for mount in mounts:
             if mount["name"] == "certificates":
                 assert expected
                 break
         else:
-            assert not expected
+            assert not expected, "certificates mount not found"
 
         for variable in env:
             if variable["name"] == "REQUESTS_CA_BUNDLE":
                 assert expected
                 break
         else:
-            assert not expected
+            assert not expected, "REQUESTS_CA_BUNDLE env not found"
 
     def test_certificates_env(self):
         self.manifests = self.render_chart(
@@ -138,21 +138,21 @@ class TestDeployment(TestBaseChartTest):
                 assert expected
                 break
         else:
-            assert not expected
+            assert not expected, "credentials volume not found"
 
         for mount in mounts:
             if mount["name"] == "credentials":
                 assert expected
                 break
         else:
-            assert not expected
+            assert not expected, "credentials mount not found"
 
         for variable in env:
             if variable["name"] == "LOGPREP_CREDENTIALS_FILE":
                 assert expected
                 break
         else:
-            assert not expected
+            assert not expected, "LOGPREP_CREDENTIALS_FILE not found"
 
     def test_credentials_env(self):
         self.manifests = self.render_chart(
