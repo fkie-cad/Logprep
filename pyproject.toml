@@ -51,7 +51,6 @@ dependencies = [
   "ciso8601",               # fastest iso8601 datetime parser. can be removed after dropping support for python < 3.11
   "colorama",
   "confluent-kafka>2",
-  "elasticsearch>=7,<8",
   "geoip2",
   "hyperscan>=0.7.0",
   "jsonref",
