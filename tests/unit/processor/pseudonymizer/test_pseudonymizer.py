@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from logprep.factory import Factory
+from logprep.factory_error import InvalidConfigurationError
 from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
@@ -1065,3 +1066,20 @@ class TestPseudonymizer(BaseProcessorTestCase):
         config["mode"] = mode
         object_with_encrypter = Factory.create({"pseudonymizer": config})
         assert isinstance(object_with_encrypter._encrypter, encrypter_class)
+
+    def test_setup_raises_invalid_configuration_on_missing_regex_mapping(self):
+        rule_dict = {
+            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
+            "pseudonymizer": {
+                "mapping": {
+                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                }
+            },
+        }
+        self._load_specific_rule(rule_dict)
+        self.object._specific_rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
+        error_message = (
+            r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping '.*\/regex_mapping.yml'"
+        )
+        with pytest.raises(InvalidConfigurationError, match=error_message):
+            self.object.setup()
