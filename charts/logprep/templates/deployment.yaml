@@ -80,6 +80,11 @@ spec:
               subPath: {{ $value.name }}
             {{- end }}
             {{- end }}
+            {{- range $key, $value := .Values.artifacts }}
+            - name: artifacts
+              mountPath: /home/logprep/{{ if $value.path }}{{ $value.path }}/{{ end }}{{ $value.name }}
+              subPath: {{ $value.name }}
+            {{- end }}
             - name: exporter-config
               mountPath: /home/logprep/exporter-config.yaml
               subPath: exporter-config.yaml

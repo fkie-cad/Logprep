@@ -2,8 +2,11 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
 
+from pathlib import Path
+
 import pytest
 
+from logprep.util.getter import GetterFactory
 from tests.unit.charts.test_base import TestBaseChartTest
 
 
@@ -267,3 +270,59 @@ class TestDeployment(TestBaseChartTest):
         annotations = self.deployment["spec.template.metadata.annotations"]
         assert annotations["key1"] == "value1"
         assert annotations["key2"] == "value2"
+
+    def test_artifacts_are_mounted(self, tmp_path):
+        logprep_values = """
+artifacts:
+    - name: adminlist.txt
+      path: artifacts/lists
+      data: |
+        admin1
+        admin2
+        adminxy
+    - name: regex_mapping.yml
+      data: |
+        RE_WHOLE_FIELD: (.*)
+        RE_DOMAIN_BACKSLASH_USERNAME: \w+\\(.*)
+        RE_IP4_COLON_PORT: ([\d.]+):\d+
+        RE_ALL_NO_CAP: .*
+"""
+        logprep_values_file: Path = tmp_path / "values.yaml"
+        logprep_values_file.write_text(logprep_values)
+        logprep_values = GetterFactory.from_string(str(logprep_values_file)).get_yaml()
+        self.manifests = self.render_chart("logprep", logprep_values)
+        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
+        artifact_mounts = [mount for mount in mounts if mount["name"] == "artifacts"]
+        assert len(artifact_mounts) == 2
+        mount_paths = [mount["mountPath"] for mount in artifact_mounts]
+        assert "/home/logprep/regex_mapping.yml" in mount_paths
+        assert "/home/logprep/artifacts/lists/adminlist.txt" in mount_paths
+
+    def test_artifacts_are_populated(self, tmp_path):
+        logprep_values = """
+artifacts:
+    - name: adminlist.txt
+      path: artifacts/lists
+      data: |
+        admin1
+        admin2
+        adminxy
+    - name: regex_mapping.yml
+      data: |
+        RE_WHOLE_FIELD: (.*)
+        RE_DOMAIN_BACKSLASH_USERNAME: \w+\\(.*)
+        RE_IP4_COLON_PORT: ([\d.]+):\d+
+        RE_ALL_NO_CAP: .*
+"""
+        logprep_values_file: Path = tmp_path / "values.yaml"
+        logprep_values_file.write_text(logprep_values)
+        logprep_values = GetterFactory.from_string(str(logprep_values_file)).get_yaml()
+        self.manifests = self.render_chart("logprep", logprep_values)
+        config_map = self.manifests.by_query(
+            "kind: ConfigMap AND metadata.name: logprep-logprep-artifacts"
+        )[0]
+        assert config_map
+        assert config_map["data"]["adminlist.txt"]
+        assert config_map["data"]["regex_mapping.yml"]
+        assert "adminxy" in config_map["data"]["adminlist.txt"]
+        assert "RE_DOMAIN_BACKSLASH_USERNAME" in config_map["data"]["regex_mapping.yml"]

@@ -116,12 +116,17 @@ output: {}
 configurations:
   - name: logprep-config
     data:
-      pipeline:
-        - domain_resolver:
-            type: domain_resolver
-            specific_rules: []
-            generic_rules: []
-            timeout: 10.0
-            hash_salt: "123"
-            max_caching_days: 1
-            max_cached_domains: 20000
+      pipeline: []
+
+# Additional artifacts needed by the logprep deployment. These follow the same mechanic
+# as the configurations. The artifacts will be mounted into the pod under the name given
+# in the artifacts configuration
+# Beware, that configMaps are limited to 1MiB in size.
+# Example:
+# artifacts:
+#   - name: admin-list
+#     data: |
+#       alfalfa
+#       admin
+#       admin2
+artifacts: {}
