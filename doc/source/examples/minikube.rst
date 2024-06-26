@@ -32,7 +32,7 @@ with the following commands:
 .. code-block:: bash
     :caption: Install kubectl
 
-    curl -Lo /usr/local/bin/kubectl \
+    sudo curl -Lo /usr/local/bin/kubectl \
       "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 
     sudo chmod +x /usr/local/bin/kubectl
