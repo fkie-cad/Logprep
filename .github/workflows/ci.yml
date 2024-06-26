@@ -122,5 +122,10 @@ jobs:
           tags: |
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
 
+  release:
+    runs-on: ubuntu-latest
+    steps:
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
