@@ -1,0 +1,14 @@
+{{- if .Values.artifacts -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "logprep.fullname" . }}-artifacts
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.artifacts }}
+  {{ $value.name }}: |
+  {{- $value.data | nindent 4 }}
+  {{- end }}
+{{- end}}

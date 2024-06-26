@@ -1,0 +1,17 @@
+{{- if .Values.exporter.enabled -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+  name: {{ include "logprep.fullname" . }}-exporter
+spec:
+  ports:
+    - name: metrics
+      port: {{ .Values.exporter.service_port }}
+      targetPort: {{ .Values.exporter.port }}
+      appProtocol: http
+  selector:
+    app.kubernetes.io/name: {{ include "logprep.fullname" . }}
+{{- end}}

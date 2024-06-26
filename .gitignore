@@ -24,3 +24,4 @@ error_file
 experiments
 **/_static/*.xlsx
 logprep.log
+/charts/logprep/charts

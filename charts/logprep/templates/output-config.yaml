@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "logprep.fullname" . }}-output
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+data:
+  output-config.yaml: |
+    output:
+      {{- if .Values.output }}
+      {{- trimSuffix "_output" .Values.output.type | nindent 6}}:
+      {{- toYaml .Values.output | nindent 8}}
+      {{- else }}
+      console:
+        type: console_output
+      {{- end }}

@@ -38,7 +38,6 @@ import os
 import socket
 import tempfile
 from functools import cached_property
-from logging import Logger
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
@@ -54,7 +53,7 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
 logger = logging.getLogger("DomainResolver")
@@ -73,7 +72,9 @@ class DomainResolver(Processor):
         a default list will be retrieved online and cached in a local directory. For local
         files the path has to be given with :code:`file:///path/to/file.dat`."""
         timeout: Optional[float] = field(
-            default=0.5, validator=validators.optional(validators.instance_of(float))
+            default=0.5,
+            validator=validators.optional(validators.instance_of(float)),
+            converter=float,
         )
         """Timeout for resolving of domains."""
         max_cached_domains: int = field(validator=validators.instance_of(int))

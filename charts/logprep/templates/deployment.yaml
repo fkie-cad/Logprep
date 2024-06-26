@@ -1,0 +1,195 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "logprep.name" . }}
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "logprep.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "logprep.labels" . | nindent 8 }}
+      annotations:
+        {{ toYaml .Values.podAnnotations| nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: {{ .Values.securityContext.runAsUser }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      imagePullSecrets:
+        {{- if .Values.secrets.imagePullSecret }}
+        - name: {{ .Values.secrets.imagePullSecret.name }}
+        {{- end }}
+      containers:
+        - name: logprep
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: Always
+          ports:
+            {{- if .Values.exporter.enabled }}
+            - name: exporter
+              containerPort: {{ .Values.exporter.port }}
+            {{- end }}
+            {{- if eq .Values.input.type "http_input" }}
+            - name: http-input
+              containerPort: {{ .Values.input.uvicorn_config.port }}
+            {{- end }}
+          command:
+            - logprep
+            - run
+            {{- range $key, $value := .Values.configurations }}
+            - {{ $value.name }}
+            {{- end }}
+            - input-config.yaml
+            - output-config.yaml
+            - logger-config.yaml
+            - exporter-config.yaml
+          env:
+            {{- if eq .Values.logger.level "DEBUG" }}
+            - name: DEBUG # to get python stacktrace on error
+              value: "1"
+            {{- end }}
+            {{- if .Values.secrets.credentials }}
+            - name: LOGPREP_CREDENTIALS_FILE
+              value: "/home/logprep/credentials/{{ .Values.secrets.credentials.name }}"
+            {{- end }}
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: /prometheus
+            {{- if .Values.secrets.certificates }}
+            - name: REQUESTS_CA_BUNDLE
+              value: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
+            {{- end }}
+          volumeMounts:
+            - name: logprep-temp
+              mountPath: /tmp
+            - name: prometheus-multiproc
+              mountPath: /prometheus
+            {{- range $key, $value := .Values.configurations }}
+            {{- if $value.data }}
+            - name: configurations
+              mountPath: /home/logprep/{{ $value.name }}
+              subPath: {{ $value.name }}
+            {{- end }}
+            {{- end }}
+            {{- range $key, $value := .Values.artifacts }}
+            - name: artifacts
+              mountPath: /home/logprep/{{ if $value.path }}{{ $value.path }}/{{ end }}{{ $value.name }}
+              subPath: {{ $value.name }}
+            {{- end }}
+            - name: exporter-config
+              mountPath: /home/logprep/exporter-config.yaml
+              subPath: exporter-config.yaml
+            - name: logger-config
+              mountPath: /home/logprep/logger-config.yaml
+              subPath: logger-config.yaml
+            - name: input-config
+              mountPath: /home/logprep/input-config.yaml
+              subPath: input-config.yaml
+            - name: output-config
+              mountPath: /home/logprep/output-config.yaml
+              subPath: output-config.yaml
+            {{- if .Values.secrets.certificates }}
+            - name: certificates
+              mountPath: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
+            {{- end }}
+            {{- if .Values.secrets.credentials }}
+            - name: credentials
+              mountPath: /home/logprep/credentials/{{ .Values.secrets.credentials.name }}
+            {{- end }}
+          {{- if or .Values.exporter.enabled (eq .Values.input.type "http_input") }}
+          {{- if eq .Values.input.type "http_input" }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.input.uvicorn_config.port }}
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          {{- else }}
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.exporter.port }}
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+          {{- end }}
+          {{- end }}
+          {{- if .Values.exporter.enabled }}
+          startupProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.exporter.port }}
+            failureThreshold: 12
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.exporter.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 10
+          {{- end }}
+      volumes:
+        - name: logprep-temp
+          emptyDir:
+            medium: "Memory"
+        - name: prometheus-multiproc
+          emptyDir:
+            medium: "Memory"
+        - name: configurations
+          configMap:
+            name: {{ include "logprep.fullname" . }}-configurations
+        - name: exporter-config
+          configMap:
+            name: {{ include "logprep.fullname" . }}-exporter
+        - name: logger-config
+          configMap:
+            name: {{ include "logprep.fullname" . }}-logger
+        - name: input-config
+          configMap:
+            name: {{ include "logprep.fullname" . }}-input
+        - name: output-config
+          configMap:
+            name: {{ include "logprep.fullname" . }}-output
+        {{- if .Values.artifacts }}
+        - name: artifacts
+          configMap:
+            name: {{ include "logprep.fullname" . }}-artifacts
+        {{- end }}
+        {{- if .Values.secrets.certificates }}
+        - name: certificates
+          secret:
+            secretName: {{ .Values.secrets.certificates.name }}
+        {{- end }}
+        {{- if .Values.secrets.credentials }}
+        - name: credentials
+          secret:
+            secretName: {{ .Values.secrets.credentials.name }}
+        {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  {{- $selectors := include "logprep.selectorLabels" . | fromYaml}}
+                  {{- range $key, $value := $selectors }}
+                  - key: {{ $key }}
+                    operator: In
+                    values:
+                      - {{ $value }}
+                  {{- end }}
+              topologyKey: "kubernetes.io/hostname"
+      {{- end }}

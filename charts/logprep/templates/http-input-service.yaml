@@ -1,0 +1,19 @@
+{{- if .Values.input -}}
+{{- if eq .Values.input.type "http_input" -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+  name: {{ include "logprep.fullname" . }}-http-input
+spec:
+  ports:
+    - name: http-input
+      port: {{ .Values.input.uvicorn_config.port }}
+      targetPort: {{ .Values.input.uvicorn_config.port }}
+      appProtocol: http
+  selector:
+    app.kubernetes.io/name: {{ include "logprep.fullname" . }}
+{{- end}}
+{{- end}}

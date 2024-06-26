@@ -5,16 +5,19 @@
 
 * This release limits the maximum python version to `3.12.3` because of the issue
 [#612](https://github.com/fkie-cad/Logprep/issues/612).
-* Remove `normalizer` processor, as it's functionality was replaced by the `grokker`, `timestamper`
-and `field_manager` processors
+* Remove `normalizer` processor, as it's functionality was replaced by the `grokker`, `timestamper` and `field_manager` processors
 
 ### Features
+
+* add a helm chart to install logprep in kubernetes based environments
 
 ### Improvements
 
 * a result object was added which is returned by every processor
   * includes generated extra_data, warnings and errors
 * add documentation about behavior of the `timestamper` on `ISO8601` and `UNIX` time parsing
+* add unit tests for helm chart templates
+* add helm to github actions runner
 
 ### Bugfix
 

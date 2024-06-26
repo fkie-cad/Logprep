@@ -51,6 +51,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: azure/setup-helm@v4.2.0
+        with:
+          version: "latest"
+        id: install
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -72,6 +77,10 @@ jobs:
       - name: check black formating
         run: |
           black --check --diff --config ./pyproject.toml .
+
+      - name: lint helm charts
+        run: |
+          helm lint --strict ./charts/logprep
 
       - name: lint changed and added files
         if: steps.changed-files.outputs.all_changed_files
