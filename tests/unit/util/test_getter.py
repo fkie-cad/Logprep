@@ -14,6 +14,7 @@ import pytest
 import requests.exceptions
 import responses
 from responses import matchers
+from responses.registries import OrderedRegistry
 from ruamel.yaml import YAML
 
 from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
@@ -357,40 +358,27 @@ class TestHttpGetter:
                 "https://oauth:ajhsdfpoweiurjdfs239487@the.target.url/targetfile"
             )
 
-    @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
-    def test_raises_requestexception_after_3_retries(self, getconn_mock):
-        getconn_mock.return_value.getresponse.side_effect = [
-            mock.MagicMock(status=500),  # one initial request and three retries
-            mock.MagicMock(status=502),
-            mock.MagicMock(status=500),
-            mock.MagicMock(status=500),
-            mock.MagicMock(status=500),  # fourth is not considered because of raise
-        ]
+    # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+    @responses.activate(registry=OrderedRegistry)
+    def test_raises_requestexception_after_3_retries(self):
+        responses.get("https://does-not-matter/bar", status=500)
+        responses.get("https://does-not-matter/bar", status=500)  # 1st retry
+        responses.get("https://does-not-matter/bar", status=502)  # 2nd retry
+        responses.get("https://does-not-matter/bar", status=500)  # 3rd retry and exception
+        responses.get("https://does-not-matter/bar", status=200)  # works again
         http_getter = GetterFactory.from_string("https://does-not-matter/bar")
         with pytest.raises(requests.exceptions.RequestException, match="Max retries exceed"):
             http_getter.get()
-        assert getconn_mock.return_value.request.mock_calls == [
-            # one initial request and three retries
-            mock.call("GET", "/bar", body=None, headers=mock.ANY),
-            mock.call("GET", "/bar", body=None, headers=mock.ANY),
-            mock.call("GET", "/bar", body=None, headers=mock.ANY),
-            mock.call("GET", "/bar", body=None, headers=mock.ANY),
-        ]
+        http_getter.get()
 
-    @mock.patch("urllib3.connectionpool.HTTPConnectionPool._get_conn")
-    def test_get_does_one_successful_request_after_two_failed(self, getconn_mock):
-        getconn_mock.return_value.getresponse.side_effect = [
-            mock.MagicMock(status=500),
-            mock.MagicMock(status=502),
-            mock.MagicMock(status=200),
-        ]
+    @responses.activate(registry=OrderedRegistry)
+    def test_get_does_one_successful_request_after_two_failed(self):
+        responses.get("https://does-not-matter/bar", status=500)
+        responses.get("https://does-not-matter/bar", status=500)  # 1st retry
+        responses.get("https://does-not-matter/bar", status=502)  # 2nd retry
+        responses.get("https://does-not-matter/bar", status=200)  # works again
         http_getter = GetterFactory.from_string("https://does-not-matter/bar")
         http_getter.get()
-        assert getconn_mock.return_value.request.mock_calls == [
-            mock.call("GET", "/bar", body=None, headers=mock.ANY),
-            mock.call("GET", "/bar", body=None, headers=mock.ANY),
-            mock.call("GET", "/bar", body=None, headers=mock.ANY),
-        ]
 
     def test_credentials_returns_credential_object_if_no_credentials(self):
         http_getter = GetterFactory.from_string("https://does-not-matter/bar")

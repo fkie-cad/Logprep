@@ -15,7 +15,7 @@
 
 Logprep allows to collect, process and forward log messages from various data sources.
 Log messages are being read and written by so-called connectors.
-Currently, connectors for Kafka, Opensearch, ElasticSearch, S3, HTTP and JSON(L) files exist.
+Currently, connectors for Kafka, Opensearch, S3, HTTP and JSON(L) files exist.
 
 The log messages are processed in serial by a pipeline of processors,
 where each processor modifies an event that is being passed through.

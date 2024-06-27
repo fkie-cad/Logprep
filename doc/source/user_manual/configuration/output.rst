@@ -12,7 +12,7 @@ logprep only guaranties that one output has received data by calling the
 .. security-best-practice::
    :title: Output Connectors
    :location: config.output.<Output-Name>.type
-   :suggested-value: <ConfluentKafkaOutput|ElasticsearchOutput|OpensearchOutput|S3Output>
+   :suggested-value: <ConfluentKafkaOutput|OpensearchOutput|S3Output>
 
    Similar to the input connectors there is a list of available output connectors of which some
    are only meant for debugging, namely: :code:`ConsoleOutput` and :code:`JsonlOutput`.
@@ -38,13 +38,6 @@ logprep only guaranties that one output has received data by calling the
 
 .. automodule:: logprep.connector.jsonl.output
 .. autoclass:: logprep.connector.jsonl.output.JsonlOutput.Config
-   :members:
-   :undoc-members:
-   :inherited-members:
-   :noindex:
-
-.. automodule:: logprep.connector.elasticsearch.output
-.. autoclass:: logprep.connector.elasticsearch.output.ElasticsearchOutput.Config
    :members:
    :undoc-members:
    :inherited-members:

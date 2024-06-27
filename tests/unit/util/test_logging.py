@@ -42,7 +42,6 @@ class TestLogDictConfig:
         [
             ("filelock", "ERROR"),
             ("urllib3.connectionpool", "ERROR"),
-            ("elasticsearch", "ERROR"),
             ("opensearch", "ERROR"),
         ],
     )
