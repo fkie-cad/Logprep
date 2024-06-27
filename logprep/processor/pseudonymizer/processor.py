@@ -128,7 +128,7 @@ class Pseudonymizer(FieldManager):
         million elements would require about 2.3 GB RAM. The cache is not persisted. Restarting
         Logprep does therefore clear the cache.
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
-        repeatedly) and the load on subsequent components (i.e. Logstash or Elasticsearch).
+        repeatedly) and the load on subsequent components (i.e. Logstash or Opensearch).
         In case the cache size has been exceeded, the least recently used
         entry is deleted. Has to be greater than 0.
         """

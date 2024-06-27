@@ -2,10 +2,22 @@
 
 ## next release
 ### Breaking
+### Features
+### Improvements
+
+* a result object was added which is returned by every processor
+  * includes the processor name, generated extra_data, warnings and errors
+
+### Bugfix
+
+## 13.0.0
+
+### Breaking
 
 * This release limits the maximum python version to `3.12.3` because of the issue
 [#612](https://github.com/fkie-cad/Logprep/issues/612).
 * Remove `normalizer` processor, as it's functionality was replaced by the `grokker`, `timestamper` and `field_manager` processors
+* Remove `elasticsearch_output` connector to reduce maintenance effort
 
 ### Features
 
@@ -13,11 +25,10 @@
 
 ### Improvements
 
-* a result object was added which is returned by every processor
-  * includes the processor name, generated extra_data, warnings and errors
 * add documentation about behavior of the `timestamper` on `ISO8601` and `UNIX` time parsing
 * add unit tests for helm chart templates
 * add helm to github actions runner
+* add helm chart release to release pipeline
 
 ### Bugfix
 

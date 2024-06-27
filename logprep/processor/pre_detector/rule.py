@@ -64,7 +64,7 @@ would result in the following output and event enrichment
     }
 
 This generated extra output contains a corresponding :code:`rule_filter` in lucene notation, which
-can be used to further investigate this rule in an existing OpenSearch or ElasticSearch.
+can be used to further investigate this rule in an existing OpenSearch.
 
 Additionally, the optional field :code:`ip_fields` can be specified.
 It allows to specify a list of fields that can be compared to a list of IPs,

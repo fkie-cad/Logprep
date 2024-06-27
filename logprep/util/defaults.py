@@ -50,7 +50,6 @@ DEFAULT_LOG_CONFIG = {
         "console": {"handlers": ["console"]},
         "filelock": {"level": "ERROR"},
         "urllib3.connectionpool": {"level": "ERROR"},
-        "elasticsearch": {"level": "ERROR"},
         "opensearch": {"level": "ERROR"},
     },
     "filters": {},
