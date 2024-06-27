@@ -88,7 +88,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          ref: main
 
       - name: Configure Git
         run: |
@@ -109,12 +108,15 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: Update Logprep chart versions
+          branch: main
           # Optional glob pattern of files which should be added to the commit
           # Defaults to all (.)
           # See the `pathspec`-documentation for git
           # - https://git-scm.com/docs/git-add#Documentation/git-add.txt-ltpathspecgt82308203
           # - https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-aiddefpathspecapathspec
           file_pattern: "charts/logprep/Chart.yaml"
+          tagging_message: ${{ github.ref_name }}
+          push_options: "--force"
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
