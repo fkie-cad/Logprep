@@ -154,9 +154,11 @@ class TestPipeline(ConfigurationForTests):
         assert self.pipeline._store_event.call_count == 1
 
     def test_empty_documents_are_not_stored_in_the_output(self, _):
-        self.pipeline.process_event = mock.MagicMock(
-            side_effect=lambda x: x.clear() or [ProcessorResult(name="")]
-        )
+        def mock_process_event(event):
+            event.clear()
+            return [ProcessorResult(name="")]
+
+        self.pipeline.process_event = mock_process_event
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline._store_event = mock.MagicMock()
