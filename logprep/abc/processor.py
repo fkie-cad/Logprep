@@ -48,6 +48,18 @@ class ProcessorResult:
     def __contains__(self, error_class):
         return any(isinstance(item, error_class) for item in self.errors)
 
+    def get_warning_string(self):
+        """creates a string containing the warnings"""
+        return ", ".join(
+            [error.args[0] for error in self.errors if isinstance(error, ProcessingWarning)]
+        )
+
+    def get_error_string(self):
+        """creates a string containing the errors"""
+        return ", ".join(
+            [error.args[0] for error in self.errors if isinstance(error, ProcessingError)]
+        )
+
 
 class Processor(Component):
     """Abstract Processor Class to define the Interface"""

@@ -271,7 +271,7 @@ class TestPipeline(ConfigurationForTests):
 
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 2, "2 events gone into processing"
-        assert mock_error.call_count == 2, "two errors occurred"
+        assert mock_error.call_count == 2, f"two errors occurred: {mock_error.mock_calls}"
 
         logger_calls = (
             mock.call(
@@ -485,6 +485,7 @@ class TestPipeline(ConfigurationForTests):
         self, _
     ):
         self.pipeline._setup()
+        add_empty_processor_result_to_process_mocks(self.pipeline._pipeline)
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         self.pipeline._input.batch_finished_callback = mock.MagicMock()
         self.pipeline._output["dummy"].store = mock.MagicMock()
