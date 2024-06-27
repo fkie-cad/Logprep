@@ -18,6 +18,8 @@
 * add documentation about behavior of the `timestamper` on `ISO8601` and `UNIX` time parsing
 * add unit tests for helm chart templates
 * add helm to github actions runner
+* add deployment examples for compose and helm
+* remove quickstart setup
 
 ### Bugfix
 
