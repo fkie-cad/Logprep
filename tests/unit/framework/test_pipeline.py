@@ -60,7 +60,9 @@ def add_empty_processor_result_to_process_mocks(pipeline):
     for index in range(len(pipeline)):
         pipeline[index].process = mock.MagicMock()
         pipeline[index].process.return_value = ProcessorResult(name="mock_processor")
-
+    for processor in pipeline:
+        processor.process = mock.MagicMock()
+        processor.process.return_value = ProcessorResult(name="mock_processor")
 
 @mock.patch("logprep.factory.Factory.create")
 class TestPipeline(ConfigurationForTests):
