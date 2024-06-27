@@ -51,7 +51,14 @@ class PipelineResult:
     """Result object to be returned after processing the event.
     It contains all generated data and includes errors and warnings."""
 
-    results: List[ProcessorResult] = attrs.field(validator=attrs.validators.instance_of(list))
+    results: List[ProcessorResult] = attrs.field(
+        validator=[
+            attrs.validators.instance_of(list),
+            attrs.validators.deep_iterable(
+                member_validator=attrs.validators.instance_of(ProcessorResult)
+            ),
+        ]
+    )
 
     def __iter__(self):
         return iter(self.results)

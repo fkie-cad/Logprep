@@ -151,7 +151,7 @@ class TestPipeline(ConfigurationForTests):
 
     def test_empty_documents_are_not_stored_in_the_output(self, _):
         self.pipeline.process_event = mock.MagicMock(
-            side_effect=lambda x: (x.clear() or [ProcessorResult(name="")])
+            side_effect=lambda x: x.clear() or [ProcessorResult(name="")]
         )
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
