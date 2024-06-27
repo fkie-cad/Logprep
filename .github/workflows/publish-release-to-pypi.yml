@@ -110,14 +110,19 @@ jobs:
         with:
           commit_message: Update Logprep chart versions
           branch: main
-          tagging_message: ${{ github.ref_name }}
-          push_options: "--force"
           # Optional glob pattern of files which should be added to the commit
           # Defaults to all (.)
           # See the `pathspec`-documentation for git
           # - https://git-scm.com/docs/git-add#Documentation/git-add.txt-ltpathspecgt82308203
           # - https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-aiddefpathspecapathspec
           file_pattern: "charts/logprep/Chart.yaml"
+
+      - name: update release tag
+        uses: rickstaa/action-create-tag@v1
+        id: "tag_update"
+        with:
+          tag: ${{ github.ref_name }}
+          force_push_tag: true
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
