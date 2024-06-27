@@ -11,7 +11,7 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/fkie-cad/logprep?style=social)
 </h3>
 
-## Introduction
+## Introduction 1
 
 Logprep allows to collect, process and forward log messages from various data sources.
 Log messages are being read and written by so-called connectors.
