@@ -28,7 +28,11 @@ from logprep.abc.output import (
 from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline, PipelineResult
-from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+    ProcessingWarning,
+)
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.configuration import Configuration
 
@@ -294,6 +298,27 @@ class TestPipeline(ConfigurationForTests):
         assert (
             self.pipeline._output["dummy"].store_failed.call_count == 2
         ), "errored events are gone to connector error output handler"
+
+    @mock.patch("logging.Logger.error")
+    @mock.patch("logging.Logger.warning")
+    def test_processor_logs_processing_error_and_warnings_separately(
+        self, mock_warning, mock_error, _
+    ):
+        self.pipeline._setup()
+        add_empty_processor_result_to_process_mocks(self.pipeline._pipeline)
+        input_event1 = {"message": "first event"}
+        self.pipeline._input.get_next.return_value = (input_event1, None)
+        mock_rule = mock.MagicMock()
+        self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
+        warning = FieldExistsWarning(mock_rule, input_event1, ["foo"])
+        self.pipeline._pipeline[0].process.return_value = ProcessorResult(name="", errors=[warning])
+        error = ProcessingCriticalError("really bad things happened", mock_rule, input_event1)
+        self.pipeline._pipeline[1].process.return_value = ProcessorResult(name="", errors=[error])
+        self.pipeline.process_pipeline()
+        assert mock_error.call_count == 1, f"one error occurred: {mock_error.mock_calls}"
+        assert mock_warning.call_count == 1, f"one warning occurred: {mock_warning.mock_calls}"
+        mock_error.assert_called_with(str(error))
+        mock_warning.assert_called_with(str(warning))
 
     @mock.patch("logging.Logger.error")
     def test_critical_input_error_is_logged_error_is_stored_in_failed_events(self, mock_error, _):
