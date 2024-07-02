@@ -54,7 +54,7 @@ dependencies = [
   "hyperscan>=0.7.0",
   "jsonref",
   "luqum",
-  "mysql-connector-python",
+  "mysql-connector-python==8.4.0",
   "numpy>=1.26.0",
   "opensearch-py",
   "prometheus_client",
