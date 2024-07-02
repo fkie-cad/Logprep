@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import re
 from logging import getLogger
 from unittest import mock
 from unittest.mock import call
@@ -8,6 +9,7 @@ import pytest
 
 from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.configuration import Configuration
@@ -121,8 +123,7 @@ class TestSpecificGenericProcessing:
             processor.process(event=event)
             mock_callback.assert_has_calls(expected_call_order, any_order=False)
 
-    @mock.patch("logging.Logger.warning")
-    def test_processes_generic_rules_after_processor_error_in_specific_rules(self, mock_warning):
+    def test_processes_generic_rules_after_processor_error_in_specific_rules(self):
         config = Configuration()
         config.pipeline = [
             {"adder": {"type": "generic_adder", "specific_rules": [], "generic_rules": []}}
@@ -157,10 +158,13 @@ class TestSpecificGenericProcessing:
         pipeline._pipeline[0]._generic_tree.add_rule(generic_rule)
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_two)
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_one)
-        pipeline.process_event(event)
-        assert (
+        res = pipeline.process_event(event)
+        assert len(res.results[0].errors) == 1
+        assert isinstance(res.results[0].errors[0], FieldExistsWarning)
+        re.match(
             "The following fields could not be written, "
-            "because one or more subfields existed and could not be extended: first"
-            in mock_warning.call_args[0][0]
+            "because one or more subfields existed and could not be extended: first",
+            str(res.results[0].errors[0]),
         )
+
         assert event == expected_event

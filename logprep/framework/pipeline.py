@@ -6,6 +6,7 @@ They can be multi-processed.
 """
 
 import copy
+import itertools
 import logging
 import logging.handlers
 import multiprocessing
@@ -17,7 +18,7 @@ from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Lock, Value, current_process
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Optional
 
 import attrs
 import msgspec
@@ -37,12 +38,30 @@ from logprep.abc.output import (
     Output,
     OutputWarning,
 )
-from logprep.abc.processor import Processor
+from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
 from logprep.metrics.metrics import HistogramMetric, Metric
-from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.configuration import Configuration
 from logprep.util.pipeline_profiler import PipelineProfiler
+
+
+@attrs.define(kw_only=True)
+class PipelineResult:
+    """Result object to be returned after processing the event.
+    It contains all results of each processor of the pipeline."""
+
+    results: List[ProcessorResult] = attrs.field(
+        validator=[
+            attrs.validators.instance_of(list),
+            attrs.validators.deep_iterable(
+                member_validator=attrs.validators.instance_of(ProcessorResult)
+            ),
+        ]
+    )
+
+    def __iter__(self):
+        return iter(self.results)
 
 
 def _handle_pipeline_error(func):
@@ -127,7 +146,7 @@ class Pipeline:
         }
 
     @cached_property
-    def _pipeline(self) -> tuple:
+    def _pipeline(self) -> list[Processor]:
         self.logger.debug(f"Building '{self._process_name}'")
         pipeline = [self._create_processor(entry) for entry in self._logprep_config.pipeline]
         self.logger.debug("Finished building pipeline")
@@ -215,25 +234,33 @@ class Pipeline:
         self._shut_down()
 
     @_handle_pipeline_error
-    def process_pipeline(self) -> Tuple[dict, list]:
+    def process_pipeline(self) -> Tuple[Optional[dict], Optional[PipelineResult]]:
         """Retrieve next event, process event with full pipeline and store or return results"""
         Component.run_pending_tasks()
-        extra_outputs = []
-        event = None
-        try:
-            event = self._get_event()
-        except CriticalInputParsingError as error:
-            input_data = error.raw_input
-            if isinstance(input_data, bytes):
-                input_data = input_data.decode("utf8")
-            error_event = self._encoder.encode({"invalid_json": input_data})
-            self._store_failed_event(error, "", error_event)
-            self.logger.error(f"{error}, event was written to error output")
-        if event:
-            extra_outputs = self.process_event(event)
-        if event and self._output:
-            self._store_event(event)
-        return event, extra_outputs
+
+        event = self._get_event()
+        if not event:
+            return None, None
+        event_received = copy.deepcopy(event)
+        result: PipelineResult = self.process_event(event)
+        for processor_result in result:
+            if not processor_result.errors:
+                continue
+            if ProcessingWarning in processor_result:
+                self.logger.warning(processor_result.get_warning_string())
+            if ProcessingError in processor_result:
+                self.logger.error(processor_result.get_error_string())
+                if self._output:
+                    self._store_failed_event(processor_result.errors, event_received, event)
+                # pipeline is aborted on processing error
+                return event, result
+        if self._output:
+            result_data = [res.data for res in result if res.data]
+            if result_data:
+                self._store_extra_data(itertools.chain(*result_data))
+            if event:
+                self._store_event(event)
+        return event, result
 
     def _store_event(self, event: dict) -> None:
         for output_name, output in self._output.items():
@@ -241,45 +268,33 @@ class Pipeline:
                 output.store(event)
                 self.logger.debug(f"Stored output in {output_name}")
 
-    def _store_failed_event(self, error, event, event_received):
+    def _store_failed_event(self, error, event_received, event):
         for _, output in self._output.items():
             if output.default:
-                output.store_failed(str(error), self._decoder.decode(event_received), event)
+                output.store_failed(str(error), event_received, event)
 
     def _get_event(self) -> dict:
-        event, non_critical_error_msg = self._input.get_next(self._timeout)
-        if non_critical_error_msg and self._output:
-            for _, output in self._output.items():
-                if output.default:
-                    output.store_failed(non_critical_error_msg, event, None)
-        return event
+        try:
+            event, non_critical_error_msg = self._input.get_next(self._timeout)
+            if non_critical_error_msg and self._output:
+                self._store_failed_event(non_critical_error_msg, event, None)
+            return event
+        except CriticalInputParsingError as error:
+            input_data = error.raw_input
+            if isinstance(input_data, bytes):
+                input_data = input_data.decode("utf8")
+            self._store_failed_event(error, {"invalid_json": input_data}, "")
 
     @Metric.measure_time()
     def process_event(self, event: dict):
         """process all processors for one event"""
+        return PipelineResult(
+            results=[processor.process(event) for processor in self._pipeline if event]
+        )
 
-        event_received = self._encoder.encode(event)
-        extra_outputs = []
-        for processor in self._pipeline:
-            try:
-                if extra_data := processor.process(event):
-                    if self._output:
-                        self._store_extra_data(extra_data)
-                    extra_outputs.append(extra_data)
-            except ProcessingWarning as error:
-                self.logger.warning(str(error))
-            except ProcessingCriticalError as error:
-                self.logger.error(str(error))
-                if self._output:
-                    self._store_failed_event(error, copy.deepcopy(event), event_received)
-                    event.clear()
-            if not event:
-                break
-        return extra_outputs
-
-    def _store_extra_data(self, extra_data: List[tuple]) -> None:
+    def _store_extra_data(self, result_data: List | itertools.chain) -> None:
         self.logger.debug("Storing extra data")
-        for document, outputs in extra_data:
+        for document, outputs in result_data:
             for output in outputs:
                 for output_name, target in output.items():
                     self._output[output_name].store_custom(document, target)
