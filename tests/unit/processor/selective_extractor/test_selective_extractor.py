@@ -100,6 +100,9 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         document = {"nomessage": "test_message", "other": "field"}
         result = self.object.process(document)
         assert isinstance(result, ProcessorResult)
+        assert result.data == []
+        assert result.errors == []
+        assert result.name == "Test Instance Name"
 
     def test_gets_matching_rules_from_rules_trees(self):
         rule_trees = [self.object._generic_tree, self.object._specific_tree]

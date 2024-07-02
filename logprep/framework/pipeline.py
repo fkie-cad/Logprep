@@ -18,7 +18,7 @@ from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Lock, Value, current_process
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Optional
 
 import attrs
 import msgspec
@@ -49,7 +49,7 @@ from logprep.util.pipeline_profiler import PipelineProfiler
 @attrs.define(kw_only=True)
 class PipelineResult:
     """Result object to be returned after processing the event.
-    It contains all generated data and includes errors and warnings."""
+    It contains all results of each processor of the pipeline."""
 
     results: List[ProcessorResult] = attrs.field(
         validator=[
@@ -234,14 +234,14 @@ class Pipeline:
         self._shut_down()
 
     @_handle_pipeline_error
-    def process_pipeline(self) -> Tuple[dict, list]:
+    def process_pipeline(self) -> Tuple[Optional[dict], Optional[PipelineResult]]:
         """Retrieve next event, process event with full pipeline and store or return results"""
         Component.run_pending_tasks()
 
         event = self._get_event()
-        event_received = copy.deepcopy(event)
         if not event:
             return None, None
+        event_received = copy.deepcopy(event)
         result: PipelineResult = self.process_event(event)
         for processor_result in result:
             if not processor_result.errors:
@@ -255,8 +255,7 @@ class Pipeline:
                 # pipeline is aborted on processing error
                 return event, result
         if self._output:
-            result_data = [res.data for res in result if res.data]
-            result_data = itertools.chain(*result_data)
+            result_data = itertools.chain(*[res.data for res in result if res.data])
             if result_data:
                 self._store_extra_data(result_data)
             if event:
@@ -299,7 +298,7 @@ class Pipeline:
                 break
         return PipelineResult(results=results)
 
-    def _store_extra_data(self, result_data: List) -> None:
+    def _store_extra_data(self, result_data: List | itertools.chain) -> None:
         self.logger.debug("Storing extra data")
         for document, outputs in result_data:
             for output in outputs:

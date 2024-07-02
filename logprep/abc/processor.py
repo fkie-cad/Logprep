@@ -33,7 +33,10 @@ logger = logging.getLogger("Processor")
 
 @define(kw_only=True)
 class ProcessorResult:
-    """Result object to be returned by every processor. It contains all extra_data and errors."""
+    """
+    Result object to be returned by every processor. It contains the processor name, created data
+    and errors (incl. warnings).
+    """
 
     name: str = field(validator=validators.instance_of(str))
     data: list = field(validator=validators.instance_of(list), factory=list)

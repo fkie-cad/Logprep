@@ -5,8 +5,10 @@
 ### Features
 ### Improvements
 
-* a result object was added which is returned by every processor
-  * includes the processor name, generated extra_data, warnings and errors
+* a result object was added to processors and pipelines
+  * each processor returns an object including the processor name, generated extra_data, warnings
+    and errors
+  * the pipeline returns an object with the list of all processor result objects
 
 ### Bugfix
 

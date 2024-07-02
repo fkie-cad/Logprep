@@ -290,3 +290,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         event = {"some": "event"}
         result = self.object.process(event)
         assert isinstance(result, ProcessorResult)
+        assert result.data == []
+        assert result.errors == []
+        assert result.name == "Test Instance Name"

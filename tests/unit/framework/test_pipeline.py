@@ -3,7 +3,6 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 import multiprocessing
-import re
 from copy import deepcopy
 from logging import DEBUG
 from multiprocessing import Lock
@@ -27,7 +26,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline, PipelineResult
+from logprep.framework.pipeline import Pipeline
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -250,8 +249,8 @@ class TestPipeline(ConfigurationForTests):
 
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        event, res = self.pipeline.process_pipeline()
-        re.match(str(processing_warning), str(res.results[0].errors))
+        _, result = self.pipeline.process_pipeline()
+        assert processing_warning in result.results[0].errors
         assert self.pipeline._output["dummy"].store.call_count == 2, "all events are processed"
 
     @mock.patch("logging.Logger.error")
@@ -418,7 +417,7 @@ class TestPipeline(ConfigurationForTests):
     @mock.patch("logprep.framework.pipeline.Pipeline._shut_down")
     @mock.patch("logging.Logger.error")
     def test_processor_fatal_output_error_is_logged_pipeline_is_shutdown(
-        self, mock_log_error, mock_shut_down, __
+        self, mock_log_error, mock_shut_down, _
     ):
         self.pipeline._setup()
         add_empty_processor_result_to_process_mocks(self.pipeline._pipeline)
