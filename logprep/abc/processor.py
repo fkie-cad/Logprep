@@ -230,8 +230,10 @@ class Processor(Component):
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
             self.result.errors.append(error)  # is needed to prevent wrapping it in itself
+            event.clear()
         except BaseException as error:
             self.result.errors.append(ProcessingCriticalError(str(error), rule, event))
+            event.clear()
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:

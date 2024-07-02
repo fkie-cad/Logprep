@@ -146,7 +146,7 @@ class Pipeline:
         }
 
     @cached_property
-    def _pipeline(self) -> tuple:
+    def _pipeline(self) -> list[Processor]:
         self.logger.debug(f"Building '{self._process_name}'")
         pipeline = [self._create_processor(entry) for entry in self._logprep_config.pipeline]
         self.logger.debug("Finished building pipeline")
@@ -255,9 +255,9 @@ class Pipeline:
                 # pipeline is aborted on processing error
                 return event, result
         if self._output:
-            result_data = itertools.chain(*[res.data for res in result if res.data])
+            result_data = [res.data for res in result if res.data]
             if result_data:
-                self._store_extra_data(result_data)
+                self._store_extra_data(itertools.chain(*result_data))
             if event:
                 self._store_event(event)
         return event, result
@@ -288,15 +288,9 @@ class Pipeline:
     @Metric.measure_time()
     def process_event(self, event: dict):
         """process all processors for one event"""
-        results = []
-        for processor in self._pipeline:
-            result: ProcessorResult = processor.process(event)
-            results.append(result)
-            if ProcessingError in result:
-                event.clear()
-            if not event:
-                break
-        return PipelineResult(results=results)
+        return PipelineResult(
+            results=[processor.process(event) for processor in self._pipeline if event]
+        )
 
     def _store_extra_data(self, result_data: List | itertools.chain) -> None:
         self.logger.debug("Storing extra data")
