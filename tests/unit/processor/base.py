@@ -292,4 +292,4 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert isinstance(result, ProcessorResult)
         assert result.data == []
         assert result.errors == []
-        assert result.name == "Test Instance Name"
+        assert result.processor_name == "Test Instance Name"

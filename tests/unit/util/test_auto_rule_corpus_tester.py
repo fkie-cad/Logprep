@@ -321,7 +321,11 @@ class TestAutoRuleTester:
                 "logprep.util.auto_rule_tester.auto_rule_corpus_tester.Pipeline.process_pipeline"
             ) as mock_process_pipeline:
                 mock_process_pipeline.return_value = mock_output[0], PipelineResult(
-                    results=[ProcessorResult(name="test", data=test_data["expected_extra_output"])]
+                    results=[
+                        ProcessorResult(
+                            processor_name="test", data=test_data["expected_extra_output"]
+                        )
+                    ]
                 )
                 corpus_tester.run()
         else:

@@ -63,7 +63,7 @@ def get_mock_create():
     mock_create = mock.MagicMock()
     mock_component = mock.MagicMock()
     mock_component.process = mock.MagicMock()
-    mock_component.process.return_value = ProcessorResult(name="mock_processor")
+    mock_component.process.return_value = ProcessorResult(processor_name="mock_processor")
     mock_create.return_value = mock_component
     return mock_create
 
@@ -133,7 +133,7 @@ class TestPipeline(ConfigurationForTests):
         processor_with_mock_result = mock.MagicMock()
         processor_with_mock_result.process = mock.MagicMock()
         processor_with_mock_result.process.return_value = ProcessorResult(
-            name="processor_with_mock_res"
+            processor_name="processor_with_mock_res"
         )
         self.pipeline._pipeline = [
             processor_with_mock_result,
@@ -160,7 +160,7 @@ class TestPipeline(ConfigurationForTests):
     def test_empty_documents_are_not_stored_in_the_output(self, _):
         def mock_process_event(event):
             event.clear()
-            return [ProcessorResult(name="")]
+            return [ProcessorResult(processor_name="")]
 
         self.pipeline.process_event = mock_process_event
         self.pipeline._setup()
@@ -245,7 +245,7 @@ class TestPipeline(ConfigurationForTests):
         mock_rule = mock.MagicMock()
         processing_warning = ProcessingWarning("not so bad", mock_rule, {"message": "test"})
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="mock_processor", errors=[processing_warning]
+            processor_name="mock_processor", errors=[processing_warning]
         )
 
         self.pipeline.process_pipeline()
@@ -264,13 +264,13 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = (input_event1, None)
         mock_rule = mock.MagicMock()
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="",
+            processor_name="",
             errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event1)],
         )
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = (input_event2, None)
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="",
+            processor_name="",
             errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event2)],
         )
 
@@ -311,9 +311,13 @@ class TestPipeline(ConfigurationForTests):
         mock_rule = mock.MagicMock()
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         warning = FieldExistsWarning(mock_rule, input_event1, ["foo"])
-        self.pipeline._pipeline[0].process.return_value = ProcessorResult(name="", errors=[warning])
+        self.pipeline._pipeline[0].process.return_value = ProcessorResult(
+            processor_name="", errors=[warning]
+        )
         error = ProcessingCriticalError("really bad things happened", mock_rule, input_event1)
-        self.pipeline._pipeline[1].process.return_value = ProcessorResult(name="", errors=[error])
+        self.pipeline._pipeline[1].process.return_value = ProcessorResult(
+            processor_name="", errors=[error]
+        )
         self.pipeline.process_pipeline()
         assert mock_error.call_count == 1, f"one error occurred: {mock_error.mock_calls}"
         assert mock_warning.call_count == 1, f"one warning occurred: {mock_warning.mock_calls}"
@@ -438,7 +442,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
+            processor_name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
         )
         self.pipeline._pipeline.append(deepcopy(self.pipeline._pipeline[0]))
         self.pipeline.process_pipeline()
@@ -451,7 +455,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="",
+            processor_name="",
             data=[
                 (
                     {"foo": "bar"},
@@ -474,7 +478,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
+            processor_name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
         )
         self.pipeline._pipeline.append(deepcopy(self.pipeline._pipeline[0]))
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)

@@ -38,8 +38,8 @@ class ProcessorResult:
     and errors (incl. warnings).
     """
 
-    name: str = field(validator=validators.instance_of(str))
     data: list = field(validator=validators.instance_of(list), factory=list)
+    """ The generated extra data """
     errors: list = field(
         validator=validators.deep_iterable(
             member_validator=validators.instance_of((ProcessingError, ProcessingWarning)),
@@ -47,6 +47,13 @@ class ProcessorResult:
         ),
         factory=list,
     )
+    """ The errors and warnings that occurred during processing """
+    outputs: list = field(validator=validators.instance_of(list), factory=list)
+    """ The outputs of the processors extra data """
+    processor_name: str = field(validator=validators.instance_of(str))
+    """ The name of the processor """
+    event: dict = field(validator=validators.optional(validators.instance_of(dict)), default=None)
+    """ A reference to the event that was processed """
 
     def __contains__(self, error_class):
         return any(isinstance(item, error_class) for item in self.errors)
@@ -138,7 +145,7 @@ class Processor(Component):
             specific_rules_targets=self._config.specific_rules,
         )
         self.has_custom_tests = False
-        self.result = ProcessorResult(name=self.name)
+        self.result = ProcessorResult(processor_name=self.name)
 
     @property
     def _specific_rules(self):
@@ -190,7 +197,7 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
-        self.result = ProcessorResult(name=self.name)
+        self.result = ProcessorResult(processor_name=self.name, event=event)
         logger.debug(f"{self.describe()} processing event {event}")
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
