@@ -42,31 +42,24 @@ class ProcessorResult:
     """ The generated extra data """
     errors: list = field(
         validator=validators.deep_iterable(
-            member_validator=validators.instance_of((ProcessingError, ProcessingWarning)),
+            member_validator=validators.instance_of(ProcessingError),
             iterable_validator=validators.instance_of(list),
         ),
         factory=list,
     )
-    """ The errors and warnings that occurred during processing """
+    """ The errors that occurred during processing """
+    warnings: list = field(
+        validator=validators.deep_iterable(
+            member_validator=validators.instance_of(ProcessingWarning),
+            iterable_validator=validators.instance_of(list),
+        ),
+        factory=list,
+    )
+    """ The warnings that occurred during processing """
     processor_name: str = field(validator=validators.instance_of(str))
     """ The name of the processor """
     event: dict = field(validator=validators.optional(validators.instance_of(dict)), default=None)
     """ A reference to the event that was processed """
-
-    def __contains__(self, error_class):
-        return any(isinstance(item, error_class) for item in self.errors)
-
-    def get_warning_string(self):
-        """creates a string containing the warnings"""
-        return ", ".join(
-            [error.args[0] for error in self.errors if isinstance(error, ProcessingWarning)]
-        )
-
-    def get_error_string(self):
-        """creates a string containing the errors"""
-        return ", ".join(
-            [error.args[0] for error in self.errors if isinstance(error, ProcessingError)]
-        )
 
 
 class Processor(Component):
@@ -331,9 +324,9 @@ class Processor(Component):
         else:
             add_and_overwrite(event, "tags", sorted(list({*tags, *failure_tags})))
         if isinstance(error, ProcessingWarning):
-            self.result.errors.append(error)
+            self.result.warnings.append(error)
         else:
-            self.result.errors.append(ProcessingWarning(str(error), rule, event))
+            self.result.warnings.append(ProcessingWarning(str(error), rule, event))
 
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(

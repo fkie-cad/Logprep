@@ -69,6 +69,26 @@ class PipelineResult:
     pipeline: list[Processor]
     """The pipeline that processed the event"""
 
+    @property
+    def has_processing_errors(self) -> bool:
+        """Check if any of the results has processing errors."""
+        return any(result.errors for result in self)
+
+    @property
+    def has_processing_warnings(self) -> bool:
+        """Check if any of the results has processing errors."""
+        return any(result.warnings for result in self)
+
+    @property
+    def errors(self) -> List[ProcessingError]:
+        """Return all processing errors."""
+        return itertools.chain(*[result.errors for result in self])
+
+    @property
+    def warnings(self) -> List[ProcessingWarning]:
+        """Return all processing warnings."""
+        return itertools.chain(*[result.warnings for result in self])
+
     def __attrs_post_init__(self):
         self.results = list(
             (processor.process(self.event) for processor in self.pipeline if self.event)
@@ -256,17 +276,12 @@ class Pipeline:
         if not event:
             return None, None
         result: PipelineResult = self.process_event(event)
-        for processor_result in result:
-            if not processor_result.errors:
-                continue
-            if ProcessingWarning in processor_result:
-                self.logger.warning(processor_result.get_warning_string())
-            if ProcessingError in processor_result:
-                self.logger.error(processor_result.get_error_string())
-                if self._output:
-                    self._store_failed_event(processor_result.errors, result.event_received, event)
-                # pipeline is aborted on processing error
-                return
+        if result.has_processing_warnings:
+            self.logger.warning(",".join((str(warning) for warning in result.warnings)))
+        if result.has_processing_errors:
+            self.logger.error(",".join((str(error) for error in result.errors)))
+            self._store_failed_event(result.errors, result.event_received, event)
+            return
         if self._output:
             result_data = [res.data for res in result if res.data]
             if result_data:

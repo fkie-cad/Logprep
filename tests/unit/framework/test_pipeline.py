@@ -26,7 +26,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline
+from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -160,7 +160,9 @@ class TestPipeline(ConfigurationForTests):
     def test_empty_documents_are_not_stored_in_the_output(self, _):
         def mock_process_event(event):
             event.clear()
-            return [ProcessorResult(processor_name="")]
+            return PipelineResult(
+                event=event, event_received=event, results=[], pipeline=self.pipeline._pipeline
+            )
 
         self.pipeline.process_event = mock_process_event
         self.pipeline._setup()
@@ -246,13 +248,14 @@ class TestPipeline(ConfigurationForTests):
         mock_rule = mock.MagicMock()
         processing_warning = ProcessingWarning("not so bad", mock_rule, {"message": "test"})
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            processor_name="mock_processor", errors=[processing_warning]
+            processor_name="mock_processor", warnings=[processing_warning]
         )
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         result = self.pipeline.process_pipeline()
-        assert processing_warning in result.results[0].errors
+        assert processing_warning in result.results[0].warnings
         mock_warning.assert_called()
+        assert "ProcessingWarning: not so bad" in mock_warning.call_args[0][0]
         assert self.pipeline._output["dummy"].store.call_count == 2, "all events are processed"
 
     @mock.patch("logging.Logger.error")
@@ -278,24 +281,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 2, "2 events gone into processing"
         assert mock_error.call_count == 2, f"two errors occurred: {mock_error.mock_calls}"
-
-        logger_calls = (
-            mock.call(
-                str(
-                    ProcessingCriticalError(
-                        "really bad things happened", mock_rule, {"message": "first event"}
-                    )
-                )
-            ),
-            mock.call(
-                str(
-                    ProcessingCriticalError(
-                        "really bad things happened", mock_rule, {"message": "second event"}
-                    )
-                )
-            ),
-        )
-        mock_error.assert_has_calls(logger_calls)
+        assert "ProcessingCriticalError: really bad things happened" in mock_error.call_args[0][0]
         assert self.pipeline._output["dummy"].store.call_count == 0, "no event in output"
         assert (
             self.pipeline._output["dummy"].store_failed.call_count == 2
@@ -313,7 +299,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         warning = FieldExistsWarning(mock_rule, input_event1, ["foo"])
         self.pipeline._pipeline[0].process.return_value = ProcessorResult(
-            processor_name="", errors=[warning]
+            processor_name="", warnings=[warning]
         )
         error = ProcessingCriticalError("really bad things happened", mock_rule, input_event1)
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
