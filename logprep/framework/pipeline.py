@@ -18,7 +18,7 @@ from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Lock, Value, current_process
-from typing import Any, List, Tuple, Optional
+from typing import Any, List, Optional, Tuple
 
 import attrs
 import msgspec
@@ -59,6 +59,15 @@ class PipelineResult:
             ),
         ]
     )
+    """List of ProcessorResults"""
+    event: dict = attrs.field(validator=attrs.validators.instance_of(dict))
+    """The event that was processed"""
+    event_received: dict = attrs.field(
+        validator=attrs.validators.instance_of(dict), converter=copy.deepcopy
+    )
+    """The event that was received"""
+    pipeline: "Pipeline"
+    """The pipeline that processed the event"""
 
     def __iter__(self):
         return iter(self.results)
@@ -253,14 +262,14 @@ class Pipeline:
                 if self._output:
                     self._store_failed_event(processor_result.errors, event_received, event)
                 # pipeline is aborted on processing error
-                return event, result
+                return result
         if self._output:
             result_data = [res.data for res in result if res.data]
             if result_data:
                 self._store_extra_data(itertools.chain(*result_data))
             if event:
                 self._store_event(event)
-        return event, result
+        return result
 
     def _store_event(self, event: dict) -> None:
         for output_name, output in self._output.items():
@@ -288,9 +297,14 @@ class Pipeline:
     @Metric.measure_time()
     def process_event(self, event: dict):
         """process all processors for one event"""
-        return PipelineResult(
-            results=[processor.process(event) for processor in self._pipeline if event]
+        result = PipelineResult(
+            results=[],
+            event_received=event,
+            event=event,
+            pipeline=self,
         )
+        result.results = [processor.process(event) for processor in self._pipeline if event]
+        return result
 
     def _store_extra_data(self, result_data: List | itertools.chain) -> None:
         self.logger.debug("Storing extra data")

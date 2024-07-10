@@ -318,7 +318,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         result = self.object.process(event)
         assert isinstance(result, ProcessorResult)
         assert isinstance(result.data, list)
-        assert isinstance(result.outputs, list)
         assert isinstance(result.errors, list)
         assert result.processor_name == "Test Instance Name"
 

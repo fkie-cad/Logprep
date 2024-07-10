@@ -48,8 +48,6 @@ class ProcessorResult:
         factory=list,
     )
     """ The errors and warnings that occurred during processing """
-    outputs: list = field(validator=validators.instance_of(list), factory=list)
-    """ The outputs of the processors extra data """
     processor_name: str = field(validator=validators.instance_of(str))
     """ The name of the processor """
     event: dict = field(validator=validators.optional(validators.instance_of(dict)), default=None)
