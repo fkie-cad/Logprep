@@ -17,8 +17,10 @@ from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
+from logprep.filter.lucene_filter import LuceneFilter
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
+from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingError
 from logprep.util.json_handling import list_json_files_in_directory
 from tests.unit.component.base import BaseComponentTestCase
 
@@ -95,6 +97,28 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         self.object = Factory.create(configuration=config)
         self.specific_rules = self.set_rules(self.specific_rules_dirs)
         self.generic_rules = self.set_rules(self.generic_rules_dirs)
+        self.match_all_event = {
+            "message": "event",
+            "winlog": {
+                "event_id": 1,
+                "provider_name": "Microsoft-Windows-Sysmon",
+                "event_data": {"IpAddress": "127.0.0.54"},
+            },
+            "field1": "foo",
+            "field2": "bar",
+            "another_random_field": "baz",
+            "@timestamp": "2021-01-01T00:00:00.000Z",
+            "delete_event": "does not matter",
+            "irrelevant": "does not matter",
+            "url": "http://example.local",
+            "drop_me": "does not matter",
+            "add_generic_test": "does not matter",
+            "anything": "does not matter",
+            "client": {"ip": "127.0.0.54"},
+            "ips": ["127.0.0.54", "192.168.4.33"],
+            "applyrule": "yes",
+            "A": "foobarfoo",
+        }  # this is an event that can be used in all processor tests, cause it matches everywhere
 
     def teardown_method(self) -> None:
         """teardown for all methods"""
@@ -290,6 +314,18 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         event = {"some": "event"}
         result = self.object.process(event)
         assert isinstance(result, ProcessorResult)
-        assert result.data == []
-        assert result.errors == []
+        assert isinstance(result.data, list)
+        assert isinstance(result.outputs, list)
+        assert isinstance(result.errors, list)
         assert result.processor_name == "Test Instance Name"
+
+    def test_process_collects_errors_in_result_object(self):
+        with mock.patch.object(
+            self.object,
+            "_apply_rules",
+            side_effect=ProcessingCriticalError(
+                "side effect", rule=self.object.rules[0], event=self.match_all_event
+            ),
+        ):
+            result = self.object.process(self.match_all_event)
+        assert len(result.errors) > 0, "minimum one error should be in result object"

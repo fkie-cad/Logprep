@@ -203,7 +203,7 @@ class Processor(Component):
         self._process_rule_tree(event, self._generic_tree)
         return self.result
 
-    def _process_rule_tree(self, event: dict, tree: "RuleTree"):
+    def _process_rule_tree(self, event: dict, tree: RuleTree):
         applied_rules = set()
 
         @Metric.measure_time()
@@ -213,14 +213,14 @@ class Processor(Component):
             applied_rules.add(rule)
             return event
 
-        def _process_rule_tree_multiple_times(tree, event):
+        def _process_rule_tree_multiple_times(tree: RuleTree, event: dict):
             matching_rules = tree.get_matching_rules(event)
             while matching_rules:
                 for rule in matching_rules:
                     _process_rule(rule, event)
                 matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
-        def _process_rule_tree_once(tree, event):
+        def _process_rule_tree_once(tree: RuleTree, event: dict):
             matching_rules = tree.get_matching_rules(event)
             for rule in matching_rules:
                 _process_rule(rule, event)
@@ -238,7 +238,7 @@ class Processor(Component):
         except ProcessingCriticalError as error:
             self.result.errors.append(error)  # is needed to prevent wrapping it in itself
             event.clear()
-        except BaseException as error:
+        except Exception as error:
             self.result.errors.append(ProcessingCriticalError(str(error), rule, event))
             event.clear()
         if not hasattr(rule, "delete_source_fields"):

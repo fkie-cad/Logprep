@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import re
-from logging import getLogger
 from unittest import mock
 from unittest.mock import call
 
