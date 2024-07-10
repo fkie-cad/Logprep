@@ -6,6 +6,7 @@
 import re
 from copy import deepcopy
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -814,6 +815,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert self.object._specific_tree.rules[0].pseudonyms == {"something": expected_pattern}
 
     def test_pseudonymize_string_adds_pseudonyms(self):
+        self.object.result = ProcessorResult(processor_name="test")
         assert self.object._pseudonymize_string("foo").startswith("<pseudonym:")
         assert len(self.object.result.data) == 1
 
@@ -909,6 +911,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         ],
     )
     def test_pseudonymize_url(self, url, expected):
+        self.object.result = ProcessorResult(processor_name="test")
         assert self.object._pseudonymize_url(url) == expected
 
     def test_process_returns_extra_output(self):

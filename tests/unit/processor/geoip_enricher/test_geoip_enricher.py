@@ -122,7 +122,8 @@ class TestGeoipEnricher(BaseProcessorTestCase):
     def test_source_field_is_none_emits_missing_fields_warning(self):
         document = {"client": {"ip": None}}
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
-        self.object._apply_rules(document, self.object.rules[0])
+        self._load_specific_rule(self.object.rules[0])
+        self.object.process(document)
         assert len(self.object.result.errors) == 1
         assert re.match(
             r".*missing source_fields: \['client\.ip'].*", str(self.object.result.errors[0])

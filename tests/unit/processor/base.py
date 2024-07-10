@@ -21,6 +21,7 @@ from logprep.filter.lucene_filter import LuceneFilter
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingError
+from logprep.processor.base.rule import Rule
 from logprep.util.json_handling import list_json_files_in_directory
 from tests.unit.component.base import BaseComponentTestCase
 
@@ -77,10 +78,12 @@ class BaseProcessorTestCase(BaseComponentTestCase):
                         rules.append(rule)
         return rules
 
-    def _load_specific_rule(self, rule):
+    def _load_specific_rule(self, rule: dict | Rule):
         self.object._generic_tree = RuleTree()
         self.object._specific_tree = RuleTree()
-        specific_rule = self.object.rule_class._create_from_dict(rule)
+        specific_rule = (
+            self.object.rule_class._create_from_dict(rule) if isinstance(rule, dict) else rule
+        )
         self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def setup_method(self) -> None:
