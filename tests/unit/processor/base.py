@@ -329,3 +329,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         ):
             result = self.object.process(self.match_all_event)
         assert len(result.errors) > 0, "minimum one error should be in result object"
+
+    def test_result_object_has_reference_to_event(self):
+        result = self.object.process(self.match_all_event)
+        assert result.event is self.match_all_event

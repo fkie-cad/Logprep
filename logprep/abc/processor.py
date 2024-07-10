@@ -145,7 +145,7 @@ class Processor(Component):
             specific_rules_targets=self._config.specific_rules,
         )
         self.has_custom_tests = False
-        self.result = ProcessorResult(processor_name=self.name)
+        self.result = None
 
     @property
     def _specific_rules(self):
@@ -187,14 +187,19 @@ class Processor(Component):
             "name": self.name,
         }
 
-    def process(self, event: dict):
-        """Process a log event by calling the implemented `process` method of the
-        strategy object set in  `_strategy` attribute.
+    def process(self, event: dict) -> ProcessorResult:
+        """Process a log event.
 
         Parameters
         ----------
         event : dict
            A dictionary representing a log event.
+
+        Returns
+        -------
+        ProcessorResult
+            A ProcessorResult object containing the processed event, errors,
+            extra data and a list of target outputs.
 
         """
         self.result = ProcessorResult(processor_name=self.name, event=event)
