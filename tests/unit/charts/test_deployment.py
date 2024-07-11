@@ -356,3 +356,12 @@ artifacts:
         mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
         mount = [mount for mount in mounts if mount["name"] == "mysecret"]
         assert mount
+
+    def test_environment_variables_are_populated(self):
+        logprep_values = {"environment": {"MY_VAR": "my_value", "MY_OTHER_VAR": "my_other_value"}}
+        self.manifests = self.render_chart("logprep", logprep_values)
+        env = self.deployment["spec.template.spec.containers.0.env"]
+        my_var = [variable for variable in env if variable["name"] == "MY_VAR"].pop()
+        assert my_var["value"] == "my_value"
+        my_var = [variable for variable in env if variable["name"] == "MY_OTHER_VAR"].pop()
+        assert my_var["value"] == "my_other_value"

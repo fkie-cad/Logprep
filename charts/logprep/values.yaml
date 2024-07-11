@@ -40,6 +40,15 @@ securityContext:
 #     name: logprep-image-pull-secret # Name of the secret containing the image pull secret
 secrets: {}
 
+# extra environment variables in format key: value
+# Example:
+#
+# environment:
+#   MY_ENV_VAR: "my value"
+#   MY_OTHER_ENV_VAR: "my other value"
+#
+environment: {}
+
 # Boolean to signal to use affinity to avoid deploying multiple instances of the
 # pod on the same node
 affinity: false
