@@ -342,3 +342,17 @@ artifacts:
         volumes = self.deployment["spec.template.spec.volumes"]
         artifacts_volume = [volume for volume in volumes if volume["name"] == "artifacts"]
         assert len(artifacts_volume) == 0
+
+    def test_extra_secrets_volumes_are_populated(self):
+        logprep_values = {"secrets": {"mysecret": {"name": "external-secret"}}}
+        self.manifests = self.render_chart("logprep", logprep_values)
+        volumes = self.deployment["spec.template.spec.volumes"]
+        volume = [volume for volume in volumes if volume["name"] == "mysecret"]
+        assert volume
+
+    def test_extra_secrets_are_mounted(self):
+        logprep_values = {"secrets": {"mysecret": {"name": "external-secret"}}}
+        self.manifests = self.render_chart("logprep", logprep_values)
+        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
+        mount = [mount for mount in mounts if mount["name"] == "mysecret"]
+        assert mount
