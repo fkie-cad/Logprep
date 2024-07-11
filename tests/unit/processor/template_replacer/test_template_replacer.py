@@ -148,8 +148,8 @@ class TestTemplateReplacer(BaseProcessorTestCase):
             "dotted": "foo",
         }
         result = template_replacer.process(document)
-        assert len(result.errors) == 1
-        assert isinstance(result.errors[0], FieldExistsWarning)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
 
     def test_replace_fails_with_invalid_template(self):
         config = deepcopy(self.CONFIG)

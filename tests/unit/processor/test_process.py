@@ -158,12 +158,12 @@ class TestSpecificGenericProcessing:
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_two)
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_one)
         res = pipeline.process_event(event)
-        assert len(res.results[0].errors) == 1
-        assert isinstance(res.results[0].errors[0], FieldExistsWarning)
+        assert len(res.results[0].warnings) == 1
+        assert isinstance(res.results[0].warnings[0], FieldExistsWarning)
         re.match(
             "The following fields could not be written, "
             "because one or more subfields existed and could not be extended: first",
-            str(res.results[0].errors[0]),
+            str(res.results[0].warnings[0]),
         )
 
         assert event == expected_event

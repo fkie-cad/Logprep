@@ -124,9 +124,9 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
         self._load_specific_rule(self.object.rules[0])
         self.object.process(document)
-        assert len(self.object.result.errors) == 1
+        assert len(self.object.result.warnings) == 1
         assert re.match(
-            r".*missing source_fields: \['client\.ip'].*", str(self.object.result.errors[0])
+            r".*missing source_fields: \['client\.ip'].*", str(self.object.result.warnings[0])
         )
         assert document == expected
 
@@ -164,8 +164,8 @@ class TestGeoipEnricher(BaseProcessorTestCase):
     def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
         result = self.object.process(document)
-        assert len(result.errors) == 1
-        assert re.match(".*FieldExistsWarning.*geoip.type", str(result.errors[0]))
+        assert len(result.warnings) == 1
+        assert re.match(".*FieldExistsWarning.*geoip.type", str(result.warnings[0]))
 
     def test_configured_dotted_output_field(self):
         document = {"source": {"ip": "8.8.8.8"}}

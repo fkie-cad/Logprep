@@ -89,6 +89,11 @@ class PipelineResult:
         """Return all processing warnings."""
         return itertools.chain(*[result.warnings for result in self])
 
+    @property
+    def data(self) -> List[Tuple[dict, dict]]:
+        """Return all extra data."""
+        return itertools.chain(*[result.data for result in self])
+
     def __attrs_post_init__(self):
         self.results = list(
             (processor.process(self.event) for processor in self.pipeline if self.event)

@@ -17,10 +17,9 @@ from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
-from logprep.filter.lucene_filter import LuceneFilter
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
-from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingError
+from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.processor.base.rule import Rule
 from logprep.util.json_handling import list_json_files_in_directory
 from tests.unit.component.base import BaseComponentTestCase

@@ -591,11 +591,11 @@ class TestFieldManager(BaseProcessorTestCase):
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
         self._load_specific_rule(rule)
         result = self.object.process(event)
-        assert len(result.errors) == 1
-        assert re.match(error, str(result.errors[0]))
+        assert len(result.warnings) == 1
+        assert re.match(error, str(result.warnings[0]))
         assert event == expected, testcase
 
-    def test_process_raises_duplication_error_if_target_field_exists_and_should_not_be_overwritten(
+    def test_process_raises_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
         self,
     ):
         rule = {
@@ -610,7 +610,7 @@ class TestFieldManager(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
         result = self.object.process(document)
-        assert isinstance(result.errors[0], FieldExistsWarning)
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
         assert document.get("tags") == ["_field_manager_failure"]
@@ -626,10 +626,10 @@ class TestFieldManager(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
         result = self.object.process(document)
-        assert len(result.errors) == 1
+        assert len(result.warnings) == 1
         assert re.match(
             r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]",
-            str(result.errors[0]),
+            str(result.warnings[0]),
         )
 
     def test_process_raises_processing_warning_with_missing_fields_but_event_is_processed(self):
@@ -650,10 +650,10 @@ class TestFieldManager(BaseProcessorTestCase):
             "tags": ["_field_manager_missing_field_warning"],
         }
         result = self.object.process(document)
-        assert len(result.errors) == 1
+        assert len(result.warnings) == 1
         assert re.match(
             r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]",
-            str(result.errors[0]),
+            str(result.warnings[0]),
         )
         assert document == expected
 

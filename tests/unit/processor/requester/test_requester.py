@@ -351,6 +351,6 @@ class TestRequester(BaseProcessorTestCase):
             responses.add(responses.Response(**response_kwargs))
         self._load_specific_rule(rule)
         result = self.object.process(event)
-        assert len(result.errors) == 1
-        assert re.match(error_message, str(result.errors[0]))
+        assert len(result.warnings) == 1
+        assert re.match(error_message, str(result.warnings[0]))
         assert event == expected, testcase

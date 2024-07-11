@@ -378,8 +378,8 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "tags": ["_hyperscan_resolver_failure"],
         }
         result = self.object.process(document)
-        assert len(result.errors) == 1
-        assert isinstance(result.errors[0], FieldExistsWarning)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
     def test_resolve_with_multiple_match_first_only(self):

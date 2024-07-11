@@ -433,8 +433,8 @@ class TestGrokker(BaseProcessorTestCase):
         self.object.setup()
         if isinstance(error, str):
             result = self.object.process(event)
-            assert len(result.errors) == 1
-            assert re.match(rf".*{error}", str(result.errors[0]))
+            assert len(result.warnings) == 1
+            assert re.match(rf".*{error}", str(result.warnings[0]))
             assert event == expected, testcase
         else:
             result = self.object.process(event)

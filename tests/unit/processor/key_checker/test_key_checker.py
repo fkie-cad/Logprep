@@ -255,7 +255,7 @@ class TestKeyChecker(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-    def test_raises_duplication_error(self):
+    def test_field_exists_warning(self):
         rule_dict = {
             "filter": "*",
             "key_checker": {
@@ -273,5 +273,5 @@ class TestKeyChecker(BaseProcessorTestCase):
             "missing_fields": ["i.exists.already"],
         }
         result = self.object.process(document)
-        assert len(result.errors) == 1
-        assert isinstance(result.errors[0], FieldExistsWarning)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)

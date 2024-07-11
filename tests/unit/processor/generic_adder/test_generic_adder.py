@@ -409,8 +409,8 @@ class TestGenericAdder(BaseProcessorTestCase):
     ):
         self._load_specific_rule(rule)
         result = self.object.process(event)
-        assert len(result.errors) == 1
-        assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.errors[0]))
+        assert len(result.warnings) == 1
+        assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))
         assert event == expected, testcase
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
@@ -611,8 +611,8 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
 
         self.object.process(document)
         result = self.object.process(document)
-        assert len(result.errors) == 1
-        assert isinstance(result.errors[0], FieldExistsWarning)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
 
         assert document == expected
 
