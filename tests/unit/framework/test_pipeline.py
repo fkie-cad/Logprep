@@ -52,7 +52,6 @@ class ConfigurationForTests:
             "metrics": {"enabled": False},
         }
     )
-    lock = Lock()
 
 
 def get_mock_create():
@@ -76,7 +75,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline = Pipeline(
             pipeline_index=1,
             config=self.logprep_config,
-            lock=self.lock,
         )
 
     def test_pipeline_property_returns_pipeline(self, mock_create):
