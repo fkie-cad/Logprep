@@ -40,3 +40,4 @@ arrow
 click
 pandas
 tabulate
+more-itertools==8.10.0

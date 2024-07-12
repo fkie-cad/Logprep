@@ -50,7 +50,7 @@ class TestAutoRuleTester:
         }
 
         auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
-        assert auto_rule_tester._result["rule_test_coverage"] == 0
+        assert auto_rule_tester._result["Rule Test Coverage"] == 0
 
     def test_coverage_all_rule_files_have_tests(self, auto_rule_tester):
         rules_pn = {
@@ -70,7 +70,7 @@ class TestAutoRuleTester:
         }
 
         auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
-        assert auto_rule_tester._result["rule_test_coverage"] == 100
+        assert auto_rule_tester._result["Rule Test Coverage"] == 100
 
     def test_coverage_half_rule_files_have_tests(self, auto_rule_tester):
         rules_pn = {
@@ -90,7 +90,7 @@ class TestAutoRuleTester:
         }
 
         auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
-        assert auto_rule_tester._result["rule_test_coverage"] == 50
+        assert auto_rule_tester._result["Rule Test Coverage"] == 50
 
     def test_does_not_run_if_no_rules_exist(self, auto_rule_tester, capsys):
         rules_pn = {
@@ -156,7 +156,7 @@ class TestAutoRuleTester:
         processor = auto_rule_tester._get_processor_instance(
             "pseudonymizer", pseudonymizer_cfg, LOGGER
         )
-        auto_rule_tester._reset_(
+        auto_rule_tester._reset(
             processor
         )  # Called every time by auto tester before adding rules
         auto_rule_tester._load_rules(processor, "specific_rules")
@@ -177,7 +177,7 @@ class TestAutoRuleTester:
         processor = auto_rule_tester._get_processor_instance(
             "list_comparison", list_comparison_cfg, LOGGER
         )
-        auto_rule_tester._reset_(
+        auto_rule_tester._reset(
             processor
         )  # Called every time by auto tester before adding rules instead
         mock_setup.assert_called_once()
@@ -211,11 +211,11 @@ class TestAutoRuleTester:
         ]
 
         expected_overall_results = [
-            "+ successful_rule_tests_cnt: 32", #7 failed
-            "- failed_rule_tests_cnt: 6", #33 success
-            "~ warning_cnt: 2", #40 rules
-            "rule_test_coverage: 72.72727272727273", #80.00% cov
-            "total_tests: 38", #2 warnings
+            "+ Successful: 32", #7 failed
+            "- Failed: 6", #33 success
+            "~ Warning: 2", #40 rules
+            "Rule Test Coverage: 72.72727272727273", #80.00% cov
+            "Total Tests: 38", #2 warnings
         ]
         captured = capsys.readouterr()
 
