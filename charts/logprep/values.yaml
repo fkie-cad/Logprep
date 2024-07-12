@@ -29,6 +29,8 @@ securityContext:
 # Optional secrets that will be mounted into the pod
 # Listed secrets are handled specially by the logprep deployment.
 # Additional secrets will be mounted as usual.
+# The key is the folder under /home/logprep and the value.name
+# (which is the name of the external secret) will be the name of the mounted file.
 # secrets:
 #   certificates:
 #     name: ca-cert # Name of the secret containing the ca certificate (or chain) in one data block
@@ -37,6 +39,22 @@ securityContext:
 #   imagePullSecret:
 #     name: logprep-image-pull-secret # Name of the secret containing the image pull secret
 secrets: {}
+
+# extra environment variables in format key: value
+# Example:
+#
+# environment:
+#   - name: MY_VAR
+#     value: "my value"
+#   - name: MY_OTHER_VAR
+#     value: "my other value"
+#   - name: SECRET_USERNAME
+#     valueFrom:
+#       secretKeyRef:
+#         name: backend-user
+#         key: backend-username
+#
+environment: []
 
 # Boolean to signal to use affinity to avoid deploying multiple instances of the
 # pod on the same node

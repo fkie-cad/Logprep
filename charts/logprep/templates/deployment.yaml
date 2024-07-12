@@ -68,6 +68,9 @@ spec:
             - name: REQUESTS_CA_BUNDLE
               value: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
             {{- end }}
+            {{- if .Values.environment }}
+            {{- toYaml .Values.environment  | nindent 12 }}
+            {{- end }}
           volumeMounts:
             - name: logprep-temp
               mountPath: /tmp
@@ -97,13 +100,10 @@ spec:
             - name: output-config
               mountPath: /home/logprep/output-config.yaml
               subPath: output-config.yaml
-            {{- if .Values.secrets.certificates }}
-            - name: certificates
-              mountPath: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
-            {{- end }}
-            {{- if .Values.secrets.credentials }}
-            - name: credentials
-              mountPath: /home/logprep/credentials/{{ .Values.secrets.credentials.name }}
+            {{- range $key, $value := .Values.secrets }}
+            - name: {{ $key }}
+              mountPath: /home/logprep/{{ $key }}/{{ $value.name }}
+              subPath: {{ $value.name }}
             {{- end }}
           {{- if or .Values.exporter.enabled (eq .Values.input.type "http_input") }}
           {{- if eq .Values.input.type "http_input" }}
@@ -168,15 +168,10 @@ spec:
           configMap:
             name: {{ include "logprep.fullname" . }}-artifacts
         {{- end }}
-        {{- if .Values.secrets.certificates }}
-        - name: certificates
+        {{- range $key, $value := .Values.secrets }}
+        - name: {{ $key }}
           secret:
-            secretName: {{ .Values.secrets.certificates.name }}
-        {{- end }}
-        {{- if .Values.secrets.credentials }}
-        - name: credentials
-          secret:
-            secretName: {{ .Values.secrets.credentials.name }}
+            secretName: {{ $value.name }}
         {{- end }}
       {{- if .Values.affinity }}
       affinity:

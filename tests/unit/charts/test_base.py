@@ -2,6 +2,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
 
+import re
 import subprocess
 from tempfile import NamedTemporaryFile
 from typing import Dict, Optional
@@ -68,7 +69,6 @@ class TestDefaultValues(TestBaseChartTest):
     @pytest.mark.parametrize(
         "label, label_value",
         [
-            ("app.kubernetes.io/version", "12.0.0"),
             ("app.kubernetes.io/name", "logprep-logprep"),
             ("app.kubernetes.io/application", "logprep"),
             ("app.kubernetes.io/managed-by", "Helm"),
@@ -78,3 +78,9 @@ class TestDefaultValues(TestBaseChartTest):
     def test_common_labels_are_set(self, label, label_value):
         for manifest in self.manifests:
             assert manifest["metadata.labels"][label] == label_value
+
+    def test_chart_version_is_set(self):
+        for manifest in self.manifests:
+            assert re.search(
+                r"\d+\.\d+\.\d+", manifest["metadata.labels"]["app.kubernetes.io/version"]
+            )
