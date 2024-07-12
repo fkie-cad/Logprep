@@ -545,9 +545,7 @@ class TestHttpGetter:
             http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
             with mock.patch.dict(
                 "os.environ",
-                {
-                    ENV_NAME_LOGPREP_CREDENTIALS_FILE: "quickstart/exampledata/config/credentials.yml"
-                },
+                {ENV_NAME_LOGPREP_CREDENTIALS_FILE: "examples/exampledata/config/credentials.yml"},
             ):
                 http_getter.get_json()
         assert error.value.response.status_code == 401

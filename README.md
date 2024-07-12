@@ -29,7 +29,7 @@ allowing further applications besides log handling.
 This readme provides basic information about the following topics:
 - [About Logprep](#about-logprep)
 - [Getting Started](https://logprep.readthedocs.io/en/latest/getting_started.html)
-- [Docker Quickstart](https://logprep.readthedocs.io/en/latest/getting_started.html#logprep-quickstart-environment)
+- [Deployment Examples](https://logprep.readthedocs.io/en/latest/examples/index.html)
 - [Event Generation](https://logprep.readthedocs.io/en/latest/user_manual/execution.html#event-generation)
 - [Documentation](https://logprep.readthedocs.io/en/latest)
 - [Contributing](#contributing)

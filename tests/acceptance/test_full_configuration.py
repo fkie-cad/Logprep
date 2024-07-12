@@ -87,12 +87,12 @@ $LOGPREP_OUTPUT
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules:
-            - quickstart/exampledata/rules/labeler/specific
+            - examples/exampledata/rules/labeler/specific
         generic_rules:
-            - quickstart/exampledata/rules/labeler/generic
+            - examples/exampledata/rules/labeler/generic
 """,
         "LOGPREP_OUTPUT": """
 output:

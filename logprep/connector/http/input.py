@@ -45,7 +45,7 @@ add basic authentication for a specific endpoint. The format of this file would 
       endpoints:
         /firstendpoint:
           username: user
-          password_file: quickstart/exampledata/config/user_password.txt
+          password_file: examples/exampledata/config/user_password.txt
         /second*:
           username: user
           password: secret_password

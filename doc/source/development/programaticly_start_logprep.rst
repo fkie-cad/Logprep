@@ -23,10 +23,10 @@ An example with input connector and preprocessors could look like this:
                 "predetector": {
                     "type": "pre_detector",
                     "specific_rules": [
-                        "quickstart/exampledata/rules/pre_detector/specific"
+                        "examples/exampledata/rules/pre_detector/specific"
                     ],
                     "generic_rules": [
-                        "quickstart/exampledata/rules/pre_detector/generic"
+                        "examples/exampledata/rules/pre_detector/generic"
                     ],
                     "pre_detector_topic": "output_topic"
                 }
@@ -61,10 +61,10 @@ An example without input connector and preprocessors could look like this:
                 "predetector": {
                     "type": "pre_detector",
                     "specific_rules": [
-                        "quickstart/exampledata/rules/pre_detector/specific"
+                        "examples/exampledata/rules/pre_detector/specific"
                     ],
                     "generic_rules": [
-                        "quickstart/exampledata/rules/pre_detector/generic"
+                        "examples/exampledata/rules/pre_detector/generic"
                     ],
                     "pre_detector_topic": "output_topic"
                 }

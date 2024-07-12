@@ -5,7 +5,7 @@ Docker Compose Example Deployment
 To demonstrate the functionality of logprep this repo comes with a complete `kafka`, `logprep` and
 `opensearch` stack.
 To get it running `docker` with compose support must be first installed.
-The docker compose file is located in the directory `quickstart`.
+The docker compose file is located in the directory `examples/compose`.
 A prerequisite is to run `sysctl -w vm.max_map_count=262144`, otherwise Opensearch might not
 properly start.
 
@@ -14,7 +14,7 @@ The environment can either be started with a Logprep container or without one:
 Run without Logprep Container (default)
 ---------------------------------------
 
-  1. Run from within the `quickstart` directory:
+  1. Run from within the `examples/compose` directory:
 
      .. code-block:: bash
 
@@ -25,14 +25,14 @@ Run without Logprep Container (default)
 
      .. code-block:: bash
 
-      logprep run quickstart/exampledata/config/pipeline.yml
+      logprep run examples/exampledata/config/pipeline.yml
 
     If logprep is run with the metrics enabled, the necessary environment variable has to be set first:
 
     .. code-block:: bash
 
       export PROMETHEUS_MULTIPROC_DIR="tmp/logprep"
-      logprep run quickstart/exampledata/config/pipeline.yml
+      logprep run examples/exampledata/config/pipeline.yml
 
 
 
@@ -40,7 +40,7 @@ Run without Logprep Container (default)
 Run with Logprep Container
 --------------------------
 
-  * Run from within the `quickstart` directory:
+  * Run from within the `examples/compose` directory:
 
     .. code-block:: bash
 
@@ -50,7 +50,7 @@ Run with Logprep Container
 Run with getting config from http server with basic authentication
 ------------------------------------------------------------------
 
-  * Run from within the `quickstart` directory:
+  * Run from within the `examples/compose` directory:
 
     .. code-block:: bash
 
@@ -60,14 +60,14 @@ Run with getting config from http server with basic authentication
 
     .. code-block:: bash
 
-      export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
+      export LOGPREP_CREDENTIALS_FILE="examples/exampledata/config/credentials.yml"
       logprep run http://localhost:8081/config/pipeline.yml
 
 
 Run with getting config from http server with mTLS authentication
 -----------------------------------------------------------------
 
-  * Run from within the `quickstart` directory:
+  * Run from within the `examples/compose` directory:
 
     .. code-block:: bash
 
@@ -77,12 +77,12 @@ Run with getting config from http server with mTLS authentication
 
     .. code-block:: bash
 
-      export LOGPREP_CREDENTIALS_FILE="quickstart/exampledata/config/credentials.yml"
+      export LOGPREP_CREDENTIALS_FILE="examples/exampledata/config/credentials.yml"
       logprep run https://localhost:8082/config/pipeline.yml
 
 
-Interacting with the Quickstart Environment
--------------------------------------------
+Interacting with the Compose Environment
+----------------------------------------
 
 The start up takes a few seconds to complete, but once everything is up
 and running it is possible to write JSON events into Kafka and read the processed events in
@@ -111,9 +111,9 @@ UCL Postgres:          `localhost:5432`  ucl                       ucl
 ====================== ================= ========================  =======================
 
 The example rules that are used in the docker instance of Logprep can be found
-in `quickstart/exampledata/rules`.
+in `examples/exampledata/rules`.
 Example events that trigger for the example rules can be found in
-`quickstart/exampledata/input_logdata/logclass/test_input.jsonl`.
+`examples/exampledata/input_logdata/logclass/test_input.jsonl`.
 These events can be added to Kafka with the following command:
 
 .. code-block:: bash
@@ -133,12 +133,12 @@ Utilizing FDA and UCL
 If you want to try out the FDA and UCL you first have to do some preparations.
 
 
-0. Run the quickstart setup with the :code:`oauth2` profile:
+0. Run the example compose setup with the :code:`oauth2` profile:
    :code:`docker compose --profile oauth2 up -d`.
 1. Sign into the keycloak admin panel and create a logprep user in the :code:`logprep` realm.
    Make sure that the user is part of the :code:`logprep-admin` group and has a password. If you
    choose a password other than :code:`logprep` you have to update the credentials file
-   :code:`quickstart/exampledata/config/credentials.yml`, such that the password of
+   :code:`examples/exampledata/config/credentials.yml`, such that the password of
    :code:`http://localhost:3001` and :code:`http://localhost:3002` reflects your choice.
 2. You have to login to the FDA with the previously created user and create a release, as well
    as your first logclass. It is also necessary to add an example event to this logclass in order
@@ -148,7 +148,7 @@ If you want to try out the FDA and UCL you first have to do some preparations.
    your created logprep user and then configure required Use-Cases.
    At the current moment these configuration are not yet processed by logprep though, as the ucl
    only provides a mock endpoint which doesn't contain your Use-Case configurations.
-4. Set the env :code:`LOGPREP_CREDENTIALS_FILE` to :code:`quickstart/exampledata/config/credentials.yml`
+4. Set the env :code:`LOGPREP_CREDENTIALS_FILE` to :code:`examples/exampledata/config/credentials.yml`
 
 Once you have set everything up you can run logprep with the following command.
 Just consider that the first :code:`pipeline.yml` argument is used to define a proper :code:`input`
@@ -157,10 +157,10 @@ you should ensure that the :code:`stage` and :code:`loglcass` are set properly.
 
 .. code-block:: bash
 
-     logprep run quickstart/exampledata/config/pipeline.yml "http://localhost:3002/api/v1/pipelines?stage=prod&logclass=ExampleClass" "http://localhost:3001/api/v1/general-predetection"
+     logprep run examples/exampledata/config/pipeline.yml "http://localhost:3002/api/v1/pipelines?stage=prod&logclass=ExampleClass" "http://localhost:3001/api/v1/general-predetection"
 
 .. note::
 
-     If you did use the quickstart setup before and run into problems it is advised to first pull
+     If you did use the example compose setup before and run into problems it is advised to first pull
      all images again to update them to the latest version:
-     :code:`docker compose -f ./quickstart/docker-compose.yml pull`.
+     :code:`docker compose -f ./example/compose/docker-compose.yml pull`.
