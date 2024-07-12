@@ -64,7 +64,6 @@ class PipelineManager:
         self._pipelines: list[multiprocessing.Process] = []
         self._configuration = configuration
 
-        self._lock = multiprocessing.Lock()
         prometheus_config = self._configuration.metrics
         if prometheus_config.enabled:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
@@ -164,7 +163,7 @@ class PipelineManager:
             self.prometheus_exporter.run()
 
     def _create_pipeline(self, index) -> multiprocessing.Process:
-        pipeline = Pipeline(pipeline_index=index, config=self._configuration, lock=self._lock)
+        pipeline = Pipeline(pipeline_index=index, config=self._configuration)
         logger.info("Created new pipeline")
         process = multiprocessing.Process(target=pipeline.run, daemon=True)
         process.stop = pipeline.stop

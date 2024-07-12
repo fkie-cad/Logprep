@@ -10,8 +10,9 @@ from unittest import mock
 
 import pytest
 
+from logprep.abc.processor import ProcessorResult
+from logprep.framework.pipeline import PipelineResult
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
-from logprep.util.configuration import Configuration
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.getter import GetterFactory
 
@@ -42,7 +43,6 @@ def prepare_corpus_tester(corpus_tester, tmp_path, test_data):
 
 
 class TestAutoRuleTester:
-
     def setup_method(self):
         dictConfig(DEFAULT_LOG_CONFIG)
 
@@ -320,7 +320,15 @@ class TestAutoRuleTester:
             with mock.patch(
                 "logprep.util.auto_rule_tester.auto_rule_corpus_tester.Pipeline.process_pipeline"
             ) as mock_process_pipeline:
-                mock_process_pipeline.return_value = mock_output
+                mock_process_pipeline.return_value = PipelineResult(
+                    results=[],
+                    event=mock_output[0],
+                    event_received=mock_output[0],
+                    pipeline=[],
+                )
+                mock_process_pipeline.return_value.results = [
+                    ProcessorResult(processor_name="test", data=test_data["expected_extra_output"])
+                ]
                 corpus_tester.run()
         else:
             corpus_tester.run()
@@ -470,3 +478,34 @@ class TestAutoRuleTester:
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(0)
+
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
+    def test_warnings_are_printed_inside_the_detailed_reports(self, mock_exit, tmp_path, capsys):
+        test_case_data = {
+            "input": {
+                "field1": 2,
+                "field2": 2,
+                "new_field": "exists already",
+            },
+            "expected_output": {
+                "field1": 2,
+                "field2": 2,
+                "new_field": "exists already",
+            },
+            "expected_extra_output": [],
+        }
+        test_data_dir = tmp_path / "test_data"
+        os.makedirs(test_data_dir, exist_ok=True)
+        write_test_case_data_tmp_files(test_data_dir, "test_case_one", test_case_data)
+        config_path = ["tests/testdata/config/config.yml"]
+        corpus_tester = RuleCorpusTester(config_path, test_data_dir)
+        corpus_tester.run()
+        console_output, console_error = capsys.readouterr()
+        assert console_error == ""
+        warnings_inside_details_pattern = (
+            r".*Test Cases Detailed Reports.*test_case_one.*"
+            r"Logprep Warnings.*FieldExistsWarning.*test_case_one.*"
+            r"Test Overview"
+        )
+        assert re.match(warnings_inside_details_pattern, console_output, flags=re.DOTALL)
+        mock_exit.assert_called_with(1)

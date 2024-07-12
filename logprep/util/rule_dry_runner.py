@@ -45,9 +45,9 @@ from functools import cached_property
 from colorama import Back, Fore
 from ruamel.yaml import YAML
 
-from logprep.framework.pipeline import Pipeline
+from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import (
-    align_extra_output_formats,
+    convert_extra_data_format,
 )
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
@@ -103,8 +103,9 @@ class DryRunner:
         transformed_cnt = 0
         output_count = 0
         for input_document in self._input_documents:
-            test_output, test_output_custom = self._pipeline.process_pipeline()
-            test_output_custom = align_extra_output_formats(test_output_custom)
+            result: PipelineResult = self._pipeline.process_pipeline()
+            test_output = result.event
+            test_output_custom = convert_extra_data_format(result.data)
             if test_output:
                 output_count += 1
             diff = self._print_output_results(input_document, test_output, test_output_custom)

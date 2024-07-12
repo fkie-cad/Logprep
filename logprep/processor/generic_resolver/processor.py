@@ -28,18 +28,21 @@ Processor Configuration
 import re
 from typing import Union
 
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+)
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class GenericResolverError(BaseException):
+class GenericResolverError(ProcessingCriticalError):
     """Base class for GenericResolver related exceptions."""
 
-    def __init__(self, name: str, message: str):
-        super().__init__(f"GenericResolver ({name}): {message}")
+    def __init__(self, name: str, message: str, rule: GenericResolverRule, event: dict):
+        super().__init__(f"{name}: {message}", rule=rule, event=event)
 
 
 class GenericResolver(FieldManager):
@@ -78,6 +81,8 @@ class GenericResolver(FieldManager):
                         raise GenericResolverError(
                             self.name,
                             "Mapping group is missing in mapping file pattern!",
+                            rule=rule,
+                            event=event,
                         )
                     dest_val = replacements.get(mapping)
                     if dest_val:
@@ -145,9 +150,13 @@ class GenericResolver(FieldManager):
                             f"Additions file "
                             f'\'{rule.resolve_from_file["path"]}\''
                             f" must be a dictionary with string values!",
+                            rule=rule,
+                            event=None,
                         )
                 except FileNotFoundError as error:
                     raise GenericResolverError(
                         self.name,
                         f'Additions file \'{rule.resolve_from_file["path"]}' f"' not found!",
+                        rule=rule,
+                        event=None,
                     ) from error

@@ -39,6 +39,7 @@ from attr import define, field
 
 from logprep.processor.base.exceptions import FieldExistsWarning, SkipImportError
 from logprep.processor.field_manager.processor import FieldManager
+from logprep.processor.generic_resolver.processor import GenericResolverError
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
 
@@ -56,11 +57,8 @@ from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
 # pylint: enable=ungrouped-imports
 
 
-class HyperscanResolverError(BaseException):
+class HyperscanResolverError(GenericResolverError):
     """Base class for HyperscanResolver related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"HyperscanResolver ({name}): {message}")
 
 
 class HyperscanResolver(FieldManager):

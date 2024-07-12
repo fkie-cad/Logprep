@@ -3,7 +3,7 @@
 import logging
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional
 
 from attr import define, field, validators
 
@@ -13,6 +13,7 @@ from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
+    ProcessingError,
     ProcessingWarning,
 )
 from logprep.util import getter
@@ -28,6 +29,37 @@ if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
 
 logger = logging.getLogger("Processor")
+
+
+@define(kw_only=True)
+class ProcessorResult:
+    """
+    Result object to be returned by every processor. It contains the processor name, created data
+    and errors (incl. warnings).
+    """
+
+    data: list = field(validator=validators.instance_of(list), factory=list)
+    """ The generated extra data """
+    errors: list = field(
+        validator=validators.deep_iterable(
+            member_validator=validators.instance_of(ProcessingError),
+            iterable_validator=validators.instance_of(list),
+        ),
+        factory=list,
+    )
+    """ The errors that occurred during processing """
+    warnings: list = field(
+        validator=validators.deep_iterable(
+            member_validator=validators.instance_of(ProcessingWarning),
+            iterable_validator=validators.instance_of(list),
+        ),
+        factory=list,
+    )
+    """ The warnings that occurred during processing """
+    processor_name: str = field(validator=validators.instance_of(str))
+    """ The name of the processor """
+    event: dict = field(validator=validators.optional(validators.instance_of(dict)), default=None)
+    """ A reference to the event that was processed """
 
 
 class Processor(Component):
@@ -76,7 +108,7 @@ class Processor(Component):
         "_event",
         "_specific_tree",
         "_generic_tree",
-        "_extra_data",
+        "result",
     ]
 
     rule_class: "Rule"
@@ -84,8 +116,8 @@ class Processor(Component):
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
-    _extra_data: List[Tuple[dict, Tuple[dict]]]
     _strategy = None
+    result: ProcessorResult
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
@@ -104,7 +136,7 @@ class Processor(Component):
             specific_rules_targets=self._config.specific_rules,
         )
         self.has_custom_tests = False
-        self._extra_data = []
+        self.result = None
 
     @property
     def _specific_rules(self):
@@ -146,23 +178,28 @@ class Processor(Component):
             "name": self.name,
         }
 
-    def process(self, event: dict):
-        """Process a log event by calling the implemented `process` method of the
-        strategy object set in  `_strategy` attribute.
+    def process(self, event: dict) -> ProcessorResult:
+        """Process a log event.
 
         Parameters
         ----------
         event : dict
            A dictionary representing a log event.
 
+        Returns
+        -------
+        ProcessorResult
+            A ProcessorResult object containing the processed event, errors,
+            extra data and a list of target outputs.
+
         """
-        self._extra_data.clear()
+        self.result = ProcessorResult(processor_name=self.name, event=event)
         logger.debug(f"{self.describe()} processing event {event}")
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
-        return self._extra_data if self._extra_data else None
+        return self.result
 
-    def _process_rule_tree(self, event: dict, tree: "RuleTree"):
+    def _process_rule_tree(self, event: dict, tree: RuleTree):
         applied_rules = set()
 
         @Metric.measure_time()
@@ -172,14 +209,14 @@ class Processor(Component):
             applied_rules.add(rule)
             return event
 
-        def _process_rule_tree_multiple_times(tree, event):
+        def _process_rule_tree_multiple_times(tree: RuleTree, event: dict):
             matching_rules = tree.get_matching_rules(event)
             while matching_rules:
                 for rule in matching_rules:
                     _process_rule(rule, event)
                 matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
-        def _process_rule_tree_once(tree, event):
+        def _process_rule_tree_once(tree: RuleTree, event: dict):
             matching_rules = tree.get_matching_rules(event)
             for rule in matching_rules:
                 _process_rule(rule, event)
@@ -195,9 +232,11 @@ class Processor(Component):
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
-            raise error  # is needed to prevent wrapping it in itself
-        except BaseException as error:
-            raise ProcessingCriticalError(str(error), rule, event) from error
+            self.result.errors.append(error)  # is needed to prevent wrapping it in itself
+            event.clear()
+        except Exception as error:
+            self.result.errors.append(ProcessingCriticalError(str(error), rule, event))
+            event.clear()
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:
@@ -285,9 +324,9 @@ class Processor(Component):
         else:
             add_and_overwrite(event, "tags", sorted(list({*tags, *failure_tags})))
         if isinstance(error, ProcessingWarning):
-            logger.warning(str(error))
+            self.result.warnings.append(error)
         else:
-            logger.warning(str(ProcessingWarning(str(error), rule, event)))
+            self.result.warnings.append(ProcessingWarning(str(error), rule, event))
 
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(

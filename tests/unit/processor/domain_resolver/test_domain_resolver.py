@@ -1,9 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import hashlib
-import logging
 import os
-import re
 import shutil
 import tempfile
 from copy import deepcopy
@@ -15,7 +13,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -230,12 +228,12 @@ sth.ac.at
         assert document == expected
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    def test_duplication_error(self, _, caplog):
+    def test_field_exits_warning(self, _):
         document = {"client": "google.de"}
 
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     def test_no_duplication_error(self, _):

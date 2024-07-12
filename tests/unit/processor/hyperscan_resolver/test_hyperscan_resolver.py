@@ -2,14 +2,15 @@
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
-import logging
-import re
 from collections import OrderedDict
 from copy import deepcopy
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingCriticalError
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+)
 
 pytest.importorskip("hyperscan")
 
@@ -21,9 +22,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.hyperscan_resolver")
 
-from logprep.processor.hyperscan_resolver.processor import (
-    HyperscanResolver,
-)
+from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 
 
 class TestHyperscanResolverProcessor(BaseProcessorTestCase):
@@ -363,7 +362,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_and_dest_field_with_conflict_match(self, caplog):
+    def test_resolve_dotted_and_dest_field_with_conflict_match(self):
         rule = {
             "filter": "to.resolve",
             "hyperscan_resolver": {
@@ -371,20 +370,16 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-
         self._load_specific_rule(rule)
-
         document = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "I already exist!"}}
         expected = {
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
             "tags": ["_hyperscan_resolver_failure"],
         }
-
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
-
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
     def test_resolve_with_multiple_match_first_only(self):
@@ -641,15 +636,10 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "extend_target_list": True,
             },
         }
-
         self._load_specific_rule(rule)
-
         document = {"to_resolve": "12ab34"}
-
-        with pytest.raises(
-            ProcessingCriticalError, match=r"No patter to compile for hyperscan database!"
-        ):
-            self.object.process(document)
+        result = self.object.process(document)
+        assert isinstance(result.errors[0], ProcessingCriticalError)
 
     def test_resolve_no_conflict_from_file_and_list_has_conflict(
         self,

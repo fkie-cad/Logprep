@@ -4,6 +4,12 @@
 ### Breaking
 ### Features
 ### Improvements
+
+* a result object was added to processors and pipelines
+  * each processor returns an object including the processor name, generated extra_data, warnings
+    and errors
+  * the pipeline returns an object with the list of all processor result objects
+
 ### Bugfix
 
 ## 13.0.0

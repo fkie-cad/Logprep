@@ -36,7 +36,7 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
-            document, expected, detection_results, expected_detection_results
+            document, expected, detection_results.data, expected_detection_results
         )
 
     def test_perform_pre_detection_that_fails_if_filter_children_were_slots(self):
@@ -58,12 +58,12 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
-            document, expected, detection_results, expected_detection_results
+            document, expected, detection_results.data, expected_detection_results
         )
 
         document = {"A": "foo X bar Y baz"}
         detection_results = self.object.process(document)
-        assert detection_results is None
+        assert detection_results.data == []
 
     def test_perform_successful_pre_detection_with_host_name(self):
         document = {
@@ -88,7 +88,7 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
-            document, expected, detection_results, expected_detection_results
+            document, expected, detection_results.data, expected_detection_results
         )
 
     def test_perform_successful_pre_detection_with_same_existing_pre_detection(self):
@@ -112,7 +112,7 @@ class TestPreDetector(BaseProcessorTestCase):
         document["pre_detection_id"] = "11fdfc1f-8e00-476e-b88f-753d92af989c"
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
-            document, expected, detection_results, expected_detection_results
+            document, expected, detection_results.data, expected_detection_results
         )
 
     def test_perform_successful_pre_detection_with_pre_detector_complex_rule_suceeds_msg_t1(self):
@@ -135,7 +135,7 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
-            document, expected, detection_results, expected_detection_results
+            document, expected, detection_results.data, expected_detection_results
         )
 
     def test_perform_successful_pre_detection_with_pre_detector_complex_rule_succeeds_msg_t2(self):
@@ -158,7 +158,7 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
-            document, expected, detection_results, expected_detection_results
+            document, expected, detection_results.data, expected_detection_results
         )
 
     def test_perform_successful_pre_detection_with_two_rules(self):
@@ -192,7 +192,7 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
-            document, expected, detection_results, expected_detection_results
+            document, expected, detection_results.data, expected_detection_results
         )
 
     def test_correct_star_wildcard_behavior(self):
@@ -276,7 +276,7 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
-            document, expected, detection_results, expected_detection_results
+            document, expected, detection_results.data, expected_detection_results
         )
 
     def test_ignores_case_list(self):
@@ -298,7 +298,7 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
-            document, expected, detection_results, expected_detection_results
+            document, expected, detection_results.data, expected_detection_results
         )
 
     def _assert_equality_of_results(
@@ -333,4 +333,4 @@ class TestPreDetector(BaseProcessorTestCase):
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         detection_results = self.object.process(document)
-        assert detection_results[0][0].get("@timestamp") == "custom timestamp"
+        assert detection_results.data[0][0].get("@timestamp") == "custom timestamp"

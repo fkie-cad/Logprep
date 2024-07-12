@@ -266,7 +266,7 @@ class Pseudonymizer(FieldManager):
                 field_value = self._pseudonymize_field(rule, dotted_field, regex, field_value)
             _ = add_field_to(event, dotted_field, field_value, overwrite_output_field=True)
         if "@timestamp" in event:
-            for pseudonym, _ in self._extra_data:
+            for pseudonym, _ in self.result.data:
                 pseudonym["@timestamp"] = event["@timestamp"]
         self._update_cache_metrics()
 
@@ -297,8 +297,8 @@ class Pseudonymizer(FieldManager):
             return value
         pseudonym_dict = self._get_pseudonym_dict_cached(value)
         extra = (pseudonym_dict, self._config.outputs)
-        if extra not in self._extra_data:
-            self._extra_data.append(extra)
+        if extra not in self.result.data:
+            self.result.data.append(extra)
         return self._wrap_hash(pseudonym_dict["pseudonym"])
 
     def _pseudonymize(self, value):
