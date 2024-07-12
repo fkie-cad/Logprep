@@ -102,7 +102,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         assert isinstance(result, ProcessorResult)
         assert result.data == []
         assert result.errors == []
-        assert result.name == "Test Instance Name"
+        assert result.processor_name == "Test Instance Name"
 
     def test_gets_matching_rules_from_rules_trees(self):
         rule_trees = [self.object._generic_tree, self.object._specific_tree]
@@ -138,7 +138,6 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             assert False, f"other.message not in {result}"
 
     def test_process_clears_internal_filtered_events_list_before_every_event(self):
-        assert len(self.object.result.data) == 0
         document = {"message": "test_message", "other": {"message": "my message value"}}
         _ = self.object.process(document)
         assert len(self.object.result.data) == 1

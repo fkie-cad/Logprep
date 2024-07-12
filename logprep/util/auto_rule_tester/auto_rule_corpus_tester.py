@@ -99,7 +99,7 @@ from attr import Factory, define, field, validators
 from colorama import Fore, Style
 from deepdiff import DeepDiff, grep
 
-from logprep.framework.pipeline import Pipeline
+from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.util.configuration import Configuration
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.json_handling import parse_json
@@ -113,9 +113,8 @@ def convert_extra_data_format(extra_outputs) -> List[Dict]:
     output target is the key and the values are the actual outputs.
     """
     reformatted_extra_outputs = []
-    for extra_output in extra_outputs:
-        for output in extra_output:
-            reformatted_extra_outputs.append({str(output[1]): output[0]})
+    for value, key in extra_outputs:
+        reformatted_extra_outputs.append({str(key): value})
     return reformatted_extra_outputs
 
 
@@ -211,18 +210,12 @@ class RuleCorpusTester:
         print(Style.BRIGHT + "# Test Cases Summary:" + Style.RESET_ALL)
         for test_case_id, test_case in self._test_cases.items():
             _ = [processor.setup() for processor in self._pipeline._pipeline]
-            parsed_event, result = self._pipeline.process_pipeline()
-            extra_outputs = convert_extra_data_format(
-                result.results[processor_result].data
-                for processor_result in range(len(result.results))
-            )
+            result: PipelineResult = self._pipeline.process_pipeline()
+            parsed_event = result.event
+            extra_outputs = convert_extra_data_format(result.data)
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
-            test_case.warnings = [
-                result.results[processor_result].errors
-                for processor_result in range(len(result.results))
-            ]
-            test_case.warnings = list(itertools.chain(*test_case.warnings))
+            test_case.warnings = result.warnings
             self._compare_logprep_outputs(test_case_id, parsed_event)
             self._compare_extra_data_output(test_case_id, extra_outputs)
             self._print_pass_fail_statements(test_case_id)

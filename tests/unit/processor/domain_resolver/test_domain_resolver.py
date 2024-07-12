@@ -228,12 +228,12 @@ sth.ac.at
         assert document == expected
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    def test_duplication_error(self, _):
+    def test_field_exits_warning(self, _):
         document = {"client": "google.de"}
 
         result = self.object.process(document)
-        assert len(result.errors) == 1
-        assert isinstance(result.errors[0], FieldExistsWarning)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     def test_no_duplication_error(self, _):

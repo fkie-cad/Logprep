@@ -420,8 +420,8 @@ class TestGenericResolver(BaseProcessorTestCase):
             "re": {"solved": "I already exist!"},
         }
         result = self.object.process(document)
-        assert len(result.errors) == 1
-        assert isinstance(result.errors[0], FieldExistsWarning)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
     def test_resolve_generic_and_multiple_match_first_only(self):

@@ -168,9 +168,11 @@ class TestAmides(BaseProcessorTestCase):
         self.object.process(document)
         assert document.get("amides")
         result = self.object.process(document)
-        assert len(result.errors) > 0
-        assert re.match(r".*missing source_fields: \['process.command_line'].*", str(result.errors))
-        assert re.match(".*FieldExistsWarning.*", str(result.errors))
+        assert len(result.warnings) > 0
+        assert re.match(
+            r".*missing source_fields: \['process.command_line'].*", str(result.warnings)
+        )
+        assert re.match(".*FieldExistsWarning.*", str(result.warnings))
 
     def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
         model_uri = "file://tests/testdata/unit/amides/model.zip"

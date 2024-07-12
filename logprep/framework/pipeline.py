@@ -17,11 +17,10 @@ import warnings
 from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
-from multiprocessing import Lock, Value, current_process
-from typing import Any, List, Tuple, Optional
+from multiprocessing import Value, current_process
+from typing import Any, Generator, List, Tuple
 
 import attrs
-import msgspec
 
 from logprep.abc.component import Component
 from logprep.abc.input import (
@@ -53,12 +52,41 @@ class PipelineResult:
 
     results: List[ProcessorResult] = attrs.field(
         validator=[
-            attrs.validators.instance_of(list),
+            attrs.validators.instance_of((list, Generator)),
             attrs.validators.deep_iterable(
                 member_validator=attrs.validators.instance_of(ProcessorResult)
             ),
         ]
     )
+    """List of ProcessorResults"""
+    event: dict = attrs.field(validator=attrs.validators.instance_of(dict))
+    """The event that was processed"""
+    event_received: dict = attrs.field(
+        validator=attrs.validators.instance_of(dict), converter=copy.deepcopy
+    )
+    """The event that was received"""
+    pipeline: list[Processor]
+    """The pipeline that processed the event"""
+
+    @cached_property
+    def errors(self) -> List[ProcessingError]:
+        """Return all processing errors."""
+        return list(itertools.chain(*[result.errors for result in self]))
+
+    @cached_property
+    def warnings(self) -> List[ProcessingWarning]:
+        """Return all processing warnings."""
+        return list(itertools.chain(*[result.warnings for result in self]))
+
+    @cached_property
+    def data(self) -> List[Tuple[dict, dict]]:
+        """Return all extra data."""
+        return list(itertools.chain(*[result.data for result in self]))
+
+    def __attrs_post_init__(self):
+        self.results = list(
+            (processor.process(self.event) for processor in self.pipeline if self.event)
+        )
 
     def __iter__(self):
         return iter(self.results)
@@ -112,9 +140,6 @@ class Pipeline:
 
     _continue_iterating: Value
     """ a flag to signal if iterating continues """
-
-    _lock: Lock
-    """ the lock for the pipeline process """
 
     pipeline_index: int
     """ the index of this pipeline """
@@ -175,19 +200,13 @@ class Pipeline:
         )
         return Factory.create(input_connector_config)
 
-    def __init__(
-        self, config: Configuration, pipeline_index: int = None, lock: Lock = None
-    ) -> None:
+    def __init__(self, config: Configuration, pipeline_index: int = None) -> None:
         self.logger = logging.getLogger("Pipeline")
         self.logger.name = f"Pipeline{pipeline_index}"
         self._logprep_config = config
         self._timeout = config.timeout
         self._continue_iterating = Value(c_bool)
-
-        self._lock = lock
         self.pipeline_index = pipeline_index
-        self._encoder = msgspec.msgpack.Encoder()
-        self._decoder = msgspec.msgpack.Decoder()
         if self._logprep_config.profile_pipelines:
             self.run = partial(PipelineProfiler.profile_function, self.run)
 
@@ -224,43 +243,36 @@ class Pipeline:
             self._continue_iterating.value = True
         assert self._input, "Pipeline should not be run without input connector"
         assert self._output, "Pipeline should not be run without output connector"
-        with self._lock:
-            with warnings.catch_warnings():
-                warnings.simplefilter("default")
-                self._setup()
+        with warnings.catch_warnings():
+            warnings.simplefilter("default")
+            self._setup()
         self.logger.debug("Start iterating")
         while self._continue_iterating.value:
             self.process_pipeline()
         self._shut_down()
 
     @_handle_pipeline_error
-    def process_pipeline(self) -> Tuple[Optional[dict], Optional[PipelineResult]]:
+    def process_pipeline(self) -> PipelineResult:
         """Retrieve next event, process event with full pipeline and store or return results"""
         Component.run_pending_tasks()
 
         event = self._get_event()
         if not event:
             return None, None
-        event_received = copy.deepcopy(event)
         result: PipelineResult = self.process_event(event)
-        for processor_result in result:
-            if not processor_result.errors:
-                continue
-            if ProcessingWarning in processor_result:
-                self.logger.warning(processor_result.get_warning_string())
-            if ProcessingError in processor_result:
-                self.logger.error(processor_result.get_error_string())
-                if self._output:
-                    self._store_failed_event(processor_result.errors, event_received, event)
-                # pipeline is aborted on processing error
-                return event, result
+        if result.warnings:
+            self.logger.warning(",".join((str(warning) for warning in result.warnings)))
+        if result.errors:
+            self.logger.error(",".join((str(error) for error in result.errors)))
+            self._store_failed_event(result.errors, result.event_received, event)
+            return
         if self._output:
             result_data = [res.data for res in result if res.data]
             if result_data:
                 self._store_extra_data(itertools.chain(*result_data))
             if event:
                 self._store_event(event)
-        return event, result
+        return result
 
     def _store_event(self, event: dict) -> None:
         for output_name, output in self._output.items():
@@ -288,9 +300,13 @@ class Pipeline:
     @Metric.measure_time()
     def process_event(self, event: dict):
         """process all processors for one event"""
-        return PipelineResult(
-            results=[processor.process(event) for processor in self._pipeline if event]
+        result = PipelineResult(
+            results=[],
+            event_received=event,
+            event=event,
+            pipeline=self._pipeline,
         )
+        return result
 
     def _store_extra_data(self, result_data: List | itertools.chain) -> None:
         self.logger.debug("Storing extra data")

@@ -26,7 +26,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline
+from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -52,7 +52,6 @@ class ConfigurationForTests:
             "metrics": {"enabled": False},
         }
     )
-    lock = Lock()
 
 
 def get_mock_create():
@@ -63,7 +62,7 @@ def get_mock_create():
     mock_create = mock.MagicMock()
     mock_component = mock.MagicMock()
     mock_component.process = mock.MagicMock()
-    mock_component.process.return_value = ProcessorResult(name="mock_processor")
+    mock_component.process.return_value = ProcessorResult(processor_name="mock_processor")
     mock_create.return_value = mock_component
     return mock_create
 
@@ -76,7 +75,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline = Pipeline(
             pipeline_index=1,
             config=self.logprep_config,
-            lock=self.lock,
         )
 
     def test_pipeline_property_returns_pipeline(self, mock_create):
@@ -133,7 +131,7 @@ class TestPipeline(ConfigurationForTests):
         processor_with_mock_result = mock.MagicMock()
         processor_with_mock_result.process = mock.MagicMock()
         processor_with_mock_result.process.return_value = ProcessorResult(
-            name="processor_with_mock_res"
+            processor_name="processor_with_mock_res"
         )
         self.pipeline._pipeline = [
             processor_with_mock_result,
@@ -160,7 +158,9 @@ class TestPipeline(ConfigurationForTests):
     def test_empty_documents_are_not_stored_in_the_output(self, _):
         def mock_process_event(event):
             event.clear()
-            return [ProcessorResult(name="")]
+            return PipelineResult(
+                event=event, event_received=event, results=[], pipeline=self.pipeline._pipeline
+            )
 
         self.pipeline.process_event = mock_process_event
         self.pipeline._setup()
@@ -239,19 +239,21 @@ class TestPipeline(ConfigurationForTests):
         assert mock_warning.call_count == 1
         assert self.pipeline._output["dummy"].store.call_count == 3
 
-    def test_processor_warning_error_is_logged_but_processing_continues(self, _):
+    @mock.patch("logging.Logger.warning")
+    def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         mock_rule = mock.MagicMock()
         processing_warning = ProcessingWarning("not so bad", mock_rule, {"message": "test"})
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="mock_processor", errors=[processing_warning]
+            processor_name="mock_processor", warnings=[processing_warning]
         )
-
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        _, result = self.pipeline.process_pipeline()
-        assert processing_warning in result.results[0].errors
+        result = self.pipeline.process_pipeline()
+        assert processing_warning in result.results[0].warnings
+        mock_warning.assert_called()
+        assert "ProcessingWarning: not so bad" in mock_warning.call_args[0][0]
         assert self.pipeline._output["dummy"].store.call_count == 2, "all events are processed"
 
     @mock.patch("logging.Logger.error")
@@ -264,37 +266,20 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = (input_event1, None)
         mock_rule = mock.MagicMock()
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="",
+            processor_name="",
             errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event1)],
         )
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = (input_event2, None)
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="",
+            processor_name="",
             errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event2)],
         )
 
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 2, "2 events gone into processing"
         assert mock_error.call_count == 2, f"two errors occurred: {mock_error.mock_calls}"
-
-        logger_calls = (
-            mock.call(
-                str(
-                    ProcessingCriticalError(
-                        "really bad things happened", mock_rule, {"message": "first event"}
-                    )
-                )
-            ),
-            mock.call(
-                str(
-                    ProcessingCriticalError(
-                        "really bad things happened", mock_rule, {"message": "second event"}
-                    )
-                )
-            ),
-        )
-        mock_error.assert_has_calls(logger_calls)
+        assert "ProcessingCriticalError: really bad things happened" in mock_error.call_args[0][0]
         assert self.pipeline._output["dummy"].store.call_count == 0, "no event in output"
         assert (
             self.pipeline._output["dummy"].store_failed.call_count == 2
@@ -311,9 +296,13 @@ class TestPipeline(ConfigurationForTests):
         mock_rule = mock.MagicMock()
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         warning = FieldExistsWarning(mock_rule, input_event1, ["foo"])
-        self.pipeline._pipeline[0].process.return_value = ProcessorResult(name="", errors=[warning])
+        self.pipeline._pipeline[0].process.return_value = ProcessorResult(
+            processor_name="", warnings=[warning]
+        )
         error = ProcessingCriticalError("really bad things happened", mock_rule, input_event1)
-        self.pipeline._pipeline[1].process.return_value = ProcessorResult(name="", errors=[error])
+        self.pipeline._pipeline[1].process.return_value = ProcessorResult(
+            processor_name="", errors=[error]
+        )
         self.pipeline.process_pipeline()
         assert mock_error.call_count == 1, f"one error occurred: {mock_error.mock_calls}"
         assert mock_warning.call_count == 1, f"one warning occurred: {mock_warning.mock_calls}"
@@ -438,7 +427,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
+            processor_name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
         )
         self.pipeline._pipeline.append(deepcopy(self.pipeline._pipeline[0]))
         self.pipeline.process_pipeline()
@@ -451,7 +440,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="",
+            processor_name="",
             data=[
                 (
                     {"foo": "bar"},
@@ -474,7 +463,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._pipeline[1] = deepcopy(self.pipeline._pipeline[0])
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
+            processor_name="", data=[({"foo": "bar"}, ({"dummy": "target"},))]
         )
         self.pipeline._pipeline.append(deepcopy(self.pipeline._pipeline[0]))
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
@@ -615,6 +604,27 @@ class TestPipeline(ConfigurationForTests):
         logger_call = f"Couldn't gracefully shut down pipeline due to: {error}"
         mock_error.assert_called_with(logger_call)
 
+    def test_pipeline_result_provides_event_received(self, _):
+        self.pipeline._setup()
+        event = {"some": "event"}
+        self.pipeline._input.get_next.return_value = (event, None)
+        generic_adder = original_create(
+            {
+                "generic_adder": {
+                    "type": "generic_adder",
+                    "specific_rules": [
+                        {"filter": "some", "generic_adder": {"add": {"field": "foo"}}}
+                    ],
+                    "generic_rules": [],
+                }
+            }
+        )
+        self.pipeline._pipeline = [generic_adder]
+        result = self.pipeline.process_pipeline()
+        assert result.event_received is not event, "event_received is a copy"
+        assert result.event_received == {"some": "event"}, "received event is as expected"
+        assert result.event == {"some": "event", "field": "foo"}, "processed event is as expected"
+
 
 class TestPipelineWithActualInput:
     def setup_method(self):
@@ -633,10 +643,9 @@ class TestPipelineWithActualInput:
         self.config.input["test_input"]["documents"] = [{"applyrule": "yes"}]
         pipeline = Pipeline(config=self.config)
         assert pipeline._output is None
-        event, extra_outputs = pipeline.process_pipeline()
-        assert event["label"] == {"reporter": ["windows"]}
-        assert "arrival_time" in event
-        assert extra_outputs.results[0].data == []
+        result = pipeline.process_pipeline()
+        assert result.event["label"] == {"reporter": ["windows"]}
+        assert "arrival_time" in result.event
 
     def test_process_event_processes_without_input_and_without_output(self):
         event = {"applyrule": "yes"}
@@ -656,13 +665,12 @@ class TestPipelineWithActualInput:
         self.config.input["test_input"]["documents"] = input_events
         pipeline = Pipeline(config=self.config)
         assert pipeline._output is None
-        event, extra_outputs = pipeline.process_pipeline()
-        assert event["label"] == {"reporter": ["windows"]}
-        assert "arrival_time" in event
-        event, extra_outputs = pipeline.process_pipeline()
-        assert "pseudonym" in event.get("winlog", {}).get("event_data", {}).get("IpAddress")
-        assert "arrival_time" in event
-        assert len(extra_outputs.results) == len(pipeline._pipeline)
+        result = pipeline.process_pipeline()
+        assert result.event["label"] == {"reporter": ["windows"]}
+        assert "arrival_time" in result.event
+        result = pipeline.process_pipeline()
+        assert "pseudonym" in result.event.get("winlog", {}).get("event_data", {}).get("IpAddress")
+        assert "arrival_time" in result.event
 
     def test_pipeline_hmac_error_message_without_output_connector(self):
         self.config.input["test_input"]["documents"] = [{"applyrule": "yes"}]
@@ -671,8 +679,8 @@ class TestPipelineWithActualInput:
         }
         pipeline = Pipeline(config=self.config)
         assert pipeline._output is None
-        event, _ = pipeline.process_pipeline()
-        assert event["hmac"]["hmac"] == "error"
+        result = pipeline.process_pipeline()
+        assert result.event["hmac"]["hmac"] == "error"
 
     def test_pipeline_run_raises_assertion_when_run_without_input(self):
         self.config.input = {}

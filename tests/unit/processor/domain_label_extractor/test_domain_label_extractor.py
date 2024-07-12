@@ -245,8 +245,8 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
     def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
         result = self.object.process(document)
-        assert len(result.errors) == 1
-        assert isinstance(result.errors[0], FieldExistsWarning)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
 
     def test_domain_extraction_overwrites_target_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
@@ -314,7 +314,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    def test_raises_duplication_error_if_target_field_exits(self):
+    def test_raises_field_exists_warning_if_target_field_exits(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
         expected = {
             "tags": ["_domain_label_extractor_failure"],
@@ -336,8 +336,8 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         result = self.object.process(document)
-        assert len(result.errors) == 1
-        assert isinstance(result.errors[0], FieldExistsWarning)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
     @responses.activate
