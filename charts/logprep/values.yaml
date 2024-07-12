@@ -44,10 +44,17 @@ secrets: {}
 # Example:
 #
 # environment:
-#   MY_ENV_VAR: "my value"
-#   MY_OTHER_ENV_VAR: "my other value"
+#   - name: MY_VAR
+#     value: "my value"
+#   - name: MY_OTHER_VAR
+#     value: "my other value"
+#   - name: SECRET_USERNAME
+#     valueFrom:
+#       secretKeyRef:
+#         name: backend-user
+#         key: backend-username
 #
-environment: {}
+environment: []
 
 # Boolean to signal to use affinity to avoid deploying multiple instances of the
 # pod on the same node

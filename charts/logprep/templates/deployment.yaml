@@ -68,9 +68,8 @@ spec:
             - name: REQUESTS_CA_BUNDLE
               value: /home/logprep/certificates/{{ .Values.secrets.certificates.name }}
             {{- end }}
-            {{- range $key, $value := .Values.environment }}
-            - name: {{ $key }}
-              value: {{ $value }}
+            {{- if .Values.environment }}
+            {{- toYaml .Values.environment  | nindent 12 }}
             {{- end }}
           volumeMounts:
             - name: logprep-temp

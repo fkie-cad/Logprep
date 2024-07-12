@@ -358,10 +358,35 @@ artifacts:
         assert mount
 
     def test_environment_variables_are_populated(self):
-        logprep_values = {"environment": {"MY_VAR": "my_value", "MY_OTHER_VAR": "my_other_value"}}
+        logprep_values = {
+            "environment": [
+                {"name": "MY_VAR", "value": "my_value"},
+                {"name": "MY_OTHER_VAR", "value": "my_other_value"},
+            ]
+        }
         self.manifests = self.render_chart("logprep", logprep_values)
         env = self.deployment["spec.template.spec.containers.0.env"]
         my_var = [variable for variable in env if variable["name"] == "MY_VAR"].pop()
         assert my_var["value"] == "my_value"
         my_var = [variable for variable in env if variable["name"] == "MY_OTHER_VAR"].pop()
         assert my_var["value"] == "my_other_value"
+
+    def test_environment_variables_populated_from_secrets(self):
+        logprep_values = {
+            "environment": [
+                {
+                    "name": "MY_VAR",
+                    "value": "my_value",
+                },
+                {
+                    "name": "MY_OTHER_VAR",
+                    "valueFrom": {"secretKeyRef": {"name": "my-secret", "key": "my-key"}},
+                },
+            ]
+        }
+        self.manifests = self.render_chart("logprep", logprep_values)
+        env = self.deployment["spec.template.spec.containers.0.env"]
+        my_var = [variable for variable in env if variable["name"] == "MY_VAR"].pop()
+        assert my_var["value"] == "my_value"
+        my_var = [variable for variable in env if variable["name"] == "MY_OTHER_VAR"].pop()
+        assert my_var["valueFrom"]["secretKeyRef"]["name"] == "my-secret"
