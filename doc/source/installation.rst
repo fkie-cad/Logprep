@@ -61,4 +61,7 @@ Helm
 
 This option can be used to deploy logprep on a kubernetes cluster.
 
-tbd
+..  code-block:: bash
+
+   helm repo add logprep https://fkie-cad.github.io/Logprep
+   helm install logprep logprep/logprep   
