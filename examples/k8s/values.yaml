@@ -1,8 +1,7 @@
 connector:
-  # The replica count
+  image:
+    tag: py3.11-13.0.0
   replicas: 1
-
-  # The pod resources
   resources:
     limits:
       memory: "2Gi"
@@ -10,22 +9,7 @@ connector:
     requests:
       memory: "2Gi"
       cpu: "250m"
-
-  # Optional secrets that will be mounted into the pod
-  # Listed secrets are handled specially by the logprep deployment.
-  # Additional secrets will be mounted as usual.
-  # secrets:
-  #   certificates:
-  #     name: ca-cert # Name of the secret containing the ca certificate (or chain) in one data block
-  #   credentials:
-  #     name: logprep-credentials # Name of the secret containing the logprep credentials file
-  #   imagePullSecret:
-  #     name: logprep-image-pull-secret # Name of the secret containing the image pull secret
   secrets: {}
-
-  # Logprep logging configuration.
-  # See: https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
-  # for available configuration options.
   logger:
     level: DEBUG
   input:
@@ -46,7 +30,6 @@ connector:
       /lab/123/(ABC|DEF)/pl.*: plaintext
       /lab/123/ABC/auditlog: jsonl
       /health: plaintext
-
   output:
     type: confluentkafka_output
     topic: consumer
@@ -58,39 +41,6 @@ connector:
       compression.type: gzip
       statistics.interval.ms: "60000"
 
-  # Additional logprep configurations
-  # Note: The configuration keys 'logger', 'metrics', 'input' and 'output' will overwrite the
-  # corresponding keys in these configurations as they will be merged into
-  # the final configuration, after the configurations that are specified here.
-  # for configurations with data from an external API put the url in the name field and leave the data field undefined
-  #
-  # Example:
-  #
-  # configurations:
-  #   - name: logprep-config
-  #     data:
-  #       pipeline: []
-  #   - name: https://rule-server.de
-  #
-  # See https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
-  # for available configuration options.
-  configurations:
-    - name: logprep-config
-      data:
-        pipeline: []
-
-  # Additional artifacts needed by the logprep deployment. These follow the same mechanic
-  # as the configurations. The artifacts will be mounted into the pod under the name given
-  # in the artifacts configuration
-  # Beware, that configMaps are limited to 1MiB in size.
-  # Example:
-  # artifacts:
-  #   - name: admin-list
-  #     data: |
-  #       alfalfa
-  #       admin
-  #       admin2
-  artifacts: []
 ## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/kafka/values.yaml`
 kafka:
   controller:
@@ -102,3 +52,51 @@ kafka:
     topics:
       - consumer
       - producer
+
+logprep:
+  image:
+    tag: py3.11-13.0.0
+  input:
+    type: confluentkafka_input
+    topic: consumer
+    kafka_config:
+      bootstrap.servers: opensiem-kafka:9092
+      group.id: cgroup3
+      enable.auto.commit: "true"
+      auto.commit.interval.ms: "10000"
+      enable.auto.offset.store: "false"
+      queued.min.messages: "100000"
+      queued.max.messages.kbytes: "65536"
+      statistics.interval.ms: "60000"
+    preprocessing:
+      version_info_target_field: Logprep_version_info
+      log_arrival_time_target_field: event.ingested
+      hmac:
+        target: <RAW_MSG>
+        key: "thisisasecureandrandomkey"
+        output_field: Full_event
+  output:
+    type: opensearch_output
+    hosts:
+      - opensiem-opensearch:9200
+    default_index: processed
+    error_index: errors
+    message_backlog_size: 10000
+    timeout: 10000
+    flush_timeout: 60
+    max_retries: 3
+    parallel_bulk: false
+    user: admin
+    secret: admin
+## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/opensearch/values.yaml`
+opensearch:
+  dashboards:
+    enabled: true
+  ingest:
+    replicaCount: 1
+  master:
+    replicaCount: 1
+  data:
+    replicaCount: 1
+  coordinating:
+    replicaCount: 1

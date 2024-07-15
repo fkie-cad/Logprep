@@ -19,6 +19,12 @@ dependencies:
     repository: file://../../charts/logprep
     version: 13.1.0
     alias: connector
+  - name: logprep
+    repository: file://../../charts/logprep
+    version: 13.1.0
   - name: kafka
     repository: https://charts.bitnami.com/bitnami
     version: 29.3.7
+  - name: opensearch
+    repository: https://charts.bitnami.com/bitnami
+    version: 1.2.6

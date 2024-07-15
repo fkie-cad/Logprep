@@ -49,6 +49,8 @@ with the following commands:
     :caption: Configure and start minikube
     
     minikube config set driver docker
+    minikube config set cpus 16 
+    minikube config set memory 16GB
     minikube start
 
 Deploy the example
@@ -70,6 +72,43 @@ Then you have to update and build the helm subcharts repository:
     helm dependencies update ./examples/k8s
     helm dependencies build ./examples/k8s
 
+Then install istio (for details see: `https://istio.io/latest/docs/setup/install/helm/`_. ):
+
+.. code-block:: bash
+    :caption: Create the istio-system namespace
+
+    kubectl create namespace istio-system
+
+.. code-block:: bash
+    :caption: Install istio
+
+    helm repo add istio https://istio-release.storage.googleapis.com/charts
+    helm repo update
+    helm install istio-base istio/base -n istio-system --set defaultRevision=opensiem --wait
+    helm install istiod istio/istiod -n istio-system --wait
+
+
+.. code-block:: bash
+    :caption: Install istio ingress gateway
+
+    kubectl create namespace istio-ingress
+    helm install istio-ingress istio/gateway -n istio-ingress
+
+.. code-block:: bash
+    :caption: Verifiy the istio installation
+
+    ❯ helm ls -n istio-system                      
+    NAME            NAMESPACE       REVISION        UPDATED                                         STATUS          CHART           APP VERSION
+    istio-base      istio-system    1               2024-07-15 14:54:54.029747408 +0200 CEST        deployed        base-1.22.2     1.22.2     
+    istiod          istio-system    1               2024-07-15 14:57:41.496783572 +0200 CEST        deployed        istiod-1.22.2   1.22.2   
+
+    ❯ kubectl get deployments -n istio-system --output wide
+    NAME     READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                         SELECTOR
+    istiod   1/1     1            1           24m   discovery    docker.io/istio/pilot:1.22.2   istio=pilot
+
+    ❯ kubectl get pods -n istio-ingress          
+    NAME                             READY   STATUS    RESTARTS   AGE
+    istio-ingress-7f5f6f58b8-sv6gk   1/1     Running   0          16m
 
 Next you can install the opensiem example using:
 
