@@ -118,6 +118,9 @@ logger:
 #
 # See https://logprep.readthedocs.io/en/latest/user_manual/configuration/input.html
 # for available configuration options.
+# Note:
+# For the `http_input` endpoints you have to add the endpoint `/health: plaintext` to ensure
+# readiness probes are working.
 input: {}
 
 # The logprep output connector configuration

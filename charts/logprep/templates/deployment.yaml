@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "logprep.name" . }}
+  name: {{  include "logprep.fullname" . }}
   labels:
     {{- include "logprep.labels" . | nindent 4 }}
 spec:
@@ -14,6 +14,7 @@ spec:
       {{- include "logprep.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      name: {{ include "logprep.fullname" . }}
       labels:
         {{- include "logprep.labels" . | nindent 8 }}
       annotations:

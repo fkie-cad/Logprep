@@ -25,3 +25,4 @@ experiments
 **/_static/*.xlsx
 logprep.log
 /charts/logprep/charts
+examples/k8s/charts

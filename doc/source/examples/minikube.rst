@@ -62,9 +62,18 @@ At first you have to install the prometheus PodMonitor CRD:
     kubectl apply -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml
 
 
-Next you can install logprep using:
+Then you have to update and build the helm subcharts repository:
 
 .. code-block:: bash
-    :caption: Install logprep
+    :caption: Add the bitnami helm repository
 
-    helm install logprep charts/logprep
+    helm dependencies update ./examples/k8s
+    helm dependencies build ./examples/k8s
+
+
+Next you can install the opensiem example using:
+
+.. code-block:: bash
+    :caption: Install opensiem
+
+    helm install opensiem examples/k8s
