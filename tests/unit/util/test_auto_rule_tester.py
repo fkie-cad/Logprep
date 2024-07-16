@@ -1,15 +1,12 @@
-# pylint: disable=missing-docstring
-# pylint: disable=wrong-import-position
-# pylint: disable=protected-access
-# pylint: disable=broad-except
-# pylint: disable=line-too-long
 import logging
 import re
 from unittest import mock
-
+from unittest.mock import patch
+from pathlib import Path
+import json
 import pytest
 
-from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
+from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester, PorcessorExtensions
 
 LOGGER = logging.getLogger()
 
@@ -19,8 +16,81 @@ def fixture_auto_rule_tester():
     config_path = "tests/testdata/config/config-auto-tests.yml"
     return AutoRuleTester(config_path)
 
-
 class TestAutoRuleTester:
+
+    def test_get_rule_dict_valid_file(self, auto_rule_tester):
+        processor_name = "dummy"
+        rules_pn = {'dummy': {'type': 'dummy', 'rules': []}}
+        file = "rule.yml"
+        root = "tests/testdata/auto_tests/dummy"
+        rule_dirs_type = "doesnt_matter"
+        
+        auto_rule_tester._get_rule_dict(
+            file, root, processor_name, rules_pn, rule_dirs_type
+        )
+        
+        #raw literal
+        expected_rule_dict = [
+            {
+                "doesnt_matter": [
+                    {
+                        "filter": 'winlog.event_data.param2: "pause"',
+                        "labeler": {"label": {"action": ["terminate"]}},
+                        "description": "..."
+                    },
+                    {
+                        "filter": 'winlog.event_data.param2: "dada"',
+                        "labeler": {"label": {"action": ["terminate"]}},
+                        "description": "..."
+                    }
+                ],
+                "tests": [
+                    {
+                        "target_rule_idx": 0,
+                        "raw": {"winlog": {"event_data": {"param2": "ooo"}}},
+                        "processed": {"label": {"action": ["terminate"]}, "winlog": {"event_data": {"param2": "pause"}}}
+                    },
+                    {
+                        "raw": {"winlog": {"event_data": {"param2": "pause"}}},
+                        "processed": {"label": {"action": ["terminate"]}, "winlog": {"event_data": {"param2": "pause"}}}
+                    },
+                    {
+                        "target_rule_idx": 1,
+                        "raw": {"winlog": {"event_data": {"param2": "dada"}}},
+                        "processed": {"label": {"action": ["terminate"]}, "winlog": {"event_data": {"param2": "dada"}}}
+                    }
+                ],
+                "file": "tests/testdata/auto_tests/dummy/rule.yml"
+            }
+        ]
+
+        assert rules_pn["dummy"]["rules"] == expected_rule_dict
+
+    
+    def test_get_rule_dict_target_rule_idx_not_found(self, auto_rule_tester):
+        processor_name = "dummy"
+        rules_pn = {'dummy': {'type': 'dummy', 'rules': []}}
+        file = "rule.yml"
+        root = "tests/testdata/auto_tests/dummy"
+        rule_dirs_type = "doesnt_matter"
+        
+        auto_rule_tester._get_rule_dict(
+            file, root, processor_name, rules_pn, rule_dirs_type
+        )
+        
+        def remove_dict_with_target_rule_idx(list_of_dicts):
+            for idx, d in enumerate(list_of_dicts):
+                if 'target_rule_idx' in d:
+                    del list_of_dicts[idx]
+                    break  
+    
+        remove_dict_with_target_rule_idx(rules_pn["dummy"]["rules"])
+        
+        with pytest.raises(KeyError):
+            for test in rules_pn["dummy"]["rules"]:
+                for t in test["tests"]:
+                    t["target_rule_idx"]
+    
     def test_coverage_no_rule_files_raises_exception(self, auto_rule_tester):
         rules_pn = {
             "processor_name": {
@@ -211,11 +281,11 @@ class TestAutoRuleTester:
         ]
 
         expected_overall_results = [
-            "+ Successful: 32", #7 failed
-            "- Failed: 6", #33 success
-            "~ Warning: 2", #40 rules
-            "Rule Test Coverage: 72.72727272727273", #80.00% cov
-            "Total Tests: 38", #2 warnings
+            "+ Successful: 32", 
+            "- Failed: 6",
+            "~ Warning: 2",
+            "Rule Test Coverage: 72.72727272727273",
+            "Total Tests: 38",
         ]
         captured = capsys.readouterr()
 

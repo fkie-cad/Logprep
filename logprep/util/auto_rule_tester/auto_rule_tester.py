@@ -52,6 +52,7 @@ Auto-testing does also perform a verification of the pipeline section of the Log
 
 import hashlib
 import json
+from pathlib import Path
 import re
 import sys
 import tempfile
@@ -640,20 +641,37 @@ class AutoRuleTester:
         rules_pn[processor_name]["rules"] = []
         directories = {"Rules Directory": [f"{processor_name} ({processor_type}):"], "Path": []}
 
-        for type_count, rules_dir in enumerate(proc_rules_dirs["rule_dirs"].values()):
-            rule_dirs_type = list(proc_rules_dirs["rule_dirs"].keys())[type_count]
-            directories["Path"].append(f"    - {rule_dirs_type}")
-            for root, _, files in walk(str(rules_dir)):
-                rule_files = [file for file in files if self._is_valid_rule_name(file)]
-                for file in rule_files:
-
+        for type_count, (rule_type, rules_dir) in enumerate(proc_rules_dirs["rule_dirs"].items()):
+            directories["Path"].append(f"    - {rule_type}")
+            for path in Path(rules_dir).rglob('*'):
+                if path.is_file() and self._is_valid_rule_name(path.name):
                     self._get_rule_dict(
-                        file, root, processor_name, rules_pn, rule_dirs_type
+                        path.name, str(path.parent), processor_name, rules_pn, rule_type
                     )
 
         self._pd_extra.print_rules(directories)
 
     def _get_rule_dict(self, file, root, processor_name, rules_pn, rule_dirs_type) -> None:
+        """Read out (mulit-)rules and realize mapping via dict for further processing
+
+        Parameters
+        ----------
+        file : str
+            each rule file
+        root : str
+            base path
+        processor_name : str
+            name
+        rules_pn : dict
+            mapping of procs to rules
+        rule_dirs_type : str
+            type of rule
+
+        Raises
+        ------
+        Exception
+            Target_rule_idx is now mandatory, throw exception if not found for each rule
+        """        
         rule_tests = []
         test_path = path.join(
             root, "".join([file.rsplit(".", maxsplit=1)[0], "_test.json"])
