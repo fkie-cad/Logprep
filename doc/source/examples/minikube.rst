@@ -64,14 +64,6 @@ At first you have to install the prometheus PodMonitor CRD:
     kubectl apply -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml
 
 
-Then you have to update and build the helm subcharts repository:
-
-.. code-block:: bash
-    :caption: Add the bitnami helm repository
-
-    helm dependencies update ./examples/k8s
-    helm dependencies build ./examples/k8s
-
 Then install istio (for details see: `https://istio.io/latest/docs/setup/install/helm/`_. ):
 
 .. code-block:: bash
@@ -106,7 +98,15 @@ Then install istio (for details see: `https://istio.io/latest/docs/setup/install
     NAME                             READY   STATUS    RESTARTS   AGE
     istio-ingress-7f5f6f58b8-sv6gk   1/1     Running   0          16m
 
-Next you can install the opensiem example using:
+Then you have to update and build the helm subcharts repository:
+
+.. code-block:: bash
+    :caption: Add the bitnami helm repository
+
+    helm dependencies update ./examples/k8s
+    helm dependencies build ./examples/k8s
+
+Next you are ready to install the opensiem example using:
 
 .. code-block:: bash
     :caption: Install opensiem
