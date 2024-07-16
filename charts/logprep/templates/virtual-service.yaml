@@ -1,0 +1,36 @@
+{{- if .Values.ingress.enabled -}}
+{{- if .Values.input -}}
+{{- if eq .Values.input.type "http_input" -}}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ include "logprep.fullname" . }}
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+spec:
+  gateways:
+    - {{ include "logprep.fullname" . }}-gateway
+  hosts:
+    - {{ .Values.ingress.domain }}
+  http:
+  {{ $logprep_fullname := include "logprep.fullname" .}}
+  {{ $uvicorn_port := .Values.input.uvicorn_config.port }}
+  {{ $response_headers := .Values.ingress.response_headers }}
+  {{ range $key, $value := .Values.input.endpoints }}
+    - match:
+        - uri:
+            regex: {{ $key | quote }}
+      route:
+        - destination:
+            host: {{ $logprep_fullname }}-http-input
+            port:
+              number: {{ $uvicorn_port }}
+          headers:
+            response:
+              set:
+                {{- toYaml $response_headers | nindent 16 }}
+  {{ end }}
+{{- end}}
+{{- end}}
+{{- end}}
