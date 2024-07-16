@@ -101,9 +101,11 @@ spec:
               mountPath: /home/logprep/output-config.yaml
               subPath: output-config.yaml
             {{- range $key, $value := .Values.secrets }}
-            - name: {{ $key }}
-              mountPath: /home/logprep/{{ $key }}/{{ $value.name }}
+            {{ if ne $key "imagePullSecret" }}
+            - name: {{ lower $key }}
+              mountPath: /home/logprep/{{ lower $key }}/{{ lower $value.name }}
               subPath: {{ $value.name }}
+            {{ end }}
             {{- end }}
           {{- if or .Values.exporter.enabled (eq .Values.input.type "http_input") }}
           {{- if eq .Values.input.type "http_input" }}
@@ -169,9 +171,11 @@ spec:
             name: {{ include "logprep.fullname" . }}-artifacts
         {{- end }}
         {{- range $key, $value := .Values.secrets }}
-        - name: {{ $key }}
+        {{- if ne $key "imagePullSecret" }}
+        - name: {{ lower $key }}
           secret:
             secretName: {{ $value.name }}
+        {{- end }}
         {{- end }}
       {{- if .Values.affinity }}
       affinity:

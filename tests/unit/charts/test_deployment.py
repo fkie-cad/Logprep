@@ -124,6 +124,33 @@ class TestDeployment(TestBaseChartTest):
         "logprep_values, expected",
         [
             ({}, False),
+            ({"secrets": {"logprep-secret": {"name": "my-secret"}}}, True),
+            ({"secrets": {"LoGpReP-Secret": {"name": "my-not-lowercase-secret"}}}, True),
+        ],
+    )
+    def test_secret_deployment(self, logprep_values, expected):
+        self.manifests = self.render_chart("logprep", logprep_values)
+        volumes = self.deployment["spec.template.spec.volumes"]
+        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
+
+        for volume in volumes:
+            if volume["name"] == "logprep-secret":
+                assert expected
+                break
+        else:
+            assert not expected, "secret volume not found"
+
+        for mount in mounts:
+            if mount["name"] == "logprep-secret":
+                assert expected
+                break
+        else:
+            assert not expected, "secret mount not found"
+
+    @pytest.mark.parametrize(
+        "logprep_values, expected",
+        [
+            ({}, False),
             ({"secrets": {"credentials": {"name": "my-creds"}}}, True),
         ],
     )
@@ -168,7 +195,7 @@ class TestDeployment(TestBaseChartTest):
 
     def test_credentials_volume(self):
         self.manifests = self.render_chart(
-            "logprep", {"secrets": {"credentials": {"name": "my-creds"}}}
+            "logprep", {"secrets": {"Credentials": {"name": "my-creds"}}}
         )
         volumes = self.deployment["spec.template.spec.volumes"]
         for volume in volumes:
@@ -225,6 +252,28 @@ class TestDeployment(TestBaseChartTest):
         assert bool(image_pull_secret) == bool(expected)
         if expected:
             assert image_pull_secret.get("name") == expected
+
+    def test_image_pull_secret_has_no_volume(self):
+        self.manifests = self.render_chart(
+            "logprep", {"secrets": {"imagePullSecret": {"name": "my-secret"}}}
+        )
+        image_pull_secret = self.deployment["spec.template.spec.imagePullSecrets.0"]
+        assert image_pull_secret.get("name") == "my-secret"
+        volumes = self.deployment["spec.template.spec.volumes"]
+        for volume in volumes:
+            if volume["name"] == "imagepullsecret":
+                assert False, "imagePullSecret in volumes"
+
+    def test_image_pull_secret_has_no_mount(self):
+        self.manifests = self.render_chart(
+            "logprep", {"secrets": {"imagePullSecret": {"name": "my-secret"}}}
+        )
+        image_pull_secret = self.deployment["spec.template.spec.imagePullSecrets.0"]
+        assert image_pull_secret.get("name") == "my-secret"
+        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
+        for mount in mounts:
+            if mount["name"] == "imagepullsecret":
+                assert False, "imagePullSecret in volumeMonts"
 
     def test_configuration_with_http_endpoints_command_is_appended(self):
         logprep_values = {
