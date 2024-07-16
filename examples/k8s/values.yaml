@@ -1,6 +1,6 @@
 connector:
   image:
-    tag: py3.11-13.0.0
+    tag: py3.11-latest
   replicas: 1
   resources:
     limits:
@@ -40,6 +40,8 @@ connector:
       bootstrap.servers: opensiem-kafka:9092
       compression.type: gzip
       statistics.interval.ms: "60000"
+  ingress:
+    enabled: true
 
 ## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/kafka/values.yaml`
 kafka:
@@ -55,7 +57,7 @@ kafka:
 
 logprep:
   image:
-    tag: py3.11-13.0.0
+    tag: py3.11-latest
   input:
     type: confluentkafka_input
     topic: consumer

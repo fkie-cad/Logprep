@@ -187,7 +187,7 @@ artifacts: []
 # If enabled, an istio based ingress will be deployed. This option is only useful
 # if the logprep configuration has a http_input configured.
 ingress:
-  enabled: true
+  enabled: false
   domain: "localhost"
   certificate:
     name: "istio-gateway-certificate"

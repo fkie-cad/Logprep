@@ -75,13 +75,9 @@ Then you have to update and build the helm subcharts repository:
 Then install istio (for details see: `https://istio.io/latest/docs/setup/install/helm/`_. ):
 
 .. code-block:: bash
-    :caption: Create the istio-system namespace
-
-    kubectl create namespace istio-system
-
-.. code-block:: bash
     :caption: Install istio
 
+    kubectl create namespace istio-system
     helm repo add istio https://istio-release.storage.googleapis.com/charts
     helm repo update
     helm install istio-base istio/base -n istio-system --set defaultRevision=opensiem --wait
