@@ -46,6 +46,10 @@ import logging
 from functools import cached_property
 
 import requests
+from requests import Session
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.ssl_ import create_urllib3_context
+
 from attrs import define, field, validators
 
 from logprep.abc.output import Output
@@ -58,6 +62,15 @@ class HttpOutput(Output):
     """Output that sends http post requests to paths under a given endpoint
     with configured credentials"""
 
+    class CustomHTTPAdapter(HTTPAdapter):
+        """needed for setting SSL cipher context"""
+        ctx = create_urllib3_context()
+        """woraround https://github.com/urllib3/urllib3/issues/3100"""
+        ctx.set_ciphers("DEFAULT")
+        def init_poolmanager(self, *args, **kwargs):
+            kwargs['ssl_context'] = ctx
+            return super().init_poolmanager(*args, **kwargs)
+            
     @define(kw_only=True)
     class Metrics(Output.Metrics):
         """Tracks statistics about this connector"""
@@ -78,7 +91,6 @@ class HttpOutput(Output):
             ),
         )
         """Requests http status"""
-
         connection_errors: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Requests Connection Errors",
@@ -176,7 +188,10 @@ class HttpOutput(Output):
         try:
             try:
                 logger.debug(request_data)
-                response = requests.post(
+                client_session = Session()
+                """use specific ssl context of custom HTTP adapter"""
+                client_session.mount("https://", CustomHTTPAdapter())
+                response = client_session.post(
                     url=target,
                     headers=self._headers,
                     verify=False,
