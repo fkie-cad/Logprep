@@ -14,7 +14,7 @@ connector:
     level: DEBUG
   input:
     type: http_input
-    message_backlog_size: 150
+    message_backlog_size: 15000
     collect_meta: True
     metafield_name: "@metadata"
     uvicorn_config:
@@ -45,15 +45,21 @@ connector:
 
 ## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/kafka/values.yaml`
 kafka:
+  listeners:
+    client:
+      protocol: PLAINTEXT
   controller:
-    replicaCount: 1
+    replicaCount: 3
   metrics:
     jmx:
       enabled: true
-  provision:
+  provisioning:
+    enabled: true
+    replicationFactor: 3
+    numPartitions: 10
     topics:
-      - consumer
-      - producer
+      - name: consumer
+      - name: producer
 
 logprep:
   image:

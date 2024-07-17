@@ -46,6 +46,11 @@ with the following commands:
     sudo chmod +x /usr/local/bin/helm
 
 .. code-block:: bash
+    :caption: add helm repositories
+
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+
+.. code-block:: bash
     :caption: Configure and start minikube
     
     minikube config set driver docker
