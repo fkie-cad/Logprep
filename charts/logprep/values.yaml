@@ -182,22 +182,3 @@ configurations:
 #       admin
 #       admin2
 artifacts: []
-
-# The ingress configuration
-# If enabled, an istio based ingress will be deployed. This option is only useful
-# if the logprep configuration has a http_input configured.
-ingress:
-  enabled: false
-  domain: "localhost"
-  certificate:
-    name: "istio-gateway-certificate"
-  response_headers:
-    Cache-Control: no-cache
-    Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self'; frame-ancestors 'self'; form-action 'self';
-    Cross-Origin-Resource-Policy: same-site
-    Referrer-Policy: strict-origin-when-cross-origin
-    Strict-Transport-Security: max-age=31536000; includeSubdomains
-    Permissions-Policy: geolocation=(), camera=(), microphone=()
-    X-XSS-Protection: 1; mode=block
-    X-Content-Type-Options: nosniff
-    X-Frame-Options: DENY

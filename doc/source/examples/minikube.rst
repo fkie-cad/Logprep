@@ -51,6 +51,7 @@ with the following commands:
     minikube config set driver docker
     minikube config set cpus 16 
     minikube config set memory 16GB
+    minikube addons enable ingress
     minikube start
 
 Deploy the example
@@ -63,40 +64,6 @@ At first you have to install the prometheus PodMonitor CRD:
 
     kubectl apply -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml
 
-
-Then install istio (for details see: `https://istio.io/latest/docs/setup/install/helm/`_. ):
-
-.. code-block:: bash
-    :caption: Install istio
-
-    kubectl create namespace istio-system
-    helm repo add istio https://istio-release.storage.googleapis.com/charts
-    helm repo update
-    helm install istio-base istio/base -n istio-system --set defaultRevision=opensiem --wait
-    helm install istiod istio/istiod -n istio-system --wait
-
-
-.. code-block:: bash
-    :caption: Install istio ingress gateway
-
-    kubectl create namespace istio-ingress
-    helm install istio-ingress istio/gateway -n istio-ingress
-
-.. code-block:: bash
-    :caption: Verifiy the istio installation
-
-    ❯ helm ls -n istio-system                      
-    NAME            NAMESPACE       REVISION        UPDATED                                         STATUS          CHART           APP VERSION
-    istio-base      istio-system    1               2024-07-15 14:54:54.029747408 +0200 CEST        deployed        base-1.22.2     1.22.2     
-    istiod          istio-system    1               2024-07-15 14:57:41.496783572 +0200 CEST        deployed        istiod-1.22.2   1.22.2   
-
-    ❯ kubectl get deployments -n istio-system --output wide
-    NAME     READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                         SELECTOR
-    istiod   1/1     1            1           24m   discovery    docker.io/istio/pilot:1.22.2   istio=pilot
-
-    ❯ kubectl get pods -n istio-ingress          
-    NAME                             READY   STATUS    RESTARTS   AGE
-    istio-ingress-7f5f6f58b8-sv6gk   1/1     Running   0          16m
 
 Then you have to update and build the helm subcharts repository:
 
@@ -112,3 +79,42 @@ Next you are ready to install the opensiem example using:
     :caption: Install opensiem
 
     helm install opensiem examples/k8s
+
+Make the cluster locally resolvable:
+
+.. code-block:: bash
+    :caption: add hosts entry to resolve the cluster
+
+    echo "$( minikube ip ) connector.opensiem dashboards.opensiem grafana.opensiem" | sudo tee -a /etc/hosts
+
+Test the defined ingresses:
+
+.. code-block:: bash
+    :caption: Test the opensiem example ingress
+
+    curl -v http://connector.opensiem/health
+    curl -v http://dashboards.opensiem
+
+Test the opensiem connector:
+
+.. code-block:: bash
+    :caption: Test the opensiem example connector
+
+    ❯ logprep generate http --input-dir ./examples/exampledata/input_logdata/ --target-url http://connector.opensiem --events 100 --batch-size 10
+    
+    2024-07-17 11:15:35 301643 Generator  INFO    : Log level set to 'NOTSET'
+    2024-07-17 11:15:35 301643 Generator  INFO    : Started Data Processing
+    2024-07-17 11:15:35 301643 Input      INFO    : Reading input dataset and creating temporary event collections in: '/tmp/logprep_a51e1vh6'
+    2024-07-17 11:15:35 301643 Input      INFO    : Preparing data took: 0.0042 seconds
+    2024-07-17 11:15:35 301643 Input      INFO    : Cleaned up temp dir: '/tmp/logprep_a51e1vh6'
+    2024-07-17 11:15:35 301643 Generator  INFO    : Completed with following statistics: {
+        "Number of failed events": 0,
+        "Number of successfull events": 100,
+        "Requests Connection Errors": 0,
+        "Requests Timeouts": 0,
+        "Requests http status 200": 10,
+        "Requests total": 10
+    }
+    2024-07-17 11:15:35 301643 Generator  INFO    : Execution time: 0.067013 seconds
+
+open your browser and go to `http://dashboards.opensiem`_ to see the generated data in the opensearch dashboards.
