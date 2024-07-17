@@ -121,23 +121,7 @@ logger:
 # Note:
 # For the `http_input` endpoints you have to add the endpoint `/health: plaintext` to ensure
 # readiness probes are working.
-input:
-  type: http_input
-  message_backlog_size: 150
-  collect_meta: True
-  metafield_name: "@metadata"
-  uvicorn_config:
-    host: 0.0.0.0
-    port: 9000
-    workers: 2
-    access_log: true
-    server_header: false
-    date_header: false
-  endpoints:
-    /auth-json: json
-    /json: json
-    /lab/123/(ABC|DEF)/pl.*: plaintext
-    /lab/123/ABC/auditlog: jsonl
+input: {}
 
 # The logprep output connector configuration
 # Note: This is only the default output. Additional outputs can be configured in

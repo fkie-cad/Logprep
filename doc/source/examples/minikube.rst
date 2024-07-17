@@ -57,6 +57,9 @@ with the following commands:
 Deploy the example
 ------------------
 
+The following steps install the actual opensiem example on the minikube cluster.
+It will install 
+
 At first you have to install the prometheus PodMonitor CRD:
 
 .. code-block:: bash
