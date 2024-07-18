@@ -76,6 +76,8 @@ spec:
               mountPath: /tmp
             - name: prometheus-multiproc
               mountPath: /prometheus
+            - name: logprep-cache-dir
+              mountPath: /home/logprep/.cache
             {{- range $key, $value := .Values.configurations }}
             {{- if $value.data }}
             - name: configurations
@@ -106,6 +108,9 @@ spec:
               mountPath: /home/logprep/{{ lower $key }}/{{ lower $value.name }}
               subPath: {{ $value.name }}
             {{ end }}
+            {{- end }}
+            {{- if .Values.extraMounts }}
+            {{- toYaml .Values.extraMounts | nindent 12 }}
             {{- end }}
           {{- if or .Values.exporter.enabled (eq .Values.input.type "http_input") }}
           {{- if eq .Values.input.type "http_input" }}
@@ -150,6 +155,9 @@ spec:
         - name: prometheus-multiproc
           emptyDir:
             medium: "Memory"
+        - name: logprep-cache-dir
+          emptyDir:
+            medium: "Memory"
         - name: configurations
           configMap:
             name: {{ include "logprep.fullname" . }}-configurations
@@ -176,6 +184,9 @@ spec:
           secret:
             secretName: {{ $value.name }}
         {{- end }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- toYaml .Values.extraVolumes | nindent 8 }}
         {{- end }}
       {{- if .Values.affinity }}
       affinity:

@@ -439,3 +439,54 @@ artifacts:
         assert my_var["value"] == "my_value"
         my_var = [variable for variable in env if variable["name"] == "MY_OTHER_VAR"].pop()
         assert my_var["valueFrom"]["secretKeyRef"]["name"] == "my-secret"
+
+    def test_extra_volumes_are_populated(self):
+        logprep_values = {
+            "extraVolumes": [
+                {
+                    "name": "my-volume",
+                    "configMap": {"name": "my-configmap"},
+                },
+                {
+                    "name": "my-volume2",
+                    "configMap": {"name": "my-configmap"},
+                },
+            ]
+        }
+        self.manifests = self.render_chart("logprep", logprep_values)
+        volumes = self.deployment["spec.template.spec.volumes"]
+        volume = [volume for volume in volumes if volume["name"] == "my-volume"].pop()
+        assert volume["configMap"]["name"] == "my-configmap"
+
+    def test_extra_mounts_are_populated(self):
+        logprep_values = {
+            "extraMounts": [
+                {
+                    "name": "my-volume",
+                    "mountPath": "/my-path",
+                },
+                {
+                    "name": "my-volume2",
+                    "mountPath": "/my-path2",
+                    "subPath": "sub-path",
+                },
+            ]
+        }
+        self.manifests = self.render_chart("logprep", logprep_values)
+        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
+        mount = [mount for mount in mounts if mount["name"] == "my-volume"].pop()
+        assert mount["mountPath"] == "/my-path"
+        mount = [mount for mount in mounts if mount["name"] == "my-volume2"].pop()
+        assert mount["subPath"] == "sub-path"
+
+    def test_logprep_cache_dir_is_populated(self):
+        volumes = self.deployment["spec.template.spec.volumes"]
+        cache_dir_volume = [
+            volume for volume in volumes if volume["name"] == "logprep-cache-dir"
+        ].pop()
+        assert cache_dir_volume
+        assert cache_dir_volume["emptyDir"] == {"medium": "Memory"}
+        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
+        cache_dir_mount = [mount for mount in mounts if mount["name"] == "logprep-cache-dir"].pop()
+        assert cache_dir_mount
+        assert cache_dir_mount["mountPath"] == "/home/logprep/.cache"
