@@ -63,6 +63,21 @@ affinity: false
 # inject extra labels to all resources metadata
 extraLabels: {}
 
+# extraVolumes to populate the pod with
+# Example:
+# extraVolumes:
+#   - name: my-volume
+#     configMap:
+#       name: my-configmap
+extraVolumes: []
+
+# extraMounts to populate the pod with
+# Example:
+# extraMounts:
+#   - name: my-volume
+#     mountPath: /path/to/mount
+extraMounts: []
+
 # Use this to annotate the logprep pods
 # podAnnotations:
 #   sidecar.istio.io/rewriteAppHTTPProbers: "false"
