@@ -134,7 +134,12 @@ If you want to try out the FDA and UCL you first have to do some preparations.
 
 
 0. Run the example compose setup with the :code:`oauth2` profile:
-   :code:`docker compose --profile oauth2 up -d`.
+
+.. code-block:: bash
+
+  docker compose --profile oauth2 up -d.
+
+
 1. Sign into the keycloak admin panel and create a logprep user in the :code:`logprep` realm.
    Make sure that the user is part of the :code:`logprep-admin` group and has a password. If you
    choose a password other than :code:`logprep` you have to update the credentials file
@@ -148,19 +153,19 @@ If you want to try out the FDA and UCL you first have to do some preparations.
    your created logprep user and then configure required Use-Cases.
    At the current moment these configuration are not yet processed by logprep though, as the ucl
    only provides a mock endpoint which doesn't contain your Use-Case configurations.
-4. Set the env :code:`LOGPREP_CREDENTIALS_FILE` to :code:`examples/exampledata/config/credentials.yml`
+4. Set the env and run logprep
 
-Once you have set everything up you can run logprep with the following command.
+  .. code-block:: bash
+
+    export LOGPREP_CREDENTIALS_FILE="examples/exampledata/config/credentials.yml"
+    logprep run examples/exampledata/config/pipeline.yml "http://localhost:3002/api/v1/pipelines?stage=prod&logclass=ExampleClass" "http://localhost:3001/api/v1/general-predetection"
+
 Just consider that the first :code:`pipeline.yml` argument is used to define a proper :code:`input`
 and :code:`output` as those are not part of the FDA/UCL output. Also, in the second argument
 you should ensure that the :code:`stage` and :code:`loglcass` are set properly.
-
-.. code-block:: bash
-
-     logprep run examples/exampledata/config/pipeline.yml "http://localhost:3002/api/v1/pipelines?stage=prod&logclass=ExampleClass" "http://localhost:3001/api/v1/general-predetection"
 
 .. note::
 
      If you did use the example compose setup before and run into problems it is advised to first pull
      all images again to update them to the latest version:
-     :code:`docker compose -f ./example/compose/docker-compose.yml pull`.
+     :code:`docker compose -f ./examples/compose/docker-compose.yml pull`.
