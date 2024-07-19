@@ -3,6 +3,10 @@
 ## next release
 ### Breaking
 ### Features
+### Improvenets
+### Bugfix
+
+## 13.0.1
 
 ### Improvements
 
@@ -14,6 +18,8 @@
 * move quickstart setup to compose example
 
 ### Bugfix
+
+* This release limits the mysql-connector-python dependency to have version less the 9 
 
 ## 13.0.0
 
