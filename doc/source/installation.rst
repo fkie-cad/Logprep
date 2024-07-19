@@ -61,4 +61,26 @@ Helm
 
 This option can be used to deploy logprep on a kubernetes cluster.
 
-tbd
+At first you have to install the prometheus PodMonitor CRD:
+
+.. code-block:: bash
+    :caption: Install the prometheus PodMonitor CRD
+
+    kubectl apply -f https://raw.githubusercontent.com/prometheus-community/helm-charts/main/charts/kube-prometheus-stack/charts/crds/crds/crd-podmonitors.yaml
+
+
+To install latest stable release:
+
+..  code-block:: bash
+
+   helm repo add logprep https://fkie-cad.github.io/Logprep
+   helm install logprep logprep/logprep
+
+
+To install from cloned github repository:
+
+..  code-block:: bash
+
+   git clone https://github.com/fkie-cad/Logprep.git
+   cd Logprep
+   helm install logprep charts/logprep

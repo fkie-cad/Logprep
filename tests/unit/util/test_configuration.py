@@ -196,7 +196,7 @@ output:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules: []
         generic_rules: []
@@ -377,9 +377,9 @@ pipeline:
                         {
                             "labelername": {
                                 "type": "labeler",
-                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
                             }
                         }
                     ]
@@ -393,10 +393,10 @@ pipeline:
                         {
                             "labelername": {
                                 "type": "labeler",
-                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
-                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["examples/exampledata/rules/labeler/generic"],
                                 "SOME_UNKNOWN_OPTION": "FOO",
                             }
                         }
@@ -411,10 +411,10 @@ pipeline:
                         {
                             "labelername": {
                                 "type": "labeler",
-                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
-                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["examples/exampledata/rules/labeler/generic"],
                                 "SOME UNKNOWN OPTION": "FOO",
                             }
                         }
@@ -444,10 +444,10 @@ pipeline:
                         {
                             "labelername": {
                                 "type": "labeler",
-                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
-                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["examples/exampledata/rules/labeler/generic"],
                                 "SOME UNKNOWN OPTION": "FOO",
                             }
                         },
@@ -523,12 +523,12 @@ pipeline:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules:
-            - quickstart/exampledata/rules/labeler/specific
+            - examples/exampledata/rules/labeler/specific
         generic_rules:
-            - quickstart/exampledata/rules/labeler/generic
+            - examples/exampledata/rules/labeler/generic
 """,
             "LOGPREP_OUTPUT": """
 output:
@@ -780,7 +780,7 @@ logger:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules: []
         generic_rules: []
@@ -805,7 +805,7 @@ logger:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules: []
         generic_rules: []
@@ -854,7 +854,7 @@ logger:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules: []
         generic_rules: []

@@ -3,12 +3,15 @@
 ## next release
 ### Breaking
 ### Features
+
 ### Improvements
 
 * a result object was added to processors and pipelines
   * each processor returns an object including the processor name, generated extra_data, warnings
     and errors
   * the pipeline returns an object with the list of all processor result objects
+* add kubernetes opensiem deployment example
+* move quickstart setup to compose example
 
 ### Bugfix
 
@@ -316,7 +319,7 @@
 
 * add possibility to convert hex to int in `calculator` processor with new added function `from_hex`
 * add metrics on rule level
-* add grafana example dashboards under `quickstart/exampledata/config/grafana/dashboards`
+* add grafana example dashboards under `examples/exampledata/config/grafana/dashboards`
 * add new configuration field `id` for all rules to identify rules in metrics and logs
   - if no `id` is given, the `id` will be generated in a stable way
   - add verification of rule `id` uniqueness on processor level over both rule trees to ensure metrics are counted correctly on rule level

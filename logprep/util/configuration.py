@@ -53,26 +53,26 @@ Configuration File Structure
     pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules:
-            - quickstart/exampledata/rules/labeler/specific
+            - examples/exampledata/rules/labeler/specific
         generic_rules:
-            - quickstart/exampledata/rules/labeler/generic
+            - examples/exampledata/rules/labeler/generic
 
     - dissectorname:
         type: dissector
         specific_rules:
-            - quickstart/exampledata/rules/dissector/specific/
+            - examples/exampledata/rules/dissector/specific/
         generic_rules:
-            - quickstart/exampledata/rules/dissector/generic/
+            - examples/exampledata/rules/dissector/generic/
 
     - dropper:
         type: dropper
         specific_rules:
-            - quickstart/exampledata/rules/dropper/specific
+            - examples/exampledata/rules/dropper/specific
         generic_rules:
-            - quickstart/exampledata/rules/dropper/generic
+            - examples/exampledata/rules/dropper/generic
             - filter: "test_dropper"
             dropper:
                 drop:
@@ -82,37 +82,37 @@ Configuration File Structure
     - pre_detector:
         type: pre_detector
         specific_rules:
-            - quickstart/exampledata/rules/pre_detector/specific
+            - examples/exampledata/rules/pre_detector/specific
         generic_rules:
-            - quickstart/exampledata/rules/pre_detector/generic
+            - examples/exampledata/rules/pre_detector/generic
         outputs:
             - opensearch: sre
-        tree_config: quickstart/exampledata/rules/pre_detector/tree_config.json
-        alert_ip_list_path: quickstart/exampledata/rules/pre_detector/alert_ips.yml
+        tree_config: examples/exampledata/rules/pre_detector/tree_config.json
+        alert_ip_list_path: examples/exampledata/rules/pre_detector/alert_ips.yml
 
     - amides:
         type: amides
         specific_rules:
-            - quickstart/exampledata/rules/amides/specific
+            - examples/exampledata/rules/amides/specific
         generic_rules:
-            - quickstart/exampledata/rules/amides/generic
-        models_path: quickstart/exampledata/models/model.zip
+            - examples/exampledata/rules/amides/generic
+        models_path: examples/exampledata/models/model.zip
         num_rule_attributions: 10
         max_cache_entries: 1000000
         decision_threshold: 0.32
 
     - pseudonymizer:
         type: pseudonymizer
-        pubkey_analyst: quickstart/exampledata/rules/pseudonymizer/example_analyst_pub.pem
-        pubkey_depseudo: quickstart/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
-        regex_mapping: quickstart/exampledata/rules/pseudonymizer/regex_mapping.yml
+        pubkey_analyst: examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem
+        pubkey_depseudo: examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
+        regex_mapping: examples/exampledata/rules/pseudonymizer/regex_mapping.yml
         hash_salt: a_secret_tasty_ingredient
         outputs:
             - opensearch: pseudonyms
         specific_rules:
-            - quickstart/exampledata/rules/pseudonymizer/specific/
+            - examples/exampledata/rules/pseudonymizer/specific/
         generic_rules:
-            - quickstart/exampledata/rules/pseudonymizer/generic/
+            - examples/exampledata/rules/pseudonymizer/generic/
         max_cached_pseudonyms: 1000000
 
     - calculator:
@@ -173,12 +173,12 @@ The following config file will be valid by setting the given environment variabl
     pipeline:
         - labelername:
             type: labeler
-            schema: quickstart/exampledata/rules/labeler/schema.json
+            schema: examples/exampledata/rules/labeler/schema.json
             include_parent_labels: true
             specific_rules:
-                - quickstart/exampledata/rules/labeler/specific
+                - examples/exampledata/rules/labeler/specific
             generic_rules:
-                - quickstart/exampledata/rules/labeler/generic"
+                - examples/exampledata/rules/labeler/generic"
     export LOGPREP_OUTPUT="
     output:
         kafka:

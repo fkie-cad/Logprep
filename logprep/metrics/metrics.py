@@ -3,7 +3,7 @@ Logprep provides a prometheus exporter with certain processing and connector met
 :code:`logprep_number_of_processed_events_total` or :code:`logprep_processing_time_per_event_sum`.
 
 Examples of grafana dashboards can be found in `the logprep github repo
-<https://github.com/fkie-cad/Logprep/tree/main/quickstart/exampledata/config/grafana/dashboards>`_
+<https://github.com/fkie-cad/Logprep/tree/main/examples/exampledata/config/grafana/dashboards>`_
 
 Configuration
 =============
