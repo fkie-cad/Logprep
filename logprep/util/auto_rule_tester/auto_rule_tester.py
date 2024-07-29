@@ -284,12 +284,12 @@ class AutoRuleTester:
         self._run_if_any_rules_exist(rules_pn)
 
     def _run_if_any_rules_exist(self, rules_pn: dict) -> None:
-        """_summary_
+        """Check if any rules exist in given path, then start rule tests depending on that.
 
         Parameters
         ----------
         rules_pn : dict
-            _description_
+            accumulated rules for each processor to operate on
         """        
         if any(processor_test_cfg["rules"] for processor_test_cfg in rules_pn.values()):
             self._run_tests_for_rules(rules_pn)
@@ -298,7 +298,7 @@ class AutoRuleTester:
             print_fcolor(Fore.YELLOW, "~\nThere are no rules within any of the rules directories!")
 
     def check_run_rule_tests(self, processor_cont, rules_pn) -> None:
-        """_summary_
+        """Verify dependencies for every preproccessor and if fullfilled, start the real rule tests.
 
         Parameters
         ----------
@@ -306,8 +306,6 @@ class AutoRuleTester:
             proc object and name
         rules_pn : dict
             accumulated rules for each processor to operate on
-        test_type : _type_
-            _description_
         """        
         for processor, processor_name in processor_cont.items():
             for rule_test in rules_pn[processor_name]["rules"]:
@@ -315,12 +313,12 @@ class AutoRuleTester:
                     self._run_rule_tests(processor, rule_test)
 
     def _run_tests_for_rules(self, rules_pn: dict) -> None:
-        """Run various check and collect warnings, if not Successful exit
+        """Run various check and collect warnings, if not Successful exit.
 
         Parameters
         ----------
         rules_pn : dict
-            _description_
+            accumulated rules for each processor to operate on
         """        
         self._check_which_rule_files_miss_tests(rules_pn)
         processors_no_ct = self._get_processors()
@@ -438,7 +436,7 @@ class AutoRuleTester:
         self._load_rules(processor, rule_type)
 
     def _eval_file_rule_test(self, rule_test: dict, processor: "Processor", r_idx: int):
-        """Main logic to check each rule file, compare and validate it, then print out results. For each processor a process
+        """Main logic to check each rule file, compare and validate it, then print out results. For each processor a process is spawned.
 
         Parameters
         ----------
@@ -601,7 +599,7 @@ class AutoRuleTester:
         return list(diff)
 
     def _set_rules_dirs_to_empty(self) -> None:
-        """set each rule type to empty
+        """Set each rule type to empty
         """        
         for processor in self._config_yml["pipeline"]:
             processor_cfg = next(iter(processor.values()))
@@ -693,7 +691,7 @@ class AutoRuleTester:
                 and len(rule_tests) > 1
             ):
                 raise Exception(
-                    f"Not all dictionaries in {file_path} contain the mandatory key target_rule_idx: Cant build corret test set for rules."
+                    f"Not all dictionaries in {file_path} contain the mandatory key target_rule_idx: Can't build correct test set for rules."
                 )
         except ValueError as error:
             self._problems["errors"].append(str(error))
