@@ -275,13 +275,9 @@ class JSONLHttpEndpoint(HttpEndpoint):
         """jsonl endpoint method"""
         self.collect_metrics()
         data = await self.get_data(req)
-        data = data.decode("utf8")
-        event = kwargs.get("metadata", {})
         metadata = kwargs.get("metadata", {})
-        stripped_lines = map(str.strip, data.splitlines())
-        events = (self._decoder.decode(line) for line in stripped_lines if line)
-        for event in events:
-            self.messages.put({**event, **metadata}, block=False)
+        for event in self._decoder.decode_lines(data):
+            self.messages.put(event | metadata, block=False)
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
