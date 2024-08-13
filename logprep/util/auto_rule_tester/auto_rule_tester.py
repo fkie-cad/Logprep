@@ -94,7 +94,7 @@ class AutoRuleTesterException(BaseException):
         super().__init__(f"AutoRuleTester ({message}): ")
 
 
-class PorcessorExtensions:
+class ProcessorExtensions:
     """Used to handle special demands for PreDetector auto-tests."""
 
     @staticmethod
@@ -177,15 +177,15 @@ class PorcessorExtensions:
         """        
         if not isinstance(rule, Iterable):
             diff = f"{key}: {rule}"
-            PorcessorExtensions.color_based_print(diff)
+            ProcessorExtensions.color_based_print(diff)
         else:
             if t_idx is not None:
                 diff = f"{key}: {rule[t_idx]}"
-                PorcessorExtensions.color_based_print(diff)
+                ProcessorExtensions.color_based_print(diff)
             else:
                 for item in rule:
                     diff = f"{key}: {item}"
-                    PorcessorExtensions.color_based_print(diff)
+                    ProcessorExtensions.color_based_print(diff)
 
     @staticmethod
     def color_based_print(item):
@@ -260,15 +260,15 @@ class AutoRuleTester:
         self._success = True
 
         self._result = {
-            "+ Successful": 0,
-            "- Failed": 0,
+            "+ Successful Tests": 0,
+            "- Failed Tests": 0,
             "~ Warning": 0,
             "Rule Test Coverage": 0,
             "Total Tests": 0,
         }
         self._problems = {"warnings": [], "errors": []}
 
-        self._pd_extra = PorcessorExtensions()
+        self._pd_extra = ProcessorExtensions()
         self._gpr = GrokPatternReplacer(self._config_yml)
 
         self._filename_printed = False
@@ -398,7 +398,7 @@ class AutoRuleTester:
         )
 
     def _load_rules(self, processor: "Processor", rule_type: str):
-        """load each type of rules for each processor and set it up
+        """Load each type of rules for each processor and set it up
 
         Parameters
         ----------
@@ -465,7 +465,7 @@ class AutoRuleTester:
                     ) 
             except BaseException as error:
                 self._success = False
-                self._result["- Failed"] += 1
+                self._result["- Failed Tests"] += 1
                 continue
 
             diff = self._get_diff_raw_test(test)
@@ -481,19 +481,19 @@ class AutoRuleTester:
             ):
                 print_fcolor(
                     Fore.MAGENTA,
-                    f"\nRULE FILE {rule_test['file']} & RULE {t_idx}/{len(rule_test['tests'])}:",
+                    f"\nRULE FILE {rule_test['file']} & RULE TEST {t_idx}/{len(rule_test['tests'])}:",
                 )
 
             if print_diff or nth(self._problems.get("errors"), self._rule_cnt) is not None:
                 self._pd_extra.print_rules({"DIFF": diff})
                 self._success = False
-                self._result["- Failed"] += 1
+                self._result["- Failed Tests"] += 1
             else:
-                self._result["+ Successful"] += 1
+                self._result["+ Successful Tests"] += 1
 
             self._rule_cnt += 1 
         self._result["Total Tests"] = (
-            self._result["+ Successful"] + self._result["- Failed"]
+            self._result["+ Successful Tests"] + self._result["- Failed Tests"]
         ) 
 
     @staticmethod
@@ -686,8 +686,8 @@ class AutoRuleTester:
         try:
             multi_rule = self._pd_extra._load_json_or_yaml(file_path)
             if (
-                processor_name == "pre_detector"
-                and not all(d.get("target_rule_idx") is not None for d in rule_tests)
+                processor_name == "pre_detector" and
+                not all(d.get("target_rule_idx") is not None for d in rule_tests)
                 and len(rule_tests) > 1
             ):
                 raise Exception(

@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 import pytest
 
-from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester, PorcessorExtensions
+from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester, ProcessorExtensions
 
 LOGGER = logging.getLogger()
 
@@ -281,8 +281,8 @@ class TestAutoRuleTester:
         ]
 
         expected_overall_results = [
-            "+ Successful: 32", 
-            "- Failed: 6",
+            "+ Successful Tests: 32", 
+            "- Failed Tests: 6",
             "~ Warning: 2",
             "Rule Test Coverage: 72.72727272727273",
             "Total Tests: 38",
