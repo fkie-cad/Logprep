@@ -4,6 +4,9 @@
 ### Breaking
 ### Features
 ### Improvements
+
+* predetector now normalizes timestamps so they can be read correctly by opensearch
+
 ### Bugfix
 
 * remove redundant chart features for mounting secrets

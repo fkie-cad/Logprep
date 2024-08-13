@@ -30,6 +30,7 @@ Processor Configuration
 .. automodule:: logprep.processor.pre_detector.rule
 """
 
+from datetime import datetime
 from functools import cached_property
 from uuid import uuid4
 
@@ -92,6 +93,14 @@ class PreDetector(Processor):
     def _ip_alerter(self):
         return IPAlerter(self._config.alert_ip_list_path)
 
+    def is_normalized_timestamp(self, timestamp: str):
+        """this method checks if the timestamp has been normalized"""
+        try:
+            datetime.fromisoformat(timestamp)
+            return True
+        except ValueError:
+            return False
+
     def _apply_rules(self, event, rule):
         if not (
             self._ip_alerter.has_ip_fields(rule)
@@ -101,8 +110,15 @@ class PreDetector(Processor):
         for detection, _ in self.result.data:
             detection["creation_timestamp"] = TimeParser.now().isoformat()
             timestamp = get_dotted_field_value(event, "@timestamp")
+
             if timestamp is not None:
-                detection["@timestamp"] = timestamp
+                if self.is_normalized_timestamp(timestamp):
+                    detection["@timestamp"] = timestamp
+                else:
+                    # need to find out how to get every format not just unix..
+                    timestamp = TimeParser.parse_datetime(timestamp, "UNIX", "UTC")
+                    result = timestamp.isoformat()
+                    detection["@timestamp"] = result
 
     def _get_detection_result(self, event: dict, rule: PreDetectorRule):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")

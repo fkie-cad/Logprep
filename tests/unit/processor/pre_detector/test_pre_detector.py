@@ -329,8 +329,16 @@ class TestPreDetector(BaseProcessorTestCase):
 
     def test_adds_timestamp_to_extra_data_if_provided_by_event(self):
         document = {
-            "@timestamp": "custom timestamp",
+            "@timestamp": "2024-08-12T12:13:04Z",
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         detection_results = self.object.process(document)
-        assert detection_results.data[0][0].get("@timestamp") == "custom timestamp"
+        assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04Z"
+
+    def test_timestamp_is_normalised(self):
+        document = {
+            "@timestamp": "1723464784",
+            "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
+        }
+        detection_results = self.object.process(document)
+        assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04+00:00"
