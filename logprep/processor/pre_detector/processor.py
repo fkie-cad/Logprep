@@ -30,7 +30,7 @@ Processor Configuration
 .. automodule:: logprep.processor.pre_detector.rule
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import cached_property
 from uuid import uuid4
 
@@ -40,7 +40,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
-from logprep.util.time import TimeParser
+from logprep.util.time import TimeParser, TimeParserException
 
 
 class PreDetector(Processor):
@@ -101,6 +101,21 @@ class PreDetector(Processor):
         except ValueError:
             return False
 
+    def detect_format_and_normalize_timestamp(self, timestamp):
+        """method for detecting the used source format of a timestamp and normalizing it"""
+        formats = [
+            "%Y%m%d%H%M%S",
+            "UNIX",
+        ]
+        for form in formats:
+            if not self.is_normalized_timestamp(timestamp):
+                try:
+                    return TimeParser.parse_datetime(timestamp, form, timezone.utc).isoformat()
+                except TimeParserException:
+                    continue
+            else:
+                return timestamp
+
     def _apply_rules(self, event, rule):
         if not (
             self._ip_alerter.has_ip_fields(rule)
@@ -112,13 +127,8 @@ class PreDetector(Processor):
             timestamp = get_dotted_field_value(event, "@timestamp")
 
             if timestamp is not None:
-                if self.is_normalized_timestamp(timestamp):
-                    detection["@timestamp"] = timestamp
-                else:
-                    # need to find out how to get every format not just unix..
-                    timestamp = TimeParser.parse_datetime(timestamp, "UNIX", "UTC")
-                    result = timestamp.isoformat()
-                    detection["@timestamp"] = result
+                timestamp = self.detect_format_and_normalize_timestamp(timestamp)
+                detection["@timestamp"] = timestamp
 
     def _get_detection_result(self, event: dict, rule: PreDetectorRule):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
