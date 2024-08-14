@@ -459,7 +459,7 @@ class AutoRuleTester:
             try:
                 extra_output = processor.process(test["raw"])
                 if not extra_output and processor.name == "pre_detector": 
-                    self._pd_extra.color_based_print(f"-- Couldn't process, maybe invalid filter. 
+                    self._pd_extra.color_based_print(f"-- Couldn't process, maybe invalid filter.\
                                                      Please FIX before continueing! --")
                     sys.exit(1)
             except BaseException as error:
@@ -478,8 +478,9 @@ class AutoRuleTester:
                 or nth(self._problems.get("warnings"), self._rule_cnt) is not None
                 or nth(self._problems.get("errors"), self._rule_cnt) is not None
             ):
-                self._pd_extra.color_based_print(f"> RULE FILE {rule_test['file']} & RULE TEST {t_idx}/{len(rule_test['tests'])}:")
-
+                self._pd_extra.color_based_print(f"> RULE FILE {rule_test['file']} & RULE TEST {t_idx + 1}/{len(rule_test['tests'])}:")
+                self._pd_extra.print_rules(self._problems, t_idx)
+                
             if print_diff or nth(self._problems.get("errors"), self._rule_cnt) is not None:
                 self._pd_extra.print_rules({"DIFF": diff})
                 self._success = False
@@ -635,7 +636,7 @@ class AutoRuleTester:
         rules_pn[processor_name]["rules"] = []
         directories = {"Rules Directory": [f"{processor_name} ({processor_type}):"], "Path": []}
 
-        for type_count, (rule_type, rules_dir) in enumerate(proc_rules_dirs["rule_dirs"].items()):
+        for _, (rule_type, rules_dir) in enumerate(proc_rules_dirs["rule_dirs"].items()):
             directories["Path"].append(f"    - {rule_type}")
             for path in Path(rules_dir).rglob('*'):
                 if path.is_file() and self._is_valid_rule_name(path.name):
