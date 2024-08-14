@@ -44,7 +44,7 @@ DEFAULTS = {
     "compression.codec": "none",
     "client.id": "<<hostname>>",
     "queue.buffering.max.messages": "100000",
-    "statistics.interval.ms": "1000",
+    "statistics.interval.ms": "5000",
 }
 
 DEFAULT_RETURN = 0
