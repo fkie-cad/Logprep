@@ -2,11 +2,9 @@ import logging
 import re
 from unittest import mock
 from unittest.mock import patch
-from pathlib import Path
-import json
 import pytest
 
-from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester, ProcessorExtensions
+from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 
 LOGGER = logging.getLogger()
 

@@ -56,15 +56,12 @@ from pathlib import Path
 import re
 import sys
 import tempfile
-import traceback
 from collections import OrderedDict, defaultdict
-from contextlib import redirect_stdout
 from difflib import ndiff
-from io import StringIO
 from logging import getLogger
-from os import path, walk
+from os import path
 from pprint import pprint
-from typing import TYPE_CHECKING, TextIO, Tuple
+from typing import TYPE_CHECKING, Tuple
 from collections.abc import Iterable
 
 from more_itertools import nth
@@ -198,11 +195,13 @@ class ProcessorExtensions:
         """        
         item = item.replace("]", "").replace("[", "")
         if item.startswith("- ") or item.startswith("error") or item.startswith("without tests"):
-            print_fcolor(Fore.RED, item)  # + "\n")
+            print_fcolor(Fore.RED, item)
         elif item.startswith("+ ") or item.startswith("with tests"):
             print_fcolor(Fore.GREEN, item)
         elif item.startswith("? "):
             print_fcolor(Fore.WHITE, "\n" + item)
+        elif item.startswith("> "):
+            print_fcolor(Fore.MAGENTA, "\n" + item)
         elif item.lstrip().startswith("~ ") or item.startswith("warning"):
             print_fcolor(Fore.YELLOW, item)
         else:
@@ -459,10 +458,10 @@ class AutoRuleTester:
                 continue
             try:
                 extra_output = processor.process(test["raw"])
-                if not extra_output and processor.name == "pre_detector":
-                    raise Exception(
-                        "Couldn't process, maybe invalid filter."
-                    ) 
+                if not extra_output and processor.name == "pre_detector": 
+                    self._pd_extra.color_based_print(f"-- Couldn't process, maybe invalid filter. 
+                                                     Please FIX before continueing! --")
+                    sys.exit(1)
             except BaseException as error:
                 self._success = False
                 self._result["- Failed Tests"] += 1
@@ -479,10 +478,7 @@ class AutoRuleTester:
                 or nth(self._problems.get("warnings"), self._rule_cnt) is not None
                 or nth(self._problems.get("errors"), self._rule_cnt) is not None
             ):
-                print_fcolor(
-                    Fore.MAGENTA,
-                    f"\nRULE FILE {rule_test['file']} & RULE TEST {t_idx}/{len(rule_test['tests'])}:",
-                )
+                self._pd_extra.color_based_print(f"> RULE FILE {rule_test['file']} & RULE TEST {t_idx}/{len(rule_test['tests'])}:")
 
             if print_diff or nth(self._problems.get("errors"), self._rule_cnt) is not None:
                 self._pd_extra.print_rules({"DIFF": diff})
