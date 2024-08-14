@@ -192,4 +192,8 @@ class PreDetectorRule(Rule):
     def source_timezone(self) -> str:
         return self._config.source_timezone
 
+    @property
+    def timestamp_field(self) -> str:
+        return self._config.timestamp_field
+
     # pylint: enable=C0111

@@ -94,17 +94,30 @@ class PreDetector(Processor):
     def _ip_alerter(self):
         return IPAlerter(self._config.alert_ip_list_path)
 
-    # def detect_format_and_normalize_timestamp(self, timestamp):
-    #     """method for detecting the used source format of a timestamp and normalizing it"""
-    #     # formats = [
-    #     #     "%Y%m%d%H%M%S",
-    #     #     "UNIX",
-    #     # ]
-    #     # for form in formats:
-    #     #     try:
-    #     #         return TimeParser.parse_datetime(timestamp, form, timezone.utc).isoformat()
-    #     #     except TimeParserException:
-    #     #         continue
+    def normalize_timestamp(self, event, rule, timestamp):
+        """method for normalizing the timestamp"""
+        source_timezone, target_timezone, source_formats = (
+            rule.source_timezone,
+            rule.target_timezone,
+            rule.source_formats,
+        )
+        parsed_successfully = False
+        for detection, _ in self.result.data:
+            for source_format in source_formats:
+                try:
+                    parsed_datetime = TimeParser.parse_datetime(
+                        timestamp, source_format, source_timezone
+                    )
+                except TimeParserException:
+                    continue
+                result = (
+                    parsed_datetime.astimezone(target_timezone).isoformat().replace("+00:00", "Z")
+                )
+                detection[rule.timestamp_field] = result
+                parsed_successfully = True
+                break
+            if not parsed_successfully:
+                raise ProcessingWarning(str("Could not parse timestamp"), rule, event)
 
     def _apply_rules(self, event, rule):
         if not (
@@ -117,31 +130,7 @@ class PreDetector(Processor):
             timestamp = get_dotted_field_value(event, "@timestamp")
 
             if timestamp is not None:
-                # timestamp = self.detect_format_and_normalize_timestamp(timestamp)
-
-                source_timezone, target_timezone, source_formats = (
-                    rule.source_timezone,
-                    rule.target_timezone,
-                    rule.source_formats,
-                )
-                parsed_successfully = False
-                for source_format in source_formats:
-                    try:
-                        parsed_datetime = TimeParser.parse_datetime(
-                            timestamp, source_format, source_timezone
-                        )
-                    except TimeParserException:
-                        continue
-                    result = (
-                        parsed_datetime.astimezone(target_timezone)
-                        .isoformat()
-                        .replace("+00:00", "Z")
-                    )
-                    detection["@timestamp"] = result
-                    parsed_successfully = True
-                    break
-                if not parsed_successfully:
-                    raise ProcessingWarning(str("Could not parse timestamp"), rule, event)
+                self.normalize_timestamp(event, rule, timestamp)
 
     def _get_detection_result(self, event: dict, rule: PreDetectorRule):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
