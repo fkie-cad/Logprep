@@ -1,6 +1,6 @@
 version: 2
 process_count: 2
-config_refresh_interval: 10
+config_refresh_interval: 300
 profile_pipelines: false
 logger:
   level: INFO
@@ -31,9 +31,15 @@ input:
       host: 0.0.0.0
       port: 9000
       workers: 2
-      access_log: true
+      access_log: false
       server_header: false
       date_header: false
+      loop: uvloop
+      http: httptools
+      ws: none
+      interface: asgi3
+      backlog: 16384
+      timeout_keep_alive: 65
     endpoints:
       /auth-json: json
       /json: json
