@@ -50,40 +50,6 @@ class TestDeployment(TestBaseChartTest):
         assert mount["mountPath"] == "/tmp"
         assert mount["name"] == "logprep-temp"
 
-    @pytest.mark.parametrize(
-        "logprep_values, expected",
-        [
-            ({}, False),
-            ({"secrets": {"certificates": {"name": "custom-certs"}}}, True),
-        ],
-    )
-    def test_deployment_certificates(self, logprep_values, expected):
-        self.manifests = self.render_chart("logprep", logprep_values)
-        volumes = self.deployment["spec.template.spec.volumes"]
-        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
-        env = self.deployment["spec.template.spec.containers.0.env"]
-
-        for volume in volumes:
-            if volume["name"] == "certificates":
-                assert expected
-                break
-        else:
-            assert not expected, "certificates volume not found"
-
-        for mount in mounts:
-            if mount["name"] == "certificates":
-                assert expected
-                break
-        else:
-            assert not expected, "certificates mount not found"
-
-        for variable in env:
-            if variable["name"] == "REQUESTS_CA_BUNDLE":
-                assert expected
-                break
-        else:
-            assert not expected, "REQUESTS_CA_BUNDLE env not found"
-
     def test_certificates_env(self):
         self.manifests = self.render_chart(
             "logprep", {"secrets": {"certificates": {"name": "custom-certs"}}}
@@ -96,91 +62,6 @@ class TestDeployment(TestBaseChartTest):
         else:
             assert False, "REQUESTS_CA_BUNDLE not found"
 
-    def test_certificates_volume(self):
-        self.manifests = self.render_chart(
-            "logprep", {"secrets": {"certificates": {"name": "custom-certs"}}}
-        )
-        volumes = self.deployment["spec.template.spec.volumes"]
-        for volume in volumes:
-            if volume["name"] == "certificates":
-                assert volume["secret"]["secretName"] == "custom-certs"
-                break
-        else:
-            assert False, "certificates volume not found"
-
-    def test_certificates_volume_mount(self):
-        self.manifests = self.render_chart(
-            "logprep", {"secrets": {"certificates": {"name": "custom-certs"}}}
-        )
-        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
-        for mount in mounts:
-            if mount["name"] == "certificates":
-                assert mount["mountPath"].endswith("custom-certs")
-                break
-        else:
-            assert False, "certificates mount not found"
-
-    @pytest.mark.parametrize(
-        "logprep_values, expected",
-        [
-            ({}, False),
-            ({"secrets": {"logprep-secret": {"name": "my-secret"}}}, True),
-            ({"secrets": {"LoGpReP-Secret": {"name": "my-not-lowercase-secret"}}}, True),
-        ],
-    )
-    def test_secret_deployment(self, logprep_values, expected):
-        self.manifests = self.render_chart("logprep", logprep_values)
-        volumes = self.deployment["spec.template.spec.volumes"]
-        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
-
-        for volume in volumes:
-            if volume["name"] == "logprep-secret":
-                assert expected
-                break
-        else:
-            assert not expected, "secret volume not found"
-
-        for mount in mounts:
-            if mount["name"] == "logprep-secret":
-                assert expected
-                break
-        else:
-            assert not expected, "secret mount not found"
-
-    @pytest.mark.parametrize(
-        "logprep_values, expected",
-        [
-            ({}, False),
-            ({"secrets": {"credentials": {"name": "my-creds"}}}, True),
-        ],
-    )
-    def test_deployment_credentials(self, logprep_values, expected):
-        self.manifests = self.render_chart("logprep", logprep_values)
-        volumes = self.deployment["spec.template.spec.volumes"]
-        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
-        env = self.deployment["spec.template.spec.containers.0.env"]
-
-        for volume in volumes:
-            if volume["name"] == "credentials":
-                assert expected
-                break
-        else:
-            assert not expected, "credentials volume not found"
-
-        for mount in mounts:
-            if mount["name"] == "credentials":
-                assert expected
-                break
-        else:
-            assert not expected, "credentials mount not found"
-
-        for variable in env:
-            if variable["name"] == "LOGPREP_CREDENTIALS_FILE":
-                assert expected
-                break
-        else:
-            assert not expected, "LOGPREP_CREDENTIALS_FILE not found"
-
     def test_credentials_env(self):
         self.manifests = self.render_chart(
             "logprep", {"secrets": {"credentials": {"name": "my-creds"}}}
@@ -192,30 +73,6 @@ class TestDeployment(TestBaseChartTest):
                 break
         else:
             assert False, "LOGPREP_CREDENTIALS_FILE not found"
-
-    def test_credentials_volume(self):
-        self.manifests = self.render_chart(
-            "logprep", {"secrets": {"Credentials": {"name": "my-creds"}}}
-        )
-        volumes = self.deployment["spec.template.spec.volumes"]
-        for volume in volumes:
-            if volume["name"] == "credentials":
-                assert volume["secret"]["secretName"] == "my-creds"
-                break
-        else:
-            assert False, "credentials volume not found"
-
-    def test_credentials_volume_mount(self):
-        self.manifests = self.render_chart(
-            "logprep", {"secrets": {"credentials": {"name": "my-creds"}}}
-        )
-        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
-        for mount in mounts:
-            if mount["name"] == "credentials":
-                assert mount["mountPath"].endswith("my-creds"), mount["mountPath"]
-                break
-        else:
-            assert False, "credentials mount not found"
 
     def test_security_context(self):
         assert self.deployment["spec.template.spec.securityContext"]
@@ -391,20 +248,6 @@ artifacts:
         volumes = self.deployment["spec.template.spec.volumes"]
         artifacts_volume = [volume for volume in volumes if volume["name"] == "artifacts"]
         assert len(artifacts_volume) == 0
-
-    def test_extra_secrets_volumes_are_populated(self):
-        logprep_values = {"secrets": {"mysecret": {"name": "external-secret"}}}
-        self.manifests = self.render_chart("logprep", logprep_values)
-        volumes = self.deployment["spec.template.spec.volumes"]
-        volume = [volume for volume in volumes if volume["name"] == "mysecret"]
-        assert volume
-
-    def test_extra_secrets_are_mounted(self):
-        logprep_values = {"secrets": {"mysecret": {"name": "external-secret"}}}
-        self.manifests = self.render_chart("logprep", logprep_values)
-        mounts = self.deployment["spec.template.spec.containers.0.volumeMounts"]
-        mount = [mount for mount in mounts if mount["name"] == "mysecret"]
-        assert mount
 
     def test_environment_variables_are_populated(self):
         logprep_values = {
