@@ -30,6 +30,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "severity": "critical",
                     "mitre": ["attack.test1", "attack.test2"],
                     "case_condition": "directly",
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "description": "Test rule one",
                     "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 },
@@ -53,6 +57,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": ["attack.test1", "attack.test2"],
                     "rule_filter": '(A:"*bar*" AND NOT ((A:"foo*" AND A:"*baz")))',
                     "severity": "critical",
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "title": "RULE_FOUR",
                 },
                 ({"kafka": "pre_detector_alerts"},),
@@ -82,6 +90,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": ["attack.test1", "attack.test2"],
                     "case_condition": "directly",
                     "host": {"name": "Test hostname"},
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "description": "Test rule one",
                     "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 },
@@ -104,6 +116,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "severity": "critical",
                     "mitre": ["attack.test1", "attack.test2"],
                     "case_condition": "directly",
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "description": "Test rule one",
                     "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 },
@@ -128,6 +144,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "severity": "critical",
                     "mitre": [],
                     "case_condition": "directly",
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "description": "Test rule two",
                     "rule_filter": '(tags:"test" AND process.program:"test" AND '
                     '(message:"test1*xyz" OR message:"test2*xyz"))',
@@ -151,6 +171,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "severity": "critical",
                     "mitre": [],
                     "case_condition": "directly",
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "description": "Test rule three",
                     "rule_filter": '(tags:"test2" AND process.program:"test" AND '
                     '(message:"test1*xyz" OR message:"test2?xyz"))',
@@ -175,6 +199,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "description": "Test two rules two",
                     "rule_filter": '"second_match": *',
                     "severity": "suspicious",
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "title": "RULE_TWO",
                 },
                 ({"kafka": "pre_detector_alerts"},),
@@ -187,6 +215,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "description": "Test two rules one",
                     "rule_filter": '"first_match": *',
                     "severity": "critical",
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "title": "RULE_ONE",
                 },
                 ({"kafka": "pre_detector_alerts"},),
@@ -270,6 +302,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "severity": "critical",
                     "mitre": [],
                     "case_condition": "directly",
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "description": "Test rule two",
                     "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
                 },
@@ -292,6 +328,10 @@ class TestPreDetector(BaseProcessorTestCase):
                     "severity": "critical",
                     "mitre": [],
                     "case_condition": "directly",
+                    "target_timezone": "UTC",
+                    "source_timezone": "UTC",
+                    "source_formats": "ISO8601",
+                    "timestamp_field": "@timestamp",
                     "description": "Test rule two",
                     "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
                 },
@@ -331,11 +371,11 @@ class TestPreDetector(BaseProcessorTestCase):
 
     def test_adds_timestamp_to_extra_data_if_provided_by_event(self):
         document = {
-            "@timestamp": "20240812121304",
+            "@timestamp": "2024-08-12T12:13:04+00:00",
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         detection_results = self.object.process(document)
-        assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04+00:00"
+        assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04Z"
 
     @pytest.mark.parametrize(
         "testcase, timestamp",
@@ -351,6 +391,4 @@ class TestPreDetector(BaseProcessorTestCase):
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         detection_results = self.object.process(document)
-        assert (
-            detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04+00:00"
-        ), testcase
+        assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04Z", testcase

@@ -7,5 +7,6 @@ pre_detector:
     - attack.test1
     - attack.test2
   case_condition: directly
+  source_formats: ["UNIX"]
 sigma_fields: true
 description: Test rule four

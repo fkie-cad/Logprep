@@ -30,15 +30,16 @@ Processor Configuration
 .. automodule:: logprep.processor.pre_detector.rule
 """
 
-from datetime import datetime, timezone
 from functools import cached_property
 from uuid import uuid4
 
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
+from logprep.processor.timestamper.processor import Timestamper
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import TimeParser, TimeParserException
 
@@ -93,28 +94,17 @@ class PreDetector(Processor):
     def _ip_alerter(self):
         return IPAlerter(self._config.alert_ip_list_path)
 
-    def is_normalized_timestamp(self, timestamp: str):
-        """this method checks if the timestamp has been normalized"""
-        try:
-            datetime.fromisoformat(timestamp)
-            return True
-        except ValueError:
-            return False
-
-    def detect_format_and_normalize_timestamp(self, timestamp):
-        """method for detecting the used source format of a timestamp and normalizing it"""
-        formats = [
-            "%Y%m%d%H%M%S",
-            "UNIX",
-        ]
-        for form in formats:
-            if not self.is_normalized_timestamp(timestamp):
-                try:
-                    return TimeParser.parse_datetime(timestamp, form, timezone.utc).isoformat()
-                except TimeParserException:
-                    continue
-            else:
-                return timestamp
+    # def detect_format_and_normalize_timestamp(self, timestamp):
+    #     """method for detecting the used source format of a timestamp and normalizing it"""
+    #     # formats = [
+    #     #     "%Y%m%d%H%M%S",
+    #     #     "UNIX",
+    #     # ]
+    #     # for form in formats:
+    #     #     try:
+    #     #         return TimeParser.parse_datetime(timestamp, form, timezone.utc).isoformat()
+    #     #     except TimeParserException:
+    #     #         continue
 
     def _apply_rules(self, event, rule):
         if not (
@@ -127,8 +117,31 @@ class PreDetector(Processor):
             timestamp = get_dotted_field_value(event, "@timestamp")
 
             if timestamp is not None:
-                timestamp = self.detect_format_and_normalize_timestamp(timestamp)
-                detection["@timestamp"] = timestamp
+                # timestamp = self.detect_format_and_normalize_timestamp(timestamp)
+
+                source_timezone, target_timezone, source_formats = (
+                    rule.source_timezone,
+                    rule.target_timezone,
+                    rule.source_formats,
+                )
+                parsed_successfully = False
+                for source_format in source_formats:
+                    try:
+                        parsed_datetime = TimeParser.parse_datetime(
+                            timestamp, source_format, source_timezone
+                        )
+                    except TimeParserException:
+                        continue
+                    result = (
+                        parsed_datetime.astimezone(target_timezone)
+                        .isoformat()
+                        .replace("+00:00", "Z")
+                    )
+                    detection["@timestamp"] = result
+                    parsed_successfully = True
+                    break
+                if not parsed_successfully:
+                    raise ProcessingWarning(str("Could not parse timestamp"), rule, event)
 
     def _get_detection_result(self, event: dict, rule: PreDetectorRule):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")

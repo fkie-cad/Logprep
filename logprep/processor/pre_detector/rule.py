@@ -97,6 +97,7 @@ the IPs from the list is also available in the specified fields.
 
 from functools import cached_property
 from typing import Optional, Union
+from zoneinfo import ZoneInfo
 
 from attrs import asdict, define, field, validators
 
@@ -133,6 +134,25 @@ class PreDetectorRule(Rule):
             validator=validators.optional(validators.instance_of(str)), default=None
         )
         """A link to the rule if applicable."""
+        source_formats: list = field(
+            validator=validators.deep_iterable(
+                member_validator=validators.instance_of(str),
+                iterable_validator=validators.instance_of(list),
+            ),
+            default=["ISO8601"],
+            converter=lambda x: x if isinstance(x, list) else [x],
+        )
+        """list of the source formats that can be given for normalizing the timestamp"""
+        timestamp_field: str = field(validator=validators.instance_of(str), default="@timestamp")
+        """the field which has the given timestamp to be normalized"""
+        source_timezone: ZoneInfo = field(
+            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+        )
+        """ timezone of source_fields. defaults to :code:`UTC`"""
+        target_timezone: ZoneInfo = field(
+            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+        )
+        """ timezone for target_field. defaults to :code:`UTC`"""
 
     def __eq__(self, other: "PreDetectorRule") -> bool:
         return all(
@@ -159,5 +179,17 @@ class PreDetectorRule(Rule):
     @property
     def description(self) -> str:
         return self._config.description
+
+    @property
+    def source_formats(self) -> str:
+        return self._config.source_formats
+
+    @property
+    def target_timezone(self) -> str:
+        return self._config.target_timezone
+
+    @property
+    def source_timezone(self) -> str:
+        return self._config.source_timezone
 
     # pylint: enable=C0111
