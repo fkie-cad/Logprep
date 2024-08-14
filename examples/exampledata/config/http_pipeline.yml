@@ -25,7 +25,7 @@ input:
   httpinput:
     type: http_input
     message_backlog_size: 15000000
-    collect_meta: True
+    collect_meta: true
     metafield_name: "@metadata"
     uvicorn_config:
       host: 0.0.0.0

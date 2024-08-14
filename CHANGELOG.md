@@ -11,8 +11,8 @@
 
 ### Improvements
 
-* switch to `uvloop` as default loop for the logprep used threaded http uvicorn server
-* switch to `httptools` as default http implementation for the logprep used threaded http uvicorn server
+* switch to `uvloop` as default loop for the used threaded http uvicorn server
+* switch to `httptools` as default http implementation for the used threaded http uvicorn server
 
 ### Bugfix
 
