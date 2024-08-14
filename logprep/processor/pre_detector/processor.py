@@ -127,7 +127,7 @@ class PreDetector(Processor):
             self._get_detection_result(event, rule)
         for detection, _ in self.result.data:
             detection["creation_timestamp"] = TimeParser.now().isoformat()
-            timestamp = get_dotted_field_value(event, "@timestamp")
+            timestamp = get_dotted_field_value(event, rule.timestamp_field)
 
             if timestamp is not None:
                 self.normalize_timestamp(event, rule, timestamp)

@@ -392,3 +392,14 @@ class TestPreDetector(BaseProcessorTestCase):
         }
         detection_results = self.object.process(document)
         assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04Z", testcase
+
+    def test_custom_timestamp_field_can_be_used(self):
+        document = {
+            "first_match": "something",
+            "custom_timestamp": "20240811021145",
+            "second_match": "something",
+            "@timestamp": "19960531153655",
+        }
+        detection_results = self.object.process(document)
+        assert detection_results.data[0][0].get("custom_timestamp") == "2024-08-11T02:11:45Z"
+        assert detection_results.data[0][0].get("@timestamp") == "1996-05-31T15:36:55Z"
