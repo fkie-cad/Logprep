@@ -55,8 +55,6 @@ class PipelineManager:
         """Number of failed pipelines"""
 
     def __init__(self, configuration: Configuration):
-        self._context = multiprocessing.get_context("fork")
-        self._input_queue = None
         self.restart_count = 0
         self.restart_timeout_ms = random.randint(100, 1000)
         self.metrics = self.Metrics(labels={"component": "manager"})
@@ -90,8 +88,7 @@ class PipelineManager:
         if not is_http_input and HttpInput.messages is not None:
             return
         message_backlog_size = input_config.get("message_backlog_size", 15000)
-        self._input_queue = self._context.Queue(maxsize=message_backlog_size)
-        HttpInput.messages = self._input_queue
+        HttpInput.messages = multiprocessing.Queue(maxsize=message_backlog_size)
 
     def set_count(self, count: int):
         """Set the pipeline count.
@@ -169,7 +166,9 @@ class PipelineManager:
     def _create_pipeline(self, index) -> multiprocessing.Process:
         pipeline = Pipeline(pipeline_index=index, config=self._configuration)
         logger.info("Created new pipeline")
-        process = self._context.Process(target=pipeline.run, daemon=True, name=f"Pipeline-{index}")
+        process = multiprocessing.Process(
+            target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
+        )
         process.stop = pipeline.stop
         process.start()
         return process
