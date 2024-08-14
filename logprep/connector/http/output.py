@@ -113,6 +113,8 @@ class HttpOutput(Output):
         """Password that is used for the basic auth http request"""
         target_url: str
         """URL of the endpoint that receives the events"""
+        timeout: int = field(validator=validators.instance_of(int), default=4)
+        """Timeout in seconds for the http request"""
 
     @property
     def user(self):
@@ -123,6 +125,11 @@ class HttpOutput(Output):
     def password(self):
         """Return the password that is used for the http request"""
         return self._config.password
+
+    @property
+    def timeout(self):
+        """Return the timeout in seconds for the http request"""
+        return self._config.timeout
 
     @cached_property
     def _headers(self):
@@ -181,7 +188,7 @@ class HttpOutput(Output):
                     headers=self._headers,
                     verify=False,
                     auth=(self.user, self.password),
-                    timeout=4,
+                    timeout=self.timeout,
                     data=request_data,
                 )
                 logger.debug("Servers response code is: %i", response.status_code)
