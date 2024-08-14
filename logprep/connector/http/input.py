@@ -256,11 +256,9 @@ class JSONHttpEndpoint(HttpEndpoint):
         """json endpoint method"""
         self.collect_metrics()
         data = await self.get_data(req)
-        data = data.decode("utf8")
-        metadata = kwargs.get("metadata", {})
         if data:
             event = self._decoder.decode(data)
-            self.messages.put({**event, **metadata}, block=False)
+            self.messages.put(event | kwargs["metadata"], block=False)
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -274,9 +272,8 @@ class JSONLHttpEndpoint(HttpEndpoint):
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
         self.collect_metrics()
-        metadata = kwargs.get("metadata", dict())
         for event in self._decoder.decode_lines(await self.get_data(req)):
-            self.messages.put(event | metadata, block=False)
+            self.messages.put(event | kwargs["metadata"], block=False)
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -290,9 +287,8 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         """plaintext endpoint method"""
         self.collect_metrics()
         data = await self.get_data(req)
-        metadata = kwargs.get("metadata", {})
         event = {"message": data.decode("utf8")}
-        self.messages.put({**event, **metadata}, block=False)
+        self.messages.put(event | kwargs["metadata"], block=False)
 
 
 class HttpInput(Input):
@@ -430,12 +426,6 @@ class HttpInput(Input):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."
             )
-        logger.debug(
-            "HttpInput Connector started on target %s and queue %s with queue_size: %s",
-            self.target,
-            id(self.messages),
-            self.messages._maxsize,  # pylint: disable=protected-access
-        )
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:
             return

@@ -330,6 +330,7 @@ class TestGeneratorCLI:
             replace_timestamp=True,
             tag="loadtest",
             loglevel="INFO",
+            timeout=2,
         )
         mock_controller_instance.run.assert_called()
 
@@ -379,6 +380,7 @@ class TestGeneratorCLI:
             replace_timestamp=False,
             tag="test-tag",
             loglevel="DEBUG",
+            timeout=2,
         )
         mock_controller.run.assert_called()
 
