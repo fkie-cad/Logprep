@@ -161,7 +161,7 @@ class ProcessorExtensions:
 
     @staticmethod
     def _print_diff_test(key, rule, t_idx=None):
-        """Determine right processing for printable
+        """Determine right processing for printable: no iterable, indexed and non index queried iterable
 
         Parameters
         ----------
@@ -194,11 +194,11 @@ class ProcessorExtensions:
             status message
         """        
         item = item.replace("]", "").replace("[", "")
-        if item.startswith("- ") or item.startswith("error") or item.startswith("without tests"):
+        if item.startswith((": - ", "- ")) or item.startswith("error") or item.startswith("without tests"):
             print_fcolor(Fore.RED, item)
-        elif item.startswith("+ ") or item.startswith("with tests"):
+        elif item.startswith((": + ", "+ ")) or item.startswith("with tests"):
             print_fcolor(Fore.GREEN, item)
-        elif item.startswith("? "):
+        elif item.startswith((": ? ", "? ")):
             print_fcolor(Fore.WHITE, "\n" + item)
         elif item.startswith("> "):
             print_fcolor(Fore.MAGENTA, "\n" + item)
@@ -478,12 +478,16 @@ class AutoRuleTester:
                 or nth(self._problems.get("errors"), self._rule_cnt) is not None
             ):
                 self._pd_extra.color_based_print(f"> RULE FILE {rule_test['file']} & RULE TEST {t_idx + 1}/{len(rule_test['tests'])}:")
-                self._pd_extra.print_rules(self._problems, self._rule_cnt)
+                if nth(self._problems.get("warnings"), self._rule_cnt) is not None:
+                    self._pd_extra.color_based_print(f"~ {self._problems.get('warnings')[self._result['~ Warning']]}")
                 
-            if print_diff or nth(self._problems.get("errors"), self._rule_cnt) is not None:
-                self._pd_extra.print_rules({"DIFF": diff})
-                self._success = False
-                self._result["- Failed Tests"] += 1
+                if print_diff or nth(self._problems.get("errors"), self._rule_cnt) is not None:
+                    if nth(self._problems.get("errors"), self._rule_cnt) is not None:
+                        self._pd_extra.color_based_print(f"- {self._problems.get('errors')[self._result['- Failed Tests']]}") 
+                    self._pd_extra._print_diff_test("", diff) #print_rules({"DIFF": diff})
+                    self._success = False
+                    self._result["- Failed Tests"] += 1
+            
             else:
                 self._result["+ Successful Tests"] += 1
 
@@ -686,9 +690,8 @@ class AutoRuleTester:
                 not all(d.get("target_rule_idx") is not None for d in rule_tests)
                 and len(rule_tests) > 1
             ):
-                raise Exception(
-                    f"Not all dictionaries in {file_path} contain the mandatory key target_rule_idx: Can't build correct test set for rules."
-                )
+                self._pd_extra.color_based_print(f"- Not all dictionaries in {file_path} contain the mandatory key target_rule_idx: Can't build correct test set for rules.")
+                sys.exit(1)
         except ValueError as error:
             self._problems["errors"].append(str(error))
             return
