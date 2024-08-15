@@ -5,7 +5,7 @@
 ### Features
 ### Improvements
 
-* predetector now normalizes timestamps so they can be read correctly by opensearch
+* pre_detector now normalizes timestamps with configurable parameters timestamp_field, source_formats, source_timezone and target_timezone
 
 ### Bugfix
 

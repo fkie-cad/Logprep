@@ -88,6 +88,31 @@ the IPs from the list is also available in the specified fields.
     ip_fields:
     - some_ip_field
 
+The pre_detector also has the option to normalize the timestamp. 
+To configure this the following parameters can be set in the rule configuration.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'some_field: "very malicious!"'
+    pre_detector:
+      case_condition: directly
+      id: RULE_ONE_ID
+      mitre:
+      - attack.something1
+      - attack.something2
+      severity: critical
+      title: Rule one
+      timestamp_field: <field which includes the timestamp to be normalized>
+      source_formats: [<the format of the timestamp>]
+      sorce_timezone: <the timezone of the timestamp>
+      target_timezone: <the timezone after normalization>
+    description: Some malicious event.
+
+All of these new parameters are configurable and default to 
+standard values if not explicitly set.
+
 .. autoclass:: logprep.processor.pre_detector.rule.PreDetectorRule.Config
    :members:
    :undoc-members:
@@ -142,17 +167,17 @@ class PreDetectorRule(Rule):
             default=["ISO8601"],
             converter=lambda x: x if isinstance(x, list) else [x],
         )
-        """list of the source formats that can be given for normalizing the timestamp"""
+        """list of the source formats that can be given for normalizing the timestamp defaults to :code:`ISO8601`"""
         timestamp_field: str = field(validator=validators.instance_of(str), default="@timestamp")
-        """the field which has the given timestamp to be normalized"""
+        """the field which has the given timestamp to be normalized defaults to :code:`@timestamp`"""
         source_timezone: ZoneInfo = field(
             validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
         )
-        """ timezone of source_fields. defaults to :code:`UTC`"""
+        """ timezone of source_fields defaults to :code:`UTC`"""
         target_timezone: ZoneInfo = field(
             validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
         )
-        """ timezone for target_field. defaults to :code:`UTC`"""
+        """ timezone for target_field defaults to :code:`UTC`"""
 
     def __eq__(self, other: "PreDetectorRule") -> bool:
         return all(
