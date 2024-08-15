@@ -378,20 +378,24 @@ class TestPreDetector(BaseProcessorTestCase):
         assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04Z"
 
     @pytest.mark.parametrize(
-        "testcase, timestamp",
+        "testcase, timestamp, expected",
         [
-            ("UNIX timestamp", "1723464784"),
-            ("format from format list", "20240812121304"),
-            ("already normalized timestamp", "2024-08-12T12:13:04+00:00"),
+            ("UNIX timestamp", "1723464784", "2024-08-12T12:13:04Z"),
+            (
+                "format from given source_formats list in configuration",
+                "20000117113704",
+                "2000-01-17T11:37:04Z",
+            ),
+            ("already normalized timestamp", "2024-11-11T11:11:11+00:00", "2024-11-11T11:11:11Z"),
         ],
     )
-    def test_timestamp_is_normalized(self, testcase, timestamp):
+    def test_timestamp_is_normalized(self, testcase, timestamp, expected):
         document = {
             "@timestamp": timestamp,
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         detection_results = self.object.process(document)
-        assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04Z", testcase
+        assert detection_results.data[0][0].get("@timestamp") == expected, testcase
 
     def test_custom_timestamp_field_can_be_used(self):
         document = {
