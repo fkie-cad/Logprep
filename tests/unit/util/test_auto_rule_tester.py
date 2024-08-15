@@ -1,7 +1,6 @@
 import logging
 import re
 from unittest import mock
-from unittest.mock import patch
 import pytest
 
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester

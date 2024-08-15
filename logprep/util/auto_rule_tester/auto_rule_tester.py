@@ -459,8 +459,7 @@ class AutoRuleTester:
             try:
                 extra_output = processor.process(test["raw"])
                 if not extra_output and processor.name == "pre_detector": 
-                    self._pd_extra.color_based_print(f"-- Couldn't process, maybe invalid filter.\
-                                                     Please FIX before continueing! --")
+                    self._pd_extra.color_based_print(f"- Can't process RULE FILE {rule_test['file']}. No extra output generated")
                     sys.exit(1)
             except BaseException as error:
                 self._success = False
@@ -479,7 +478,7 @@ class AutoRuleTester:
                 or nth(self._problems.get("errors"), self._rule_cnt) is not None
             ):
                 self._pd_extra.color_based_print(f"> RULE FILE {rule_test['file']} & RULE TEST {t_idx + 1}/{len(rule_test['tests'])}:")
-                self._pd_extra.print_rules(self._problems, t_idx)
+                self._pd_extra.print_rules(self._problems, self._rule_cnt)
                 
             if print_diff or nth(self._problems.get("errors"), self._rule_cnt) is not None:
                 self._pd_extra.print_rules({"DIFF": diff})
