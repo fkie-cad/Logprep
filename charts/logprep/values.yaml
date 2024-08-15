@@ -26,16 +26,9 @@ securityContext:
   runAsUser: 1000
   readOnlyRootFilesystem: true
 
-# Optional secrets that will be mounted into the pod
-# Listed secrets are handled specially by the logprep deployment.
-# Additional secrets will be mounted as usual.
-# The key is the folder under /home/logprep and the value.name
-# (which is the name of the external secret) will be the name of the mounted file.
+# the image pull secret to use for the deployment
+# to mount extra secrets into the pod, use the extraVolumes and extraMounts fields
 # secrets:
-#   certificates:
-#     name: ca-cert # Name of the secret containing the ca certificate (or chain) in one data block
-#   credentials:
-#     name: logprep-credentials # Name of the secret containing the logprep credentials file
 #   imagePullSecret:
 #     name: logprep-image-pull-secret # Name of the secret containing the image pull secret
 secrets: {}

@@ -3,8 +3,10 @@
 ## next release
 ### Breaking
 ### Features
-### Improvenets
+### Improvements
 ### Bugfix
+
+* remove redundant chart features for mounting secrets
 
 ## 13.0.1
 
