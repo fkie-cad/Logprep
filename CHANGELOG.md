@@ -5,7 +5,7 @@
 ### Features
 ### Improvements
 
-* pre_detector now normalizes timestamps with configurable parameters timestamp_field, source_formats, source_timezone and target_timezone
+* `pre_detector` now normalizes timestamps with configurable parameters timestamp_field, source_formats, source_timezone and target_timezone
 
 ### Bugfix
 

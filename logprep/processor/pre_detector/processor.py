@@ -39,7 +39,6 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.processor.timestamper.processor import Timestamper
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import TimeParser, TimeParserException
 
@@ -96,22 +95,19 @@ class PreDetector(Processor):
 
     def normalize_timestamp(self, event, rule, timestamp):
         """method for normalizing the timestamp"""
-        source_timezone, target_timezone, source_formats = (
-            rule.source_timezone,
-            rule.target_timezone,
-            rule.source_formats,
-        )
         parsed_successfully = False
         for detection, _ in self.result.data:
-            for source_format in source_formats:
+            for source_format in rule.source_formats:
                 try:
                     parsed_datetime = TimeParser.parse_datetime(
-                        timestamp, source_format, source_timezone
+                        timestamp, source_format, rule.source_timezone
                     )
                 except TimeParserException:
                     continue
                 result = (
-                    parsed_datetime.astimezone(target_timezone).isoformat().replace("+00:00", "Z")
+                    parsed_datetime.astimezone(rule.target_timezone)
+                    .isoformat()
+                    .replace("+00:00", "Z")
                 )
                 detection[rule.timestamp_field] = result
                 parsed_successfully = True
