@@ -99,12 +99,19 @@ class PreDetector(Processor):
             parsed_datetime = TimeParser.parse_datetime(
                 timestamp, rule.source_format, rule.source_timezone
             )
-        except TimeParserException:
-            self.result.warnings.append(
-                ProcessingWarning(str("Could not parse timestamp"), rule, self.result.event)
+            return (
+                parsed_datetime.astimezone(rule.target_timezone).isoformat().replace("+00:00", "Z")
             )
-
-        return parsed_datetime.astimezone(rule.target_timezone).isoformat().replace("+00:00", "Z")
+        except TimeParserException as error:
+            error_message = "Could not parse timestamp"
+            raise (
+                ProcessingWarning(
+                    error_message,
+                    rule,
+                    self.result.event,
+                    tags=["_pre_detector_timeparsing_failure"],
+                )
+            ) from error
 
     def _apply_rules(self, event: dict, rule: PreDetectorRule):
         if not (

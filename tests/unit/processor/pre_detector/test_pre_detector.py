@@ -439,3 +439,29 @@ class TestPreDetector(BaseProcessorTestCase):
         assert (
             detection_results.data[0][0].get("@timestamp") is None
         ), "should not be in detection data"
+
+    def test_appends_processing_warning_if_timestamp_could_not_be_parsed(self):
+        rule = {
+            "filter": "*",
+            "pre_detector": {
+                "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+            },
+            "description": "Test rule one",
+        }
+        document = {
+            "@timestamp": "this is not a timestamp",
+        }
+        self._load_specific_rule(rule)
+        detection_results = self.object.process(document)
+        assert detection_results.warnings
+        assert len(detection_results.warnings) == 1
+        assert "Could not parse timestamp" in str(detection_results.warnings[0])
+        assert document, "should not be cleared"
+        assert document.get("@timestamp") == "this is not a timestamp", "should not be modified"
+        assert "tags" in document
+        assert "_pre_detector_failure" in document["tags"]
+        assert "_pre_detector_timeparsing_failure" in document["tags"]

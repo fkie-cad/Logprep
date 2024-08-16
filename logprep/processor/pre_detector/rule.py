@@ -138,6 +138,7 @@ class PreDetectorRule(Rule):
         "source_timezone",
         "target_timezone",
         "timestamp_field",
+        "failure_tags",
     }
 
     @define(kw_only=True)
@@ -182,6 +183,9 @@ class PreDetectorRule(Rule):
             validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
         )
         """ timezone for target_field defaults to :code:`UTC`"""
+        failure_tags: list = field(
+            validator=validators.instance_of(list), default=["pre_detector_failure"]
+        )
 
     def __eq__(self, other: "PreDetectorRule") -> bool:
         return all(
