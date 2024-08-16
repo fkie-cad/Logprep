@@ -23,6 +23,22 @@ from logprep.util.logging import LogprepMPQueueListener, logqueue
 logger = logging.getLogger("Manager")
 
 
+class ThrottlingQueue(multiprocessing.queues.Queue):
+    """A queue that throttles the number of items that can be put into it."""
+
+    wait_time_max = 10000000000000000000000000
+
+    @property
+    def wait_time(self) -> float:
+        return float(self.qsize() * self._maxsize) / self.wait_time_max
+
+    def put(self, obj, block=True, timeout=None):
+        if self.qsize() >= self._maxsize / 2:
+            # logger.warning("Too many requests, waiting for %s seconds", self.wait_time)
+            time.sleep(self.wait_time)
+        super().put(obj, block=block, timeout=timeout)
+
+
 class PipelineManager:
     """Manage pipelines via multi-processing."""
 
@@ -88,7 +104,9 @@ class PipelineManager:
         if not is_http_input and HttpInput.messages is not None:
             return
         message_backlog_size = input_config.get("message_backlog_size", 15000)
-        HttpInput.messages = multiprocessing.Queue(maxsize=message_backlog_size)
+        HttpInput.messages = ThrottlingQueue(
+            maxsize=message_backlog_size, ctx=multiprocessing.get_context()
+        )
 
     def set_count(self, count: int):
         """Set the pipeline count.

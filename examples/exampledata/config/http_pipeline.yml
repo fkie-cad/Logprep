@@ -21,17 +21,21 @@ metrics:
     server_header: false
     date_header: false
     workers: 1
+    ws: none
+    interface: asgi3
+    backlog: 16384
+    timeout_keep_alive: 65
 input:
   httpinput:
     type: http_input
-    message_backlog_size: 15000000
+    message_backlog_size: 150000
     collect_meta: true
     metafield_name: "@metadata"
     uvicorn_config:
       host: 0.0.0.0
       port: 9000
       workers: 2
-      access_log: false
+      access_log: true
       server_header: false
       date_header: false
       ws: none
