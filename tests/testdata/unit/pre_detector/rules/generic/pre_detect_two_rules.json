@@ -9,7 +9,8 @@
         "attack.test1",
         "attack.test2"
       ],
-      "case_condition": "directly"
+      "case_condition": "directly",
+      "timestamp_field": "custom_timestamp"
     },
     "description": "Test two rules one"
   },

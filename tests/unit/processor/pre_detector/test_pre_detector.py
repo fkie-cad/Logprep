@@ -3,6 +3,8 @@
 import re
 from copy import deepcopy
 
+import pytest
+
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -328,9 +330,138 @@ class TestPreDetector(BaseProcessorTestCase):
         assert sorted_detection_results == sorted_expected_detection_results
 
     def test_adds_timestamp_to_extra_data_if_provided_by_event(self):
+        rule = {
+            "filter": 'winlog.event_id: 123 AND winlog.event_data.ServiceName: "VERY BAD"',
+            "pre_detector": {
+                "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+            },
+            "description": "Test rule one",
+        }
         document = {
-            "@timestamp": "custom timestamp",
+            "@timestamp": "2024-08-12T12:13:04+00:00",
+            "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
+        }
+        self._load_specific_rule(rule)
+        detection_results = self.object.process(document)
+        assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04Z"
+
+    @pytest.mark.parametrize(
+        "testcase, rule, timestamp, expected",
+        [
+            (
+                "UNIX timestamp",
+                {
+                    "filter": "*",
+                    "pre_detector": {
+                        "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["attack.test1", "attack.test2"],
+                        "case_condition": "directly",
+                        "source_format": "UNIX",
+                    },
+                    "description": "Test rule one",
+                },
+                "1723464784",
+                "2024-08-12T12:13:04Z",
+            ),
+            (
+                "format from given source_formats list in configuration",
+                {
+                    "filter": "*",
+                    "pre_detector": {
+                        "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["attack.test1", "attack.test2"],
+                        "case_condition": "directly",
+                        "source_format": "%Y%m%d%H%M%S",
+                    },
+                    "description": "Test rule one",
+                },
+                "20000117113704",
+                "2000-01-17T11:37:04Z",
+            ),
+            (
+                "already normalized timestamp",
+                {
+                    "filter": "*",
+                    "pre_detector": {
+                        "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["attack.test1", "attack.test2"],
+                        "case_condition": "directly",
+                    },
+                    "description": "Test rule one",
+                },
+                "2024-11-11T11:11:11+00:00",
+                "2024-11-11T11:11:11Z",
+            ),
+        ],
+    )
+    def test_timestamp_is_normalized(self, testcase, rule, timestamp, expected):
+        self._load_specific_rule(rule)
+        document = {
+            "@timestamp": timestamp,
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         detection_results = self.object.process(document)
-        assert detection_results.data[0][0].get("@timestamp") == "custom timestamp"
+        assert detection_results.data[0][0].get("@timestamp") == expected, testcase
+
+    def test_custom_timestamp_field_can_be_used(self):
+        rule = {
+            "filter": "*",
+            "pre_detector": {
+                "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+                "timestamp_field": "custom_timestamp",
+                "source_format": "%Y%m%d%H%M%S",
+            },
+            "description": "Test rule one",
+        }
+        document = {
+            "first_match": "something",
+            "custom_timestamp": "20240811021145",
+            "second_match": "something",
+            "@timestamp": "19960531153655",
+        }
+        self._load_specific_rule(rule)
+        detection_results = self.object.process(document)
+        assert detection_results.data[0][0].get("custom_timestamp") == "2024-08-11T02:11:45Z"
+        assert (
+            detection_results.data[0][0].get("@timestamp") is None
+        ), "should not be in detection data"
+
+    def test_appends_processing_warning_if_timestamp_could_not_be_parsed(self):
+        rule = {
+            "filter": "*",
+            "pre_detector": {
+                "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+            },
+            "description": "Test rule one",
+        }
+        document = {
+            "@timestamp": "this is not a timestamp",
+        }
+        self._load_specific_rule(rule)
+        detection_results = self.object.process(document)
+        assert detection_results.warnings
+        assert len(detection_results.warnings) == 1
+        assert "Could not parse timestamp" in str(detection_results.warnings[0])
+        assert document, "should not be cleared"
+        assert document.get("@timestamp") == "this is not a timestamp", "should not be modified"
+        assert "tags" in document
+        assert "_pre_detector_failure" in document["tags"]
+        assert "_pre_detector_timeparsing_failure" in document["tags"]

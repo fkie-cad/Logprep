@@ -324,6 +324,9 @@ class Processor(Component):
         else:
             add_and_overwrite(event, "tags", sorted(list({*tags, *failure_tags})))
         if isinstance(error, ProcessingWarning):
+            if error.tags:
+                tags = tags if tags else []
+                add_and_overwrite(event, "tags", sorted(list({*error.tags, *tags, *failure_tags})))
             self.result.warnings.append(error)
         else:
             self.result.warnings.append(ProcessingWarning(str(error), rule, event))
