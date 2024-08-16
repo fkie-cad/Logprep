@@ -136,6 +136,10 @@ class PreDetector(Processor):
 
         detection_result = self._generate_detection_result(pre_detection_id, event, rule)
         self.result.data.append((detection_result, self._config.outputs))
+        detection_result.pop("source_timezone", "source_formats")
+        detection_result.pop("source_formats")
+        detection_result.pop("target_timezone")
+        detection_result.pop("timestamp_field")
 
     @staticmethod
     def _generate_detection_result(pre_detection_id: str, event: dict, rule: PreDetectorRule):
