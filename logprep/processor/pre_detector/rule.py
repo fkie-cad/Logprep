@@ -105,7 +105,7 @@ To configure this the following parameters can be set in the rule configuration.
       severity: critical
       title: Rule one
       timestamp_field: <field which includes the timestamp to be normalized>
-      source_formats: [<the format of the timestamp>]
+      source_format: <the format of the timestamp in strftime format or ISO8601 or UNIX>
       sorce_timezone: <the timezone of the timestamp>
       target_timezone: <the timezone after normalization>
     description: Some malicious event.
@@ -132,6 +132,14 @@ from logprep.processor.base.rule import Rule
 class PreDetectorRule(Rule):
     """Check if documents match a filter."""
 
+    special_field_types = {
+        *Rule.special_field_types,
+        "source_format",
+        "source_timezone",
+        "target_timezone",
+        "timestamp_field",
+    }
+
     @define(kw_only=True)
     class Config(Rule.Config):  # pylint: disable=too-many-instance-attributes
         """RuleConfig for Predetector"""
@@ -148,7 +156,7 @@ class PreDetectorRule(Rule):
         """The type of the triggered rule, mostly `directly`."""
         ip_fields: list = field(validator=validators.instance_of(list), factory=list)
         """Specify a list of fields that can be compared to a list of IPs,
-        which can be configured in the pipeline for the predetector.
+        which can be configured in the pipeline for the pre_detector.
         If this field was specified, then the rule will *only* trigger in case one of
         the IPs from the list is also available in the specified fields."""
         sigma_fields: Union[list, bool] = field(
@@ -159,15 +167,11 @@ class PreDetectorRule(Rule):
             validator=validators.optional(validators.instance_of(str)), default=None
         )
         """A link to the rule if applicable."""
-        source_formats: list = field(
-            validator=validators.deep_iterable(
-                member_validator=validators.instance_of(str),
-                iterable_validator=validators.instance_of(list),
-            ),
-            default=["ISO8601"],
-            converter=lambda x: x if isinstance(x, list) else [x],
+        source_format: list = field(
+            validator=validators.instance_of(str),
+            default="ISO8601",
         )
-        """list of the source formats that can be given for normalizing the timestamp defaults to :code:`ISO8601`"""
+        """the source format that can be given for normalizing the timestamp defaults to :code:`ISO8601`"""
         timestamp_field: str = field(validator=validators.instance_of(str), default="@timestamp")
         """the field which has the given timestamp to be normalized defaults to :code:`@timestamp`"""
         source_timezone: ZoneInfo = field(
@@ -206,8 +210,8 @@ class PreDetectorRule(Rule):
         return self._config.description
 
     @property
-    def source_formats(self) -> str:
-        return self._config.source_formats
+    def source_format(self) -> str:
+        return self._config.source_format
 
     @property
     def target_timezone(self) -> str:

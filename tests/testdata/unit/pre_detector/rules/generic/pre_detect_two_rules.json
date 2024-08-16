@@ -10,10 +10,7 @@
         "attack.test2"
       ],
       "case_condition": "directly",
-      "timestamp_field": "custom_timestamp",
-      "source_formats": [
-        "%Y%m%d%H%M%S"
-      ]
+      "timestamp_field": "custom_timestamp"
     },
     "description": "Test two rules one"
   },
@@ -26,9 +23,6 @@
       "mitre": [
         "attack.test2",
         "attack.test4"
-      ],
-      "source_formats": [
-        "%Y%m%d%H%M%S"
       ],
       "case_condition": "directly"
     },

@@ -76,7 +76,7 @@ class PreDetector(Processor):
         """
         Path to a YML file or a list of paths to YML files with dictionaries of IPs.
         For string format see :ref:`getters`.
-        It is used by the Predetector to throw alerts if one of the IPs is found
+        It is used by the PreDetector to throw alerts if one of the IPs is found
         in fields that were defined in a rule.
 
         It uses IPs or networks in the CIDR format as keys and can contain expiration
@@ -93,29 +93,20 @@ class PreDetector(Processor):
     def _ip_alerter(self):
         return IPAlerter(self._config.alert_ip_list_path)
 
-    def normalize_timestamp(self, event, rule, timestamp):
+    def normalize_timestamp(self, rule: PreDetectorRule, timestamp: str) -> str:
         """method for normalizing the timestamp"""
-        parsed_successfully = False
-        for detection, _ in self.result.data:
-            for source_format in rule.source_formats:
-                try:
-                    parsed_datetime = TimeParser.parse_datetime(
-                        timestamp, source_format, rule.source_timezone
-                    )
-                except TimeParserException:
-                    continue
-                result = (
-                    parsed_datetime.astimezone(rule.target_timezone)
-                    .isoformat()
-                    .replace("+00:00", "Z")
-                )
-                detection[rule.timestamp_field] = result
-                parsed_successfully = True
-                break
-            if not parsed_successfully:
-                raise ProcessingWarning(str("Could not parse timestamp"), rule, event)
+        try:
+            parsed_datetime = TimeParser.parse_datetime(
+                timestamp, rule.source_format, rule.source_timezone
+            )
+        except TimeParserException:
+            self.result.warnings.append(
+                ProcessingWarning(str("Could not parse timestamp"), rule, self.result.event)
+            )
 
-    def _apply_rules(self, event, rule):
+        return parsed_datetime.astimezone(rule.target_timezone).isoformat().replace("+00:00", "Z")
+
+    def _apply_rules(self, event: dict, rule: PreDetectorRule):
         if not (
             self._ip_alerter.has_ip_fields(rule)
             and not self._ip_alerter.is_in_alerts_list(rule, event)
@@ -124,9 +115,8 @@ class PreDetector(Processor):
         for detection, _ in self.result.data:
             detection["creation_timestamp"] = TimeParser.now().isoformat()
             timestamp = get_dotted_field_value(event, rule.timestamp_field)
-
             if timestamp is not None:
-                self.normalize_timestamp(event, rule, timestamp)
+                detection[rule.timestamp_field] = self.normalize_timestamp(rule, timestamp)
 
     def _get_detection_result(self, event: dict, rule: PreDetectorRule):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
@@ -136,13 +126,11 @@ class PreDetector(Processor):
 
         detection_result = self._generate_detection_result(pre_detection_id, event, rule)
         self.result.data.append((detection_result, self._config.outputs))
-        detection_result.pop("source_timezone")
-        detection_result.pop("source_formats")
-        detection_result.pop("target_timezone")
-        detection_result.pop("timestamp_field")
 
     @staticmethod
-    def _generate_detection_result(pre_detection_id: str, event: dict, rule: PreDetectorRule):
+    def _generate_detection_result(
+        pre_detection_id: str, event: dict, rule: PreDetectorRule
+    ) -> dict:
         detection_result = rule.detection_data
         detection_result["rule_filter"] = rule.filter_str
         detection_result["description"] = rule.description

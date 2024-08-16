@@ -9,12 +9,7 @@
         "attack.test1",
         "attack.test2"
       ],
-      "case_condition": "directly",
-      "source_formats": [
-        "ISO8601",
-        "%Y%m%d%H%M%S",
-        "UNIX"
-      ]
+      "case_condition": "directly"
     },
     "description": "Test rule one"
   }
