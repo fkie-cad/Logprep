@@ -1,5 +1,5 @@
 version: 2
-process_count: 2
+process_count: 4
 config_refresh_interval: 300
 profile_pipelines: false
 logger:
@@ -34,7 +34,7 @@ input:
     uvicorn_config:
       host: 0.0.0.0
       port: 9000
-      workers: 2
+      workers: 1
       access_log: true
       server_header: false
       date_header: false

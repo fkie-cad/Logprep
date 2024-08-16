@@ -26,16 +26,16 @@ logger = logging.getLogger("Manager")
 class ThrottlingQueue(multiprocessing.queues.Queue):
     """A queue that throttles the number of items that can be put into it."""
 
-    wait_time_max = 10000000000000000000000000
+    wait_time_max = 0.00000001
 
     @property
     def wait_time(self) -> float:
-        return float(self.qsize() * self._maxsize) / self.wait_time_max
+        return float(self.qsize() * self._maxsize) * self.wait_time_max
 
-    def put(self, obj, block=True, timeout=None):
-        if self.qsize() >= self._maxsize / 2:
+    def put(self, obj, block=True, timeout=None, batch_size=1):
+        if self.qsize() >= self._maxsize * 0.8:
             # logger.warning("Too many requests, waiting for %s seconds", self.wait_time)
-            time.sleep(self.wait_time)
+            time.sleep(self.wait_time / batch_size)
         super().put(obj, block=block, timeout=timeout)
 
 
