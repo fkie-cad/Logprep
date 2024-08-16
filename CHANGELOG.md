@@ -3,10 +3,12 @@
 ## next release
 ### Breaking
 ### Features
+
+* `pre_detector` now normalizes timestamps with configurable parameters timestamp_field, source_format, source_timezone and target_timezone
+* `pre_detector` now writes tags in failure cases
+* `ProcessingWarnings` now can write `tags` to the event
+
 ### Improvements
-
-* `pre_detector` now normalizes timestamps with configurable parameters timestamp_field, source_formats, source_timezone and target_timezone
-
 ### Bugfix
 
 * remove redundant chart features for mounting secrets

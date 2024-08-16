@@ -186,6 +186,7 @@ class PreDetectorRule(Rule):
         failure_tags: list = field(
             validator=validators.instance_of(list), default=["pre_detector_failure"]
         )
+        """ tags to be added if processing of the rule fails"""
 
     def __eq__(self, other: "PreDetectorRule") -> bool:
         return all(
