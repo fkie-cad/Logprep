@@ -113,7 +113,7 @@ class HttpOutput(Output):
         """Password that is used for the basic auth http request"""
         target_url: str
         """URL of the endpoint that receives the events"""
-        timeout: int = field(validator=validators.instance_of(int), default=4)
+        timeout: int = field(validator=validators.instance_of(int), default=2)
         """Timeout in seconds for the http request"""
 
     @property

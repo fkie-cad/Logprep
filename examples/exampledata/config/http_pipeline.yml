@@ -34,8 +34,6 @@ input:
       access_log: false
       server_header: false
       date_header: false
-      loop: uvloop
-      http: httptools
       ws: none
       interface: asgi3
       backlog: 16384

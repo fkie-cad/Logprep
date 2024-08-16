@@ -60,6 +60,8 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         internal_uvicorn_config = {
             "lifespan": "off",
             "timeout_graceful_shutdown": 10,
+            "loop": "uvloop",
+            "http": "httptools",
         }
         uvicorn_config = {**internal_uvicorn_config, **uvicorn_config}
         self._logger_name = logger_name

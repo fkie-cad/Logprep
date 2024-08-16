@@ -7,8 +7,13 @@
 * `pre_detector` now normalizes timestamps with configurable parameters timestamp_field, source_format, source_timezone and target_timezone
 * `pre_detector` now writes tags in failure cases
 * `ProcessingWarnings` now can write `tags` to the event
+* add `timeout` parameter to logprep http generator to set the timeout in seconds for requests
 
 ### Improvements
+
+* switch to `uvloop` as default loop for the logprep used threaded http uvicorn server
+* switch to `httptools` as default http implementation for the logprep used threaded http uvicorn server
+
 ### Bugfix
 
 * remove redundant chart features for mounting secrets

@@ -266,6 +266,12 @@ def generate_kafka(config, file):
     required=False,
     default="INFO",
 )
+@click.option(
+    "--timeout",
+    help="Timeout in seconds for the http requests",
+    required=False,
+    default=2,
+)
 def generate_http(**kwargs):
     """
     Generates events based on templated sample files stored inside a dataset directory.
