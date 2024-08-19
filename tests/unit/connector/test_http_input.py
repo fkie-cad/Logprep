@@ -17,6 +17,7 @@ from requests.auth import HTTPBasicAuth
 from logprep.abc.input import FatalInputError
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
+from logprep.framework.pipeline_manager import ThrottlingQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from tests.unit.connector.base import BaseInputTestCase
 
@@ -48,7 +49,9 @@ input:
 class TestHttpConnector(BaseInputTestCase):
 
     def setup_method(self):
-        HttpInput.messages = multiprocessing.Queue(maxsize=self.CONFIG.get("message_backlog_size"))
+        HttpInput.messages = ThrottlingQueue(
+            ctx=multiprocessing.get_context(), maxsize=self.CONFIG.get("message_backlog_size")
+        )
         super().setup_method()
         self.object.pipeline_index = 1
         self.object.setup()
