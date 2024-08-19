@@ -26,16 +26,26 @@ logger = logging.getLogger("Manager")
 class ThrottlingQueue(multiprocessing.queues.Queue):
     """A queue that throttles the number of items that can be put into it."""
 
-    wait_time_max = 0.00000001
+    wait_time = 0.0000000000000001
 
     @property
-    def wait_time(self) -> float:
-        return float(self.qsize() * self._maxsize) * self.wait_time_max
+    def consumed_percent(self):
+        """Return the percentage of items consumed."""
+        return self.qsize() / self.capacity
+
+    def __init__(self, ctx, maxsize):
+        super().__init__(ctx=ctx, maxsize=maxsize)
+        self.capacity = maxsize
+        self.call_time = None
+
+    def throttle(self, batch_size=1):
+        """Throttle put by sleeping."""
+        time.sleep((self.wait_time**self.consumed_percent) / batch_size)
 
     def put(self, obj, block=True, timeout=None, batch_size=1):
-        if self.qsize() >= self._maxsize * 0.8:
-            # logger.warning("Too many requests, waiting for %s seconds", self.wait_time)
-            time.sleep(self.wait_time / batch_size)
+        """Put an obj into the queue."""
+        if self.consumed_percent >= 0.9:
+            self.throttle(batch_size)
         super().put(obj, block=block, timeout=timeout)
 
 
@@ -104,9 +114,7 @@ class PipelineManager:
         if not is_http_input and HttpInput.messages is not None:
             return
         message_backlog_size = input_config.get("message_backlog_size", 15000)
-        HttpInput.messages = ThrottlingQueue(
-            maxsize=message_backlog_size, ctx=multiprocessing.get_context()
-        )
+        HttpInput.messages = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
 
     def set_count(self, count: int):
         """Set the pipeline count.

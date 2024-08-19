@@ -8,6 +8,7 @@
 * `pre_detector` now writes tags in failure cases
 * `ProcessingWarnings` now can write `tags` to the event
 * add `timeout` parameter to logprep http generator to set the timeout in seconds for requests
+* add primitive rate limiting to `http_input` connector
 
 ### Improvements
 

@@ -1,5 +1,5 @@
 version: 2
-process_count: 4
+process_count: 8
 config_refresh_interval: 300
 profile_pipelines: false
 logger:
@@ -28,7 +28,7 @@ metrics:
 input:
   httpinput:
     type: http_input
-    message_backlog_size: 150000
+    message_backlog_size: 1500000
     collect_meta: true
     metafield_name: "@metadata"
     uvicorn_config:
@@ -58,7 +58,7 @@ output:
       bootstrap.servers: 127.0.0.1:9092
       compression.type: none
       statistics.interval.ms: "60000"
-      queue.buffering.max.messages: "1000000"
+      queue.buffering.max.messages: "100000000"
       queue.buffering.max.kbytes: "1048576"
       queue.buffering.max.ms: "5000"
       batch.size: "1000000"

@@ -274,7 +274,7 @@ class JSONLHttpEndpoint(HttpEndpoint):
         self.collect_metrics()
         events = self._decoder.decode_lines(await self.get_data(req))
         for event in events:
-            self.messages.put(event | kwargs["metadata"], block=True, batch_size=len(events))
+            self.messages.put(event | kwargs["metadata"], block=False, batch_size=len(events))
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):

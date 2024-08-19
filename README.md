@@ -232,9 +232,8 @@ Details about the rule language and how to write rules for the processors can be
 
 ## Getting Started
 
-For installation instructions see: https://logprep.readthedocs.io/en/latest/getting_started.html#installation
-For execution instructions see: https://logprep.readthedocs.io/en/latest/getting_started.html#run-logprep
-
+For installation instructions see: https://logprep.readthedocs.io/en/latest/installation.html
+For execution instructions see: https://logprep.readthedocs.io/en/latest/user_manual/execution.html
 
 ### Reload the Configuration
 

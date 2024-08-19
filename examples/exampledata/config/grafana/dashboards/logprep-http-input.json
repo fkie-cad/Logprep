@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 8,
+  "id": 7,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -552,11 +552,12 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avg(logprep_message_backlog_size{component=\"input\"})",
+          "expr": "logprep_message_backlog_size{component=\"input\"}",
+          "format": "table",
           "hide": false,
-          "instant": false,
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A"
         }
       ],
@@ -1795,240 +1796,12 @@
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "promz2394"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 24,
-        "x": 0,
-        "y": 31
-      },
-      "id": 153,
-      "links": [
-        {
-          "targetBlank": true,
-          "title": "Show details",
-          "url": "/d/jwPKIsniz"
-        }
-      ],
-      "options": {
-        "legend": {
-          "calcs": [
-            "max",
-            "min",
-            "mean",
-            "last"
-          ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "sortBy": "Max",
-          "sortDesc": true,
-          "width": 450
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "9.3.1",
-      "targets": [
-        {
-          "datasource": {
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(kafka_topic_partition_current_offset{topic=~\"public.bw.monitoring.event.sap-sal\"}[1m])) by (topic)",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "{{topic}}",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Kafka: Messages in per second",
-      "type": "timeseries"
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "promz2394"
-      },
-      "description": "Das Kafka Consumer Lag (Verbraucherverzögerung) gibt die Verzögerung zwischen Kafka-Produzenten und -Konsumenten an. Wenn die Geschwindigkeit der Datenproduktion die Geschwindigkeit, mit der sie verbraucht werden, bei weitem übersteigt, kommt es bei Consumer Groups (Verbrauchergruppen) zu Verzögerungen.",
-      "fieldConfig": {
-        "defaults": {
-          "links": [
-            {
-              "targetBlank": true,
-              "title": "Show details",
-              "url": "/d/jwPKIsniz"
-            }
-          ]
-        },
-        "overrides": []
-      },
-      "fill": 0,
-      "fillGradient": 0,
-      "gridPos": {
-        "h": 5,
-        "w": 24,
-        "x": 0,
-        "y": 36
-      },
-      "hiddenSeries": false,
-      "id": 155,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "max": true,
-        "min": false,
-        "rightSide": true,
-        "show": true,
-        "sideWidth": 480,
-        "sort": "current",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [
-        {
-          "targetBlank": true,
-          "title": "Show Details",
-          "url": "/d/jwPKIsniz"
-        }
-      ],
-      "nullPointMode": "connected",
-      "options": {
-        "alertThreshold": true
-      },
-      "paceLength": 10,
-      "percentage": false,
-      "pluginVersion": "10.4.2",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "datasource": {
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "sum(kafka_consumergroup_lag{consumergroup=~\"sap-sal\",topic=~\"public.bw.monitoring.event.sap-sal\", namespace=~\"core\"}) by (consumergroup, topic) ",
-          "format": "time_series",
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 1,
-          "legendFormat": "{{consumergroup}} (topic: {{topic}})",
-          "refId": "A"
-        }
-      ],
-      "thresholds": [],
-      "timeRegions": [],
-      "title": "Lag by  Consumer Group",
-      "tooltip": {
-        "shared": true,
-        "sort": 2,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "mode": "time",
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "logBase": 1,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false
-      }
-    },
-    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 41
+        "y": 31
       },
       "id": 74,
       "panels": [],
@@ -2094,7 +1867,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2110,7 +1884,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 32
       },
       "id": 72,
       "options": {
@@ -2206,7 +1980,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2222,7 +1997,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 47
+        "y": 37
       },
       "id": 73,
       "options": {
@@ -2276,6 +2051,6 @@
   "timezone": "",
   "title": "HTTP Input v1.0.0",
   "uid": "deb1220a-968c-44b9-b36a-c22f1606b950",
-  "version": 4,
+  "version": 1,
   "weekStart": ""
 }
