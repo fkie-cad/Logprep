@@ -3,6 +3,12 @@
 ## next release
 ### Breaking
 ### Features
+### Improvements
+### Bugfix
+
+## 13.1.0
+### Breaking
+### Features
 
 * `pre_detector` now normalizes timestamps with configurable parameters timestamp_field, source_format, source_timezone and target_timezone
 * `pre_detector` now writes tags in failure cases
