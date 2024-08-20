@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
-import logging
 import os
 from unittest import mock
 
@@ -15,7 +14,7 @@ class TestController:
     def setup_method(self):
         self.target_url = "http://testendpoint"
         self.batch_size = 10
-        self.contoller = Controller(
+        self.controller = Controller(
             input_dir="",
             batch_size=self.batch_size,
             replace_timestamp=True,
@@ -54,13 +53,13 @@ class TestController:
             class_name="class_two",
             config=class_two_config,
         )
-        self.contoller.input.input_root_path = dataset_path
-        self.contoller.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.contoller.input._temp_dir, exist_ok=True)
+        self.controller.input.input_root_path = dataset_path
+        self.controller.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
+        os.makedirs(self.controller.input._temp_dir, exist_ok=True)
         expected_status_code = 200
         responses.add(responses.POST, f"{self.target_url}/target-one", status=expected_status_code)
         responses.add(responses.POST, f"{self.target_url}/target-two", status=expected_status_code)
-        self.contoller.run()
+        self.controller.run()
 
         for call_id, call in enumerate(responses.calls):
             if call_id < (class_one_number_events / self.batch_size):
@@ -77,7 +76,7 @@ class TestController:
 
     @mock.patch("logprep.generator.http.controller.ThreadPoolExecutor")
     def test_run_with_multiple_threads(self, mock_executor_class, tmp_path):
-        self.contoller = Controller(
+        self.controller = Controller(
             input_dir="",
             batch_size=self.batch_size,
             replace_timestamp=True,
@@ -101,9 +100,9 @@ class TestController:
             class_name="class_one",
             config=class_one_config,
         )
-        self.contoller.input.input_root_path = dataset_path
+        self.controller.input.input_root_path = dataset_path
         mock_executor_instance = mock.MagicMock()
         mock_executor_class.return_value.__enter__.return_value = mock_executor_instance
-        self.contoller.run()
+        self.controller.run()
         mock_executor_class.assert_called_with(max_workers=2)
         mock_executor_instance.map.assert_called()

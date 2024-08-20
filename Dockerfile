@@ -8,10 +8,10 @@ ARG no_proxy
 
 ADD . /logprep
 WORKDIR /logprep
+RUN python -m pip install --upgrade pip wheel setuptools>=72.2.0
 RUN python -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
-RUN python -m pip install --upgrade pip wheel setuptools
 
 RUN if [ "$LOGPREP_VERSION" = "dev" ]; then pip install .;\
     elif [ "$LOGPREP_VERSION" = "latest" ]; then pip install git+https://github.com/fkie-cad/Logprep.git@latest; \

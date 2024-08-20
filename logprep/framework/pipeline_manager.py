@@ -5,6 +5,7 @@
 import logging
 import logging.handlers
 import multiprocessing
+import multiprocessing.managers
 import multiprocessing.queues
 import random
 import time
@@ -20,6 +21,32 @@ from logprep.util.configuration import Configuration
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Manager")
+
+
+class ThrottlingQueue(multiprocessing.queues.Queue):
+    """A queue that throttles the number of items that can be put into it."""
+
+    wait_time = 0.0000000000000001
+
+    @property
+    def consumed_percent(self):
+        """Return the percentage of items consumed."""
+        return self.qsize() / self.capacity
+
+    def __init__(self, ctx, maxsize):
+        super().__init__(ctx=ctx, maxsize=maxsize)
+        self.capacity = maxsize
+        self.call_time = None
+
+    def throttle(self, batch_size=1):
+        """Throttle put by sleeping."""
+        time.sleep((self.wait_time**self.consumed_percent) / batch_size)
+
+    def put(self, obj, block=True, timeout=None, batch_size=1):
+        """Put an obj into the queue."""
+        if self.consumed_percent >= 0.9:
+            self.throttle(batch_size)
+        super().put(obj, block=block, timeout=timeout)
 
 
 class PipelineManager:
@@ -87,7 +114,7 @@ class PipelineManager:
         if not is_http_input and HttpInput.messages is not None:
             return
         message_backlog_size = input_config.get("message_backlog_size", 15000)
-        HttpInput.messages = multiprocessing.Queue(maxsize=message_backlog_size)
+        HttpInput.messages = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
 
     def set_count(self, count: int):
         """Set the pipeline count.
@@ -165,7 +192,9 @@ class PipelineManager:
     def _create_pipeline(self, index) -> multiprocessing.Process:
         pipeline = Pipeline(pipeline_index=index, config=self._configuration)
         logger.info("Created new pipeline")
-        process = multiprocessing.Process(target=pipeline.run, daemon=True)
+        process = multiprocessing.Process(
+            target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
+        )
         process.stop = pipeline.stop
         process.start()
         return process

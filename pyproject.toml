@@ -83,6 +83,8 @@ dependencies = [
   "pandas",
   "tabulate",
   "falcon==3.1.3",
+  "uvloop",
+  "httptools",
 ]
 
 [project.optional-dependencies]

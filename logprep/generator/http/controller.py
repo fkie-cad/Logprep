@@ -34,6 +34,7 @@ class Controller:
                 "user": kwargs.get("user"),
                 "password": kwargs.get("password"),
                 "target_url": kwargs.get("target_url"),
+                "timeout": kwargs.get("timeout", 2),
             }
         }
         self.output: HttpOutput = Factory.create(output_config)
