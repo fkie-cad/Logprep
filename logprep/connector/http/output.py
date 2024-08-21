@@ -188,7 +188,7 @@ class HttpOutput(Output):
                     headers=self._headers,
                     verify=False,
                     auth=(self.user, self.password),
-                    timeout=self.timeout,
+                    timeout=(self.timeout, self.timeout),
                     data=request_data,
                 )
                 logger.debug("Servers response code is: %i", response.status_code)
