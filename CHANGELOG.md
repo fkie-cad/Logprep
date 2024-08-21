@@ -6,6 +6,10 @@
 * remove AutoRuleCorpusTester
 
 ### Features
+
+* adds readiness check to metrics
+* changes helm chart to use new readiness check
+
 ### Improvements
 
 * remove AutoRuleCorpusTester
