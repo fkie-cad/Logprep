@@ -408,3 +408,9 @@ class TestHttpConnector(BaseInputTestCase):
             timeout=0.5,
         )
         assert resp.status_code == 200
+
+    @pytest.mark.parametrize("endpoint", ["json", "jsonl"])
+    def test_raises_http_bad_request_on_decode_error(self, endpoint):
+        data = "this is not a valid json nor jsonl"
+        resp = requests.post(url=f"{self.target}/{endpoint}", data=data, timeout=0.5)
+        assert resp.status_code == 400
