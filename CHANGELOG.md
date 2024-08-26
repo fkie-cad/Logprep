@@ -11,6 +11,7 @@
 ### Bugfix
 
 * fixes a bug in the `http_output` used by the http generator, where the timeout parameter does only set the read_timeout not the write_timeout
+* fixes a bug in the `http_input` not handling decode errors
 
 ## 13.1.0
 ### Features
