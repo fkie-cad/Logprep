@@ -141,6 +141,8 @@ def raise_request_exceptions(func: Callable):
                 return
             else:
                 raise HTTPMethodNotAllowed(["POST"])
+        except HTTPUnauthorized as error:
+            raise error from error
         except queue.Full as error:
             raise HTTPTooManyRequests(description="Logprep Message Queue is full.") from error
         except Exception as error:  # pylint: disable=broad-except
