@@ -142,6 +142,7 @@ class Processor(Component):
         )
         self.has_custom_tests = False
         self.result = None
+        self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
             self._rules = self.rules
