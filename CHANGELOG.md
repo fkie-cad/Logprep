@@ -4,6 +4,9 @@
 ### Breaking
 ### Features
 ### Improvements
+
+* adds ability to bypass the processing of events if there is no pipeline. This is useful for pure connector deployments.
+
 ### Bugfix
 
 * fixes a bug in the `http_output` used by the http generator, where the timeout parameter does only set the read_timeout not the write_timeout
