@@ -91,6 +91,7 @@ import msgspec
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTP_200,
+    HTTPBadRequest,
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
     HTTPUnauthorized,
@@ -140,8 +141,10 @@ def raise_request_exceptions(func: Callable):
                 return
             else:
                 raise HTTPMethodNotAllowed(["POST"])
-        except queue.Full as exc:
-            raise HTTPTooManyRequests(description="Logprep Message Queue is full.") from exc
+        except queue.Full as error:
+            raise HTTPTooManyRequests(description="Logprep Message Queue is full.") from error
+        except Exception as error:  # pylint: disable=broad-except
+            raise HTTPBadRequest(str(error)) from error
         return func_wrapper
 
     return func_wrapper
@@ -272,7 +275,8 @@ class JSONLHttpEndpoint(HttpEndpoint):
     async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
         self.collect_metrics()
-        events = self._decoder.decode_lines(await self.get_data(req))
+        data = await self.get_data(req)
+        events = self._decoder.decode_lines(data)
         for event in events:
             self.messages.put(event | kwargs["metadata"], block=False, batch_size=len(events))
 
