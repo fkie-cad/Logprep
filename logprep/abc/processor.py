@@ -176,7 +176,7 @@ class Processor(Component):
         -------
         rules: list[Rule]
         """
-        return (*self._generic_rules, *self._specific_rules)
+        return [*self._generic_rules, *self._specific_rules]
 
     @property
     def metric_labels(self) -> dict:
