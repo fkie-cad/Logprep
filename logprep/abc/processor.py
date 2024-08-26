@@ -1,6 +1,7 @@
 """Abstract module for processors"""
 
 import logging
+import os
 from abc import abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
@@ -109,6 +110,7 @@ class Processor(Component):
         "_specific_tree",
         "_generic_tree",
         "result",
+        "_bypass_rule_tree",
     ]
 
     rule_class: "Rule"
@@ -117,6 +119,7 @@ class Processor(Component):
     _specific_tree: RuleTree
     _generic_tree: RuleTree
     _strategy = None
+    _bypass_rule_tree: bool
     result: ProcessorResult
 
     def __init__(self, name: str, configuration: "Processor.Config"):
@@ -137,6 +140,8 @@ class Processor(Component):
         )
         self.has_custom_tests = False
         self.result = None
+        if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
+            self._bypass_rule_tree = True
 
     @property
     def _specific_rules(self):
@@ -195,9 +200,24 @@ class Processor(Component):
         """
         self.result = ProcessorResult(processor_name=self.name, event=event)
         logger.debug(f"{self.describe()} processing event {event}")
+        if self._bypass_rule_tree:
+            self._process_all_rules(event, self.rules)
+            return self.result
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
         return self.result
+
+    def _process_all_rules(self, event: dict, rules: List["Rule"]):
+
+        @Metric.measure_time()
+        def _process_rule(rule, event):
+            self._apply_rules_wrapper(event, rule)
+            rule.metrics.number_of_processed_events += 1
+            return event
+
+        for rule in rules:
+            if rule.matches(event):
+                _process_rule(rule, event)
 
     def _process_rule_tree(self, event: dict, tree: RuleTree):
         applied_rules = set()
