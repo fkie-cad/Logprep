@@ -4,6 +4,10 @@
 ### Breaking
 ### Features
 ### Improvements
+### Bugfix
+
+## 13.1.1
+### Improvements
 
 * adds ability to bypass the processing of events if there is no pipeline. This is useful for pure connector deployments.
 * adds experimental feature to bypass the rule tree by setting `LOGPREP_BYPASS_RULE_TREE` environment variable
@@ -11,6 +15,7 @@
 ### Bugfix
 
 * fixes a bug in the `http_output` used by the http generator, where the timeout parameter does only set the read_timeout not the write_timeout
+* fixes a bug in the `http_input` not handling decode errors
 
 ## 13.1.0
 ### Features

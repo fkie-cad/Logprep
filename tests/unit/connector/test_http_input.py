@@ -4,6 +4,7 @@
 import gzip
 import json
 import multiprocessing
+import queue
 import random
 import re
 from copy import deepcopy
@@ -116,16 +117,10 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_get_error_code_too_many_requests(self):
         data = {"message": "my log message"}
+        self.object.messages.put = mock.MagicMock()
+        self.object.messages.put.side_effect = queue.Full()
         session = requests.Session()
-        for _ in range(100):
-            resp = session.post(url=f"{self.target}/json", json=data, timeout=0.5)
-        assert self.object.messages.qsize() == 100
-        resp = requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
-        assert self.object.messages._maxsize == 100
-        assert resp.status_code == 429
-        for _ in range(100):
-            resp = session.post(url=f"{self.target}/json", json=data, timeout=0.5)
-        resp = requests.get(url=f"{self.target}/json", json=data, timeout=0.5)
+        resp = session.post(url=f"{self.target}/json", json=data, timeout=0.5)
         assert resp.status_code == 429
 
     def test_json_endpoint_accepts_post_request(self):
@@ -322,26 +317,71 @@ class TestHttpConnector(BaseInputTestCase):
         connector_next_msg, _ = connector.get_next(1)
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
 
-    def test_endpoint_has_basic_auth(self, credentials_file_path):
+    def test_endpoint_returns_401_if_authorization_not_provided(self, credentials_file_path):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        data = {"message": "my log message"}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
-            resp = requests.post(url=f"{self.target}/auth-json-file", timeout=0.5)
+            resp = requests.post(
+                url=f"{self.target}/auth-json-file", timeout=0.5, data=json.dumps(data)
+            )
             assert resp.status_code == 401
+
+    def test_endpoint_returns_401_on_wrong_authorization(self, credentials_file_path):
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        data = {"message": "my log message"}
+        with mock.patch.dict("os.environ", mock_env):
+            new_connector = Factory.create({"test connector": self.CONFIG})
+            new_connector.pipeline_index = 1
+            new_connector.setup()
             basic = HTTPBasicAuth("wrong", "credentials")
-            resp = requests.post(url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5)
+            resp = requests.post(
+                url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5, json=data
+            )
             assert resp.status_code == 401
+
+    def test_endpoint_returns_200_on_correct_authorization_with_password_from_file(
+        self, credentials_file_path
+    ):
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        data = {"message": "my log message"}
+        with mock.patch.dict("os.environ", mock_env):
+            new_connector = Factory.create({"test connector": self.CONFIG})
+            new_connector.pipeline_index = 1
+            new_connector.setup()
             basic = HTTPBasicAuth("user", "file_password")
-            resp = requests.post(url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5)
+            resp = requests.post(
+                url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5, json=data
+            )
             assert resp.status_code == 200
+
+    def test_endpoint_returns_200_on_correct_authorization_with_password_within_credentials_file(
+        self, credentials_file_path
+    ):
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        data = {"message": "my log message"}
+        with mock.patch.dict("os.environ", mock_env):
+            new_connector = Factory.create({"test connector": self.CONFIG})
+            new_connector.pipeline_index = 1
+            new_connector.setup()
             basic = HTTPBasicAuth("user", "secret_password")
-            resp = requests.post(url=f"{self.target}/auth-json-secret", auth=basic, timeout=0.5)
+            resp = requests.post(
+                url=f"{self.target}/auth-json-secret", auth=basic, timeout=0.5, json=data
+            )
             assert resp.status_code == 200
+
+    def test_endpoint_returns_200_on_correct_authorization_for_subpath(self, credentials_file_path):
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        data = {"message": "my log message"}
+        with mock.patch.dict("os.environ", mock_env):
+            new_connector = Factory.create({"test connector": self.CONFIG})
+            new_connector.pipeline_index = 1
+            new_connector.setup()
             basic = HTTPBasicAuth("user", "password")
             resp = requests.post(
-                url=f"{self.target}/auth-json-secret/AB/json", auth=basic, timeout=0.5
+                url=f"{self.target}/auth-json-secret/AB/json", auth=basic, timeout=0.5, json=data
             )
             assert resp.status_code == 200
 
@@ -408,3 +448,9 @@ class TestHttpConnector(BaseInputTestCase):
             timeout=0.5,
         )
         assert resp.status_code == 200
+
+    @pytest.mark.parametrize("endpoint", ["json", "jsonl"])
+    def test_raises_http_bad_request_on_decode_error(self, endpoint):
+        data = "this is not a valid json nor jsonl"
+        resp = requests.post(url=f"{self.target}/{endpoint}", data=data, timeout=0.5)
+        assert resp.status_code == 400
