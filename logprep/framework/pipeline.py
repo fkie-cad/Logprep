@@ -259,17 +259,19 @@ class Pipeline:
         event = self._get_event()
         if not event:
             return None, None
-        result: PipelineResult = self.process_event(event)
-        if result.warnings:
-            self.logger.warning(",".join((str(warning) for warning in result.warnings)))
-        if result.errors:
-            self.logger.error(",".join((str(error) for error in result.errors)))
-            self._store_failed_event(result.errors, result.event_received, event)
-            return
+        if self._pipeline:
+            result: PipelineResult = self.process_event(event)
+            if result.warnings:
+                self.logger.warning(",".join((str(warning) for warning in result.warnings)))
+            if result.errors:
+                self.logger.error(",".join((str(error) for error in result.errors)))
+                self._store_failed_event(result.errors, result.event_received, event)
+                return
         if self._output:
-            result_data = [res.data for res in result if res.data]
-            if result_data:
-                self._store_extra_data(itertools.chain(*result_data))
+            if self._pipeline:
+                result_data = [res.data for res in result if res.data]
+                if result_data:
+                    self._store_extra_data(itertools.chain(*result_data))
             if event:
                 self._store_event(event)
         return result
