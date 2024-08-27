@@ -26,12 +26,12 @@ logger = logging.getLogger("Manager")
 class ThrottlingQueue(multiprocessing.queues.Queue):
     """A queue that throttles the number of items that can be put into it."""
 
-    wait_time = 0.0000000000000001
+    wait_time = 0.0000000000000000001
 
     @property
-    def consumed_percent(self):
+    def consumed_percent(self) -> int:
         """Return the percentage of items consumed."""
-        return self.qsize() / self.capacity
+        return int(self.qsize() / self.capacity * 100)
 
     def __init__(self, ctx, maxsize):
         super().__init__(ctx=ctx, maxsize=maxsize)
@@ -44,7 +44,7 @@ class ThrottlingQueue(multiprocessing.queues.Queue):
 
     def put(self, obj, block=True, timeout=None, batch_size=1):
         """Put an obj into the queue."""
-        if self.consumed_percent >= 0.9:
+        if self.consumed_percent >= 90:
             self.throttle(batch_size)
         super().put(obj, block=block, timeout=timeout)
 
