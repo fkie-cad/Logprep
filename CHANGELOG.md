@@ -9,6 +9,8 @@
 * fixes a bug not increasing but decreasing timeout throttle factor of ThrottlingQueue
 * handle DecodeError and unexpected Exceptions on requests in `http_input` separately
 
+* fixes unbound local error in http input connector 
+
 ## 13.1.1
 ### Improvements
 
