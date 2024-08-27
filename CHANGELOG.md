@@ -6,6 +6,8 @@
 ### Improvements
 ### Bugfix
 
+* fixes a bug not increasing but decreasing timeout throttle factor of ThrottlingQueue
+
 ## 13.1.1
 ### Improvements
 
