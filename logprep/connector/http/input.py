@@ -92,6 +92,7 @@ from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTP_200,
     HTTPBadRequest,
+    HTTPInternalServerError,
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
     HTTPUnauthorized,
@@ -145,8 +146,14 @@ def raise_request_exceptions(func: Callable):
             raise error from error
         except queue.Full as error:
             raise HTTPTooManyRequests(description="Logprep Message Queue is full.") from error
+        except msgspec.DecodeError as error:
+            raise HTTPBadRequest(
+                description=f"Can't decode message due to: {str(error)}"
+            ) from error
         except Exception as error:  # pylint: disable=broad-except
-            raise HTTPBadRequest(str(error)) from error
+            raise HTTPInternalServerError(
+                description=f"Unexpected Exception: {str(error)}"
+            ) from error
         return func_wrapper
 
     return func_wrapper
