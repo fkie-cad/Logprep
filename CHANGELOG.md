@@ -7,6 +7,7 @@
 ### Bugfix
 
 * fixes a bug not increasing but decreasing timeout throttle factor of ThrottlingQueue
+* handle DecodeError and unexpected Exceptions on requests in `http_input` separately
 
 ## 13.1.1
 ### Improvements
