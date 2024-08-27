@@ -3,14 +3,14 @@
 ## next release
 ### Breaking
 ### Features
-### Improvements
-
-* adds ability to bypass the processing of events if there is no pipeline. This is useful for pure connector deployments.
-* adds experimental feature to bypass the rule tree by setting `LOGPREP_BYPASS_RULE_TREE` environment variable
 
 ### Bugfix
 
 ## 13.1.1
+### Improvements
+
+* adds ability to bypass the processing of events if there is no pipeline. This is useful for pure connector deployments.
+* adds experimental feature to bypass the rule tree by setting `LOGPREP_BYPASS_RULE_TREE` environment variable
 
 ### Bugfix
 
