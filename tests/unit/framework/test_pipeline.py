@@ -625,6 +625,32 @@ class TestPipeline(ConfigurationForTests):
         assert result.event_received == {"some": "event"}, "received event is as expected"
         assert result.event == {"some": "event", "field": "foo"}, "processed event is as expected"
 
+    def test_process_event_can_be_bypassed_with_no_pipeline(self, _):
+        self.pipeline._setup()
+        input_config = {
+            "testinput": {
+                "type": "http_input",
+                "uvicorn_config": {
+                    "host": "127.0.0.1",
+                    "port": 9000,
+                    "ssl_certfile": "tests/testdata/acceptance/http_input/cert.crt",
+                    "ssl_keyfile": "tests/testdata/acceptance/http_input/cert.key",
+                },
+                "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
+            }
+        }
+        self.pipeline._input = original_create(input_config)
+        self.pipeline._input.pipeline_index = 1
+        self.pipeline._input.messages = multiprocessing.Queue(-1)
+        self.pipeline._input.setup()
+        self.pipeline._input.messages.put({"message": "test message"})
+        self.pipeline._pipeline = None
+        with mock.patch("logprep.framework.pipeline.Pipeline.process_event") as mock_process_event:
+            mock_process_event.return_value = None
+        result = self.pipeline.process_pipeline()
+        mock_process_event.assert_not_called()
+        assert isinstance(result, type(None))
+
 
 class TestPipelineWithActualInput:
     def setup_method(self):

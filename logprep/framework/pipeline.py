@@ -268,7 +268,6 @@ class Pipeline:
                 self.logger.error(",".join((str(error) for error in result.errors)))
                 self._store_failed_event(result.errors, result.event_received, event)
                 return
-
         if self._output:
             if self._pipeline:
                 result_data = [res.data for res in result if res.data]
