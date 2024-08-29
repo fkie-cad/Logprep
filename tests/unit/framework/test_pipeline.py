@@ -625,6 +625,15 @@ class TestPipeline(ConfigurationForTests):
         assert result.event_received == {"some": "event"}, "received event is as expected"
         assert result.event == {"some": "event", "field": "foo"}, "processed event is as expected"
 
+    def test_process_event_can_be_bypassed_with_no_pipeline(self, _):
+        self.pipeline._pipeline = []
+        self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
+        with mock.patch("logprep.framework.pipeline.Pipeline.process_event") as mock_process_event:
+            mock_process_event.return_value = None
+            result = self.pipeline.process_pipeline()
+        mock_process_event.assert_not_called()
+        assert isinstance(result, type(None))
+
 
 class TestPipelineWithActualInput:
     def setup_method(self):

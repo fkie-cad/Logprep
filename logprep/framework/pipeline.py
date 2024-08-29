@@ -257,6 +257,7 @@ class Pipeline:
         Component.run_pending_tasks()
 
         event = self._get_event()
+        result = None
         if not event:
             return None, None
         if self._pipeline:
