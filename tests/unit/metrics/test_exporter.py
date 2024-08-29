@@ -2,15 +2,24 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=line-too-long
+import asyncio
 import os.path
-from logging.config import dictConfig
 from unittest import mock
 
+import pytest
+import requests
 from prometheus_client import REGISTRY
 
 from logprep.metrics.exporter import PrometheusExporter
+from logprep.util import configuration, http
 from logprep.util.configuration import MetricsConfig
-from logprep.util.defaults import DEFAULT_LOG_CONFIG
+
+
+@pytest.fixture
+def loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
 
 
 @mock.patch(
@@ -79,3 +88,16 @@ class TestPrometheusExporter:
     def test_exporter_spawns_server_on_all_interfaces(self):
         exporter = PrometheusExporter(self.metrics_config)
         assert exporter._server.server.config.host == "0.0.0.0"
+
+    def test_health_endpoint_returns_200(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        exporter._server = http.ThreadingHTTPServer(
+            self.metrics_config.uvicorn_config | {"port": "8000", "host": "0.0.0.0"},
+            exporter._app,
+            daemon=False,
+            logger_name="Exporter",
+        )
+        exporter.run()
+        resp = requests.get("http://localhost:8000/health")
+        assert resp.status_code == 200
+        exporter._server.shut_down()
