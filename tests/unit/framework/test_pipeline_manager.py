@@ -9,7 +9,7 @@ from unittest import mock
 
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
-from logprep.framework.pipeline_manager import PipelineManager, ThrottlingQueue, libc
+from logprep.framework.pipeline_manager import PipelineManager, ThrottlingQueue
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
@@ -257,20 +257,20 @@ class TestPipelineManager:
         mock_time_sleep.assert_not_called()
 
 
-class TestThrottelingQueue:
+class TestThrottlingQueue:
 
-    def test_throtteling_queue_is_multiprocessing_queue(self):
+    def test_throttling_queue_is_multiprocessing_queue(self):
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         assert isinstance(queue, ThrottlingQueue)
         assert isinstance(queue, multiprocessing.queues.Queue)
 
-    def test_throtteling_put_calls_parent(self):
+    def test_throttling_put_calls_parent(self):
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         with mock.patch.object(multiprocessing.queues.Queue, "put") as mock_put:
             queue.put("test")
             mock_put.assert_called_with("test", block=True, timeout=None)
 
-    def test_throtteling_put_throttles(self):
+    def test_throttling_put_throttles(self):
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         with mock.patch.object(queue, "throttle") as mock_throttle:
             queue.put("test")
@@ -283,9 +283,13 @@ class TestThrottelingQueue:
                 queue.throttle()
             mock_sleep.assert_called()
 
-    # def test_throttle_sleep_time_increases_with_qsize(self):
-    #     with mock.patch("logprep.framework.pipeline_manager.libc.usleep") as mock_sleep:
-    #         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
-    #         with mock.patch.object(queue, "qsize", return_value=91):
-    #             queue.throttle()
-    #         mock_sleep.assert_called_with(5)
+    def test_throttle_sleep_time_increases_with_qsize(self):
+        with mock.patch("logprep.framework.pipeline_manager.libc.usleep") as mock_sleep:
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            with mock.patch.object(queue, "qsize", return_value=91):
+                queue.throttle()
+            first_sleep_time = mock_sleep.call_args[0][0]
+            mock_sleep.reset_mock()
+            with mock.patch.object(queue, "qsize", return_value=95):
+                queue.throttle()
+            assert mock_sleep.call_args[0][0] > first_sleep_time
