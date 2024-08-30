@@ -3,6 +3,7 @@
 import os
 import shutil
 from logging import getLogger
+from typing import Callable, Iterable
 
 from prometheus_client import REGISTRY, make_asgi_app, multiprocess
 
@@ -14,13 +15,20 @@ prometheus_app = make_asgi_app(REGISTRY)
 logger = getLogger("Exporter")
 
 
+def health_check(functions: Iterable[Callable] | None = None) -> int:
+    """Returns status code for health check"""
+    if functions is None:
+        functions = [lambda: True]
+    return 200 if all(f() for f in functions) else 503
+
+
 async def asgi_app(scope, receive, send):
     """asgi app with health check and metrics handling"""
     if scope["type"] == "http" and scope["path"] == "/health":
         await send(
             {
                 "type": "http.response.start",
-                "status": 200,
+                "status": health_check(),
             }
         )
         await send({"type": "http.response.body", "body": b"OK"})

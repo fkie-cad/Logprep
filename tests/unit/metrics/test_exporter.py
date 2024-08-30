@@ -10,7 +10,7 @@ import pytest
 import requests
 from prometheus_client import REGISTRY
 
-from logprep.metrics.exporter import PrometheusExporter
+from logprep.metrics.exporter import PrometheusExporter, health_check
 from logprep.util import configuration, http
 from logprep.util.configuration import MetricsConfig
 
@@ -89,6 +89,16 @@ class TestPrometheusExporter:
         exporter = PrometheusExporter(self.metrics_config)
         assert exporter._server.server.config.host == "0.0.0.0"
 
+
+@mock.patch(
+    "logprep.metrics.exporter.PrometheusExporter._prepare_multiprocessing",
+    new=lambda *args, **kwargs: None,
+)
+class TestHealthEndpoint:
+    def setup_method(self):
+        REGISTRY.__init__()
+        self.metrics_config = MetricsConfig(enabled=True, port=80)
+
     def test_health_endpoint_returns_200(self):
         exporter = PrometheusExporter(self.metrics_config)
         exporter._server = http.ThreadingHTTPServer(
@@ -101,3 +111,16 @@ class TestPrometheusExporter:
         resp = requests.get("http://localhost:8000/health")
         assert resp.status_code == 200
         exporter._server.shut_down()
+
+    @pytest.mark.parametrize(
+        "functions, expected",
+        [
+            ([lambda: True], 200),
+            ([lambda: True, lambda: True], 200),
+            ([lambda: False], 503),
+            ([lambda: False, lambda: False], 503),
+            ([lambda: False, lambda: True, lambda: True], 503),
+        ],
+    )
+    def test_health_check_returns_status_code(self, functions, expected):
+        assert health_check(functions) == expected
