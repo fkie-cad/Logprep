@@ -117,7 +117,7 @@ class Component(ABC):
     def _schedule_task(
         self, task: Callable, seconds: int, args: tuple = None, kwargs: dict = None
     ) -> None:
-        """Schedule a task to run periodicly during pipeline run.
+        """Schedule a task to run periodically during pipeline run.
         The task is run in :code:`pipeline.py` in the :code:`process_pipeline` method.
 
         Parameters
