@@ -103,6 +103,17 @@ class Component(ABC):
         if hasattr(self, "__dict__"):
             self.__dict__.clear()
 
+    def health(self) -> bool:
+        """Check the health of the component.
+
+        Returns
+        -------
+        bool
+            True if the component is healthy, False otherwise.
+
+        """
+        return True
+
     def _schedule_task(
         self, task: Callable, seconds: int, args: tuple = None, kwargs: dict = None
     ) -> None:

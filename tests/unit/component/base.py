@@ -128,3 +128,6 @@ class BaseComponentTestCase(ABC):
     def test_config_is_immutable(self):
         with pytest.raises(FrozenInstanceError):
             self.object._config.type = "new_type"
+
+    def test_health_returns_bool(self):
+        assert isinstance(self.object.health(), bool)
