@@ -44,8 +44,20 @@ class PrometheusExporter:
         self.is_running = False
         logger.debug("Initializing Prometheus Exporter")
         self.configuration = configuration
-        self.healthcheck_functions = None
-        self._server = None
+        self.server = None
+        self._healthcheck_functions = None
+
+    @property
+    def healthcheck_functions(self) -> None:
+        return self._healthcheck_functions
+
+    @healthcheck_functions.setter
+    def healthcheck_functions(self, functions: Iterable[Callable] | None) -> None:
+        self._healthcheck_functions = functions
+        if self.server:
+            self.server.shut_down()
+        self.init_server()
+        # self.server.start()
 
     def _prepare_multiprocessing(self):
         """
@@ -81,18 +93,25 @@ class PrometheusExporter:
     def run(self):
         """Starts the default prometheus http endpoint"""
         port = self.configuration.port
-        self._init_server()
+        self.init_server()
         self._prepare_multiprocessing()
-        self._server.start()
+        self.server.start()
         logger.info("Prometheus Exporter started on port %s", port)
         self.is_running = True
 
-    def _init_server(self) -> None:
+    def init_server(self) -> None:
         """Initializes the server"""
         port = self.configuration.port
-        self._server = http.ThreadingHTTPServer(
+        self.server = http.ThreadingHTTPServer(
             self.configuration.uvicorn_config | {"port": port, "host": "0.0.0.0"},
-            make_patched_asgi_app(self.healthcheck_functions),
+            make_patched_asgi_app(self._healthcheck_functions),
             daemon=True,
             logger_name="Exporter",
         )
+
+    def restart(self):
+        """Restarts the exporter"""
+        if self.server and self.server.thread and self.server.thread.is_alive():
+            self.server.shut_down()
+        self.init_server()
+        self.server.start()

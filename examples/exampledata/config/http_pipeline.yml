@@ -3,7 +3,7 @@ process_count: 8
 config_refresh_interval: 300
 profile_pipelines: false
 logger:
-  level: INFO
+  level: DEBUG
   loggers:
     uvicorn:
       level: INFO

@@ -193,7 +193,7 @@ class ConfluentKafkaOutput(Output):
         return DEFAULTS | self._config.kafka_config | injected_config
 
     @cached_property
-    def _producer(self):
+    def _producer(self) -> Producer:
         return Producer(self._kafka_config)
 
     def _error_callback(self, error: KafkaException):
@@ -334,3 +334,12 @@ class ConfluentKafkaOutput(Output):
         """ensures that all messages are flushed"""
         if self._producer is not None:
             self._producer.flush(self._config.flush_timeout)
+
+    def health(self) -> bool:
+        """Check the health of kafka producer."""
+        try:
+            topic = self._producer.list_topics(timeout=1)
+        except KafkaException as error:
+            logger.error("%s: %s", self.describe(), error)
+            topic = False
+        return all((super().health(), topic))

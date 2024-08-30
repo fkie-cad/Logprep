@@ -79,8 +79,8 @@ class TestPrometheusExporter:
 
     def test_exporter_spawns_server_on_all_interfaces(self):
         exporter = PrometheusExporter(self.metrics_config)
-        exporter._init_server()
-        assert exporter._server.server.config.host == "0.0.0.0"
+        exporter.init_server()
+        assert exporter.server.server.config.host == "0.0.0.0"
 
 
 @mock.patch(
@@ -94,16 +94,16 @@ class TestHealthEndpoint:
 
     def test_health_endpoint_returns_503_as_default_health_state(self):
         exporter = PrometheusExporter(self.metrics_config)
-        exporter._server = http.ThreadingHTTPServer(
+        exporter.server = http.ThreadingHTTPServer(
             exporter.configuration.uvicorn_config | {"port": 8000, "host": "0.0.0.0"},
             make_patched_asgi_app(exporter.healthcheck_functions),
             daemon=False,
             logger_name="Exporter",
         )
-        exporter._server.start()
+        exporter.server.start()
         resp = requests.get("http://localhost:8000/health", timeout=0.5)
         assert resp.status_code == 503
-        exporter._server.shut_down()
+        exporter.server.shut_down()
 
     @pytest.mark.parametrize(
         "functions, expected",
@@ -117,13 +117,13 @@ class TestHealthEndpoint:
     )
     def test_health_check_returns_status_code(self, functions, expected):
         exporter = PrometheusExporter(self.metrics_config)
-        exporter._server = http.ThreadingHTTPServer(
+        exporter.server = http.ThreadingHTTPServer(
             exporter.configuration.uvicorn_config | {"port": 8000, "host": "0.0.0.0"},
             make_patched_asgi_app(functions),
             daemon=False,
             logger_name="Exporter",
         )
-        exporter._server.start()
+        exporter.server.start()
         resp = requests.get("http://localhost:8000/health", timeout=0.5)
         assert resp.status_code == expected
-        exporter._server.shut_down()
+        exporter.server.shut_down()

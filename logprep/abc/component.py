@@ -2,6 +2,7 @@
 
 import functools
 import inspect
+import logging
 from abc import ABC
 from functools import cached_property
 from typing import Callable
@@ -13,6 +14,8 @@ from schedule import Scheduler
 
 from logprep.metrics.metrics import Metric
 from logprep.util.helper import camel_to_snake
+
+logger = logging.getLogger("Component")
 
 
 class Component(ABC):
@@ -112,6 +115,7 @@ class Component(ABC):
             True if the component is healthy, False otherwise.
 
         """
+        logger.debug("Checking health of %s", self.name)
         return True
 
     def _schedule_task(

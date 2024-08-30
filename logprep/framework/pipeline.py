@@ -341,3 +341,16 @@ class Pipeline:
         self.logger.debug(f"Stopping pipeline ({self._process_name})")
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False
+
+    def get_health_functions(self) -> Tuple[bool]:
+        """Return health function of components"""
+        output_health_functions = []
+        if self._output:
+            output_health_functions = [output.health for output in self._output.values()]
+        return tuple(
+            itertools.chain(
+                [self._input.health],
+                [processor.health for processor in self._pipeline],
+                output_health_functions,
+            )
+        )

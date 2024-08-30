@@ -9,6 +9,7 @@ from unittest import mock
 
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
+from logprep.framework.pipeline import Pipeline
 from logprep.framework.pipeline_manager import PipelineManager, ThrottlingQueue
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
@@ -255,6 +256,16 @@ class TestPipelineManager:
         pipeline_manager._pipelines[0].is_alive.return_value = False
         pipeline_manager.restart_failed_pipeline()
         mock_time_sleep.assert_not_called()
+
+    def test_create_pipeline_injects_pipeline_functions(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager.prometheus_exporter = PrometheusExporter()
+        pipeline_process = pipeline_manager._create_pipeline(1)
+        pipeline = Pipeline(pipeline_manager._configuration, 1)
+        assert (
+            pipeline_manager.prometheus_exporter.healthcheck_functions
+            == pipeline.get_health_functions()
+        )
 
 
 class TestThrottlingQueue:

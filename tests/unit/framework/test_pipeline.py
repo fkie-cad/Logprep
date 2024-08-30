@@ -5,6 +5,8 @@ import logging
 import multiprocessing
 from copy import deepcopy
 from logging import DEBUG
+from multiprocessing import Lock
+from typing import Iterable, Tuple
 from unittest import mock
 
 import pytest
@@ -710,3 +712,34 @@ class TestPipelineWithActualInput:
         pipeline._continue_iterating.value = True
         pipeline.stop()
         assert not pipeline._continue_iterating.value
+
+    def test_health_returns_health_functions_without_output(self):
+        pipeline = Pipeline(config=self.config)
+        assert pipeline._output is None
+        health = pipeline.get_health_functions()
+        assert isinstance(health, Tuple)
+        assert len(health) > 0
+        assert all(callable(health_function) for health_function in health)
+
+    def test_health_returns_health_functions_with_output(self):
+        self.config.output = {
+            "dummy_output": {"type": "dummy_output"},
+        }
+        pipeline = Pipeline(config=self.config)
+        assert pipeline._output is not None
+        health = pipeline.get_health_functions()
+        assert isinstance(health, Tuple)
+        assert len(health) > 0
+        assert all(callable(health_function) for health_function in health)
+
+    def test_health_returns_health_functions_with_multiple_outputs(self):
+        self.config.output = {
+            "dummy_output1": {"type": "dummy_output"},
+            "dummy_output2": {"type": "dummy_output"},
+        }
+        pipeline = Pipeline(config=self.config)
+        assert pipeline._output is not None
+        health = pipeline.get_health_functions()
+        assert isinstance(health, Tuple)
+        assert len(health) > 0
+        assert all(callable(health_function) for health_function in health)

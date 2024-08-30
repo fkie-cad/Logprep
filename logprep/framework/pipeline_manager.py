@@ -195,10 +195,12 @@ class PipelineManager:
 
     def _create_pipeline(self, index) -> multiprocessing.Process:
         pipeline = Pipeline(pipeline_index=index, config=self._configuration)
-        logger.info("Created new pipeline")
+        if self.prometheus_exporter is not None:
+            self.prometheus_exporter.healthcheck_functions = pipeline.get_health_functions()
         process = multiprocessing.Process(
             target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )
         process.stop = pipeline.stop
         process.start()
+        logger.info("Created new pipeline")
         return process

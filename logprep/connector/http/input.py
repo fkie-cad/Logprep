@@ -88,6 +88,7 @@ from typing import Callable, Mapping, Tuple, Union
 
 import falcon.asgi
 import msgspec
+import requests
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTP_200,
@@ -490,3 +491,21 @@ class HttpInput(Input):
         if self.http_server is None:
             return
         self.http_server.shut_down()
+
+    def health(self) -> bool:
+        """Check the health of the component."""
+        endpoint_health = []
+        for endpoint in self._config.endpoints:
+            try:
+                response = requests.get(f"{self.target}{endpoint}", timeout=5)
+                if response.status_code != 200:
+                    endpoint_health.append(False)
+                    logger.error(
+                        "Health check failed for endpoint: %s -> %s", endpoint, response.status_code
+                    )
+                else:
+                    endpoint_health.append(True)
+            except requests.exceptions.RequestException as error:
+                logger.error("Health check failed for endpoint: %s due to %s", endpoint, str(error))
+
+        return super().health() and all(endpoint_health)
