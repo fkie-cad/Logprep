@@ -10,8 +10,8 @@ import pytest
 import requests
 from prometheus_client import REGISTRY
 
-from logprep.metrics.exporter import PrometheusExporter, health_check
-from logprep.util import configuration, http
+from logprep.metrics.exporter import PrometheusExporter, make_patched_asgi_app
+from logprep.util import http
 from logprep.util.configuration import MetricsConfig
 
 
@@ -33,12 +33,12 @@ class TestPrometheusExporter:
 
     def test_correct_setup(self):
         exporter = PrometheusExporter(self.metrics_config)
-        assert exporter._port == self.metrics_config.port
+        assert exporter.configuration.port == self.metrics_config.port
 
     def test_default_port_if_missing_in_config(self):
         metrics_config = MetricsConfig(enabled=True)
         exporter = PrometheusExporter(metrics_config)
-        assert exporter._port == 8000
+        assert exporter.configuration.port == 8000
 
     @mock.patch("logprep.util.http.ThreadingHTTPServer.start")
     def test_run_starts_http_server(self, mock_http_server_start):
@@ -87,6 +87,7 @@ class TestPrometheusExporter:
 
     def test_exporter_spawns_server_on_all_interfaces(self):
         exporter = PrometheusExporter(self.metrics_config)
+        exporter._init_server()
         assert exporter._server.server.config.host == "0.0.0.0"
 
 
@@ -99,17 +100,17 @@ class TestHealthEndpoint:
         REGISTRY.__init__()
         self.metrics_config = MetricsConfig(enabled=True, port=80)
 
-    def test_health_endpoint_returns_200(self):
+    def test_health_endpoint_returns_503_as_default_health_state(self):
         exporter = PrometheusExporter(self.metrics_config)
         exporter._server = http.ThreadingHTTPServer(
-            self.metrics_config.uvicorn_config | {"port": "8000", "host": "0.0.0.0"},
-            exporter._app,
+            exporter.configuration.uvicorn_config | {"port": 8000, "host": "0.0.0.0"},
+            make_patched_asgi_app(exporter.healthcheck_functions),
             daemon=False,
             logger_name="Exporter",
         )
-        exporter.run()
-        resp = requests.get("http://localhost:8000/health")
-        assert resp.status_code == 200
+        exporter._server.start()
+        resp = requests.get("http://localhost:8000/health", timeout=0.5)
+        assert resp.status_code == 503
         exporter._server.shut_down()
 
     @pytest.mark.parametrize(
@@ -123,4 +124,14 @@ class TestHealthEndpoint:
         ],
     )
     def test_health_check_returns_status_code(self, functions, expected):
-        assert health_check(functions) == expected
+        exporter = PrometheusExporter(self.metrics_config)
+        exporter._server = http.ThreadingHTTPServer(
+            exporter.configuration.uvicorn_config | {"port": 8000, "host": "0.0.0.0"},
+            make_patched_asgi_app(functions),
+            daemon=False,
+            logger_name="Exporter",
+        )
+        exporter._server.start()
+        resp = requests.get("http://localhost:8000/health", timeout=0.5)
+        assert resp.status_code == expected
+        exporter._server.shut_down()

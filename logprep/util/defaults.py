@@ -56,3 +56,5 @@ DEFAULT_LOG_CONFIG = {
     "disable_existing_loggers": False,
 }
 ENV_NAME_LOGPREP_CREDENTIALS_FILE = "LOGPREP_CREDENTIALS_FILE"
+
+DEFAULT_HEALTH_STATE = False  # unhealthy

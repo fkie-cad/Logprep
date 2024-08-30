@@ -9,31 +9,32 @@ from prometheus_client import REGISTRY, make_asgi_app, multiprocess
 
 from logprep.util import http
 from logprep.util.configuration import MetricsConfig
-
-prometheus_app = make_asgi_app(REGISTRY)
+from logprep.util.defaults import DEFAULT_HEALTH_STATE
 
 logger = getLogger("Exporter")
 
 
-def health_check(functions: Iterable[Callable] | None = None) -> int:
-    """Returns status code for health check"""
-    if functions is None:
-        functions = [lambda: True]
-    return 200 if all(f() for f in functions) else 503
+def make_patched_asgi_app(functions: Iterable[Callable] | None) -> Callable:
+    """Creates an ASGI app that includes health check and metrics handling"""
 
+    prometheus_app = make_asgi_app(REGISTRY)
 
-async def asgi_app(scope, receive, send):
-    """asgi app with health check and metrics handling"""
-    if scope["type"] == "http" and scope["path"] == "/health":
-        await send(
-            {
-                "type": "http.response.start",
-                "status": health_check(),
-            }
-        )
-        await send({"type": "http.response.body", "body": b"OK"})
-    else:
-        await prometheus_app(scope, receive, send)
+    functions = functions if functions else [lambda: DEFAULT_HEALTH_STATE]
+
+    async def asgi_app(scope, receive, send):
+        """asgi app with health check and metrics handling"""
+        if scope["type"] == "http" and scope["path"] == "/health":
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 200 if all(f() for f in functions) else 503,
+                }
+            )
+            await send({"type": "http.response.body", "body": b"OK"})
+        else:
+            await prometheus_app(scope, receive, send)
+
+    return asgi_app
 
 
 class PrometheusExporter:
@@ -43,14 +44,8 @@ class PrometheusExporter:
         self.is_running = False
         logger.debug("Initializing Prometheus Exporter")
         self.configuration = configuration
-        self._port = configuration.port
-        self._app = asgi_app
-        self._server = http.ThreadingHTTPServer(
-            configuration.uvicorn_config | {"port": self._port, "host": "0.0.0.0"},
-            self._app,
-            daemon=True,
-            logger_name="Exporter",
-        )
+        self.healthcheck_functions = None
+        self._server = None
 
     def _prepare_multiprocessing(self):
         """
@@ -85,7 +80,19 @@ class PrometheusExporter:
 
     def run(self):
         """Starts the default prometheus http endpoint"""
+        port = self.configuration.port
+        self._init_server()
         self._prepare_multiprocessing()
         self._server.start()
-        logger.info("Prometheus Exporter started on port %s", self._port)
+        logger.info("Prometheus Exporter started on port %s", port)
         self.is_running = True
+
+    def _init_server(self) -> None:
+        """Initializes the server"""
+        port = self.configuration.port
+        self._server = http.ThreadingHTTPServer(
+            self.configuration.uvicorn_config | {"port": port, "host": "0.0.0.0"},
+            make_patched_asgi_app(self.healthcheck_functions),
+            daemon=True,
+            logger_name="Exporter",
+        )
