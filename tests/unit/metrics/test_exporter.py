@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=line-too-long
-import asyncio
 import os.path
 from unittest import mock
 
@@ -13,13 +12,6 @@ from prometheus_client import REGISTRY
 from logprep.metrics.exporter import PrometheusExporter, make_patched_asgi_app
 from logprep.util import http
 from logprep.util.configuration import MetricsConfig
-
-
-@pytest.fixture
-def loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @mock.patch(
