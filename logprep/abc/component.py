@@ -18,7 +18,7 @@ from logprep.util.helper import camel_to_snake
 class Component(ABC):
     """Abstract Component Class to define the Interface"""
 
-    @define(kw_only=True, slots=False)
+    @define(kw_only=True, slots=False, frozen=True)
     class Config:
         """Common Configurations"""
 
