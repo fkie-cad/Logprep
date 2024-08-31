@@ -6,7 +6,6 @@
 import re
 from copy import deepcopy
 from pathlib import Path
-from unittest import mock
 
 import pytest
 
@@ -776,7 +775,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         )
 
     def _load_specific_rule(self, rule):
-        self.object._config.regex_mapping = self.regex_mapping
+        config = deepcopy(self.CONFIG)
+        config["regex_mapping"] = self.regex_mapping
+        self.object = Factory.create({"pseudonymizer": config})
         super()._load_specific_rule(rule)
         self.object.setup()
 
