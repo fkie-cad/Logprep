@@ -35,12 +35,8 @@ class Factory:
                 )
             if not isinstance(component_configuration_dict, dict):
                 raise InvalidConfigSpecificationError(component_name)
-            metric_labels = {}
-            if "metric_labels" in configuration[component_name]:
-                metric_labels = configuration[component_name].pop("metric_labels")
             component = Configuration.get_class(component_name, component_configuration_dict)
             component_configuration = Configuration.create(
                 component_name, component_configuration_dict
             )
-            component_configuration.metric_labels = copy.deepcopy(metric_labels)
             return component(component_name, component_configuration)
