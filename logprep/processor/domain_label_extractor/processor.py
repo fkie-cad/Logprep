@@ -50,7 +50,7 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value, add_and_overwrite
+from logprep.util.helper import add_and_overwrite, add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
 logger = logging.getLogger("DomainLabelExtractor")
@@ -101,7 +101,6 @@ class DomainLabelExtractor(FieldManager):
                         list_path.touch()
                         list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
                 downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
-            self._config.tld_lists = downloaded_tld_lists_paths
             logger.debug("finished tldlists download...")
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
