@@ -7,7 +7,9 @@ from logging import getLogger
 from typing import Callable, Iterable
 from unittest import mock
 
+import pytest
 from attrs import asdict
+from attrs.exceptions import FrozenInstanceError
 from prometheus_client import Counter, Gauge, Histogram
 
 from logprep.abc.component import Component
@@ -122,3 +124,7 @@ class BaseComponentTestCase(ABC):
     def test_setup_populates_cached_properties(self, mock_getmembers):
         self.object.setup()
         mock_getmembers.assert_called_with(self.object)
+
+    def test_config_is_immutable(self):
+        with pytest.raises(FrozenInstanceError):
+            self.object._config.type = "new_type"

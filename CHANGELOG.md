@@ -6,7 +6,7 @@
 ### Improvements
 ### Bugfix
 
-* ensure `logprep.util.configuration.Configuration` is immutable and can be applied multiple times
+* ensure `logprep.abc.Component.Config` is immutable and can be applied multiple times
 
 ## 13.1.2
 ### Bugfix
