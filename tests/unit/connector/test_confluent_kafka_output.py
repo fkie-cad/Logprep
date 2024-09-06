@@ -148,10 +148,12 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object.input_connector.batch_finished_callback.assert_called()
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
-        config = {"myconfig": "the config", "bootstrap.servers": "testserver:9092"}
-        self.object._config.kafka_config = config
+        kafka_config = {"myconfig": "the config", "bootstrap.servers": "testserver:9092"}
+        config = deepcopy(self.CONFIG)
+        config.update({"kafka_config": kafka_config})
+        connector = Factory.create({"test connector": config})
         with pytest.raises(FatalOutputError, match="No such configuration property"):
-            self.object.setup()
+            connector.setup()
 
     def test_raises_value_error_if_mandatory_parameters_not_set(self):
         config = deepcopy(self.CONFIG)
