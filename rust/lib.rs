@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod tests;
 use pyo3::prelude::*;
 
 /// Formats the sum of two numbers as string.
@@ -11,12 +13,4 @@ fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
 fn rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!("4", "4");
-    }
 }
