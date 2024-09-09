@@ -10,7 +10,7 @@
 
 * remove AutoRuleCorpusTester
 * adds support for rust extension  development
-* adds prebuild wheels for architectures `x86_64 i686 aarch64` on `manylinux` and `musllinux` based linux platforms
+* adds prebuild wheels for architectures `x86_64` and `aarch64` on `manylinux` and `musllinux` based linux platforms
 
 ### Bugfix
 

@@ -149,7 +149,7 @@ profile = "black"
 
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-*"
-skip = "*pp* *i686*musl*"
+skip = "*pp* *i686-unknown-linux-musl*"
 
 [tool.cibuildwheel.linux]
 archs = "x86_64 i686 aarch64"
