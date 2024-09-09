@@ -96,7 +96,11 @@ jobs:
   build_wheels:
     name: Build wheels
     runs-on: ubuntu-22.04
-
+    strategy:
+      matrix:
+        python-version: ["cp310", "cp311", "cp312"]
+        arch: ["x86_64", "i686", "aarch64"]
+        flavor: ["manylinux", "musllinux"]
     steps:
       - uses: actions/checkout@v4
 
@@ -114,7 +118,7 @@ jobs:
         run: python -m pip install cibuildwheel
 
       - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
+        run: python -m cibuildwheel --output-dir wheelhouse --only ${{ matrix.python-version }}-${{ matrix.flavor }}-${{ matrix.arch }}
 
   containerbuild:
     strategy:
