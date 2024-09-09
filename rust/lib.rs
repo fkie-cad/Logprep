@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod tests;
 use pyo3::prelude::*;
 

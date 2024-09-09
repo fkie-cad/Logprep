@@ -28,3 +28,4 @@ logprep.log
 examples/k8s/charts
 *.so
 target
+wheelhouse

@@ -8,7 +8,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["logprep"]
+package-dir = { "" = "logprep" }
 
 [tool.setuptools_scm]
 fallback_version = "unset"
@@ -110,6 +110,7 @@ dev = [
   "responses",
   "jinja2",
   "maturin",
+  "cibuildwheel",
 ]
 
 doc = [
@@ -145,3 +146,12 @@ extend-exclude = '''
 
 [tool.isort]
 profile = "black"
+
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-*"
+skip = "*pp* *i686*musl*"
+
+[tool.cibuildwheel.linux]
+archs = "x86_64 i686 aarch64"
+before-build = "curl -sSf https://sh.rustup.rs | sh -s -- -y"
+environment = 'PATH=$HOME/.cargo/bin:$PATH'
