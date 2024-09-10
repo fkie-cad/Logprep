@@ -10,7 +10,6 @@ from unittest import mock
 import pytest
 import responses
 from attrs import asdict
-from attrs.exceptions import FrozenInstanceError
 from requests.exceptions import HTTPError
 from ruamel.yaml.scanner import ScannerError
 
