@@ -317,11 +317,11 @@ class HttpInput(Input):
 
         number_of_http_requests: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of incomming requests",
+                description="Number of incoming requests",
                 name="number_of_http_requests",
             )
         )
-        """Number of incomming requests"""
+        """Number of incoming requests"""
 
         message_backlog_size: GaugeMetric = field(
             factory=lambda: GaugeMetric(
@@ -354,7 +354,7 @@ class HttpInput(Input):
            :location: uvicorn_config
            :suggested-value: uvicorn_config.access_log: true, uvicorn_config.server_header: false, uvicorn_config.data_header: false
            
-           Additionaly to the below it is recommended to configure `ssl on the metrics server endpoint
+           Additionally to the below it is recommended to configure `ssl on the metrics server endpoint
            <https://www.uvicorn.org/settings/#https>`_
 
            .. code-block:: yaml
