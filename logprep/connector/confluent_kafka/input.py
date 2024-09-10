@@ -416,7 +416,11 @@ class ConfluentKafkaInput(Input):
         if raw_event is None:
             return None, None
         try:
-            event_dict = self._decoder.decode(raw_event)
+            event_dict = self._decoder.decode(raw_event.decode("utf-8"))
+        except UnicodeDecodeError as error:
+            raise CriticalInputParsingError(
+                self, "Input record value is not 'utf-8' encoded", str(raw_event)
+            ) from error
         except msgspec.DecodeError as error:
             raise CriticalInputParsingError(
                 self, "Input record value is not a valid json string", raw_event
