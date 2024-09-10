@@ -102,8 +102,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        name: Install Python
+      - name: Initialize Python
+        uses: actions/setup-python@v1
         with:
           python-version: "3.11"
 
@@ -116,7 +116,19 @@ jobs:
         run: python -m pip install cibuildwheel
 
       - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse --platform linux --archs ${{ matrix.arch }}
+        run: python -m cibuildwheel --output-dir wheelhouse
+
+      - name: Build binary wheel and a source tarball
+        run: pipx run build --sdist
+
+      - name: copy artifacts to dist folder
+        run: cp ./wheelhouse/* ./dist/
+
+      - name: Upload Artifact for next job
+        uses: actions/upload-artifact@master
+        with:
+          name: logprep-build
+          path: dist
 
   containerbuild:
     strategy:
