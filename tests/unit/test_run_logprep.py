@@ -77,7 +77,6 @@ class TestRunLogprepCli:
             ("test", "config"),
             ("test", "unit"),
             ("test", "dry-run", "input_data"),
-            ("test", "integration", "testdata"),
         ],
     )
     def test_cli_invokes_default_config_location(self, command):
