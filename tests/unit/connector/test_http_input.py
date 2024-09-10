@@ -12,6 +12,7 @@ from unittest import mock
 
 import pytest
 import requests
+import responses
 import uvicorn
 from requests.auth import HTTPBasicAuth
 
@@ -114,6 +115,12 @@ class TestHttpConnector(BaseInputTestCase):
     def test_get_method_returns_200_with_authentication(self):
         resp = requests.get(url=f"{self.target}/auth-json-secret", timeout=0.5)
         assert resp.status_code == 200
+
+    def test_get_method_returns_429_if_queue_is_full(self):
+        self.object.messages.full = mock.MagicMock()
+        self.object.messages.full.return_value = True
+        resp = requests.get(url=f"{self.target}/json", timeout=20)
+        assert resp.status_code == 429
 
     def test_get_error_code_too_many_requests(self):
         data = {"message": "my log message"}
@@ -454,3 +461,42 @@ class TestHttpConnector(BaseInputTestCase):
         data = "this is not a valid json nor jsonl"
         resp = requests.post(url=f"{self.target}/{endpoint}", data=data, timeout=0.5)
         assert resp.status_code == 400
+
+    @responses.activate
+    def test_health_endpoint_is_ready_if_all_endpoints_are_successful(self):
+        responses.add(responses.GET, "http://127.0.0.1:9000/json", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/*json", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/jsonl", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/(first|second)/jsonl", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/(third|fourth)/jsonl*", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/plaintext", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-secret", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-file", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/.*/[A-Z]{2}/json$", status=200)
+        assert self.object.health(), "Health endpoint should be ready"
+
+    @responses.activate
+    def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_429(self):
+        responses.add(responses.GET, "http://127.0.0.1:9000/json", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/*json", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/jsonl", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/(first|second)/jsonl", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/(third|fourth)/jsonl*", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/plaintext", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-secret", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-file", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/.*/[A-Z]{2}/json$", status=429)  # bad
+        assert not self.object.health(), "Health endpoint should not be ready"
+
+    @responses.activate
+    def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_500(self):
+        responses.add(responses.GET, "http://127.0.0.1:9000/json", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/*json", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/jsonl", status=500)  # bad
+        responses.add(responses.GET, "http://127.0.0.1:9000/(first|second)/jsonl", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/(third|fourth)/jsonl*", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/plaintext", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-secret", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-file", status=200)
+        responses.add(responses.GET, "http://127.0.0.1:9000/.*/[A-Z]{2}/json$", status=200)
+        assert not self.object.health(), "Health endpoint should not be ready"

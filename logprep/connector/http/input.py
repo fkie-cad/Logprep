@@ -139,7 +139,7 @@ def raise_request_exceptions(func: Callable):
                 resp = args[2]
                 resp.status = HTTP_200
                 if endpoint.messages.full():
-                    raise HTTPTooManyRequests(description="Logprep Message Queue is full.")
+                    raise queue.Full()
                 return
             else:
                 raise HTTPMethodNotAllowed(["POST"])
