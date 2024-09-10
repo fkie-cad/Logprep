@@ -84,11 +84,13 @@ import re
 import zlib
 from abc import ABC
 from base64 import b64encode
-from typing import Callable, Mapping, Tuple, Union
+from functools import cached_property
+from typing import Callable, List, Mapping, Tuple, Union
 
 import falcon.asgi
 import msgspec
 import requests
+import rstr
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTP_200,
@@ -375,7 +377,7 @@ class HttpInput(Input):
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`. It's possible to use wildcards and
-        regexes for pattern matching.
+        regexps for pattern matching.
         
         
         .. autoclass:: logprep.connector.http.input.PlaintextHttpEndpoint
@@ -408,6 +410,9 @@ class HttpInput(Input):
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
         """Defines the name of the key for the collected metadata fields"""
+
+        health_timeout: int = field(validator=validators.instance_of(int), default=5)
+        """Timeout in seconds for health check"""
 
     __slots__ = []
 
@@ -492,20 +497,27 @@ class HttpInput(Input):
             return
         self.http_server.shut_down()
 
+    @cached_property
+    def health_endpoints(self) -> List[str]:
+        """Returns a list of all configured endpoints"""
+        return [rstr.xeger(endpoint) for endpoint in self._config.endpoints]
+
     def health(self) -> bool:
-        """Check the health of the component."""
-        endpoint_health = []
-        for endpoint in self._config.endpoints:
+        """Health check for the HTTP Input Connector
+
+        Returns
+        -------
+        bool
+            :code:`True` if all endpoints can be called without error
+        """
+        for endpoint in self.health_endpoints:
             try:
-                response = requests.get(f"{self.target}{endpoint}", timeout=5)
-                if response.status_code != 200:
-                    endpoint_health.append(False)
-                    logger.error(
-                        "Health check failed for endpoint: %s -> %s", endpoint, response.status_code
-                    )
-                else:
-                    endpoint_health.append(True)
+                requests.get(
+                    f"{self.target}{endpoint}", timeout=self._config.health_timeout
+                ).raise_for_status()
             except requests.exceptions.RequestException as error:
                 logger.error("Health check failed for endpoint: %s due to %s", endpoint, str(error))
+                self.metrics.number_of_errors += 1
+                return False
 
-        return super().health() and all(endpoint_health)
+        return super().health()

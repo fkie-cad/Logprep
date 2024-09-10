@@ -464,39 +464,52 @@ class TestHttpConnector(BaseInputTestCase):
 
     @responses.activate
     def test_health_endpoint_is_ready_if_all_endpoints_are_successful(self):
-        responses.add(responses.GET, "http://127.0.0.1:9000/json", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/*json", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/jsonl", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/(first|second)/jsonl", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/(third|fourth)/jsonl*", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/plaintext", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-secret", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-file", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/.*/[A-Z]{2}/json$", status=200)
+        for endpoint in self.object.health_endpoints:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
         assert self.object.health(), "Health endpoint should be ready"
 
     @responses.activate
     def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_429(self):
-        responses.add(responses.GET, "http://127.0.0.1:9000/json", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/*json", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/jsonl", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/(first|second)/jsonl", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/(third|fourth)/jsonl*", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/plaintext", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-secret", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-file", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/.*/[A-Z]{2}/json$", status=429)  # bad
+        for endpoint in self.object.health_endpoints[0:-2]:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
+        endpoint = self.object.health_endpoints[-1]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", status=429)  # bad
         assert not self.object.health(), "Health endpoint should not be ready"
 
     @responses.activate
     def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_500(self):
-        responses.add(responses.GET, "http://127.0.0.1:9000/json", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/*json", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/jsonl", status=500)  # bad
-        responses.add(responses.GET, "http://127.0.0.1:9000/(first|second)/jsonl", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/(third|fourth)/jsonl*", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/plaintext", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-secret", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/auth-json-file", status=200)
-        responses.add(responses.GET, "http://127.0.0.1:9000/.*/[A-Z]{2}/json$", status=200)
+        for endpoint in self.object.health_endpoints[1:-1]:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)  # bad
         assert not self.object.health(), "Health endpoint should not be ready"
+
+    @responses.activate
+    def test_health_endpoint_is_not_ready_on_connection_error(self):
+        for endpoint in self.object.health_endpoints[1:-1]:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.ConnectionError("bad"))
+        assert not self.object.health(), "Health endpoint should not be ready"
+
+    @responses.activate
+    def test_health_endpoint_is_not_ready_if_one_endpoint_has_read_timeout(self):
+        for endpoint in self.object.health_endpoints[1:-1]:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.Timeout("bad"))
+        assert not self.object.health(), "Health endpoint should not be ready"
+
+    def test_health_check_logs_error(self):
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.Timeout("bad"))
+        with mock.patch("logging.Logger.error") as mock_logger:
+            assert not self.object.health(), "Health endpoint should not be ready"
+            mock_logger.assert_called()
+
+    def test_health_counts_errors(self):
+        self.object.metrics.number_of_errors = 0
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)  # bad
+        self.object.health()
+        assert self.object.metrics.number_of_errors == 1

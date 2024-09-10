@@ -48,16 +48,29 @@ class PrometheusExporter:
         self._healthcheck_functions = None
 
     @property
-    def healthcheck_functions(self) -> None:
+    def healthcheck_functions(self) -> Iterable[Callable] | None:
+        """returns the healthcheck functions
+
+        Returns
+        -------
+        Iterable[Callable] | None
+            The healthcheck functions
+        """
         return self._healthcheck_functions
 
     @healthcheck_functions.setter
     def healthcheck_functions(self, functions: Iterable[Callable] | None) -> None:
+        """Sets the healthcheck functions and restarts the server
+
+        Parameters
+        ----------
+        functions : Iterable[Callable] | None
+            The healthcheck functions
+        """
         self._healthcheck_functions = functions
         if self.server:
             self.server.shut_down()
         self.init_server()
-        # self.server.start()
 
     def _prepare_multiprocessing(self):
         """
