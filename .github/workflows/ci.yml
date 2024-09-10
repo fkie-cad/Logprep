@@ -96,9 +96,6 @@ jobs:
   build_wheels:
     name: Build wheels
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        arch: ["x86_64", "aarch64"]
     steps:
       - uses: actions/checkout@v4
 
