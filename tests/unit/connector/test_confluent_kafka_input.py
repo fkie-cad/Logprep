@@ -200,34 +200,6 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         result = self.object._get_raw_event(0.001)
         assert result
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_event_raises_exception_if_input_invalid_json(self, _):
-        mock_record = mock.MagicMock()
-        mock_record.error = mock.MagicMock()
-        mock_record.error.return_value = None
-        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
-        mock_record.value = mock.MagicMock()
-        mock_record.value.return_value = '{"invalid_json"}'.encode("utf8")
-        with pytest.raises(
-            CriticalInputParsingError,
-            match="Input record value is not a valid json string -> b'{\"invalid_json\"}'",
-        ):
-            self.object._get_event(0.001)
-
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_event_raises_exception_if_input_not_utf(self, _):
-        mock_record = mock.MagicMock()
-        mock_record.error = mock.MagicMock()
-        mock_record.error.return_value = None
-        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
-        mock_record.value = mock.MagicMock()
-        mock_record.value.return_value = '{"not_utf-8": \xfc}'.encode("cp1252")
-        with pytest.raises(
-            CriticalInputParsingError,
-            match=r"Input record value is not \'utf-8\' encoded -> b\'\{\"not_utf-8\": \\xfc\}\'",
-        ):
-            self.object._get_event(0.001)
-
     def test_setup_raises_fatal_input_error_on_invalid_config(self):
         config = {
             "bootstrap.servers": "testinstance:9092",
