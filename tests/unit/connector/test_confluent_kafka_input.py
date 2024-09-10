@@ -229,14 +229,16 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             self.object._get_event(0.001)
 
     def test_setup_raises_fatal_input_error_on_invalid_config(self):
-        config = {
+        kafka_config = {
             "bootstrap.servers": "testinstance:9092",
             "group.id": "sapsal",
             "myconfig": "the config",
         }
-        self.object._config.kafka_config = config
+        config = deepcopy(self.CONFIG)
+        config["kafka_config"] = kafka_config
+        connector = Factory.create({"test": config})
         with pytest.raises(FatalInputError, match="No such configuration property"):
-            self.object.setup()
+            connector.setup()
 
     def test_get_next_raises_critical_input_parsing_error(self):
         return_value = b'{"invalid": "json'

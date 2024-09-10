@@ -18,9 +18,12 @@ from logprep.util.helper import camel_to_snake
 class Component(ABC):
     """Abstract Component Class to define the Interface"""
 
-    @define(kw_only=True, slots=False)
+    @define(kw_only=True, slots=False, frozen=True)
     class Config:
-        """Common Configurations"""
+        """Common Configurations
+        This class is used to define the configuration of the component.
+        It is frozen because the configuration should not be changed after initialization.
+        """
 
         type: str = field(validator=validators.instance_of(str))
         """Type of the component"""
@@ -39,12 +42,14 @@ class Component(ABC):
                     attribute.init_tracker()
 
     # __dict__ is added to support functools.cached_property
-    __slots__ = ["name", "_logger", "_config", "__dict__"]
+    __slots__ = ["name", "_config", "__dict__"]
 
+    # instance attributes
     name: str
-    _scheduler = Scheduler()
-
     _config: Config
+
+    # class attributes
+    _scheduler = Scheduler()
     _decoder: msgspec.json.Decoder = msgspec.json.Decoder()
     _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
 

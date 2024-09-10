@@ -20,7 +20,7 @@ class CommonConfluentKafkaTestCase:
 
     def test_client_id_is_set_to_hostname(self):
         self.object.setup()
-        assert self.object._config.kafka_config.get("client.id") == getfqdn()
+        assert self.object._kafka_config.get("client.id") == getfqdn()
 
     def test_create_fails_for_unknown_option(self):
         kafka_config = deepcopy(self.CONFIG)

@@ -2,6 +2,7 @@
 # pylint: disable=no-member
 # pylint: disable=protected-access
 # pylint: disable=too-many-statements
+import copy
 import hashlib
 import os
 import re
@@ -14,6 +15,7 @@ import pytest
 import responses
 from geoip2.errors import AddressNotFoundError
 
+from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -365,7 +367,9 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         db_path_content = db_path.read_bytes()
         expected_checksum = hashlib.md5(db_path_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, geoip_database_path, db_path_content)
-        self.object._config.db_path = geoip_database_path
+        config = copy.deepcopy(self.CONFIG)
+        config["db_path"] = geoip_database_path
+        self.object = Factory.create({"geoip_enricher": config})
         self.object.setup()
         logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
         downloaded_file = logprep_tmp_dir / f"{self.object.name}.mmdb"
@@ -377,20 +381,22 @@ class TestGeoipEnricher(BaseProcessorTestCase):
 
     @responses.activate
     def test_setup_doesnt_overwrite_already_existing_geomap_file(self):
-        tld_list = "http://db-path-target/db_file.mmdb"
-        tld_list_content = "some content"
-        responses.add(responses.GET, tld_list, tld_list_content.encode("utf8"))
+        mmdb_file_path = "http://db-path-target/db_file.mmdb"
+        new_content = "some content"
+        responses.add(responses.GET, mmdb_file_path, new_content.encode("utf8"))
 
         logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
         os.makedirs(logprep_tmp_dir, exist_ok=True)
-        tld_temp_file = logprep_tmp_dir / f"{self.object.name}.mmdb"
+        temporary_file = logprep_tmp_dir / f"{self.object.name}.mmdb"
 
         pre_existing_content = "file exists already"
-        tld_temp_file.touch()
-        tld_temp_file.write_bytes(pre_existing_content.encode("utf8"))
-        self.object._config.tld_lists = [tld_list]
+        temporary_file.touch()
+        temporary_file.write_bytes(pre_existing_content.encode("utf8"))
+        config = copy.deepcopy(self.CONFIG)
+        config["db_path"] = mmdb_file_path
+        self.object = Factory.create({"geoip_enricher": config})
         self.object.setup()
-        assert tld_temp_file.exists()
-        assert tld_temp_file.read_bytes().decode("utf8") == pre_existing_content
-        assert tld_temp_file.read_bytes().decode("utf8") != tld_list_content
+        assert temporary_file.exists()
+        assert temporary_file.read_bytes().decode("utf8") == pre_existing_content
+        assert temporary_file.read_bytes().decode("utf8") != new_content
         shutil.rmtree(logprep_tmp_dir)  # delete testfile

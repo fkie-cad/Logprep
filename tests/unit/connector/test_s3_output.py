@@ -259,7 +259,9 @@ class TestS3Output(BaseOutputTestCase):
         assert expected_prefix == resulting_prefix
 
     def test_message_backlog_is_not_written_if_message_backlog_size_not_reached(self):
-        self.object._config.message_backlog_size = 2
+        config = deepcopy(self.CONFIG)
+        config.update({"message_backlog_size": 2})
+        self.object = Factory.create({"s3": config})
         assert len(self.object._message_backlog) == 0
         with mock.patch(
             "logprep.connector.s3.output.S3Output._write_backlog"

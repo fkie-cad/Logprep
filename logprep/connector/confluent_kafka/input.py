@@ -243,6 +243,24 @@ class ConfluentKafkaInput(Input):
         super().__init__(name, configuration)
         self._last_valid_records = {}
 
+    @property
+    def _kafka_config(self) -> dict:
+        """Get the kafka configuration.
+
+        Returns
+        -------
+        dict
+            The kafka configuration.
+        """
+        injected_config = {
+            "logger": logger,
+            "on_commit": self._commit_callback,
+            "stats_cb": self._stats_callback,
+            "error_cb": self._error_callback,
+        }
+        DEFAULTS.update({"client.id": getfqdn()})
+        return DEFAULTS | self._config.kafka_config | injected_config
+
     @cached_property
     def _consumer(self) -> Consumer:
         """configures and returns the consumer
@@ -252,15 +270,7 @@ class ConfluentKafkaInput(Input):
         Consumer
             confluent_kafka consumer object
         """
-        injected_config = {
-            "logger": logger,
-            "on_commit": self._commit_callback,
-            "stats_cb": self._stats_callback,
-            "error_cb": self._error_callback,
-        }
-        DEFAULTS.update({"client.id": getfqdn()})
-        self._config.kafka_config = DEFAULTS | self._config.kafka_config
-        consumer = Consumer(self._config.kafka_config | injected_config)
+        consumer = Consumer(self._kafka_config)
         consumer.subscribe(
             [self._config.topic],
             on_assign=self._assign_callback,

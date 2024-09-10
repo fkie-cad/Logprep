@@ -175,16 +175,26 @@ class ConfluentKafkaOutput(Output):
 
         """
 
-    @cached_property
-    def _producer(self):
+    @property
+    def _kafka_config(self) -> dict:
+        """Get the kafka configuration.
+
+        Returns
+        -------
+        dict
+            The kafka configuration.
+        """
         injected_config = {
             "logger": logger,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
         DEFAULTS.update({"client.id": getfqdn()})
-        self._config.kafka_config = DEFAULTS | self._config.kafka_config
-        return Producer(self._config.kafka_config | injected_config)
+        return DEFAULTS | self._config.kafka_config | injected_config
+
+    @cached_property
+    def _producer(self):
+        return Producer(self._kafka_config)
 
     def _error_callback(self, error: KafkaException):
         """Callback for generic/global error events, these errors are typically

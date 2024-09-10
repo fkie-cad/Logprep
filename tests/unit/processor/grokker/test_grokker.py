@@ -448,15 +448,17 @@ class TestGrokker(BaseProcessorTestCase):
 
         event = {"message": "this is user-456"}
         expected = {"message": "this is user-456", "userfield": "user-456"}
-        self._load_specific_rule(rule)
         archive_data = GetterFactory.from_string(
             "tests/testdata/unit/grokker/patterns.zip"
         ).get_raw()
         with mock.patch("logprep.util.getter.HttpGetter.get_raw") as mock_getter:
             mock_getter.return_value = archive_data
-            self.object._config.custom_patterns_dir = (
+            config = deepcopy(self.CONFIG)
+            config["custom_patterns_dir"] = (
                 "http://localhost:8000/tests/testdata/unit/grokker/patterns.zip"
             )
+            self.object = Factory.create({"grokker": config})
+            self._load_specific_rule(rule)
             self.object.setup()
         self.object.process(event)
         assert event == expected
@@ -489,7 +491,9 @@ class TestGrokker(BaseProcessorTestCase):
             },
             "normalized": "id-1",
         }
-        self.object._config.custom_patterns_dir = "tests/testdata/unit/grokker/patterns/"
+        config = deepcopy(self.CONFIG)
+        config["custom_patterns_dir"] = "tests/testdata/unit/grokker/patterns/"
+        self.object = Factory.create({"grokker": config})
         self._load_specific_rule(rule)
         self.object.setup()
         self.object.process(event)

@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 import responses
 
+from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -184,7 +185,9 @@ class TestAmides(BaseProcessorTestCase):
         model_test_copy.touch()
         model_test_copy.write_bytes(model_original.read_bytes())
 
-        self.object._config.models_path = model_uri
+        config = deepcopy(self.CONFIG)
+        config["models_path"] = model_uri
+        self.object = Factory.create({"amides": config})
 
         with monkeypatch.context() as monkey_context:
             monkey_context.chdir(tmp_path)
@@ -202,7 +205,9 @@ class TestAmides(BaseProcessorTestCase):
         expected_checksum = hashlib.md5(model_original_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, model_uri, model_original_content)
 
-        self.object._config.models_path = model_uri
+        config = deepcopy(self.CONFIG)
+        config["models_path"] = model_uri
+        self.object = Factory.create({"amides": config})
 
         with monkeypatch.context() as monkey_context:
             monkey_context.chdir(tmp_path)

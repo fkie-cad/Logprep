@@ -286,7 +286,9 @@ sth.ac.at
         tld_list_content = tld_list_path.read_bytes()
         expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, tld_list, tld_list_content)
-        self.object._config.tld_lists = [tld_list]
+        config = deepcopy(self.CONFIG)
+        config.update({"tld_lists": [tld_list]})
+        self.object = Factory.create({"resolver": config})
         self.object.setup()
         logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
         downloaded_file = logprep_tmp_dir / f"{self.object.name}-tldlist-0.dat"
@@ -309,7 +311,9 @@ sth.ac.at
         pre_existing_content = "file exists already"
         tld_temp_file.touch()
         tld_temp_file.write_bytes(pre_existing_content.encode("utf8"))
-        self.object._config.tld_lists = [tld_list]
+        config = deepcopy(self.CONFIG)
+        config.update({"tld_lists": [tld_list]})
+        self.object = Factory.create({"resolver": config})
         self.object.setup()
         assert tld_temp_file.exists()
         assert tld_temp_file.read_bytes().decode("utf8") == pre_existing_content

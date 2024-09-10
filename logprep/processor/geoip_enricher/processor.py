@@ -68,10 +68,6 @@ class GeoipEnricher(FieldManager):
 
     @cached_property
     def _city_db(self):
-        return database.Reader(self._config.db_path)
-
-    def setup(self):
-        super().setup()
         db_path = Path(self._config.db_path)
         if not db_path.exists():
             logger.debug("start geoip database download...")
@@ -84,8 +80,13 @@ class GeoipEnricher(FieldManager):
                     db_path_file.write_bytes(
                         GetterFactory.from_string(str(self._config.db_path)).get_raw()
                     )
+            db_path = str(db_path_file.absolute())
             logger.debug("finished geoip database download.")
-            self._config.db_path = str(db_path_file.absolute())
+        return database.Reader(db_path)
+
+    def setup(self):
+        super().setup()
+        _ = self._city_db  # trigger download
 
     def _try_getting_geoip_data(self, ip_string):
         try:

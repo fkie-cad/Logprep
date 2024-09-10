@@ -1,10 +1,12 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import copy
 import tempfile
 from unittest import mock
 
 from logprep.connector.jsonl.output import JsonlOutput
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -92,8 +94,10 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
 
     @mock.patch("builtins.open")
     def test_setup_creates_single_file_if_only_output_file(self, mock_open):
-        self.object._config.output_file_custom = ""
-        self.object._config.output_file_error = ""
+        config = copy.deepcopy(self.CONFIG)
+        config["output_file_custom"] = ""
+        config["output_file_error"] = ""
+        self.object = Factory.create({"Test Instance Name": config})
         self.object.setup()
         mock_open.assert_called()
         assert mock_open.call_count == 1
