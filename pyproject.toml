@@ -8,7 +8,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = { "" = "logprep" }
+package-dir = { "logprep" = "logprep" }
+packages = ["logprep"]
 
 [tool.setuptools_scm]
 fallback_version = "unset"
