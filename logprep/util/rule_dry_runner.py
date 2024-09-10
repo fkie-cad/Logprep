@@ -41,19 +41,28 @@ import tempfile
 from copy import deepcopy
 from difflib import ndiff
 from functools import cached_property
+from typing import Dict, List
 
 from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline, PipelineResult
-from logprep.util.auto_rule_tester.auto_rule_corpus_tester import (
-    convert_extra_data_format,
-)
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import color_print_line, color_print_title, recursive_compare
 
 yaml = YAML(typ="safe", pure=True)
+
+
+def convert_extra_data_format(extra_outputs) -> List[Dict]:
+    """
+    Converts the format of the extra data outputs such that it is a list of dicts, where the
+    output target is the key and the values are the actual outputs.
+    """
+    reformatted_extra_outputs = []
+    for value, key in extra_outputs:
+        reformatted_extra_outputs.append({str(key): value})
+    return reformatted_extra_outputs
 
 
 class DryRunner:

@@ -2,8 +2,14 @@
 
 ## next release
 ### Breaking
+
+* remove AutoRuleCorpusTester
+
 ### Features
 ### Improvements
+
+* remove AutoRuleCorpusTester
+
 ### Bugfix
 
 ## 13.1.2
