@@ -5,6 +5,7 @@ import multiprocessing
 from copy import deepcopy
 from logging import Logger
 from logging.config import dictConfig
+from typing import Iterable
 from unittest import mock
 
 from logprep.connector.http.input import HttpInput
@@ -259,13 +260,14 @@ class TestPipelineManager:
 
     def test_create_pipeline_injects_pipeline_functions(self):
         pipeline_manager = PipelineManager(self.config)
-        pipeline_manager.prometheus_exporter = PrometheusExporter()
-        pipeline_process = pipeline_manager._create_pipeline(1)
-        pipeline = Pipeline(pipeline_manager._configuration, 1)
-        assert (
-            pipeline_manager.prometheus_exporter.healthcheck_functions
-            == pipeline.get_health_functions()
+        pipeline_manager.prometheus_exporter = PrometheusExporter(
+            pipeline_manager._configuration.metrics
         )
+        assert pipeline_manager.prometheus_exporter.healthcheck_functions is None
+        _ = pipeline_manager._create_pipeline(1)
+        assert pipeline_manager.prometheus_exporter.healthcheck_functions is not None
+        assert isinstance(pipeline_manager.prometheus_exporter.healthcheck_functions, Iterable)
+        assert len(pipeline_manager.prometheus_exporter.healthcheck_functions) == 7
 
 
 class TestThrottlingQueue:
