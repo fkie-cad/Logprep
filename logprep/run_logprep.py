@@ -13,7 +13,6 @@ from colorama import Fore
 from logprep.generator.http.controller import Controller
 from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
-from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
@@ -158,23 +157,6 @@ def test_rules(configs: tuple[str]) -> None:
     for config in configs:
         tester = AutoRuleTester(config)
         tester.run()
-
-
-@test.command(
-    short_help="Run the rule corpus tester against a given configuration", name="integration"
-)
-@click.argument("configs", nargs=-1, required=False)
-@click.argument("testdata")
-def test_ruleset(configs: tuple[str], testdata: str):
-    """Test the given ruleset against specified test data
-
-    \b
-    CONFIG is a path to configuration file (filepath or URL).
-    TESTDATA is a path to a set of test files.
-    """
-    _ = _get_configuration(configs)
-    tester = RuleCorpusTester(configs, testdata)
-    tester.run()
 
 
 @cli.group(short_help="Generate load for a running logprep instance")

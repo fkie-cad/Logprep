@@ -59,16 +59,8 @@ class TestRunLogprepCli:
                 "logprep.util.rule_dry_runner.DryRunner.run",
             ),
             (
-                "test integration tests/testdata/config/config.yml path/to/testset",
-                "logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run",
-            ),
-            (
                 "test dry-run tests/testdata/config/config.yml tests/testdata/config/config.yml asdfsdv",
                 "logprep.util.rule_dry_runner.DryRunner.run",
-            ),
-            (
-                "test integration tests/testdata/config/config.yml tests/testdata/config/config.yml path/to/testset",
-                "logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run",
             ),
         ],
     )
@@ -85,7 +77,6 @@ class TestRunLogprepCli:
             ("test", "config"),
             ("test", "unit"),
             ("test", "dry-run", "input_data"),
-            ("test", "integration", "testdata"),
         ],
     )
     def test_cli_invokes_default_config_location(self, command):
@@ -270,14 +261,6 @@ class TestRunLogprepCli:
         # so the logger is being activated here again.
         logger = logging.getLogger()
         logger.disabled = False
-
-    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run")
-    def test_test_ruleset_starts_rule_corpus_tester(self, mock_tester):
-        config_path = "tests/testdata/config/config.yml"
-        test_data_path = "path/to/testset"
-        result = self.cli_runner.invoke(cli, ["test", "integration", config_path, test_data_path])
-        assert result.exit_code == 0
-        mock_tester.assert_called()
 
     @mock.patch("logging.Logger.info")
     def test_run_logprep_logs_log_level(self, mock_info):

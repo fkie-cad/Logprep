@@ -2,8 +2,14 @@
 
 ## next release
 ### Breaking
+
+* remove AutoRuleCorpusTester
+
 ### Features
 ### Improvements
+
+* remove AutoRuleCorpusTester
+
 ### Bugfix
 
 * ensure `logprep.abc.Component.Config` is immutable and can be applied multiple times
