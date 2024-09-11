@@ -411,9 +411,6 @@ class HttpInput(Input):
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
         """Defines the name of the key for the collected metadata fields"""
 
-        health_timeout: int = field(validator=validators.instance_of(int), default=5)
-        """Timeout in seconds for health check"""
-
     __slots__ = []
 
     messages: mp.Queue = None

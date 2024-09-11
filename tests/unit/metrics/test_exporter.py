@@ -127,3 +127,26 @@ class TestHealthEndpoint:
         resp = requests.get("http://localhost:8000/health", timeout=0.5)
         assert resp.status_code == expected
         exporter.server.shut_down()
+
+    @pytest.mark.parametrize(
+        "functions, expected",
+        [
+            ([lambda: True], "OK"),
+            ([lambda: True, lambda: True], "OK"),
+            ([lambda: False], "FAIL"),
+            ([lambda: False, lambda: False], "FAIL"),
+            ([lambda: False, lambda: True, lambda: True], "FAIL"),
+        ],
+    )
+    def test_health_check_returns_body(self, functions, expected):
+        exporter = PrometheusExporter(self.metrics_config)
+        exporter.server = http.ThreadingHTTPServer(
+            exporter.configuration.uvicorn_config | {"port": 8000, "host": "0.0.0.0"},
+            make_patched_asgi_app(functions),
+            daemon=False,
+            logger_name="Exporter",
+        )
+        exporter.server.start()
+        resp = requests.get("http://localhost:8000/health", timeout=0.5)
+        assert resp.content.decode() == expected
+        exporter.server.shut_down()

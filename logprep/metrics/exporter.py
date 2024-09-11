@@ -21,16 +21,17 @@ def make_patched_asgi_app(functions: Iterable[Callable] | None) -> Callable:
 
     functions = functions if functions else [lambda: DEFAULT_HEALTH_STATE]
 
+    response_start_ok = {"type": "http.response.start", "status": 200}
+    response_body_ok = {"type": "http.response.body", "body": b"OK"}
+    response_start_fail = {"type": "http.response.start", "status": 503}
+    response_body_fail = {"type": "http.response.body", "body": b"FAIL"}
+
     async def asgi_app(scope, receive, send):
         """asgi app with health check and metrics handling"""
         if scope["type"] == "http" and scope["path"] == "/health":
-            await send(
-                {
-                    "type": "http.response.start",
-                    "status": 200 if all(f() for f in functions) else 503,
-                }
-            )
-            await send({"type": "http.response.body", "body": b"OK"})
+            success = all(f() for f in functions)
+            await send(response_start_ok if success else response_start_fail)
+            await send(response_body_ok if success else response_body_fail)
         else:
             await prometheus_app(scope, receive, send)
 
