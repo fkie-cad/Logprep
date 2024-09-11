@@ -31,6 +31,7 @@ Example
 import logging
 from functools import cached_property, partial
 from socket import getfqdn
+from types import MappingProxyType
 from typing import Callable, Optional, Tuple, Union
 
 import msgspec
@@ -211,15 +212,16 @@ class ConfluentKafkaInput(Input):
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
 
-        kafka_config: Optional[dict] = field(
+        kafka_config: Optional[MappingProxyType] = field(
             validator=[
-                validators.instance_of(dict),
+                validators.instance_of(MappingProxyType),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of(str),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
-            ]
+            ],
+            converter=MappingProxyType,
         )
         """ Kafka configuration for the kafka client.
         At minimum the following keys must be set:

@@ -32,8 +32,10 @@ class Component(ABC):
         type: str = field(validator=validators.instance_of(str))
         """Type of the component"""
 
-        health_timeout: int = field(
-            validator=validators.instance_of(int), default=DEFAULT_HEALTH_TIMEOUT
+        health_timeout: float = field(
+            validator=validators.instance_of(float),
+            default=DEFAULT_HEALTH_TIMEOUT,
+            converter=float,
         )
         """Timeout in seconds for health check: Default is 1 seconds"""
 

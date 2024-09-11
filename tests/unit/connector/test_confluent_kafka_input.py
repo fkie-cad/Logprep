@@ -32,6 +32,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "type": "confluentkafka_input",
         "kafka_config": {"bootstrap.servers": "testserver:9092", "group.id": "testgroup"},
         "topic": "test_input_raw",
+        "health_timeout": 0.1,
     }
 
     expected_metrics = [
@@ -115,8 +116,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_batch_finished_callback_calls_offsets_handler_for_setting(self, _, settings, handlers):
         input_config = deepcopy(self.CONFIG)
+        input_config["kafka_config"] |= settings
         kafka_input = Factory.create({"test": input_config})
-        kafka_input._config.kafka_config.update(settings)
         kafka_consumer = kafka_input._consumer
         message = "test message"
         kafka_input._last_valid_records = {0: message}
@@ -141,8 +142,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self, _, settings, handler
     ):
         input_config = deepcopy(self.CONFIG)
+        input_config["kafka_config"] |= settings
         kafka_input = Factory.create({"test": input_config})
-        kafka_input._config.kafka_config.update(settings)
         kafka_consumer = kafka_input._consumer
         return_sequence = [KafkaException("test error"), None]
 
@@ -288,8 +289,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_client_id_can_be_overwritten(self, mock_consumer):
         input_config = deepcopy(self.CONFIG)
+        input_config["kafka_config"]["client.id"] = "thisclientid"
         kafka_input = Factory.create({"test": input_config})
-        kafka_input._config.kafka_config["client.id"] = "thisclientid"
         kafka_input.setup()
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("client.id") == "thisclientid"
@@ -297,8 +298,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_statistics_interval_can_be_overwritten(self, mock_consumer):
-        kafka_input = Factory.create({"test": self.CONFIG})
-        kafka_input._config.kafka_config["statistics.interval.ms"] = "999999999"
+        input_config = deepcopy(self.CONFIG)
+        input_config["kafka_config"]["statistics.interval.ms"] = "999999999"
+        kafka_input = Factory.create({"test": input_config})
         kafka_input.setup()
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"

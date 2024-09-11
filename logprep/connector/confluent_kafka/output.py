@@ -29,6 +29,7 @@ import logging
 from datetime import datetime
 from functools import cached_property, partial
 from socket import getfqdn
+from types import MappingProxyType
 from typing import Optional
 
 from attrs import define, field, validators
@@ -151,16 +152,17 @@ class ConfluentKafkaOutput(Output):
         """The topic into which events should be written that couldn't be processed successfully."""
         flush_timeout: float
         send_timeout: int = field(validator=validators.instance_of(int), default=0)
-        kafka_config: Optional[dict] = field(
+        kafka_config: Optional[MappingProxyType] = field(
             validator=[
-                validators.instance_of(dict),
+                validators.instance_of(MappingProxyType),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of((str, dict)),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers"]),
             ],
-            factory=dict,
+            factory=MappingProxyType,
+            converter=MappingProxyType,
         )
         """ Kafka configuration for the kafka client.
         At minimum the following keys must be set:
