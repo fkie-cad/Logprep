@@ -325,3 +325,7 @@ class TestS3Output(BaseOutputTestCase):
     def test_setup_populates_cached_properties(self, mock_getmembers):
         self.object.setup()
         mock_getmembers.assert_called_with(self.object)
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    def test_setup_calls_wait_for_health(self):
+        pass
