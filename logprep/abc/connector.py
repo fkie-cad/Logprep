@@ -15,11 +15,11 @@ class Connector(Component):
 
         number_of_processed_events: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of successfull events",
+                description="Number of successful events",
                 name="number_of_processed_events",
             )
         )
-        """Number of successfull events"""
+        """Number of successful events"""
 
         number_of_failed_events: CounterMetric = field(
             factory=lambda: CounterMetric(

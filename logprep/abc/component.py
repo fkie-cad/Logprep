@@ -13,6 +13,7 @@ from attrs import asdict
 from schedule import Scheduler
 
 from logprep.metrics.metrics import Metric
+from logprep.util.defaults import DEFAULT_HEALTH_TIMEOUT
 from logprep.util.helper import camel_to_snake
 
 logger = logging.getLogger("Component")
@@ -30,6 +31,11 @@ class Component(ABC):
 
         type: str = field(validator=validators.instance_of(str))
         """Type of the component"""
+
+        health_timeout: int = field(
+            validator=validators.instance_of(int), default=DEFAULT_HEALTH_TIMEOUT
+        )
+        """Timeout in seconds for health check: Default is 1 seconds"""
 
     @define(kw_only=True)
     class Metrics:
