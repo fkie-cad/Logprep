@@ -340,9 +340,7 @@ class ConfluentKafkaOutput(Output):
     def health(self) -> bool:
         """Check the health of kafka producer."""
         try:
-            self._producer.list_topics(
-                topic=self._config.topic, timeout=self._config.health_timeout
-            )
+            self._producer.list_topics(timeout=self._config.health_timeout)
         except KafkaException as error:
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
