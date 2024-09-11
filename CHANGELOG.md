@@ -7,10 +7,11 @@
 
 ### Features
 
-* adds readiness check to metrics
+* adds health check endpoint to metrics on path `/health`
 * changes helm chart to use new readiness check
 * adds `healthcheck_timeout` option to all components to tweak the timeout of healthchecks
 * adds `desired_cluster_status` option to opensearch output to signal healthy cluster status
+* initially run health checks on setup for every configured component
 
 
 ### Improvements

@@ -3,6 +3,7 @@
 import functools
 import inspect
 import logging
+import sys
 import time
 from abc import ABC
 from functools import cached_property
@@ -98,9 +99,21 @@ class Component(ABC):
     def setup(self):
         """Set the component up."""
         self._populate_cached_properties()
-        # while not self.health():
-        #     logger.info("Waiting for %s to be healthy", self.name)
-        #     time.sleep(1)
+        if not "http" in self._config.type:
+            self._wait_for_health()
+
+    def _wait_for_health(self) -> None:
+        """Wait for the component to be healthy.
+        if the component is not healthy after a period of time, the process will exit.
+        """
+        for i in range(3):
+            if self.health():
+                break
+            logger.info("Wait for %s initially becoming healthy: %s/3", self.name, i + 1)
+            time.sleep(1 + i)
+        else:
+            logger.error("Component '%s' did not become healthy", self.name)
+            sys.exit(1)
 
     def _populate_cached_properties(self):
         _ = [
