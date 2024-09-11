@@ -497,7 +497,9 @@ class HttpInput(Input):
     @cached_property
     def health_endpoints(self) -> List[str]:
         """Returns a list of all configured endpoints"""
-        return [rstr.xeger(endpoint) for endpoint in self._config.endpoints]
+        normalized_endpoints = (endpoint.replace(".*", "b") for endpoint in self._config.endpoints)
+        normalized_endpoints = (endpoint.replace(".+", "b") for endpoint in normalized_endpoints)
+        return [rstr.xeger(endpoint) for endpoint in normalized_endpoints]
 
     def health(self) -> bool:
         """Health check for the HTTP Input Connector
@@ -512,7 +514,7 @@ class HttpInput(Input):
                 requests.get(
                     f"{self.target}{endpoint}", timeout=self._config.health_timeout
                 ).raise_for_status()
-            except requests.exceptions.RequestException as error:
+            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as error:
                 logger.error("Health check failed for endpoint: %s due to %s", endpoint, str(error))
                 self.metrics.number_of_errors += 1
                 return False

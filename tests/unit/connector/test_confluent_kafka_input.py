@@ -393,24 +393,24 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.batch_finished_callback.assert_called()
 
     def test_health_returns_true_if_no_error(self):
-        with mock.patch.object(self.object, "_consumer"):
+        with mock.patch("logprep.connector.confluent_kafka.input.Consumer"):
             assert self.object.health()
 
     def test_health_returns_false_on_kafka_exception(self):
-        with mock.patch.object(self.object, "_consumer") as mock_consumer:
-            mock_consumer.list_topics.side_effect = KafkaException("test error")
-            assert not self.object.health()
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
 
     def test_health_logs_error_on_kafka_exception(self):
-        with mock.patch.object(self.object, "_consumer") as mock_consumer:
-            mock_consumer.list_topics.side_effect = KafkaException("test error")
-            with mock.patch("logging.Logger.error") as mock_error:
-                self.object.health()
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.list_topics.side_effect = KafkaException("test error")
+        with mock.patch("logging.Logger.error") as mock_error:
+            self.object.health()
         mock_error.assert_called()
 
     def test_health_counts_metrics_on_kafka_exception(self):
         self.object.metrics.number_of_errors = 0
-        with mock.patch.object(self.object, "_consumer") as mock_consumer:
-            mock_consumer.list_topics.side_effect = KafkaException("test error")
-            assert not self.object.health()
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
         assert self.object.metrics.number_of_errors == 1

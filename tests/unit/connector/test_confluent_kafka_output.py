@@ -164,24 +164,24 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             Factory.create({"test": config})
 
     def test_health_returns_true_if_no_error(self):
-        with mock.patch.object(self.object, "_producer"):
-            assert self.object.health()
+        self.object._producer = mock.MagicMock()
+        assert self.object.health()
 
     def test_health_returns_false_on_kafka_exception(self):
-        with mock.patch.object(self.object, "_producer") as mock_producer:
-            mock_producer.list_topics.side_effect = KafkaException("test error")
-            assert not self.object.health()
+        self.object._producer = mock.MagicMock()
+        self.object._producer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
 
     def test_health_logs_error_on_kafka_exception(self):
-        with mock.patch.object(self.object, "_producer") as mock_producer:
-            mock_producer.list_topics.side_effect = KafkaException("test error")
-            with mock.patch("logging.Logger.error") as mock_error:
-                self.object.health()
+        self.object._producer = mock.MagicMock()
+        self.object._producer.list_topics.side_effect = KafkaException("test error")
+        with mock.patch("logging.Logger.error") as mock_error:
+            self.object.health()
         mock_error.assert_called()
 
     def test_health_counts_metrics_on_kafka_exception(self):
         self.object.metrics.number_of_errors = 0
-        with mock.patch.object(self.object, "_producer") as mock_producer:
-            mock_producer.list_topics.side_effect = KafkaException("test error")
-            assert not self.object.health()
+        self.object._producer = mock.MagicMock()
+        self.object._producer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
         assert self.object.metrics.number_of_errors == 1

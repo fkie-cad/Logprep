@@ -123,7 +123,7 @@ class Component(ABC):
             True if the component is healthy, False otherwise.
 
         """
-        logger.debug("Checking health of %s", self.name)
+        # logger.debug("Checking health of %s", self.name)
         return True
 
     def _schedule_task(

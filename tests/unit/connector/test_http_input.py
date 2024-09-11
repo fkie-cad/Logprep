@@ -74,7 +74,7 @@ class TestHttpConnector(BaseInputTestCase):
             "/plaintext": "plaintext",
             "/auth-json-secret": "json",
             "/auth-json-file": "json",
-            "/.*/[A-Z]{2}/json$": "json",
+            "/[A-Za-z0-9]*/[A-Z]{2}/json$": "json",
         },
     }
 
@@ -500,6 +500,7 @@ class TestHttpConnector(BaseInputTestCase):
         responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.Timeout("bad"))
         assert not self.object.health(), "Health endpoint should not be ready"
 
+    @responses.activate
     def test_health_check_logs_error(self):
         endpoint = self.object.health_endpoints[0]
         responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.Timeout("bad"))
@@ -507,9 +508,10 @@ class TestHttpConnector(BaseInputTestCase):
             assert not self.object.health(), "Health endpoint should not be ready"
             mock_logger.assert_called()
 
+    @responses.activate
     def test_health_counts_errors(self):
         self.object.metrics.number_of_errors = 0
         endpoint = self.object.health_endpoints[0]
         responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)  # bad
-        self.object.health()
+        assert not self.object.health()
         assert self.object.metrics.number_of_errors == 1

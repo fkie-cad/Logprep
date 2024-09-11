@@ -109,7 +109,7 @@ class TestKafkaConnection:
             },
         }
         kafka_input = Factory.create({"librdkafkatest": input_config})
-        kafka_input.get_next(10)
+        kafka_input.get_next(20)
         assert "Failed to resolve 'notexisting:9092'" in caplog.text
 
     @pytest.mark.skip(reason="is only for debugging")
