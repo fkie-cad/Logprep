@@ -11,7 +11,6 @@ from logprep.generator.http.controller import Controller
 from tests.unit.generator.http.util import create_test_event_files
 
 
-@pytest.skip("Blocks other tests. Needs to be fixed")  # TODO: Fix this test
 class TestController:
     def setup_method(self):
         self.target_url = "http://testendpoint"
@@ -28,6 +27,7 @@ class TestController:
             thread_count=1,
         )
 
+    @pytest.mark.skip(reason="This test blocks and has to be fixed")  # TODO: Fix this test
     @responses.activate
     def test_run(self, tmp_path):
         dataset_path = tmp_path / "dataset"

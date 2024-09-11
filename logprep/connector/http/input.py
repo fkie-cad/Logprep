@@ -496,9 +496,15 @@ class HttpInput(Input):
 
     @cached_property
     def health_endpoints(self) -> List[str]:
-        """Returns a list of all configured endpoints"""
+        """Returns a list of endpoints for internal healthcheck
+        the endpoints are examples to match against the configured regex enabled
+        endpoints. The endpoints are normalized to match the regex patterns and not to be
+        too long
+        """
         normalized_endpoints = (endpoint.replace(".*", "b") for endpoint in self._config.endpoints)
         normalized_endpoints = (endpoint.replace(".+", "b") for endpoint in normalized_endpoints)
+        normalized_endpoints = (endpoint.replace("+", "{5}") for endpoint in normalized_endpoints)
+        normalized_endpoints = (endpoint.replace("*", "{5}") for endpoint in normalized_endpoints)
         return [rstr.xeger(endpoint) for endpoint in normalized_endpoints]
 
     def health(self) -> bool:

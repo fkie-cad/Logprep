@@ -515,3 +515,25 @@ class TestHttpConnector(BaseInputTestCase):
         responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)  # bad
         assert not self.object.health()
         assert self.object.metrics.number_of_errors == 1
+
+    def test_health_endpoints_are_shortened(self):
+        config = deepcopy(self.CONFIG)
+        endpoints = {
+            "/json": "json",
+            "/jsonl$": "jsonl",
+            "/.*/blah$": "json",
+            "/fooo.*/.+": "json",
+            "/[A-Za-z0-9]*/[A-Z]{2}/json$": "json",
+        }
+        expected_matching_regexes = (
+            "/json",
+            "/jsonl$",
+            "/b/blah$",
+            "/fooob/b",
+            "/[A-Za-z0-9]{5}/[A-Z]{2}/json$",
+        )
+        config["endpoints"] = endpoints
+        connector = Factory.create({"test connector": config})
+        health_endpoints = connector.health_endpoints
+        for endpoint, expected in zip(health_endpoints, expected_matching_regexes):
+            assert re.match(expected, endpoint)
