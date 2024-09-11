@@ -537,3 +537,7 @@ class TestHttpConnector(BaseInputTestCase):
         health_endpoints = connector.health_endpoints
         for endpoint, expected in zip(health_endpoints, expected_matching_regexes):
             assert re.match(expected, endpoint)
+
+    @pytest.mark.skip("Not implemented")
+    def test_setup_calls_wait_for_health(self):
+        pass
