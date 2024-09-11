@@ -514,3 +514,22 @@ class ConfluentKafkaInput(Input):
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
         super().shut_down()
+
+    def health(self) -> bool:
+        """Check the health of the component.
+
+        Returns
+        -------
+        bool
+            True if the component is healthy, False otherwise.
+        """
+
+        try:
+            self._consumer.list_topics(
+                topic=self._config.topic, timeout=self._config.health_timeout
+            )
+        except KafkaException as error:
+            logger.error("Health check failed: %s", error)
+            self.metrics.number_of_errors += 1
+            return False
+        return super().health()

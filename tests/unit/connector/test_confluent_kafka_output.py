@@ -10,6 +10,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
+from confluent_kafka.error import KafkaException
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
@@ -161,3 +162,26 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         expected_error_message = r"keys are missing: {'bootstrap.servers'}"
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
             Factory.create({"test": config})
+
+    def test_health_returns_true_if_no_error(self):
+        with mock.patch.object(self.object, "_producer"):
+            assert self.object.health()
+
+    def test_health_returns_false_on_kafka_exception(self):
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            mock_producer.list_topics.side_effect = KafkaException("test error")
+            assert not self.object.health()
+
+    def test_health_logs_error_on_kafka_exception(self):
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            mock_producer.list_topics.side_effect = KafkaException("test error")
+            with mock.patch("logging.Logger.error") as mock_error:
+                self.object.health()
+        mock_error.assert_called()
+
+    def test_health_counts_metrics_on_kafka_exception(self):
+        self.object.metrics.number_of_errors = 0
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            mock_producer.list_topics.side_effect = KafkaException("test error")
+            assert not self.object.health()
+        assert self.object.metrics.number_of_errors == 1
