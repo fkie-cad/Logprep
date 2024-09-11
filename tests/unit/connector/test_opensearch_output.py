@@ -459,3 +459,33 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             self.object._write_backlog()
             assert mock_sleep.call_count == 2
             assert self.object._message_backlog == []
+
+    def test_health_returns_true_on_success(self):
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.return_value = {"status": "green"}
+        assert self.object.health()
+
+    @pytest.mark.parametrize("exception", [SearchException, ConnectionError])
+    def test_health_returns_false_on_failure(self, exception):
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.side_effect = exception
+        assert not self.object.health()
+
+    def test_health_logs_on_failure(self):
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.side_effect = SearchException
+        with mock.patch("logging.Logger.error") as mock_error:
+            assert not self.object.health()
+            mock_error.assert_called()
+
+    def test_health_counts_metrics_on_failure(self):
+        self.object.metrics.number_of_errors = 0
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.side_effect = SearchException
+        assert not self.object.health()
+        assert self.object.metrics.number_of_errors == 1
+
+    def test_health_returns_false_on_cluster_status_not_green(self):
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.return_value = {"status": "yellow"}
+        assert not self.object.health()

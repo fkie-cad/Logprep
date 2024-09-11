@@ -3,6 +3,7 @@
 import functools
 import inspect
 import logging
+import time
 from abc import ABC
 from functools import cached_property
 from typing import Callable
@@ -97,6 +98,9 @@ class Component(ABC):
     def setup(self):
         """Set the component up."""
         self._populate_cached_properties()
+        # while not self.health():
+        #     logger.info("Waiting for %s to be healthy", self.name)
+        #     time.sleep(1)
 
     def _populate_cached_properties(self):
         _ = [
@@ -123,7 +127,7 @@ class Component(ABC):
             True if the component is healthy, False otherwise.
 
         """
-        # logger.debug("Checking health of %s", self.name)
+        logger.debug("Checking health of %s", self.name)
         return True
 
     def _schedule_task(
