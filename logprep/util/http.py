@@ -95,8 +95,8 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         to exit gracefully and join the thread"""
         if not self.thread.is_alive() or self.server is None:
             return
-        self.server.should_exit = True
         while self.thread.is_alive():
+            self.server.should_exit = True
             self._logger.debug("Wait for server to exit gracefully...")
             continue
         self.thread.join()
