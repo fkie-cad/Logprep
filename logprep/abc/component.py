@@ -15,7 +15,7 @@ from attrs import asdict
 from schedule import Scheduler
 
 from logprep.metrics.metrics import Metric
-from logprep.util.defaults import DEFAULT_HEALTH_TIMEOUT
+from logprep.util.defaults import DEFAULT_HEALTH_TIMEOUT, EXITCODES
 from logprep.util.helper import camel_to_snake
 
 logger = logging.getLogger("Component")
@@ -113,7 +113,7 @@ class Component(ABC):
             time.sleep(1 + i)
         else:
             logger.error("Component '%s' did not become healthy", self.name)
-            sys.exit(1)
+            sys.exit(EXITCODES.PIPELINE_ERROR.value)
 
     def _populate_cached_properties(self):
         _ = [
