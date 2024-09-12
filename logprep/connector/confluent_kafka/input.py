@@ -506,12 +506,6 @@ class ConfluentKafkaInput(Input):
             topic_partition.offset = OFFSET_STORED
         self._consumer.assign(topic_partitions)
 
-    def setup(self) -> None:
-        try:
-            super().setup()
-        except (KafkaException, ValueError) as error:
-            raise FatalInputError(self, str(error)) from error
-
     def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
