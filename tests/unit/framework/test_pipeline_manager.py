@@ -126,6 +126,21 @@ class TestPipelineManager:
             prometheus_exporter_mock.mark_process_dead.assert_called()
             prometheus_exporter_mock.mark_process_dead.assert_called_with(42)
 
+    def test_restart_failed_pipelines_restarts_prometheus_server(self, tmpdir):
+        with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
+            failed_pipeline = mock.MagicMock()
+            failed_pipeline.is_alive = mock.MagicMock()
+            failed_pipeline.is_alive.return_value = False
+            failed_pipeline.pid = 42
+            config = deepcopy(self.config)
+            config.metrics = {"enabled": True, "port": 1234}
+            config.process_count = 2
+            manager = PipelineManager(config)
+            manager._pipelines = [failed_pipeline]
+            assert manager.prometheus_exporter.server is None
+            manager.restart_failed_pipeline()
+            assert manager.prometheus_exporter.server.thread.is_alive()
+
     def test_restart_failed_pipelines_increases_number_of_failed_pipelines_metrics(self):
         failed_pipeline = mock.MagicMock()
         failed_pipeline.is_alive = mock.MagicMock()
@@ -173,7 +188,6 @@ class TestPipelineManager:
         config = deepcopy(self.config)
         config.metrics = MetricsConfig(enabled=True, port=666)
         pipeline_manager = PipelineManager(config)
-        pipeline_manager.prometheus_exporter.is_running = False
         with mock.patch.object(pipeline_manager.prometheus_exporter, "run") as mock_run:
             pipeline_manager.restart()
             mock_run.assert_called()
