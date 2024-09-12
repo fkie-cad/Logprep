@@ -80,7 +80,7 @@ class TestPrometheusExporter:
     def test_exporter_spawns_server_on_all_interfaces(self):
         exporter = PrometheusExporter(self.metrics_config)
         exporter.init_server()
-        assert exporter.server.server.config.host == "0.0.0.0"
+        assert exporter.server.uvicorn_config.host == "0.0.0.0"
 
     def test_is_running_returns_false_when_server_not_set(self):
         exporter = PrometheusExporter(self.metrics_config)
