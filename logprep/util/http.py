@@ -93,7 +93,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
     def shut_down(self):
         """Stop thread with uvicorn+falcon http server, wait for uvicorn
         to exit gracefully and join the thread"""
-        if not self.thread.is_alive():
+        if not self.thread.is_alive() or self.server is None:
             return
         self.server.should_exit = True
         while self.thread.is_alive():
