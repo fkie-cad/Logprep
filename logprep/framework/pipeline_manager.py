@@ -8,6 +8,7 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.queues
 import random
+import signal
 import time
 
 from attr import define, field
@@ -172,6 +173,8 @@ class PipelineManager:
                 pipeline_index,
                 exit_code,
             )
+        if self.prometheus_exporter:
+            self.prometheus_exporter.restart()
         if self._configuration.restart_count < 0:
             return
         self.restart_count += 1
@@ -182,6 +185,7 @@ class PipelineManager:
         """Stop processing any pipelines by reducing the pipeline count to zero."""
         self._decrease_to_count(0)
         if self.prometheus_exporter:
+            self.prometheus_exporter.server.server.handle_exit(signal.SIGTERM, None)
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
 
     def restart(self):
@@ -190,13 +194,12 @@ class PipelineManager:
         self.set_count(self._configuration.process_count)
         if not self.prometheus_exporter:
             return
-        if not self.prometheus_exporter.is_running:
-            self.prometheus_exporter.run()
+        pipeline = Pipeline(pipeline_index=1, config=self._configuration)
+        self.prometheus_exporter.healthcheck_functions = pipeline.get_health_functions()
+        self.prometheus_exporter.restart()
 
     def _create_pipeline(self, index) -> multiprocessing.Process:
         pipeline = Pipeline(pipeline_index=index, config=self._configuration)
-        if self.prometheus_exporter is not None:
-            self.prometheus_exporter.healthcheck_functions = pipeline.get_health_functions()
         process = multiprocessing.Process(
             target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )

@@ -41,44 +41,27 @@ def make_patched_asgi_app(functions: Iterable[Callable] | None) -> Callable:
 class PrometheusExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
 
+    @property
+    def is_running(self) -> bool:
+        """Returns whether the exporter is running"""
+        return self.server and self.server.thread and self.server.thread.is_alive()
+
     def __init__(self, configuration: MetricsConfig):
-        self.is_running = False
         logger.debug("Initializing Prometheus Exporter")
         self.configuration = configuration
         self.server = None
-        self._healthcheck_functions = None
-
-    @property
-    def healthcheck_functions(self) -> Iterable[Callable] | None:
-        """returns the healthcheck functions
-
-        Returns
-        -------
-        Iterable[Callable] | None
-            The healthcheck functions
-        """
-        return self._healthcheck_functions
-
-    @healthcheck_functions.setter
-    def healthcheck_functions(self, functions: Iterable[Callable] | None) -> None:
-        """Sets the healthcheck functions and restarts the server
-
-        Parameters
-        ----------
-        functions : Iterable[Callable] | None
-            The healthcheck functions
-        """
-        self._healthcheck_functions = functions
-        if self.server:
-            self.server.shut_down()
-        self.init_server()
+        self.healthcheck_functions = None
+        self._multiprocessing_prepared = False
 
     def _prepare_multiprocessing(self):
         """
         Sets up the proper metric registry for multiprocessing and handles the necessary
         temporary multiprocessing directory that the prometheus client expects.
         """
+        if self._multiprocessing_prepared:
+            return
         multiprocess.MultiProcessCollector(REGISTRY)
+        self._multiprocessing_prepared = True
 
     def cleanup_prometheus_multiprocess_dir(self):
         """removes the prometheus multiprocessing directory"""
@@ -111,14 +94,13 @@ class PrometheusExporter:
         self._prepare_multiprocessing()
         self.server.start()
         logger.info("Prometheus Exporter started on port %s", port)
-        self.is_running = True
 
     def init_server(self) -> None:
         """Initializes the server"""
         port = self.configuration.port
         self.server = http.ThreadingHTTPServer(
             self.configuration.uvicorn_config | {"port": port, "host": "0.0.0.0"},
-            make_patched_asgi_app(self._healthcheck_functions),
+            make_patched_asgi_app(self.healthcheck_functions),
             daemon=True,
             logger_name="Exporter",
         )
@@ -127,5 +109,4 @@ class PrometheusExporter:
         """Restarts the exporter"""
         if self.server and self.server.thread and self.server.thread.is_alive():
             self.server.shut_down()
-        self.init_server()
-        self.server.start()
+        self.run()
