@@ -82,6 +82,29 @@ class TestPrometheusExporter:
         exporter.init_server()
         assert exporter.server.server.config.host == "0.0.0.0"
 
+    def test_is_running_returns_false_when_server_not_set(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        assert not exporter.is_running
+
+    def test_is_running_returns_false_when_server_thread_not_set(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        exporter.server = http.ThreadingHTTPServer({}, None, False)
+        assert not exporter.is_running
+
+    def test_is_running_returns_false_when_server_thread_is_not_alive(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        exporter.server = http.ThreadingHTTPServer({}, None, False)
+        exporter.server.thread = mock.Mock()
+        exporter.server.thread.is_alive.return_value = False
+        assert not exporter.is_running
+
+    def test_is_running_returns_true_when_server_thread_is_alive(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        exporter.server = http.ThreadingHTTPServer({}, None, False)
+        exporter.server.thread = mock.Mock()
+        exporter.server.thread.is_alive.return_value = True
+        assert exporter.is_running
+
 
 @mock.patch(
     "logprep.metrics.exporter.PrometheusExporter._prepare_multiprocessing",
