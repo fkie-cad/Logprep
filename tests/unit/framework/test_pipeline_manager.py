@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 import multiprocessing
+import os
 from copy import deepcopy
 from logging import Logger
 from logging.config import dictConfig
@@ -272,13 +273,14 @@ class TestPipelineManager:
         pipeline_manager.restart_failed_pipeline()
         mock_time_sleep.assert_not_called()
 
-    def test_create_pipeline_injects_pipeline_functions(self):
+    def test_restart_injects_pipeline_functions(self, tmp_path):
         pipeline_manager = PipelineManager(self.config)
         pipeline_manager.prometheus_exporter = PrometheusExporter(
             pipeline_manager._configuration.metrics
         )
         assert pipeline_manager.prometheus_exporter.healthcheck_functions is None
-        _ = pipeline_manager._create_pipeline(1)
+        with mock.patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": str(tmp_path)}):
+            pipeline_manager.restart()
         assert pipeline_manager.prometheus_exporter.healthcheck_functions is not None
         assert isinstance(pipeline_manager.prometheus_exporter.healthcheck_functions, Iterable)
         assert len(pipeline_manager.prometheus_exporter.healthcheck_functions) == 7
