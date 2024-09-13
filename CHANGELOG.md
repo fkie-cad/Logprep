@@ -21,6 +21,7 @@
 * adds support for rust extension development
 * adds prebuild wheels for architectures `x86_64` and `aarch64` on `manylinux` and `musllinux` based linux platforms to releases
 * add manual how to use local images with minikube example setup to documentation
+* move `Configuration` to top level of documentation
 
 ### Bugfix
 
