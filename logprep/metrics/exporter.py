@@ -87,21 +87,23 @@ class PrometheusExporter:
         """
         multiprocess.mark_process_dead(pid)
 
-    def run(self):
+    def run(self, daemon=True):
         """Starts the default prometheus http endpoint"""
+        if self.is_running:
+            return
         port = self.configuration.port
-        self.init_server()
+        self.init_server(daemon=daemon)
         self._prepare_multiprocessing()
         self.server.start()
         logger.info("Prometheus Exporter started on port %s", port)
 
-    def init_server(self) -> None:
+    def init_server(self, daemon=True) -> None:
         """Initializes the server"""
         port = self.configuration.port
         self.server = http.ThreadingHTTPServer(
             self.configuration.uvicorn_config | {"port": port, "host": "0.0.0.0"},
             make_patched_asgi_app(self.healthcheck_functions),
-            daemon=True,
+            daemon=daemon,
             logger_name="Exporter",
         )
 
@@ -109,4 +111,11 @@ class PrometheusExporter:
         """Restarts the exporter"""
         if self.server and self.server.thread and self.server.thread.is_alive():
             self.server.shut_down()
+        self.run()
+
+    def update_healthchecks(self, healthcheck_functions: Iterable[Callable], daemon=True) -> None:
+        """Updates the healthcheck functions"""
+        self.healthcheck_functions = healthcheck_functions
+        self.server.shut_down()
+        self.init_server(daemon=daemon)
         self.run()

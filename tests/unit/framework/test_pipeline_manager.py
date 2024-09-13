@@ -273,17 +273,12 @@ class TestPipelineManager:
         pipeline_manager.restart_failed_pipeline()
         mock_time_sleep.assert_not_called()
 
-    def test_restart_injects_pipeline_functions(self, tmp_path):
+    def test_restart_injects_healthcheck_functions(self):
         pipeline_manager = PipelineManager(self.config)
-        pipeline_manager.prometheus_exporter = PrometheusExporter(
-            pipeline_manager._configuration.metrics
-        )
-        assert pipeline_manager.prometheus_exporter.healthcheck_functions is None
-        with mock.patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": str(tmp_path)}):
-            pipeline_manager.restart()
-        assert pipeline_manager.prometheus_exporter.healthcheck_functions is not None
-        assert isinstance(pipeline_manager.prometheus_exporter.healthcheck_functions, Iterable)
-        assert len(pipeline_manager.prometheus_exporter.healthcheck_functions) == 7
+        pipeline_manager.prometheus_exporter = mock.MagicMock()
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        pipeline_manager.restart()
+        pipeline_manager.prometheus_exporter.update_healthchecks.assert_called()
 
 
 class TestThrottlingQueue:

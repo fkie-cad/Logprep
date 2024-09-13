@@ -173,8 +173,6 @@ class PipelineManager:
                 pipeline_index,
                 exit_code,
             )
-        if self.prometheus_exporter:
-            self.prometheus_exporter.restart()
         if self._configuration.restart_count < 0:
             return
         self.restart_count += 1
@@ -188,18 +186,18 @@ class PipelineManager:
             self.prometheus_exporter.server.server.handle_exit(signal.SIGTERM, None)
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
 
-    def restart(self):
+    def restart(self, daemon=True):
         """Restarts all pipelines"""
         self.set_count(0)
         self.set_count(self._configuration.process_count)
         if not self.prometheus_exporter:
             return
-        pipeline = Pipeline(pipeline_index=1, config=self._configuration)
-        self.prometheus_exporter.healthcheck_functions = pipeline.get_health_functions()
-        self.prometheus_exporter.restart()
+        self.prometheus_exporter.run(daemon=daemon)
 
     def _create_pipeline(self, index) -> multiprocessing.Process:
         pipeline = Pipeline(pipeline_index=index, config=self._configuration)
+        if pipeline.pipeline_index == 1:
+            self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
         process = multiprocessing.Process(
             target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )

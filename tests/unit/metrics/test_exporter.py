@@ -9,7 +9,7 @@ import pytest
 import requests
 from prometheus_client import REGISTRY
 
-from logprep.metrics.exporter import PrometheusExporter, make_patched_asgi_app
+from logprep.metrics.exporter import PrometheusExporter
 from logprep.util import http
 from logprep.util.configuration import MetricsConfig
 
@@ -21,7 +21,7 @@ from logprep.util.configuration import MetricsConfig
 class TestPrometheusExporter:
     def setup_method(self):
         REGISTRY.__init__()
-        self.metrics_config = MetricsConfig(enabled=True, port=80)
+        self.metrics_config = MetricsConfig(enabled=True, port=8000)
 
     def test_correct_setup(self):
         exporter = PrometheusExporter(self.metrics_config)
@@ -113,19 +113,39 @@ class TestPrometheusExporter:
 class TestHealthEndpoint:
     def setup_method(self):
         REGISTRY.__init__()
-        self.metrics_config = MetricsConfig(enabled=True, port=80)
+        self.metrics_config = MetricsConfig(enabled=True, port=8000)
 
     def test_health_endpoint_returns_503_as_default_health_state(self):
         exporter = PrometheusExporter(self.metrics_config)
-        exporter.server = http.ThreadingHTTPServer(
-            exporter.configuration.uvicorn_config | {"port": 8000, "host": "0.0.0.0"},
-            make_patched_asgi_app(exporter.healthcheck_functions),
-            daemon=False,
-            logger_name="Exporter",
-        )
-        exporter.server.start()
+        exporter.run(daemon=False)
         resp = requests.get("http://localhost:8000/health", timeout=0.5)
         assert resp.status_code == 503
+        exporter.server.shut_down()
+
+    def test_health_endpoint_calls_health_check_functions(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        function_mock = mock.Mock(return_value=True)
+        exporter.healthcheck_functions = [function_mock]
+        exporter.run(daemon=False)
+        resp = requests.get("http://localhost:8000/health", timeout=0.5)
+        assert resp.status_code == 200
+        assert function_mock.call_count == 1
+
+        exporter.server.shut_down()
+
+    def test_health_endpoint_calls_updated_functions(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        function_mock = mock.Mock(return_value=True)
+        exporter.healthcheck_functions = [function_mock]
+        exporter.run(daemon=False)
+        requests.get("http://localhost:8000/health", timeout=0.5)
+        assert function_mock.call_count == 1, "initial function should be called"
+        new_function_mock = mock.Mock(return_value=True)
+        exporter.update_healthchecks([new_function_mock])
+        requests.get("http://localhost:8000/health", timeout=0.5)
+        assert new_function_mock.call_count == 1, "New function should be called"
+        assert function_mock.call_count == 1, "Old function should not be called"
+
         exporter.server.shut_down()
 
     @pytest.mark.parametrize(
@@ -140,13 +160,8 @@ class TestHealthEndpoint:
     )
     def test_health_check_returns_status_code(self, functions, expected):
         exporter = PrometheusExporter(self.metrics_config)
-        exporter.server = http.ThreadingHTTPServer(
-            exporter.configuration.uvicorn_config | {"port": 8000, "host": "0.0.0.0"},
-            make_patched_asgi_app(functions),
-            daemon=False,
-            logger_name="Exporter",
-        )
-        exporter.server.start()
+        exporter.run(daemon=False)
+        exporter.update_healthchecks(functions)
         resp = requests.get("http://localhost:8000/health", timeout=0.5)
         assert resp.status_code == expected
         exporter.server.shut_down()
@@ -163,13 +178,8 @@ class TestHealthEndpoint:
     )
     def test_health_check_returns_body(self, functions, expected):
         exporter = PrometheusExporter(self.metrics_config)
-        exporter.server = http.ThreadingHTTPServer(
-            exporter.configuration.uvicorn_config | {"port": 8000, "host": "0.0.0.0"},
-            make_patched_asgi_app(functions),
-            daemon=False,
-            logger_name="Exporter",
-        )
-        exporter.server.start()
+        exporter.run(daemon=False)
+        exporter.update_healthchecks(functions)
         resp = requests.get("http://localhost:8000/health", timeout=0.5)
         assert resp.content.decode() == expected
         exporter.server.shut_down()
