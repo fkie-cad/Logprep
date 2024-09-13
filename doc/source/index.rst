@@ -8,6 +8,7 @@ Welcome to the Documentation of Logprep!
 
    installation
    user_manual/index
+   configuration/index
    development/index
    examples/index
 

@@ -9,5 +9,4 @@ User Manual
    execution
    verification
    testing_rules
-   configuration/index
    security_best_practices

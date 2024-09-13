@@ -91,7 +91,7 @@ Options for the credentials file are:
    
 Authentication Process:
 ^^^^^^^^^^^^^^^^^^^^^^^
-.. figure:: ../../_images/Credentials.svg
+.. figure:: ../_images/Credentials.svg
     :align: left
 
 """

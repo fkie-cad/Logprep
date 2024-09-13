@@ -9,7 +9,7 @@ attack variants. It learns from SIEM rules and historical benign events and can 
 SIEM rule was tried to be evaded. An overview of AMIDES is depicted in the figure below.
 
 
-.. figure:: ../../_images/amides.svg
+.. figure:: ../_images/amides.svg
     :align: center
 
     Overview of the AMIDES architecture.
