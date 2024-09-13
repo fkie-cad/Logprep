@@ -90,21 +90,23 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         while not self.server.started:
             continue
 
-    def shut_down(self):
+    def shut_down(self, wait: float = 1) -> None:
         """Stop thread with uvicorn+falcon http server, wait for uvicorn
         to exit gracefully and join the thread"""
-        if not self.thread.is_alive() or self.server is None:
+        if self.thread is None or self.server is None:
             return
-        while self.thread.is_alive():
-            self.server.should_exit = True
+        self.server.should_exit = True
+        while 1:
             self._logger.debug("Wait for server to exit gracefully...")
-            continue
+            if not self.thread.is_alive():
+                time.sleep(wait)
+                if not self.thread.is_alive():  # we have to double check if it is really dead
+                    break
+            time.sleep(wait)
         self.thread.join()
-        self.server = None
-        self.thread = None
 
-    def restart(self):
+    def restart(self, wait: float = 1) -> None:
         """Restart the server by shutting down the existing server and
         starting a new one"""
-        self.shut_down()
+        self.shut_down(wait=wait)
         self.start()

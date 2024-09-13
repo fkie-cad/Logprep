@@ -217,15 +217,13 @@ class Pipeline:
             output.input_connector = self._input
             if output.default:
                 self._input.output_connector = output
+            output.setup()
         self.logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
             f" output -> '{[output.describe() for _, output in self._output.items()]}'"
         )
         self._input.pipeline_index = self.pipeline_index
         self._input.setup()
-        for _, output in self._output.items():
-            output.setup()
-
         self.logger.debug("Finished creating connectors")
         self.logger.info("Start building pipeline")
         _ = self._pipeline
