@@ -527,3 +527,10 @@ class ConfluentKafkaInput(Input):
             self.metrics.number_of_errors += 1
             return False
         return super().health()
+
+    def setup(self) -> None:
+        """Set the component up."""
+        try:
+            super().setup()
+        except KafkaException as error:
+            raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
