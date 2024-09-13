@@ -1,0 +1,126 @@
+connector:
+  image:
+    # point your docker context to minikube and build the image
+    # `eval $(minikube docker-env)` or `(minikube docker-env).replace("export ", '$env:') | out-string | Invoke-Expression`
+    # build this image using the Dockerfile in the root of the repository
+    # `docker buildx build -t local/logprep:latest --build-arg PYTHON_VERSION=3.11 --build-arg LOGPREP_VERSION=dev .`
+    registry: local
+    repository: logprep
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  secrets: {}
+  logger:
+    level: INFO
+  input:
+    type: http_input
+    message_backlog_size: 150000
+    collect_meta: True
+    metafield_name: "@metadata"
+    uvicorn_config:
+      host: 0.0.0.0
+      port: 9000
+      workers: 1
+      access_log: true
+      server_header: false
+      date_header: false
+      ws: none
+      interface: asgi3
+      backlog: 16384
+      timeout_keep_alive: 65
+    endpoints:
+      /auth-json: json
+      /json: json
+      /lab/123/(ABC|DEF)/pl.*: plaintext
+      /lab/123/ABC/auditlog: jsonl
+      /health: plaintext
+  output:
+    type: confluentkafka_output
+    topic: consumer
+    error_topic: errors
+    flush_timeout: 300
+    send_timeout: 0
+    kafka_config:
+      bootstrap.servers: opensiem-kafka:9092
+      compression.type: none
+      statistics.interval.ms: "60000"
+      queue.buffering.max.messages: "100000000"
+      queue.buffering.max.kbytes: "1048576"
+      queue.buffering.max.ms: "10000"
+      batch.size: "1000000"
+      request.required.acks: "-1"
+  ingress:
+    enabled: true
+
+## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/kafka/values.yaml`
+kafka:
+  listeners:
+    client:
+      protocol: PLAINTEXT
+  controller:
+    replicaCount: 3
+  metrics:
+    jmx:
+      enabled: true
+  provisioning:
+    enabled: true
+    replicationFactor: 1
+    numPartitions: 10
+    topics:
+      - name: consumer
+
+logprep:
+  image:
+    registry: local
+    repository: logprep
+    tag: latest
+    pullPolicy: IfNotPresent
+  logger:
+    level: INFO
+  input:
+    type: confluentkafka_input
+    topic: consumer
+    kafka_config:
+      bootstrap.servers: opensiem-kafka:9092
+      group.id: cgroup3
+      enable.auto.commit: "true"
+      auto.commit.interval.ms: "10000"
+      enable.auto.offset.store: "false"
+      queued.min.messages: "100000"
+      queued.max.messages.kbytes: "65536"
+      statistics.interval.ms: "60000"
+    preprocessing:
+      version_info_target_field: Logprep_version_info
+      log_arrival_time_target_field: event.ingested
+      hmac:
+        target: <RAW_MSG>
+        key: "thisisasecureandrandomkey"
+        output_field: Full_event
+  output:
+    type: opensearch_output
+    hosts:
+      - opensiem-opensearch:9200
+    default_index: processed
+    error_index: errors
+    timeout: 10000
+    message_backlog_size: 2500
+    parallel_bulk: true
+    flush_timeout: 60
+    max_retries: 3
+    chunk_size: 500
+    thread_count: 5
+    user: admin
+    secret: admin
+    desired_cluster_status: ["green", "yellow"]
+## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/opensearch/values.yaml`
+opensearch:
+  dashboards:
+    enabled: true
+  ingest:
+    replicaCount: 1
+  master:
+    replicaCount: 1
+  data:
+    replicaCount: 1
+  coordinating:
+    replicaCount: 1

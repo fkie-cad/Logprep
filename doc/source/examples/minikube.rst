@@ -15,25 +15,19 @@ with the following commands:
 .. code-block:: bash
     :caption: Install package prerequisites
 
-    sudo apt-get install -y \
-        apt-transport-https \
-        ca-certificates \
-        curl \
-        software-properties-common
+    sudo apt-get install -y apt-transport-https ca-certificates  curl software-properties-common
 
 .. code-block:: bash
     :caption: Install minikube
 
-    sudo curl -Lo /usr/local/bin/minikube \
-      https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+    sudo curl -Lo /usr/local/bin/minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
     
     sudo chmod +x /usr/local/bin/minikube
 
 .. code-block:: bash
     :caption: Install kubectl
 
-    sudo curl -Lo /usr/local/bin/kubectl \
-      "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    sudo curl -Lo /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 
     sudo chmod +x /usr/local/bin/kubectl
 
@@ -56,8 +50,8 @@ with the following commands:
     minikube config set driver docker
     minikube config set cpus 16 
     minikube config set memory 16GB
-    minikube addons enable ingress
     minikube start
+    minikube addons enable ingress
 
 Deploy the example
 ------------------
@@ -125,4 +119,36 @@ Test the opensiem connector:
     }
     2024-07-17 11:15:35 301643 Generator  INFO    : Execution time: 0.067013 seconds
 
-open your browser and go to `http://dashboards.opensiem`_ to see the generated data in the opensearch dashboards.
+open your browser and go to `opensearch dashboard <http://dashboards.opensiem>`_ to see the generated data in the opensearch dashboards.
+
+
+Use local container images
+--------------------------
+
+If you want to use local logprep container images, you can build the images with the following commands:
+
+.. code-block:: bash
+    :caption: switch docker context to minikube in bash
+
+    eval $(minikube docker-env)
+
+for powershell:
+
+.. code-block:: powershell
+    :caption: switch docker context to minikube in powershell
+
+    (minikube docker-env).replace("export ", '$env:') | out-string | Invoke-Expression
+
+Then build the logprep image with the following command:
+
+.. code-block:: bash
+    :caption: build this image using the Dockerfile in the root of the repository
+
+    docker buildx build -t local/logprep:latest --build-arg PYTHON_VERSION=3.11 --build-arg LOGPREP_VERSION=dev .
+
+Then install the opensiem example using the local logprep image:
+
+.. code-block:: bash
+    :caption: use the local values file to deploy the opensiem example
+
+    helm install opensiem examples/k8s --values examples/k8s/values-dev.yaml
