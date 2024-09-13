@@ -188,11 +188,10 @@ class PipelineManager:
 
     def restart(self, daemon=True):
         """Restarts all pipelines"""
+        if self.prometheus_exporter:
+            self.prometheus_exporter.run(daemon=daemon)
         self.set_count(0)
         self.set_count(self._configuration.process_count)
-        if not self.prometheus_exporter:
-            return
-        self.prometheus_exporter.run(daemon=daemon)
 
     def _create_pipeline(self, index) -> multiprocessing.Process:
         pipeline = Pipeline(pipeline_index=index, config=self._configuration)

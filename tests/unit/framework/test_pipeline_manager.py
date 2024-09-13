@@ -262,6 +262,15 @@ class TestPipelineManager:
         pipeline_manager.restart()
         pipeline_manager.prometheus_exporter.update_healthchecks.assert_called()
 
+    def test_restart_ensures_prometheus_exporter_is_running(self):
+        config = deepcopy(self.config)
+        config.metrics = MetricsConfig(enabled=True, port=666)
+        pipeline_manager = PipelineManager(config)
+        pipeline_manager.prometheus_exporter._prepare_multiprocessing = mock.MagicMock()
+        with mock.patch("logprep.util.http.ThreadingHTTPServer"):
+            pipeline_manager.restart()
+        pipeline_manager.prometheus_exporter.server.start.assert_called()
+
 
 class TestThrottlingQueue:
 
