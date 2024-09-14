@@ -2,7 +2,6 @@
 
 # pylint: disable=logging-fstring-interpolation
 
-import ctypes
 import logging
 import logging.handlers
 import multiprocessing
@@ -20,8 +19,6 @@ from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
 from logprep.util.logging import LogprepMPQueueListener, logqueue
-
-libc = ctypes.CDLL("libc.so.6")
 
 logger = logging.getLogger("Manager")
 
@@ -48,7 +45,7 @@ class ThrottlingQueue(multiprocessing.queues.Queue):
                 self.wait_time, int(self.wait_time * self.consumed_percent / batch_size)
             )
             # sleep times in microseconds
-            libc.usleep(sleep_time)
+            time.sleep(sleep_time / 1000)
 
     def put(self, obj, block=True, timeout=None, batch_size=1):
         """Put an obj into the queue."""

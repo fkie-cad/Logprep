@@ -277,14 +277,14 @@ class TestThrottlingQueue:
             mock_throttle.assert_called()
 
     def test_throttle_sleeps(self):
-        with mock.patch("logprep.framework.pipeline_manager.libc.usleep") as mock_sleep:
+        with mock.patch("time.sleep") as mock_sleep:
             queue = ThrottlingQueue(multiprocessing.get_context(), 100)
             with mock.patch.object(queue, "qsize", return_value=95):
                 queue.throttle()
             mock_sleep.assert_called()
 
     def test_throttle_sleep_time_increases_with_qsize(self):
-        with mock.patch("logprep.framework.pipeline_manager.libc.usleep") as mock_sleep:
+        with mock.patch("time.sleep") as mock_sleep:
             queue = ThrottlingQueue(multiprocessing.get_context(), 100)
             with mock.patch.object(queue, "qsize", return_value=91):
                 queue.throttle()

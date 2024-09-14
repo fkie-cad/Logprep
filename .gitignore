@@ -26,3 +26,6 @@ experiments
 logprep.log
 /charts/logprep/charts
 examples/k8s/charts
+*.so
+target
+wheelhouse
