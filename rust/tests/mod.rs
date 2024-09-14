@@ -1,3 +1,5 @@
+mod generator;
+
 #[cfg(test)]
 #[test]
 fn it_works() {

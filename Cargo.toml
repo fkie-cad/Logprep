@@ -3,6 +3,10 @@ name = "rust"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "rust"
+path = "rust/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "rust"
@@ -11,3 +15,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.22.0"
+reqwest = "0.12.7"
+tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
+log = "0.4"
