@@ -525,9 +525,12 @@ class Configuration:
     Output connector configuration. Defaults to :code:`{}`.
     For detailed configurations see :ref:`output`.
     """
-    error: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
+    error_output: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
     """
     Error output connector configuration. Defaults to :code:`{}`.
+    This is optional. If no error output is configured, logprep will not handle events that
+    could not be processed by the pipeline, not parsed correctly by input connectors or not
+    stored correctly by output connectors.
     For detailed configurations see :ref:`output`.
     """
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)

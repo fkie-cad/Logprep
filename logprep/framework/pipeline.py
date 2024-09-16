@@ -218,6 +218,7 @@ class Pipeline:
         self._timeout = config.timeout
         self._continue_iterating = Value(c_bool)
         self.pipeline_index = pipeline_index
+        self.error_queue = None
         if self._logprep_config.profile_pipelines:
             self.run = partial(PipelineProfiler.profile_function, self.run)
 
@@ -275,7 +276,7 @@ class Pipeline:
                 self.logger.warning(",".join((str(warning) for warning in result.warnings)))
             if result.errors:
                 self.logger.error(",".join((str(error) for error in result.errors)))
-                self._store_failed_event(result.errors, result.event_received, event)
+                self.error_queue.put(result)
                 return
         if self._output:
             if self._pipeline:
@@ -296,9 +297,11 @@ class Pipeline:
         try:
             event, non_critical_error_msg = self._input.get_next(self._timeout)
             if non_critical_error_msg and self._output:
+                # TODO: what is a non critical error?
                 self._store_failed_event(non_critical_error_msg, event, None)
             return event
         except CriticalInputParsingError as error:
+            # TODO: simpler not parsable error handling
             input_data = error.raw_input
             if isinstance(input_data, bytes):
                 input_data = input_data.decode("utf8")

@@ -9,15 +9,19 @@ import multiprocessing.managers
 import multiprocessing.queues
 import random
 import time
+from typing import Callable
 
 from attr import define, field
 
 from logprep.abc.component import Component
+from logprep.abc.output import Output
 from logprep.connector.http.input import HttpInput
+from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
+from logprep.util.defaults import DEFAULT_MESSAGE_BACKLOG_SIZE
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Manager")
@@ -51,6 +55,43 @@ class ThrottlingQueue(multiprocessing.queues.Queue):
         """Put an obj into the queue."""
         self.throttle(batch_size)
         super().put(obj, block=block, timeout=timeout)
+
+
+class ComponentQueueListener:
+    """This forks a process and handles all items from the queue into the specified callable."""
+
+    _queue: multiprocessing.Queue
+
+    _call: Callable
+
+    _process: multiprocessing.Process
+
+    _sentinel = object()
+
+    def __init__(self, queue: multiprocessing.Queue, target: Callable) -> None:
+        self._queue = queue
+        self._call = target
+
+    def start(self):
+        """Start the listener."""
+        self._process = multiprocessing.Process(target=self._listen, daemon=True)
+        self._process.start()
+
+    def _listen(self):
+        while True:
+            try:
+                item = self._queue.get(timeout=1)
+            except multiprocessing.queues.Empty:
+                continue
+            if item is self._sentinel:
+                break
+            self._call(item)
+
+    def stop(self):
+        """Stop the listener."""
+        self._queue.put(self._sentinel)
+        self._process.join()
+        self._queue.close()
 
 
 class PipelineManager:
@@ -104,6 +145,18 @@ class PipelineManager:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
             self.prometheus_exporter.prepare_multiprocessing()
 
+    def _setup_error_queue(self):
+        if self._configuration.error_output is None:
+            return
+        message_backlog_size = self._configuration.error_output.get(
+            "message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE
+        )
+        self._error_queue = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
+        self._error_output = Factory.create(self._configuration.error_output)
+        self._error_output.setup()
+        self._error_listener = ComponentQueueListener(self._error_queue, self._error_output.store)
+        self._error_listener.start()
+
     def _setup_logging(self):
         console_logger = logging.getLogger("console")
         if console_logger.handlers:
@@ -121,7 +174,9 @@ class PipelineManager:
         is_http_input = input_config.get("type") == "http_input"
         if not is_http_input and HttpInput.messages is not None:
             return
-        message_backlog_size = input_config.get("message_backlog_size", 15000)
+        message_backlog_size = input_config.get(
+            "message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE
+        )
         HttpInput.messages = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
 
     def set_count(self, count: int):
@@ -212,6 +267,8 @@ class PipelineManager:
         pipeline = Pipeline(pipeline_index=index, config=self._configuration)
         if pipeline.pipeline_index == 1 and self.prometheus_exporter:
             self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
+        pipeline.error_queue = self._error_queue
+        logger.info("Created new pipeline")
         process = multiprocessing.Process(
             target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )

@@ -64,7 +64,7 @@ output:
       queue.buffering.max.ms: "10000"
       batch.size: "1000000"
       request.required.acks: "-1"
-error:
+error_output:
   kafka:
     type: confluentkafka_output
     topic: errors
