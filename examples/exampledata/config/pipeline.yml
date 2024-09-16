@@ -127,7 +127,6 @@ output:
     type: confluentkafka_output
     default: false
     topic: producer
-    error_topic: errors
     flush_timeout: 300
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092

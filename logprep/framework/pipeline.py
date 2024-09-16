@@ -120,9 +120,8 @@ def _handle_pipeline_error(func):
             self.stop()
         except CriticalInputError as error:
             if (raw_input := error.raw_input) and self._output:  # pylint: disable=protected-access
-                for _, output in self._output.items():  # pylint: disable=protected-access
-                    if output.default:
-                        output.store_failed(str(self), raw_input, {})
+                if self.error_output:
+                    self.error_output.store(str(self), raw_input, {})
             self.logger.error(str(error))
         return None
 
@@ -292,11 +291,6 @@ class Pipeline:
             if output.default:
                 output.store(event)
                 self.logger.debug(f"Stored output in {output_name}")
-
-    def _store_failed_event(self, error, event_received, event):
-        for _, output in self._output.items():
-            if output.default:
-                output.store_failed(str(error), event_received, event)
 
     def _get_event(self) -> dict:
         try:

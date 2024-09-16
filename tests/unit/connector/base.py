@@ -547,11 +547,6 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
 
-    def test_store_failed_counts_failed_events(self):
-        self.object.metrics.number_of_failed_events = 0
-        self.object.store_failed("error", {"message": "my event message"}, {})
-        assert self.object.metrics.number_of_failed_events == 1
-
     def test_store_calls_batch_finished_callback(self):
         self.object.input_connector = mock.MagicMock()
         self.object.store({"message": "my event message"})

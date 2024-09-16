@@ -27,7 +27,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
     CONFIG = {
         "type": "confluentkafka_output",
         "topic": "test_input_raw",
-        "error_topic": "test_error_topic",
         "flush_timeout": 0.1,
         "kafka_config": {
             "bootstrap.servers": "testserver:9092",
@@ -79,37 +78,10 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         assert expected_call in kafka_producer.produce.mock_calls
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_store_failed_calls_producer_produce(self, _):
-        kafka_producer = self.object._producer
-        event_received = {"field": "received"}
-        event = {"field": "content"}
-        error_message = "error message"
-        self.object.store_failed(error_message, event_received, event)
-        kafka_producer.produce.assert_called()
-        mock_produce_call = kafka_producer.produce.mock_calls[0]
-        assert self.CONFIG.get("error_topic") in mock_produce_call[1]
-        assert "value" in mock_produce_call[2]
-        mock_produce_call_value = mock_produce_call[2].get("value")
-        mock_produce_call_value = json.loads(mock_produce_call_value.decode("utf8"))
-        assert "error" in mock_produce_call_value
-        assert "original" in mock_produce_call_value
-        assert "processed" in mock_produce_call_value
-        assert "timestamp" in mock_produce_call_value
-
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_custom_calls_producer_flush_on_buffererror(self, _):
         kafka_producer = self.object._producer
         kafka_producer.produce.side_effect = BufferError
         self.object.store_custom({"message": "does not matter"}, "doesnotcare")
-        kafka_producer.flush.assert_called()
-
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_store_failed_calls_producer_flush_on_buffererror(self, _):
-        kafka_producer = self.object._producer
-        kafka_producer.produce.side_effect = BufferError
-        self.object.store_failed(
-            "doesnotcare", {"message": "does not matter"}, {"message": "does not matter"}
-        )
         kafka_producer.flush.assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
@@ -125,7 +97,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             None,
             None,
         ]
-        self.object.store_failed = mock.MagicMock()
         with pytest.raises(
             CriticalOutputError,
             match=r"CriticalOutputError in ConfluentKafkaOutput"
@@ -134,7 +105,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             r"\{'message': 'test message'\}",
         ):
             self.object.store({"message": "test message"})
-        self.object.store_failed.assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ

@@ -538,7 +538,6 @@ output:
     kafka:
         type: confluentkafka_output
         topic: producer
-        error_topic: producer_error
         flush_timeout: 30
         send_timeout: 2
         kafka_config:

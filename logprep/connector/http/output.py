@@ -36,9 +36,6 @@ of the :code:`target_url`.
 
    This connector does not verify the SSL Context, which could lead to exposing sensitive data.
 
-.. warning::
-    The :code:`store_failed` method only counts the number of failed events and does not send them
-    to a dead letter queue.
 """
 
 import json
@@ -163,9 +160,6 @@ class HttpOutput(Output):
         else:
             target = self._config.target_url
         self.store_custom(document, target)
-
-    def store_failed(self, error_message, document_received, document_processed) -> None:
-        self.metrics.number_of_failed_events += 1
 
     def store_custom(self, document: dict | tuple | list, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""

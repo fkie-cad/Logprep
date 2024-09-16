@@ -45,7 +45,6 @@ Configuration File Structure
         kafka:
             type: confluentkafka_output
             topic: producer
-            error_topic: producer_error
             flush_timeout: 30
             send_timeout: 2
             kafka_config:
@@ -184,7 +183,6 @@ The following config file will be valid by setting the given environment variabl
         kafka:
             type: confluentkafka_output
             topic: producer
-            error_topic: producer_error
             flush_timeout: 30
             send_timeout: 2
             kafka_config:
@@ -525,6 +523,11 @@ class Configuration:
     output: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
     """
     Output connector configuration. Defaults to :code:`{}`.
+    For detailed configurations see :ref:`output`.
+    """
+    error: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
+    """
+    Error output connector configuration. Defaults to :code:`{}`.
     For detailed configurations see :ref:`output`.
     """
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)

@@ -32,8 +32,6 @@ class CriticalOutputError(OutputError):
     """A significant error occurred - log and don't process the event."""
 
     def __init__(self, output, message, raw_input):
-        if raw_input:
-            output.store_failed(str(self), raw_input, {})
         super().__init__(output, f"{message} for event: {raw_input}")
 
 
@@ -89,10 +87,6 @@ class Output(Connector):
     @abstractmethod
     def store_custom(self, document: dict, target: str):
         """Store additional data in a custom location inside the output destination."""
-
-    @abstractmethod
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
-        """Store an event when an error occurred during the processing."""
 
     def _write_backlog(self):
         """Write the backlog to the output destination."""

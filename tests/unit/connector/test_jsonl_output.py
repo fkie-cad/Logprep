@@ -44,16 +44,6 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
             assert self.object.events[order]["order"] == order
 
     @mock.patch("logprep.connector.jsonl.output.JsonlOutput._write_json")
-    def test_stores_failed_events_in_respective_list(self, _):
-        self.object.store_failed("message", {"doc": "received"}, {"doc": "processed"})
-        assert len(self.object.failed_events) == 1
-        assert self.object.failed_events[0] == (
-            "message",
-            {"doc": "received"},
-            {"doc": "processed"},
-        )
-
-    @mock.patch("logprep.connector.jsonl.output.JsonlOutput._write_json")
     def test_write_document_to_file_on_store(self, _):
         self.object.store(self.document)
         self.object._write_json.assert_called_with("/tmp/output.jsonl", self.document)
@@ -74,18 +64,6 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
             mock.call("/tmp/output.jsonl", {"message": "test message"}),
             mock.call("/tmp/output.jsonl", {"message": "test message"}),
         ]
-
-    @mock.patch("logprep.connector.jsonl.output.JsonlOutput._write_json")
-    def test_store_failed_writes_errors(self, _):
-        self.object.store_failed("my error message", self.document, self.document)
-        self.object._write_json.assert_called_with(
-            f"{tempfile.gettempdir()}/error_file",
-            {
-                "error_message": "my error message",
-                "document_received": {"message": "test message"},
-                "document_processed": {"message": "test message"},
-            },
-        )
 
     @mock.patch("builtins.open")
     def test_write_json_writes_to_file(self, mock_open):

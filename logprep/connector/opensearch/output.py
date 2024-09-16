@@ -282,31 +282,6 @@ class OpensearchOutput(Output):
         self.metrics.number_of_processed_events += 1
         self._message_backlog.append(document)
 
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
-        """Write errors into error topic for documents that failed processing.
-
-        Parameters
-        ----------
-        error_message : str
-           Error message to write into Kafka document.
-        document_received : dict
-            Document as it was before processing.
-        document_processed : dict
-            Document after processing until an error occurred.
-
-        """
-        self.metrics.number_of_failed_events += 1
-        error_document = {
-            "error": error_message,
-            "original": document_received,
-            "processed": document_processed,
-            "@timestamp": TimeParser.now().isoformat(),
-            "_index": self._config.error_index,
-        }
-        self._add_dates(error_document)
-        self._message_backlog.append(error_document)
-        self._write_to_search_context()
-
     def _build_failed_index_document(self, message_document: dict, reason: str):
         document = {
             "reason": reason,

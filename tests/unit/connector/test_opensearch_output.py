@@ -98,35 +98,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object.store_custom(event, custom_index)
         assert self.object._message_backlog[0] == expected
 
-    def test_store_failed(self):
-        error_index = "error_index"
-        event_received = {"field": "received"}
-        event = {"field": "content"}
-        error_message = "error message"
-        expected = {
-            "error": error_message,
-            "original": event_received,
-            "processed": event,
-            "_index": error_index,
-            "@timestamp": str(datetime.now()),
-        }
-
-        config = copy.deepcopy(self.CONFIG)
-        config["message_backlog_size"] = 2
-        self.object = Factory.create({"opensearch_output": config})
-        self.object.store_failed(error_message, event_received, event)
-
-        error_document = self.object._message_backlog[0]
-        # timestamp is compared to be approximately the same,
-        # since it is variable and then removed to compare the rest
-        error_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
-        expected_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
-        assert isclose(error_time, expected_time)
-        del error_document["@timestamp"]
-        del expected["@timestamp"]
-
-        assert error_document == expected
-
     def test_create_es_output_settings_contains_expected_values(self):
         expected = {
             "reason": "A reason for failed indexing",

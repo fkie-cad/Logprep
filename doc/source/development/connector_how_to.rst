@@ -62,13 +62,6 @@ They should return a helpful message when calling `str(exception)`.
 Analogous to the input, exceptions that require a restart of Logprep should inherit from `FatalOutputError`.
 Exceptions that inherit from `OutputWarning` will be logged, but they do not require any error handling.
 
-:py:meth:`~logprep.output.output.Output.store_failed`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-This method is being called if an error occurred during the processing of a log message.
-The original log message, the partially processed log message and the error message are being passed to this method.
-These will be stored separately from regular log messages for debugging and error handling.
-
 
 Factory
 -------

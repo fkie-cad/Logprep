@@ -14,7 +14,6 @@ Example
       my_confluent_kafka_output:
         type: confluentkafka_output
         topic: my_default_topic
-        error_topic: my_error_topic
         flush_timeout: 0.2
         send_timeout: 0
         kafka_config:
@@ -24,9 +23,7 @@ Example
             queue.buffering.max.ms: 0.5
 """
 
-import json
 import logging
-from datetime import datetime
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
@@ -304,39 +301,6 @@ class ConfluentKafkaOutput(Output):
             raise CriticalOutputError(
                 self, f"Error storing output document -> {error}", document
             ) from error
-
-    @Metric.measure_time()
-    def store_failed(
-        self, error_message: str, document_received: dict, document_processed: dict
-    ) -> None:
-        """Write errors into error topic for documents that failed processing.
-
-        Parameters
-        ----------
-        error_message : str
-           Error message to write into Kafka document.
-        document_received : dict
-            Document as it was before processing.
-        document_processed : dict
-            Document after processing until an error occurred.
-
-        """
-        self.metrics.number_of_failed_events += 1
-        value = {
-            "error": error_message,
-            "original": document_received,
-            "processed": document_processed,
-            "timestamp": str(datetime.now()),
-        }
-        try:
-            self._producer.produce(
-                self._config.error_topic,
-                value=json.dumps(value, separators=(",", ":")).encode("utf-8"),
-            )
-            self._producer.poll(self._config.send_timeout)
-        except BufferError:
-            # block program until buffer is empty
-            self._producer.flush(timeout=self._config.flush_timeout)
 
     def shut_down(self) -> None:
         """ensures that all messages are flushed. According to
