@@ -5,7 +5,6 @@ import logging
 import multiprocessing
 from copy import deepcopy
 from logging import DEBUG
-from multiprocessing import Lock
 from unittest import mock
 
 import pytest
