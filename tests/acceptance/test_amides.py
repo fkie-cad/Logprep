@@ -20,7 +20,7 @@ def config():
     config_dict = {
         "process_count": 1,
         "timeout": 0.1,
-        "profile_pipelines": True,
+        "profile_pipelines": False,
         "pipeline": [
             {
                 "amides": {
