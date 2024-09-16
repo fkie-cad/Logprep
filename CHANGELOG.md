@@ -14,7 +14,7 @@
 * initially run health checks on setup for every configured component
 * make `imagePullPolicy` configurable for helm chart deployments
 * make `terminationGracePeriodSeconds` configurable in helm chart values
-
+* adds ability to configure error output
 
 ### Improvements
 
