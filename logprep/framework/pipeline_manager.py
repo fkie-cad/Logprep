@@ -126,8 +126,8 @@ class PipelineManager:
         """Number of failed pipelines"""
 
     def __init__(self, configuration: Configuration):
-        self.restart_count = 0
-        self.restart_timeout_ms = random.randint(100, 1000)
+        self.restart_count: int = 0
+        self.restart_timeout_ms: int = random.randint(100, 1000)
         self.metrics = self.Metrics(labels={"component": "manager"})
         self.loghandler: LogprepMPQueueListener = None
         self._error_queue: multiprocessing.Queue | None = None
@@ -146,13 +146,13 @@ class PipelineManager:
             self.prometheus_exporter.prepare_multiprocessing()
 
     def _setup_error_queue(self):
-        if self._configuration.error_output is None:
+        if not self._configuration.error_output:
             return
         message_backlog_size = self._configuration.error_output.get(
             "message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE
         )
-        self._error_queue = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
         self._error_output = Factory.create(self._configuration.error_output)
+        self._error_queue = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
         self._error_output.setup()
         self._error_listener = ComponentQueueListener(self._error_queue, self._error_output.store)
         self._error_listener.start()

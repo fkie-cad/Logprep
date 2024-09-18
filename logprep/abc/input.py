@@ -259,7 +259,7 @@ class Input(Connector):
         """
 
     @Metric.measure_time()
-    def get_next(self, timeout: float) -> Tuple[Optional[dict], Optional[str]]:
+    def get_next(self, timeout: float) -> dict | None:
         """Return the next document
 
         Parameters
@@ -278,14 +278,13 @@ class Input(Connector):
             After timeout (usually a fraction of seconds) if no input data was available by then.
         """
         event, raw_event = self._get_event(timeout)
-        non_critical_error_msg = None
         if event is None:
-            return None, None
+            return
         self.metrics.number_of_processed_events += 1
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
         if self._add_hmac:
-            event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
+            event = self._add_hmac_to(event, raw_event)
         if self._add_version_info:
             self._add_version_information_to_event(event)
         if self._add_log_arrival_time_information:
@@ -294,7 +293,7 @@ class Input(Connector):
             self._add_arrival_timedelta_information_to_event(event)
         if self._add_env_enrichment:
             self._add_env_enrichment_to_event(event)
-        return event, non_critical_error_msg
+        return event
 
     def batch_finished_callback(self):
         """Can be called by output connectors after processing a batch of one or more records."""
@@ -393,9 +392,11 @@ class Input(Connector):
             hmac_output,
         )
         if not add_was_successful:
-            non_critical_error_msg = (
+            raise CriticalInputError(
+                self,
                 f"Couldn't add the hmac to the input event as the desired "
                 f"output field '{hmac_options.get('output_field')}' already "
-                f"exist."
+                f"exist.",
+                event_dict,
             )
-        return event_dict, non_critical_error_msg
+        return event_dict

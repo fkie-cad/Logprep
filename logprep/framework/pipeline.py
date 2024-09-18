@@ -118,10 +118,10 @@ def _handle_pipeline_error(func):
         except (FatalOutputError, FatalInputError) as error:
             self.logger.error(str(error))
             self.stop()
-        except CriticalInputError as error:
-            if (raw_input := error.raw_input) and self._output:  # pylint: disable=protected-access
-                if self.error_output:
-                    self.error_output.store(str(self), raw_input, {})
+        except (CriticalInputParsingError, CriticalInputError) as error:
+            if self.error_queue:
+                error_event = {"error": str(error), "data": error.raw_input}
+                self.error_queue.put(error_event)
             self.logger.error(str(error))
         return None
 
@@ -218,7 +218,7 @@ class Pipeline:
         self._timeout = config.timeout
         self._continue_iterating = Value(c_bool)
         self.pipeline_index = pipeline_index
-        self.error_queue = None
+        self.error_queue: multiprocessing.Queue = None
         if self._logprep_config.profile_pipelines:
             self.run = partial(PipelineProfiler.profile_function, self.run)
 
@@ -265,11 +265,10 @@ class Pipeline:
     def process_pipeline(self) -> PipelineResult:
         """Retrieve next event, process event with full pipeline and store or return results"""
         Component.run_pending_tasks()
-
-        event = self._get_event()
-        result = None
+        event = self._input.get_next(self._timeout)
         if not event:
-            return None, None
+            return
+        result = None
         if self._pipeline:
             result: PipelineResult = self.process_event(event)
             if result.warnings:
@@ -292,20 +291,6 @@ class Pipeline:
             if output.default:
                 output.store(event)
                 self.logger.debug(f"Stored output in {output_name}")
-
-    def _get_event(self) -> dict:
-        try:
-            event, non_critical_error_msg = self._input.get_next(self._timeout)
-            if non_critical_error_msg and self._output:
-                # TODO: what is a non critical error?
-                self._store_failed_event(non_critical_error_msg, event, None)
-            return event
-        except CriticalInputParsingError as error:
-            # TODO: simpler not parsable error handling
-            input_data = error.raw_input
-            if isinstance(input_data, bytes):
-                input_data = input_data.decode("utf8")
-            self._store_failed_event(error, {"invalid_json": input_data}, "")
 
     @Metric.measure_time()
     def process_event(self, event: dict):
