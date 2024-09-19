@@ -84,10 +84,13 @@ import re
 import zlib
 from abc import ABC
 from base64 import b64encode
-from typing import Callable, Mapping, Tuple, Union
+from functools import cached_property
+from typing import Callable, List, Mapping, Tuple, Union
 
 import falcon.asgi
 import msgspec
+import requests
+import rstr
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTP_200,
@@ -138,7 +141,7 @@ def raise_request_exceptions(func: Callable):
                 resp = args[2]
                 resp.status = HTTP_200
                 if endpoint.messages.full():
-                    raise HTTPTooManyRequests(description="Logprep Message Queue is full.")
+                    raise queue.Full()
                 return
             else:
                 raise HTTPMethodNotAllowed(["POST"])
@@ -314,11 +317,11 @@ class HttpInput(Input):
 
         number_of_http_requests: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of incomming requests",
+                description="Number of incoming requests",
                 name="number_of_http_requests",
             )
         )
-        """Number of incomming requests"""
+        """Number of incoming requests"""
 
         message_backlog_size: GaugeMetric = field(
             factory=lambda: GaugeMetric(
@@ -351,7 +354,7 @@ class HttpInput(Input):
            :location: uvicorn_config
            :suggested-value: uvicorn_config.access_log: true, uvicorn_config.server_header: false, uvicorn_config.data_header: false
            
-           Additionaly to the below it is recommended to configure `ssl on the metrics server endpoint
+           Additionally to the below it is recommended to configure `ssl on the metrics server endpoint
            <https://www.uvicorn.org/settings/#https>`_
 
            .. code-block:: yaml
@@ -374,7 +377,7 @@ class HttpInput(Input):
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`. It's possible to use wildcards and
-        regexes for pattern matching.
+        regexps for pattern matching.
         
         
         .. autoclass:: logprep.connector.http.input.PlaintextHttpEndpoint
@@ -490,3 +493,35 @@ class HttpInput(Input):
         if self.http_server is None:
             return
         self.http_server.shut_down()
+
+    @cached_property
+    def health_endpoints(self) -> List[str]:
+        """Returns a list of endpoints for internal healthcheck
+        the endpoints are examples to match against the configured regex enabled
+        endpoints. The endpoints are normalized to match the regex patterns and this ensures that the endpoints should not be too long
+        """
+        normalized_endpoints = (endpoint.replace(".*", "b") for endpoint in self._config.endpoints)
+        normalized_endpoints = (endpoint.replace(".+", "b") for endpoint in normalized_endpoints)
+        normalized_endpoints = (endpoint.replace("+", "{5}") for endpoint in normalized_endpoints)
+        normalized_endpoints = (endpoint.replace("*", "{5}") for endpoint in normalized_endpoints)
+        return [rstr.xeger(endpoint) for endpoint in normalized_endpoints]
+
+    def health(self) -> bool:
+        """Health check for the HTTP Input Connector
+
+        Returns
+        -------
+        bool
+            :code:`True` if all endpoints can be called without error
+        """
+        for endpoint in self.health_endpoints:
+            try:
+                requests.get(
+                    f"{self.target}{endpoint}", timeout=self._config.health_timeout
+                ).raise_for_status()
+            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as error:
+                logger.error("Health check failed for endpoint: %s due to %s", endpoint, str(error))
+                self.metrics.number_of_errors += 1
+                return False
+
+        return super().health()

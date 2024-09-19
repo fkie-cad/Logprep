@@ -56,3 +56,8 @@ class CommonConfluentKafkaTestCase:
         json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
         self.object._stats_callback(json_string)
         assert self.object.metrics.librdkafka_age == 1337
+
+    def test_kafka_config_is_immutable(self):
+        self.object.setup()
+        with pytest.raises(TypeError):
+            self.object._config.kafka_config["client.id"] = "test"

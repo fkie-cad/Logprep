@@ -31,6 +31,7 @@ Example
 import logging
 from functools import cached_property, partial
 from socket import getfqdn
+from types import MappingProxyType
 from typing import Callable, Optional, Tuple, Union
 
 import msgspec
@@ -211,15 +212,16 @@ class ConfluentKafkaInput(Input):
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
 
-        kafka_config: Optional[dict] = field(
+        kafka_config: Optional[MappingProxyType] = field(
             validator=[
-                validators.instance_of(dict),
+                validators.instance_of(MappingProxyType),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of(str),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
-            ]
+            ],
+            converter=MappingProxyType,
         )
         """ Kafka configuration for the kafka client.
         At minimum the following keys must be set:
@@ -504,13 +506,31 @@ class ConfluentKafkaInput(Input):
             topic_partition.offset = OFFSET_STORED
         self._consumer.assign(topic_partitions)
 
-    def setup(self) -> None:
-        try:
-            super().setup()
-        except (KafkaException, ValueError) as error:
-            raise FatalInputError(self, str(error)) from error
-
     def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
         super().shut_down()
+
+    def health(self) -> bool:
+        """Check the health of the component.
+
+        Returns
+        -------
+        bool
+            True if the component is healthy, False otherwise.
+        """
+
+        try:
+            self._consumer.list_topics(timeout=self._config.health_timeout)
+        except KafkaException as error:
+            logger.error("Health check failed: %s", error)
+            self.metrics.number_of_errors += 1
+            return False
+        return super().health()
+
+    def setup(self) -> None:
+        """Set the component up."""
+        try:
+            super().setup()
+        except KafkaException as error:
+            raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error

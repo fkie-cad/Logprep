@@ -12,6 +12,7 @@ from unittest import mock
 
 import pytest
 import requests
+import responses
 import uvicorn
 from requests.auth import HTTPBasicAuth
 
@@ -73,7 +74,7 @@ class TestHttpConnector(BaseInputTestCase):
             "/plaintext": "plaintext",
             "/auth-json-secret": "json",
             "/auth-json-file": "json",
-            "/.*/[A-Z]{2}/json$": "json",
+            "/[A-Za-z0-9]*/[A-Z]{2}/json$": "json",
         },
     }
 
@@ -114,6 +115,12 @@ class TestHttpConnector(BaseInputTestCase):
     def test_get_method_returns_200_with_authentication(self):
         resp = requests.get(url=f"{self.target}/auth-json-secret", timeout=0.5)
         assert resp.status_code == 200
+
+    def test_get_method_returns_429_if_queue_is_full(self):
+        self.object.messages.full = mock.MagicMock()
+        self.object.messages.full.return_value = True
+        resp = requests.get(url=f"{self.target}/json", timeout=20)
+        assert resp.status_code == 429
 
     def test_get_error_code_too_many_requests(self):
         data = {"message": "my log message"}
@@ -454,3 +461,83 @@ class TestHttpConnector(BaseInputTestCase):
         data = "this is not a valid json nor jsonl"
         resp = requests.post(url=f"{self.target}/{endpoint}", data=data, timeout=0.5)
         assert resp.status_code == 400
+
+    @responses.activate
+    def test_health_endpoint_is_ready_if_all_endpoints_are_successful(self):
+        for endpoint in self.object.health_endpoints:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
+        assert self.object.health(), "Health endpoint should be ready"
+
+    @responses.activate
+    def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_429(self):
+        for endpoint in self.object.health_endpoints[0:-2]:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
+        endpoint = self.object.health_endpoints[-1]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", status=429)  # bad
+        assert not self.object.health(), "Health endpoint should not be ready"
+
+    @responses.activate
+    def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_500(self):
+        for endpoint in self.object.health_endpoints[1:-1]:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)  # bad
+        assert not self.object.health(), "Health endpoint should not be ready"
+
+    @responses.activate
+    def test_health_endpoint_is_not_ready_on_connection_error(self):
+        for endpoint in self.object.health_endpoints[1:-1]:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.ConnectionError("bad"))
+        assert not self.object.health(), "Health endpoint should not be ready"
+
+    @responses.activate
+    def test_health_endpoint_is_not_ready_if_one_endpoint_has_read_timeout(self):
+        for endpoint in self.object.health_endpoints[1:-1]:
+            responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.Timeout("bad"))
+        assert not self.object.health(), "Health endpoint should not be ready"
+
+    @responses.activate
+    def test_health_check_logs_error(self):
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.Timeout("bad"))
+        with mock.patch("logging.Logger.error") as mock_logger:
+            assert not self.object.health(), "Health endpoint should not be ready"
+            mock_logger.assert_called()
+
+    @responses.activate
+    def test_health_counts_errors(self):
+        self.object.metrics.number_of_errors = 0
+        endpoint = self.object.health_endpoints[0]
+        responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)  # bad
+        assert not self.object.health()
+        assert self.object.metrics.number_of_errors == 1
+
+    def test_health_endpoints_are_shortened(self):
+        config = deepcopy(self.CONFIG)
+        endpoints = {
+            "/json": "json",
+            "/jsonl$": "jsonl",
+            "/.*/blah$": "json",
+            "/fooo.*/.+": "json",
+            "/[A-Za-z0-9]*/[A-Z]{2}/json$": "json",
+        }
+        expected_matching_regexes = (
+            "/json",
+            "/jsonl$",
+            "/b/blah$",
+            "/fooob/b",
+            "/[A-Za-z0-9]{5}/[A-Z]{2}/json$",
+        )
+        config["endpoints"] = endpoints
+        connector = Factory.create({"test connector": config})
+        health_endpoints = connector.health_endpoints
+        for endpoint, expected in zip(health_endpoints, expected_matching_regexes):
+            assert re.match(expected, endpoint)
+
+    @pytest.mark.skip("Not implemented")
+    def test_setup_calls_wait_for_health(self):
+        pass

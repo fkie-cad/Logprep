@@ -67,3 +67,7 @@ class TestJsonInput(BaseInputTestCase):
         for order in range(0, 9):
             event, _ = object.get_next(self.timeout)
             assert event.get("order") == order % 3
+
+    @pytest.mark.skip(reason="not implemented")
+    def test_setup_calls_wait_for_health(self):
+        pass

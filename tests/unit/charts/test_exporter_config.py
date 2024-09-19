@@ -210,7 +210,7 @@ class TestExporterConfig(TestBaseChartTest):
         assert liveness_probe["httpGet"]["path"] == "/metrics"
         readiness_probe = self.deployment["spec.template.spec.containers.0.readinessProbe"]
         assert readiness_probe["httpGet"]["port"] == 1337
-        assert readiness_probe["httpGet"]["path"] == "/metrics"
+        assert readiness_probe["httpGet"]["path"] == "/health"
         startup_probe = self.deployment["spec.template.spec.containers.0.startupProbe"]
         assert startup_probe["httpGet"]["port"] == 1337
         assert startup_probe["httpGet"]["path"] == "/metrics"

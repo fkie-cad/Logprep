@@ -69,8 +69,8 @@ class MSGPECSerializer(JSONSerializer):
         except (ValueError, TypeError) as e:
             raise search.exceptions.SerializationError(data, e)
 
-    def loads(self, data):
-        return self._decoder.decode(data)
+    def loads(self, s):
+        return self._decoder.decode(s)
 
 
 class OpensearchOutput(Output):
@@ -144,6 +144,10 @@ class OpensearchOutput(Output):
             default=500, validator=[validators.instance_of(int), validators.gt(1)]
         )
         """Chunk size to use for bulk requests."""
+        desired_cluster_status: list = field(
+            default=["green"], validator=validators.instance_of(list)
+        )
+        """Desired cluster status for health check as list of strings. Default is ["green"]"""
 
     __slots__ = ["_message_backlog", "_size_error_pattern"]
 
@@ -219,10 +223,6 @@ class OpensearchOutput(Output):
         super().setup()
         flush_timeout = self._config.flush_timeout
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
-        try:
-            self._search_context.info()
-        except (OpenSearchException, TimeoutError) as error:
-            raise FatalOutputError(self, error) from error
 
     def describe(self) -> str:
         """Get name of Opensearch endpoint with the host.
@@ -554,3 +554,15 @@ class OpensearchOutput(Output):
             else:
                 messages_over_size_limit.append((message, message_size))
         return messages_under_size_limit, messages_over_size_limit
+
+    def health(self) -> bool:
+        """Check the health of the component."""
+        try:
+            resp = self._search_context.cluster.health(
+                params={"timeout": self._config.health_timeout}
+            )
+        except (OpenSearchException, ConnectionError) as error:
+            logger.error("Health check failed: %s", error)
+            self.metrics.number_of_errors += 1
+            return False
+        return super().health() and resp.get("status") in self._config.desired_cluster_status

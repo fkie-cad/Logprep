@@ -34,6 +34,7 @@ class BaseComponentTestCase(ABC):
     def setup_method(self) -> None:
         config = {"Test Instance Name": self.CONFIG}
         self.object = Factory.create(configuration=config)
+        self.object._wait_for_health = mock.MagicMock()
         assert "metrics" not in self.object.__dict__, "metrics should be a cached_property"
         self.metric_attributes = asdict(
             self.object.metrics,
@@ -125,6 +126,13 @@ class BaseComponentTestCase(ABC):
         self.object.setup()
         mock_getmembers.assert_called_with(self.object)
 
+    def test_setup_calls_wait_for_health(self):
+        self.object.setup()
+        self.object._wait_for_health.assert_called()
+
     def test_config_is_immutable(self):
         with pytest.raises(FrozenInstanceError):
             self.object._config.type = "new_type"
+
+    def test_health_returns_bool(self):
+        assert isinstance(self.object.health(), bool)

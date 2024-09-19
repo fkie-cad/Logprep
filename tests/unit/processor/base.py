@@ -95,8 +95,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             patcher.start()
             self.patchers.append(patcher)
         super().setup_method()
-        config = {"Test Instance Name": self.CONFIG}
-        self.object = Factory.create(configuration=config)
         self.specific_rules = self.set_rules(self.specific_rules_dirs)
         self.generic_rules = self.set_rules(self.generic_rules_dirs)
         self.match_all_event = {

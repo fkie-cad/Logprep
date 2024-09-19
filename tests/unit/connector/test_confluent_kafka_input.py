@@ -32,6 +32,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "type": "confluentkafka_input",
         "kafka_config": {"bootstrap.servers": "testserver:9092", "group.id": "testgroup"},
         "topic": "test_input_raw",
+        "health_timeout": 0.1,
     }
 
     expected_metrics = [
@@ -115,8 +116,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_batch_finished_callback_calls_offsets_handler_for_setting(self, _, settings, handlers):
         input_config = deepcopy(self.CONFIG)
+        input_config["kafka_config"] |= settings
         kafka_input = Factory.create({"test": input_config})
-        kafka_input._config.kafka_config.update(settings)
         kafka_consumer = kafka_input._consumer
         message = "test message"
         kafka_input._last_valid_records = {0: message}
@@ -141,8 +142,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self, _, settings, handler
     ):
         input_config = deepcopy(self.CONFIG)
+        input_config["kafka_config"] |= settings
         kafka_input = Factory.create({"test": input_config})
-        kafka_input._config.kafka_config.update(settings)
         kafka_consumer = kafka_input._consumer
         return_sequence = [KafkaException("test error"), None]
 
@@ -288,8 +289,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_client_id_can_be_overwritten(self, mock_consumer):
         input_config = deepcopy(self.CONFIG)
+        input_config["kafka_config"]["client.id"] = "thisclientid"
         kafka_input = Factory.create({"test": input_config})
-        kafka_input._config.kafka_config["client.id"] = "thisclientid"
         kafka_input.setup()
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("client.id") == "thisclientid"
@@ -297,8 +298,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_statistics_interval_can_be_overwritten(self, mock_consumer):
-        kafka_input = Factory.create({"test": self.CONFIG})
-        kafka_input._config.kafka_config["statistics.interval.ms"] = "999999999"
+        input_config = deepcopy(self.CONFIG)
+        input_config["kafka_config"]["statistics.interval.ms"] = "999999999"
+        kafka_input = Factory.create({"test": input_config})
         kafka_input.setup()
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"
@@ -389,3 +391,26 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._revoke_callback(mock_consumer, mock_partitions)
         self.object.output_connector._write_backlog.assert_called()
         self.object.batch_finished_callback.assert_called()
+
+    def test_health_returns_true_if_no_error(self):
+        with mock.patch("logprep.connector.confluent_kafka.input.Consumer"):
+            assert self.object.health()
+
+    def test_health_returns_false_on_kafka_exception(self):
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
+
+    def test_health_logs_error_on_kafka_exception(self):
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.list_topics.side_effect = KafkaException("test error")
+        with mock.patch("logging.Logger.error") as mock_error:
+            self.object.health()
+        mock_error.assert_called()
+
+    def test_health_counts_metrics_on_kafka_exception(self):
+        self.object.metrics.number_of_errors = 0
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
+        assert self.object.metrics.number_of_errors == 1

@@ -29,6 +29,7 @@ import logging
 from datetime import datetime
 from functools import cached_property, partial
 from socket import getfqdn
+from types import MappingProxyType
 from typing import Optional
 
 from attrs import define, field, validators
@@ -151,16 +152,17 @@ class ConfluentKafkaOutput(Output):
         """The topic into which events should be written that couldn't be processed successfully."""
         flush_timeout: float
         send_timeout: int = field(validator=validators.instance_of(int), default=0)
-        kafka_config: Optional[dict] = field(
+        kafka_config: Optional[MappingProxyType] = field(
             validator=[
-                validators.instance_of(dict),
+                validators.instance_of(MappingProxyType),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of((str, dict)),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers"]),
             ],
-            factory=dict,
+            factory=MappingProxyType,
+            converter=MappingProxyType,
         )
         """ Kafka configuration for the kafka client.
         At minimum the following keys must be set:
@@ -193,7 +195,7 @@ class ConfluentKafkaOutput(Output):
         return DEFAULTS | self._config.kafka_config | injected_config
 
     @cached_property
-    def _producer(self):
+    def _producer(self) -> Producer:
         return Producer(self._kafka_config)
 
     def _error_callback(self, error: KafkaException):
@@ -324,13 +326,24 @@ class ConfluentKafkaOutput(Output):
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
 
-    def setup(self):
-        try:
-            super().setup()
-        except (KafkaException, ValueError) as error:
-            raise FatalOutputError(self, str(error)) from error
-
     def shut_down(self) -> None:
         """ensures that all messages are flushed"""
         if self._producer is not None:
             self._producer.flush(self._config.flush_timeout)
+
+    def health(self) -> bool:
+        """Check the health of kafka producer."""
+        try:
+            self._producer.list_topics(timeout=self._config.health_timeout)
+        except KafkaException as error:
+            logger.error("Health check failed: %s", error)
+            self.metrics.number_of_errors += 1
+            return False
+        return super().health()
+
+    def setup(self) -> None:
+        """Set the component up."""
+        try:
+            super().setup()
+        except KafkaException as error:
+            raise FatalOutputError(self, f"Could not setup kafka producer: {error}") from error

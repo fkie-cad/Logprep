@@ -6,11 +6,22 @@
 * remove AutoRuleCorpusTester
 
 ### Features
+
+* adds health check endpoint to metrics on path `/health`
+* changes helm chart to use new readiness check
+* adds `healthcheck_timeout` option to all components to tweak the timeout of healthchecks
+* adds `desired_cluster_status` option to opensearch output to signal healthy cluster status
+* initially run health checks on setup for every configured component
+* make `imagePullPolicy` configurable for helm chart deployments
+
+
 ### Improvements
 
 * remove AutoRuleCorpusTester
 * adds support for rust extension development
 * adds prebuild wheels for architectures `x86_64` and `aarch64` on `manylinux` and `musllinux` based linux platforms to releases
+* add manual how to use local images with minikube example setup to documentation
+* move `Configuration` to top level of documentation
 
 ### Bugfix
 

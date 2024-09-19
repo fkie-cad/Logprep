@@ -27,6 +27,8 @@ to the labels of the category :code:`action`:
    :noindex:
 """
 
+from typing import Iterable
+
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -45,7 +47,7 @@ class LabelerRule(FieldManagerRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(list),
+                    value_validator=validators.instance_of(Iterable),
                 ),
             ]
         )

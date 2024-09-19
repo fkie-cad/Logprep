@@ -217,15 +217,13 @@ class Pipeline:
             output.input_connector = self._input
             if output.default:
                 self._input.output_connector = output
+            output.setup()
         self.logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
             f" output -> '{[output.describe() for _, output in self._output.items()]}'"
         )
         self._input.pipeline_index = self.pipeline_index
         self._input.setup()
-        for _, output in self._output.items():
-            output.setup()
-
         self.logger.debug("Finished creating connectors")
         self.logger.info("Start building pipeline")
         _ = self._pipeline
@@ -341,3 +339,16 @@ class Pipeline:
         self.logger.debug(f"Stopping pipeline ({self._process_name})")
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False
+
+    def get_health_functions(self) -> Tuple[bool]:
+        """Return health function of components"""
+        output_health_functions = []
+        if self._output:
+            output_health_functions = [output.health for output in self._output.values()]
+        return tuple(
+            itertools.chain(
+                [self._input.health],
+                [processor.health for processor in self._pipeline],
+                output_health_functions,
+            )
+        )

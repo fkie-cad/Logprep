@@ -114,13 +114,13 @@ output:
       - 127.0.0.1:9200
     default_index: processed
     error_index: errors
-    message_backlog_size: 10000
+    message_backlog_size: 2500
     timeout: 10000
     flush_timeout: 60
     max_retries: 3
-    parallel_bulk: false
     user: admin
     secret: admin
+    desired_cluster_status: ["green", "yellow"]
   kafka:
     type: confluentkafka_output
     default: false

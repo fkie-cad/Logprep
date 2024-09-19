@@ -97,13 +97,3 @@ class TestInputConfig(TestBaseChartTest):
                 break
         else:
             assert False, "http-input port not found"
-
-    def test_probe_ports_are_populated_from_values(self):
-        self.manifests = self.render_chart("logprep", {"input": http_input_config})
-        liveness_probe = self.deployment["spec.template.spec.containers.0.livenessProbe"]
-        assert liveness_probe["httpGet"]["port"] == 8000
-        readiness_probe = self.deployment["spec.template.spec.containers.0.readinessProbe"]
-        assert readiness_probe["httpGet"]["port"] == 9999
-        assert readiness_probe["httpGet"]["path"] == "/health"
-        startup_probe = self.deployment["spec.template.spec.containers.0.startupProbe"]
-        assert startup_probe["httpGet"]["port"] == 8000

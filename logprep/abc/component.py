@@ -2,6 +2,9 @@
 
 import functools
 import inspect
+import logging
+import sys
+import time
 from abc import ABC
 from functools import cached_property
 from typing import Callable
@@ -12,7 +15,10 @@ from attrs import asdict
 from schedule import Scheduler
 
 from logprep.metrics.metrics import Metric
+from logprep.util.defaults import DEFAULT_HEALTH_TIMEOUT, EXITCODES
 from logprep.util.helper import camel_to_snake
+
+logger = logging.getLogger("Component")
 
 
 class Component(ABC):
@@ -27,6 +33,13 @@ class Component(ABC):
 
         type: str = field(validator=validators.instance_of(str))
         """Type of the component"""
+
+        health_timeout: float = field(
+            validator=validators.instance_of(float),
+            default=DEFAULT_HEALTH_TIMEOUT,
+            converter=float,
+        )
+        """Timeout in seconds for health check: Default is 1 seconds"""
 
     @define(kw_only=True)
     class Metrics:
@@ -86,6 +99,25 @@ class Component(ABC):
     def setup(self):
         """Set the component up."""
         self._populate_cached_properties()
+        if not "http" in self._config.type:
+            # HTTP input connector spins up an http server
+            # only on the first pipeline process
+            # but this runs on all pipeline processes which leads to never
+            # completing the setup phase
+            self._wait_for_health()
+
+    def _wait_for_health(self) -> None:
+        """Wait for the component to be healthy.
+        if the component is not healthy after a period of time, the process will exit.
+        """
+        for i in range(3):
+            if self.health():
+                break
+            logger.info("Wait for %s initially becoming healthy: %s/3", self.name, i + 1)
+            time.sleep(1 + i)
+        else:
+            logger.error("Component '%s' did not become healthy", self.name)
+            sys.exit(EXITCODES.PIPELINE_ERROR.value)
 
     def _populate_cached_properties(self):
         _ = [
@@ -103,10 +135,22 @@ class Component(ABC):
         if hasattr(self, "__dict__"):
             self.__dict__.clear()
 
+    def health(self) -> bool:
+        """Check the health of the component.
+
+        Returns
+        -------
+        bool
+            True if the component is healthy, False otherwise.
+
+        """
+        logger.debug("Checking health of %s", self.name)
+        return True
+
     def _schedule_task(
         self, task: Callable, seconds: int, args: tuple = None, kwargs: dict = None
     ) -> None:
-        """Schedule a task to run periodicly during pipeline run.
+        """Schedule a task to run periodically during pipeline run.
         The task is run in :code:`pipeline.py` in the :code:`process_pipeline` method.
 
         Parameters

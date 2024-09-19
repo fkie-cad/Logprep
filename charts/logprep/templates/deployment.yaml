@@ -34,7 +34,7 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-          imagePullPolicy: Always
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             {{- if .Values.exporter.enabled }}
             - name: exporter
@@ -106,28 +106,15 @@ spec:
             {{- if .Values.extraMounts }}
             {{- toYaml .Values.extraMounts | nindent 12 }}
             {{- end }}
-          {{- if or .Values.exporter.enabled (eq .Values.input.type "http_input") }}
-          {{- if eq .Values.input.type "http_input" }}
+          {{- if .Values.exporter.enabled }}
           readinessProbe:
             httpGet:
               path: /health
-              port: {{ .Values.input.uvicorn_config.port }}
-            initialDelaySeconds: 5
-            timeoutSeconds: 10
-            periodSeconds: 5
-            failureThreshold: 3
-          {{- else }}
-          readinessProbe:
-            httpGet:
-              path: /metrics
               port: {{ .Values.exporter.port }}
             initialDelaySeconds: 5
             timeoutSeconds: 10
             periodSeconds: 5
             failureThreshold: 3
-          {{- end }}
-          {{- end }}
-          {{- if .Values.exporter.enabled }}
           startupProbe:
             httpGet:
               path: /metrics

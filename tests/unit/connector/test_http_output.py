@@ -149,3 +149,7 @@ class TestOutput(BaseOutputTestCase):
         self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
+
+    @pytest.mark.skip(reason="not implemented")
+    def test_setup_calls_wait_for_health(self):
+        pass

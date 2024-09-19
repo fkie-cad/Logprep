@@ -171,10 +171,9 @@ class TestPipelineManager:
         config = deepcopy(self.config)
         config.metrics = MetricsConfig(enabled=True, port=666)
         pipeline_manager = PipelineManager(config)
-        pipeline_manager.prometheus_exporter.is_running = False
-        with mock.patch.object(pipeline_manager.prometheus_exporter, "run") as mock_run:
-            pipeline_manager.restart()
-            mock_run.assert_called()
+        pipeline_manager.prometheus_exporter = mock.MagicMock()
+        pipeline_manager.restart()
+        pipeline_manager.prometheus_exporter.run.assert_called()
 
     def test_restart_sets_deterministic_pipline_index(self):
         config = deepcopy(self.config)
@@ -255,6 +254,22 @@ class TestPipelineManager:
         pipeline_manager._pipelines[0].is_alive.return_value = False
         pipeline_manager.restart_failed_pipeline()
         mock_time_sleep.assert_not_called()
+
+    def test_restart_injects_healthcheck_functions(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager.prometheus_exporter = mock.MagicMock()
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        pipeline_manager.restart()
+        pipeline_manager.prometheus_exporter.update_healthchecks.assert_called()
+
+    def test_restart_ensures_prometheus_exporter_is_running(self):
+        config = deepcopy(self.config)
+        config.metrics = MetricsConfig(enabled=True, port=666)
+        pipeline_manager = PipelineManager(config)
+        pipeline_manager.prometheus_exporter._prepare_multiprocessing = mock.MagicMock()
+        with mock.patch("logprep.util.http.ThreadingHTTPServer"):
+            pipeline_manager.restart()
+        pipeline_manager.prometheus_exporter.server.start.assert_called()
 
 
 class TestThrottlingQueue:

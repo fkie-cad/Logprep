@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import threading
+import time
 
 import uvicorn
 
@@ -54,6 +55,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
 
         if (
             hasattr(self, "thread")
+            and self.thread is not None
             and self.thread.is_alive()  # pylint: disable=access-member-before-definition
         ):
             self.shut_down()
@@ -69,28 +71,42 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         logprep_log_config = json.loads(
             os.environ.get("LOGPREP_LOG_CONFIG", json.dumps(DEFAULT_LOG_CONFIG))
         )
-        uvicorn_config = uvicorn.Config(**uvicorn_config, app=app, log_config=logprep_log_config)
+        self.uvicorn_config = uvicorn.Config(
+            **uvicorn_config, app=app, log_config=logprep_log_config
+        )
         logging.getLogger("uvicorn.access").name = self._logger_name
         logging.getLogger("uvicorn.error").name = self._logger_name
-        self.server = uvicorn.Server(uvicorn_config)
-        self.thread = threading.Thread(daemon=daemon, target=self.server.run)
+        self.server = None
+        self.thread = None
+        self.daemon = daemon
 
     def start(self):
         """Collect all configs, initiate application server and webserver
         and run thread with uvicorn+falcon http server and wait
         until it is up (started)"""
-
+        self.server = uvicorn.Server(self.uvicorn_config)
+        self.thread = threading.Thread(daemon=self.daemon, target=self.server.run)
         self.thread.start()
         while not self.server.started:
             continue
 
-    def shut_down(self):
+    def shut_down(self, wait: float = 1) -> None:
         """Stop thread with uvicorn+falcon http server, wait for uvicorn
         to exit gracefully and join the thread"""
-        if not self.thread.is_alive():
+        if self.thread is None or self.server is None:
             return
         self.server.should_exit = True
-        while self.thread.is_alive():
+        while 1:
             self._logger.debug("Wait for server to exit gracefully...")
-            continue
+            if not self.thread.is_alive():
+                time.sleep(wait)
+                if not self.thread.is_alive():  # we have to double check if it is really dead
+                    break
+            time.sleep(wait)
         self.thread.join()
+
+    def restart(self, wait: float = 1) -> None:
+        """Restart the server by shutting down the existing server and
+        starting a new one"""
+        self.shut_down(wait=wait)
+        self.start()

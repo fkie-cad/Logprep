@@ -195,3 +195,24 @@ Exit Codes
    :undoc-members:
    :inherited-members:
    :noindex:
+
+
+Healthchecks
+------------
+
+Logprep provides a health endpoint which can be used to check the health of all components.
+The asgi app for the healthcheck endpoint is implemented in :code:`logprep.metrics.exporter.make_patched_asgi_app` and
+will be recreated on every restart of logprep (e.g. after a configuration change) or on creation of the first pipeline process.
+The healthcheck endpoint is available at :code:`/health` if metrics are enabled and can be accessed via HTTP GET.
+
+* On success, the healthcheck endpoint will return a :code:`200` status code and a payload :code:`OK`.
+* On failure, the healthcheck endpoint will return a :code:`503` status code and a payload :code:`FAIL`.
+
+Healthchecks are implemented in components via the :code:`health()` method. You have to ensure to call
+the :code:`super.health()` method in new implemented health checks.
+The health is checked for the first time after the first pipeline process is started and then every 5 seconds.
+You can configure the healthcheck timeout on component level with the parameter :code:`health_timeout`.
+The default value is 1 second.
+
+Healthchecks are used in the provided helm charts as default for readiness probes.
+

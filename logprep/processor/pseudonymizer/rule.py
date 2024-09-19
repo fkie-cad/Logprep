@@ -63,7 +63,7 @@ class PseudonymizerRule(FieldManagerRule):
             validator=[
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of((str, re.Pattern)),
                 ),
                 validators.min_len(1),
             ]
