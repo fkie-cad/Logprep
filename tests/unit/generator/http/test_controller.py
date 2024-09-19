@@ -27,7 +27,7 @@ class TestController:
             thread_count=1,
         )
 
-    @pytest.mark.skip(reason="This test blocks and has to be fixed")  # TODO: Fix this test
+    # @pytest.mark.skip(reason="This test blocks and has to be fixed")  # TODO: Fix this test
     @responses.activate
     def test_run(self, tmp_path):
         dataset_path = tmp_path / "dataset"

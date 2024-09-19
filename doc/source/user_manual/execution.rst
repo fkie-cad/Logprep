@@ -214,5 +214,5 @@ The health is checked for the first time after the first pipeline process is sta
 You can configure the healthcheck timeout on component level with the parameter :code:`health_timeout`.
 The default value is 1 second.
 
-Healthchecks are used in the provided helm charts as default for readiness and liveness probes.
+Healthchecks are used in the provided helm charts as default for readiness probes.
 

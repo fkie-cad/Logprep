@@ -9,9 +9,9 @@ It provides tools for:
 * **normalization** via different processors
 * **shipping** to different datalake targets
 * **generation** of events for load testing
-* **pseudonymization** and depseudonymization of fields in log data to comply with GDPR
+* **pseudonymization** and **depseudonymization** of fields in log data to comply with GDPR
 
-and it is written in **Python**!.
+and it is written in **Python**!
 
 .. toctree::
    :maxdepth: 3
