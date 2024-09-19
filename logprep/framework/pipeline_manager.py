@@ -9,9 +9,9 @@ import multiprocessing.managers
 import multiprocessing.queues
 import random
 import time
-from typing import Callable
+from typing import Any, Callable
 
-from attr import define, field
+from attr import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.abc.output import Output
@@ -57,24 +57,30 @@ class ThrottlingQueue(multiprocessing.queues.Queue):
         super().put(obj, block=block, timeout=timeout)
 
 
+@define()
 class ComponentQueueListener:
-    """This forks a process and handles all items from the queue into the specified callable."""
+    """This forks a process and handles all items from the given queue into
+    the specified callable. It uses a sentinel object to stop the process."""
 
-    _queue: multiprocessing.Queue
+    _queue: multiprocessing.queues.Queue = field(
+        validator=validators.instance_of(multiprocessing.queues.Queue)
+    )
+    """The queue to listen to."""
 
-    _call: Callable
+    _target: Callable = field(validator=validators.instance_of(Callable))
+    """The target callable to call with the items from the queue."""
 
-    _process: multiprocessing.Process
+    _sentinel: Any = field(default=None)
+    """The sentinel object to stop the process. This has to implement identity comparison."""
 
-    _sentinel = object()
+    _process: multiprocessing.Process = field(init=False)
+    """The process that is forked to listen to the queue."""
 
-    def __init__(self, queue: multiprocessing.Queue, target: Callable) -> None:
-        self._queue = queue
-        self._call = target
+    def __attrs_post_init__(self):
+        self._process = multiprocessing.Process(target=self._listen, daemon=True)
 
     def start(self):
         """Start the listener."""
-        self._process = multiprocessing.Process(target=self._listen, daemon=True)
         self._process.start()
 
     def _listen(self):
@@ -85,7 +91,7 @@ class ComponentQueueListener:
                 continue
             if item is self._sentinel:
                 break
-            self._call(item)
+            self._target(item)
 
     def stop(self):
         """Stop the listener."""

@@ -1,15 +1,22 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+# pylint: disable=unnecessary-lambda-assignment
 import multiprocessing
 from copy import deepcopy
 from logging import Logger
 from logging.config import dictConfig
 from unittest import mock
 
+import pytest
+
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
-from logprep.framework.pipeline_manager import PipelineManager, ThrottlingQueue
+from logprep.framework.pipeline_manager import (
+    ComponentQueueListener,
+    PipelineManager,
+    ThrottlingQueue,
+)
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
@@ -314,3 +321,104 @@ class TestThrottlingQueue:
             with mock.patch.object(queue, "qsize", return_value=95):
                 queue.throttle()
             assert mock_sleep.call_args[0][0] > first_sleep_time
+
+
+class TestComponentQueueListener:
+
+    @pytest.mark.parametrize(
+        "parameters, error",
+        [
+            (
+                {
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": lambda x: None,
+                },
+                None,
+            ),
+            (
+                {
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": lambda x: None,
+                    "sentinel": object(),
+                },
+                None,
+            ),
+            (
+                {
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": "I am not callable",
+                },
+                TypeError,
+            ),
+            (
+                {
+                    "queue": "I am not a queue",
+                    "target": lambda x: None,
+                },
+                TypeError,
+            ),
+        ],
+    )
+    def test_sets_parameters(self, parameters, error):
+        if error:
+            with pytest.raises(error):
+                ComponentQueueListener(**parameters)
+        else:
+            ComponentQueueListener(**parameters)
+
+    def test_init_sets_process_but_does_not_start_it(self):
+        target = lambda x: None
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = ComponentQueueListener(queue, target)
+        assert listener._process is not None
+        assert isinstance(listener._process, multiprocessing.Process)
+        assert not listener._process.is_alive()
+
+    def test_init_sets_process_target(self):
+        target = lambda x: None
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        with mock.patch("multiprocessing.Process") as process_mock:
+            listener = ComponentQueueListener(queue, target)
+        process_mock.assert_called_with(target=listener._listen, daemon=True)
+
+    def test_start_starts_process(self):
+        target = lambda x: None
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = ComponentQueueListener(queue, target)
+        with mock.patch.object(listener._process, "start") as mock_start:
+            listener.start()
+        mock_start.assert_called()
+
+    def test_sentinel_breaks_while_loop(self):
+        target = lambda x: None
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = ComponentQueueListener(queue, target)
+        listener._queue.put(listener._sentinel)
+        listener._listen()
+        assert listener._queue.empty()
+
+    def test_stop_injects_sentinel(self):
+        target = lambda x: None
+        with mock.patch("multiprocessing.Process"):
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            listener = ComponentQueueListener(queue, target)
+            with mock.patch.object(queue, "put") as mock_put:
+                listener.stop()
+            mock_put.assert_called_with(listener._sentinel)
+
+    def test_stop_joins_process(self):
+        target = lambda x: None
+        with mock.patch("multiprocessing.Process"):
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            listener = ComponentQueueListener(queue, target)
+            listener.stop()
+            listener._process.join.assert_called()
+
+    def test_stop_closes_queue(self):
+        target = lambda x: None
+        with mock.patch("multiprocessing.Process"):
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            listener = ComponentQueueListener(queue, target)
+            with mock.patch.object(queue, "close") as mock_close:
+                listener.stop()
+            mock_close.assert_called()
