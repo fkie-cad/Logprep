@@ -21,7 +21,7 @@ from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
-from logprep.util.defaults import DEFAULT_MESSAGE_BACKLOG_SIZE
+from logprep.util.defaults import DEFAULT_MESSAGE_BACKLOG_SIZE, EXITCODES
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Manager")
@@ -142,6 +142,7 @@ class PipelineManager:
         self.prometheus_exporter: PrometheusExporter | None = None
         if multiprocessing.current_process().name == "MainProcess":
             self._setup_logging()
+            self._setup_error_queue()
             self._setup_prometheus_exporter()
             self._set_http_input_queue()
 
@@ -159,7 +160,19 @@ class PipelineManager:
         )
         self._error_output = Factory.create(self._configuration.error_output)
         self._error_queue = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
-        self._error_output.setup()
+        while not self._error_output.health():
+            try:
+                self._error_output.setup()
+            except SystemExit as error:
+                if self._configuration.restart_count < 0:
+                    return
+                if self.should_exit():
+                    logger.error("Error output not reachable. Exiting...")
+                    self.stop()
+                    raise SystemExit(EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value) from error
+                self._wait_to_restart()
+                logger.warning("Error output not reachable. Trying again...")
+
         self._error_listener = ComponentQueueListener(self._error_queue, self._error_output.store)
         self._error_listener.start()
 

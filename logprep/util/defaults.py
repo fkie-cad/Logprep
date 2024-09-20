@@ -14,6 +14,8 @@ class EXITCODES(Enum):
     """An error in the configuration."""
     PIPELINE_ERROR = 3
     """An error during pipeline processing."""
+    ERROR_OUTPUT_NOT_REACHABLE = 4
+    """The configured error output is not reachable."""
 
 
 DEFAULT_MESSAGE_BACKLOG_SIZE = 15000
