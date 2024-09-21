@@ -1,6 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import pytest
+
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.replacer.rule import ReplacerRule
 
@@ -9,7 +10,7 @@ class TestReplacerRule:
     def test_create_from_dict_returns_replacer_rule(self):
         rule = {
             "filter": "message",
-            "replacer": {"source_fields": ["message"], "target_field": "new_field"},
+            "replacer": {"mapping": {}},
         }
         rule_dict = ReplacerRule._create_from_dict(rule)
         assert isinstance(rule_dict, ReplacerRule)
