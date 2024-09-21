@@ -8,6 +8,7 @@
 ### Features
 
 * add support for rule files with suffix `.yaml`
+* add `replacer` processor to replace substrings in fields
 
 ### Improvements
 * removes `colorama` dependency
@@ -103,6 +104,7 @@ and functionality across `FieldManager` based processors (e.g., `FieldManager`, 
 * adds option `max_chunk_bytes` to `opensearch_output` connector to set the maximum size of the request in bytes (default: 100MB)
 * adds option `error_backlog_size` to logprep configuration to configure the queue size of the error queue
 * the opensearch default index is now only used for processed events, errors will be written to the error output, if configured
+
 
 ### Improvements
 
