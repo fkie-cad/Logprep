@@ -284,6 +284,30 @@ class TestPipelineManager:
         manager.stop()
         manager.loghandler.stop.assert_called()
 
+    def test_setup_error_queue_sets_error_queue_and_starts_listener(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            manager = PipelineManager(self.config)
+        assert manager._error_queue is not None
+        assert manager._error_output is not None
+        assert manager._error_listener is not None
+        manager._error_listener.start.assert_called()  # pylint: disable=no-member
+
+    def test_setup_does_not_sets_error_queue_if_no_error_output(self):
+        self.config.error_output = {}
+        manager = PipelineManager(self.config)
+        assert manager._error_queue is None
+        assert manager._error_output is None
+        assert manager._error_listener is None
+
+    def test_setup_error_queue_calls_setup_on_error_output_at_minimum_once(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            manager = PipelineManager(self.config)
+        assert manager._error_queue is not None
+        assert manager._error_output is not None
+        assert manager._error_listener is not None
+
 
 class TestThrottlingQueue:
 
@@ -422,3 +446,12 @@ class TestComponentQueueListener:
             with mock.patch.object(queue, "close") as mock_close:
                 listener.stop()
             mock_close.assert_called()
+
+    def test_listen_calls_target(self):
+        target = mock.MagicMock()
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = ComponentQueueListener(queue, target)
+        listener._queue.put("test")
+        listener._queue.put(listener._sentinel)
+        listener._listen()
+        target.assert_called_with("test")

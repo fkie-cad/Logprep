@@ -85,10 +85,7 @@ class ComponentQueueListener:
 
     def _listen(self):
         while True:
-            try:
-                item = self._queue.get(timeout=1)
-            except multiprocessing.queues.Empty:
-                continue
+            item = self._queue.get()
             if item is self._sentinel:
                 break
             self._target(item)
@@ -160,7 +157,7 @@ class PipelineManager:
         )
         self._error_output = Factory.create(self._configuration.error_output)
         self._error_queue = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
-        while not self._error_output.health():
+        while 1:
             try:
                 self._error_output.setup()
             except SystemExit as error:
@@ -172,6 +169,8 @@ class PipelineManager:
                     raise SystemExit(EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value) from error
                 self._wait_to_restart()
                 logger.warning("Error output not reachable. Trying again...")
+            if self._error_output.health():
+                break
 
         self._error_listener = ComponentQueueListener(self._error_queue, self._error_output.store)
         self._error_listener.start()
@@ -287,7 +286,6 @@ class PipelineManager:
         if pipeline.pipeline_index == 1 and self.prometheus_exporter:
             self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
         pipeline.error_queue = self._error_queue
-        logger.info("Created new pipeline")
         process = multiprocessing.Process(
             target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )
