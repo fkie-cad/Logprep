@@ -10,7 +10,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "message",
             "replacer": {
-                "mapping": {"test": "this is %{replace this}"},
+                "mapping": {"message": "this is %{replace this}"},
             },
         },
         {"message": "this is test"},

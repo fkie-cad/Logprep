@@ -40,13 +40,23 @@ Examples for replacer:
 
 """
 
+import re
+from typing import Callable, List, Tuple
+
 from attrs import define, field, validators
 
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 REPLACE_ITEM = r"%{(.+)}"
 
 REPLACEMENT_PATTERN = rf".*{REPLACE_ITEM}.*"
+START = r"%\{"
+END = r"\}"
+REPLACEMENT = rf"(?P<replacement>[^{END}])"
+DELIMITER = r"([^%]+)"
+SEPARATOR = r"(\((?P<separator>\\\)|[^)]+)\))?"
+SECTION_MATCH = rf"(?P<partition>(?!{START})){START}(?P<replacement>.*){END}(?P<delimiter>.*)"
 
 
 class ReplacerRule(FieldManagerRule):
@@ -69,3 +79,26 @@ class ReplacerRule(FieldManagerRule):
             ]
         )
         """A mapping of fieldnames to patterns to replace"""
+
+    actions: dict
+
+    def __init__(
+        self, filter_rule: FilterExpression, config: "ReplacerRule.Config", processor_name: str
+    ):
+        super().__init__(filter_rule, config, processor_name)
+        self._set_mapping_actions()
+
+    def _set_mapping_actions(self):
+        self.actions = {}
+        for source_field, pattern in self._config.mapping.items():
+            actions = []
+            if not re.match(rf"^{REPLACEMENT_PATTERN}.*", pattern):
+                pattern = "%{}" + pattern
+            sections = re.findall(r"%\{[^%]+", pattern)
+            for section in sections:
+                section_match = re.match(SECTION_MATCH, section)
+                replacement = section_match.group("replacement")
+                delimiter = section_match.group("delimiter")
+                delimiter = None if delimiter == "" else delimiter
+                actions.append((section, replacement))
+            self.actions[source_field] = actions

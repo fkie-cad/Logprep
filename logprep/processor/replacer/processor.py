@@ -36,11 +36,8 @@ class Replacer(FieldManager):
 
     rule_class = ReplacerRule
 
-    @define(kw_only=True)
-    class Config(FieldManager.Config):
-        """Config of ..."""
-
-        ...
-
-    def _apply_rules(self, event, rule):
-        pass
+    def _apply_rules(self, event: dict, rule: ReplacerRule):
+        for source_field in rule.mapping:
+            source_field_value = event.get(source_field)
+            actions = rule.actions[source_field]
+            pass
