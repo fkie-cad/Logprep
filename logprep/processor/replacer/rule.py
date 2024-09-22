@@ -44,7 +44,9 @@ from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 
-REPLACEMENT_PATTERN = r".*%{.+}.*"
+REPLACE_ITEM = r"%{(.+)}"
+
+REPLACEMENT_PATTERN = rf".*{REPLACE_ITEM}.*"
 
 
 class ReplacerRule(FieldManagerRule):
