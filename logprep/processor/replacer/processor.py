@@ -24,6 +24,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.replacer.processor.Replacer.rule
 """
+
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.processor import FieldManager
@@ -37,7 +38,8 @@ class Replacer(FieldManager):
 
     @define(kw_only=True)
     class Config(FieldManager.Config):
-        """ Config of ..."""
+        """Config of ..."""
+
         ...
 
     def _apply_rules(self, event, rule):

@@ -10,7 +10,9 @@ class TestReplacerRule:
     def test_create_from_dict_returns_replacer_rule(self):
         rule = {
             "filter": "message",
-            "replacer": {"mapping": {}},
+            "replacer": {
+                "mapping": {"test": "this is %{replace this}"},
+            },
         }
         rule_dict = ReplacerRule._create_from_dict(rule)
         assert isinstance(rule_dict, ReplacerRule)
@@ -18,7 +20,68 @@ class TestReplacerRule:
     @pytest.mark.parametrize(
         ["rule", "error", "message"],
         [
-            # add your tests here
+            (
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "mapping": {"test": "this is %{replace this}"},
+                    },
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "mapping": {"test": "this is %{replace this} and %{replace that}"},
+                    },
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "mapping": {},
+                    },
+                },
+                ValueError,
+                "Length of 'mapping' must be >= 1",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "source_fields": ["test"],
+                        "mapping": {"test": "this is %{replace this}"},
+                    },
+                },
+                TypeError,
+                "unexpected keyword argument 'source_fields'",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "target_field": "test",
+                        "mapping": {"test": "this is %{replace this}"},
+                    },
+                },
+                TypeError,
+                "unexpected keyword argument 'target_field'",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "mapping": {"test": "missing replacement pattern"},
+                    },
+                },
+                ValueError,
+                "'mapping' must match regex",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
