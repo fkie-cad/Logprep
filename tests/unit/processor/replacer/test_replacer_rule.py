@@ -98,7 +98,57 @@ class TestReplacerRule:
     @pytest.mark.parametrize(
         ["testcase", "rule1", "rule2", "equality"],
         [
-            # add your tests here
+            (
+                "Two rules with same config",
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "mapping": {"test": "this is %{replace this}"},
+                    },
+                },
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "mapping": {"test": "this is %{replace this}"},
+                    },
+                },
+                True,
+            ),
+            (
+                "Different filter",
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "mapping": {"test": "this is %{replace this}"},
+                    },
+                },
+                {
+                    "filter": "other-filter",
+                    "replacer": {
+                        "mapping": {"test": "this is %{replace this}"},
+                    },
+                },
+                False,
+            ),
+            (
+                "Different mapping",
+                {
+                    "filter": "message",
+                    "replacer": {
+                        "mapping": {"test": "this is %{replace this}"},
+                    },
+                },
+                {
+                    "filter": "other-filter",
+                    "replacer": {
+                        "mapping": {
+                            "test": "this is %{replace this}",
+                            "other": "this is %{replace this}",
+                        },
+                    },
+                },
+                False,
+            ),
         ],
     )
     def test_equality(self, testcase, rule1, rule2, equality):
