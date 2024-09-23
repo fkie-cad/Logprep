@@ -68,13 +68,22 @@ class PipelineResult:
             attrs.validators.deep_iterable(
                 member_validator=attrs.validators.instance_of(ProcessorResult)
             ),
-        ]
+        ],
+        init=False,
     )
     """List of ProcessorResults. Is populated in __attrs_post_init__"""
     event: dict = attrs.field(validator=attrs.validators.instance_of(dict))
     """The event that was processed"""
 
-    pipeline: list[Processor]
+    pipeline: list[Processor] = attrs.field(
+        validator=[
+            attrs.validators.deep_iterable(
+                member_validator=attrs.validators.instance_of(Processor),
+                iterable_validator=attrs.validators.instance_of(list),
+            ),
+            attrs.validators.min_len(1),
+        ]
+    )
     """The pipeline that processed the event"""
 
     @cached_property
@@ -292,7 +301,6 @@ class Pipeline:
     def process_event(self, event: dict):
         """process all processors for one event"""
         result = PipelineResult(
-            results=[],
             event=event,
             pipeline=self._pipeline,
         )

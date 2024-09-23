@@ -10,14 +10,19 @@ from unittest import mock
 
 import pytest
 
+from logprep.abc.processor import ProcessorResult
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
+from logprep.framework.pipeline import PipelineResult
 from logprep.framework.pipeline_manager import (
     ComponentQueueListener,
     PipelineManager,
     ThrottlingQueue,
 )
 from logprep.metrics.exporter import PrometheusExporter
+from logprep.processor.base.exceptions import ProcessingError
+from logprep.processor.base.rule import Rule
+from logprep.processor.dropper.rule import DropperRule
 from logprep.util.configuration import Configuration, MetricsConfig
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.logging import logqueue
@@ -557,10 +562,23 @@ class TestComponentQueueListener:
         listener._queue.put("test")
         listener._queue.put(listener._sentinel)
         listener._listen()
-        target.assert_called_with("test")
+        target.assert_called_with({"event": "test", "errors": "An unknown error occurred"})
 
     def test_listen_handles_pipeline_result(self):
-        assert False
+        target = mock.MagicMock()
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = ComponentQueueListener(queue, target)
+        test_event = {"message": "test"}
+        pipeline = [
+            Factory.create(
+                {"dummy": {"type": "dropper", "generic_rules": [], "specific_rules": []}}
+            )
+        ]
+        pipeline_result = PipelineResult(event=test_event, pipeline=pipeline)
+        listener._queue.put(pipeline_result)
+        listener._queue.put(listener._sentinel)
+        listener._listen()
+        target.assert_called_with({"event": "test", "errors": "An unknown error occurred"})
 
     def test_listen_handles_critical_input_output_exception(self):
         assert False

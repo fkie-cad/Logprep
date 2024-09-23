@@ -25,7 +25,7 @@ from logprep.abc.output import (
     Output,
     OutputWarning,
 )
-from logprep.abc.processor import ProcessorResult
+from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.processor.base.exceptions import (
@@ -66,6 +66,13 @@ def get_mock_create():
     mock_component.process.return_value = ProcessorResult(processor_name="mock_processor")
     mock_create.return_value = mock_component
     return mock_create
+
+
+@pytest.fixture(name="mock_processor")
+def get_mock_processor():
+    mock_processor = mock.create_autospec(spec=Processor)
+    mock_processor.process.return_value = mock.create_autospec(spec=ProcessorResult)
+    return mock_processor
 
 
 @mock.patch("logprep.factory.Factory.create", new_callable=get_mock_create)
@@ -159,7 +166,7 @@ class TestPipeline(ConfigurationForTests):
     def test_empty_documents_are_not_stored_in_the_output(self, _):
         def mock_process_event(event):
             event.clear()
-            return PipelineResult(event=event, results=[], pipeline=self.pipeline._pipeline)
+            return PipelineResult(event=event, pipeline=self.pipeline._pipeline)
 
         self.pipeline.process_event = mock_process_event
         self.pipeline._setup()
@@ -609,27 +616,6 @@ class TestPipeline(ConfigurationForTests):
         logger_call = f"Couldn't gracefully shut down pipeline due to: {error}"
         mock_error.assert_called_with(logger_call)
 
-    def test_pipeline_result_provides_event_received(self, _):
-        self.pipeline._setup()
-        event = {"some": "event"}
-        self.pipeline._input.get_next.return_value = event
-        generic_adder = original_create(
-            {
-                "generic_adder": {
-                    "type": "generic_adder",
-                    "specific_rules": [
-                        {"filter": "some", "generic_adder": {"add": {"field": "foo"}}}
-                    ],
-                    "generic_rules": [],
-                }
-            }
-        )
-        self.pipeline._pipeline = [generic_adder]
-        result = self.pipeline.process_pipeline()
-        assert result.event_received is not event, "event_received is a copy"
-        assert result.event_received == {"some": "event"}, "received event is as expected"
-        assert result.event == {"some": "event", "field": "foo"}, "processed event is as expected"
-
     def test_process_event_can_be_bypassed_with_no_pipeline(self, _):
         self.pipeline._pipeline = []
         self.pipeline._input.get_next.return_value = {"some": "event"}
@@ -747,3 +733,132 @@ class TestPipelineWithActualInput:
         assert isinstance(health, Tuple)
         assert len(health) > 0
         assert all(callable(health_function) for health_function in health)
+
+
+class TestPipelineResult:
+
+    @pytest.mark.parametrize(
+        "parameters, error, message",
+        [
+            (
+                {
+                    "event": {"some": "event"},
+                    "pipeline": [],
+                },
+                ValueError,
+                "Length of 'pipeline' must be >= 1",
+            ),
+            (
+                {
+                    "event": {"some": "event"},
+                    "pipeline": [],
+                    "results": [],
+                },
+                TypeError,
+                "got an unexpected keyword argument 'results'",
+            ),
+            (
+                {
+                    "event": {"some": "event"},
+                    "pipeline": [
+                        Factory.create(
+                            {
+                                "dummy": {
+                                    "type": "dropper",
+                                    "specific_rules": [],
+                                    "generic_rules": [],
+                                }
+                            }
+                        )
+                    ],
+                    "results": [],
+                },
+                TypeError,
+                "got an unexpected keyword argument 'results'",
+            ),
+            (
+                {
+                    "event": {"some": "event"},
+                    "pipeline": [
+                        Factory.create(
+                            {
+                                "dummy": {
+                                    "type": "dropper",
+                                    "specific_rules": [],
+                                    "generic_rules": [],
+                                }
+                            }
+                        )
+                    ],
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "event": {"some": "event"},
+                    "pipeline": [
+                        mock.MagicMock(),
+                    ],
+                },
+                TypeError,
+                "'pipeline' must be <class 'logprep.abc.processor.Processor'",
+            ),
+        ],
+    )
+    def test_sets_attributes(self, parameters, error, message):
+        if error:
+            with pytest.raises(error, match=message):
+                _ = PipelineResult(**parameters)
+        else:
+            pipeline_result = PipelineResult(**parameters)
+            assert pipeline_result.event == parameters["event"]
+            assert pipeline_result.pipeline == parameters["pipeline"]
+            assert isinstance(pipeline_result.results[0], ProcessorResult)
+
+    def test_pipeline_result_produces_results(self, mock_processor):
+        pipeline_result = PipelineResult(
+            event={"some": "event"},
+            pipeline=[
+                mock_processor,
+                mock_processor,
+            ],
+        )
+        assert isinstance(pipeline_result.results[0], ProcessorResult)
+        assert len(pipeline_result.results) == 2
+
+    def test_pipeline_result_collects_errors(self, mock_processor):
+        mock_processor_result = mock.create_autospec(spec=ProcessorResult)
+        mock_processor_result.errors = [mock.MagicMock(), mock.MagicMock()]
+        mock_processor.process.return_value = mock_processor_result
+        assert len(mock_processor.process({"event": "test"}).errors) == 2
+        pipeline_result = PipelineResult(
+            event={"some": "event"},
+            pipeline=[mock_processor],
+        )
+        assert isinstance(pipeline_result.results[0], ProcessorResult)
+        assert len(pipeline_result.errors) == 2
+
+    def test_pipeline_result_collects_warnings(self, mock_processor):
+        mock_processor_result = mock.create_autospec(spec=ProcessorResult)
+        mock_processor_result.warnings = [mock.MagicMock(), mock.MagicMock()]
+        mock_processor.process.return_value = mock_processor_result
+        assert len(mock_processor.process({"event": "test"}).warnings) == 2
+        pipeline_result = PipelineResult(
+            event={"some": "event"},
+            pipeline=[mock_processor],
+        )
+        assert isinstance(pipeline_result.results[0], ProcessorResult)
+        assert len(pipeline_result.warnings) == 2
+
+    def test_pipeline_result_collects_data(self, mock_processor):
+        mock_processor_result = mock.create_autospec(spec=ProcessorResult)
+        mock_processor_result.data = [mock.MagicMock(), mock.MagicMock()]
+        mock_processor.process.return_value = mock_processor_result
+        assert len(mock_processor.process({"event": "test"}).data) == 2
+        pipeline_result = PipelineResult(
+            event={"some": "event"},
+            pipeline=[mock_processor],
+        )
+        assert isinstance(pipeline_result.results[0], ProcessorResult)
+        assert len(pipeline_result.data) == 2
