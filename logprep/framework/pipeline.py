@@ -5,7 +5,6 @@ They can be multi-processed.
 
 """
 
-import copy
 import itertools
 import logging
 import logging.handlers
@@ -25,7 +24,6 @@ import attrs
 from logprep.abc.component import Component
 from logprep.abc.input import (
     CriticalInputError,
-    CriticalInputParsingError,
     FatalInputError,
     Input,
     InputWarning,
@@ -75,10 +73,7 @@ class PipelineResult:
     """List of ProcessorResults. Is populated in __attrs_post_init__"""
     event: dict = attrs.field(validator=attrs.validators.instance_of(dict))
     """The event that was processed"""
-    event_received: dict = attrs.field(
-        validator=attrs.validators.instance_of(dict), converter=copy.deepcopy
-    )
-    """The event that was received"""
+
     pipeline: list[Processor]
     """The pipeline that processed the event"""
 
@@ -113,15 +108,11 @@ def _handle_pipeline_error(func):
             self.stop()
         except (OutputWarning, InputWarning) as error:
             self.logger.warning(str(error))
-        except CriticalOutputError as error:
-            self.logger.error(str(error))
         except (FatalOutputError, FatalInputError) as error:
             self.logger.error(str(error))
             self.stop()
-        except (CriticalInputParsingError, CriticalInputError) as error:
-            if self.error_queue:
-                error_event = {"error": str(error), "data": error.raw_input}
-                self.error_queue.put(error_event)
+        except (CriticalInputError, CriticalOutputError) as error:
+            self.enqueue_error(error)
             self.logger.error(str(error))
         return None
 
@@ -211,14 +202,19 @@ class Pipeline:
         )
         return Factory.create(input_connector_config)
 
-    def __init__(self, config: Configuration, pipeline_index: int = None) -> None:
+    def __init__(
+        self,
+        config: Configuration,
+        pipeline_index: int | None = None,
+        error_queue: multiprocessing.queues.Queue | None = None,
+    ) -> None:
+        self.error_queue = error_queue
         self.logger = logging.getLogger("Pipeline")
         self.logger.name = f"Pipeline{pipeline_index}"
         self._logprep_config = config
         self._timeout = config.timeout
         self._continue_iterating = Value(c_bool)
         self.pipeline_index = pipeline_index
-        self.error_queue: multiprocessing.Queue = None
         if self._logprep_config.profile_pipelines:
             self.run = partial(PipelineProfiler.profile_function, self.run)
 
@@ -275,7 +271,7 @@ class Pipeline:
                 self.logger.warning(",".join((str(warning) for warning in result.warnings)))
             if result.errors:
                 self.logger.error(",".join((str(error) for error in result.errors)))
-                self.error_queue.put(result)
+                self.enqueue_error(result)
                 return
         if self._output:
             if self._pipeline:
@@ -297,7 +293,6 @@ class Pipeline:
         """process all processors for one event"""
         result = PipelineResult(
             results=[],
-            event_received=event,
             event=event,
             pipeline=self._pipeline,
         )
@@ -346,3 +341,13 @@ class Pipeline:
                 output_health_functions,
             )
         )
+
+    def enqueue_error(
+        self, item: PipelineResult | CriticalInputError | CriticalOutputError
+    ) -> None:
+        """Enqueue an error to the error queue or logs a warning if
+        no error queue is defined."""
+        if self.error_queue:
+            self.error_queue.put(item)
+        else:
+            self.logger.warning("No error queue defined, event was dropped")

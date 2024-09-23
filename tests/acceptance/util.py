@@ -135,7 +135,7 @@ def get_runner_outputs(patched_runner: Runner) -> list:
     output_paths = [
         output_path for key, output_path in output_config.items() if "output_file" in key
     ]
-
+    output_paths.append(list(patched_runner._configuration.error_output.values())[0]["output_file"])
     for output_path in output_paths:
         remove_file_if_exists(output_path)
 
@@ -226,7 +226,12 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
                 "type": "jsonl_output",
                 "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
                 "output_file_custom": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out",
-                "output_file_error": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_error.out",
+            }
+        },
+        "error_output": {
+            "jsonl": {
+                "type": "jsonl_output",
+                "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_error.out",
             }
         },
     }

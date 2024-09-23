@@ -19,7 +19,6 @@ Example
 """
 
 import json
-from logging import Logger
 
 from attrs import define, field, validators
 

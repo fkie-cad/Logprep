@@ -303,10 +303,113 @@ class TestPipelineManager:
     def test_setup_error_queue_calls_setup_on_error_output_at_minimum_once(self):
         self.config.error_output = {"dummy": {"type": "dummy_output"}}
         with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
-            manager = PipelineManager(self.config)
+            with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as setup_mock:
+                manager = PipelineManager(self.config)
         assert manager._error_queue is not None
         assert manager._error_output is not None
         assert manager._error_listener is not None
+        setup_mock.assert_called()
+
+    def test_setup_error_queue_calls_setup_and_raises_sys_exit_if_should_exit(self, caplog):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as setup_mock:
+            with mock.patch(
+                "logprep.framework.pipeline_manager.PipelineManager.should_exit", return_value=True
+            ) as should_exit_mock:
+                setup_mock.side_effect = SystemExit
+                with pytest.raises(SystemExit):
+                    manager = PipelineManager(self.config)
+                    assert manager._error_queue is not None
+                    assert manager._error_output is not None
+                    assert manager._error_listener is not None
+        setup_mock.assert_called()
+        should_exit_mock.assert_called()
+        assert "Exiting..." in caplog.text
+
+    def test_setup_error_queue_calls_setup_and_tries_again(self, caplog):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as setup_mock:
+            with mock.patch(
+                "logprep.framework.pipeline_manager.PipelineManager.should_exit"
+            ) as should_exit_mock:
+                setup_mock.side_effect = SystemExit
+                should_exit_mock.side_effect = [False, True]
+                manager = PipelineManager(self.config)
+                assert manager._error_queue is not None
+                assert manager._error_output is not None
+                assert manager._error_listener is not None
+        setup_mock.assert_called()
+        should_exit_mock.assert_called()
+        assert "Trying again..." in caplog.text
+
+    def test_setup_error_queue_calls_tries_infinite_on_negative_restart_count(self, caplog):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        self.config.restart_count = -1
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as setup_mock:
+                with mock.patch(
+                    "logprep.framework.pipeline_manager.PipelineManager.should_exit"
+                ) as should_exit_mock:
+                    setup_mock.side_effect = [SystemExit, None]
+                    should_exit_mock.side_effect = [False, True]
+                    manager = PipelineManager(self.config)
+                    assert manager._error_queue is not None
+                    assert manager._error_output is not None
+                    assert manager._error_listener is not None
+        setup_mock.assert_called()
+        assert setup_mock.call_count == 2
+        should_exit_mock.assert_not_called()
+        assert "Try again infinite..." in caplog.text
+
+    def test_should_exit_returns_bool_based_on_restart_count(self):
+        self.config.restart_count = 2
+        manager = PipelineManager(self.config)
+        assert not manager.should_exit()
+        manager.restart_count = 1
+        assert not manager.should_exit()
+        manager.restart_count = 2
+        assert manager.should_exit()
+
+    def test_stop_calls_stop_on_error_listener(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            manager = PipelineManager(self.config)
+            manager.stop()
+        manager._error_listener.stop.assert_called()  # pylint: disable=no-member
+
+    def test_stop_calls_stop_on_loghandler(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            manager = PipelineManager(self.config)
+            manager.loghandler = mock.MagicMock()
+            manager.stop()
+        manager.loghandler.stop.assert_called()
+
+    def test_restart_with_error_output_calls_pipeline_with_error_queue(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("multiprocessing.Process"):
+            with mock.patch("logprep.framework.pipeline_manager.Pipeline") as mock_pipeline:
+                manager = PipelineManager(self.config)
+                manager.restart()
+        mock_pipeline.assert_called()
+        mock_pipeline.assert_called_with(
+            pipeline_index=3,  # last call index
+            config=manager._configuration,
+            error_queue=manager._error_queue,
+        )
+
+    def test_restart_without_error_output_calls_pipeline_with_error_queue(self):
+        self.config.error_output = {}
+        with mock.patch("multiprocessing.Process"):
+            with mock.patch("logprep.framework.pipeline_manager.Pipeline") as mock_pipeline:
+                manager = PipelineManager(self.config)
+                manager.restart()
+        mock_pipeline.assert_called()
+        mock_pipeline.assert_called_with(
+            pipeline_index=3,  # last call index
+            config=manager._configuration,
+            error_queue=None,
+        )
 
 
 class TestThrottlingQueue:
@@ -455,3 +558,9 @@ class TestComponentQueueListener:
         listener._queue.put(listener._sentinel)
         listener._listen()
         target.assert_called_with("test")
+
+    def test_listen_handles_pipeline_result(self):
+        assert False
+
+    def test_listen_handles_critical_input_output_exception(self):
+        assert False

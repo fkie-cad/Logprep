@@ -91,10 +91,9 @@ def teardown_function():
 def test_full_pipeline_run_with_two_outputs(tmp_path: Path, config: Configuration):
     output_path1 = tmp_path / "output1.jsonl"
     output_path_custom1 = tmp_path / "output_custom1.jsonl"
-    output_path_error1 = tmp_path / "output_error1.jsonl"
+    output_path_error = tmp_path / "output_error.jsonl"
     output_path2 = tmp_path / "output2.jsonl"
     output_path_custom2 = tmp_path / "output_custom2.jsonl"
-    output_path_error2 = tmp_path / "output_error2.jsonl"
     config.input["jsonl"][
         "documents_path"
     ] = "tests/testdata/input_logdata/selective_extractor_events.jsonl"
@@ -103,14 +102,18 @@ def test_full_pipeline_run_with_two_outputs(tmp_path: Path, config: Configuratio
             "type": "jsonl_output",
             "output_file": f"{str(output_path1)}",
             "output_file_custom": f"{str(output_path_custom1)}",
-            "output_file_error": f"{str(output_path_error1)}",
         },
         "second_output": {
             "type": "jsonl_output",
             "output_file": f"{str(output_path2)}",
             "output_file_custom": f"{str(output_path_custom2)}",
-            "output_file_error": f"{str(output_path_error2)}",
         },
+    }
+    config.error_output = {
+        "jsonl": {
+            "type": "jsonl_output",
+            "output_file": f"{str(output_path_error)}",
+        }
     }
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
@@ -125,5 +128,4 @@ def test_full_pipeline_run_with_two_outputs(tmp_path: Path, config: Configuratio
     assert (
         not output_path_custom2.read_text()
     ), "stored custom output not in output with name 'second_output'"
-    assert not output_path_error1.read_text(), "no errors in processing for 'jsonl' output"
-    assert not output_path_error2.read_text(), "no errors in processing for 'second_output' output"
+    assert not output_path_error.read_text(), "no errors in processing"

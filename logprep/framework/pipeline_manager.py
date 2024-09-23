@@ -14,10 +14,11 @@ from typing import Any, Callable
 from attr import define, field, validators
 
 from logprep.abc.component import Component
-from logprep.abc.output import Output
+from logprep.abc.input import CriticalInputError
+from logprep.abc.output import CriticalOutputError, Output
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline
+from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
@@ -85,10 +86,17 @@ class ComponentQueueListener:
 
     def _listen(self):
         while True:
+            event = None
             item = self._queue.get()
             if item is self._sentinel:
                 break
-            self._target(item)
+            elif isinstance(item, PipelineResult):
+                event = {"event": item.event, "errors": str(item.errors)}
+            elif isinstance(item, (CriticalInputError, CriticalOutputError)):
+                event = {"event": item.raw_input, "errors": str(item)}
+            else:
+                event = {"event": item, "errors": "An unknown error occurred"}
+            self._target(event)
 
     def stop(self):
         """Stop the listener."""
@@ -162,7 +170,10 @@ class PipelineManager:
                 self._error_output.setup()
             except SystemExit as error:
                 if self._configuration.restart_count < 0:
-                    return
+                    logger.warning(
+                        "Error output not reachable and restart count < 1. Try again infinite..."
+                    )
+                    continue
                 if self.should_exit():
                     logger.error("Error output not reachable. Exiting...")
                     self.stop()
@@ -282,10 +293,13 @@ class PipelineManager:
         self.set_count(self._configuration.process_count)
 
     def _create_pipeline(self, index) -> multiprocessing.Process:
-        pipeline = Pipeline(pipeline_index=index, config=self._configuration)
+        pipeline = Pipeline(
+            pipeline_index=index,
+            config=self._configuration,
+            error_queue=self._error_queue,
+        )
         if pipeline.pipeline_index == 1 and self.prometheus_exporter:
             self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
-        pipeline.error_queue = self._error_queue
         process = multiprocessing.Process(
             target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )
