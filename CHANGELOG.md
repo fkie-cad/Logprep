@@ -22,6 +22,7 @@
 * adds prebuild wheels for architectures `x86_64` on `manylinux` and `musllinux` based linux platforms to releases
 * add manual how to use local images with minikube example setup to documentation
 * move `Configuration` to top level of documentation
+* add `CONTRIBUTING` file
 
 ### Bugfix
 

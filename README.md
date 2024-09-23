@@ -32,7 +32,7 @@ This readme provides basic information about the following topics:
 - [Deployment Examples](https://logprep.readthedocs.io/en/latest/examples/index.html)
 - [Event Generation](https://logprep.readthedocs.io/en/latest/user_manual/execution.html#event-generation)
 - [Documentation](https://logprep.readthedocs.io/en/latest)
-- [Contributing](#contributing)
+- [Contributing](CONTRIBUTING)
 - [License](LICENSE)
 - [Changelog](CHANGELOG.md)
 
@@ -259,9 +259,3 @@ make html
 ```
 
 A HTML documentation can be then found in `doc/_build/html/index.html`.
-
-## Contributing
-
-Every contribution is highly appreciated.
-If you have ideas or improvements feel free to create a fork and open a pull requests.
-Issues and engagement in open discussions are also welcome.
