@@ -7,16 +7,16 @@ Issues and engagement in open discussions are also welcome.
 ## Developers
 
 ### Languages
-* We use python3 for rapid prototyping and fast development cycles
-* We started with rust for performance improvements
+* We use python3 for rapid prototyping and fast development cycles.
+* We started with rust for performance improvements.
 
 ### Tests
 * We write unit tests for our code.
 * We use pytest for tests.
 * We use pylint to check test coverage. We aim for a coverage of 100%. However, even 100% coverage does not guarantee that everything was fully tested.
 * Every fixed bug should have its own unittest.
-* We write unittests in rust for rust code
-* We write integration tests for python for every exposed interface from rust
+* We write unittests in rust for rust code.
+* We write integration tests for python for every exposed interface from rust.
 
 ### Git Workflow
 * We have a main branch. We do not push to the main branch, please develop on a separate branch and open a pull request to main.
@@ -39,13 +39,13 @@ Issues and engagement in open discussions are also welcome.
 * The content should describe what was done and why it was done, but not how it was done.
 
 ### Pull Request and Definition of Done
-* draft a Pull Request as soon as possible to signal your commitment
-* write a clear description of what a maintainer have to expect from your PR
-* add an entry in the CHANGELOG.md file for your feature, improvement or bugfix
-* add the needed documentation in the docs
-* add tests for your work
-* ensure all tests run
-* if you done all of the above, add a maintainer for review and mark your PR as ready
+* draft a Pull Request as soon as possible to signal your commitment.
+* write a clear description of what a maintainer have to expect from your PR.
+* add an entry in the CHANGELOG.md file for your feature, improvement or bugfix.
+* add the needed documentation in the docs.
+* add tests for your work.
+* ensure all tests run.
+* if you done all of the above, add a maintainer for review and mark your PR as ready.
 
 ### Deprecations
 * If a function or features gets deprecated a warning should be logged with `logger.warning`. The message should start with `[Deprecation]:` and end with an indication when this deprecation will expire, e.g.: `[Expires with logprep=4.0.0]`. 
@@ -88,4 +88,4 @@ in the [CHANGELOG.md](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md
 
 * To release a new helm chart we update the versions in the [Chart.yaml](https://github.com/fkie-cad/Logprep/blob/main/charts/logprep/Chart.yaml) in a feature branch.
 * Then we merge this change to the main branch. 
-* There a pipeline packages the helm chart an makes the actual helm chart release on the release page
+* There a pipeline packages the helm chart an makes the actual helm chart release on the release page.
