@@ -131,3 +131,13 @@ output:
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       statistics.interval.ms: "60000"
+
+error_output:
+  kafka:
+    type: confluentkafka_output
+    default: false
+    topic: error
+    flush_timeout: 300
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      statistics.interval.ms: "60000"
