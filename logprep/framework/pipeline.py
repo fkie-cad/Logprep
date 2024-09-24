@@ -355,6 +355,13 @@ class Pipeline:
         """Enqueue an error to the error queue or logs a warning if
         no error queue is defined."""
         if self.error_queue:
-            self.error_queue.put(item)
+            event = None
+            if isinstance(item, PipelineResult):
+                event = {"event": item.event, "errors": str(item.errors)}
+            elif isinstance(item, (CriticalInputError, CriticalOutputError)):
+                event = {"event": item.raw_input, "errors": str(item)}
+            else:
+                event = {"event": item, "errors": "An unknown error occurred"}
+            self.error_queue.put(event)
         else:
             self.logger.warning("No error queue defined, event was dropped")

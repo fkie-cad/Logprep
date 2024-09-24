@@ -14,11 +14,10 @@ from typing import Any, Callable
 from attr import define, field, validators
 
 from logprep.abc.component import Component
-from logprep.abc.input import CriticalInputError
-from logprep.abc.output import CriticalOutputError, Output
+from logprep.abc.output import Output
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline, PipelineResult
+from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
@@ -86,17 +85,10 @@ class ComponentQueueListener:
 
     def _listen(self):
         while True:
-            event = None
             item = self._queue.get()
             if item is self._sentinel:
                 break
-            if isinstance(item, PipelineResult):
-                event = {"event": item.event, "errors": str(item.errors)}
-            elif isinstance(item, (CriticalInputError, CriticalOutputError)):
-                event = {"event": item.raw_input, "errors": str(item)}
-            else:
-                event = {"event": item, "errors": "An unknown error occurred"}
-            self._target(event)
+            self._target(item)
 
     def stop(self):
         """Stop the listener."""

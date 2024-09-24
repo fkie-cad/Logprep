@@ -559,23 +559,4 @@ class TestComponentQueueListener:
         listener._queue.put("test")
         listener._queue.put(listener._sentinel)
         listener._listen()
-        target.assert_called_with({"event": "test", "errors": "An unknown error occurred"})
-
-    @mock.patch("logprep.factory.Factory.create", new_callable=get_mock_create)
-    def test_listen_handles_pipeline_result(self, mock_create):
-        target = mock.MagicMock()
-        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
-        listener = ComponentQueueListener(queue, target)
-        test_event = {"message": "test"}
-        pipeline = [
-            mock_create({"dummy1": {"type": "dummy_processor"}}),
-            mock_create({"dummy2": {"type": "processor_with_errors"}}),
-        ]
-        pipeline_result = PipelineResult(event=test_event, pipeline=pipeline)
-        listener._queue.put(pipeline_result)
-        # listener._queue.put(listener._sentinel)
-        listener._listen()
-        target.assert_called_with({"event": "test", "errors": "An unknown error occurred"})
-
-    def test_listen_handles_critical_input_output_exception(self):
-        assert False
+        target.assert_called_with("test")
