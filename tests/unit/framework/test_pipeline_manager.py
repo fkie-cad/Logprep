@@ -10,7 +10,6 @@ from unittest import mock
 
 import pytest
 
-from logprep.abc.processor import ProcessorResult
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
 from logprep.framework.pipeline import PipelineResult
@@ -20,13 +19,11 @@ from logprep.framework.pipeline_manager import (
     ThrottlingQueue,
 )
 from logprep.metrics.exporter import PrometheusExporter
-from logprep.processor.base.exceptions import ProcessingError
-from logprep.processor.base.rule import Rule
-from logprep.processor.dropper.rule import DropperRule
 from logprep.util.configuration import Configuration, MetricsConfig
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.logging import logqueue
 from tests.testdata.metadata import path_to_config
+from tests.unit.framework.test_pipeline import get_mock_create
 
 
 @mock.patch("multiprocessing.Process", new=mock.MagicMock())
@@ -564,19 +561,19 @@ class TestComponentQueueListener:
         listener._listen()
         target.assert_called_with({"event": "test", "errors": "An unknown error occurred"})
 
-    def test_listen_handles_pipeline_result(self):
+    @mock.patch("logprep.factory.Factory.create", new_callable=get_mock_create)
+    def test_listen_handles_pipeline_result(self, mock_create):
         target = mock.MagicMock()
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         listener = ComponentQueueListener(queue, target)
         test_event = {"message": "test"}
         pipeline = [
-            Factory.create(
-                {"dummy": {"type": "dropper", "generic_rules": [], "specific_rules": []}}
-            )
+            mock_create({"dummy1": {"type": "dummy_processor"}}),
+            mock_create({"dummy2": {"type": "processor_with_errors"}}),
         ]
         pipeline_result = PipelineResult(event=test_event, pipeline=pipeline)
         listener._queue.put(pipeline_result)
-        listener._queue.put(listener._sentinel)
+        # listener._queue.put(listener._sentinel)
         listener._listen()
         target.assert_called_with({"event": "test", "errors": "An unknown error occurred"})
 

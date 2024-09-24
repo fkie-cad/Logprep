@@ -90,7 +90,7 @@ class ComponentQueueListener:
             item = self._queue.get()
             if item is self._sentinel:
                 break
-            elif isinstance(item, PipelineResult):
+            if isinstance(item, PipelineResult):
                 event = {"event": item.event, "errors": str(item.errors)}
             elif isinstance(item, (CriticalInputError, CriticalOutputError)):
                 event = {"event": item.raw_input, "errors": str(item)}

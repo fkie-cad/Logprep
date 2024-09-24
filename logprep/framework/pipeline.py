@@ -300,11 +300,10 @@ class Pipeline:
     @Metric.measure_time()
     def process_event(self, event: dict):
         """process all processors for one event"""
-        result = PipelineResult(
+        return PipelineResult(
             event=event,
             pipeline=self._pipeline,
         )
-        return result
 
     def _store_extra_data(self, result_data: List | itertools.chain) -> None:
         self.logger.debug("Storing extra data")
