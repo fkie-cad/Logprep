@@ -623,6 +623,18 @@ class TestPipeline(ConfigurationForTests):
         mock_process_event.assert_not_called()
         assert isinstance(result, type(None))
 
+    def test_enqueue_error_handles_pipeline_result(self, _):
+        assert False
+
+    def test_enqueue_error_handles_critical_input_error(self, _):
+        assert False
+
+    def test_enqueue_error_handles_critical_output_error(self, _):
+        assert False
+
+    def test_enqueue_error_handles_critical_input_parsing_error(self, _):
+        assert False
+
 
 class TestPipelineWithActualInput:
     def setup_method(self):
