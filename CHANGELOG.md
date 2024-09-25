@@ -27,6 +27,7 @@
 ### Bugfix
 
 * ensure `logprep.abc.Component.Config` is immutable and can be applied multiple times
+* corrected missbehaviour of kafka input in case of partition lost
 
 ## 13.1.2
 ### Bugfix
