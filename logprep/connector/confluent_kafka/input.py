@@ -498,14 +498,12 @@ class ConfluentKafkaInput(Input):
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
             logger.warning(
-                "%s has lost topic: %s | partition %s - try to reassign",
+                "%s has lost topic: %s | partition %s",
                 consumer.memberid(),
                 topic_partition.topic,
                 topic_partition.partition,
             )
-            topic_partition.offset = OFFSET_STORED
-        self._consumer.assign(topic_partitions)
-
+            
     def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
