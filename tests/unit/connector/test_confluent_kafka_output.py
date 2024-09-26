@@ -165,7 +165,17 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
 
     def test_health_returns_true_if_no_error(self):
         self.object._producer = mock.MagicMock()
+        metadata = mock.MagicMock()
+        metadata.topics = [self.object._config.topic]
+        self.object._producer.list_topics.return_value = metadata
         assert self.object.health()
+
+    def test_health_returns_false_if_topic_not_present(self):
+        self.object._producer = mock.MagicMock()
+        metadata = mock.MagicMock()
+        metadata.topics = ["not_the_topic"]
+        self.object._producer.list_topics.return_value = metadata
+        assert not self.object.health()
 
     def test_health_returns_false_on_kafka_exception(self):
         self.object._producer = mock.MagicMock()
