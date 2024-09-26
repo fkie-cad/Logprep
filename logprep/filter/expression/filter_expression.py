@@ -3,7 +3,7 @@
 import re
 from abc import ABC, abstractmethod
 from itertools import chain, zip_longest
-from typing import List, Any
+from typing import Any, List
 
 
 class FilterExpressionError(BaseException):
@@ -316,6 +316,22 @@ class FloatRangeFilterExpression(RangeBasedFilterExpression):
         value = self._get_value(self.key, document)
 
         return self._lower_bound <= value <= self._upper_bound
+
+
+class LuceneRegexExpression(KeyValueBasedFilterExpression):
+    """Lucene compliant filter expression that matches a value using regex."""
+
+    def __init__(self, key: List[str], regex: str):
+        self._regex = regex
+        self._matcher = re.compile(self._regex)
+        super().__init__(key, f"/{self._regex.strip('^$')}/")
+
+    def does_match(self, document: dict) -> bool:
+        value = self._get_value(self.key, document)
+
+        if isinstance(value, list):
+            return any(filter(self._matcher.match, value))
+        return self._matcher.match(str(value)) is not None
 
 
 class RegExFilterExpression(KeyValueBasedFilterExpression):

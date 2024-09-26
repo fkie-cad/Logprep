@@ -84,23 +84,36 @@ import re
 from itertools import chain, zip_longest
 
 # pylint: enable=anomalous-backslash-in-string
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
 import luqum
-from luqum.parser import parser, ParseSyntaxError, IllegalCharacterError
-from luqum.tree import OrOperation, AndOperation, Group, FieldGroup, SearchField, Phrase, Word, Not
+from luqum.parser import IllegalCharacterError, ParseSyntaxError, parser
+from luqum.tree import (
+    AndOperation,
+    FieldGroup,
+    Group,
+    Not,
+    OrOperation,
+    Phrase,
+    Regex,
+    SearchField,
+    Word,
+)
 
 from logprep.filter.expression.filter_expression import (
-    Or,
-    And,
-    StringFilterExpression,
-    SigmaFilterExpression,
-    RegExFilterExpression,
-    Not as NotExpression,
-    Exists,
-    Null,
     Always,
+    And,
+    Exists,
     FilterExpression,
+    LuceneRegexExpression,
+)
+from logprep.filter.expression.filter_expression import Not as NotExpression
+from logprep.filter.expression.filter_expression import (
+    Null,
+    Or,
+    RegExFilterExpression,
+    SigmaFilterExpression,
+    StringFilterExpression,
 )
 
 
@@ -261,7 +274,12 @@ class LuceneTransformer:
             if self._last_search_field:
                 return self._create_field_group_expression(tree)
             return self._create_value_expression(tree)
+        if isinstance(tree, Regex):
+            return self._create_regex_expression(tree)
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
+
+    def _create_regex_expression(self, tree: luqum.tree) -> LuceneRegexExpression:
+        pass
 
     def _create_field_group_expression(self, tree: luqum.tree) -> FilterExpression:
         """Creates filter expression that is resulting from a field group.
