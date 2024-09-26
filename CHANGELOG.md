@@ -3,16 +3,261 @@
 ## next release
 ### Breaking
 
+* remove AutoRuleCorpusTester
+
 ### Features
+
+* adds health check endpoint to metrics on path `/health`
+* changes helm chart to use new readiness check
+* adds `healthcheck_timeout` option to all components to tweak the timeout of healthchecks
+* adds `desired_cluster_status` option to opensearch output to signal healthy cluster status
+* initially run health checks on setup for every configured component
+* make `imagePullPolicy` configurable for helm chart deployments
+
 
 ### Improvements
 
+* remove AutoRuleCorpusTester
+* adds support for rust extension development
+* adds prebuild wheels for architectures `x86_64` on `manylinux` and `musllinux` based linux platforms to releases
+* add manual how to use local images with minikube example setup to documentation
+* move `Configuration` to top level of documentation
+* add `CONTRIBUTING` file
+
 ### Bugfix
+
+* ensure `logprep.abc.Component.Config` is immutable and can be applied multiple times
+
+## 13.1.2
+### Bugfix
+
+* fixes a bug not increasing but decreasing timeout throttle factor of ThrottlingQueue
+* handle DecodeError and unexpected Exceptions on requests in `http_input` separately
+* fixes unbound local error in http input connector 
+
+## 13.1.1
+### Improvements
+
+* adds ability to bypass the processing of events if there is no pipeline. This is useful for pure connector deployments.
+* adds experimental feature to bypass the rule tree by setting `LOGPREP_BYPASS_RULE_TREE` environment variable
+
+### Bugfix
+
+* fixes a bug in the `http_output` used by the http generator, where the timeout parameter does only set the read_timeout not the write_timeout
+* fixes a bug in the `http_input` not handling decode errors
+
+## 13.1.0
+### Features
+
+* `pre_detector` now normalizes timestamps with configurable parameters timestamp_field, source_format, source_timezone and target_timezone
+* `pre_detector` now writes tags in failure cases
+* `ProcessingWarnings` now can write `tags` to the event
+* add `timeout` parameter to logprep http generator to set the timeout in seconds for requests
+* add primitive rate limiting to `http_input` connector
+
+### Improvements
+
+* switch to `uvloop` as default loop for the used threaded http uvicorn server
+* switch to `httptools` as default http implementation for the used threaded http uvicorn server
+
+### Bugfix
+
+* remove redundant chart features for mounting secrets
+
+## 13.0.1
+
+### Improvements
+
+* a result object was added to processors and pipelines
+  * each processor returns an object including the processor name, generated extra_data, warnings
+    and errors
+  * the pipeline returns an object with the list of all processor result objects
+* add kubernetes opensiem deployment example
+* move quickstart setup to compose example
+
+### Bugfix
+
+* This release limits the mysql-connector-python dependency to have version less the 9 
+
+## 13.0.0
+
+### Breaking
+
+* This release limits the maximum python version to `3.12.3` because of the issue
+[#612](https://github.com/fkie-cad/Logprep/issues/612).
+* Remove `normalizer` processor, as it's functionality was replaced by the `grokker`, `timestamper` and `field_manager` processors
+* Remove `elasticsearch_output` connector to reduce maintenance effort
+
+### Features
+
+* add a helm chart to install logprep in kubernetes based environments
+
+### Improvements
+
+* add documentation about behavior of the `timestamper` on `ISO8601` and `UNIX` time parsing
+* add unit tests for helm chart templates
+* add helm to github actions runner
+* add helm chart release to release pipeline
+
+### Bugfix
+
+* fixes a bug where it could happen that a config value could be overwritten by a default in a later configuration in a multi source config scenario
+* fixes a bug in the `field_manager` where extending a non list target leads to a processing failure
+* fixes a bug in `pseudonymizer` where a missing regex_mapping from an existing config_file causes logprep to crash continuously
+
+## 12.0.0
+
+### Breaking
+
+* `pseudonymizer` change rule config field `pseudonyms` to `mapping`
+* `clusterer` change rule config field `target` to `source_fields`
+* `generic_resolver` change rule config field `append_to_list` to `extend_target_list`
+* `hyperscan_resolver` change rule config field `append_to_list` to `extend_target_list`
+* `calculator` now adds the error tag `_calculator_missing_field_warning` to the events tag field instead of `_calculator_failure` in case of missing field in events
+* `domain_label_extractor` now writes `_domain_label_extractor_missing_field_warning` tag to event tags in case of missing fields
+* `geoip_enricher` now writes `_geoip_enricher_missing_field_warning` tag to event tags in case of missing fields
+* `grokker` now writes `_grokker_missing_field_warning` tag to event tags instead of `_grokker_failure` in case of missing fields
+* `requester` now writes `_requester_missing_field_warning` tag to event tags instead of `_requester_failure` in case of missing fields
+* `timestamp_differ` now writes `_timestamp_differ_missing_field_warning` tag to event tags instead of `_timestamp_differ_failure` in case of missing fields
+* `timestamper` now writes `_timestamper_missing_field_warning` tag to event tags instead of `_timestamper_failure` in case of missing fields
+* rename `--thread_count` parameter to `--thread-count` in http generator
+* removed `--report` parameter and feature from http generator
+* when using `extend_target_list` in the `field manager`the ordering of the given source fields is now preserved
+* logprep now exits with a negative exit code if pipeline restart fails 5 times
+  * this was implemented because further restart behavior should be configured on level of a system init service or container orchestrating service like k8s
+  * the `restart_count` parameter is configurable. If you want the old behavior back, you can set this parameter to a negative number
+* logprep now exits with a exit code of 2 on configuration errors
+
+### Features
+
+* add UCL into the quickstart setup
+* add logprep http output connector
+* add pseudonymization tools to logprep -> see: `logprep pseudo --help`
+* add `restart_count` parameter to configuration
+* add option `mode` to `pseudonymizer` processor and to pseudonymization tools to chose the AES Mode for encryption and decryption
+* add retry mechanism to opensearch parallel bulk, if opensearch returns 429 `rejected_execution_exception`
+
+### Improvements
+
+* remove logger from Components and Factory signatures
+* align processor architecture to use methods like `write_to_target`, `add_field_to` and `get_dotted_field_value` when reading and writing from and to events
+  * required substantial refactoring of the `hyperscan_resolver`, `generic_resolver` and `template_replacer`
+* change `pseudonymizer`, `pre_detector`, `selective_extractor` processors and `pipeline` to handle `extra_data` the same way
+* refactor `clusterer`, `pre_detector` and `pseudonymizer` processors and change `rule_tree` so that the processor do not require `process` override
+  * required substantial refactoring of the `clusterer`
+* handle missing fields in processors via `_handle_missing_fields` from the field_manager
+* add `LogprepMPQueueListener` to outsource logging to a separate process
+* add a single `Queuehandler` to root logger to ensure all logs were handled by `LogprepMPQueueListener`
+* refactor `http_generator` to use a logprep http output connector
+* ensure all `cached_properties` are populated during setup time
+
+### Bugfix
+
+* make `--username` and `--password` parameters optional in http generator
+* fixes a bug where `FileNotFoundError` is raised during processing
+
+## 11.3.0
+
+### Features
+
+* add gzip handling to `http_input` connector
+* adds advanced logging configuration
+  * add configurable log format
+  * add configurable datetime formate in logs
+  * makes `hostname` available in custom log formats
+  * add fine grained log level configuration for every logger instance
+
+### Improvements
+
+* rename `logprep.event_generator` module to `logprep.generator`
+* shorten logger instance names
+
+### Bugfix
+
+* fixes exposing OpenSearch/ElasticSearch stacktraces in log when errors happen by making loglevel configurable for loggers `opensearch` and `elasticsearch`
+* fixes the logprep quickstart profile
+
+## 11.2.1
+
+### Bugfix
+
+* fixes bug, that leads to spawning exporter http server always on localhost
+
+## 11.2.0
+
+### Features
+
+* expose metrics via uvicorn webserver
+  * makes all uvicorn configuration options possible
+  * add security best practices to server configuration
+* add following metrics to `http_input` connector
+  * `nummer_of_http_requests`
+  * `message_backlog_size`
+
+### Bugfix
+
+* fixes a bug in grokker rules, where common field prefixes wasn't possible
+* fixes bug where missing key in credentials file leads to AttributeError
+
+## 11.1.0
+
+### Features
+
+* new documentation part with security best practices which compiles to `user_manual/security/best_practices.html`
+  * also comes with excel export functionality of given best practices
+* add basic auth to http_input
+
+### Bugfix
+
+* fixes a bug in http connector leading to only first process working
+* fixes the broken gracefull shutdown behaviour
+
+## 11.0.1
+### Bugfix
+
+* fixes a bug where the pipeline index increases on every restart of a failed pipeline
+* fixes closed log queue issue by run logging in an extra process
+
+## 11.0.0
+### Breaking
+
+* configuration of Authentication for getters is now done by new introduced credentials file
+
+### Features
+
+* introducing an additional file to define the credentials for every configuration source
+* retrieve oauth token automatically from different oauth endpoints
+* retrieve configruation with mTLS authentication
+* reimplementation of HTTP Input Connector with following Features:
+  * Wildcard based HTTP Request routing
+  * Regex based HTTP Request routing
+  * Improvements in thread-based runtime
+  * Configuration and possibility to add metadata
+
+### Improvements
+
+* remove `versioneer` dependency in favor of `setuptools-scm`
+
+### Bugfix
+
+* fix version string of release versions
+* fix version string of container builds for feature branches
+* fix merge of config versions for multiple configs
+
+
+## v10.0.4
+### Improvements
+
+* refactor logprep build process and requirements management
+
+### Bugfix
+
+* fix `generic_adder` not creating new field from type `list`
 
 ## v10.0.3
 ### Bugfix
 * fix loading of configuration inside the `AutoRuleCorpusTester` for `logprep test integration`
-* fix auto rule tester (`test unit`), which was broken after adding support for multiple configuration files and resolving paths in configuration files 
+* fix auto rule tester (`test unit`), which was broken after adding support for multiple configuration files and resolving paths in configuration files
 
 ## v10.0.2
 ### Bugfix
@@ -138,7 +383,7 @@
 
 * add possibility to convert hex to int in `calculator` processor with new added function `from_hex`
 * add metrics on rule level
-* add grafana example dashboards under `quickstart/exampledata/config/grafana/dashboards`
+* add grafana example dashboards under `examples/exampledata/config/grafana/dashboards`
 * add new configuration field `id` for all rules to identify rules in metrics and logs
   - if no `id` is given, the `id` will be generated in a stable way
   - add verification of rule `id` uniqueness on processor level over both rule trees to ensure metrics are counted correctly on rule level
@@ -259,7 +504,6 @@ In case of positive detection results, rule attributions are now inserted in the
 * Bump `requests` to `>=2.31.0` to circumvent `CVE-2023-32681`
 * Include a lucene representation of the rule filter into the predetector results. The
 representation is not completely lucene compatible due to non-existing regex functionality.
-* Remove direct dependency of `python-dateutil`
 
 ### Bugfix
 

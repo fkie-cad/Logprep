@@ -1,57 +1,47 @@
 # pylint: disable=logging-fstring-interpolation
 """This module can be used to start the logprep."""
 import logging
+import logging.config
 import os
 import signal
 import sys
-import tempfile
 import warnings
-from pathlib import Path
 
 import click
 from colorama import Fore
 
-from logprep.event_generator.http.controller import Controller
-from logprep.event_generator.kafka.run_load_tester import LoadTester
+from logprep.generator.http.controller import Controller
+from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
-from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.helper import get_versions_string, print_fcolor
+from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.util.rule_dry_runner import DryRunner
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
-
-logging.getLogger("filelock").setLevel(logging.ERROR)
-logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
-logging.getLogger("elasticsearch").setLevel(logging.ERROR)
-
-
+logging.config.dictConfig(DEFAULT_LOG_CONFIG)
+logger = logging.getLogger("logprep")
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 
 
 def _print_version(config: "Configuration") -> None:
     print(get_versions_string(config))
-    sys.exit(0)
-
-
-def _get_logger(logger_config: dict) -> logging.Logger:
-    log_level = logger_config.get("level", "INFO")
-    logging.basicConfig(
-        level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
-    )
-    logger = logging.getLogger("Logprep")
-    logger.setLevel(log_level)
-    return logger
+    sys.exit(EXITCODES.SUCCESS.value)
 
 
 def _get_configuration(config_paths: list[str]) -> Configuration:
     try:
-        return Configuration.from_sources(config_paths)
+        config = Configuration.from_sources(config_paths)
+        config.logger.setup_logging()
+        logger = logging.getLogger("root")  # pylint: disable=redefined-outer-name
+        logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
+        return config
     except InvalidConfigurationError as error:
         print(f"InvalidConfigurationError: {error}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(EXITCODES.CONFIGURATION_ERROR.value)
 
 
 @click.group(name="logprep")
@@ -61,6 +51,9 @@ def cli() -> None:
     Logprep allows to collect, process and forward log messages from various data sources.
     Log messages are being read and written by so-called connectors.
     """
+    if "pytest" not in sys.modules:  # needed for not blocking tests
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
 
 
 @cli.command(short_help="Run logprep to process log messages", epilog=EPILOG_STR)
@@ -80,8 +73,6 @@ def run(configs: tuple[str], version=None) -> None:
     configuration = _get_configuration(configs)
     if version:
         _print_version(configuration)
-    logger = _get_logger(configuration.logger)
-    logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
     for version in get_versions_string(configuration).split("\n"):
         logger.info(version)
     logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
@@ -99,7 +90,7 @@ def run(configs: tuple[str], version=None) -> None:
             logger.critical(f"A critical error occurred: {error}")
         if runner:
             runner.stop()
-        sys.exit(1)
+        sys.exit(EXITCODES.ERROR.value)
     # pylint: enable=broad-except
 
 
@@ -150,7 +141,7 @@ def dry_run(configs: tuple[str], events: str, input_type: str, full_output: bool
     """
     config = _get_configuration(configs)
     json_input = input_type == "json"
-    dry_runner = DryRunner(events, config, full_output, json_input, logging.getLogger("DryRunner"))
+    dry_runner = DryRunner(events, config, full_output, json_input)
     dry_runner.run()
 
 
@@ -166,23 +157,6 @@ def test_rules(configs: tuple[str]) -> None:
     for config in configs:
         tester = AutoRuleTester(config)
         tester.run()
-
-
-@test.command(
-    short_help="Run the rule corpus tester against a given configuration", name="integration"
-)
-@click.argument("configs", nargs=-1, required=False)
-@click.argument("testdata")
-def test_ruleset(configs: tuple[str], testdata: str):
-    """Test the given ruleset against specified test data
-
-    \b
-    CONFIG is a path to configuration file (filepath or URL).
-    TESTDATA is a path to a set of test files.
-    """
-    _ = _get_configuration(configs)
-    tester = RuleCorpusTester(configs, testdata)
-    tester.run()
 
 
 @cli.group(short_help="Generate load for a running logprep instance")
@@ -217,9 +191,9 @@ def generate_kafka(config, file):
     required=True,
     type=str,
 )
-@click.option("--user", help="Username for the target domain", required=True, type=str)
+@click.option("--user", help="Username for the target domain", required=False, type=str)
 @click.option(
-    "--password", help="Credentials for the user of the target domain", required=True, type=str
+    "--password", help="Credentials for the user of the target domain", required=False, type=str
 )
 @click.option(
     "--batch-size",
@@ -245,7 +219,7 @@ def generate_kafka(config, file):
     type=bool,
 )
 @click.option(
-    "--thread_count",
+    "--thread-count",
     help="Number of threads that should be used to send events in parallel to the target. If "
     "thread_count is set to '1' then multithreading is deactivated and the main process will "
     "be used.",
@@ -270,28 +244,23 @@ def generate_kafka(config, file):
 @click.option(
     "--loglevel",
     help="Sets the log level for the logger.",
-    type=click.Choice(logging._levelToName.values()),
+    type=click.Choice(logging._levelToName.values()),  # pylint: disable=protected-access
     required=False,
     default="INFO",
 )
 @click.option(
-    "--report",
-    help="Whether or not detailed statistics with a markdown report should be generated or not.",
+    "--timeout",
+    help="Timeout in seconds for the http requests",
     required=False,
-    default=True,
-    type=bool,
+    default=2,
 )
 def generate_http(**kwargs):
     """
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a http endpoint.
     """
-    log_level = kwargs.get("loglevel")
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    logger = logging.getLogger("generator")
-    logger.info(f"Log level set to '{log_level}'")
+    generator_logger = logging.getLogger("Generator")
+    generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
     generator = Controller(**kwargs)
     generator.run()
 
@@ -318,12 +287,23 @@ def print_config(configs: tuple[str], output) -> None:
         print(config.as_yaml())
 
 
+@cli.group(short_help="pseudonymization toolbox")
+def pseudo():
+    """
+    The pseudo command group offers a set of commands to
+    generate keys, pseudonymize and depseudonymize
+    """
+
+
+pseudo.add_command(cmd=generate_keys.generate, name="generate")
+pseudo.add_command(cmd=pseudonymize.pseudonymize, name="pseudonymize")
+pseudo.add_command(cmd=depseudonymize.depseudonymize, name="depseudonymize")
+
+
 def signal_handler(__: int, _) -> None:
     """Handle signals for stopping the runner and reloading the configuration."""
     Runner.get_runner(Configuration()).stop()
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
     cli()

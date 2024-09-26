@@ -20,13 +20,13 @@ class CommonConfluentKafkaTestCase:
 
     def test_client_id_is_set_to_hostname(self):
         self.object.setup()
-        assert self.object._config.kafka_config.get("client.id") == getfqdn()
+        assert self.object._kafka_config.get("client.id") == getfqdn()
 
     def test_create_fails_for_unknown_option(self):
         kafka_config = deepcopy(self.CONFIG)
         kafka_config.update({"unknown_option": "bad value"})
         with pytest.raises(TypeError, match=r"unexpected keyword argument"):
-            _ = Factory.create({"test connector": kafka_config}, logger=self.logger)
+            _ = Factory.create({"test connector": kafka_config})
 
     def test_error_callback_logs_error(self):
         self.object.metrics.number_of_errors = 0
@@ -56,3 +56,8 @@ class CommonConfluentKafkaTestCase:
         json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
         self.object._stats_callback(json_string)
         assert self.object.metrics.librdkafka_age == 1337
+
+    def test_kafka_config_is_immutable(self):
+        self.object.setup()
+        with pytest.raises(TypeError):
+            self.object._config.kafka_config["client.id"] = "test"

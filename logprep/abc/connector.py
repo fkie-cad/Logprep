@@ -1,4 +1,5 @@
 """ abstract module for connectors"""
+
 from attrs import define, field
 
 from logprep.abc.component import Component
@@ -14,19 +15,19 @@ class Connector(Component):
 
         number_of_processed_events: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of events that were processed",
+                description="Number of successful events",
                 name="number_of_processed_events",
             )
         )
-        """Number of events that were processed"""
+        """Number of successful events"""
 
         number_of_failed_events: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of events that were send to error output",
+                description="Number of failed events",
                 name="number_of_failed_events",
             )
         )
-        """Number of events that were send to error output"""
+        """Number of failed events"""
 
         processing_time_per_event: HistogramMetric = field(
             factory=lambda: HistogramMetric(

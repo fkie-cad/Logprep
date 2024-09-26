@@ -19,6 +19,7 @@ Example
         interval: 1
         watch_file: True
 """
+
 import queue
 import threading
 import zlib
@@ -209,7 +210,7 @@ class FileInput(Input):
 
         logfile_path: str = field(validator=file_validator)
         """A path to a file in generic raw format, which can be in any string based
-        format. Needs to be parsed with normalizer or another processor"""
+        format. Needs to be parsed with dissector or another processor"""
 
         start: str = field(
             validator=[validators.instance_of(str), validators.in_(("begin", "end"))],
@@ -228,8 +229,8 @@ class FileInput(Input):
         interval: int = field(default=1, validator=validators.instance_of((int, float)))
         """Defines the refresh interval, how often the file is checked for changes"""
 
-    def __init__(self, name: str, configuration: "FileInput.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "FileInput.Config"):
+        super().__init__(name, configuration)
         self.stop_flag = threading.Event()
 
     def _calc_file_fingerprint(self, file_pointer: TextIO, fingerprint_length: int = None) -> tuple:
@@ -325,6 +326,7 @@ class FileInput(Input):
         Right now this input connector is only started in the first process.
         It needs the class attribute pipeline_index before running setup in Pipeline
         Initiation"""
+        super().setup()
         if not hasattr(self, "pipeline_index"):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."

@@ -6,15 +6,16 @@
 import re
 import uuid
 from functools import partial
+from importlib.metadata import version
 from pathlib import Path
 from unittest import mock
 
 import pytest
 from requests.exceptions import HTTPError, SSLError
 
-from logprep._version import get_versions
 from logprep.runner import Runner
 from logprep.util.configuration import Configuration
+from logprep.util.defaults import EXITCODES
 from tests.testdata.metadata import path_to_config
 
 
@@ -115,8 +116,9 @@ class TestRunner:
     def test_set_config_refresh_interval(self, new_value, expected_value, runner):
         with mock.patch.object(runner, "_manager"):
             runner._config_refresh_interval = new_value
-            runner._keep_iterating = partial(mock_keep_iterating, 1)
-            runner.start()
+            runner._exit_received = True
+            with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
+                runner.start()
             if expected_value is None:
                 assert len(runner.scheduler.jobs) == 0
             else:
@@ -124,9 +126,11 @@ class TestRunner:
 
     @mock.patch("schedule.Scheduler.run_pending")
     def test_iteration_calls_run_pending(self, mock_run_pending, runner):
-        with mock.patch.object(runner, "_manager"):
+        with mock.patch.object(runner, "_manager") as mock_manager:
+            mock_manager.restart_count = 0
             runner._keep_iterating = partial(mock_keep_iterating, 3)
-            runner.start()
+            with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
+                runner.start()
             mock_run_pending.call_count = 3
 
     def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(
@@ -244,17 +248,17 @@ class TestRunner:
         assert len(runner.scheduler.jobs) == 0
         new_config = Configuration.from_sources([str(config_path)])
         new_config.config_refresh_interval = 5
-        version = str(uuid.uuid4().hex)
-        new_config.version = version
+        config_version = str(uuid.uuid4().hex)
+        new_config.version = config_version
         config_path.write_text(new_config.as_yaml())
         with mock.patch("logging.Logger.info") as mock_info:
             with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
                 with mock.patch.object(runner._manager, "restart"):
                     runner.reload_configuration()
-        mock_info.assert_called_with(f"Configuration version: {version}")
+        mock_info.assert_called_with(f"Configuration version: {config_version}")
         mock_add.assert_called()
         mock_add.assert_has_calls(
-            (mock.call(1, {"logprep": f"{get_versions()['version']}", "config": version}),)
+            (mock.call(1, {"logprep": f"{version('logprep')}", "config": config_version}),)
         )
 
     def test_stop_method(self, runner: Runner):
@@ -262,18 +266,20 @@ class TestRunner:
         runner.stop()
         assert runner._exit_received
 
-    @mock.patch("logprep.runner.Runner._keep_iterating", new=partial(mock_keep_iterating, 1))
     def test_start_sets_version_metric(self, runner: Runner):
         runner._configuration.version = "very custom version"
+        runner._exit_received = True
         with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
-            runner.start()
+            with mock.patch.object(runner, "_manager"):
+                with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
+                    runner.start()
         mock_add.assert_called()
         mock_add.assert_has_calls(
             (
                 mock.call(
                     1,
                     {
-                        "logprep": f"{get_versions()['version']}",
+                        "logprep": f"{version('logprep')}",
                         "config": runner._configuration.version,
                     },
                 ),
@@ -283,12 +289,30 @@ class TestRunner:
     def test_start_calls_manager_stop_after_breaking_the_loop(self, runner: Runner):
         with mock.patch.object(runner, "_manager") as mock_manager:
             runner._exit_received = True
-            runner.start()
+            with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
+                runner.start()
         mock_manager.stop.assert_called()
         mock_manager.restart_failed_pipeline.assert_not_called()
 
     def test_metric_labels_returns_versions(self, runner: Runner):
         assert runner._metric_labels == {
-            "logprep": f"{get_versions()['version']}",
+            "logprep": f"{version('logprep')}",
             "config": runner._configuration.version,
         }
+
+    def test_runner_exits_with_pipeline_error_exitcode_if_restart_count_exceeded(
+        self, runner: Runner
+    ):
+        with mock.patch.object(runner, "_manager") as mock_manager:
+            mock_manager.restart_count = 5
+            with pytest.raises(SystemExit, match=str(EXITCODES.PIPELINE_ERROR.value)):
+                runner.start()
+
+    def test_runner_does_not_exits_on_negative_restart_count_parameter(self, runner: Runner):
+        with mock.patch.object(runner, "_manager") as mock_manager:
+            runner._keep_iterating = partial(mock_keep_iterating, 3)
+            mock_manager.restart_count = 5
+            runner._configuration.restart_count = -1
+            with pytest.raises(SystemExit, match=str(EXITCODES.SUCCESS.value)):
+                runner.start()
+            mock_manager.restart_failed_pipeline.call_count = 3

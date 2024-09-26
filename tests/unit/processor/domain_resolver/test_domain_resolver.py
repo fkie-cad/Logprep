@@ -1,9 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import hashlib
-import logging
 import os
-import re
 import shutil
 import tempfile
 from copy import deepcopy
@@ -15,7 +13,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -87,7 +85,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_domain_ip_map_greater_cache(self):
         config = deepcopy(self.CONFIG)
         config.update({"max_cached_domains": 1})
-        self.object = Factory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config})
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -119,7 +117,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_and_added_with_debug_cache(self, _):
         config = deepcopy(self.CONFIG)
         config.update({"debug_cache": True})
-        self.object = Factory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config})
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -139,7 +137,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_from_cache_and_added_with_debug_cache(self, _):
         config = deepcopy(self.CONFIG)
         config.update({"debug_cache": True})
-        self.object = Factory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config})
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -161,7 +159,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_and_added_with_cache_disabled(self, _):
         config = deepcopy(self.CONFIG)
         config.update({"cache_enabled": False})
-        self.object = Factory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config})
         rule = {
             "filter": "url",
             "domain_resolver": {"source_fields": ["url"]},
@@ -189,7 +187,7 @@ sth.ac.at
         responses.add(responses.GET, "http://does_not_matter", response_content)
         config = deepcopy(self.CONFIG)
         config.update({"tld_lists": ["http://does_not_matter"]})
-        domain_resolver = Factory.create({"test instance": config}, self.logger)
+        domain_resolver = Factory.create({"test instance": config})
         document = {"url": "http://www.google.ac.at/some/text"}
         expected = {"url": "http://www.google.ac.at/some/text", "resolved_ip": "1.2.3.4"}
         domain_resolver.process(document)
@@ -199,7 +197,7 @@ sth.ac.at
     def test_invalid_dots_domain_to_ip_produces_warning(self):
         config = deepcopy(self.CONFIG)
         config.update({"tld_list": TLD_LIST})
-        domain_resolver = Factory.create({"test instance": config}, self.logger)
+        domain_resolver = Factory.create({"test instance": config})
 
         assert self.object.metrics.number_of_processed_events == 0
         document = {"url": "google..invalid.de"}
@@ -230,12 +228,12 @@ sth.ac.at
         assert document == expected
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    def test_duplication_error(self, _, caplog):
+    def test_field_exits_warning(self, _):
         document = {"client": "google.de"}
 
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     def test_no_duplication_error(self, _):
@@ -288,7 +286,9 @@ sth.ac.at
         tld_list_content = tld_list_path.read_bytes()
         expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, tld_list, tld_list_content)
-        self.object._config.tld_lists = [tld_list]
+        config = deepcopy(self.CONFIG)
+        config.update({"tld_lists": [tld_list]})
+        self.object = Factory.create({"resolver": config})
         self.object.setup()
         logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
         downloaded_file = logprep_tmp_dir / f"{self.object.name}-tldlist-0.dat"
@@ -311,7 +311,9 @@ sth.ac.at
         pre_existing_content = "file exists already"
         tld_temp_file.touch()
         tld_temp_file.write_bytes(pre_existing_content.encode("utf8"))
-        self.object._config.tld_lists = [tld_list]
+        config = deepcopy(self.CONFIG)
+        config.update({"tld_lists": [tld_list]})
+        self.object = Factory.create({"resolver": config})
         self.object.setup()
         assert tld_temp_file.exists()
         assert tld_temp_file.read_bytes().decode("utf8") == pre_existing_content

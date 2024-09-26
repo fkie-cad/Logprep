@@ -1,0 +1,20 @@
+{{ if .Values.exporter.enabled }}
+# you have to install the CRD for PodMonitor before you can use it
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "logprep.fullname" . }}
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.exporter.annotations | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "logprep.selectorLabels" . | nindent 6 }}
+  podMetricsEndpoints:
+    - targetPort: {{ .Values.exporter.port }}
+      interval: {{ .Values.exporter.scrape_interval}}
+{{ end }}
+

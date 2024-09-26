@@ -1,0 +1,132 @@
+version: 1
+process_count: 2
+timeout: 0.1
+logger:
+  level: INFO
+  format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
+  datefmt: "%Y-%m-%d %H:%M:%S"
+  loggers:
+    "py.warnings": { "level": "ERROR" }
+    "Runner": { "level": "DEBUG" }
+metrics:
+  enabled: true
+  port: 8001
+
+pipeline:
+  - labelername:
+      type: labeler
+      schema: examples/exampledata/rules/labeler/schema.json
+      include_parent_labels: true
+      specific_rules:
+        - examples/exampledata/rules/labeler/specific
+      generic_rules:
+        - examples/exampledata/rules/labeler/generic
+
+  - dissector:
+      type: dissector
+      specific_rules:
+        - examples/exampledata/rules/dissector/specific/
+      generic_rules:
+        - examples/exampledata/rules/dissector/generic/
+
+  - dropper:
+      type: dropper
+      specific_rules:
+        - examples/exampledata/rules/dropper/specific
+      generic_rules:
+        - examples/exampledata/rules/dropper/generic
+        - filter: "test_dropper"
+          dropper:
+            drop:
+              - drop_me
+          description: "..."
+
+  - pre_detector:
+      type: pre_detector
+      specific_rules:
+        - examples/exampledata/rules/pre_detector/specific
+      generic_rules:
+        - examples/exampledata/rules/pre_detector/generic
+      outputs:
+        - opensearch: sre
+      tree_config: examples/exampledata/rules/pre_detector/tree_config.json
+      alert_ip_list_path: examples/exampledata/rules/pre_detector/alert_ips.yml
+
+  - amides:
+      type: amides
+      specific_rules:
+        - examples/exampledata/rules/amides/specific
+      generic_rules:
+        - examples/exampledata/rules/amides/generic
+      models_path: examples/exampledata/models/model.zip
+      num_rule_attributions: 10
+      max_cache_entries: 1000000
+      decision_threshold: 0.32
+
+  - pseudonymizer:
+      type: pseudonymizer
+      pubkey_analyst: examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem
+      pubkey_depseudo: examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
+      regex_mapping: examples/exampledata/rules/pseudonymizer/regex_mapping.yml
+      hash_salt: a_secret_tasty_ingredient
+      outputs:
+        - opensearch: pseudonyms
+      specific_rules:
+        - examples/exampledata/rules/pseudonymizer/specific/
+      generic_rules:
+        - examples/exampledata/rules/pseudonymizer/generic/
+      max_cached_pseudonyms: 1000000
+
+  - calculator:
+      type: calculator
+      specific_rules:
+        - filter: "test_label: execute"
+          calculator:
+            target_field: "calculation"
+            calc: "1 + 1"
+      generic_rules: []
+
+input:
+  kafka:
+    type: confluentkafka_input
+    topic: consumer
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      group.id: cgroup3
+      enable.auto.commit: "true"
+      auto.commit.interval.ms: "10000"
+      enable.auto.offset.store: "false"
+      queued.min.messages: "100000"
+      queued.max.messages.kbytes: "65536"
+      statistics.interval.ms: "60000"
+    preprocessing:
+      version_info_target_field: Logprep_version_info
+      log_arrival_time_target_field: event.ingested
+      hmac:
+        target: <RAW_MSG>
+        key: "thisisasecureandrandomkey"
+        output_field: Full_event
+
+output:
+  opensearch:
+    type: opensearch_output
+    hosts:
+      - 127.0.0.1:9200
+    default_index: processed
+    error_index: errors
+    message_backlog_size: 2500
+    timeout: 10000
+    flush_timeout: 60
+    max_retries: 3
+    user: admin
+    secret: admin
+    desired_cluster_status: ["green", "yellow"]
+  kafka:
+    type: confluentkafka_output
+    default: false
+    topic: producer
+    error_topic: errors
+    flush_timeout: 300
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      statistics.interval.ms: "60000"

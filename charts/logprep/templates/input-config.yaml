@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "logprep.fullname" . }}-input
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+data:
+  input-config.yaml: |
+    input:
+      {{- if .Values.input }}
+      {{- trimSuffix "_input" .Values.input.type | nindent 6}}:
+      {{- toYaml .Values.input | nindent 8}}
+      {{- else }}
+      stdin:
+        type: file_input
+        logfile_path: /proc/1/fdinfo/0
+        start: end
+        watch_file: true
+        interval: 1
+      {{- end }}

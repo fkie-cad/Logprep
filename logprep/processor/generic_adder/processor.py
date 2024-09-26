@@ -19,7 +19,7 @@ Processor Configuration
         sql_config:
             user: example_user
             password: example_password
-            host: "127.0.0.1
+            host: "127.0.0.1"
             database: example_db
             table: example_table
             target_column: example_column
@@ -34,11 +34,11 @@ Processor Configuration
 
 .. automodule:: logprep.processor.generic_adder.rule
 """
+
 import json
 import os
 import re
 import time
-from logging import Logger
 from typing import Optional
 
 from attr import define, field, validators
@@ -102,6 +102,12 @@ class GenericAdder(Processor):
           (default: ./sql_update.lock).
         - `db_file_path` - Path to a file used to store the SQL table obtained by the generic adder
           (default: ./sql_db_table.json).
+
+          .. security-best-practice::
+             :title: Processor - GenericAdder
+
+             When using a sql database to enrich events, ensure that it is a database which is
+             protected with a user credentials.
         """
 
     rule_class = GenericAdderRule
@@ -129,7 +135,7 @@ class GenericAdder(Processor):
     _db_file_path: Optional[str]
     """Path to file containing table from SQL database"""
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config):
         """Initialize a generic adder instance.
         Performs a basic processor initialization. Furthermore, a SQL database and a SQL table are
         being initialized if a SQL configuration exists.
@@ -139,10 +145,8 @@ class GenericAdder(Processor):
            Name for the generic adder.
         configuration : Processor.Config
            Configuration for SQL adding and rule loading.
-        logger : logging.Logger
-           Logger to use.
         """
-        super().__init__(name, configuration, logger)
+        super().__init__(name, configuration)
 
         self._db_table = None
         sql_config = configuration.sql_config
@@ -150,7 +154,7 @@ class GenericAdder(Processor):
             self._initialize_sql(sql_config)
 
     def _initialize_sql(self, sql_config):
-        self._db_connector = MySQLConnector(sql_config, self._logger) if sql_config else None
+        self._db_connector = MySQLConnector(sql_config) if sql_config else None
         if self._db_connector:
             self._file_lock_path = sql_config.get("file_lock_path", "sql_update.lock")
             self._db_file_path = sql_config.get("db_file_path", "sql_db_table.json")
@@ -226,10 +230,9 @@ class GenericAdder(Processor):
         use_db = rule.db_target and self._db_table
         if use_db:
             self._update_db_table()
-
-        items_to_add = [] if use_db else rule.add.items()
-        if use_db and rule.db_pattern:
-            self._try_adding_from_db(event, items_to_add, rule)
+            items_to_add = self._get_items_to_add_from_db(event, rule)
+        else:
+            items_to_add = rule.add.items()
 
         # Add the items to the event
         for dotted_field, value in items_to_add:
@@ -246,8 +249,11 @@ class GenericAdder(Processor):
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
-    def _try_adding_from_db(self, event: dict, items_to_add: list, rule: GenericAdderRule):
+    def _get_items_to_add_from_db(self, event: dict, rule: GenericAdderRule) -> list:
         """Get the sub part of the value from the event using a regex pattern"""
+        items_to_add = []
+        if not rule.db_pattern:
+            return items_to_add
 
         value_to_check_in_db = get_dotted_field_value(event, rule.db_target)
         match_with_value_in_db = rule.db_pattern.match(value_to_check_in_db)
@@ -263,3 +269,4 @@ class GenericAdder(Processor):
 
             for item in add_from_db:
                 items_to_add.append(item)
+        return items_to_add

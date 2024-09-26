@@ -1,0 +1,30 @@
+apiVersion: v2
+name: opensiem
+description: a deployment example for logprep siem deployment
+type: application
+
+# This is the chart version. This version number should be incremented each time you make changes
+# to the chart and its templates, including the app version.
+# Versions are expected to follow Semantic Versioning (https://semver.org/)
+version: "1.0.0"
+
+# This is the version number of the application being deployed. This version number should be
+# incremented each time you make changes to the application. Versions are not expected to
+# follow Semantic Versioning. They should reflect the version the application is using.
+# It is recommended to use it with quotes.
+appVersion: "1.0.0"
+
+dependencies:
+  - name: logprep
+    repository: file://../../charts/logprep
+    version: "*"
+    alias: connector
+  - name: logprep
+    repository: file://../../charts/logprep
+    version: "*"
+  - name: kafka
+    repository: https://charts.bitnami.com/bitnami
+    version: "^29"
+  - name: opensearch
+    repository: https://charts.bitnami.com/bitnami
+    version: "^1"

@@ -25,6 +25,8 @@ Processor Configuration
 
 .. automodule:: logprep.processor.geoip_enricher.rule
 """
+
+import logging
 import os
 import tempfile
 from functools import cached_property
@@ -36,18 +38,20 @@ from filelock import FileLock
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
-from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
+logger = logging.getLogger("GeoipEnricher")
 
-class GeoipEnricher(Processor):
+
+class GeoipEnricher(FieldManager):
     """Resolve values in documents by referencing a mapping list."""
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """geoip_enricher config"""
 
         db_path: str = field(validator=validators.instance_of(str))
@@ -64,13 +68,9 @@ class GeoipEnricher(Processor):
 
     @cached_property
     def _city_db(self):
-        return database.Reader(self._config.db_path)
-
-    def setup(self):
-        super().setup()
         db_path = Path(self._config.db_path)
         if not db_path.exists():
-            self._logger.debug("start geoip database download...")
+            logger.debug("start geoip database download...")
             logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
             os.makedirs(logprep_tmp_dir, exist_ok=True)
             db_path_file = logprep_tmp_dir / f"{self.name}.mmdb"
@@ -80,8 +80,13 @@ class GeoipEnricher(Processor):
                     db_path_file.write_bytes(
                         GetterFactory.from_string(str(self._config.db_path)).get_raw()
                     )
-            self._logger.debug("finished geoip database download.")
-            self._config.db_path = str(db_path_file.absolute())
+            db_path = str(db_path_file.absolute())
+            logger.debug("finished geoip database download.")
+        return database.Reader(db_path)
+
+    def setup(self):
+        super().setup()
+        _ = self._city_db  # trigger download
 
     def _try_getting_geoip_data(self, ip_string):
         try:
@@ -119,10 +124,8 @@ class GeoipEnricher(Processor):
 
     def _apply_rules(self, event, rule):
         ip_string = get_dotted_field_value(event, rule.source_fields[0])
-        if ip_string is None:
-            raise ProcessingWarning(
-                f"Value of IP field '{rule.source_fields[0]}' is 'None'", rule, event
-            )
+        if self._handle_missing_fields(event, rule, rule.source_fields, [ip_string]):
+            return
         geoip_data = self._try_getting_geoip_data(ip_string)
         if not geoip_data:
             return

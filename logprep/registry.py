@@ -8,9 +8,9 @@ from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.console.output import ConsoleOutput
 from logprep.connector.dummy.input import DummyInput
 from logprep.connector.dummy.output import DummyOutput
-from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.connector.file.input import FileInput
-from logprep.connector.http.input import HttpConnector
+from logprep.connector.http.input import HttpInput
+from logprep.connector.http.output import HttpOutput
 from logprep.connector.json.input import JsonInput
 from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.jsonl.output import JsonlOutput
@@ -36,7 +36,6 @@ from logprep.processor.ip_informer.processor import IpInformer
 from logprep.processor.key_checker.processor import KeyChecker
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.list_comparison.processor import ListComparison
-from logprep.processor.normalizer.processor import Normalizer
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.processor.requester.processor import Requester
@@ -72,7 +71,6 @@ class Registry:
         "key_checker": KeyChecker,
         "labeler": Labeler,
         "list_comparison": ListComparison,
-        "normalizer": Normalizer,
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,
@@ -90,10 +88,10 @@ class Registry:
         "confluentkafka_input": ConfluentKafkaInput,
         "confluentkafka_output": ConfluentKafkaOutput,
         "console_output": ConsoleOutput,
-        "elasticsearch_output": ElasticsearchOutput,
         "jsonl_output": JsonlOutput,
         "opensearch_output": OpensearchOutput,
-        "http_input": HttpConnector,
+        "http_input": HttpInput,
+        "http_output": HttpOutput,
         "s3_output": S3Output,
     }
 

@@ -1,11 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import logging
-import re
 
 import responses
 
 from logprep.factory import Factory
+from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -17,6 +16,10 @@ class TestListComparison(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
         "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
     }
+
+    def setup_method(self):
+        super().setup_method()
+        self.object.setup()
 
     def test_element_in_list(self):
         document = {"user": "Franz"}
@@ -135,7 +138,7 @@ class TestListComparison(BaseProcessorTestCase):
             len(document.get("dotted", {}).get("preexistent_output_field", {}).get("in_list")) == 1
         )
 
-    def test_target_field_exists_and_cant_be_extended(self, caplog):
+    def test_target_field_exists_and_cant_be_extended(self):
         document = {"dot_channel": "test", "user": "Franz", "dotted": "dotted_Franz"}
         expected = {
             "dot_channel": "test",
@@ -155,12 +158,12 @@ class TestListComparison(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         self.object.setup()
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
-    def test_intermediate_output_field_is_wrong_type(self, caplog):
+    def test_intermediate_output_field_is_wrong_type(self):
         document = {
             "dot_channel": "test",
             "user": "Franz",
@@ -184,9 +187,9 @@ class TestListComparison(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         self.object.setup()
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
     def test_check_in_dotted_subfield(self):
@@ -225,7 +228,7 @@ class TestListComparison(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    def test_overwrite_target_field(self, caplog):
+    def test_overwrite_target_field(self):
         document = {"user": "Franz"}
         expected = {"user": "Franz", "tags": ["_list_comparison_failure"]}
         rule_dict = {
@@ -240,9 +243,9 @@ class TestListComparison(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         self.object.setup()
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
     @responses.activate
@@ -270,7 +273,7 @@ Hans
             "generic_rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
-        processor = Factory.create({"custom_lister": config}, self.logger)
+        processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class._create_from_dict(rule_dict)
         processor._specific_tree.add_rule(rule)
         processor.setup()

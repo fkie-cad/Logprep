@@ -73,7 +73,7 @@ The Ruletree diagramm shows how the matching rules for a given event are searche
 Output
 ======
 
-In this diagram, the last part about the backlog is specific for the Elasticsearch/ Opensearch Output.
+In this diagram, the last part about the backlog is specific for the Opensearch Output.
 This was deemed to be important enough to be part of the diagram.
 
 .. raw:: html

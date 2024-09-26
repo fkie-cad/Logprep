@@ -2,7 +2,7 @@
   {
     "filter": "some_field: \"F[OO\"",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "some_field": "RE_WHOLE_FIELD"
       }
     },

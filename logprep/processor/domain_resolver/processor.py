@@ -15,7 +15,6 @@ Processor Configuration
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
-        hyperscan_db_path: tmp/path/scan.db
         tld_list: tmp/path/tld.dat
         timeout: 0.5
         max_cached_domains: 20000
@@ -32,12 +31,13 @@ Processor Configuration
 
 .. automodule:: logprep.processor.domain_resolver.rule
 """
+
 import datetime
+import logging
 import os
 import socket
 import tempfile
 from functools import cached_property
-from logging import Logger
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
@@ -53,8 +53,10 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
+
+logger = logging.getLogger("DomainResolver")
 
 
 class DomainResolver(Processor):
@@ -70,7 +72,9 @@ class DomainResolver(Processor):
         a default list will be retrieved online and cached in a local directory. For local
         files the path has to be given with :code:`file:///path/to/file.dat`."""
         timeout: Optional[float] = field(
-            default=0.5, validator=validators.optional(validators.instance_of(float))
+            default=0.5,
+            validator=validators.optional(validators.instance_of(float)),
+            converter=float,
         )
         """Timeout for resolving of domains."""
         max_cached_domains: int = field(validator=validators.instance_of(int))
@@ -80,7 +84,7 @@ class DomainResolver(Processor):
         max_caching_days: int = field(validator=validators.instance_of(int))
         """Number of days a domains is cached after the last time it appeared.
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
-        repeatedly) and the load on subsequent components (i.e. Logstash or Elasticsearch).
+        repeatedly) and the load on subsequent components (i.e. Logstash or Opensearch).
         Setting the caching days to Null deactivates the caching. In case the cache size has been
         exceeded (see `domain_resolver.max_cached_domains`),the oldest cached pseudonyms will
         be discarded first.Thus, it is possible that a domain is re-added to the cache before
@@ -137,13 +141,8 @@ class DomainResolver(Processor):
 
     rule_class = DomainResolverRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: Processor.Config,
-        logger: Logger,
-    ):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: Processor.Config):
+        super().__init__(name, configuration)
         self._domain_ip_map = {}
 
     @cached_property
@@ -169,7 +168,7 @@ class DomainResolver(Processor):
         super().setup()
         if self._config.tld_lists:
             downloaded_tld_lists_paths = []
-            self._logger.debug("start tldlists download...")
+            logger.debug("start tldlists download...")
             for index, tld_list in enumerate(self._config.tld_lists):
                 logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
                 os.makedirs(logprep_tmp_dir, exist_ok=True)
@@ -179,8 +178,7 @@ class DomainResolver(Processor):
                         list_path.touch()
                         list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
                 downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
-            self._config.tld_lists = downloaded_tld_lists_paths
-            self._logger.debug("finished tldlists download...")
+            logger.debug("finished tldlists download...")
 
     def _apply_rules(self, event, rule):
         source_field = rule.source_fields[0]
@@ -223,10 +221,8 @@ class DomainResolver(Processor):
             self.metrics.timeouts += 1
 
     def _store_debug_infos(self, event, requires_storing):
-        event["resolved_ip_debug"] = {}
-        event_dbg = event["resolved_ip_debug"]
-        if requires_storing:
-            event_dbg["obtained_from_cache"] = False
-        else:
-            event_dbg["obtained_from_cache"] = True
-        event_dbg["cache_size"] = len(self._domain_ip_map.keys())
+        event_dbg = {
+            "obtained_from_cache": not requires_storing,
+            "cache_size": len(self._domain_ip_map.keys()),
+        }
+        add_field_to(event, "resolved_ip_debug", event_dbg, overwrite_output_field=True)

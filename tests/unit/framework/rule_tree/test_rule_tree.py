@@ -48,8 +48,7 @@ class TestRuleTree:
                     "specific_rules": [],
                     "tree_config": "tests/testdata/unit/tree_config.json",
                 }
-            },
-            mock.MagicMock(),
+            }
         )
         rule_tree = RuleTree(processor_config=processor._config)
 
@@ -109,6 +108,12 @@ class TestRuleTree:
         rule_tree.add_rule(rule2)
         assert rule_tree.get_rule_id(rule) == 0
         assert rule_tree.get_rule_id(rule2) == 1
+
+        rule_dict["filter"] = "winlog: 123 AND xfoo: baz"
+        rule3 = PreDetectorRule._create_from_dict(rule_dict)
+        assert rule_tree.get_rule_id(rule) == 0
+        assert rule_tree.get_rule_id(rule2) == 1
+        assert rule_tree.get_rule_id(rule3) is None
 
     def test_match_simple(self, rule_dict):
         rule_tree = RuleTree()

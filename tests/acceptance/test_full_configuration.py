@@ -2,6 +2,7 @@
 import os
 import re
 import tempfile
+import time
 from pathlib import Path
 
 import requests
@@ -22,7 +23,7 @@ def teardown_function():
 
 
 def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
-    pipeline = get_full_pipeline(exclude=["normalizer"])
+    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.output.update({"kafka": {"type": "dummy_output", "default": False}})
     config_path = tmp_path / "generated_config.yml"
@@ -41,7 +42,7 @@ def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
 
 
 def test_start_of_logprep_with_full_configuration_http():
-    pipeline = get_full_pipeline(exclude=["normalizer"])
+    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.output.update({"kafka": {"type": "dummy_output", "default": False}})
     endpoint = "http://localhost:32000"
@@ -86,12 +87,12 @@ $LOGPREP_OUTPUT
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules:
-            - quickstart/exampledata/rules/labeler/specific
+            - examples/exampledata/rules/labeler/specific
         generic_rules:
-            - quickstart/exampledata/rules/labeler/generic
+            - examples/exampledata/rules/labeler/generic
 """,
         "LOGPREP_OUTPUT": """
 output:
@@ -121,11 +122,14 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     # requester is excluded because it tries to connect to non-existing server
     # selective_extractor is excluded because of output mismatch (rules expect kafka as output)
     # normalizer is excluded because of deprecation
-    pipeline = get_full_pipeline(exclude=["requester", "selective_extractor", "normalizer"])
+    # geoip_enricher is excluded because of missing maxmind license
+    pipeline = get_full_pipeline(
+        exclude=["requester", "selective_extractor", "normalizer", "geoip_enricher"]
+    )
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.version = "my_custom_version"
     config.config_refresh_interval = 300
-    config.metrics = {"enabled": True, "port": 8000}
+    config.metrics = {"enabled": True, "port": 8003}
     config.input = {
         "fileinput": {
             "type": "file_input",
@@ -162,9 +166,10 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
         assert "error" not in output.lower(), "error message"
         assert "critical" not in output.lower(), "error message"
         assert "exception" not in output.lower(), "error message"
-        if "Finished building pipeline" in output:
+        if "Startup complete" in output:
             break
-    response = requests.get("http://127.0.0.1:8000", timeout=5)
+    time.sleep(2)
+    response = requests.get("http://127.0.0.1:8003", timeout=7)
     response.raise_for_status()
     metrics = response.text
     expected_metrics = [

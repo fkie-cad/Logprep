@@ -3,12 +3,13 @@
 # pylint: disable=logging-fstring-interpolation
 
 import logging
+import sys
+from importlib.metadata import version
 from typing import Generator
 
 from attrs import define, field
 from schedule import Scheduler
 
-from logprep._version import get_versions
 from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
@@ -18,6 +19,7 @@ from logprep.util.configuration import (
     ConfigVersionDidNotChangeError,
     InvalidConfigurationError,
 )
+from logprep.util.defaults import EXITCODES
 
 
 class Runner:
@@ -97,9 +99,8 @@ class Runner:
 
     @property
     def _metric_labels(self) -> dict[str, str]:
-        versions = get_versions()
         labels = {
-            "logprep": f"{versions.get('version')}",
+            "logprep": f"{version('logprep')}",
             "config": f"{self._configuration.version}",
         }
         return labels
@@ -129,9 +130,10 @@ class Runner:
 
     # For production, use the get_runner method to create/get access to a singleton!
     def __init__(self, configuration: Configuration) -> None:
+        self.exit_code = EXITCODES.SUCCESS
         self._configuration = configuration
         self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
-        self._logger = logging.getLogger("Logprep Runner")
+        self._logger = logging.getLogger("Runner")
 
         self._manager = PipelineManager(configuration)
         self.scheduler = Scheduler()
@@ -148,15 +150,32 @@ class Runner:
         self._manager.restart()
         self._logger.info("Startup complete")
         self._logger.debug("Runner iterating")
+        self._iterate()
+        self._logger.info("Shutting down")
+        self._manager.stop()
+        self._logger.info("Shutdown complete")
+        if self._manager.loghandler is not None:
+            self._manager.loghandler.stop()
+        sys.exit(self.exit_code.value)
+
+    def _iterate(self):
         for _ in self._keep_iterating():
             if self._exit_received:
                 break
             self.scheduler.run_pending()
+            if self._should_exit():
+                self.exit_code = EXITCODES.PIPELINE_ERROR
+                self._logger.error("Restart count exceeded. Exiting.")
+                break
             self._manager.restart_failed_pipeline()
-        self._logger.info("Shutting down")
-        self._logger.info("Initiated shutdown")
-        self._manager.stop()
-        self._logger.info("Shutdown complete")
+
+    def _should_exit(self):
+        return all(
+            (
+                self._configuration.restart_count >= 0,
+                self._manager.restart_count >= self._configuration.restart_count,
+            )
+        )
 
     def reload_configuration(self):
         """Reloads the configuration"""
@@ -182,7 +201,7 @@ class Runner:
     def _set_version_info_metric(self):
         self.metrics.version_info.add_with_labels(
             1,
-            {"logprep": f"{get_versions()['version']}", "config": self._configuration.version},
+            {"logprep": f"{version('logprep')}", "config": self._configuration.version},
         )
 
     def stop(self):

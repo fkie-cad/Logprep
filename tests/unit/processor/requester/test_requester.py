@@ -1,5 +1,4 @@
 # pylint: disable=missing-docstring
-import logging
 import re
 
 import pytest
@@ -319,7 +318,7 @@ failure_test_cases = [
             "requester": {"url": "http://${missingfield}", "method": "GET"},
         },
         {"message": "the message"},
-        {"message": "the message", "tags": ["_requester_failure"]},
+        {"message": "the message", "tags": ["_requester_missing_field_warning"]},
         {},
         ".*ProcessingWarning.*",
     ),
@@ -346,12 +345,12 @@ class TestRequester(BaseProcessorTestCase):
         "testcase, rule, event, expected, response_kwargs, error_message", failure_test_cases
     )
     def test_requester_testcases_failure_handling(
-        self, testcase, rule, event, expected, response_kwargs, error_message, caplog
+        self, testcase, rule, event, expected, response_kwargs, error_message
     ):
         if response_kwargs:
             responses.add(responses.Response(**response_kwargs))
         self._load_specific_rule(rule)
-        with caplog.at_level(logging.WARNING):
-            self.object.process(event)
-        assert re.match(error_message, caplog.text)
+        result = self.object.process(event)
+        assert len(result.warnings) == 1
+        assert re.match(error_message, str(result.warnings[0]))
         assert event == expected, testcase

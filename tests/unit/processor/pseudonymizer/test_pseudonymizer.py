@@ -9,7 +9,13 @@ from pathlib import Path
 
 import pytest
 
+from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
+from logprep.factory_error import InvalidConfigurationError
+from logprep.util.pseudo.encrypter import (
+    DualPKCS1HybridCTREncrypter,
+    DualPKCS1HybridGCMEncrypter,
+)
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/mock_external/tld_list.dat"
@@ -22,7 +28,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "simple pseudonymization",
         {
             "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "pseudonymizer": {"mapping": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         },
         {"event_id": 1234, "something": "something"},
@@ -36,7 +42,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "pseudonymization_of_field_does_not_happen_if_already_pseudonymized",
         {
             "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "pseudonymizer": {"mapping": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         },
         {
@@ -54,7 +60,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "winlog.event_data.param1": "RE_WHOLE_FIELD",
                     "winlog.event_data.param2": "RE_WHOLE_FIELD",
                 }
@@ -87,7 +93,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": 'winlog.event_id: 789 AND winlog.provider_name: "Test123"',
             "pseudonymizer": {
-                "pseudonyms": {"winlog.event_data.param1": "RE_DOMAIN_BACKSLASH_USERNAME"}
+                "mapping": {"winlog.event_data.param1": "RE_DOMAIN_BACKSLASH_USERNAME"}
             },
         },
         {
@@ -112,7 +118,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "match replace whole field 1",
         {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_WHOLE_FIELD_CAP"}},
+            "pseudonymizer": {"mapping": {"pseudo_this": "RE_WHOLE_FIELD_CAP"}},
         },
         {
             "filter_this": "does_not_matter",
@@ -130,7 +136,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "match replace whole field 2",
         {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_WHOLE_FIELD_EMPTY_CAPS"}},
+            "pseudonymizer": {"mapping": {"pseudo_this": "RE_WHOLE_FIELD_EMPTY_CAPS"}},
         },
         {
             "filter_this": "does_not_matter",
@@ -148,7 +154,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "match_capture_group_surrounded",
         {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_CAP"}},
+            "pseudonymizer": {"mapping": {"pseudo_this": "RE_CAP"}},
         },
         {
             "filter_this": "does_not_matter",
@@ -168,7 +174,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "match_capture_group_right",
         {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_PATTERN_CAP"}},
+            "pseudonymizer": {"mapping": {"pseudo_this": "RE_PATTERN_CAP"}},
         },
         {
             "filter_this": "does_not_matter",
@@ -187,7 +193,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "match_capture_group_left",
         {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_CAP_PATTERN"}},
+            "pseudonymizer": {"mapping": {"pseudo_this": "RE_CAP_PATTERN"}},
         },
         {
             "filter_this": "does_not_matter",
@@ -206,7 +212,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "match_two_capture_groups_covering_match",
         {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_TWO_CAPS"}},
+            "pseudonymizer": {"mapping": {"pseudo_this": "RE_TWO_CAPS"}},
         },
         {
             "filter_this": "does_not_matter",
@@ -225,7 +231,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "match_two_capture_groups_with_gap",
         {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_TWO_CAPS_WITH_GAP"}},
+            "pseudonymizer": {"mapping": {"pseudo_this": "RE_TWO_CAPS_WITH_GAP"}},
         },
         {
             "filter_this": "does_not_matter",
@@ -246,7 +252,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -269,7 +275,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -291,7 +297,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -313,7 +319,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -337,7 +343,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -363,7 +369,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -386,7 +392,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -412,7 +418,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -439,7 +445,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -464,7 +470,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -486,7 +492,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -512,7 +518,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -534,7 +540,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "mapping": {"pseudo_this": "RE_ALL_NO_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -557,7 +563,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "pseudo_this": "RE_ALL_NO_CAP",
                     "and_pseudo_this": "RE_ALL_NO_CAP",
                 },
@@ -589,7 +595,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_CAP"},
+                "mapping": {"pseudo_this": "RE_CAP"},
                 "url_fields": ["pseudo_this"],
             },
         },
@@ -614,7 +620,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "pseudo_this",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "pseudo_this": "RE_WHOLE_FIELD",
                 }
             },
@@ -634,7 +640,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "pseudo_this",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "pseudo_this": "RE_WHOLE_FIELD",
                 }
             },
@@ -655,7 +661,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "pseudo_this",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "pseudo_this": "RE_WHOLE_FIELD",
                 }
             },
@@ -676,7 +682,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         {
             "filter": "pseudo_this",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "pseudo_this": "RE_DOMAIN_BACKSLASH_USERNAME",
                 }
             },
@@ -747,9 +753,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         config |= config_change
         if error:
             with pytest.raises(error, match=msg):
-                Factory.create({"name": config}, self.logger)
+                Factory.create({"name": config})
         else:
-            Factory.create({"name": config}, self.logger)
+            Factory.create({"name": config})
 
     @pytest.mark.parametrize("testcase, rule, event, expected, regex_mapping", test_cases)
     def test_testcases(self, testcase, rule, event, expected, regex_mapping):
@@ -762,14 +768,16 @@ class TestPseudonymizer(BaseProcessorTestCase):
     def test_tld_extractor_uses_file(self):
         config = deepcopy(self.CONFIG)
         config["tld_lists"] = [TLD_LIST]
-        object_with_tld_list = Factory.create({"pseudonymizer": config}, self.logger)
+        object_with_tld_list = Factory.create({"pseudonymizer": config})
         assert len(object_with_tld_list._tld_extractor.suffix_list_urls) == 1
         assert object_with_tld_list._tld_extractor.suffix_list_urls[0].endswith(
             "tests/testdata/mock_external/tld_list.dat",
         )
 
     def _load_specific_rule(self, rule):
-        self.object._config.regex_mapping = self.regex_mapping
+        config = deepcopy(self.CONFIG)
+        config["regex_mapping"] = self.regex_mapping
+        self.object = Factory.create({"pseudonymizer": config})
         super()._load_specific_rule(rule)
         self.object.setup()
 
@@ -785,7 +793,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
         rule = {
             "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {"pseudonyms": {"pseudo_this": regex_pattern}},
+            "pseudonymizer": {"mapping": {"pseudo_this": regex_pattern}},
             "url_fields": ["do_not_pseudo_this"],
         }
         self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
@@ -798,7 +806,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
     def test_replace_regex_keywords_by_regex_expression_is_idempotent(self):
         rule_dict = {
             "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "pseudonymizer": {"mapping": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         }
         self._load_specific_rule(rule_dict)  # First call
@@ -808,8 +816,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert self.object._specific_tree.rules[0].pseudonyms == {"something": expected_pattern}
 
     def test_pseudonymize_string_adds_pseudonyms(self):
+        self.object.result = ProcessorResult(processor_name="test")
         assert self.object._pseudonymize_string("foo").startswith("<pseudonym:")
-        assert len(self.object.pseudonyms) == 1
+        assert len(self.object.result.data) == 1
 
     def test_resolve_from_cache_pseudonym(self):
         self.object.metrics.new_results = 0
@@ -818,7 +827,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "winlog.event_data.param1": "RE_WHOLE_FIELD",
                     "winlog.event_data.param2": "RE_WHOLE_FIELD",
                 }
@@ -847,7 +856,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         rule_dict = {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "pseudo_this": "RE_ALL_NO_CAP",
                     "and_pseudo_this": "RE_ALL_NO_CAP",
                 },
@@ -903,13 +912,14 @@ class TestPseudonymizer(BaseProcessorTestCase):
         ],
     )
     def test_pseudonymize_url(self, url, expected):
+        self.object.result = ProcessorResult(processor_name="test")
         assert self.object._pseudonymize_url(url) == expected
 
     def test_process_returns_extra_output(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "winlog.event_data.param1": "RE_WHOLE_FIELD",
                 }
             },
@@ -926,17 +936,17 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)  # First call
         extra_output = self.object.process(event)
-        assert extra_output
-        assert isinstance(extra_output, tuple)
-        assert len(extra_output) == 2
-        assert isinstance(extra_output[0], list)
-        assert isinstance(extra_output[1], tuple)
-        assert isinstance(extra_output[1][0], dict)
-        assert extra_output[1][0] == {"kafka": "topic"}, "Output is set as in CONFIG"
-        assert len(extra_output[0]) == 1, "Should contain only one pseudonym"
-        assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
-        assert extra_output[0][0].get("origin"), "encrypted original is set"
-        assert extra_output[0][0].get("@timestamp"), "timestamp is set if present in event"
+        assert extra_output.data
+        assert isinstance(extra_output.data, list)
+        assert isinstance(extra_output, ProcessorResult)
+        assert isinstance(extra_output.data[0], tuple)
+        assert isinstance(extra_output.data[0][0], dict)
+        assert isinstance(extra_output.data[0][1], tuple)
+        assert extra_output.data[0][1] == ({"kafka": "topic"},), "Output is set as in CONFIG"
+        assert len(extra_output.data) == 1, "Should contain only one pseudonym"
+        assert extra_output.data[0][0].get("pseudonym"), "pseudonym is set"
+        assert extra_output.data[0][0].get("origin"), "encrypted original is set"
+        assert extra_output.data[0][0].get("@timestamp"), "timestamp is set if present in event"
 
     def test_extra_output_contains_only_one_pseudonym_even_if_pseudonym_appears_multiple_times_in_event(
         self,
@@ -944,7 +954,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "winlog.event_data.param1": "RE_WHOLE_FIELD",
                     "winlog.event_data.param2": "RE_WHOLE_FIELD",
                 }
@@ -964,24 +974,25 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(rule_dict)  # First call
         extra_output = self.object.process(event)
         assert extra_output
-        assert isinstance(extra_output, tuple)
-        assert len(extra_output) == 2
-        assert isinstance(extra_output[0], list)
-        assert isinstance(extra_output[1], tuple)
-        assert isinstance(extra_output[1][0], dict)
-        assert extra_output[1][0] == {"kafka": "topic"}, "Output is set as in CONFIG"
+        assert isinstance(extra_output.data, list)
+        assert len(extra_output.data[0]) == 2
+        assert isinstance(extra_output.data[0], tuple)
+        assert isinstance(extra_output.data[0][0], dict)
+        assert isinstance(extra_output.data[0][1], tuple)
+        assert isinstance(extra_output.data[0][1][0], dict)
+        assert extra_output.data[0][1] == ({"kafka": "topic"},), "Output is set as in CONFIG"
         assert (
-            len(extra_output[0]) == 1
+            len(extra_output.data) == 1
         ), "Should contain only one pseudonym, as the value for both is the same"
-        assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
-        assert extra_output[0][0].get("origin"), "encrypted original is set"
-        assert extra_output[0][0].get("@timestamp"), "timestamp is set if present in event"
+        assert extra_output.data[0][0].get("pseudonym"), "pseudonym is set"
+        assert extra_output.data[0][0].get("origin"), "encrypted original is set"
+        assert extra_output.data[0][0].get("@timestamp"), "timestamp is set if present in event"
 
     def test_extra_output_contains_different_pseudonyms_for_different_values(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "winlog.event_data.param1": "RE_WHOLE_FIELD",
                     "winlog.event_data.param2": "RE_WHOLE_FIELD",
                 }
@@ -1000,32 +1011,36 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)  # First call
         extra_output = self.object.process(event)
-        assert extra_output
-        assert isinstance(extra_output, tuple)
-        assert len(extra_output) == 2
-        assert isinstance(extra_output[0], list)
-        assert isinstance(extra_output[1], tuple)
-        assert isinstance(extra_output[1][0], dict)
-        assert extra_output[1][0] == {"kafka": "topic"}, "Output is set as in CONFIG"
-        assert len(extra_output[0]) == 2, "Should contain two pseudonyms, for each value one"
-        assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
-        assert extra_output[0][0].get("origin"), "encrypted original is set"
-        assert extra_output[0][0].get("@timestamp"), "timestamp is set if present in event"
-        assert extra_output[0][1].get("pseudonym"), "pseudonym is set"
-        assert extra_output[0][1].get("origin"), "encrypted original is set"
-        assert extra_output[0][1].get("@timestamp"), "timestamp is set if present in event"
-        assert extra_output[0][0].get("pseudonym") != extra_output[0][1].get(
+        assert extra_output.data
+        assert isinstance(extra_output.data, list)
+        assert len(extra_output.data) == 2
+        assert isinstance(extra_output.data[0], tuple)  # First item of extra_output
+        assert isinstance(extra_output.data[0][0], dict)  # Pseudonym
+        assert isinstance(extra_output.data[0][1], tuple)  # Outputs
+        assert isinstance(extra_output.data[0][1][0], dict)  # Output
+        assert extra_output.data[0][1] == ({"kafka": "topic"},), "Output is set as in CONFIG"
+        assert len(extra_output.data) == 2, "Should contain two pseudonyms, for each value one"
+
+        pseudonym_1 = extra_output.data[0][0]
+        assert pseudonym_1.get("pseudonym"), "pseudonym is set"
+        assert pseudonym_1.get("origin"), "encrypted original is set"
+        assert pseudonym_1.get("@timestamp"), "timestamp is set if present in event"
+
+        pseudonym_2 = extra_output.data[1][0]
+        assert pseudonym_2.get("pseudonym"), "pseudonym is set"
+        assert pseudonym_2.get("origin"), "encrypted original is set"
+        assert pseudonym_2.get("@timestamp"), "timestamp is set if present in event"
+
+        assert pseudonym_1.get("pseudonym") != pseudonym_2.get(
             "pseudonym"
         ), "pseudonyms should differ"
-        assert extra_output[0][0].get("origin") != extra_output[0][1].get(
-            "origin"
-        ), "origins should differ"
+        assert pseudonym_1.get("origin") != pseudonym_2.get("origin"), "origins should differ"
 
-    def test_ignores_missing_field(self):
+    def test_ignores_missing_field_but_add_warning(self):
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
-                "pseudonyms": {
+                "mapping": {
                     "does_not_exists": "RE_WHOLE_FIELD",
                     "winlog.event_data.param2": "RE_WHOLE_FIELD",
                 }
@@ -1044,5 +1059,33 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         extra_output = self.object.process(event)
-        assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
-        assert len(extra_output[1]) == 1, "only ONE pseudonym is set"
+        assert extra_output.data[0][0].get("pseudonym"), "pseudonym is set"
+        assert "_pseudonymizer_missing_field_warning" in event.get("tags", [])
+        assert len(extra_output.data) == 1, "only ONE pseudonym is set"
+
+    @pytest.mark.parametrize(
+        "mode, encrypter_class",
+        [("CTR", DualPKCS1HybridCTREncrypter), ("GCM", DualPKCS1HybridGCMEncrypter)],
+    )
+    def test_uses_encrypter(self, mode, encrypter_class):
+        config = deepcopy(self.CONFIG)
+        config["mode"] = mode
+        object_with_encrypter = Factory.create({"pseudonymizer": config})
+        assert isinstance(object_with_encrypter._encrypter, encrypter_class)
+
+    def test_setup_raises_invalid_configuration_on_missing_regex_mapping(self):
+        rule_dict = {
+            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
+            "pseudonymizer": {
+                "mapping": {
+                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                }
+            },
+        }
+        self._load_specific_rule(rule_dict)
+        self.object._specific_rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
+        error_message = (
+            r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping '.*\/regex_mapping.yml'"
+        )
+        with pytest.raises(InvalidConfigurationError, match=error_message):
+            self.object.setup()

@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
 import json
+import os
 import uuid
 from logging import getLogger
 from pathlib import Path
@@ -17,14 +18,18 @@ from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
     InvalidConfigurationErrors,
+    LoggerConfig,
     MetricsConfig,
 )
+from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from logprep.util.getter import FileGetter, GetterNotFoundError
 from tests.testdata.metadata import (
     path_to_config,
     path_to_invalid_config,
     path_to_only_output_config,
 )
+
+in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
 
 logger = getLogger()
 
@@ -45,7 +50,7 @@ class TestConfiguration:
             ("config_refresh_interval", type(None), None),
             ("process_count", int, 1),
             ("timeout", float, 5.0),
-            ("logger", dict, {"level": "INFO"}),
+            ("logger", LoggerConfig, LoggerConfig(**{"level": "INFO"})),
             ("pipeline", list, []),
             ("input", dict, {}),
             ("output", dict, {}),
@@ -74,20 +79,18 @@ class TestConfiguration:
     @pytest.mark.parametrize(
         "attribute, first_value, second_value",
         [
-            ("version", "1", "2"),
             ("config_refresh_interval", 0, 900),
             ("process_count", 1, 2),
             ("timeout", 1.0, 2.0),
-            ("logger", {"level": "INFO"}, {"level": "DEBUG"}),
             (
                 "metrics",
-                {"enabled": False, "port": 8000},
-                {"enabled": True, "port": 9000},
+                {"enabled": False, "port": 8000, "uvicorn_config": {"access_log": True}},
+                {"enabled": True, "port": 9000, "uvicorn_config": {"access_log": False}},
             ),
             (
                 "metrics",
                 {"enabled": False, "port": 8000},
-                {"enabled": True, "port": 9000},
+                {"enabled": True, "port": 9000, "uvicorn_config": {}},
             ),
         ],
     )
@@ -126,6 +129,40 @@ output:
             else:
                 assert attribute_from_test == second_value
 
+    def test_get_last_value_logger_config(self, tmp_path):
+        attribute = "logger"
+        first_value = {"level": "INFO"}
+        second_value = {"level": "DEBUG"}
+        first_config = tmp_path / "pipeline.yml"
+        first_config.write_text(
+            f"""
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+{attribute}: {first_value}
+"""
+        )
+        second_config = tmp_path / "pipeline2.yml"
+        second_config.write_text(
+            f"""
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+{attribute}: {second_value}
+"""
+        )
+        config = Configuration.from_sources([str(first_config), str(second_config)])
+        assert config.logger.level == "DEBUG"
+        assert config.logger.loggers.get("root").get("level") == "DEBUG"
+
     @pytest.mark.parametrize(
         "attribute, value, expected_error, expected_message",
         [
@@ -162,7 +199,7 @@ output:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules: []
         generic_rules: []
@@ -343,9 +380,9 @@ pipeline:
                         {
                             "labelername": {
                                 "type": "labeler",
-                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
                             }
                         }
                     ]
@@ -359,10 +396,10 @@ pipeline:
                         {
                             "labelername": {
                                 "type": "labeler",
-                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
-                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["examples/exampledata/rules/labeler/generic"],
                                 "SOME_UNKNOWN_OPTION": "FOO",
                             }
                         }
@@ -377,10 +414,10 @@ pipeline:
                         {
                             "labelername": {
                                 "type": "labeler",
-                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
-                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["examples/exampledata/rules/labeler/generic"],
                                 "SOME UNKNOWN OPTION": "FOO",
                             }
                         }
@@ -410,10 +447,10 @@ pipeline:
                         {
                             "labelername": {
                                 "type": "labeler",
-                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
-                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["examples/exampledata/rules/labeler/generic"],
                                 "SOME UNKNOWN OPTION": "FOO",
                             }
                         },
@@ -489,12 +526,12 @@ pipeline:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules:
-            - quickstart/exampledata/rules/labeler/specific
+            - examples/exampledata/rules/labeler/specific
         generic_rules:
-            - quickstart/exampledata/rules/labeler/generic
+            - examples/exampledata/rules/labeler/generic
 """,
             "LOGPREP_OUTPUT": """
 output:
@@ -746,7 +783,7 @@ logger:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules: []
         generic_rules: []
@@ -771,7 +808,7 @@ logger:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules: []
         generic_rules: []
@@ -820,7 +857,7 @@ logger:
 pipeline:
     - labelername:
         type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
+        schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         specific_rules: []
         generic_rules: []
@@ -1115,6 +1152,139 @@ output:
             ):
                 config._verify_environment()
 
+    def test_versions_are_aggregated_for_multiple_configs(self, tmp_path):
+        dummy_config = {
+            "input": {"dummy": {"type": "dummy_input", "documents": []}},
+            "output": {"dummy": {"type": "dummy_output"}},
+        }
+        config1 = Configuration(version="first", **dummy_config)
+        config1_path = tmp_path / "config1.yml"
+        config1_path.write_text(config1.as_yaml())
+
+        config2 = Configuration(version="second", **dummy_config)
+        config2_path = tmp_path / "config2.yml"
+        config2_path.write_text(config2.as_yaml())
+
+        config = Configuration.from_sources([str(config1_path), str(config2_path)])
+        assert config.version == "first, second"
+
+    def test_versions_are_aggregated_for_multiple_configs_with_first_unset(self, tmp_path):
+        dummy_config = {
+            "input": {"dummy": {"type": "dummy_input", "documents": []}},
+            "output": {"dummy": {"type": "dummy_output"}},
+        }
+        config1 = Configuration(**dummy_config)
+        config1_path = tmp_path / "config1.yml"
+        config1_path.write_text(config1.as_yaml())
+
+        config2 = Configuration(version="second", **dummy_config)
+        config2_path = tmp_path / "config2.yml"
+        config2_path.write_text(config2.as_yaml())
+
+        config = Configuration.from_sources([str(config1_path), str(config2_path)])
+        assert config.version == "unset, second"
+
+    def test_versions_are_aggregated_for_multiple_configs_with_second_unset(self, tmp_path):
+        dummy_config = {
+            "input": {"dummy": {"type": "dummy_input", "documents": []}},
+            "output": {"dummy": {"type": "dummy_output"}},
+        }
+        config1 = Configuration(version="first", **dummy_config)
+        config1_path = tmp_path / "config1.yml"
+        config1_path.write_text(config1.as_yaml())
+
+        config2 = Configuration(**dummy_config)
+        config2_path = tmp_path / "config2.yml"
+        config2_path.write_text(config2.as_yaml())
+
+        config = Configuration.from_sources([str(config1_path), str(config2_path)])
+        assert config.version == "first, unset"
+
+    def test_verify_credentials_file_raises_for_unexpected_key(self, config_path, tmp_path):
+        credential_file_path = tmp_path / "credentials.yml"
+        credential_file_path.write_text(
+            """---
+endpoints:
+    /some/auth/endpoint:
+        username: test_user
+        password: myverysecretpassword
+"""
+        )
+        mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
+        with mock.patch.dict("os.environ", mock_env):
+            with pytest.raises(
+                InvalidConfigurationError,
+                match="Invalid credentials file.* unexpected keyword argument",
+            ):
+                _ = Configuration.from_sources([str(config_path)])
+
+    @pytest.mark.skipif(in_ci, reason="breaks on broken ci runner")
+    def test_no_config_parameter_is_overwritten_with_a_default(self, tmp_path):
+        prometheus_multiproc_dir: Path = tmp_path / "prometheus_multiproc_dir"
+        prometheus_multiproc_dir.mkdir()
+        exporter_config = tmp_path / "exporter-config"
+        exporter_config.write_text(
+            """
+metrics:
+  enabled: true
+  port: 8000
+"""
+        )
+        input_config = tmp_path / "input-config"
+        input_config.write_text(
+            """
+input:
+  stdin:
+    type: file_input
+    logfile_path: /proc/1/fdinfo/0
+    start: end
+    watch_file: true
+    interval: 1
+"""
+        )
+
+        output_config = tmp_path / "output-config"
+        output_config.write_text(
+            """
+output:
+  console:
+    type: console_output
+"""
+        )
+        with mock.patch.dict(
+            "os.environ", {"PROMETHEUS_MULTIPROC_DIR": str(prometheus_multiproc_dir)}
+        ):
+            config1 = Configuration.from_sources(
+                [str(input_config), str(output_config), str(exporter_config)]
+            )
+            assert config1.metrics.enabled
+
+            config1 = Configuration.from_sources(
+                [str(exporter_config), str(input_config), str(output_config)]
+            )
+            assert config1.metrics.enabled
+
+            config1 = Configuration.from_sources(
+                [str(input_config), str(exporter_config), str(output_config)]
+            )
+            assert config1.metrics.enabled
+
+    def test_verify_calls_processor_setup(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        with mock.patch("logprep.abc.processor.Processor.setup") as mocked_setup:
+            config._verify()
+            mocked_setup.assert_called()
+
+    def test_verify_prints_file_not_found_errors_with_filename(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        with mock.patch(
+            "logprep.abc.processor.Processor.setup", side_effect=lambda: open("not_existing_file")
+        ):
+            with pytest.raises(
+                InvalidConfigurationError, match="File not found: not_existing_file"
+            ):
+                config._verify()
+
 
 class TestInvalidConfigurationErrors:
     @pytest.mark.parametrize(
@@ -1175,3 +1345,21 @@ class TestInvalidConfigurationErrors:
         error = InvalidConfigurationErrors(error_list)
         assert len(error.errors) == len(expected_error_list)
         assert error.errors == expected_error_list
+
+
+class TestLoggerConfig:
+
+    @pytest.mark.parametrize("kwargs", [{"level": "DEBUG"}, {"level": "INFO"}])
+    def test_logger_config_sets_global_level(self, kwargs):
+        config = LoggerConfig(**kwargs)
+        assert config.loggers.get("root").get("level") == kwargs.get("level")
+        assert config.loggers.get("opensearch").get("level") == "ERROR"
+
+    @pytest.mark.parametrize("kwargs", [{"loggers": {"logprep": {"level": "DEBUG"}}}])
+    def test_loggers_config_only_sets_level(self, kwargs):
+        config = LoggerConfig(**kwargs)
+        assert config.loggers.get("root").get("level") == "INFO", "should be default"
+        assert config.loggers.get("root").get("handlers") == [
+            "queue",
+        ], "should be default"
+        assert config.loggers.get("opensearch").get("level") == "ERROR", "should be default"

@@ -9,26 +9,36 @@ jobs:
     runs-on: ubuntu-latest
     name: Build Logprep
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Initialize Python
         uses: actions/setup-python@v1
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip wheel
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
+
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel
+
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse --archs x86_64
 
       - name: Build binary wheel and a source tarball
-        run: python setup.py sdist bdist_wheel
+        run: pipx run build --sdist
+
+      - name: copy artifacts to dist folder
+        run: cp ./wheelhouse/* ./dist/
 
       - name: Upload Artifact for next job
         uses: actions/upload-artifact@master
         with:
           name: logprep-build
           path: dist
-    
+
   publish-latest-release-to-pypi:
     runs-on: ubuntu-latest
     name: Publish release to PyPi
@@ -52,13 +62,14 @@ jobs:
   containerbuild:
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12.3"]
 
     runs-on: ubuntu-latest
     needs: publish-latest-release-to-pypi
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -67,9 +78,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image
+      - name: Build images
         uses: docker/build-push-action@v3
         with:
+          context: .
           push: true # Will only build if this is not here
           build-args: |
             LOGPREP_VERSION=${{ github.ref_name }}

@@ -1,0 +1,5 @@
+{
+  "KEYCLOAK_URL": "http://localhost:8080",
+  "KEYCLOAK_REALM": "logprep",
+  "KEYCLOAK_CLIENT_ID": "ucl"
+}

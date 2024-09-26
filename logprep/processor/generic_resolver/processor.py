@@ -24,24 +24,28 @@ Processor Configuration
 
 .. automodule:: logprep.processor.generic_resolver.rule
 """
-import re
-from logging import Logger
 
-from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExistsWarning
+import re
+from typing import Union
+
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+)
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class GenericResolverError(BaseException):
+class GenericResolverError(ProcessingCriticalError):
     """Base class for GenericResolver related exceptions."""
 
-    def __init__(self, name: str, message: str):
-        super().__init__(f"GenericResolver ({name}): {message}")
+    def __init__(self, name: str, message: str, rule: GenericResolverRule, event: dict):
+        super().__init__(f"{name}: {message}", rule=rule, event=event)
 
 
-class GenericResolver(Processor):
+class GenericResolver(FieldManager):
     """Resolve values in documents by referencing a mapping list."""
 
     __slots__ = ["_replacements_from_file"]
@@ -50,78 +54,85 @@ class GenericResolver(Processor):
 
     rule_class = GenericResolverRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: Processor.Config,
-        logger: Logger,
-    ):
-        super().__init__(name=name, configuration=configuration, logger=logger)
+    def __init__(self, name: str, configuration: FieldManager.Config):
+        super().__init__(name=name, configuration=configuration)
         self._replacements_from_file = {}
 
     def _apply_rules(self, event, rule):
         """Apply the given rule to the current event"""
         conflicting_fields = []
-
         self.ensure_rules_from_file(rule)
 
-        for resolve_source, resolve_target in rule.field_mapping.items():
-            keys = resolve_target.split(".")
-            src_val = get_dotted_field_value(event, resolve_source)
+        source_values = []
+        for source_field, target_field in rule.field_mapping.items():
+            source_value = get_dotted_field_value(event, source_field)
+            source_values.append(source_value)
+            if source_value is None:
+                continue
 
-            if rule.resolve_from_file and src_val:
+            # FILE
+            if rule.resolve_from_file:
                 pattern = f'^{rule.resolve_from_file["pattern"]}$'
                 replacements = self._replacements_from_file[rule.resolve_from_file["path"]]
-                matches = re.match(pattern, src_val)
+                matches = re.match(pattern, source_value)
                 if matches:
                     mapping = matches.group("mapping") if "mapping" in matches.groupdict() else None
                     if mapping is None:
                         raise GenericResolverError(
                             self.name,
                             "Mapping group is missing in mapping file pattern!",
+                            rule=rule,
+                            event=event,
                         )
                     dest_val = replacements.get(mapping)
                     if dest_val:
-                        for idx, key in enumerate(keys):
-                            if key not in event:
-                                if idx == len(keys) - 1:
-                                    if rule.append_to_list:
-                                        event[key] = event.get("key", [])
-                                        if dest_val not in event[key]:
-                                            event[key].append(dest_val)
-                                    else:
-                                        event[key] = dest_val
-                                    break
-                                event[key] = {}
-                            if isinstance(event[key], dict):
-                                event = event[key]
-                            else:
-                                if rule.append_to_list and isinstance(event[key], list):
-                                    if dest_val not in event[key]:
-                                        event[key].append(dest_val)
-                                else:
-                                    conflicting_fields.append(keys[idx])
+                        success = self._add_uniquely_to_list(event, rule, target_field, dest_val)
+                        if not success:
+                            conflicting_fields.append(target_field)
 
+            # LIST
             for pattern, dest_val in rule.resolve_list.items():
-                if src_val and re.search(pattern, src_val):
-                    for idx, key in enumerate(keys):
-                        if key not in event:
-                            if idx == len(keys) - 1:
-                                if rule.append_to_list:
-                                    event[key] = event.get("key", [])
-                                    event[key].append(dest_val)
-                                else:
-                                    event[key] = dest_val
-                                break
-                            event[key] = {}
-                        if isinstance(event[key], dict):
-                            event = event[key]
-                        else:
-                            conflicting_fields.append(keys[idx])
+                if re.search(pattern, source_value):
+                    success = add_field_to(
+                        event,
+                        target_field,
+                        dest_val,
+                        extends_lists=rule.extend_target_list,
+                        overwrite_output_field=rule.overwrite_target,
+                    )
+                    if not success:
+                        conflicting_fields.append(target_field)
                     break
-
+        self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_values)
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
+
+    @staticmethod
+    def _add_uniquely_to_list(
+        event: dict,
+        rule: GenericResolverRule,
+        target: str,
+        content: Union[str, float, int, list, dict],
+    ) -> bool:
+        """Extend list if content is not already in the list"""
+        add_success = True
+        target_val = get_dotted_field_value(event, target)
+        target_is_list = isinstance(target_val, list)
+        if rule.extend_target_list and not target_is_list:
+            empty_list = []
+            add_success &= add_field_to(
+                event,
+                target,
+                empty_list,
+                overwrite_output_field=rule.overwrite_target,
+            )
+            if add_success:
+                target_is_list = True
+                target_val = empty_list
+        if target_is_list and content in target_val:
+            return add_success
+        add_success = add_field_to(event, target, content, extends_lists=rule.extend_target_list)
+        return add_success
 
     def ensure_rules_from_file(self, rule):
         """loads rules from file"""
@@ -139,9 +150,13 @@ class GenericResolver(Processor):
                             f"Additions file "
                             f'\'{rule.resolve_from_file["path"]}\''
                             f" must be a dictionary with string values!",
+                            rule=rule,
+                            event=None,
                         )
                 except FileNotFoundError as error:
                     raise GenericResolverError(
                         self.name,
                         f'Additions file \'{rule.resolve_from_file["path"]}' f"' not found!",
+                        rule=rule,
+                        event=None,
                     ) from error

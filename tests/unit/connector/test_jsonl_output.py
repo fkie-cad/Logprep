@@ -1,18 +1,21 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import copy
+import tempfile
 from unittest import mock
 
 from logprep.connector.jsonl.output import JsonlOutput
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
 
 
 class TestJsonlOutputOutput(BaseOutputTestCase):
     CONFIG = {
         "type": "jsonl_output",
-        "output_file": "does/not/matter",
-        "output_file_custom": "custom_file",
-        "output_file_error": "error_file",
+        "output_file": f"{tempfile.gettempdir()}/output.jsonl",
+        "output_file_custom": f"{tempfile.gettempdir()}/custom_file",
+        "output_file_error": f"{tempfile.gettempdir()}/error_file",
     }
 
     def setup_method(self) -> None:
@@ -53,7 +56,7 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
     @mock.patch("logprep.connector.jsonl.output.JsonlOutput._write_json")
     def test_write_document_to_file_on_store(self, _):
         self.object.store(self.document)
-        self.object._write_json.assert_called_with("does/not/matter", self.document)
+        self.object._write_json.assert_called_with("/tmp/output.jsonl", self.document)
 
     @mock.patch("logprep.connector.jsonl.output.JsonlOutput._write_json")
     def test_write_document_to_file_on_store_custom(self, _):
@@ -68,15 +71,15 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
         self.object.store(self.document)
         assert self.object._write_json.call_count == 2
         assert self.object._write_json.call_args_list == [
-            mock.call("does/not/matter", {"message": "test message"}),
-            mock.call("does/not/matter", {"message": "test message"}),
+            mock.call("/tmp/output.jsonl", {"message": "test message"}),
+            mock.call("/tmp/output.jsonl", {"message": "test message"}),
         ]
 
     @mock.patch("logprep.connector.jsonl.output.JsonlOutput._write_json")
     def test_store_failed_writes_errors(self, _):
         self.object.store_failed("my error message", self.document, self.document)
         self.object._write_json.assert_called_with(
-            "error_file",
+            f"{tempfile.gettempdir()}/error_file",
             {
                 "error_message": "my error message",
                 "document_received": {"message": "test message"},
@@ -91,8 +94,10 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
 
     @mock.patch("builtins.open")
     def test_setup_creates_single_file_if_only_output_file(self, mock_open):
-        self.object._config.output_file_custom = ""
-        self.object._config.output_file_error = ""
+        config = copy.deepcopy(self.CONFIG)
+        config["output_file_custom"] = ""
+        config["output_file_error"] = ""
+        self.object = Factory.create({"Test Instance Name": config})
         self.object.setup()
         mock_open.assert_called()
         assert mock_open.call_count == 1

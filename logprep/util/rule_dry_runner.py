@@ -11,12 +11,7 @@ The output is displayed in the console and changes made by Logprep are being hig
 ..  code-block:: bash
     :caption: Directly with Python
 
-    PYTHONPATH="." python3 logprep/run_logprep.py test dry-run $CONFIG $EVENTS
-
-..  code-block:: bash
-    :caption: With a PEX file
-
-    logprep.pex test dry-run $CONFIG $EVENTS
+    logprep test dry-run $CONFIG $EVENTS
 
 Where :code:`$CONFIG` is the path to a configuration file
 (see :ref:`configuration`).
@@ -29,36 +24,45 @@ A single log message can be provided with a file containing a plain json or wrap
 (beginning with `[` and ending with `]`).
 For multiple events it must be a list wrapped inside brackets, while each log object separated by a
 comma.
-By specifying the parameter :code:`--dry-run-input-type jsonl` a list of JSON lines can be used
+By specifying the parameter :code:`--input-type jsonl` a list of JSON lines can be used
 instead.
-Additional output, like pseudonyms, will be printed if :code:`--dry-run-full-output` is added.
+Additional output, like pseudonyms, will be printed if :code:`--full-output` is added.
 
 ..  code-block:: bash
     :caption: Example for execution with a JSON lines file (dry-run-input-type jsonl) printing all results, including pseudonyms (dry-run-full-output)
 
-    logprep.pex tests/testdata/config/config-dry-run.yml --dry-run tests/testdata/input_logdata/wineventlog_raw.jsonl --dry-run-input-type jsonl --dry-run-full-output
+    logprep test dry-run ./tests/testdata/config/config.yml tests/testdata/input_logdata/wineventlog_raw.jsonl --input-type jsonl --full-output 1
 """
 
 import json
+import logging
 import shutil
 import tempfile
 from copy import deepcopy
 from difflib import ndiff
 from functools import cached_property
-from pathlib import Path
+from typing import Dict, List
 
 from colorama import Back, Fore
 from ruamel.yaml import YAML
 
-from logprep.framework.pipeline import Pipeline
-from logprep.util.auto_rule_tester.auto_rule_corpus_tester import (
-    align_extra_output_formats,
-)
+from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import color_print_line, color_print_title, recursive_compare
 
 yaml = YAML(typ="safe", pure=True)
+
+
+def convert_extra_data_format(extra_outputs) -> List[Dict]:
+    """
+    Converts the format of the extra data outputs such that it is a list of dicts, where the
+    output target is the key and the values are the actual outputs.
+    """
+    reformatted_extra_outputs = []
+    for value, key in extra_outputs:
+        reformatted_extra_outputs.append({str(key): value})
+    return reformatted_extra_outputs
 
 
 class DryRunner:
@@ -95,21 +99,22 @@ class DryRunner:
         return document_getter.get_jsonl()
 
     def __init__(
-        self, input_file_path: str, config: Configuration, full_output: bool, use_json: bool, logger
+        self, input_file_path: str, config: Configuration, full_output: bool, use_json: bool
     ):
         self._input_file_path = input_file_path
         self._config = config
         self._full_output = full_output
         self._use_json = use_json
-        self._logger = logger
+        self._logger = logging.getLogger("DryRunner")
 
     def run(self):
         """Run the dry runner."""
         transformed_cnt = 0
         output_count = 0
         for input_document in self._input_documents:
-            test_output, test_output_custom = self._pipeline.process_pipeline()
-            test_output_custom = align_extra_output_formats(test_output_custom)
+            result: PipelineResult = self._pipeline.process_pipeline()
+            test_output = result.event
+            test_output_custom = convert_extra_data_format(result.data)
             if test_output:
                 output_count += 1
             diff = self._print_output_results(input_document, test_output, test_output_custom)

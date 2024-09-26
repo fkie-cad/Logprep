@@ -28,8 +28,9 @@ Processor Configuration
 
 .. automodule:: logprep.processor.field_manager.rule
 """
+
 import itertools
-from typing import Any, List, Tuple
+from collections import namedtuple
 
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -101,40 +102,80 @@ class FieldManager(Processor):
             raise FieldExistsWarning(rule, event, unsuccessful_targets)
 
     def _write_to_single_target(self, args, extend_target_list, overwrite_target, rule):
-        if extend_target_list and overwrite_target:
-            self._overwrite_with_list_from_source_field_values(*args)
-        if extend_target_list and not overwrite_target:
-            self._overwrite_with_list_from_source_field_values_include_target_field_value(*args)
-        if not extend_target_list and overwrite_target:
-            self._overwrite_target_with_source_field_values(*args)
-        if not extend_target_list and not overwrite_target:
-            self._add_field_to(*args, rule=rule)
+        event, target_field, source_fields_values = args
+        target_field_value = get_dotted_field_value(event, target_field)
+        State = namedtuple(
+            "State",
+            ["overwrite", "extend", "single_source_element", "target_is_list", "target_is_none"],
+        )
+        state = State(
+            overwrite=overwrite_target,
+            extend=extend_target_list,
+            single_source_element=len(source_fields_values) == 1,
+            target_is_list=isinstance(target_field_value, list),
+            target_is_none=target_field_value is None,
+        )
+        if state.single_source_element and not state.extend:
+            source_fields_values = source_fields_values.pop()
 
-    def _add_field_to(self, *args, rule):
-        event, target_field, field_values = args
-        if len(field_values) == 1:
-            field_values = field_values.pop()
-        successful = add_field_to(event, target_field, field_values, False, False)
-        if not successful:
-            raise FieldExistsWarning(rule, event, [target_field])
+        match state:
+            case State(
+                extend=True, overwrite=True, single_source_element=False, target_is_list=False
+            ):
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
 
-    def _overwrite_target_with_source_field_values(self, event, target_field, field_values):
-        if len(field_values) == 1:
-            field_values = field_values.pop()
-        add_and_overwrite(event, target_field, field_values)
+            case State(
+                extend=True,
+                overwrite=False,
+                single_source_element=False,
+                target_is_list=False,
+                target_is_none=True,
+            ):
+                flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
+                source_fields_values = [*flattened_source_fields]
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
 
-    def _overwrite_with_list_from_source_field_values_include_target_field_value(self, *args):
-        event, target_field, field_values = args
-        origin_field_value = get_dotted_field_value(event, target_field)
-        if origin_field_value is not None:
-            field_values.append(origin_field_value)
-        self._overwrite_with_list_from_source_field_values(event, target_field, field_values)
+            case State(extend=True, overwrite=False, target_is_list=False, target_is_none=True):
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
 
-    def _overwrite_with_list_from_source_field_values(self, *args):
-        event, target_field, field_values = args
-        lists, other = self._separate_lists_form_other_types(field_values)
-        target_field_value = self._get_deduplicated_sorted_flatten_list(lists, other)
-        add_and_overwrite(event, target_field, target_field_value)
+            case State(extend=True, overwrite=False, target_is_list=False):
+                source_fields_values = [target_field_value, *source_fields_values]
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
+
+            case State(
+                extend=True, overwrite=False, single_source_element=False, target_is_list=True
+            ):
+                flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
+                source_fields_values = [*target_field_value, *flattened_source_fields]
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
+
+            case State(overwrite=True, extend=True):
+                flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
+                source_fields_values = [*flattened_source_fields]
+                add_and_overwrite(event, target_field, source_fields_values)
+                return
+
+            case _:
+                success = add_field_to(
+                    event, target_field, source_fields_values, state.extend, state.overwrite
+                )
+                if not success:
+                    raise FieldExistsWarning(rule, event, [target_field])
+
+    def _overwrite_from_source_values(self, source_fields_values):
+        duplicates = []
+        ordered_flatten_list = []
+        flat_source_fields = self._get_flatten_source_fields(source_fields_values)
+        for field_value in flat_source_fields:
+            if field_value not in duplicates:
+                duplicates.append(field_value)
+                ordered_flatten_list.append(field_value)
+        return ordered_flatten_list
 
     def _handle_missing_fields(self, event, rule, source_fields, field_values):
         if rule.ignore_missing_fields:
@@ -160,14 +201,14 @@ class FieldManager(Processor):
         return error
 
     @staticmethod
-    def _separate_lists_form_other_types(field_values: List[Any]) -> Tuple[List[List], List[Any]]:
-        field_values_lists = list(filter(lambda x: isinstance(x, list), field_values))
-        field_values_not_list = list(filter(lambda x: not isinstance(x, list), field_values))
-        return field_values_lists, field_values_not_list
-
-    @staticmethod
-    def _get_deduplicated_sorted_flatten_list(lists: List[List], not_lists: List[Any]) -> List:
-        return sorted(list({*sum(lists, []), *not_lists}))
+    def _get_flatten_source_fields(source_fields_values):
+        flat_source_fields = []
+        for item in source_fields_values:
+            if isinstance(item, list):
+                flat_source_fields.extend(item)
+            else:
+                flat_source_fields.append(item)
+        return flat_source_fields
 
     @staticmethod
     def _filter_missing_fields(source_field_values, targets):

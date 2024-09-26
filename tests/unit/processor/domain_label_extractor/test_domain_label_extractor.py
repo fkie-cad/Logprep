@@ -1,10 +1,9 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 
+import copy
 import hashlib
-import logging
 import os
-import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -12,7 +11,7 @@ from pathlib import Path
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -182,7 +181,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = Factory.create(configuration=config, logger=self.logger)
+        domain_label_extractor = Factory.create(configuration=config)
         document = {"url": {"domain": "domain.fubarbo"}}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
@@ -203,7 +202,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = Factory.create(config, self.logger)
+        domain_label_extractor = Factory.create(config)
         document = {"url": {"domain": "domain.fubarbo"}, "special_tags": ["source"]}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
@@ -244,12 +243,11 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected_output
 
-    def test_domain_extraction_with_existing_output_field(self, caplog):
+    def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
 
     def test_domain_extraction_overwrites_target_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
@@ -299,7 +297,10 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
 
     def test_does_nothing_if_source_field_not_exits(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
-        expected = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
+        expected = {
+            "url": {"domain": "test.domain.de", "subdomain": "exists already"},
+            "tags": ["_domain_label_extractor_missing_field_warning"],
+        }
         rule_dict = {
             "filter": "url",
             "domain_label_extractor": {
@@ -314,7 +315,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    def test_raises_duplication_error_if_target_field_exits(self, caplog):
+    def test_raises_field_exists_warning_if_target_field_exits(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
         expected = {
             "tags": ["_domain_label_extractor_failure"],
@@ -335,9 +336,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule_dict)
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
     @responses.activate
@@ -347,7 +348,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         tld_list_content = tld_list_path.read_bytes()
         expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, tld_list, tld_list_content)
-        self.object._config.tld_lists = [tld_list]
+        config = copy.deepcopy(self.CONFIG)
+        config["tld_lists"] = [tld_list]
+        self.object = Factory.create({"domain_label_extractor": config})
         self.object.setup()
         logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
         downloaded_file = logprep_tmp_dir / f"{self.object.name}-tldlist-0.dat"
@@ -370,7 +373,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         pre_existing_content = "file exists already"
         tld_temp_file.touch()
         tld_temp_file.write_bytes(pre_existing_content.encode("utf8"))
-        self.object._config.tld_lists = [tld_list]
+        config = copy.deepcopy(self.CONFIG)
+        config["tld_lists"] = [tld_list]
+        self.object = Factory.create({"domain_label_extractor": config})
         self.object.setup()
         assert tld_temp_file.exists()
         assert tld_temp_file.read_bytes().decode("utf8") == pre_existing_content

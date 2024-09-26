@@ -1,0 +1,162 @@
+# The replica count
+replicas: 1
+
+# The image repository and tag
+# An image pull secret can be specified in the secrets section
+image:
+  registry: ghcr.io
+  repository: fkie-cad/logprep
+  tag: py3.11-stable
+  pullPolicy: Always
+
+# The pod resources
+resources:
+  limits:
+    memory: "2Gi"
+    cpu: "1"
+  requests:
+    memory: "2Gi"
+    cpu: "250m"
+
+# The default security context for the pod
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: true
+
+# the image pull secret to use for the deployment
+# to mount extra secrets into the pod, use the extraVolumes and extraMounts fields
+# secrets:
+#   imagePullSecret:
+#     name: logprep-image-pull-secret # Name of the secret containing the image pull secret
+secrets: {}
+
+# extra environment variables in format key: value
+# Example:
+#
+# environment:
+#   - name: MY_VAR
+#     value: "my value"
+#   - name: MY_OTHER_VAR
+#     value: "my other value"
+#   - name: SECRET_USERNAME
+#     valueFrom:
+#       secretKeyRef:
+#         name: backend-user
+#         key: backend-username
+#
+environment: []
+
+# Boolean to signal to use affinity to avoid deploying multiple instances of the
+# pod on the same node
+affinity: false
+
+# inject extra labels to all resources metadata
+extraLabels: {}
+
+# extraVolumes to populate the pod with
+# Example:
+# extraVolumes:
+#   - name: my-volume
+#     configMap:
+#       name: my-configmap
+extraVolumes: []
+
+# extraMounts to populate the pod with
+# Example:
+# extraMounts:
+#   - name: my-volume
+#     mountPath: /path/to/mount
+extraMounts: []
+
+# Use this to annotate the logprep pods
+# podAnnotations:
+#   sidecar.istio.io/rewriteAppHTTPProbers: "false"
+podAnnotations: {}
+
+# If enabled, the exporter will be started on the specified port and
+# the metrics service and a prometheus PodMonitor will be deployed.
+# You have to ensure, that the prometheus operator is installed and
+# the PodMonitor resource is available.
+exporter:
+  enabled: true
+  port: 8000
+  # This is the configuration for the uvicorn server exporting the metrics.
+  # See: https://www.uvicorn.org/settings/ for available configuration options.
+  webserver_config:
+    access_log: true
+    date_header: false
+    host: 0.0.0.0
+    server_header: false
+    workers: 1
+  service_port: 8001
+  scrape_interval: 30s
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+
+# Logprep logging configuration.
+# See: https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
+# for available configuration options.
+logger:
+  level: DEBUG
+
+# The logprep input connector configuration
+# Note: The Name of the input is derived from the `type` of the input.
+# In example, if the type is `file_input`, the name of the input will be `file`.
+#
+# If the type is `http_input`, an extra service will be populated and the readiness
+# probe will be set to the health check of the configured http input.
+#
+# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/input.html
+# for available configuration options.
+# Note:
+# For the `http_input` endpoints you have to add the endpoint `/health: plaintext` to ensure
+# readiness probes are working.
+input: {}
+
+# The logprep output connector configuration
+# Note: This is only the default output. Additional outputs can be configured in
+# the configurations section. The Name of the default output is derived from the
+# `type` of the output. For example, if the type is `opensearch_output`, the
+# name of the output will be `opensearch`. Keep this in mind if you specify
+# additional outputs in the configurations section.
+# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/output.html
+# for available configuration options.
+output: {}
+
+# Additional logprep configurations
+# Note: The configuration keys 'logger', 'metrics', 'input' and 'output' will overwrite the
+# corresponding keys in these configurations as they will be merged into
+# the final configuration, after the configurations that are specified here.
+# for configurations with data from an external API put the url in the name field and leave the data field undefined
+#
+# Example:
+#
+# configurations:
+#   - name: logprep-config
+#     data:
+#       pipeline: []
+#   - name: https://rule-server.de
+#
+# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
+# for available configuration options.
+configurations:
+  - name: logprep-config
+    data:
+      pipeline: []
+
+# Additional artifacts needed by the logprep deployment. These follow the same mechanic
+# as the configurations. The artifacts will be mounted into the pod under the name given
+# in the artifacts configuration
+# Beware, that configMaps are limited to 1MiB in size.
+# Example:
+# artifacts:
+#   - name: admin-list
+#     data: |
+#       alfalfa
+#       admin
+#       admin2
+artifacts: []

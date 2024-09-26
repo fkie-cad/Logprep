@@ -1,7 +1,9 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
+from copy import deepcopy
 from unittest import mock
 
+from logprep.factory import Factory
 from logprep.processor.clusterer.rule import ClustererRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -64,10 +66,10 @@ class TestClusterer(BaseProcessorTestCase):
         invalid_syslog_with_missing_tag = {"message": "Listen normally on 5 lo ::1 UDP 123\n"}
         invalid_syslog_with_none_message = {"message": None, "tags": ["clusterable"]}
 
-        assert self.object._is_clusterable(sample_syslog_without_pri)
-        assert not self.object._is_clusterable(sample_winevtlog)
-        assert not self.object._is_clusterable(invalid_syslog_with_missing_tag)
-        assert not self.object._is_clusterable(invalid_syslog_with_none_message)
+        assert self.object._is_clusterable(sample_syslog_without_pri, "message")
+        assert not self.object._is_clusterable(sample_winevtlog, "message")
+        assert not self.object._is_clusterable(invalid_syslog_with_missing_tag, "message")
+        assert not self.object._is_clusterable(invalid_syslog_with_none_message, "message")
 
     @mock.patch("logprep.processor.clusterer.processor.Clusterer._is_clusterable")
     @mock.patch("logprep.processor.clusterer.processor.Clusterer._cluster")
@@ -80,15 +82,7 @@ class TestClusterer(BaseProcessorTestCase):
         mock_is_clusterable.return_value = True
         self.object.process({"message": "test_message"})
         mock_is_clusterable.assert_called()
-        mock_cluster.assert_called_once()
-
-    def test_matching_rules_cleared_before_processing(self):
-        assert len(self.object.matching_rules) == 0
-        self.object.process({"message": "test_message"})
-        assert len(self.object.matching_rules) == 2
-
-        self.object.process({"message": "test_message"})
-        assert len(self.object.matching_rules) == 2
+        assert mock_cluster.call_count == 2
 
     def test_syslog_has_severity_and_facility(self):
         valid_syslog_with_facility_and_severity = {
@@ -126,16 +120,20 @@ class TestClusterer(BaseProcessorTestCase):
             "clusterable": False,
         }
 
-        assert self.object._is_clusterable(log_with_clusterable_field_equals_true)
-        assert self.object._is_clusterable(valid_syslog_with_clusterable_field_equals_true)
-        assert not self.object._is_clusterable(log_with_clusterable_field_equals_false)
-        assert not self.object._is_clusterable(syslog_with_clusterable_field_equals_false)
+        assert self.object._is_clusterable(log_with_clusterable_field_equals_true, "message")
+        assert self.object._is_clusterable(
+            valid_syslog_with_clusterable_field_equals_true, "message"
+        )
+        assert not self.object._is_clusterable(log_with_clusterable_field_equals_false, "message")
+        assert not self.object._is_clusterable(
+            syslog_with_clusterable_field_equals_false, "message"
+        )
 
     def test_rule_tests(self):
         rule_definition = {
             "filter": "message",
             "clusterer": {
-                "target": "message",
+                "source_fields": ["message"],
                 "pattern": r"test (signature) test",
                 "repl": r"<+>\1</+>",
             },
@@ -155,7 +153,7 @@ class TestClusterer(BaseProcessorTestCase):
         rule_definition = {
             "filter": "message",
             "clusterer": {
-                "target": "message",
+                "source_fields": ["message"],
                 "pattern": r"test (signature) test",
                 "repl": r"<+>\1</+>",
             },
@@ -163,10 +161,149 @@ class TestClusterer(BaseProcessorTestCase):
             "tests": {"raw": "test signature test", "result": "<+>signature</+>"},
         }
 
-        expected = {"cluster_signature": "signature", "message": "test signature test"}
+        expected = {
+            "cluster_signature": "signature",
+            "message": "test signature test",
+        }
 
         document = {"message": "test signature test"}
         rule = ClustererRule._create_from_dict(rule_definition)
-        self.object._cluster(document, [rule])
+        self.object._generic_tree.add_rule(rule, None)
+        self.object._cluster(document, rule)
 
+        assert document == expected
+
+    def test_rule_dependency(self, tmp_path):
+        config = deepcopy(self.CONFIG)
+        empty_rules_path = tmp_path / "empty"
+        empty_rules_path.mkdir()
+        config.update({"generic_rules": [empty_rules_path.as_posix()]})
+        config.update({"specific_rules": [empty_rules_path.as_posix()]})
+        clusterer = Factory.create({"test instance": config})
+
+        rule_0 = {
+            "filter": "no_match",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"sig(\w*)",
+                "repl": r"<+>sig\1</+>",
+            },
+            "description": "",
+        }
+
+        rule_1 = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"sig(\w*)",
+                "repl": r"<+>sig\1</+>",
+            },
+            "description": "",
+        }
+        rule_2 = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": "foo",
+                "repl": "bar",
+            },
+            "description": "",
+        }
+        rule_3 = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": "bar",
+                "repl": "baz",
+            },
+            "description": "",
+        }
+        rule_4 = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"(baz)",
+                "repl": r"<+>\1</+>",
+            },
+            "description": "",
+        }
+        rules = [rule_0, rule_1, rule_2, rule_3, rule_4]
+        specific_rules = []
+        for idx, rule in enumerate(rules):
+            new_rule = ClustererRule._create_from_dict(rule)
+            new_rule.file_name = str(idx)
+            specific_rules.append(new_rule)
+            clusterer._specific_tree.add_rule(new_rule, None)
+        rule_5 = {
+            "filter": "no_match",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"signature",
+                "repl": r"SIGN",
+            },
+            "description": "",
+        }
+        rule_6 = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"signature",
+                "repl": r"SIGN",
+            },
+            "description": "",
+        }
+        rule_7 = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"(SIGN)",
+                "repl": r"<+>\1</+>",
+            },
+            "description": "",
+        }
+        rule_8 = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"(test)",
+                "repl": r"<+>\1</+>",
+            },
+            "description": "",
+        }
+        rules = [rule_5, rule_6, rule_7, rule_8]
+        generic_rules = []
+
+        for idx, rule in enumerate(rules):
+            new_rule = ClustererRule._create_from_dict(rule)
+            new_rule.file_name = str(idx)
+            generic_rules.append(new_rule)
+            clusterer._generic_tree.add_rule(new_rule, None)
+
+        expected = {
+            "message": "test some signature xyz-foo",
+            "cluster_signature": "signature baz",
+        }
+
+        document = {"message": "test some signature xyz-foo"}
+        for rule in specific_rules:
+            clusterer._cluster(document, rule)
+        assert document == expected
+
+        document = {"message": "test some signature xyz-foo"}
+        for rule in specific_rules:
+            clusterer._cluster(document, rule)
+        assert document == expected
+
+        document = {"message": "test some signature xyz-foo"}
+        for rule in specific_rules[1:]:
+            clusterer._cluster(document, rule)
+        assert document == expected
+
+        expected = {
+            "message": "test some signature xyz-foo",
+            "cluster_signature": "test SIGN",
+        }
+        document = {"message": "test some signature xyz-foo"}
+        for rule in specific_rules + generic_rules:
+            clusterer._cluster(document, rule)
         assert document == expected

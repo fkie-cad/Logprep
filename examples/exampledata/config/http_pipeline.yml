@@ -1,0 +1,65 @@
+version: 2
+process_count: 8
+config_refresh_interval: 300
+profile_pipelines: false
+logger:
+  level: INFO
+  loggers:
+    uvicorn:
+      level: INFO
+    uvicorn.access:
+      level: INFO
+    uvicorn.error:
+      level: INFO
+
+metrics:
+  enabled: true
+  port: 8003
+  uvicorn_config:
+    host: 0.0.0.0
+    access_log: true
+    server_header: false
+    date_header: false
+    workers: 1
+    ws: none
+    interface: asgi3
+    backlog: 16384
+    timeout_keep_alive: 65
+input:
+  httpinput:
+    type: http_input
+    message_backlog_size: 1500000
+    collect_meta: true
+    metafield_name: "@metadata"
+    uvicorn_config:
+      host: 0.0.0.0
+      port: 9000
+      workers: 1
+      access_log: true
+      server_header: false
+      date_header: false
+      ws: none
+      interface: asgi3
+      backlog: 16384
+      timeout_keep_alive: 65
+    endpoints:
+      /auth-json: json
+      /json: json
+      /lab/123/(ABC|DEF)/pl.*: plaintext
+      /lab/123/ABC/auditlog: jsonl
+output:
+  kafka:
+    type: confluentkafka_output
+    topic: consumer
+    error_topic: errors
+    flush_timeout: 300
+    send_timeout: 0
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      compression.type: none
+      statistics.interval.ms: "60000"
+      queue.buffering.max.messages: "100000000"
+      queue.buffering.max.kbytes: "1048576"
+      queue.buffering.max.ms: "10000"
+      batch.size: "1000000"
+      request.required.acks: "-1"

@@ -1,11 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=import-error
-import logging
-import re
 
 import pytest
 
+from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -256,7 +255,7 @@ class TestKeyChecker(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-    def test_raises_duplication_error(self, caplog):
+    def test_field_exists_warning(self):
         rule_dict = {
             "filter": "*",
             "key_checker": {
@@ -273,6 +272,6 @@ class TestKeyChecker(BaseProcessorTestCase):
             "randomkey2": "randomvalue2",
             "missing_fields": ["i.exists.already"],
         }
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)

@@ -4,7 +4,6 @@
 # pylint: disable=protected-access
 import logging
 import os
-import re
 import subprocess
 import time
 import uuid
@@ -24,7 +23,7 @@ kafka_config = {"bootstrap.servers": "localhost:9092"}
 def setup_module():
     if not in_ci:
         subprocess.run(
-            ["docker-compose", "-f", "quickstart/docker-compose.yml", "up", "-d", "kafka"]
+            ["docker", "compose", "-f", "example/compose/docker-compose.yml", "up", "-d", "kafka"]
         )
 
 
@@ -64,9 +63,7 @@ class TestKafkaConnection:
                 "bootstrap.servers": "localhost:9092",
             },
         }
-        self.kafka_output = Factory.create(
-            {"test output": ouput_config}, logger=logging.getLogger()
-        )
+        self.kafka_output = Factory.create({"test output": ouput_config})
 
         input_config = {
             "type": "confluentkafka_input",
@@ -76,7 +73,7 @@ class TestKafkaConnection:
                 "group.id": "test_consumergroup",
             },
         }
-        self.kafka_input = Factory.create({"test input": input_config}, logger=logging.getLogger())
+        self.kafka_input = Factory.create({"test input": input_config})
         self.kafka_input.output_connector = mock.MagicMock()
 
     def teardown_method(self):
@@ -102,7 +99,7 @@ class TestKafkaConnection:
             assert event
             assert event.get("index") == index
 
-    def test_librdkafka_logs_forwarded_to_logprep_logger(self):
+    def test_librdkafka_logs_forwarded_to_logprep_logger(self, caplog):
         input_config = {
             "type": "confluentkafka_input",
             "topic": self.topic_name,
@@ -111,13 +108,9 @@ class TestKafkaConnection:
                 "group.id": "test_consumergroup",
             },
         }
-        kafka_input = Factory.create({"librdkafkatest": input_config}, logger=mock.MagicMock())
-        kafka_input._logger.log = mock.MagicMock()
-        kafka_input.get_next(10)
-        kafka_input._logger.log.assert_called()
-        assert re.search(
-            r"Failed to resolve 'notexisting:9092'", kafka_input._logger.log.mock_calls[0][1][4]
-        )
+        kafka_input = Factory.create({"librdkafkatest": input_config})
+        kafka_input.get_next(20)
+        assert "Failed to resolve 'notexisting:9092'" in caplog.text
 
     @pytest.mark.skip(reason="is only for debugging")
     def test_debugging_consumer(self):
@@ -131,7 +124,7 @@ class TestKafkaConnection:
             },
         }
         logger = logging.getLogger()
-        kafka_input = Factory.create({"librdkafkatest": input_config}, logger=logger)
+        kafka_input = Factory.create({"librdkafkatest": input_config})
         kafka_input.get_next(10)
 
     @pytest.mark.xfail(reason="sometimes fails, if not ran isolated")

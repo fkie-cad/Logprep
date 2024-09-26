@@ -7,7 +7,9 @@ from logging import getLogger
 from typing import Callable, Iterable
 from unittest import mock
 
+import pytest
 from attrs import asdict
+from attrs.exceptions import FrozenInstanceError
 from prometheus_client import Counter, Gauge, Histogram
 
 from logprep.abc.component import Component
@@ -31,7 +33,8 @@ class BaseComponentTestCase(ABC):
 
     def setup_method(self) -> None:
         config = {"Test Instance Name": self.CONFIG}
-        self.object = Factory.create(configuration=config, logger=self.logger)
+        self.object = Factory.create(configuration=config)
+        self.object._wait_for_health = mock.MagicMock()
         assert "metrics" not in self.object.__dict__, "metrics should be a cached_property"
         self.metric_attributes = asdict(
             self.object.metrics,
@@ -117,3 +120,19 @@ class BaseComponentTestCase(ABC):
         difference = fullnames.difference(set(self.expected_metrics))
         assert not difference, f"{difference} are not defined in `expected_metrics`"
         assert fullnames == set(self.expected_metrics)
+
+    @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
+    def test_setup_populates_cached_properties(self, mock_getmembers):
+        self.object.setup()
+        mock_getmembers.assert_called_with(self.object)
+
+    def test_setup_calls_wait_for_health(self):
+        self.object.setup()
+        self.object._wait_for_health.assert_called()
+
+    def test_config_is_immutable(self):
+        with pytest.raises(FrozenInstanceError):
+            self.object._config.type = "new_type"
+
+    def test_health_returns_bool(self):
+        assert isinstance(self.object.health(), bool)

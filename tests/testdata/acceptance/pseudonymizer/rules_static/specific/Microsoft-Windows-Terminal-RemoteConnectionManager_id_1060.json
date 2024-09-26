@@ -2,7 +2,7 @@
   {
     "filter": "winlog.event_id: 1060 AND winlog.provider_name: \"Microsoft-Windows-Terminal-RemoteConnectionManager\"",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "winlog.event_data.param1": "RE_WHOLE_FIELD"
       }
     },

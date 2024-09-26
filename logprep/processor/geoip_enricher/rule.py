@@ -25,6 +25,7 @@ In the following example the IP in :code:`client.ip` will be enriched with geoip
    :inherited-members:
    :noindex:
 """
+
 from attr import Factory
 from attrs import define, field, validators
 
@@ -53,6 +54,16 @@ class GeoipEnricherRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for GeoipEnricher"""
 
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.min_len(1),
+                validators.max_len(1),
+            ],
+            default=[],
+        )
+        """Field to get geoip information for."""
         target_field: str = field(validator=validators.instance_of(str), default="geoip")
         """Field for the output information. Defaults to :code:`geoip`."""
         customize_target_subfields: dict = field(

@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import hashlib
-import logging
 import re
 from copy import deepcopy
 from multiprocessing import current_process
@@ -10,6 +9,7 @@ from pathlib import Path
 import pytest
 import responses
 
+from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -157,7 +157,7 @@ class TestAmides(BaseProcessorTestCase):
         # end strange mock
         assert self.object.metrics.cached_results == 1
 
-    def test_process_event_raise_duplication_error(self, caplog):
+    def test_process_event_raise_duplication_error(self):
         self.object.setup()
         document = {
             "winlog": {
@@ -168,9 +168,12 @@ class TestAmides(BaseProcessorTestCase):
         }
         self.object.process(document)
         assert document.get("amides")
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert len(result.warnings) > 0
+        assert re.match(
+            r".*missing source_fields: \['process.command_line'].*", str(result.warnings)
+        )
+        assert re.match(".*FieldExistsWarning.*", str(result.warnings))
 
     def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
         model_uri = "file://tests/testdata/unit/amides/model.zip"
@@ -182,7 +185,9 @@ class TestAmides(BaseProcessorTestCase):
         model_test_copy.touch()
         model_test_copy.write_bytes(model_original.read_bytes())
 
-        self.object._config.models_path = model_uri
+        config = deepcopy(self.CONFIG)
+        config["models_path"] = model_uri
+        self.object = Factory.create({"amides": config})
 
         with monkeypatch.context() as monkey_context:
             monkey_context.chdir(tmp_path)
@@ -200,7 +205,9 @@ class TestAmides(BaseProcessorTestCase):
         expected_checksum = hashlib.md5(model_original_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, model_uri, model_original_content)
 
-        self.object._config.models_path = model_uri
+        config = deepcopy(self.CONFIG)
+        config["models_path"] = model_uri
+        self.object = Factory.create({"amides": config})
 
         with monkeypatch.context() as monkey_context:
             monkey_context.chdir(tmp_path)

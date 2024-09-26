@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
-import logging
 import re
 from copy import deepcopy
 from unittest import mock
@@ -310,6 +309,22 @@ test_cases = [  # testcase, rule, event, expected
             "port": 1234,
         },
     ),
+    (
+        "Subfield with common prefix",
+        {
+            "filter": "message",
+            "grokker": {
+                "mapping": {
+                    "message": "Facility %{USER:facility.location} %{USER:facility.location_level}"
+                }
+            },
+        },
+        {"message": "Facility spain primary"},
+        {
+            "message": "Facility spain primary",
+            "facility": {"location": "spain", "location_level": "primary"},
+        },
+    ),
 ]
 
 failure_test_cases = [
@@ -317,8 +332,8 @@ failure_test_cases = [
         "only field does not exist",
         {"filter": "message", "grokker": {"mapping": {"unknown": "this is the %{USER:userfield}"}}},
         {"message": "this is the MyUser586"},
-        {"message": "this is the MyUser586", "tags": ["_grokker_failure"]},
-        "missing source_field: 'unknown'",
+        {"message": "this is the MyUser586", "tags": ["_grokker_missing_field_warning"]},
+        r"missing source_fields: \['unknown']",
     ),
     (
         "only one field does not exist",
@@ -335,9 +350,9 @@ failure_test_cases = [
         {
             "message": "this is the MyUser586",
             "userfield": "MyUser586",
-            "tags": ["_grokker_failure"],
+            "tags": ["_grokker_missing_field_warning"],
         },
-        "missing source_field: 'unknown'",
+        r"missing source_fields: \['unknown']",
     ),
     (
         "writes failure tag if no grok patterns matches",
@@ -413,17 +428,17 @@ class TestGrokker(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
-    def test_testcases_failure_handling(self, caplog, testcase, rule, event, expected, error):
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
         self._load_specific_rule(rule)
         self.object.setup()
         if isinstance(error, str):
-            with caplog.at_level(logging.WARNING):
-                self.object.process(event)
-                assert re.match(rf".*{error}", caplog.text)
-                assert event == expected, testcase
+            result = self.object.process(event)
+            assert len(result.warnings) == 1
+            assert re.match(rf".*{error}", str(result.warnings[0]))
+            assert event == expected, testcase
         else:
-            with pytest.raises(error):
-                self.object.process(event)
+            result = self.object.process(event)
+            assert isinstance(result.errors[0], ProcessingCriticalError)
 
     def test_load_custom_patterns_from_http_as_zip_file(self):
         rule = {
@@ -433,15 +448,17 @@ class TestGrokker(BaseProcessorTestCase):
 
         event = {"message": "this is user-456"}
         expected = {"message": "this is user-456", "userfield": "user-456"}
-        self._load_specific_rule(rule)
         archive_data = GetterFactory.from_string(
             "tests/testdata/unit/grokker/patterns.zip"
         ).get_raw()
         with mock.patch("logprep.util.getter.HttpGetter.get_raw") as mock_getter:
             mock_getter.return_value = archive_data
-            self.object._config.custom_patterns_dir = (
+            config = deepcopy(self.CONFIG)
+            config["custom_patterns_dir"] = (
                 "http://localhost:8000/tests/testdata/unit/grokker/patterns.zip"
             )
+            self.object = Factory.create({"grokker": config})
+            self._load_specific_rule(rule)
             self.object.setup()
         self.object.process(event)
         assert event == expected
@@ -451,34 +468,32 @@ class TestGrokker(BaseProcessorTestCase):
         config |= {
             "custom_patterns_dir": "",
         }
-        grokker = Factory.create({"grokker": config}, self.logger)
+        grokker = Factory.create({"grokker": config})
         assert len(grokker.rules) > 0
 
     def test_loads_custom_patterns(self):
         rule = {
             "filter": "winlog.event_id: 123456789",
-            "grokker": {
-                "mapping": {"winlog.event_data.normalize me!": "%{CUSTOM_PATTERN_TEST:normalized}"}
-            },
+            "grokker": {"mapping": {"winlog.event_data.normalize me!": "%{ID:normalized}"}},
         }
         event = {
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"normalize me!": "Test"},
+                "event_data": {"normalize me!": "id-1"},
             }
         }
         expected = {
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"normalize me!": "Test"},
+                "event_data": {"normalize me!": "id-1"},
             },
-            "normalized": "Test",
+            "normalized": "id-1",
         }
-        self.object._config.custom_patterns_dir = (
-            "tests/testdata/unit/normalizer/additional_grok_patterns"
-        )
+        config = deepcopy(self.CONFIG)
+        config["custom_patterns_dir"] = "tests/testdata/unit/grokker/patterns/"
+        self.object = Factory.create({"grokker": config})
         self._load_specific_rule(rule)
         self.object.setup()
         self.object.process(event)

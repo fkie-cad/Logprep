@@ -32,7 +32,7 @@ target field :code:`List_comparison.example`.
 
 .. note::
 
-    Currently it is not possible to check in more than one source_field per rule
+    Currently, it is not possible to check in more than one :code:`source_field` per rule.
 
 .. autoclass:: logprep.processor.list_comparison.rule.ListComparisonRule.Config
    :members:
@@ -40,6 +40,7 @@ target field :code:`List_comparison.example`.
    :inherited-members:
    :noindex:
 """
+
 import os.path
 from string import Template
 from typing import List, Optional

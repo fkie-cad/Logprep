@@ -27,6 +27,7 @@ In the following example the URL from the field :code:`url` will be extracted an
    :inherited-members:
    :noindex:
 """
+
 from attrs import define, field, fields
 
 from logprep.processor.field_manager.rule import FieldManagerRule

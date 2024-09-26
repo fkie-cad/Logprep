@@ -4,6 +4,7 @@ import re
 
 import pytest
 
+from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -70,9 +71,7 @@ test_cases = [  # testcase, rule, event, expected
                 "delete_source_fields": True,
             },
         },
-        {
-            "message": "This is a message",
-        },
+        {"message": "This is a message"},
         {"new_field": ["This is a message"]},
     ),
     (
@@ -112,6 +111,25 @@ test_cases = [  # testcase, rule, event, expected
             "new_field": "i exist",
         },
         {"new_field": ["value1", "value2", "value3"]},
+    ),
+    (
+        "moves multiple fields and replaces existing target field with list including the existing value",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "field_manager": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": "value1",
+            "field2": "value2",
+            "field3": "value3",
+            "new_field": "i exist",
+        },
+        {"new_field": ["i exist", "value1", "value2", "value3"]},
     ),
     (
         "moves multiple fields and writes them to a existing list",
@@ -209,7 +227,7 @@ test_cases = [  # testcase, rule, event, expected
             "field3": ["value5", "value6", "value4"],
             "new_field": ["i exist"],
         },
-        {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
+        {"new_field": ["i exist", "value1", "value2", "value3", "value5", "value4", "value6"]},
     ),
     (
         (
@@ -232,7 +250,7 @@ test_cases = [  # testcase, rule, event, expected
             "field3": ["value5", "value6", "value4"],
             "new_field": ["i exist"],
         },
-        {"new_field": ["value1", "value2", "value3", "value4", "value5", "value6"]},
+        {"new_field": ["value1", "value2", "value3", "value5", "value4", "value6"]},
     ),
     (
         "real world example from documentation",
@@ -270,14 +288,14 @@ test_cases = [  # testcase, rule, event, expected
             "source": {"ip": "10.10.2.33"},
             "related": {
                 "ip": [
-                    "10.10.2.33",
                     "127.0.0.1",
-                    "180.22.66.1",
-                    "180.22.66.3",
-                    "192.168.5.1",
-                    "223.2.3.2",
-                    "8.8.8.8",
                     "fe89::",
+                    "192.168.5.1",
+                    "8.8.8.8",
+                    "180.22.66.3",
+                    "10.10.2.33",
+                    "180.22.66.1",
+                    "223.2.3.2",
                 ]
             },
         },
@@ -420,6 +438,58 @@ test_cases = [  # testcase, rule, event, expected
             "target_field": "first",
         },
     ),
+    (
+        "extend_target_list preserves list ordering",
+        {
+            "filter": "(foo) OR (test)",
+            "field_manager": {
+                "id": "5cfa7a26-94af-49de-bc82-460c42e9dc56",
+                "source_fields": ["foo", "test"],
+                "target_field": "existing_list",
+                "delete_source_fields": False,
+                "overwrite_target": False,
+                "extend_target_list": True,
+            },
+        },
+        {"existing_list": ["hello", "world"], "foo": "bar", "test": "value"},
+        {"existing_list": ["hello", "world", "bar", "value"], "foo": "bar", "test": "value"},
+    ),
+    (
+        "Convert existing target to list",
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+            },
+        },
+        {"message": "Value B", "new_field": "Value A"},
+        {"message": "Value B", "new_field": ["Value A", "Value B"]},
+    ),
+    (
+        "Convert existing target to list with multiple source fields",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "field_manager": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+            },
+        },
+        {
+            "field1": "Value B",
+            "field2": "Value C",
+            "field3": "Value D",
+            "new_field": "Value A",
+        },
+        {
+            "field1": "Value B",
+            "field2": "Value C",
+            "field3": "Value D",
+            "new_field": ["Value A", "Value B", "Value C", "Value D"],
+        },
+    ),
 ]
 
 failure_test_cases = [
@@ -518,15 +588,15 @@ class TestFieldManager(BaseProcessorTestCase):
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, error, caplog):
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
         self._load_specific_rule(rule)
-        with caplog.at_level(logging.WARNING):
-            self.object.process(event)
-        assert re.match(error, caplog.text)
+        result = self.object.process(event)
+        assert len(result.warnings) == 1
+        assert re.match(error, str(result.warnings[0]))
         assert event == expected, testcase
 
-    def test_process_raises_duplication_error_if_target_field_exists_and_should_not_be_overwritten(
-        self, caplog
+    def test_process_raises_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
+        self,
     ):
         rule = {
             "filter": "field.a",
@@ -539,14 +609,13 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
+        result = self.object.process(document)
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
         assert document.get("tags") == ["_field_manager_failure"]
 
-    def test_process_raises_processing_warning_with_missing_fields(self, caplog):
+    def test_process_raises_processing_warning_with_missing_fields(self):
         rule = {
             "filter": "field.a",
             "field_manager": {
@@ -556,15 +625,14 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
         assert re.match(
-            r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]", caplog.text
+            r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]",
+            str(result.warnings[0]),
         )
 
-    def test_process_raises_processing_warning_with_missing_fields_but_event_is_processed(
-        self, caplog
-    ):
+    def test_process_raises_processing_warning_with_missing_fields_but_event_is_processed(self):
         rule = {
             "filter": "field.a",
             "field_manager": {
@@ -581,10 +649,11 @@ class TestFieldManager(BaseProcessorTestCase):
             "target_field": "first",
             "tags": ["_field_manager_missing_field_warning"],
         }
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
         assert re.match(
-            r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]", caplog.text
+            r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]",
+            str(result.warnings[0]),
         )
         assert document == expected
 

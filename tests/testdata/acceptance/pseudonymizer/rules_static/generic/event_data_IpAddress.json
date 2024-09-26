@@ -2,7 +2,7 @@
   {
     "filter": "winlog.event_data.IpAddress",
     "pseudonymizer": {
-      "pseudonyms": {
+      "mapping": {
         "winlog.event_data.IpAddress": "RE_WHOLE_FIELD"
       }
     },

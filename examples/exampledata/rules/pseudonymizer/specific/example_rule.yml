@@ -1,0 +1,6 @@
+filter: "test_pseudonymizer AND something_special"
+pseudonymizer:
+  id: pseudonymizer-1352bc0a-53ae-4740-bb9e-1e865f63375f
+  mapping:
+    something_special: "RE_WHOLE_FIELD"
+description: "..."

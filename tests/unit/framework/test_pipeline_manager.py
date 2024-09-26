@@ -1,13 +1,19 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import multiprocessing
 from copy import deepcopy
 from logging import Logger
+from logging.config import dictConfig
 from unittest import mock
 
-from logprep.framework.pipeline_manager import PipelineManager
+from logprep.connector.http.input import HttpInput
+from logprep.factory import Factory
+from logprep.framework.pipeline_manager import PipelineManager, ThrottlingQueue
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
+from logprep.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.util.logging import logqueue
 from tests.testdata.metadata import path_to_config
 
 
@@ -21,12 +27,6 @@ class TestPipelineManager:
 
     def teardown_method(self):
         self.manager._pipelines = []
-
-    def test_get_count_returns_count_of_pipelines(self):
-        for count in range(5):
-            self.manager.set_count(count)
-
-            assert self.manager.get_count() == count
 
     def test_decrease_to_count_removes_required_number_of_pipelines(self):
         self.manager._increase_to_count(3)
@@ -92,7 +92,9 @@ class TestPipelineManager:
         ok_pipeline.is_alive = mock.MagicMock(return_value=True)
         self.manager._pipelines = [failed_pipeline, ok_pipeline]
         self.manager.restart_failed_pipeline()
-        logger_mock.assert_called_with("Restarted 1 failed pipeline(s), with exit code(s): [-1]")
+        logger_mock.assert_called_with(
+            "Restarting failed pipeline on index %s with exit code: %s", 1, -1
+        )
 
     def test_stop_terminates_processes_created(self):
         self.manager.set_count(3)
@@ -111,9 +113,10 @@ class TestPipelineManager:
             failed_pipeline.is_alive = mock.MagicMock()
             failed_pipeline.is_alive.return_value = False
             failed_pipeline.pid = 42
-            self.config.metrics = {"enabled": True, "port": 1234}
-            self.config.process_count = 2
-            manager = PipelineManager(self.config)
+            config = deepcopy(self.config)
+            config.metrics = {"enabled": True, "port": 1234}
+            config.process_count = 2
+            manager = PipelineManager(config)
             prometheus_exporter_mock = mock.MagicMock()
             manager.prometheus_exporter = prometheus_exporter_mock
             manager._pipelines = [failed_pipeline]
@@ -134,7 +137,7 @@ class TestPipelineManager:
         with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
             config = deepcopy(self.config)
             config.metrics = {"enabled": True, "port": 1234}
-            self.config.process_count = 2
+            config.process_count = 2
             manager = PipelineManager(config)
             prometheus_exporter_mock = mock.MagicMock()
             manager.prometheus_exporter = prometheus_exporter_mock
@@ -142,20 +145,10 @@ class TestPipelineManager:
             prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
 
     def test_prometheus_exporter_is_instanciated_if_metrics_enabled(self):
-        self.config.metrics = MetricsConfig(enabled=True, port=8000)
-        manager = PipelineManager(self.config)
+        config = deepcopy(self.config)
+        config.metrics = MetricsConfig(enabled=True, port=8000)
+        manager = PipelineManager(config)
         assert isinstance(manager.prometheus_exporter, PrometheusExporter)
-
-    def test_stop_stops_queue_listener(self):
-        with mock.patch.object(self.manager, "_queue_listener") as _queue_listener_mock:
-            self.manager.stop()
-            _queue_listener_mock.stop.assert_called()
-
-    def test_stop_closes_log_queue(self):
-        with mock.patch.object(self.manager, "log_queue") as log_queue_mock:
-            with mock.patch.object(self.manager, "_queue_listener"):
-                self.manager.stop()
-                log_queue_mock.close.assert_called()
 
     def test_set_count_increases_number_of_pipeline_starts_metric(self):
         self.manager.metrics.number_of_pipeline_starts = 0
@@ -175,9 +168,143 @@ class TestPipelineManager:
             assert mock_set_count.call_count == 2
 
     def test_restart_calls_prometheus_exporter_run(self):
-        self.config.metrics = MetricsConfig(enabled=True, port=666)
-        pipeline_manager = PipelineManager(self.config)
-        pipeline_manager.prometheus_exporter.is_running = False
-        with mock.patch.object(pipeline_manager.prometheus_exporter, "run") as mock_run:
+        config = deepcopy(self.config)
+        config.metrics = MetricsConfig(enabled=True, port=666)
+        pipeline_manager = PipelineManager(config)
+        pipeline_manager.prometheus_exporter = mock.MagicMock()
+        pipeline_manager.restart()
+        pipeline_manager.prometheus_exporter.run.assert_called()
+
+    def test_restart_sets_deterministic_pipline_index(self):
+        config = deepcopy(self.config)
+        config.metrics = MetricsConfig(enabled=False, port=666)
+        pipeline_manager = PipelineManager(config)
+        pipeline_manager.set_count(3)
+        expected_calls = [mock.call(1), mock.call(2), mock.call(3)]
+        with mock.patch.object(pipeline_manager, "_create_pipeline") as mock_create_pipeline:
             pipeline_manager.restart()
-            mock_run.assert_called()
+            mock_create_pipeline.assert_has_calls(expected_calls)
+
+    def test_restart_failed_pipelines_sets_old_pipeline_index(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager.set_count(3)
+        pipeline_manager._pipelines[0] = mock.MagicMock()
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        with mock.patch.object(pipeline_manager, "_create_pipeline") as mock_create_pipeline:
+            pipeline_manager.restart_failed_pipeline()
+            mock_create_pipeline.assert_called_once_with(1)
+
+    def test_pipeline_manager_sets_queue_size_for_http_input(self):
+        config = deepcopy(self.config)
+        config.input = {
+            "http": {
+                "type": "http_input",
+                "message_backlog_size": 100,
+                "collect_meta": False,
+                "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
+                "endpoints": {
+                    "/json": "json",
+                },
+            }
+        }
+        PipelineManager(config)
+        assert HttpInput.messages._maxsize == 100
+        http_input = Factory.create(config.input)
+        assert http_input.messages._maxsize == 100
+
+    def test_pipeline_manager_setups_logging(self):
+        dictConfig(DEFAULT_LOG_CONFIG)
+        manager = PipelineManager(self.config)
+        assert manager.loghandler is not None
+        assert manager.loghandler.queue == logqueue
+        assert manager.loghandler._thread is None
+        assert manager.loghandler._process.is_alive()
+        assert manager.loghandler._process.daemon
+
+    def test_restart_failed_pipeline_increases_restart_count_if_pipeline_fails(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        assert pipeline_manager.restart_count == 0
+        pipeline_manager.restart_failed_pipeline()
+        assert pipeline_manager.restart_count == 1
+
+    def test_restart_failed_pipeline_resets_restart_count_if_pipeline_recovers(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        assert pipeline_manager.restart_count == 0
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        pipeline_manager.restart_failed_pipeline()
+        assert pipeline_manager.restart_count == 1
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        pipeline_manager.restart_failed_pipeline()
+        assert pipeline_manager.restart_count == 2
+        pipeline_manager._pipelines[0].is_alive.return_value = True
+        pipeline_manager.restart_failed_pipeline()
+        assert pipeline_manager.restart_count == 0
+
+    @mock.patch("time.sleep")
+    def test_restart_failed_pipeline_restarts_immediately_on_negative_restart_count_parameter(
+        self, mock_time_sleep
+    ):
+        config = deepcopy(self.config)
+        config.restart_count = -1
+        pipeline_manager = PipelineManager(config)
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        pipeline_manager._pipelines[0].is_alive.return_value = False
+        pipeline_manager.restart_failed_pipeline()
+        mock_time_sleep.assert_not_called()
+
+    def test_restart_injects_healthcheck_functions(self):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager.prometheus_exporter = mock.MagicMock()
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        pipeline_manager.restart()
+        pipeline_manager.prometheus_exporter.update_healthchecks.assert_called()
+
+    def test_restart_ensures_prometheus_exporter_is_running(self):
+        config = deepcopy(self.config)
+        config.metrics = MetricsConfig(enabled=True, port=666)
+        pipeline_manager = PipelineManager(config)
+        pipeline_manager.prometheus_exporter._prepare_multiprocessing = mock.MagicMock()
+        with mock.patch("logprep.util.http.ThreadingHTTPServer"):
+            pipeline_manager.restart()
+        pipeline_manager.prometheus_exporter.server.start.assert_called()
+
+
+class TestThrottlingQueue:
+
+    def test_throttling_queue_is_multiprocessing_queue(self):
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        assert isinstance(queue, ThrottlingQueue)
+        assert isinstance(queue, multiprocessing.queues.Queue)
+
+    def test_throttling_put_calls_parent(self):
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        with mock.patch.object(multiprocessing.queues.Queue, "put") as mock_put:
+            queue.put("test")
+            mock_put.assert_called_with("test", block=True, timeout=None)
+
+    def test_throttling_put_throttles(self):
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        with mock.patch.object(queue, "throttle") as mock_throttle:
+            queue.put("test")
+            mock_throttle.assert_called()
+
+    def test_throttle_sleeps(self):
+        with mock.patch("time.sleep") as mock_sleep:
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            with mock.patch.object(queue, "qsize", return_value=95):
+                queue.throttle()
+            mock_sleep.assert_called()
+
+    def test_throttle_sleep_time_increases_with_qsize(self):
+        with mock.patch("time.sleep") as mock_sleep:
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            with mock.patch.object(queue, "qsize", return_value=91):
+                queue.throttle()
+            first_sleep_time = mock_sleep.call_args[0][0]
+            mock_sleep.reset_mock()
+            with mock.patch.object(queue, "qsize", return_value=95):
+                queue.throttle()
+            assert mock_sleep.call_args[0][0] > first_sleep_time

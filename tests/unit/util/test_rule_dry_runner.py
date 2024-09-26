@@ -86,7 +86,6 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=True,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 
@@ -106,7 +105,6 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=True,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 
@@ -126,7 +124,6 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=False,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 
@@ -155,12 +152,10 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=True,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 
         captured = capsys.readouterr()
-        assert captured.err == ""
         assert "------ PROCESSED EVENT ------" in captured.out
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
         assert "------ CUSTOM OUTPUTS ------" in captured.out
@@ -181,7 +176,6 @@ class TestRunLogprep:
             config=self.config,
             full_output=True,
             use_json=True,
-            logger=logging.getLogger("test-logger"),
         )
         dry_runner.run()
 

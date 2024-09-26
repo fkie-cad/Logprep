@@ -1,4 +1,5 @@
 """ validators to use with `attrs` fields"""
+
 import os
 import typing
 from urllib.parse import urlparse

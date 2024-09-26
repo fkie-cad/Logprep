@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "logprep.fullname" . }}-exporter
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+data:
+  exporter-config.yaml: |
+    metrics:
+      enabled: {{ .Values.exporter.enabled }}
+      port: {{ default 8000 .Values.exporter.port }}
+      uvicorn_config:
+        {{- toYaml .Values.exporter.webserver_config | nindent 8 }}

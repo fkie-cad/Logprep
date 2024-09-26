@@ -139,7 +139,10 @@ def get_runner_outputs(patched_runner: Runner) -> list:
     for output_path in output_paths:
         remove_file_if_exists(output_path)
 
-    patched_runner.start()
+    try:
+        patched_runner.start()
+    except SystemExit as error:
+        assert not error.code, f"Runner exited with code {error.code}"
 
     for index, output_path in enumerate(output_paths):
         parsed_outputs[index] = parse_jsonl(output_path)
@@ -202,8 +205,7 @@ class TmpFileProducerMock:
         with open(self.tmp_path, "a", encoding="utf-8") as tmp_file:
             tmp_file.write(f"{target} {value.decode()}\n")
 
-    def poll(self, _):
-        ...
+    def poll(self, _): ...
 
 
 def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration:

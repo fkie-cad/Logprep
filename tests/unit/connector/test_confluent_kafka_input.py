@@ -8,7 +8,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
-from confluent_kafka import OFFSET_BEGINNING, KafkaException
+from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -16,6 +16,7 @@ from logprep.abc.input import (
     FatalInputError,
     InputWarning,
 )
+from logprep.connector.confluent_kafka.input import logger
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from tests.unit.connector.base import BaseInputTestCase
@@ -31,6 +32,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "type": "confluentkafka_input",
         "kafka_config": {"bootstrap.servers": "testserver:9092", "group.id": "testgroup"},
         "topic": "test_input_raw",
+        "health_timeout": 0.1,
     }
 
     expected_metrics = [
@@ -67,7 +69,16 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(self, _):
         mock_record = mock.MagicMock()
-        mock_record.error = mock.MagicMock(return_value="An arbitrary confluent-kafka error")
+        mock_record.error = mock.MagicMock(
+            return_value=KafkaError(
+                error=3,
+                reason="Subscribed topic not available: (Test Instance Name) : Broker: Unknown topic or partition",
+                fatal=False,
+                retriable=False,
+                txn_requires_abort=False,
+            )
+        )
+
         mock_record.value = mock.MagicMock(return_value=None)
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         with pytest.raises(
@@ -76,7 +87,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
                 r"CriticalInputError in ConfluentKafkaInput \(Test Instance Name\) - "
                 r"Kafka Input: testserver:9092: "
                 r"A confluent-kafka record contains an error code -> "
-                r"An arbitrary confluent-kafka error"
+                r"KafkaError{code=UNKNOWN_TOPIC_OR_PART,val=3,str=\"Subscribed topic not available: \(Test Instance Name\) : Broker: Unknown topic or partition\"}"
             ),
         ):
             _, _ = self.object.get_next(1)
@@ -105,8 +116,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_batch_finished_callback_calls_offsets_handler_for_setting(self, _, settings, handlers):
         input_config = deepcopy(self.CONFIG)
-        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
-        kafka_input._config.kafka_config.update(settings)
+        input_config["kafka_config"] |= settings
+        kafka_input = Factory.create({"test": input_config})
         kafka_consumer = kafka_input._consumer
         message = "test message"
         kafka_input._last_valid_records = {0: message}
@@ -131,8 +142,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self, _, settings, handler
     ):
         input_config = deepcopy(self.CONFIG)
-        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
-        kafka_input._config.kafka_config.update(settings)
+        input_config["kafka_config"] |= settings
+        kafka_input = Factory.create({"test": input_config})
         kafka_consumer = kafka_input._consumer
         return_sequence = [KafkaException("test error"), None]
 
@@ -156,7 +167,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             self.object.get_next(1)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_next_raises_critical_input_error_if_unvalid_json(self, _):
+    def test_get_next_raises_critical_input_error_if_invalid_json(self, _):
         mock_record = mock.MagicMock()
         mock_record.error = mock.MagicMock()
         mock_record.error.return_value = None
@@ -190,15 +201,45 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         result = self.object._get_raw_event(0.001)
         assert result
 
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_event_raises_exception_if_input_invalid_json(self, _):
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '{"invalid_json"}'.encode("utf8")
+        with pytest.raises(
+            CriticalInputParsingError,
+            match="Input record value is not a valid json string -> b'{\"invalid_json\"}'",
+        ):
+            self.object._get_event(0.001)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_event_raises_exception_if_input_not_utf(self, _):
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '{"not_utf-8": \xfc}'.encode("cp1252")
+        with pytest.raises(
+            CriticalInputParsingError,
+            match=r"Input record value is not \'utf-8\' encoded -> b\'\{\"not_utf-8\": \\xfc\}\'",
+        ):
+            self.object._get_event(0.001)
+
     def test_setup_raises_fatal_input_error_on_invalid_config(self):
-        config = {
+        kafka_config = {
             "bootstrap.servers": "testinstance:9092",
             "group.id": "sapsal",
             "myconfig": "the config",
         }
-        self.object._config.kafka_config = config
+        config = deepcopy(self.CONFIG)
+        config["kafka_config"] = kafka_config
+        connector = Factory.create({"test": config})
         with pytest.raises(FatalInputError, match="No such configuration property"):
-            self.object.setup()
+            connector.setup()
 
     def test_get_next_raises_critical_input_parsing_error(self):
         return_value = b'{"invalid": "json'
@@ -237,7 +278,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             "statistics.interval.ms": "30000",
             "bootstrap.servers": "testserver:9092",
             "group.id": "testgroup",
-            "logger": self.object._logger,
+            "logger": logger,
             "on_commit": self.object._commit_callback,
             "stats_cb": self.object._stats_callback,
             "error_cb": self.object._error_callback,
@@ -248,8 +289,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_client_id_can_be_overwritten(self, mock_consumer):
         input_config = deepcopy(self.CONFIG)
-        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
-        kafka_input._config.kafka_config["client.id"] = "thisclientid"
+        input_config["kafka_config"]["client.id"] = "thisclientid"
+        kafka_input = Factory.create({"test": input_config})
         kafka_input.setup()
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("client.id") == "thisclientid"
@@ -257,8 +298,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_statistics_interval_can_be_overwritten(self, mock_consumer):
-        kafka_input = Factory.create({"test": self.CONFIG}, logger=self.logger)
-        kafka_input._config.kafka_config["statistics.interval.ms"] = "999999999"
+        input_config = deepcopy(self.CONFIG)
+        input_config["kafka_config"]["statistics.interval.ms"] = "999999999"
+        kafka_input = Factory.create({"test": input_config})
         kafka_input.setup()
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"
@@ -275,7 +317,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         config.get("kafka_config").pop("group.id")
         expected_error_message = r"keys are missing: {'(bootstrap.servers|group.id)', '(bootstrap.servers|group.id)'}"  # pylint: disable=line-too-long
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
-            Factory.create({"test": config}, logger=self.logger)
+            Factory.create({"test": config})
 
     @pytest.mark.parametrize(
         "metric_name",
@@ -349,3 +391,26 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._revoke_callback(mock_consumer, mock_partitions)
         self.object.output_connector._write_backlog.assert_called()
         self.object.batch_finished_callback.assert_called()
+
+    def test_health_returns_true_if_no_error(self):
+        with mock.patch("logprep.connector.confluent_kafka.input.Consumer"):
+            assert self.object.health()
+
+    def test_health_returns_false_on_kafka_exception(self):
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
+
+    def test_health_logs_error_on_kafka_exception(self):
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.list_topics.side_effect = KafkaException("test error")
+        with mock.patch("logging.Logger.error") as mock_error:
+            self.object.health()
+        mock_error.assert_called()
+
+    def test_health_counts_metrics_on_kafka_exception(self):
+        self.object.metrics.number_of_errors = 0
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
+        assert self.object.metrics.number_of_errors == 1

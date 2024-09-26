@@ -14,7 +14,7 @@ from logprep.util.helper import (
     snake_to_camel,
 )
 from logprep.util.json_handling import is_json
-from tests.testdata.metadata import path_to_alternative_config, path_to_config
+from tests.testdata.metadata import path_to_config
 
 
 class TestCamelToSnake:
@@ -42,7 +42,7 @@ class TestSnakeToCamel:
             ("IPhoneHysteria", "i_phone_hysteria"),
             ("DatetimeExtractor", "datetime_extractor"),
             ("GenericAdder", "generic_adder"),
-            ("Normalizer", "normalizer"),
+            ("Dissector", "dissector"),
             ("GeoipEnricher", "geoip_enricher"),
         ],
     )
@@ -256,7 +256,7 @@ class TestGetVersionString:
         expected_pattern = (
             r"python version:\s+3\.\d+\.\d+\n"
             r"logprep version:\s+[^\s]+\n"
-            r"configuration version:\s+1,\s+file://[^\s]+/config\.yml,\s+file://[^\s]+/config\.yml"
+            r"configuration version:\s+1,\s1,\s+file://[^\s]+/config\.yml,\s+file://[^\s]+/config\.yml"
         )
 
         result = get_versions_string(config)

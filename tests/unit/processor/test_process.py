@@ -1,6 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-from logging import getLogger
+import re
 from unittest import mock
 from unittest.mock import call
 
@@ -8,6 +8,7 @@ import pytest
 
 from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.configuration import Configuration
@@ -23,8 +24,7 @@ class TestSpecificGenericProcessing:
                     "generic_rules": [],
                     "specific_rules": [],
                 }
-            },
-            mock.MagicMock(),
+            }
         )
         processor.process({})
         mock_process_rule_tree.assert_called()
@@ -39,8 +39,7 @@ class TestSpecificGenericProcessing:
                     "generic_rules": [],
                     "specific_rules": [],
                 }
-            },
-            mock.MagicMock(),
+            }
         )
         processor.process({})
         assert mock_process_rule_tree.call_count == 2
@@ -57,7 +56,7 @@ class TestSpecificGenericProcessing:
             "generic_rules": [],
             "apply_multiple_times": True,
         }
-        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
+        processor = Factory.create({"custom_lister": config})
         rule_one_dict = {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{time} [%{protocol}] %{url}"}},
@@ -84,7 +83,7 @@ class TestSpecificGenericProcessing:
 
     def test_apply_processor_multiple_times_not_enabled(self):
         config = {"type": "dissector", "specific_rules": [], "generic_rules": []}
-        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
+        processor = Factory.create({"custom_lister": config})
         rule_one_dict = {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{time} [%{protocol}] %{url}"}},
@@ -110,7 +109,7 @@ class TestSpecificGenericProcessing:
     @pytest.mark.parametrize("execution_number", range(5))  # repeat test to ensure determinism
     def test_applies_rules_in_deterministic_order(self, execution_number):
         config = {"type": "generic_adder", "specific_rules": [], "generic_rules": []}
-        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
+        processor = Factory.create({"custom_lister": config})
         rule_one_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
         rule_two_dict = {"filter": "NOT something", "generic_adder": {"add": {"something": "else"}}}
         rule_one = GenericAdderRule._create_from_dict(rule_one_dict)
@@ -123,8 +122,7 @@ class TestSpecificGenericProcessing:
             processor.process(event=event)
             mock_callback.assert_has_calls(expected_call_order, any_order=False)
 
-    @mock.patch("logging.Logger.warning")
-    def test_processes_generic_rules_after_processor_error_in_specific_rules(self, mock_warning):
+    def test_processes_generic_rules_after_processor_error_in_specific_rules(self):
         config = Configuration()
         config.pipeline = [
             {"adder": {"type": "generic_adder", "specific_rules": [], "generic_rules": []}}
@@ -159,10 +157,13 @@ class TestSpecificGenericProcessing:
         pipeline._pipeline[0]._generic_tree.add_rule(generic_rule)
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_two)
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_one)
-        pipeline.process_event(event)
-        assert (
+        res = pipeline.process_event(event)
+        assert len(res.results[0].warnings) == 1
+        assert isinstance(res.results[0].warnings[0], FieldExistsWarning)
+        re.match(
             "The following fields could not be written, "
-            "because one or more subfields existed and could not be extended: first"
-            in mock_warning.call_args[0][0]
+            "because one or more subfields existed and could not be extended: first",
+            str(res.results[0].warnings[0]),
         )
+
         assert event == expected_event

@@ -2,18 +2,6 @@
 Labeler
 =======
 
-Labeling-Schema and validating Rules
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The validation of schemata and rules can be started separately by executing:
-
-..  code-block:: bash
-
-    PYTHONPATH="." python3 logprep/util/schema_and_rule_checker.py $LABELING_SCHEMA $RULES
-
-Where :code:`$LABELING_SCHEMA` is the path to a labeling schema file and :code:`$RULES` is the path
-to a directory with rule files.
-
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -38,14 +26,14 @@ Processor Configuration
 .. automodule:: logprep.processor.labeler.rule
 """
 
-from logging import Logger
-from typing import List, Optional
+from typing import Optional
 
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
+from logprep.util.helper import add_field_to, get_dotted_field_value, add_and_overwrite
 
 
 class Labeler(Processor):
@@ -72,14 +60,9 @@ class Labeler(Processor):
 
     rule_class = LabelerRule
 
-    def __init__(
-        self,
-        name: str,
-        configuration: Processor.Config,
-        logger: Logger,
-    ):
+    def __init__(self, name: str, configuration: Processor.Config):
         self._schema = LabelingSchema.create_from_file(configuration.schema)
-        super().__init__(name, configuration=configuration, logger=logger)
+        super().__init__(name, configuration=configuration)
 
     def setup(self):
         super().setup()
@@ -97,24 +80,28 @@ class Labeler(Processor):
     @staticmethod
     def _add_label_fields(event: dict, rule: LabelerRule):
         """Prepares the event by adding empty label fields"""
-        if "label" not in event:
-            event["label"] = {}
-
+        add_field_to(event, "label", {})
         for key in rule.label:
-            if key not in event["label"]:
-                event["label"][key] = set()
+            add_field_to(event, f"label.{key}", set())
 
     @staticmethod
     def _add_label_values(event: dict, rule: LabelerRule):
         """Adds the labels from the rule to the event"""
         for key in rule.label:
-            if not isinstance(event["label"][key], set):
-                event["label"][key] = set(event["label"][key])
-
-            event["label"][key].update(rule.label[key])
+            label_key = f"label.{key}"
+            label = get_dotted_field_value(event, label_key)
+            if not isinstance(label, set):
+                label = set(label)
+                add_and_overwrite(event, label_key, label)
+            label.update(rule.label[key])
 
     @staticmethod
     def _convert_label_categories_to_sorted_list(event: dict):
-        if "label" in event:
-            for category in event["label"]:
-                event["label"][category] = sorted(list(event["label"][category]))
+        label = get_dotted_field_value(event, "label")
+        if label is None:
+            return
+        for category in label:
+            category_key = f"label.{category}"
+            category_value = get_dotted_field_value(event, category_key)
+            sorted_category = sorted(list(category_value))
+            add_and_overwrite(event, category_key, sorted_category)

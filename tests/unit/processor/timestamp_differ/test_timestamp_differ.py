@@ -1,5 +1,4 @@
 # pylint: disable=missing-docstring
-import logging
 import re
 
 import pytest
@@ -392,9 +391,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {"field1": "2022-12-05"},
         {
             "field1": "2022-12-05",
-            "tags": ["_timestamp_differ_failure"],
+            "tags": ["_timestamp_differ_missing_field_warning"],
         },
-        r".*ProcessingWarning.*no value for fields: \['subfield.field2'\]",
+        r".*ProcessingWarning.*missing source_fields: \['subfield.field2'\]",
     ),
     (
         "diff between two timestamps with non existing fields",
@@ -408,9 +407,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {"some_field": "some value"},
         {
             "some_field": "some value",
-            "tags": ["_timestamp_differ_failure"],
+            "tags": ["_timestamp_differ_missing_field_warning"],
         },
-        r".*ProcessingWarning.*no value for fields: \['subfield.field2', 'field1'\]",
+        r".*ProcessingWarning.*missing source_fields: \['subfield.field2', 'field1']",
     ),
     (
         "diff between two timestamps with already existing output field",
@@ -447,11 +446,9 @@ class TestTimestampDiffer(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(
-        self, testcase, rule, event, expected, error_message, caplog
-    ):
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
         self._load_specific_rule(rule)
-        with caplog.at_level(logging.WARNING):
-            self.object.process(event)
-        assert re.match(error_message, caplog.text)
+        result = self.object.process(event)
+        assert len(result.warnings) == 1
+        assert re.match(error_message, str(result.warnings[0]))
         assert event == expected, testcase

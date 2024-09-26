@@ -1,5 +1,4 @@
 # pylint: disable=missing-docstring
-import logging
 import re
 
 import pytest
@@ -276,11 +275,26 @@ failure_test_cases = [
         r"Could not parse timestamp",
     ),
     (
+        "attempt parsing valid ISO8601 with not matching pattern",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": ["%Y-%m-%dT%H:%M:%S"],
+            },
+        },
+        {
+            "message": "2019-09-07T15:50",
+        },
+        {"message": "2019-09-07T15:50", "tags": ["_timestamper_failure"]},
+        r"Could not parse timestamp",
+    ),
+    (
         "raises if source field is none",
         {"filter": "message", "timestamper": {"source_fields": ["@timestamp"]}},
         {"message": "this does not matter"},
-        {"message": "this does not matter", "tags": ["_timestamper_failure"]},
-        "'@timestamp' does not exist or is falsy value",
+        {"message": "this does not matter", "tags": ["_timestamper_missing_field_warning"]},
+        r"missing source_fields: \['@timestamp']",
     ),
 ]  # testcase, rule, event, expected
 
@@ -303,11 +317,9 @@ class TestTimestamper(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(
-        self, caplog, testcase, rule, event, expected, error_message
-    ):
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
         self._load_specific_rule(rule)
-        with caplog.at_level(logging.WARNING):
-            self.object.process(event)
-            assert re.match(rf".*{error_message}", caplog.text)
+        result = self.object.process(event)
+        assert len(result.warnings) == 1
+        assert re.match(rf".*{error_message}", str(result.warnings[0]))
         assert event == expected, testcase

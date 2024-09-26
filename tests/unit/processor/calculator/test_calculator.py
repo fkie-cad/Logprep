@@ -1,5 +1,4 @@
 # pylint: disable=missing-docstring
-import logging
 import math
 import re
 
@@ -261,9 +260,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {
             "field2": "4",
             "field3": 2,
-            "tags": ["_calculator_failure"],
+            "tags": ["_calculator_missing_field_warning"],
         },
-        r"ProcessingWarning.*no value for fields: \['field1'\]",
+        r"ProcessingWarning.*missing source_fields: \['field1']",
     ),
     (
         "Tags failure if source_field is empty",
@@ -352,13 +351,12 @@ class TestCalculator(BaseProcessorTestCase):
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(
-        self, caplog, testcase, rule, event, expected, error_message
-    ):
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
         self._load_specific_rule(rule)
-        with caplog.at_level(logging.WARNING):
-            self.object.process(event)
-            assert re.match(rf".*{error_message}", caplog.text)
+
+        result = self.object.process(event)
+        assert len(result.warnings) == 1
+        assert re.match(rf".*{error_message}", str(result.warnings[0]))
         assert event == expected, testcase
 
     @pytest.mark.parametrize(

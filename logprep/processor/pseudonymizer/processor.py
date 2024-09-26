@@ -2,8 +2,19 @@
 Pseudonymizer
 =============
 
-The `pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
+The :code:`pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
 privacy regulations can be adhered to.
+
+.. security-best-practice::
+   :title: Processor - Pseudonymizer
+
+   The :code:`pseudonymizer` works with two public keys for different roles.
+   It is suggested to ensure that two different keys are being used such that the separation of the
+   roles can be maintained.
+
+   It is suggested to use the :code:`GCM` mode for encryption as it decouples the key length of the
+   depseudo and analyst keys. This leads to additional 152 bytes of overhead for the encryption
+   compared to the :code:`CTR` mode encrypter.
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,6 +34,7 @@ Processor Configuration
         hash_salt: secret_salt
         regex_mapping: /path/to/regex_mapping.json
         max_cached_pseudonyms: 1000000
+        mode: GCM
         tld_lists:
             -/path/to/tld_list.dat
 
@@ -34,11 +46,11 @@ Processor Configuration
 
 .. automodule:: logprep.processor.pseudonymizer.rule
 """
+
 import re
 from functools import cached_property, lru_cache
 from itertools import chain
-from logging import Logger
-from typing import List, Optional, Pattern
+from typing import Optional, Pattern
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from attrs import define, field, validators
@@ -46,20 +58,26 @@ from tldextract import TLDExtract
 from urlextract import URLExtract
 
 from logprep.abc.processor import Processor
+from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.pseudo.encrypter import (
+    DualPKCS1HybridCTREncrypter,
+    DualPKCS1HybridGCMEncrypter,
+    Encrypter,
+)
 from logprep.util.validators import list_of_urls_validator
 
 
-class Pseudonymizer(Processor):
+class Pseudonymizer(FieldManager):
     """Pseudonymize log events to conform to EU privacy laws."""
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """Pseudonymizer config"""
 
         outputs: tuple[dict[str, str]] = field(
@@ -110,7 +128,7 @@ class Pseudonymizer(Processor):
         million elements would require about 2.3 GB RAM. The cache is not persisted. Restarting
         Logprep does therefore clear the cache.
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
-        repeatedly) and the load on subsequent components (i.e. Logstash or Elasticsearch).
+        repeatedly) and the load on subsequent components (i.e. Logstash or Opensearch).
         In case the cache size has been exceeded, the least recently used
         entry is deleted. Has to be greater than 0.
         """
@@ -124,6 +142,13 @@ class Pseudonymizer(Processor):
         (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,
         a default list will be retrieved online and cached in a local directory. For local
         files the path has to be given with :code:`file:///path/to/file.dat`."""
+
+        mode: str = field(
+            validator=[validators.instance_of(str), validators.in_(("GCM", "CTR"))], default="GCM"
+        )
+        """Optional mode of operation for the encryption. Can be either 'GCM' or 'CTR'.
+        Default is 'GCM'.
+        """
 
     @define(kw_only=True)
     class Metrics(Processor.Metrics):
@@ -166,10 +191,6 @@ class Pseudonymizer(Processor):
         )
         """Relative cache load."""
 
-    __slots__ = ["pseudonyms"]
-
-    pseudonyms: list
-
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
 
@@ -186,10 +207,13 @@ class Pseudonymizer(Processor):
         return SHA256Hasher()
 
     @cached_property
-    def _encrypter(self) -> DualPKCS1HybridEncrypter:
-        _encrypter = DualPKCS1HybridEncrypter()
-        _encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
-        return _encrypter
+    def _encrypter(self) -> Encrypter:
+        if self._config.mode == "CTR":
+            encrypter = DualPKCS1HybridCTREncrypter()
+        else:
+            encrypter = DualPKCS1HybridGCMEncrypter()
+        encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
+        return encrypter
 
     @cached_property
     def _tld_extractor(self) -> TLDExtract:
@@ -209,39 +233,28 @@ class Pseudonymizer(Processor):
     def _pseudonymize_url_cached(self):
         return lru_cache(maxsize=self._config.max_cached_pseudonymized_urls)(self._pseudonymize_url)
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
-        self.pseudonyms = []
-
     def setup(self):
         super().setup()
         self._replace_regex_keywords_by_regex_expression()
 
     def _replace_regex_keywords_by_regex_expression(self):
-        for rule_dict in self._specific_rules:
-            for dotted_field, regex_keyword in rule_dict.pseudonyms.items():
+        for rule in self._specific_rules + self._generic_rules:
+            for dotted_field, regex_keyword in rule.pseudonyms.items():
                 if regex_keyword in self._regex_mapping:
-                    rule_dict.pseudonyms[dotted_field] = re.compile(
-                        self._regex_mapping[regex_keyword]
+                    rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
+                elif isinstance(regex_keyword, str):  # after the first run, the regex is compiled
+                    raise InvalidConfigurationError(
+                        f"Regex keyword '{regex_keyword}' not found in regex_mapping '{self._config.regex_mapping}'"
                     )
-        for rule_dict in self._generic_rules:
-            for dotted_field, regex_keyword in rule_dict.pseudonyms.items():
-                if regex_keyword in self._regex_mapping:
-                    rule_dict.pseudonyms[dotted_field] = re.compile(
-                        self._regex_mapping[regex_keyword]
-                    )
-
-    def process(self, event: dict):
-        self.pseudonyms = []
-        super().process(event)
-        unique_pseudonyms = list(
-            {pseudonyms["pseudonym"]: pseudonyms for pseudonyms in self.pseudonyms}.values()
-        )
-        return (unique_pseudonyms, self._config.outputs) if unique_pseudonyms else None
 
     def _apply_rules(self, event: dict, rule: PseudonymizerRule):
-        for dotted_field, regex in rule.pseudonyms.items():
-            field_value = get_dotted_field_value(event, dotted_field)
+        source_dict = {}
+        for source_field in rule.pseudonyms:
+            source_dict[source_field] = get_dotted_field_value(event, source_field)
+        self._handle_missing_fields(event, rule, source_dict.keys(), source_dict.values())
+
+        for dotted_field, field_value in source_dict.items():
+            regex = rule.pseudonyms[dotted_field]
             if field_value is None:
                 continue
             if isinstance(field_value, list):
@@ -253,7 +266,7 @@ class Pseudonymizer(Processor):
                 field_value = self._pseudonymize_field(rule, dotted_field, regex, field_value)
             _ = add_field_to(event, dotted_field, field_value, overwrite_output_field=True)
         if "@timestamp" in event:
-            for pseudonym in self.pseudonyms:
+            for pseudonym, _ in self.result.data:
                 pseudonym["@timestamp"] = event["@timestamp"]
         self._update_cache_metrics()
 
@@ -283,7 +296,9 @@ class Pseudonymizer(Processor):
         if self.pseudonymized_pattern.match(value):
             return value
         pseudonym_dict = self._get_pseudonym_dict_cached(value)
-        self.pseudonyms.append(pseudonym_dict)
+        extra = (pseudonym_dict, self._config.outputs)
+        if extra not in self.result.data:
+            self.result.data.append(extra)
         return self._wrap_hash(pseudonym_dict["pseudonym"])
 
     def _pseudonymize(self, value):

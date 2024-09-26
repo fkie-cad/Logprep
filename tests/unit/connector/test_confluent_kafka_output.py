@@ -10,6 +10,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
+from confluent_kafka.error import KafkaException
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
@@ -54,7 +55,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
     def test_producer_property_instanciates_kafka_producer(self, _):
-        kafka_output = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
+        kafka_output = Factory.create({"test connector": self.CONFIG})
         assert kafka_output._producer == "The Producer"
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
@@ -148,14 +149,39 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object.input_connector.batch_finished_callback.assert_called()
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
-        config = {"myconfig": "the config", "bootstrap.servers": "testserver:9092"}
-        self.object._config.kafka_config = config
+        kafka_config = {"myconfig": "the config", "bootstrap.servers": "testserver:9092"}
+        config = deepcopy(self.CONFIG)
+        config.update({"kafka_config": kafka_config})
+        connector = Factory.create({"test connector": config})
         with pytest.raises(FatalOutputError, match="No such configuration property"):
-            self.object.setup()
+            connector.setup()
 
     def test_raises_value_error_if_mandatory_parameters_not_set(self):
         config = deepcopy(self.CONFIG)
         config.get("kafka_config").pop("bootstrap.servers")
         expected_error_message = r"keys are missing: {'bootstrap.servers'}"
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
-            Factory.create({"test": config}, logger=self.logger)
+            Factory.create({"test": config})
+
+    def test_health_returns_true_if_no_error(self):
+        self.object._producer = mock.MagicMock()
+        assert self.object.health()
+
+    def test_health_returns_false_on_kafka_exception(self):
+        self.object._producer = mock.MagicMock()
+        self.object._producer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
+
+    def test_health_logs_error_on_kafka_exception(self):
+        self.object._producer = mock.MagicMock()
+        self.object._producer.list_topics.side_effect = KafkaException("test error")
+        with mock.patch("logging.Logger.error") as mock_error:
+            self.object.health()
+        mock_error.assert_called()
+
+    def test_health_counts_metrics_on_kafka_exception(self):
+        self.object.metrics.number_of_errors = 0
+        self.object._producer = mock.MagicMock()
+        self.object._producer.list_topics.side_effect = KafkaException("test error")
+        assert not self.object.health()
+        assert self.object.metrics.number_of_errors == 1

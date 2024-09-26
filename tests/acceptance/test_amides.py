@@ -2,6 +2,7 @@
 # pylint: disable=not-an-iterable
 # pylint: disable=missing-docstring
 
+import tempfile
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
 
@@ -14,12 +15,12 @@ basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(me
 logger = getLogger("Logprep-Test")
 
 
-@pytest.fixture
+@pytest.fixture(name="configuration")
 def config():
     config_dict = {
         "process_count": 1,
         "timeout": 0.1,
-        "profile_pipelines": True,
+        "profile_pipelines": False,
         "pipeline": [
             {
                 "amides": {
@@ -42,7 +43,7 @@ def config():
         "output": {
             "jsonl_output": {
                 "type": "jsonl_output",
-                "output_file": "tests/testdata/acceptance/amides/amides_output.jsonl",
+                "output_file": f"{tempfile.gettempdir()}/amides_output.jsonl",
             }
         },
     }
@@ -50,9 +51,9 @@ def config():
     return Configuration(**config_dict)
 
 
-def test_amides(tmp_path: Path, config: Configuration):
+def test_amides(tmp_path: Path, configuration: Configuration):
     config_path = tmp_path / "generated_config.yml"
-    config_path.write_text(config.as_yaml())
+    config_path.write_text(configuration.as_yaml())
 
     test_output = get_test_output(str(config_path))
     test_output_documents = [event for event in test_output[0] if event.get("amides")]

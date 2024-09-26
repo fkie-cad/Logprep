@@ -28,9 +28,10 @@ Example
             auto.offset.reset: "earliest"
 """
 # pylint: enable=line-too-long
+import logging
 from functools import cached_property, partial
-from logging import Logger
 from socket import getfqdn
+from types import MappingProxyType
 from typing import Callable, Optional, Tuple, Union
 
 import msgspec
@@ -74,6 +75,8 @@ SPECIAL_OFFSETS = {
 }
 
 DEFAULT_RETURN = 0
+
+logger = logging.getLogger("KafkaInput")
 
 
 class ConfluentKafkaInput(Input):
@@ -209,15 +212,16 @@ class ConfluentKafkaInput(Input):
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
 
-        kafka_config: Optional[dict] = field(
+        kafka_config: Optional[MappingProxyType] = field(
             validator=[
-                validators.instance_of(dict),
+                validators.instance_of(MappingProxyType),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of(str),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
-            ]
+            ],
+            converter=MappingProxyType,
         )
         """ Kafka configuration for the kafka client.
         At minimum the following keys must be set:
@@ -225,8 +229,8 @@ class ConfluentKafkaInput(Input):
         - bootstrap.servers (STRING): a comma separated list of kafka brokers
         - group.id (STRING): a unique identifier for the consumer group
 
-        For additional configuration options and their description see:
-        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+        For additional configuration options see the official:
+        `librdkafka configuration <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
 
         .. datatemplate:import-module:: logprep.connector.confluent_kafka.input
             :template: defaults-renderer.tmpl
@@ -237,9 +241,27 @@ class ConfluentKafkaInput(Input):
 
     __slots__ = ["_last_valid_records"]
 
-    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
-        super().__init__(name, configuration, logger)
+    def __init__(self, name: str, configuration: "Connector.Config") -> None:
+        super().__init__(name, configuration)
         self._last_valid_records = {}
+
+    @property
+    def _kafka_config(self) -> dict:
+        """Get the kafka configuration.
+
+        Returns
+        -------
+        dict
+            The kafka configuration.
+        """
+        injected_config = {
+            "logger": logger,
+            "on_commit": self._commit_callback,
+            "stats_cb": self._stats_callback,
+            "error_cb": self._error_callback,
+        }
+        DEFAULTS.update({"client.id": getfqdn()})
+        return DEFAULTS | self._config.kafka_config | injected_config
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -250,15 +272,7 @@ class ConfluentKafkaInput(Input):
         Consumer
             confluent_kafka consumer object
         """
-        injected_config = {
-            "logger": self._logger,
-            "on_commit": self._commit_callback,
-            "stats_cb": self._stats_callback,
-            "error_cb": self._error_callback,
-        }
-        DEFAULTS.update({"client.id": getfqdn()})
-        self._config.kafka_config = DEFAULTS | self._config.kafka_config
-        consumer = Consumer(self._config.kafka_config | injected_config)
+        consumer = Consumer(self._kafka_config)
         consumer.subscribe(
             [self._config.topic],
             on_assign=self._assign_callback,
@@ -278,7 +292,7 @@ class ConfluentKafkaInput(Input):
             the error that occurred
         """
         self.metrics.number_of_errors += 1
-        self._logger.error(f"{self.describe()}: {error}")
+        logger.error(f"{self.describe()}: {error}")
 
     def _stats_callback(self, stats: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
@@ -383,7 +397,7 @@ class ConfluentKafkaInput(Input):
         kafka_error = message.error()
         if kafka_error:
             raise CriticalInputError(
-                self, "A confluent-kafka record contains an error code", kafka_error
+                self, "A confluent-kafka record contains an error code", str(kafka_error)
             )
         self._last_valid_records[message.partition()] = message
         labels = {"description": f"topic: {self._config.topic} - partition: {message.partition()}"}
@@ -414,7 +428,11 @@ class ConfluentKafkaInput(Input):
         if raw_event is None:
             return None, None
         try:
-            event_dict = self._decoder.decode(raw_event)
+            event_dict = self._decoder.decode(raw_event.decode("utf-8"))
+        except UnicodeDecodeError as error:
+            raise CriticalInputParsingError(
+                self, "Input record value is not 'utf-8' encoded", str(raw_event)
+            ) from error
         except msgspec.DecodeError as error:
             raise CriticalInputParsingError(
                 self, "Input record value is not a valid json string", raw_event
@@ -451,10 +469,11 @@ class ConfluentKafkaInput(Input):
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
             offset, partition = topic_partition.offset, topic_partition.partition
-            self._logger.info(
-                f"{consumer.memberid()} was assigned to "
-                f"topic: {topic_partition.topic} | "
-                f"partition {partition}"
+            logger.info(
+                "%s was assigned to topic: %s | partition %s",
+                consumer.memberid(),
+                topic_partition.topic,
+                partition,
             )
             if offset in SPECIAL_OFFSETS:
                 offset = 0
@@ -466,10 +485,11 @@ class ConfluentKafkaInput(Input):
     def _revoke_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
-            self._logger.warning(
-                f"{consumer.memberid()} to be revoked from "
-                f"topic: {topic_partition.topic} | "
-                f"partition {topic_partition.partition}"
+            logger.warning(
+                "%s to be revoked from topic: %s | partition %s",
+                consumer.memberid(),
+                topic_partition.topic,
+                topic_partition.partition,
             )
         self.output_connector._write_backlog()
         self.batch_finished_callback()
@@ -477,23 +497,40 @@ class ConfluentKafkaInput(Input):
     def _lost_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
-            self._logger.warning(
-                f"{consumer.memberid()} has lost "
-                f"topic: {topic_partition.topic} | "
-                f"partition {topic_partition.partition}"
-                "- try to reassign"
+            logger.warning(
+                "%s has lost topic: %s | partition %s - try to reassign",
+                consumer.memberid(),
+                topic_partition.topic,
+                topic_partition.partition,
             )
             topic_partition.offset = OFFSET_STORED
         self._consumer.assign(topic_partitions)
-
-    def setup(self) -> None:
-        super().setup()
-        try:
-            _ = self._consumer
-        except (KafkaException, ValueError) as error:
-            raise FatalInputError(self, str(error)) from error
 
     def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
         super().shut_down()
+
+    def health(self) -> bool:
+        """Check the health of the component.
+
+        Returns
+        -------
+        bool
+            True if the component is healthy, False otherwise.
+        """
+
+        try:
+            self._consumer.list_topics(timeout=self._config.health_timeout)
+        except KafkaException as error:
+            logger.error("Health check failed: %s", error)
+            self.metrics.number_of_errors += 1
+            return False
+        return super().health()
+
+    def setup(self) -> None:
+        """Set the component up."""
+        try:
+            super().setup()
+        except KafkaException as error:
+            raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error

@@ -1,6 +1,159 @@
+[build-system]
+requires = [
+  "setuptools>=68.0.0",
+  "setuptools-scm>=8.0",
+  "wheel",
+  "setuptools-rust",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "logprep" = "logprep" }
+packages = ["logprep"]
+
+[tool.setuptools_scm]
+fallback_version = "unset"
+
+[[tool.setuptools-rust.ext-modules]]
+# Private Rust extension module to be nested into the Python package
+target = "rust" # The last part of the name (e.g. "_lib") has to match lib.name in Cargo.toml,
+# but you can add a prefix to nest it inside of a Python package.
+path = "Cargo.toml" # Default value, can be omitted
+binding = "PyO3"    # Default value, can be omitted
+
+[project]
+name = "logprep"
+description = "Logprep allows to collect, process and forward log messages from various data sources."
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+license = { file = "LICENSE" }
+classifiers = [
+  "Development Status :: 3 - Alpha",
+
+  "Intended Audience :: Information Technology",
+
+  "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+
+  "Operating System :: POSIX :: Linux",
+
+  "Topic :: Security",
+  "Topic :: System :: Logging",
+]
+keywords = [
+  "kafka",
+  "etl",
+  "sre",
+  "preprocessing",
+  "opensearch",
+  "soar",
+  "logdata",
+]
+dependencies = [
+  "aiohttp>=3.9.2",           # CVE-2024-23334
+  "attrs",
+  "certifi>=2023.7.22",       # CVE-2023-37920
+  "ciso8601",                 # fastest iso8601 datetime parser. can be removed after dropping support for python < 3.11
+  "colorama",
+  "confluent-kafka>2",
+  "geoip2",
+  "hyperscan>=0.7.0",
+  "jsonref",
+  "luqum",
+  "mysql-connector-python<9",
+  "numpy>=1.26.0",
+  "opensearch-py",
+  "prometheus_client",
+  "protobuf>=3.20.2",
+  "pycryptodome",
+  "pyparsing",
+  "scikit-learn>=1.2.0",
+  "scipy>=1.9.2",
+  "joblib",
+  "pyyaml",
+  "requests>=2.31.0",
+  "regex",
+  "ruamel.yaml",
+  "schedule",
+  "tldextract",
+  "urlextract",
+  "urllib3>=1.26.17",         # CVE-2023-43804
+  "uvicorn",
+  "wheel",
+  "deepdiff",
+  "msgspec",
+  "boto3",
+  "pydantic",
+  "ndjson",
+  "click",
+  "pandas",
+  "tabulate",
+  "falcon==3.1.3",
+  "uvloop",
+  "httptools",
+  "rstr",
+]
+
+[project.optional-dependencies]
+
+dev = [
+  "black",
+  "httpx",
+  "isort",
+  "pylint",
+  "pytest",
+  "pytest-cov",
+  "responses",
+  "jinja2",
+  "maturin",
+  "cibuildwheel",
+]
+
+doc = [
+  "sphinx",
+  "sphinx_rtd_theme",
+  "sphinxcontrib.datatemplates",
+  "sphinx-copybutton",
+  "nbsphinx",
+  "ipython",
+  "openpyxl",
+]
+
+[project.urls]
+Homepage = "https://github.com/fkie-cad/Logprep"
+Documentation = "https://logprep.readthedocs.io/en/latest/"
+Repository = "https://github.com/fkie-cad/Logprep"
+Issues = "https://github.com/fkie-cad/Logprep/issues"
+Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
+
+[project.scripts]
+logprep = "logprep.run_logprep:cli"
+
 [tool.black]
 line-length = 100
 target-version = ['py310', 'py311', 'py312']
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+(
+  __version__\.py
+)
+'''
 
 [tool.isort]
 profile = "black"
+
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-*"
+skip = "*pp* *i686-unknown-linux-musl*"
+
+[tool.cibuildwheel.linux]
+archs = "x86_64 i686 aarch64"
+before-build = "curl -sSf https://sh.rustup.rs | sh -s -- -y"
+environment = 'PATH=$HOME/.cargo/bin:$PATH'

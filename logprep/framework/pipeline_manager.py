@@ -1,17 +1,57 @@
 """This module contains functionality to manage pipelines via multi-processing."""
+
 # pylint: disable=logging-fstring-interpolation
 
 import logging
 import logging.handlers
 import multiprocessing
+import multiprocessing.managers
+import multiprocessing.queues
+import random
+import signal
+import time
 
 from attr import define, field
 
 from logprep.abc.component import Component
+from logprep.connector.http.input import HttpInput
 from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
+from logprep.util.logging import LogprepMPQueueListener, logqueue
+
+logger = logging.getLogger("Manager")
+
+
+class ThrottlingQueue(multiprocessing.queues.Queue):
+    """A queue that throttles the number of items that can be put into it."""
+
+    wait_time = 5
+
+    @property
+    def consumed_percent(self) -> int:
+        """Return the percentage of items consumed."""
+        return int((self.qsize() / self.capacity) * 100)
+
+    def __init__(self, ctx, maxsize):
+        super().__init__(ctx=ctx, maxsize=maxsize)
+        self.capacity = maxsize
+        self.call_time = None
+
+    def throttle(self, batch_size=1):
+        """Throttle put by sleeping."""
+        if self.consumed_percent > 90:
+            sleep_time = max(
+                self.wait_time, int(self.wait_time * self.consumed_percent / batch_size)
+            )
+            # sleep times in microseconds
+            time.sleep(sleep_time / 1000)
+
+    def put(self, obj, block=True, timeout=None, batch_size=1):
+        """Put an obj into the queue."""
+        self.throttle(batch_size)
+        super().put(obj, block=block, timeout=timeout)
 
 
 class PipelineManager:
@@ -46,36 +86,40 @@ class PipelineManager:
         """Number of failed pipelines"""
 
     def __init__(self, configuration: Configuration):
+        self.restart_count = 0
+        self.restart_timeout_ms = random.randint(100, 1000)
         self.metrics = self.Metrics(labels={"component": "manager"})
-        self._logger = logging.getLogger("Logprep PipelineManager")
-        self.log_queue = multiprocessing.Queue(-1)
-        self._queue_listener = logging.handlers.QueueListener(self.log_queue)
-        self._queue_listener.start()
-
+        self.loghandler = None
+        if multiprocessing.current_process().name == "MainProcess":
+            self._set_http_input_queue(configuration)
+            self._setup_logging()
         self._pipelines: list[multiprocessing.Process] = []
         self._configuration = configuration
 
-        self._lock = multiprocessing.Lock()
-        self._used_server_ports = None
         prometheus_config = self._configuration.metrics
         if prometheus_config.enabled:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
         else:
             self.prometheus_exporter = None
-        manager = multiprocessing.Manager()
-        self._used_server_ports = manager.dict()
 
-    def get_count(self) -> int:
-        """Get the pipeline count.
+    def _setup_logging(self):
+        console_logger = logging.getLogger("console")
+        if console_logger.handlers:
+            console_handler = console_logger.handlers.pop()  # last handler is console
+            self.loghandler = LogprepMPQueueListener(logqueue, console_handler)
+            self.loghandler.start()
 
-        Parameters
-        ----------
-        count : int
-           The pipeline count will be incrementally changed until it reaches this value.
-
+    def _set_http_input_queue(self, configuration):
         """
-        self._logger.debug(f"Getting pipeline count: {len(self._pipelines)}")
-        return len(self._pipelines)
+        this workaround has to be done because the queue size is not configurable
+        after initialization and the queue has to be shared between the multiple processes
+        """
+        input_config = next(iter(configuration.input.values()))
+        is_http_input = input_config.get("type") == "http_input"
+        if not is_http_input and HttpInput.messages is not None:
+            return
+        message_backlog_size = input_config.get("message_backlog_size", 15000)
+        HttpInput.messages = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
 
     def set_count(self, count: int):
         """Set the pipeline count.
@@ -106,48 +150,57 @@ class PipelineManager:
 
     def restart_failed_pipeline(self):
         """Remove one pipeline at a time."""
-        failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
-        for failed_pipeline in failed_pipelines:
-            self._pipelines.remove(failed_pipeline)
+        failed_pipelines = [
+            (index, pipeline)
+            for index, pipeline in enumerate(self._pipelines)
+            if not pipeline.is_alive()
+        ]
+
+        if not failed_pipelines:
+            self.restart_count = 0
+            return
+
+        for index, failed_pipeline in failed_pipelines:
+            pipeline_index = index + 1
+            self._pipelines.pop(index)
             self.metrics.number_of_failed_pipelines += 1
             if self.prometheus_exporter:
                 self.prometheus_exporter.mark_process_dead(failed_pipeline.pid)
-
-        if failed_pipelines:
-            self.set_count(self._configuration.process_count)
-            exit_codes = [pipeline.exitcode for pipeline in failed_pipelines]
-            self._logger.warning(
-                f"Restarted {len(failed_pipelines)} failed pipeline(s), "
-                f"with exit code(s): {exit_codes}"
+            self._pipelines.insert(index, self._create_pipeline(pipeline_index))
+            exit_code = failed_pipeline.exitcode
+            logger.warning(
+                "Restarting failed pipeline on index %s " "with exit code: %s",
+                pipeline_index,
+                exit_code,
             )
+        if self._configuration.restart_count < 0:
+            return
+        self.restart_count += 1
+        time.sleep(self.restart_timeout_ms / 1000)
+        self.restart_timeout_ms = self.restart_timeout_ms * 2
 
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
         self._decrease_to_count(0)
         if self.prometheus_exporter:
+            self.prometheus_exporter.server.server.handle_exit(signal.SIGTERM, None)
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
-        self._queue_listener.stop()
-        self.log_queue.close()
 
-    def restart(self):
+    def restart(self, daemon=True):
         """Restarts all pipelines"""
+        if self.prometheus_exporter:
+            self.prometheus_exporter.run(daemon=daemon)
         self.set_count(0)
         self.set_count(self._configuration.process_count)
-        if not self.prometheus_exporter:
-            return
-        if not self.prometheus_exporter.is_running:
-            self.prometheus_exporter.run()
 
     def _create_pipeline(self, index) -> multiprocessing.Process:
-        pipeline = Pipeline(
-            pipeline_index=index,
-            config=self._configuration,
-            log_queue=self.log_queue,
-            lock=self._lock,
-            used_server_ports=self._used_server_ports,
+        pipeline = Pipeline(pipeline_index=index, config=self._configuration)
+        if pipeline.pipeline_index == 1 and self.prometheus_exporter:
+            self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
+        process = multiprocessing.Process(
+            target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )
-        self._logger.info("Created new pipeline")
-        process = multiprocessing.Process(target=pipeline.run, daemon=True)
         process.stop = pipeline.stop
         process.start()
+        logger.info("Created new pipeline")
         return process

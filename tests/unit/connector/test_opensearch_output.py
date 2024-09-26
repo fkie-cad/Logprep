@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-arguments
+import copy
 import json
 import os
 import re
@@ -53,7 +54,9 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         )
 
     def test_store_sends_to_default_index(self):
-        self.object._config.message_backlog_size = 2
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 2
+        self.object = Factory.create({"opensearch_output": config})
         event = {"field": "content"}
         expected = {
             "_index": "default_index",
@@ -76,8 +79,10 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             "message": '{"field": "content"}',
             "reason": "Missing index in document",
         }
-        self.object._config.default_index = default_index
-        self.object._config.message_backlog_size = 2
+        config = copy.deepcopy(self.CONFIG)
+        config["default_index"] = default_index
+        config["message_backlog_size"] = 2
+        self.object = Factory.create({"opensearch_output": config})
         self.object.store(event)
 
         assert self.object._message_backlog[0].pop("@timestamp")
@@ -87,7 +92,9 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         custom_index = "custom_index"
         event = {"field": "content"}
         expected = {"field": "content", "_index": custom_index}
-        self.object._config.message_backlog_size = 2
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 2
+        self.object = Factory.create({"opensearch_output": config})
         self.object.store_custom(event, custom_index)
         assert self.object._message_backlog[0] == expected
 
@@ -104,7 +111,9 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             "@timestamp": str(datetime.now()),
         }
 
-        self.object._config.message_backlog_size = 2
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 2
+        self.object = Factory.create({"opensearch_output": config})
         self.object.store_failed(error_message, event_received, event)
 
         error_document = self.object._message_backlog[0]
@@ -150,7 +159,9 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_write_to_search_context_calls_handle_serialization_error_if_serialization_error(
         self, _
     ):
-        self.object._config.message_backlog_size = 1
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 1
+        self.object = Factory.create({"opensearch_output": config})
         self.object._handle_serialization_error = mock.MagicMock()
         self.object._message_backlog.append({"dummy": "event"})
         self.object._write_to_search_context()
@@ -158,10 +169,13 @@ class TestOpenSearchOutput(BaseOutputTestCase):
 
     @mock.patch(
         "opensearchpy.helpers.parallel_bulk",
-        side_effect=search.ConnectionError,
+        side_effect=search.ConnectionError(-1),
     )
+    @mock.patch("time.sleep", mock.MagicMock())  # to speed up test execution
     def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
-        self.object._config.message_backlog_size = 1
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 1
+        self.object = Factory.create({"opensearch_output": config})
         self.object._handle_connection_error = mock.MagicMock()
         self.object._message_backlog.append({"dummy": "event"})
         self.object._write_to_search_context()
@@ -172,7 +186,9 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         side_effect=helpers.BulkIndexError,
     )
     def test_write_to_search_context_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
-        self.object._config.message_backlog_size = 1
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 1
+        self.object = Factory.create({"opensearch_output": config})
         self.object._handle_bulk_index_error = mock.MagicMock()
         self.object._message_backlog.append({"dummy": "event"})
         self.object._write_to_search_context()
@@ -229,7 +245,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "bar"}, {"bar": "baz"}],
                 0,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -253,7 +269,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -261,7 +277,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -269,7 +285,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"invalid": "error"},
                 [{"foo": "*" * 500}],
                 1,
-                TypeError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -277,7 +293,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"error": {"reason": "wrong_reason"}},
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
             (
                 429,
@@ -305,15 +321,16 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 },
                 [{"foo": "*" * 500}],
                 1,
-                search.exceptions.TransportError,
+                FatalOutputError,
             ),
         ],
     )
     def test_handle_transport_error_calls_bulk_with_error_documents(
         self, status_code, error, error_info, messages, discarded_cnt, exception
     ):
-        self.object._config.maximum_message_size_mb = 5 * 10**-4
-
+        config = copy.deepcopy(self.CONFIG)
+        config["maximum_message_size_mb"] = 5 * 10**-4
+        self.object = Factory.create({"opensearch_output": config})
         mock_transport_error = search.exceptions.TransportError(status_code, error, error_info)
 
         if exception:
@@ -345,21 +362,16 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         with pytest.raises(FatalOutputError):
             self.object._handle_serialization_error(mock.MagicMock())
 
-    def test_setup_raises_fatal_output_error_if_opensearch_error_is_raised(self):
-        self.object._search_context.info = mock.MagicMock()
-        self.object._search_context.info.side_effect = SearchException
-        with pytest.raises(FatalOutputError):
-            self.object.setup()
-
     def test_setup_registers_flush_timout_tasks(self):
-        # this test fails if opensearch is running on localhost
         job_count = len(Component._scheduler.jobs)
-        with pytest.raises(FatalOutputError):
+        with mock.patch.object(self.object, "_search_context", new=mock.MagicMock()):
             self.object.setup()
         assert len(Component._scheduler.jobs) == job_count + 1
 
     def test_message_backlog_is_not_written_if_message_backlog_size_not_reached(self):
-        self.object._config.message_backlog_size = 2
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 2
+        self.object = Factory.create({"opensearch_output": config})
         assert len(self.object._message_backlog) == 0
         with mock.patch(
             "logprep.connector.opensearch.output.OpensearchOutput._write_backlog"
@@ -368,7 +380,9 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         mock_write_backlog.assert_not_called()
 
     def test_message_backlog_is_cleared_after_it_was_written(self):
-        self.object._config.message_backlog_size = 1
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 1
+        self.object = Factory.create({"opensearch_output": config})
         self.object.store({"event": "test_event"})
         assert len(self.object._message_backlog) == 0
 
@@ -382,7 +396,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             "message_backlog_size": 1,
             "timeout": 5000,
         }
-        output: OpensearchOutput = Factory.create({"opensearch_output": config}, mock.MagicMock())
+        output: OpensearchOutput = Factory.create({"opensearch_output": config})
         uuid_str = str(uuid.uuid4())
         result = output._search_context.search(
             index="defaultindex", body={"query": {"match": {"foo": uuid_str}}}
@@ -395,3 +409,77 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             index="defaultindex", body={"query": {"match": {"foo": uuid_str}}}
         )
         assert len(result["hits"]["hits"]) > len_before
+
+    @mock.patch(
+        "logprep.connector.opensearch.output.OpensearchOutput._search_context",
+        new=mock.MagicMock(),
+    )
+    @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
+    def test_setup_populates_cached_properties(self, mock_getmembers):
+        self.object.setup()
+        mock_getmembers.assert_called_with(self.object)
+
+    @mock.patch(
+        "opensearchpy.helpers.parallel_bulk",
+        side_effect=search.TransportError(429, "rejected_execution_exception", {}),
+    )
+    @mock.patch("time.sleep")
+    def test_write_backlog_fails_if_all_retries_are_exceeded(self, _, mock_sleep):
+        config = copy.deepcopy(self.CONFIG)
+        config["maximum_message_size_mb"] = 1
+        config["max_retries"] = 5
+        self.object = Factory.create({"opensearch_output": config})
+        self.object._message_backlog = [{"some": "event"}]
+        with pytest.raises(
+            FatalOutputError, match="Opensearch too many requests, all parallel bulk retries failed"
+        ):
+            self.object._write_backlog()
+        assert mock_sleep.call_count == 6  # one initial try + 5 retries
+        assert self.object._message_backlog == [{"some": "event"}]
+
+    @mock.patch("time.sleep")
+    def test_write_backlog_is_successful_after_two_retries(self, mock_sleep):
+        side_effects = [
+            search.TransportError(429, "rejected_execution_exception", {}),
+            search.TransportError(429, "rejected_execution_exception", {}),
+            [],
+        ]
+        with mock.patch("opensearchpy.helpers.parallel_bulk", side_effect=side_effects):
+            config = copy.deepcopy(self.CONFIG)
+            config["maximum_message_size_mb"] = 1
+            config["max_retries"] = 5
+            self.object = Factory.create({"opensearch_output": config})
+            self.object._message_backlog = [{"some": "event"}]
+            self.object._write_backlog()
+            assert mock_sleep.call_count == 2
+            assert self.object._message_backlog == []
+
+    def test_health_returns_true_on_success(self):
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.return_value = {"status": "green"}
+        assert self.object.health()
+
+    @pytest.mark.parametrize("exception", [SearchException, ConnectionError])
+    def test_health_returns_false_on_failure(self, exception):
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.side_effect = exception
+        assert not self.object.health()
+
+    def test_health_logs_on_failure(self):
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.side_effect = SearchException
+        with mock.patch("logging.Logger.error") as mock_error:
+            assert not self.object.health()
+            mock_error.assert_called()
+
+    def test_health_counts_metrics_on_failure(self):
+        self.object.metrics.number_of_errors = 0
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.side_effect = SearchException
+        assert not self.object.health()
+        assert self.object.metrics.number_of_errors == 1
+
+    def test_health_returns_false_on_cluster_status_not_green(self):
+        self.object._search_context = mock.MagicMock()
+        self.object._search_context.cluster.health.return_value = {"status": "yellow"}
+        assert not self.object.health()

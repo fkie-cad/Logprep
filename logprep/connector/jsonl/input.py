@@ -19,6 +19,7 @@ Example
         documents_path: path/to/a/document.jsonl
         repeat_documents: true
 """
+
 import copy
 from functools import cached_property
 

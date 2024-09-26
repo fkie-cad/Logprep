@@ -2,13 +2,12 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
-import logging
-import re
 from collections import OrderedDict
 
-import pytest
-
-from logprep.processor.base.exceptions import ProcessingCriticalError
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingCriticalError,
+)
 from logprep.processor.generic_resolver.processor import GenericResolver
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -208,7 +207,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                     "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
         self._load_specific_rule(rule)
@@ -232,7 +231,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                     "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
         self._load_specific_rule(rule)
@@ -260,7 +259,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                     "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "append_to_list": True,
+                "extend_target_list": True,
             },
         }
         self._load_specific_rule(rule)
@@ -294,13 +293,9 @@ class TestGenericResolver(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"to_resolve": "ab"}
-
-        with pytest.raises(
-            ProcessingCriticalError,
-            match=r"GenericResolver \(Test Instance Name\)\: Mapping group is missing in mapping "
-            r"file pattern!",
-        ):
-            self.object.process(document)
+        result = self.object.process(document)
+        assert isinstance(result.errors[0], ProcessingCriticalError)
+        assert "Mapping group is missing in mapping" in result.errors[0].args[0]
 
     def test_resolve_generic_match_from_file_and_file_does_not_exist(self):
         rule = {
@@ -311,14 +306,10 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
         self._load_specific_rule(rule)
-
         document = {"to": {"resolve": "something HELLO1"}}
-
-        with pytest.raises(
-            ProcessingCriticalError,
-            match=r"GenericResolver \(Test Instance Name\)\: Additions file \'foo\' not found!",
-        ):
-            self.object.process(document)
+        result = self.object.process(document)
+        assert isinstance(result.errors[0], ProcessingCriticalError)
+        assert "Additions file 'foo' not found" in result.errors[0].args[0]
 
     def test_resolve_dotted_field_no_conflict_no_match(self):
         rule = {
@@ -332,6 +323,26 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         expected = {"to": {"resolve": "something no"}}
         document = {"to": {"resolve": "something no"}}
+
+        self.object.process(document)
+
+        assert document == expected
+
+    def test_resolve_dotted_field_is_missing(self):
+        rule = {
+            "filter": "to.other_field",
+            "generic_resolver": {
+                "field_mapping": {"to.resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        }
+        self._load_specific_rule(rule)
+
+        expected = {
+            "to": {"other_field": "something no"},
+            "tags": ["_generic_resolver_missing_field_warning"],
+        }
+        document = {"to": {"other_field": "something no"}}
 
         self.object.process(document)
 
@@ -399,7 +410,6 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
         self._load_specific_rule(rule)
-
         document = {
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
@@ -409,10 +419,9 @@ class TestGenericResolver(BaseProcessorTestCase):
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
         }
-        with caplog.at_level(logging.WARNING):
-            self.object.process(document)
-        assert re.match(".*FieldExistsWarning.*", caplog.text)
-
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
 
     def test_resolve_generic_and_multiple_match_first_only(self):

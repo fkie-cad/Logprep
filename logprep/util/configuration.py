@@ -1,33 +1,135 @@
 """
-Configuration is done via YAML or JSON files or http api ressources.
+Configuration is done via YAML or JSON files or http api resources.
 Logprep searches for the file :code:`/etc/logprep/pipeline.yml` if no
 configuration file is passed.
 
 You can pass multiple configuration files via valid file paths or urls.
 
 ..  code-block:: bash
+    :caption: Valid Run Examples
 
     logprep run /different/path/file.yml
-
-or
-
-..  code-block:: bash
-    
     logprep run http://url-to-our-yaml-file-or-api
+    logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/connector.yaml
 
-or
 
-..  code-block:: bash
-    
-    logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/conector.yaml
+.. security-best-practice::
+   :title: Configuration - Combining multiple configuration files
+
+   Consider when using multiple configuration files logprep will reject all configuration files
+   if one can not be retrieved or is not valid.
+   If using multiple files ensure that all can be loaded safely and that all endpoints (if using
+   http resources) are accessible.
+
+Configuration File Structure
+----------------------------
+
+..  code-block:: yaml
+    :caption: Example of a complete configuration file
+
+    version: config-1.0
+    process_count: 2
+    restart_count: 5
+    timeout: 5
+    logger:
+        level: INFO
+    input:
+        kafka:
+            type: confluentkafka_input
+            topic: consumer
+            offset_reset_policy: smallest
+            kafka_config:
+                bootstrap.servers: localhost:9092
+                group.id: test
+    output:
+        kafka:
+            type: confluentkafka_output
+            topic: producer
+            error_topic: producer_error
+            flush_timeout: 30
+            send_timeout: 2
+            kafka_config:
+                bootstrap.servers: localhost:9092
+    pipeline:
+    - labelername:
+        type: labeler
+        schema: examples/exampledata/rules/labeler/schema.json
+        include_parent_labels: true
+        specific_rules:
+            - examples/exampledata/rules/labeler/specific
+        generic_rules:
+            - examples/exampledata/rules/labeler/generic
+
+    - dissectorname:
+        type: dissector
+        specific_rules:
+            - examples/exampledata/rules/dissector/specific/
+        generic_rules:
+            - examples/exampledata/rules/dissector/generic/
+
+    - dropper:
+        type: dropper
+        specific_rules:
+            - examples/exampledata/rules/dropper/specific
+        generic_rules:
+            - examples/exampledata/rules/dropper/generic
+            - filter: "test_dropper"
+            dropper:
+                drop:
+                - drop_me
+            description: "..."
+
+    - pre_detector:
+        type: pre_detector
+        specific_rules:
+            - examples/exampledata/rules/pre_detector/specific
+        generic_rules:
+            - examples/exampledata/rules/pre_detector/generic
+        outputs:
+            - opensearch: sre
+        tree_config: examples/exampledata/rules/pre_detector/tree_config.json
+        alert_ip_list_path: examples/exampledata/rules/pre_detector/alert_ips.yml
+
+    - amides:
+        type: amides
+        specific_rules:
+            - examples/exampledata/rules/amides/specific
+        generic_rules:
+            - examples/exampledata/rules/amides/generic
+        models_path: examples/exampledata/models/model.zip
+        num_rule_attributions: 10
+        max_cache_entries: 1000000
+        decision_threshold: 0.32
+
+    - pseudonymizer:
+        type: pseudonymizer
+        pubkey_analyst: examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem
+        pubkey_depseudo: examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
+        regex_mapping: examples/exampledata/rules/pseudonymizer/regex_mapping.yml
+        hash_salt: a_secret_tasty_ingredient
+        outputs:
+            - opensearch: pseudonyms
+        specific_rules:
+            - examples/exampledata/rules/pseudonymizer/specific/
+        generic_rules:
+            - examples/exampledata/rules/pseudonymizer/generic/
+        max_cached_pseudonyms: 1000000
+
+    - calculator:
+        type: calculator
+        specific_rules:
+            - filter: "test_label: execute"
+            calculator:
+                target_field: "calculation"
+                calc: "1 + 1"
+        generic_rules: []
+
 
 The options under :code:`input`, :code:`output` and :code:`pipeline` are passed
 to factories in Logprep.
 They contain settings for each separate processor and connector.
 Details for configuring connectors are described in
 :ref:`output` and :ref:`input` and for processors in :ref:`processors`.
-General information about the configuration of the pipeline can be found
-in :ref:`pipeline_config`.
 
 It is possible to use environment variables in all configuration
 and rule files in all places.
@@ -36,10 +138,20 @@ with :code:`LOGPREP_`, :code:`GITHUB_`, :code:`PYTEST_` or
 :code:`CI_`. Lowercase variables are ignored. Forbidden
 variable names are: :code:`["LOGPREP_LIST"]`, as it is already used internally.
 
+.. security-best-practice::
+   :title: Configuration Environment Variables
+
+   As it is possible to replace all configuration options with environment variables it is
+   recommended to use these especially for sensitive information like usernames, password, secrets
+   or hash salts.
+   Examples where this could be useful would be the :code:`key` for the hmac calculation (see
+   `input` > `preprocessing`) or the :code:`user`/:code:`secret` for the opensearch
+   connectors.
+
 The following config file will be valid by setting the given environment variables:
 
 ..  code-block:: yaml
-    :caption: pipeline.yml config file
+    :caption: pipeline.yml config file with environment variables
 
     version: $LOGPREP_VERSION
     process_count: $LOGPREP_PROCESS_COUNT
@@ -61,12 +173,12 @@ The following config file will be valid by setting the given environment variabl
     pipeline:
         - labelername:
             type: labeler
-            schema: quickstart/exampledata/rules/labeler/schema.json
+            schema: examples/exampledata/rules/labeler/schema.json
             include_parent_labels: true
             specific_rules:
-                - quickstart/exampledata/rules/labeler/specific
+                - examples/exampledata/rules/labeler/specific
             generic_rules:
-                - quickstart/exampledata/rules/labeler/generic"
+                - examples/exampledata/rules/labeler/generic"
     export LOGPREP_OUTPUT="
     output:
         kafka:
@@ -89,10 +201,11 @@ The following config file will be valid by setting the given environment variabl
 """
 
 import json
+import logging
 import os
 from copy import deepcopy
 from itertools import chain
-from logging import getLogger
+from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional
 
@@ -107,8 +220,14 @@ from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util import getter
-from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
+from logprep.util import getter, http
+from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
+from logprep.util.defaults import (
+    DEFAULT_CONFIG_LOCATION,
+    DEFAULT_LOG_CONFIG,
+    DEFAULT_RESTART_COUNT,
+    ENV_NAME_LOGPREP_CREDENTIALS_FILE,
+)
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.json_handling import list_json_files_in_directory
 
@@ -191,6 +310,137 @@ class MetricsConfig:
 
     enabled: bool = field(validator=validators.instance_of(bool), default=False)
     port: int = field(validator=validators.instance_of(int), default=8000)
+    uvicorn_config: dict = field(
+        validator=[
+            validators.instance_of(dict),
+            validators.deep_mapping(
+                key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
+                # lambda xyz tuple necessary because of input structure
+                value_validator=lambda x, y, z: True,
+            ),
+        ],
+        factory=dict,
+    )
+
+
+@define(kw_only=True)
+class LoggerConfig:
+    """The logger config class used in Configuration.
+    The schema for this class is derived from the python logging module:
+    https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+    """
+
+    _LOG_LEVELS = (
+        logging.NOTSET,  # 0
+        logging.DEBUG,  # 10
+        logging.INFO,  # 20
+        logging.WARNING,  # 30
+        logging.ERROR,  # 40
+        logging.CRITICAL,  # 50
+    )
+
+    version: int = field(validator=validators.instance_of(int), default=1)
+    formatters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    filters: dict = field(validator=validators.instance_of(dict), factory=dict)
+    handlers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    disable_existing_loggers: bool = field(validator=validators.instance_of(bool), default=False)
+    level: str = field(
+        default="INFO",
+        validator=[
+            validators.instance_of(str),
+            validators.in_([logging.getLevelName(level) for level in _LOG_LEVELS]),
+        ],
+        eq=False,
+    )
+    """The log level of the root logger. Defaults to :code:`INFO`.
+
+    .. security-best-practice::
+       :title: Logprep Log-Level
+       :location: config.logger.level
+       :suggested-value: INFO
+
+         The log level of the root logger should be set to :code:`INFO` or higher in production environments
+         to avoid exposing sensitive information in the logs.
+    """
+    format: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    """The format of the log message as supported by the :code:`LogprepFormatter`.
+    Defaults to :code:`"%(asctime)-15s %(name)-10s %(levelname)-8s: %(message)s"`.
+    
+    .. autoclass:: logprep.util.logging.LogprepFormatter
+      :no-index:
+    
+    """
+    datefmt: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    """The date format of the log message. Defaults to :code:`"%Y-%m-%d %H:%M:%S"`."""
+    loggers: dict = field(validator=validators.instance_of(dict), factory=dict)
+    """The loggers loglevel configuration. Defaults to:
+
+    .. csv-table::
+
+        "root", "INFO"
+        "filelock", "ERROR"
+        "urllib3.connectionpool", "ERROR"
+        "opensearch", "ERROR"
+        "uvicorn", "INFO"
+        "uvicorn.access", "INFO"
+        "uvicorn.error", "INFO"
+
+    You can alter the log level of the loggers by adding them to the loggers mapping like in the
+    example. Logprep opts out of hierarchical loggers and so it is possible to set the log level in
+    general for all loggers in the :code:`root` logger to :code:`INFO` and then set the log level
+    for specific loggers like :code:`Runner` to :code:`DEBUG` to get only DEBUG Messages from the
+    Runner instance.
+
+    If you want to silence other loggers like :code:`py.warnings` you can set the log level to
+    :code:`ERROR` here.
+
+    .. code-block:: yaml
+        :caption: Example of a custom logger configuration
+
+        logger:
+            level: ERROR
+            format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
+            datefmt: "%Y-%m-%d %H:%M:%S"
+            loggers:
+                "py.warnings": {"level": "ERROR"}
+                "Runner": {"level": "DEBUG"}
+
+        """
+
+    def __attrs_post_init__(self) -> None:
+        """Create a LoggerConfig from a logprep logger configuration."""
+        self._set_defaults()
+        if not self.level:
+            self.level = DEFAULT_LOG_CONFIG.get("loggers", {}).get("root", {}).get("level", "INFO")
+        if self.loggers:
+            self._set_loggers_levels()
+        self.loggers = {**DEFAULT_LOG_CONFIG["loggers"] | self.loggers}
+        self.loggers.get("root", {}).update({"level": self.level})
+
+    def setup_logging(self) -> None:
+        """Setup the logging configuration.
+        is called in the :code:`logprep.run_logprep` module.
+        We have to write the configuration to the environment variable :code:`LOGPREP_LOG_CONFIG` to
+        make it available for the uvicorn server in :code:'logprep.util.http'.
+        """
+        log_config = asdict(self)
+        os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
+        dictConfig(log_config)
+
+    def _set_loggers_levels(self):
+        """sets the loggers levels to the default or to the given level."""
+        for logger_name, logger_config in self.loggers.items():
+            default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
+            if "level" in logger_config:
+                default_logger_config.update({"level": logger_config["level"]})
+            self.loggers[logger_name].update(default_logger_config)
+
+    def _set_defaults(self):
+        """resets all keys to the defined defaults except :code:`loggers`."""
+        for key, value in DEFAULT_LOG_CONFIG.items():
+            if key == "loggers":
+                continue
+            setattr(self, key, value)
 
 
 @define(kw_only=True)
@@ -212,11 +462,37 @@ class Configuration:
     If configured the configuration will only be reloaded if the configuration version changes.
     If http errors occurs on configuration reload `config_refresh_interval` is set to a quarter
     of the current `config_refresh_interval` until a minimum of 5 seconds is reached.
-    Defaults to :code:`None`, which means that the configuration will not be refreshed."""
+    Defaults to :code:`None`, which means that the configuration will not be refreshed.
+
+    .. security-best-practice::
+       :title: Configuration Refresh Interval
+       :location: config.config_refresh_interval
+       :suggested-value: <= 300
+
+       The refresh interval for the configuration shouldn't be set too high in production
+       environments.
+       It is suggested to not set a value higher than :code:`300` (5 min).
+       That way configuration updates are propagated fairly quickly instead of once a day.
+
+       It should also be noted that a new configuration file will be read as long as it is a valid
+       config.
+       There is no further check to ensure credibility.
+
+       In case a new configuration could not be retrieved successfully and the
+       :code:`config_refresh_interval` is already reduced automatically to 5 seconds it should be
+       noted that this could lead to a blocking behavior or an significant reduction in performance
+       as logprep is often retrying to reload the configuration.
+       Because of that ensure that the configuration endpoint is always available.
+    """
     process_count: int = field(
         validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
     )
     """Number of logprep processes to start. Defaults to :code:`1`."""
+    restart_count: int = field(
+        validator=validators.instance_of(int), default=DEFAULT_RESTART_COUNT, eq=False
+    )
+    """Number of restarts before logprep exits. Defaults to :code:`5`.
+    If this value is set to a negative number, logprep will always restart immediately."""
     timeout: float = field(
         validator=[validators.instance_of(float), validators.gt(0)], default=5.0, eq=False
     )
@@ -227,23 +503,67 @@ class Configuration:
     processing power. This can be useful for testing and debugging.
     Larger values (like 5.0) slow the reaction time down, but this requires less processing power,
     which makes in preferable for continuous operation. Defaults to :code:`5.0`."""
-    logger: dict = field(
-        validator=validators.instance_of(dict), default={"level": "INFO"}, eq=False
+    logger: LoggerConfig = field(
+        validator=validators.instance_of(LoggerConfig),
+        default=LoggerConfig(**DEFAULT_LOG_CONFIG),
+        eq=False,
+        converter=lambda x: LoggerConfig(**x) if isinstance(x, dict) else x,
     )
-    """Logger configuration. Defaults to :code:`{"level": "INFO"}`."""
+    """Logger configuration.
+
+    .. autoclass:: logprep.util.configuration.LoggerConfig
+       :no-index:
+       :no-undoc-members:
+       :members: level, format, datefmt, loggers
+
+    """
     input: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
-    """Input connector configuration. Defaults to :code:`{}`."""
+    """
+    Input connector configuration. Defaults to :code:`{}`.
+    For detailed configurations see :ref:`input`.
+    """
     output: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
-    """Output connector configuration. Defaults to :code:`{}`."""
+    """
+    Output connector configuration. Defaults to :code:`{}`.
+    For detailed configurations see :ref:`output`.
+    """
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)
-    """Pipeline configuration. Defaults to :code:`[]`."""
+    """
+    Pipeline configuration. Defaults to :code:`[]`.
+    See :ref:`processors` for a detailed overview on how to configure a pipeline.
+    """
     metrics: MetricsConfig = field(
         validator=validators.instance_of(MetricsConfig),
         factory=MetricsConfig,
         converter=lambda x: MetricsConfig(**x) if isinstance(x, dict) else x,
         eq=False,
     )
-    """Metrics configuration. Defaults to :code:`{"enabled": False, "port": 8000}`."""
+    """Metrics configuration. Defaults to 
+    :code:`{"enabled": False, "port": 8000, "uvicorn_config": {}}`.
+    
+    The key :code:`uvicorn_config` can be configured with any uvicorn config parameters.
+    For further information see the `uvicorn documentation <https://www.uvicorn.org/settings/>`_.
+
+    .. security-best-practice::
+       :title: Metrics Configuration
+       :location: config.metrics.uvicorn_config
+       :suggested-value: metrics.uvicorn_config.access_log: true, metrics.uvicorn_config.server_header: false, metrics.uvicorn_config.data_header: false
+
+       Additionally to the below it is recommended to configure `ssl on the metrics server endpoint
+       <https://www.uvicorn.org/settings/#https>`_
+
+       .. code-block:: yaml
+
+          metrics:
+            enabled: true
+            port: 9000
+            uvicorn_config:
+              access_log: true
+              server_header: false
+              date_header: false
+              workers: 1
+
+    """
     profile_pipelines: bool = field(default=False, eq=False)
     """Start the profiler to profile the pipeline. Defaults to :code:`False`."""
     print_auto_test_stack_trace: bool = field(default=False, eq=False)
@@ -328,7 +648,7 @@ class Configuration:
             try:
                 config = Configuration.from_source(config_path)
                 configs.append(config)
-            except (GetterNotFoundError, RequestException) as error:
+            except (GetterNotFoundError, RequestException, CredentialsEnvNotFoundError) as error:
                 raise ConfigGetterException(f"{config_path} {error}") from error
             except FileNotFoundError as error:
                 raise ConfigGetterException(
@@ -391,8 +711,10 @@ class Configuration:
             setattr(
                 self,
                 attribute.name,
-                self._get_last_non_falsy_value(self._configs, attribute.name),
+                self._get_last_non_default_value(self._configs, attribute.name),
             )
+        versions = (config.version for config in self._configs if config.version)
+        self.version = ", ".join(versions)
 
     def _build_merged_pipeline(self):
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
@@ -411,7 +733,7 @@ class Configuration:
 
     def _load_rule_definitions(self, processor_definition: dict) -> dict:
         processor_definition = deepcopy(processor_definition)
-        _ = Factory.create(processor_definition, logger=getLogger(__name__))
+        _ = Factory.create(processor_definition)
         processor_name, processor_config = processor_definition.popitem()
         for rule_tree_name in ("specific_rules", "generic_rules"):
             rules_targets = self._resolve_directories(processor_config.get(rule_tree_name, []))
@@ -467,11 +789,18 @@ class Configuration:
         return resolved_sources
 
     @staticmethod
-    def _get_last_non_falsy_value(configs: list["Configuration"], attribute: str) -> Any:
+    def _get_last_non_default_value(configs: list["Configuration"], attribute: str) -> Any:
         if configs:
+            config = configs[0]
+            attrs_attribute = [attr for attr in config.__attrs_attrs__ if attr.name == attribute][0]
+            default_for_attribute = (
+                attrs_attribute.default.factory()
+                if hasattr(attrs_attribute.default, "factory")
+                else attrs_attribute.default
+            )
             values = [getattr(config, attribute) for config in configs]
             for value in reversed(values):
-                if value:
+                if value != default_for_attribute:
                     return value
             return values[-1]
         return getattr(Configuration(), attribute)
@@ -486,7 +815,7 @@ class Configuration:
         try:
             if not self.input:
                 raise RequiredConfigurationKeyMissingError("input")
-            Factory.create(self.input, logger=getLogger(__name__))
+            Factory.create(self.input)
         except Exception as error:  # pylint: disable=broad-except
             errors.append(error)
         if not self.output:
@@ -494,17 +823,26 @@ class Configuration:
         else:
             for output_name, output_config in self.output.items():
                 try:
-                    Factory.create({output_name: output_config}, logger=getLogger(__name__))
+                    Factory.create({output_name: output_config})
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
         for processor_config in self.pipeline:
             try:
-                processor = Factory.create(deepcopy(processor_config), logger=getLogger(__name__))
+                processor = Factory.create(deepcopy(processor_config))
+                processor.setup()
                 self._verify_rules(processor)
             except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
                 errors.append(error)
+            except FileNotFoundError as error:
+                errors.append(InvalidConfigurationError(f"File not found: {error.filename}"))
             try:
                 self._verify_processor_outputs(processor_config)
+            except Exception as error:  # pylint: disable=broad-except
+                errors.append(error)
+        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
+            try:
+                credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+                _ = CredentialsFactory.get_content(Path(credentials_file_path))
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
         if errors:

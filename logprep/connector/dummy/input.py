@@ -18,6 +18,7 @@ Example
         type: dummy_input
         documents: [{"document":"one"}, "Exception", {"document":"two"}]
 """
+
 import copy
 from functools import cached_property
 from typing import List, Optional, Union

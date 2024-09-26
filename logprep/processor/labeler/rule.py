@@ -26,17 +26,20 @@ to the labels of the category :code:`action`:
    :inherited-members:
    :noindex:
 """
+
+from typing import Iterable
+
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 
 
-class LabelerRule(Rule):
+class LabelerRule(FieldManagerRule):
     """Check if documents match a filter and add labels them."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(FieldManagerRule.Config):
         """RuleConfig for Labeler"""
 
         label: dict = field(
@@ -44,7 +47,7 @@ class LabelerRule(Rule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(list),
+                    value_validator=validators.instance_of(Iterable),
                 ),
             ]
         )

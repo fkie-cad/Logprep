@@ -3,6 +3,7 @@
 import uuid
 from unittest import mock
 
+from logprep.abc.processor import ProcessorResult
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -25,9 +26,8 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
     def test_process_returns_list_of_tuples(self):
         document = {"message": "test_message", "other": "field"}
         tuple_list = self.object.process(document)
-        assert isinstance(tuple_list, list)
-        assert len(tuple_list) > 0
-        assert isinstance(tuple_list[0], tuple)
+        assert isinstance(tuple_list, ProcessorResult)
+        assert len(tuple_list.data) > 0
 
     def test_process_returns_tuple_list_with_extraction_fields_from_rule(self):
         field_name = f"{uuid.uuid4()}"
@@ -43,8 +43,8 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         self.object._specific_tree.add_rule(rule)
         document = {field_name: "the value"}
         tuple_list = self.object.process(document)
-        for filtered_event, _ in tuple_list:
-            if field_name in filtered_event[0]:
+        for filtered_event, _ in tuple_list.data:
+            if field_name in filtered_event:
                 break
         else:
             assert False
@@ -61,7 +61,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {field_name: "test_message", "other": "field"}
         result = self.object.process(document)
-        output = result[0][1][0]
+        output = result.data[0][1][0]
         assert "my topic" in output.values()
 
     def test_process_returns_selective_extractor_target_output(self):
@@ -76,7 +76,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {field_name: "test_message", "other": "field"}
         result = self.object.process(document)
-        output = result[0][1][0]
+        output = result.data[0][1][0]
         assert "opensearch" in output.keys()
 
     def test_process_returns_extracted_fields(self):
@@ -90,8 +90,8 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         result = self.object.process(document)
-        for filtered_event, *_ in result:
-            if filtered_event[0] == {"message": "test_message"}:
+        for filtered_event, *_ in result.data:
+            if filtered_event == {"message": "test_message"}:
                 break
         else:
             assert False
@@ -99,7 +99,10 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
     def test_process_returns_none_when_no_extraction_field_matches(self):
         document = {"nomessage": "test_message", "other": "field"}
         result = self.object.process(document)
-        assert result is None
+        assert isinstance(result, ProcessorResult)
+        assert result.data == []
+        assert result.errors == []
+        assert result.processor_name == "Test Instance Name"
 
     def test_gets_matching_rules_from_rules_trees(self):
         rule_trees = [self.object._generic_tree, self.object._specific_tree]
@@ -128,19 +131,18 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         document = {"message": "test_message", "other": {"message": "my message value"}}
         result = self.object.process(document)
 
-        for extracted_event, *_ in result:
-            if extracted_event[0].get("other", {}).get("message") is not None:
+        for extracted_event, *_ in result.data:
+            if extracted_event.get("other", {}).get("message") is not None:
                 break
         else:
             assert False, f"other.message not in {result}"
 
     def test_process_clears_internal_filtered_events_list_before_every_event(self):
-        assert len(self.object._extra_data) == 0
         document = {"message": "test_message", "other": {"message": "my message value"}}
         _ = self.object.process(document)
-        assert len(self.object._extra_data) == 1
+        assert len(self.object.result.data) == 1
         _ = self.object.process(document)
-        assert len(self.object._extra_data) == 1
+        assert len(self.object.result.data) == 1
 
     def test_process_extracts_dotted_fields_complains_on_missing_fields(self):
         rule = {

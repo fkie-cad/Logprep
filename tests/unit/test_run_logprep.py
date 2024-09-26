@@ -3,6 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 import sys
+from importlib.metadata import version
 from pathlib import Path
 from unittest import mock
 
@@ -12,10 +13,9 @@ import responses
 from click.testing import CliRunner
 
 from logprep import run_logprep
-from logprep._version import get_versions
 from logprep.run_logprep import cli
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
+from logprep.util.defaults import EXITCODES
 
 
 class TestRunLogprepCli:
@@ -55,20 +55,12 @@ class TestRunLogprepCli:
                 "logprep.util.configuration.Configuration.as_yaml",
             ),
             (
-                "test dry-run tests/testdata/config/config.yml quickstart/exampledata/input_logdata/test_input.jsonl",
+                "test dry-run tests/testdata/config/config.yml examples/exampledata/input_logdata/test_input.jsonl",
                 "logprep.util.rule_dry_runner.DryRunner.run",
-            ),
-            (
-                "test integration tests/testdata/config/config.yml path/to/testset",
-                "logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run",
             ),
             (
                 "test dry-run tests/testdata/config/config.yml tests/testdata/config/config.yml asdfsdv",
                 "logprep.util.rule_dry_runner.DryRunner.run",
-            ),
-            (
-                "test integration tests/testdata/config/config.yml tests/testdata/config/config.yml path/to/testset",
-                "logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run",
             ),
         ],
     )
@@ -85,7 +77,6 @@ class TestRunLogprepCli:
             ("test", "config"),
             ("test", "unit"),
             ("test", "dry-run", "input_data"),
-            ("test", "integration", "testdata"),
         ],
     )
     def test_cli_invokes_default_config_location(self, command):
@@ -120,14 +111,14 @@ class TestRunLogprepCli:
     def test_exits_after_getter_error_for_not_existing_protocol(self):
         args = ["run", "almighty_protocol://tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
-        assert result.exit_code == 1
+        assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
         assert "No getter for protocol 'almighty_protocol'" in result.output
 
     @mock.patch("logprep.util.configuration.Configuration._verify")
     def test_test_config_verifies_configuration_successfully(self, mock_verify):
         args = ["test", "config", "tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
-        assert result.exit_code == 0
+        assert result.exit_code == EXITCODES.SUCCESS.value
         mock_verify.assert_called()
         assert "The verification of the configuration was successful" in result.stdout
 
@@ -136,7 +127,7 @@ class TestRunLogprepCli:
         mock_verify.side_effect = InvalidConfigurationError
         args = ["test", "config", "tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
-        assert result.exit_code == 1
+        assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
         mock_verify.assert_called()
         assert "The verification of the configuration was successful" not in result.stdout
 
@@ -152,7 +143,7 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, ["--version"])
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert "configuration version:   no configuration found" in result.output
 
     def test_run_version_arg_prints_logprep_version_with_config_version(self):
@@ -160,7 +151,7 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert (
             "configuration version:   1, file://tests/testdata/config/config.yml" in result.output
         )
@@ -170,7 +161,7 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert (
             "configuration version:   alternative, file://tests/testdata/config/config2.yml"
             in result.output
@@ -188,15 +179,15 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert f"configuration version:   1, http://localhost:32000/{config_path}" in result.output
 
     @responses.activate
     def test_run_version_arg_prints_with_http_config_without_exposing_secret_data(self):
         config_path = "tests/testdata/config/config.yml"
         mock_env = {
-            "LOGPREP_CONFIG_ATUH_USERNAME": "username",
-            "LOGPREP_CONFIG_ATUH_PASSWORD": "password",
+            "LOGPREP_CONFIG_AUTH_USERNAME": "username",
+            "LOGPREP_CONFIG_AUTH_PASSWORD": "password",
         }
         responses.add(
             responses.GET,
@@ -208,15 +199,15 @@ class TestRunLogprepCli:
             result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
-        assert f"logprep version:         {get_versions()['version']}" in result.output
+        assert f"logprep version:         {version('logprep')}" in result.output
         assert f"configuration version:   1, http://localhost:32000/{config_path}" in result.output
         assert "username" not in result.output
         assert "password" not in result.output
 
-    def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self, capsys):
+    def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self):
         non_existing_config_file = "/tmp/does/not/exist.yml"
         result = self.cli_runner.invoke(cli, ["run", non_existing_config_file])
-        assert result.exit_code == 1
+        assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
         expected_lines = (
             f"One or more of the given config file(s) does not exist: "
             f"{non_existing_config_file}\n"
@@ -236,7 +227,7 @@ class TestRunLogprepCli:
             mock_verify.side_effect = InvalidConfigurationError
             config_path = "tests/testdata/config/config.yml"
             result = self.cli_runner.invoke(cli, ["run", config_path])
-            assert result.exit_code == 1
+            assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
 
     def test_logprep_exits_on_any_exception_during_verify(self):
         with mock.patch("logprep.util.configuration.Configuration._verify") as mock_verify:
@@ -250,12 +241,12 @@ class TestRunLogprepCli:
             mock_verify.side_effect = requests.RequestException("connection refused")
             config_path = "http://localhost/does-not-exists"
             result = self.cli_runner.invoke(cli, ["run", config_path])
-            assert result.exit_code == 1
+            assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
 
     @mock.patch("logprep.util.rule_dry_runner.DryRunner.run")
     def test_test_dry_run_starts_dry_runner(self, mock_dry_runner):
         config_path = ("tests/testdata/config/config.yml",)
-        events_path = "quickstart/exampledata/input_logdata/test_input.jsonl"
+        events_path = "examples/exampledata/input_logdata/test_input.jsonl"
         result = self.cli_runner.invoke(cli, ["test", "dry-run", *config_path, events_path])
         assert result.exit_code == 0
         mock_dry_runner.assert_called()
@@ -271,24 +262,16 @@ class TestRunLogprepCli:
         logger = logging.getLogger()
         logger.disabled = False
 
-    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run")
-    def test_test_ruleset_starts_rule_corpus_tester(self, mock_tester):
-        config_path = "tests/testdata/config/config.yml"
-        test_data_path = "path/to/testset"
-        result = self.cli_runner.invoke(cli, ["test", "integration", config_path, test_data_path])
-        assert result.exit_code == 0
-        mock_tester.assert_called()
-
     @mock.patch("logging.Logger.info")
     def test_run_logprep_logs_log_level(self, mock_info):
         config = Configuration.from_sources(("tests/testdata/config/config.yml",))
-        assert config.logger.get("level") == "INFO"
+        assert config.logger.level == "INFO"
         with mock.patch("logprep.run_logprep.Runner"):
             with pytest.raises(SystemExit):
                 run_logprep.run(("tests/testdata/config/config.yml",))
         mock_info.assert_has_calls([mock.call("Log level set to 'INFO'")])
 
-    @mock.patch("logprep.event_generator.kafka.run_load_tester.LoadTester.run")
+    @mock.patch("logprep.generator.kafka.run_load_tester.LoadTester.run")
     def test_generate_kafka_starts_kafka_load_tester(self, mock_kafka_load_tester):
         tester_config = "some_config.yml"
         result = self.cli_runner.invoke(cli, ["generate", "kafka", tester_config])
@@ -327,10 +310,10 @@ class TestGeneratorCLI:
             events=None,
             shuffle=False,
             thread_count=1,
-            report=True,
             replace_timestamp=True,
             tag="loadtest",
             loglevel="INFO",
+            timeout=2,
         )
         mock_controller_instance.run.assert_called()
 
@@ -355,7 +338,7 @@ class TestGeneratorCLI:
                 "5000",
                 "--shuffle",
                 "False",
-                "--thread_count",
+                "--thread-count",
                 "2",
                 "--batch-size",
                 "1000",
@@ -365,11 +348,9 @@ class TestGeneratorCLI:
                 "test-tag",
                 "--loglevel",
                 "DEBUG",
-                "--report",
-                "False",
             ],
         )
-        assert result.exit_code == 0
+        assert result.exit_code == 0, result.stdout
         mock_generator.assert_called_with(
             input_dir="/some-path",
             target_url="some-domain",
@@ -379,9 +360,51 @@ class TestGeneratorCLI:
             events=5000,
             shuffle=False,
             thread_count=2,
-            report=False,
             replace_timestamp=False,
             tag="test-tag",
             loglevel="DEBUG",
+            timeout=2,
         )
         mock_controller.run.assert_called()
+
+
+class TestPseudoCLI:
+
+    @pytest.mark.parametrize("mode", ["gcm", "ctr"])
+    def test_pseudonymize_depseudonymize_with_mode(self, mode, tmp_path):
+        (tmp_path / "analyst").touch()
+        (tmp_path / "depseudo").touch()
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pseudo", "generate", "-f", f"{tmp_path}/analyst", "1024"])
+        assert result.exit_code == 0
+        result = runner.invoke(cli, ["pseudo", "generate", "-f", f"{tmp_path}/depseudo", "2048"])
+        assert result.exit_code == 0
+        result = runner.invoke(
+            cli,
+            [
+                "pseudo",
+                "pseudonymize",
+                "--mode",
+                f"{mode}",
+                f"{tmp_path}/analyst.crt",
+                f"{tmp_path}/depseudo.crt",
+                "string",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        pseudonymized_string = result.output.strip()
+        result = runner.invoke(
+            cli,
+            [
+                "pseudo",
+                "depseudonymize",
+                "--mode",
+                f"{mode}",
+                f"{tmp_path}/analyst.key",
+                f"{tmp_path}/depseudo.key",
+                f"{pseudonymized_string}",
+            ],
+        )
+        assert result.exit_code == 0
+        assert result.output.strip() == "string"
