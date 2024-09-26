@@ -56,7 +56,7 @@ from difflib import ndiff
 from logging import getLogger
 from os import path
 from pprint import pprint
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 from collections.abc import Iterable
 
 from more_itertools import nth
@@ -90,7 +90,7 @@ class ProcessorExtensions:
     """Used to handle special demands for PreDetector auto-tests."""
 
     @staticmethod
-    def _get_errors(processor: "Processor", extra_output: tuple):
+    def _get_errors(processor: "Processor", extra_output: list):
         pd_errors = []
         pd_warnings = []
         if isinstance(processor, PreDetector):
@@ -121,7 +121,7 @@ class ProcessorExtensions:
                 )
         return pd_errors, pd_warnings
 
-    def update_errors(self, processor: PreDetector, extra_output: tuple, problems: dict):
+    def update_errors(self, processor: PreDetector, extra_output: list, problems: dict):
         """Create aggregating logger.
 
         Parameters
@@ -130,10 +130,8 @@ class ProcessorExtensions:
             Processor that should be of type PreDetector.
         extra_output : dict
             Extra output containing MITRE information coming from PreDetector.
-        errors : list
-            List of errors.
-        warnings : list
-            List of warnings.
+        problems : dict
+            Warnings and errors.
 
         """
         mitre_errors, id_warnings = self._get_errors(processor, extra_output)
@@ -148,14 +146,14 @@ class ProcessorExtensions:
         rules : dict
             key and rule
         t_idx : int, optional
-            optional index to print correct element of , by default None
+            Optional index to print correct element of , by default None
         """
         print()
         for key, rule in rules.items():
-            self._print_diff_test(key, rule, t_idx)
+            self.print_diff_test(key, rule, t_idx)
 
     @staticmethod
-    def _print_diff_test(key, rule, t_idx=None):
+    def print_diff_test(key, rule, t_idx=None):
         """Determine right processing for printable: no iterable, indexed and non index queried iterable
 
         Parameters
@@ -189,7 +187,11 @@ class ProcessorExtensions:
             status message
         """
         item = item.replace("]", "").replace("[", "")
-        if item.startswith((": - ", "- ")) or item.startswith("error") or item.startswith("without tests"):
+        if (
+            item.startswith((": - ", "- "))
+            or item.startswith("error")
+            or item.startswith("without tests")
+        ):
             print_fcolor(Fore.RED, item)
         elif item.startswith((": + ", "+ ")) or item.startswith("with tests"):
             print_fcolor(Fore.GREEN, item)
@@ -202,7 +204,7 @@ class ProcessorExtensions:
         else:
             print_fcolor(Fore.CYAN, item)
 
-    def _load_json_or_yaml(self, file_path) -> Union[list, dict]:
+    def load_json_or_yaml(self, file_path) -> Union[list, dict]:
         """load json or yaml depending on suffix
 
         Parameters
@@ -234,13 +236,8 @@ class ProcessorExtensions:
 class AutoRuleTester:
     """Used to perform auto-tests for rules."""
 
-    _original_config_paths: tuple[str]
-    """ Path to the original configuration that should be tested """
-
-    def __init__(self, config_paths: tuple[str]):
-        self._original_config_paths = config_paths
-
-        with open(config_paths, "r", encoding="utf8") as yaml_file:
+    def __init__(self, config_path: str):
+        with open(config_path, "r", encoding="utf-8") as yaml_file:
             self._config_yml = yaml.load(yaml_file)
 
         self._empty_rules_dirs = [tempfile.mkdtemp()]
@@ -257,7 +254,7 @@ class AutoRuleTester:
             "+ Successful Tests": 0,
             "- Failed Tests": 0,
             "~ Warning": 0,
-            "Rule Test Coverage": 0,
+            "Rule Test Coverage": 0.0,
             "Total Tests": 0,
         }
         self._problems = {"warnings": [], "errors": []}
@@ -342,18 +339,18 @@ class AutoRuleTester:
                 self._eval_file_rule_test(rule_test, processor, idx)
                 remove_file_if_exists(temp_rule_path)
 
-    def _get_processors(self) -> Tuple[OrderedDict, OrderedDict]:
+    def _get_processors(self) -> OrderedDict:
         """Get processors in k/v-pairs
 
         Returns
         -------
-        Tuple[OrderedDict, OrderedDict]
+        OrderedDict
             returns processors with meta data
         """
         processors_without_custom_test = OrderedDict()
         for processor_in_pipeline in self._config_yml["pipeline"]:
             name, processor_cfg = next(iter(processor_in_pipeline.items()))
-            processor = self._get_processor_instance(name, processor_cfg, self._logger)
+            processor = self._get_processor_instance(name, processor_cfg)
             processors_without_custom_test[processor] = name
         return processors_without_custom_test
 
@@ -454,7 +451,9 @@ class AutoRuleTester:
             try:
                 result = processor.process(test["raw"])
                 if not result and processor.name == "pre_detector":
-                    self._pd_extra.color_based_print(f"- Can't process RULE FILE {rule_test['file']}. No extra output generated")
+                    self._pd_extra.color_based_print(
+                        f"- Can't process RULE FILE {rule_test['file']}. No extra output generated"
+                    )
                     sys.exit(1)
             except BaseException as error:
                 self._success = False
@@ -472,14 +471,21 @@ class AutoRuleTester:
                 or nth(self._problems.get("warnings"), self._rule_cnt) is not None
                 or nth(self._problems.get("errors"), self._rule_cnt) is not None
             ):
-                self._pd_extra.color_based_print(f"> RULE FILE {rule_test['file']} & RULE TEST {t_idx + 1}/{len(rule_test['tests'])}:")
+                self._pd_extra.color_based_print(
+                    f"> RULE FILE {rule_test['file']} & "
+                    f"RULE TEST {t_idx + 1}/{len(rule_test['tests'])}:"
+                )
                 if nth(self._problems.get("warnings"), self._rule_cnt) is not None:
-                    self._pd_extra.color_based_print(f"~ {self._problems.get('warnings')[self._result['~ Warning']]}")
+                    self._pd_extra.color_based_print(
+                        f"~ {self._problems.get('warnings')[self._result['~ Warning']]}"
+                    )
 
                 if print_diff or nth(self._problems.get("errors"), self._rule_cnt) is not None:
                     if nth(self._problems.get("errors"), self._rule_cnt) is not None:
-                        self._pd_extra.color_based_print(f"- {self._problems.get('errors')[self._result['- Failed Tests']]}")
-                    self._pd_extra._print_diff_test("", diff) #print_rules({"DIFF": diff})
+                        self._pd_extra.color_based_print(
+                            f"- {self._problems.get('errors')[self._result['- Failed Tests']]}"
+                        )
+                    self._pd_extra.print_diff_test("", diff)  # print_rules({"DIFF": diff})
                     self._success = False
                     self._result["- Failed Tests"] += 1
 
@@ -531,7 +537,7 @@ class AutoRuleTester:
         return any((item for item in diff if item.startswith(("+", "-", "?"))))
 
     @staticmethod
-    def _get_processor_instance(name, processor_cfg, logger_):
+    def _get_processor_instance(name, processor_cfg):
         cfg = {name: processor_cfg}
         processor = Factory.create(cfg)
         return processor
@@ -594,8 +600,7 @@ class AutoRuleTester:
         return list(diff)
 
     def _set_rules_dirs_to_empty(self) -> None:
-        """Set each rule type to empty
-        """
+        """Set each rule type to empty"""
         for processor in self._config_yml["pipeline"]:
             processor_cfg = next(iter(processor.values()))
 
@@ -622,7 +627,7 @@ class AutoRuleTester:
         ----------
         processor_name : str
             name of proc
-        proc_rules_dirs : list
+        proc_rules_dirs : dict
             all directories for proc
         rules_pn : dict
             accumulated rules for each processor to operate on
@@ -636,7 +641,7 @@ class AutoRuleTester:
 
         for _, (rule_type, rules_dir) in enumerate(proc_rules_dirs["rule_dirs"].items()):
             directories["Path"].append(f"    - {rule_type}")
-            for path in Path(rules_dir).rglob('*'):
+            for path in Path(rules_dir).rglob("*"):
                 if path.is_file() and self._is_valid_rule_name(path.name):
                     self._get_rule_dict(
                         path.name, str(path.parent), processor_name, rules_pn, rule_type
@@ -645,7 +650,7 @@ class AutoRuleTester:
         self._pd_extra.print_rules(directories)
 
     def _get_rule_dict(self, file, root, processor_name, rules_pn, rule_dirs_type) -> None:
-        """Read out (mulit-)rules and realize mapping via dict for further processing
+        """Read out (multi-)rules and realize mapping via dict for further processing
 
         Parameters
         ----------
@@ -666,26 +671,28 @@ class AutoRuleTester:
             Target_rule_idx is now mandatory, throw exception if not found for each rule
         """
         rule_tests = []
-        test_path = path.join(
-            root, "".join([file.rsplit(".", maxsplit=1)[0], "_test.json"])
-        )
+        test_path = path.join(root, "".join([file.rsplit(".", maxsplit=1)[0], "_test.json"]))
 
         if path.isfile(test_path):
             try:
-                rule_tests = self._pd_extra._load_json_or_yaml(test_path)
+                rule_tests = self._pd_extra.load_json_or_yaml(test_path)
             except ValueError as error:
                 self._problems["errors"].append(str(error))
                 return
 
         file_path = path.join(root, file)
         try:
-            multi_rule = self._pd_extra._load_json_or_yaml(file_path)
+            multi_rule = self._pd_extra.load_json_or_yaml(file_path)
             if (
-                processor_name == "pre_detector" and
-                not all(d.get("target_rule_idx") is not None for d in rule_tests)
+                processor_name == "pre_detector"
+                and not all(d.get("target_rule_idx") is not None for d in rule_tests)
                 and len(rule_tests) > 1
             ):
-                self._pd_extra.color_based_print(f"- Not all dictionaries in {file_path} contain the mandatory key target_rule_idx: Can't build correct test set for rules.")
+                self._pd_extra.color_based_print(
+                    f"- Not all dictionaries in {file_path} "
+                    f"contain the mandatory key target_rule_idx: "
+                    f"Can't build correct test set for rules."
+                )
                 sys.exit(1)
         except ValueError as error:
             self._problems["errors"].append(str(error))
@@ -728,7 +735,8 @@ class AutoRuleTester:
 
         return rules_dirs
 
-    def _get_rules_to_add(self, processor_cfg) -> list:
+    @staticmethod
+    def _get_rules_to_add(processor_cfg) -> list:
         """Áccumulate rules depending on processor (config)
 
         Parameters

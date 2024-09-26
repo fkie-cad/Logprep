@@ -13,81 +13,86 @@ def fixture_auto_rule_tester():
     config_path = "tests/testdata/config/config-auto-tests.yml"
     return AutoRuleTester(config_path)
 
+
 class TestAutoRuleTester:
 
     def test_get_rule_dict_valid_file(self, auto_rule_tester):
         processor_name = "dummy"
-        rules_pn = {'dummy': {'type': 'dummy', 'rules': []}}
+        rules_pn = {"dummy": {"type": "dummy", "rules": []}}
         file = "rule.yml"
         root = "tests/testdata/auto_tests/dummy"
         rule_dirs_type = "doesnt_matter"
-        
-        auto_rule_tester._get_rule_dict(
-            file, root, processor_name, rules_pn, rule_dirs_type
-        )
-        
-        #raw literal
+
+        auto_rule_tester._get_rule_dict(file, root, processor_name, rules_pn, rule_dirs_type)
+
+        # raw literal
         expected_rule_dict = [
             {
                 "doesnt_matter": [
                     {
                         "filter": 'winlog.event_data.param2: "pause"',
                         "labeler": {"label": {"action": ["terminate"]}},
-                        "description": "..."
+                        "description": "...",
                     },
                     {
                         "filter": 'winlog.event_data.param2: "dada"',
                         "labeler": {"label": {"action": ["terminate"]}},
-                        "description": "..."
-                    }
+                        "description": "...",
+                    },
                 ],
                 "tests": [
                     {
                         "target_rule_idx": 0,
                         "raw": {"winlog": {"event_data": {"param2": "ooo"}}},
-                        "processed": {"label": {"action": ["terminate"]}, "winlog": {"event_data": {"param2": "pause"}}}
+                        "processed": {
+                            "label": {"action": ["terminate"]},
+                            "winlog": {"event_data": {"param2": "pause"}},
+                        },
                     },
                     {
                         "raw": {"winlog": {"event_data": {"param2": "pause"}}},
-                        "processed": {"label": {"action": ["terminate"]}, "winlog": {"event_data": {"param2": "pause"}}}
+                        "processed": {
+                            "label": {"action": ["terminate"]},
+                            "winlog": {"event_data": {"param2": "pause"}},
+                        },
                     },
                     {
                         "target_rule_idx": 1,
                         "raw": {"winlog": {"event_data": {"param2": "dada"}}},
-                        "processed": {"label": {"action": ["terminate"]}, "winlog": {"event_data": {"param2": "dada"}}}
-                    }
+                        "processed": {
+                            "label": {"action": ["terminate"]},
+                            "winlog": {"event_data": {"param2": "dada"}},
+                        },
+                    },
                 ],
-                "file": "tests/testdata/auto_tests/dummy/rule.yml"
+                "file": "tests/testdata/auto_tests/dummy/rule.yml",
             }
         ]
 
         assert rules_pn["dummy"]["rules"] == expected_rule_dict
 
-    
     def test_get_rule_dict_target_rule_idx_not_found(self, auto_rule_tester):
         processor_name = "dummy"
-        rules_pn = {'dummy': {'type': 'dummy', 'rules': []}}
+        rules_pn = {"dummy": {"type": "dummy", "rules": []}}
         file = "rule.yml"
         root = "tests/testdata/auto_tests/dummy"
         rule_dirs_type = "doesnt_matter"
-        
-        auto_rule_tester._get_rule_dict(
-            file, root, processor_name, rules_pn, rule_dirs_type
-        )
-        
+
+        auto_rule_tester._get_rule_dict(file, root, processor_name, rules_pn, rule_dirs_type)
+
         def remove_dict_with_target_rule_idx(list_of_dicts):
             for idx, d in enumerate(list_of_dicts):
-                if 'target_rule_idx' in d:
+                if "target_rule_idx" in d:
                     del list_of_dicts[idx]
-                    break  
-    
+                    break
+
         remove_dict_with_target_rule_idx(rules_pn["dummy"]["rules"])
-        
+
         with pytest.raises(KeyError):
             for test in rules_pn["dummy"]["rules"]:
                 for t in test["tests"]:
                     t["target_rule_idx"]
-    
+
     def test_coverage_no_rule_files_raises_exception(self, auto_rule_tester):
         rules_pn = {
             "processor_name": {
@@ -220,12 +225,8 @@ class TestAutoRuleTester:
             "max_cached_pseudonyms": 1000000,
         }
         mock_replace_regex_keywords_by_regex_expression.assert_not_called()
-        processor = auto_rule_tester._get_processor_instance(
-            "pseudonymizer", pseudonymizer_cfg, LOGGER
-        )
-        auto_rule_tester._reset(
-            processor
-        )  # Called every time by auto tester before adding rules
+        processor = auto_rule_tester._get_processor_instance("pseudonymizer", pseudonymizer_cfg)
+        auto_rule_tester._reset(processor)  # Called every time by auto tester before adding rules
         auto_rule_tester._load_rules(processor, "specific_rules")
         assert mock_replace_regex_keywords_by_regex_expression.call_count == 1
 
@@ -241,9 +242,7 @@ class TestAutoRuleTester:
             "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
         }
         mock_setup.assert_not_called()
-        processor = auto_rule_tester._get_processor_instance(
-            "list_comparison", list_comparison_cfg, LOGGER
-        )
+        processor = auto_rule_tester._get_processor_instance("list_comparison", list_comparison_cfg)
         auto_rule_tester._reset(
             processor
         )  # Called every time by auto tester before adding rules instead
@@ -277,7 +276,7 @@ class TestAutoRuleTester:
         ]
 
         expected_overall_results = [
-            "+ Successful Tests: 32", 
+            "+ Successful Tests: 32",
             "- Failed Tests: 6",
             "~ Warning: 2",
             "Rule Test Coverage: 72.72727272727273",
@@ -296,9 +295,7 @@ class TestAutoRuleTester:
                     assert match.group(1) == expected, f'Expected: "{expected_result}"'
 
         expected_sample_lines = (
-            expected_rules_with_tests
-            + expected_rules_without_tests
-            + expected_overall_results
+            expected_rules_with_tests + expected_rules_without_tests + expected_overall_results
         )
         for line in expected_sample_lines:
             assert line in captured.out
