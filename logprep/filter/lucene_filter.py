@@ -106,7 +106,6 @@ from logprep.filter.expression.filter_expression import (
     And,
     Exists,
     FilterExpression,
-    LuceneRegexExpression,
 )
 from logprep.filter.expression.filter_expression import Not as NotExpression
 from logprep.filter.expression.filter_expression import (
