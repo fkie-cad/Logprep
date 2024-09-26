@@ -503,7 +503,7 @@ class ConfluentKafkaInput(Input):
                 topic_partition.topic,
                 topic_partition.partition,
             )
-            
+    
     def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
