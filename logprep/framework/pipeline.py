@@ -48,17 +48,31 @@ from logprep.util.pipeline_profiler import PipelineProfiler
 @attrs.define(kw_only=True)
 class PipelineResult:
     """Result object to be returned after processing the event.
-    It contains all results of each processor of the pipeline."""
+    It contains all results of each processor of the pipeline.
+
+    Parameters
+    ----------
+
+    event : dict
+        The event that was processed
+    pipeline : List[Processor]
+        The pipeline that processed the event
+
+    Returns
+    -------
+    PipelineResult
+        The result object
+    """
 
     results: List[ProcessorResult] = attrs.field(
         validator=[
-            attrs.validators.instance_of((list, Generator)),
+            attrs.validators.instance_of(list),
             attrs.validators.deep_iterable(
                 member_validator=attrs.validators.instance_of(ProcessorResult)
             ),
         ]
     )
-    """List of ProcessorResults"""
+    """List of ProcessorResults. Is populated in __attrs_post_init__"""
     event: dict = attrs.field(validator=attrs.validators.instance_of(dict))
     """The event that was processed"""
     event_received: dict = attrs.field(
@@ -84,9 +98,7 @@ class PipelineResult:
         return list(itertools.chain(*[result.data for result in self]))
 
     def __attrs_post_init__(self):
-        self.results = list(
-            (processor.process(self.event) for processor in self.pipeline if self.event)
-        )
+        self.results = [processor.process(self.event) for processor in self.pipeline if self.event]
 
     def __iter__(self):
         return iter(self.results)
