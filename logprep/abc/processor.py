@@ -37,6 +37,21 @@ class ProcessorResult:
     """
     Result object to be returned by every processor. It contains the processor name, created data
     and errors (incl. warnings).
+
+    Parameters
+    ----------
+
+
+    processor_name : str
+        The name of the processor
+    event: Optional[dict]
+        A reference to the event that was processed
+    data : Optional[list]
+        The generated extra data
+    errors : Optional[list]
+        The errors that occurred during processing
+    warnings : Optional[list]
+        The warnings that occurred during processing
     """
 
     data: list = field(validator=validators.instance_of(list), factory=list)
