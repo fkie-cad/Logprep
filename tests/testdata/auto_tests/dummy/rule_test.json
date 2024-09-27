@@ -1,0 +1,67 @@
+[
+    {
+        "target_rule_idx": 0,
+        "raw": {
+            "winlog": {
+                "event_data": {
+                    "param2": "ooo"
+                }
+            }
+        },
+        "processed": {
+            "label": {
+                "action": [
+                    "terminate"
+                ]
+            },
+            "winlog": {
+                "event_data": {
+                    "param2": "pause"
+                }
+            }
+        }
+    },
+    {
+        "raw": {
+            "winlog": {
+                "event_data": {
+                    "param2": "pause"
+                }
+            }
+        },
+        "processed": {
+            "label": {
+                "action": [
+                    "terminate"
+                ]
+            },
+            "winlog": {
+                "event_data": {
+                    "param2": "pause"
+                }
+            }
+        }
+    },
+    {
+        "target_rule_idx": 1,
+        "raw": {
+            "winlog": {
+                "event_data": {
+                    "param2": "dada"
+                }
+            }
+        },
+        "processed": {
+            "label": {
+                "action": [
+                    "terminate"
+                ]
+            },
+            "winlog": {
+                "event_data": {
+                    "param2": "dada"
+                }
+            }
+        }
+    }
+]

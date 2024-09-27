@@ -75,7 +75,6 @@ class Clusterer(FieldManager):
     def __init__(self, name: str, configuration: Processor.Config):
         super().__init__(name=name, configuration=configuration)
         self.sps = SignaturePhaseStreaming()
-        self.has_custom_tests = True
 
         self._last_rule_id = math.inf
         self._last_non_extracted_signature = None
