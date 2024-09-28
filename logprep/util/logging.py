@@ -47,5 +47,6 @@ class LogprepMPQueueListener(QueueListener):
 
     def stop(self):
         self.enqueue_sentinel()
-        self._process.join()
+        if self._process and hasattr(self._process, "join"):
+            self._process.join()
         self._process = None
