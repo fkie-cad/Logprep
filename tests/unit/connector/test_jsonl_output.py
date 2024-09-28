@@ -15,7 +15,6 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
         "type": "jsonl_output",
         "output_file": f"{tempfile.gettempdir()}/output.jsonl",
         "output_file_custom": f"{tempfile.gettempdir()}/custom_file",
-        "output_file_error": f"{tempfile.gettempdir()}/error_file",
     }
 
     def setup_method(self) -> None:
@@ -74,7 +73,6 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
     def test_setup_creates_single_file_if_only_output_file(self, mock_open):
         config = copy.deepcopy(self.CONFIG)
         config["output_file_custom"] = ""
-        config["output_file_error"] = ""
         self.object = Factory.create({"Test Instance Name": config})
         self.object.setup()
         mock_open.assert_called()

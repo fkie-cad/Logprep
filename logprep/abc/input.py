@@ -36,8 +36,10 @@ class CriticalInputError(InputError):
     """A significant error occurred - log and don't process the event."""
 
     def __init__(self, input_connector: "Input", message, raw_input):
-        self.raw_input = raw_input
-        super().__init__(input_connector, f"{message} -> {raw_input}")
+        self.raw_input = raw_input  # is written to error output
+        super().__init__(
+            input_connector, f"{message} -> event was written to error output if configured"
+        )
 
 
 class CriticalInputParsingError(CriticalInputError):
@@ -85,7 +87,7 @@ class HmacConfig:
 
 @define(kw_only=True)
 class TimeDeltaConfig:
-    """TimeDetla Configurations
+    """TimeDelta Configurations
     Works only if the preprocessor log_arrival_time_target_field is set."""
 
     target_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
@@ -355,6 +357,12 @@ class Input(Connector):
         event_dict: dict
             The original event extended with a field that has the hmac and the corresponding target
             field, which was used to calculate the hmac.
+
+        Raises
+        ------
+        CriticalInputError
+            If the hmac could not be added to the event because the desired output field already
+            exists or cant't be found.
         """
         hmac_options = self._config.preprocessing.get("hmac", {})
         hmac_target_field_name = hmac_options.get("target")
@@ -369,21 +377,17 @@ class Input(Connector):
             received_orig_message = get_dotted_field_value(event_dict, hmac_target_field_name)
 
         if received_orig_message is None:
-            hmac = "error"
-            received_orig_message = (
-                f"<expected hmac target field '{hmac_target_field_name}' not found>".encode()
-            )
             non_critical_error_msg = (
                 f"Couldn't find the hmac target " f"field '{hmac_target_field_name}'"
             )
-        else:
-            if isinstance(received_orig_message, str):
-                received_orig_message = received_orig_message.encode("utf-8")
-            hmac = HMAC(
-                key=hmac_options.get("key").encode(),
-                msg=received_orig_message,
-                digestmod=hashlib.sha256,
-            ).hexdigest()
+            raise CriticalInputError(self, non_critical_error_msg, raw_event)
+        if isinstance(received_orig_message, str):
+            received_orig_message = received_orig_message.encode("utf-8")
+        hmac = HMAC(
+            key=hmac_options.get("key").encode(),
+            msg=received_orig_message,
+            digestmod=hashlib.sha256,
+        ).hexdigest()
         compressed = zlib.compress(received_orig_message, level=-1)
         hmac_output = {"hmac": hmac, "compressed_base64": base64.b64encode(compressed).decode()}
         add_was_successful = add_field_to(
