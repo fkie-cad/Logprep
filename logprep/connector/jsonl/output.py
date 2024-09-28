@@ -52,7 +52,7 @@ class JsonlOutput(Output):
     failed_events: list
 
     __slots__ = [
-        "ast_timeout",
+        "last_timeout",
         "events",
         "failed_events",
     ]
