@@ -147,7 +147,8 @@ class TestPipelineManager:
     def test_prometheus_exporter_is_instanciated_if_metrics_enabled(self):
         config = deepcopy(self.config)
         config.metrics = MetricsConfig(enabled=True, port=8000)
-        manager = PipelineManager(config)
+        with mock.patch("logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing"):
+            manager = PipelineManager(config)
         assert isinstance(manager.prometheus_exporter, PrometheusExporter)
 
     def test_set_count_increases_number_of_pipeline_starts_metric(self):
@@ -167,15 +168,7 @@ class TestPipelineManager:
             mock_set_count.assert_called()
             assert mock_set_count.call_count == 2
 
-    def test_restart_calls_prometheus_exporter_run(self):
-        config = deepcopy(self.config)
-        config.metrics = MetricsConfig(enabled=True, port=666)
-        pipeline_manager = PipelineManager(config)
-        pipeline_manager.prometheus_exporter = mock.MagicMock()
-        pipeline_manager.restart()
-        pipeline_manager.prometheus_exporter.run.assert_called()
-
-    def test_restart_sets_deterministic_pipline_index(self):
+    def test_restart_sets_deterministic_pipeline_index(self):
         config = deepcopy(self.config)
         config.metrics = MetricsConfig(enabled=False, port=666)
         pipeline_manager = PipelineManager(config)
@@ -207,7 +200,7 @@ class TestPipelineManager:
                 },
             }
         }
-        PipelineManager(config)
+        PipelineManager(config).start()
         assert HttpInput.messages._maxsize == 100
         http_input = Factory.create(config.input)
         assert http_input.messages._maxsize == 100
@@ -215,6 +208,7 @@ class TestPipelineManager:
     def test_pipeline_manager_setups_logging(self):
         dictConfig(DEFAULT_LOG_CONFIG)
         manager = PipelineManager(self.config)
+        manager.start()
         assert manager.loghandler is not None
         assert manager.loghandler.queue == logqueue
         assert manager.loghandler._thread is None
@@ -262,14 +256,26 @@ class TestPipelineManager:
         pipeline_manager.restart()
         pipeline_manager.prometheus_exporter.update_healthchecks.assert_called()
 
-    def test_restart_ensures_prometheus_exporter_is_running(self):
-        config = deepcopy(self.config)
-        config.metrics = MetricsConfig(enabled=True, port=666)
-        pipeline_manager = PipelineManager(config)
-        pipeline_manager.prometheus_exporter._prepare_multiprocessing = mock.MagicMock()
-        with mock.patch("logprep.util.http.ThreadingHTTPServer"):
-            pipeline_manager.restart()
-        pipeline_manager.prometheus_exporter.server.start.assert_called()
+    def test_reload_calls_set_count_twice(self):
+        with mock.patch.object(self.manager, "set_count") as mock_set_count:
+            self.manager.reload()
+            # drains pipelines down to 0 and scales up to 3 afterwards
+            mock_set_count.assert_has_calls([mock.call(0), mock.call(3)])
+
+    def test_should_exit_returns_bool_based_on_restart_count(self):
+        self.config.restart_count = 2
+        manager = PipelineManager(self.config)
+        assert not manager.should_exit()
+        manager.restart_count = 1
+        assert not manager.should_exit()
+        manager.restart_count = 2
+        assert manager.should_exit()
+
+    def test_stop_calls_stop_on_loghandler(self):
+        manager = PipelineManager(self.config)
+        manager.loghandler = mock.MagicMock()
+        manager.stop()
+        manager.loghandler.stop.assert_called()
 
 
 class TestThrottlingQueue:

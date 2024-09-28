@@ -53,7 +53,7 @@ class PrometheusExporter:
         self.healthcheck_functions = None
         self._multiprocessing_prepared = False
 
-    def _prepare_multiprocessing(self):
+    def prepare_multiprocessing(self):
         """
         Sets up the proper metric registry for multiprocessing and handles the necessary
         temporary multiprocessing directory that the prometheus client expects.
@@ -93,7 +93,7 @@ class PrometheusExporter:
             return
         port = self.configuration.port
         self.init_server(daemon=daemon)
-        self._prepare_multiprocessing()
+        self.prepare_multiprocessing()
         self.server.start()
         logger.info("Prometheus Exporter started on port %s", port)
 
@@ -116,6 +116,7 @@ class PrometheusExporter:
     def update_healthchecks(self, healthcheck_functions: Iterable[Callable], daemon=True) -> None:
         """Updates the healthcheck functions"""
         self.healthcheck_functions = healthcheck_functions
-        self.server.shut_down()
+        if self.server and self.server.thread and self.server.thread.is_alive():
+            self.server.shut_down()
         self.init_server(daemon=daemon)
         self.run()
