@@ -27,6 +27,8 @@
 ### Bugfix
 
 * ensure `logprep.abc.Component.Config` is immutable and can be applied multiple times
+* remove lost callback reassign behavior from `kafka_input` connector
+* remove manual commit option from `kafka_input` connector
 
 ## 13.1.2
 ### Bugfix
