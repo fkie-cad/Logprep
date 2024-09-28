@@ -256,6 +256,20 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_consumer.assert_called_with(injected_config)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_auto_offset_store_and_auto_commit_are_managed_by_connector(self, mock_consumer):
+        config = deepcopy(self.CONFIG)
+        config["kafka_config"] |= {
+            "enable.auto.offset.store": "true",
+            "enable.auto.commit": "false",
+        }
+        kafka_input = Factory.create({"test": config})
+        _ = kafka_input._consumer
+        mock_consumer.assert_called()
+        injected_config = mock_consumer.call_args[0][0]
+        assert injected_config.get("enable.auto.offset.store") == "false"
+        assert injected_config.get("enable.auto.commit") == "true"
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_client_id_can_be_overwritten(self, mock_consumer):
         input_config = deepcopy(self.CONFIG)
         input_config["kafka_config"]["client.id"] = "thisclientid"
