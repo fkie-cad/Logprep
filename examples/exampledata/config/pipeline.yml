@@ -4,7 +4,7 @@ timeout: 0.1
 restart_count: 2
 config_refresh_interval: 5
 logger:
-  level: INFO
+  level: DEBUG
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
@@ -105,7 +105,7 @@ input:
       version_info_target_field: Logprep_version_info
       log_arrival_time_target_field: event.ingested
       hmac:
-        target: <RAW_MSG>
+        target: this.does.not.exist
         key: "thisisasecureandrandomkey"
         output_field: Full_event
 
@@ -135,9 +135,15 @@ output:
 error_output:
   kafka:
     type: confluentkafka_output
-    default: false
-    topic: error
+    topic: errors
     flush_timeout: 300
+    send_timeout: 0
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
+      compression.type: none
       statistics.interval.ms: "60000"
+      queue.buffering.max.messages: "10"
+      queue.buffering.max.kbytes: "1024"
+      queue.buffering.max.ms: "1000"
+      batch.size: "100"
+      request.required.acks: "-1"
