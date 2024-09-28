@@ -5,7 +5,6 @@
 # pylint: disable=attribute-defined-outside-init
 import re
 import uuid
-from functools import partial
 from importlib.metadata import version
 from pathlib import Path
 from unittest import mock

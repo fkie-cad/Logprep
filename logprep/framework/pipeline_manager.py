@@ -1,15 +1,15 @@
 """This module contains functionality to manage pipelines via multi-processing."""
 
 # pylint: disable=logging-fstring-interpolation
-
 import logging
 import logging.handlers
 import multiprocessing
 import multiprocessing.managers
 import multiprocessing.queues
 import random
+import threading
 import time
-from typing import Any, Callable
+from typing import Any
 
 from attr import define, field, validators
 
@@ -62,39 +62,73 @@ class ComponentQueueListener:
     """This forks a process and handles all items from the given queue into
     the specified callable. It uses a sentinel object to stop the process."""
 
-    _queue: multiprocessing.queues.Queue = field(
+    queue: multiprocessing.queues.Queue = field(
         validator=validators.instance_of(multiprocessing.queues.Queue)
     )
     """The queue to listen to."""
 
-    _target: Callable = field(validator=validators.instance_of(Callable))
-    """The target callable to call with the items from the queue."""
+    target: str = field(validator=validators.instance_of(str))
+    """The method name to call with the items from the queue."""
 
-    _sentinel: Any = field(default=None)
+    config: dict = field(validator=validators.instance_of(dict))
+    """The configuration for the listener component."""
+
+    sentinel: Any = field(default=None)
     """The sentinel object to stop the process. This has to implement identity comparison."""
 
-    _process: multiprocessing.Process = field(init=False)
+    _instance: multiprocessing.Process = field(init=False)
     """The process that is forked to listen to the queue."""
 
+    _implementation: str = field(
+        init=False, default="threading", validator=validators.in_(["threading", "multiprocessing"])
+    )
+    """The implementation to use for the listener. Options are threading or multiprocessing.
+    Default is threading."""
+
     def __attrs_post_init__(self):
-        self._process = multiprocessing.Process(target=self._listen, daemon=True)
+        if self._implementation == "threading":
+            self._instance = threading.Thread(target=self._listen, daemon=True)
+        elif self._implementation == "multiprocessing":
+            self._instance = multiprocessing.Process(target=self._listen, daemon=True)
 
     def start(self):
         """Start the listener."""
-        self._process.start()
+        logger.debug("Starting listener with target: %s", self.target)
+        self._instance.start()
+
+    def _get_component_instance(self):
+        component = Factory.create(self.config)
+        for _ in range(5):
+            try:
+                component.setup()
+            except SystemExit:
+                logger.warning("Error output not reachable. Try again...")
+                time.sleep(3)
+                continue
+            if component.health():
+                break
+        return component
 
     def _listen(self):
+        component = self._get_component_instance()
+        target = getattr(component, self.target)
         while True:
-            item = self._queue.get()
-            if item is self._sentinel:
+            item = self.queue.get()
+            logger.debug("Got item from queue: %s", item)
+            if item is self.sentinel:
+                logger.debug("Got sentinel. Stopping listener.")
                 break
-            self._target(item)
+            try:
+                target(item)
+            except Exception as error:  # pylint: disable=broad-except
+                logger.error("Error processing item: %s", error)
 
     def stop(self):
         """Stop the listener."""
-        self._queue.put(self._sentinel)
-        self._process.join()
-        self._queue.close()
+        self.queue.put(self.sentinel)
+        self._instance.join()
+        self.queue.close()
+        logger.debug("Stopped listener.")
 
 
 class PipelineManager:
@@ -155,27 +189,10 @@ class PipelineManager:
         message_backlog_size = self._configuration.error_output.get(
             "message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE
         )
-        self._error_output = Factory.create(self._configuration.error_output)
         self._error_queue = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
-        while 1:
-            try:
-                self._error_output.setup()
-            except SystemExit as error:
-                if self._configuration.restart_count < 0:
-                    logger.warning(
-                        "Error output not reachable and restart count < 1. Try again infinite..."
-                    )
-                    continue
-                if self.should_exit():
-                    logger.error("Error output not reachable. Exiting...")
-                    self.stop()
-                    raise SystemExit(EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value) from error
-                self._wait_to_restart()
-                logger.warning("Error output not reachable. Trying again...")
-            if self._error_output.health():
-                break
-
-        self._error_listener = ComponentQueueListener(self._error_queue, self._error_output.store)
+        self._error_listener = ComponentQueueListener(
+            self._error_queue, "store", self._configuration.error_output
+        )
         self._error_listener.start()
 
     def _setup_logging(self):
@@ -264,6 +281,8 @@ class PipelineManager:
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
         self.set_count(0)
+        if self._error_listener:
+            self._error_listener.stop()
         if self.prometheus_exporter:
             self.prometheus_exporter.server.shut_down()
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()

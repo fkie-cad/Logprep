@@ -340,6 +340,7 @@ pipeline:
             ),
             ("verifies input config", {"input": {"random_name": {"type": "UNKNOWN"}}}, 1),
             ("verifies output config", {"output": {"kafka_output": {"type": "UNKNOWN"}}}, 1),
+            ("verifies error_output config", {"output": {"kafka_output": {"type": "UNKNOWN"}}}, 1),
             (
                 "multiple outputs but one config failure",
                 {
@@ -496,6 +497,13 @@ pipeline:
                             }
                         }
                     ],
+                },
+                1,
+            ),
+            (
+                "error_output with unknown type",
+                {
+                    "error_output": {"kafka_output": {"type": "UNKNOWN"}},
                 },
                 1,
             ),

@@ -12,7 +12,6 @@ import pytest
 
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
-from logprep.framework.pipeline import PipelineResult
 from logprep.framework.pipeline_manager import (
     ComponentQueueListener,
     PipelineManager,
@@ -23,7 +22,6 @@ from logprep.util.configuration import Configuration, MetricsConfig
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.logging import logqueue
 from tests.testdata.metadata import path_to_config
-from tests.unit.framework.test_pipeline import get_mock_create
 
 
 @mock.patch("multiprocessing.Process", new=mock.MagicMock())
@@ -153,7 +151,7 @@ class TestPipelineManager:
             manager.stop()
             prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
 
-    def test_prometheus_exporter_is_instanciated_if_metrics_enabled(self):
+    def test_prometheus_exporter_is_instantiated_if_metrics_enabled(self):
         config = deepcopy(self.config)
         config.metrics = MetricsConfig(enabled=True, port=8000)
         with mock.patch("logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing"):
@@ -413,6 +411,12 @@ class TestPipelineManager:
             error_queue=None,
         )
 
+    def test_reload_calls_set_count_twice(self):
+        with mock.patch.object(self.manager, "set_count") as mock_set_count:
+            self.manager.reload()
+            # drains pipelines down to 0 and scales up to 3 afterwards
+            mock_set_count.assert_has_calls([mock.call(0), mock.call(3)])
+
 
 class TestThrottlingQueue:
 
@@ -499,9 +503,9 @@ class TestComponentQueueListener:
         target = lambda x: None
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         listener = ComponentQueueListener(queue, target)
-        assert listener._process is not None
-        assert isinstance(listener._process, multiprocessing.Process)
-        assert not listener._process.is_alive()
+        assert listener._instance is not None
+        assert isinstance(listener._instance, multiprocessing.Process)
+        assert not listener._instance.is_alive()
 
     def test_init_sets_process_target(self):
         target = lambda x: None
@@ -514,7 +518,7 @@ class TestComponentQueueListener:
         target = lambda x: None
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         listener = ComponentQueueListener(queue, target)
-        with mock.patch.object(listener._process, "start") as mock_start:
+        with mock.patch.object(listener._instance, "start") as mock_start:
             listener.start()
         mock_start.assert_called()
 
@@ -522,9 +526,9 @@ class TestComponentQueueListener:
         target = lambda x: None
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         listener = ComponentQueueListener(queue, target)
-        listener._queue.put(listener._sentinel)
+        listener.queue.put(listener.sentinel)
         listener._listen()
-        assert listener._queue.empty()
+        assert listener.queue.empty()
 
     def test_stop_injects_sentinel(self):
         target = lambda x: None
@@ -533,7 +537,7 @@ class TestComponentQueueListener:
             listener = ComponentQueueListener(queue, target)
             with mock.patch.object(queue, "put") as mock_put:
                 listener.stop()
-            mock_put.assert_called_with(listener._sentinel)
+            mock_put.assert_called_with(listener.sentinel)
 
     def test_stop_joins_process(self):
         target = lambda x: None
@@ -541,7 +545,7 @@ class TestComponentQueueListener:
             queue = ThrottlingQueue(multiprocessing.get_context(), 100)
             listener = ComponentQueueListener(queue, target)
             listener.stop()
-            listener._process.join.assert_called()
+            listener._instance.join.assert_called()
 
     def test_stop_closes_queue(self):
         target = lambda x: None
@@ -556,7 +560,7 @@ class TestComponentQueueListener:
         target = mock.MagicMock()
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         listener = ComponentQueueListener(queue, target)
-        listener._queue.put("test")
-        listener._queue.put(listener._sentinel)
+        listener.queue.put("test")
+        listener.queue.put(listener.sentinel)
         listener._listen()
         target.assert_called_with("test")

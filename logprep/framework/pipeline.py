@@ -17,7 +17,7 @@ from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Value, current_process
-from typing import Any, Generator, List, Tuple
+from typing import Any, List, Tuple
 
 import attrs
 
@@ -352,14 +352,14 @@ class Pipeline:
     def enqueue_error(
         self, item: PipelineResult | CriticalInputError | CriticalOutputError
     ) -> None:
-        """Enqueue an error to the error queue or logs a warning if
+        """Enqueues an error to the error queue or logs a warning if
         no error queue is defined."""
         if self.error_queue:
             event = None
             if isinstance(item, PipelineResult):
-                event = {"event": item.event, "errors": str(item.errors)}
+                event = {"event": str(item.event), "errors": str(item.errors)}
             elif isinstance(item, (CriticalInputError, CriticalOutputError)):
-                event = {"event": item.raw_input, "errors": str(item)}
+                event = {"event": str(item.raw_input), "errors": str(item)}
             else:
                 event = {"event": item, "errors": "An unknown error occurred"}
             self.error_queue.put(event)

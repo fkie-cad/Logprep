@@ -832,6 +832,12 @@ class Configuration:
                     Factory.create({output_name: output_config})
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
+        if self.error_output:
+            for output_name, output_config in self.error_output.items():
+                try:
+                    Factory.create({output_name: output_config})
+                except Exception as error:  # pylint: disable=broad-except
+                    errors.append(error)
         for processor_config in self.pipeline:
             try:
                 processor = Factory.create(deepcopy(processor_config))
