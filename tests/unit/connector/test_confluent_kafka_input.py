@@ -98,51 +98,20 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.shut_down()
         kafka_consumer.close.assert_called()
 
-    @pytest.mark.parametrize(
-        "settings,handlers",
-        [
-            (
-                {"enable.auto.offset.store": "false", "enable.auto.commit": "true"},
-                ("store_offsets",),
-            ),
-            (
-                {"enable.auto.offset.store": "false", "enable.auto.commit": "false"},
-                ("store_offsets", "commit"),
-            ),
-            ({"enable.auto.offset.store": "true", "enable.auto.commit": "false"}, None),
-            ({"enable.auto.offset.store": "true", "enable.auto.commit": "true"}, None),
-        ],
-    )
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_calls_offsets_handler_for_setting(self, _, settings, handlers):
+    def test_batch_finished_callback_calls_store_offsets(self, _):
         input_config = deepcopy(self.CONFIG)
-        input_config["kafka_config"] |= settings
         kafka_input = Factory.create({"test": input_config})
         kafka_consumer = kafka_input._consumer
         message = "test message"
         kafka_input._last_valid_records = {0: message}
         kafka_input.batch_finished_callback()
-        if handlers is None:
-            assert kafka_consumer.commit.call_count == 0
-            assert kafka_consumer.store_offsets.call_count == 0
-        else:
-            for handler in handlers:
-                getattr(kafka_consumer, handler).assert_called()
-                getattr(kafka_consumer, handler).assert_called_with(message=message)
+        kafka_consumer.store_offsets.assert_called()
+        kafka_consumer.store_offsets.assert_called_with(message=message)
 
-    @pytest.mark.parametrize(
-        "settings,handler",
-        [
-            ({"enable.auto.offset.store": "false", "enable.auto.commit": "true"}, "store_offsets"),
-            ({"enable.auto.offset.store": "false", "enable.auto.commit": "false"}, "commit"),
-        ],
-    )
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_raises_input_warning_on_kafka_exception(
-        self, _, settings, handler
-    ):
+    def test_batch_finished_callback_raises_input_warning_on_kafka_exception(self, _):
         input_config = deepcopy(self.CONFIG)
-        input_config["kafka_config"] |= settings
         kafka_input = Factory.create({"test": input_config})
         kafka_consumer = kafka_input._consumer
         return_sequence = [KafkaException("test error"), None]
@@ -150,7 +119,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         def raise_generator(return_sequence):
             return list(reversed(return_sequence)).pop()
 
-        getattr(kafka_consumer, handler).side_effect = raise_generator(return_sequence)
+        kafka_consumer.store_offsets.side_effect = raise_generator(return_sequence)
         kafka_input._last_valid_records = {0: "message"}
         with pytest.raises(InputWarning):
             kafka_input.batch_finished_callback()
@@ -338,14 +307,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         assert len(metric_object.samples) == 0
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_lost_callback_reassings_to_partitions(self, mock_consumer):
-        mock_partitions = [mock.MagicMock()]
-        self.object._consumer.assign = mock.MagicMock()
-        self.object._lost_callback(mock_consumer, mock_partitions)
-        self.object._consumer.assign.assert_called_with(mock_partitions)
-
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_lost_callback_counts_warnings(self, mock_consumer):
+    def test_lost_callback_counts_warnings_and_logs(self, mock_consumer):
         self.object.metrics.number_of_warnings = 0
         mock_partitions = [mock.MagicMock()]
         self.object._lost_callback(mock_consumer, mock_partitions)
@@ -356,7 +318,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         mock_partitions[0].offset = OFFSET_BEGINNING
-        self.object._commit_callback(None, mock_partitions)
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            self.object._commit_callback(None, mock_partitions)
+        mock_warning.assert_called()
         expected_labels = {
             "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
         }
