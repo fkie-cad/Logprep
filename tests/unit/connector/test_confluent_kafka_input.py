@@ -324,7 +324,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     def test_lost_callback_counts_warnings_and_logs(self, mock_consumer):
         self.object.metrics.number_of_warnings = 0
         mock_partitions = [mock.MagicMock()]
-        self.object._lost_callback(mock_consumer, mock_partitions)
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            self.object._lost_callback(mock_consumer, mock_partitions)
+        mock_warning.assert_called()
         assert self.object.metrics.number_of_warnings == 1
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
@@ -332,9 +334,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         mock_partitions[0].offset = OFFSET_BEGINNING
-        with mock.patch("logging.Logger.warning") as mock_warning:
-            self.object._commit_callback(None, mock_partitions)
-        mock_warning.assert_called()
+        self.object._commit_callback(None, mock_partitions)
         expected_labels = {
             "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
         }
