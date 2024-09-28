@@ -63,6 +63,19 @@ Analogous to the input, exceptions that require a restart of Logprep should inhe
 Exceptions that inherit from `OutputWarning` will be logged, but they do not require any error handling.
 
 
+.. _error_output:
+
+Error Output
+------------
+
+Error output is setup in :py:class:`~logprep.framework.pipeline_manager.PipelineManager`. The error
+output connector is instantiated and setup only once during the initialization of the pipeline manager
+together with :py:class:`~logprep.framework.pipeline_manager.ComponentQueueListener`.
+The listener is used to listen on the populated error queue and to send the log messages to the
+:code:`store` method of the error output connector.
+The error queue is given to the listener and to all pipelines instantiated by the pipeline manager.
+
+
 Factory
 -------
 
