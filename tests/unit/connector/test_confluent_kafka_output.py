@@ -99,10 +99,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         ]
         with pytest.raises(
             CriticalOutputError,
-            match=r"CriticalOutputError in ConfluentKafkaOutput"
-            r" \(Test Instance Name\) - Kafka Output: testserver:9092: "
-            r"Error storing output document -> bad things happened for event: "
-            r"\{'message': 'test message'\}",
+            match=r"bad things happened",
         ):
             self.object.store({"message": "test message"})
 

@@ -298,9 +298,7 @@ class ConfluentKafkaOutput(Output):
             # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self._config.flush_timeout)
         except BaseException as error:
-            raise CriticalOutputError(
-                self, f"Error storing output document -> {error}", document
-            ) from error
+            raise CriticalOutputError(self, str(error), document) from error
 
     def shut_down(self) -> None:
         """ensures that all messages are flushed. According to
