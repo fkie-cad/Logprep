@@ -138,6 +138,12 @@ class OpensearchOutput(Output):
             default=["green"], validator=validators.instance_of(list)
         )
         """Desired cluster status for health check as list of strings. Default is ["green"]"""
+        default_op_type: str = field(
+            default="index",
+            validator=[validators.instance_of(str), validators.in_(["create", "index"])],
+        )
+        """Default op_type for indexing documents. Default is 'index',
+        Consider using 'create' for data streams or to prevent overwriting existing documents."""
 
     __slots__ = ["_message_backlog"]
 
@@ -191,8 +197,12 @@ class OpensearchOutput(Output):
             scheme=self.schema,
             http_auth=self.http_auth,
             ssl_context=self.ssl_context,
+            verify_certs=True,  # default is True, but we want to be explicit
             timeout=self._config.timeout,
             serializer=MSGPECSerializer(self),
+            pool_maxsize=20,
+            # default for connection pooling is 10 see:
+            # https://github.com/opensearch-project/opensearch-py/blob/main/guides/connection_classes.md
         )
 
     @cached_property
@@ -235,15 +245,11 @@ class OpensearchOutput(Output):
         document : dict
            Document to store.
         """
-        if document.get("_index") is None:
-            document["_index"] = self._config.default_index
-
-        self.metrics.number_of_processed_events += 1
-        self._message_backlog.append(document)
-        self._write_to_search_context()
+        self.store_custom(document, document.get("_index", self._config.default_index))
 
     def store_custom(self, document: dict, target: str) -> None:
         """Store document into backlog to be written into Opensearch with the target index.
+        The target index is determined per document by parameter :code:`target`.
 
         Parameters
         ----------
@@ -253,6 +259,7 @@ class OpensearchOutput(Output):
             Index to store the document in.
         """
         document["_index"] = target
+        document["_op_type"] = document.get("_op_type", self._config.default_op_type)
         self.metrics.number_of_processed_events += 1
         self._message_backlog.append(document)
         self._write_to_search_context()
@@ -262,15 +269,6 @@ class OpensearchOutput(Output):
 
         Writes documents in a bulk if the document buffer limit has been reached.
         This reduces connections to Opensearch and improves performance.
-        The target index is determined per document by the value of the meta field '_index'.
-        A configured default index is used if '_index' hasn't been set. All images are indexed
-        using the optype 'create' to prevent overwriting existing documents and to ensure
-        usage of data streams.
-
-        Returns
-        -------
-        Returns True to inform the pipeline to call the batch_finished_callback method in the
-        configured input
         """
         if len(self._message_backlog) >= self._config.message_backlog_size:
             self._write_backlog()
@@ -279,6 +277,7 @@ class OpensearchOutput(Output):
     def _write_backlog(self):
         if not self._message_backlog:
             return
+
         self._bulk(
             self._search_context,
             self._message_backlog,
@@ -290,7 +289,7 @@ class OpensearchOutput(Output):
     def _bulk(self, client, actions, *args, **kwargs) -> Optional[List[dict]]:
         failed = []
         succeeded = []
-        for index, data in enumerate(
+        for index, result in enumerate(
             helpers.parallel_bulk(
                 client,
                 actions=actions,
@@ -300,7 +299,7 @@ class OpensearchOutput(Output):
                 raise_on_exception=False,
             )
         ):
-            success, item = data
+            success, item = result
             if success:
                 succeeded.append(item)
             else:
