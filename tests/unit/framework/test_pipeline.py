@@ -674,15 +674,15 @@ class TestPipeline(ConfigurationForTests):
                 "{'foo': 'bar'}",
             ),
             (
-                [{"index": {"error": "error_msg", "data": "raw_input"}}],
-                "raw_input",
+                [{"event": {"test": "message"}, "errors": {"error": "error_msg"}}],
+                "{'test': 'message'}",
             ),
             (
                 [
-                    {"index": {"error": "error_msg", "data": "raw_input1"}},
-                    {"index": {"error": "error_msg", "data": "raw_input2"}},
+                    {"event": {"test": f"message{i}"}, "errors": {"error": "error_msg"}}
+                    for i in range(2)
                 ],
-                "raw_input1",
+                "{'test': 'message0'}",
             ),
         ],
     )
@@ -696,6 +696,13 @@ class TestPipeline(ConfigurationForTests):
         assert "error_msg" in enqueued_item["errors"]
 
     def test_enqueue_error_calls_batch_finished_callback(self, _):
+        error = CriticalInputError(self.pipeline._input, "test-error", "raw_input")
+        self.pipeline._input.batch_finished_callback = mock.MagicMock()
+        self.pipeline.error_queue = queue.Queue()
+        self.pipeline.enqueue_error(error)
+        self.pipeline._input.batch_finished_callback.assert_called()
+
+    def test_enqueue_error_calls_batch_finished_callback_without_error_queue(self, _):
         error = CriticalInputError(self.pipeline._input, "test-error", "raw_input")
         self.pipeline._input.batch_finished_callback = mock.MagicMock()
         self.pipeline.error_queue = None
