@@ -117,12 +117,12 @@ def _handle_pipeline_error(func):
             self.stop()
         except (OutputWarning, InputWarning) as error:
             self.logger.warning(str(error))
-        except (FatalOutputError, FatalInputError) as error:
-            self.logger.error(str(error))
-            self.stop()
         except (CriticalInputError, CriticalOutputError) as error:
             self.enqueue_error(error)
             self.logger.error(str(error))
+        except (FatalOutputError, FatalInputError) as error:
+            self.logger.error(str(error))
+            self.stop()
         return None
 
     return _inner
