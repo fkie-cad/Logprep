@@ -360,8 +360,14 @@ class Pipeline:
                 event = {"event": str(item.event), "errors": str(item.errors)}
             elif isinstance(item, (CriticalInputError, CriticalOutputError)):
                 if isinstance(item.raw_input, list):
-                    error = str(item)
-                    event = [{"event": i, "errors": error} for i in item.raw_input]
+                    default_error = str(item)
+                    event = [
+                        {
+                            "event": i["event"] if "event" in i else i,
+                            "errors": (i["errors"] if "errors" in i else default_error),
+                        }
+                        for i in item.raw_input
+                    ]
                 else:
                     event = {"event": str(item.raw_input), "errors": str(item)}
             else:

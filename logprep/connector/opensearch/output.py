@@ -290,18 +290,21 @@ class OpensearchOutput(Output):
     def _bulk(self, client, actions, *args, **kwargs) -> Optional[List[dict]]:
         failed = []
         succeeded = []
-        for success, item in helpers.parallel_bulk(
-            client,
-            actions=actions,
-            chunk_size=self._config.chunk_size,
-            queue_size=self._config.queue_size,
-            raise_on_error=False,
-            raise_on_exception=False,
+        for index, data in enumerate(
+            helpers.parallel_bulk(
+                client,
+                actions=actions,
+                chunk_size=self._config.chunk_size,
+                queue_size=self._config.queue_size,
+                raise_on_error=False,
+                raise_on_exception=False,
+            )
         ):
+            success, item = data
             if success:
                 succeeded.append(item)
             else:
-                failed.append(item)
+                failed.append({"errors": item, "event": actions[index]})
         if succeeded and logger.isEnabledFor(logging.DEBUG):
             for item in succeeded:
                 logger.debug("Document indexed: %s", item)
