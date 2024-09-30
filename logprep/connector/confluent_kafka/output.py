@@ -292,12 +292,14 @@ class ConfluentKafkaOutput(Output):
         """
         try:
             self._producer.produce(target, value=self._encoder.encode(document))
+            logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
             self.metrics.number_of_processed_events += 1
         except BufferError:
             # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self._config.flush_timeout)
-        except BaseException as error:
+            logger.debug("Buffer full, flushing")
+        except Exception as error:
             raise CriticalOutputError(self, str(error), document) from error
 
     def shut_down(self) -> None:

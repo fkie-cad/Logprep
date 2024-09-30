@@ -17,7 +17,7 @@ from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Value, current_process
-from typing import Any, List, Tuple
+from typing import Any, Generator, Iterable, List, Tuple
 
 import attrs
 
@@ -355,13 +355,21 @@ class Pipeline:
         """Enqueues an error to the error queue or logs a warning if
         no error queue is defined."""
         if self.error_queue:
-            event = None
+            event: dict | list = None
             if isinstance(item, PipelineResult):
                 event = {"event": str(item.event), "errors": str(item.errors)}
             elif isinstance(item, (CriticalInputError, CriticalOutputError)):
-                event = {"event": str(item.raw_input), "errors": str(item)}
+                if isinstance(item.raw_input, list):
+                    error = str(item)
+                    event = [{"event": i, "errors": error} for i in item.raw_input]
+                else:
+                    event = {"event": str(item.raw_input), "errors": str(item)}
             else:
                 event = {"event": item, "errors": "An unknown error occurred"}
-            self.error_queue.put(event)
+            if isinstance(event, list):
+                for i in event:
+                    self.error_queue.put(i)
+            else:
+                self.error_queue.put(event)
         else:
             self.logger.warning("No error queue defined, event was dropped")

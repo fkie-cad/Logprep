@@ -3,7 +3,7 @@ New output endpoint types are created by implementing it.
 """
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 from attrs import define, field, validators
 
@@ -31,7 +31,7 @@ class OutputWarning(LogprepException):
 class CriticalOutputError(OutputError):
     """A significant error occurred - log and don't process the event."""
 
-    def __init__(self, output: "Output", message: str, raw_input: str | dict | bytes) -> None:
+    def __init__(self, output: "Output", message: str, raw_input: Any) -> None:
         self.raw_input = raw_input
         super().__init__(output, f"{message} -> event was written to error output if configured")
 

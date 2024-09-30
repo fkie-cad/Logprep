@@ -10,8 +10,6 @@ import os
 import re
 import time
 import uuid
-from datetime import datetime
-from math import isclose
 from unittest import mock
 
 import opensearchpy as search
@@ -42,7 +40,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         "type": "opensearch_output",
         "hosts": ["localhost:9200"],
         "default_index": "default_index",
-        "error_index": "error_index",
         "message_backlog_size": 1,
         "timeout": 5000,
     }

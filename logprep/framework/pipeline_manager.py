@@ -311,9 +311,7 @@ class PipelineManager:
         )
         if pipeline.pipeline_index == 1 and self.prometheus_exporter:
             self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
-        process = multiprocessing.Process(
-            target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
-        )
+        process = threading.Thread(target=pipeline.run, daemon=True, name=f"Pipeline-{index}")
         process.stop = pipeline.stop
         process.start()
         logger.info("Created new pipeline")

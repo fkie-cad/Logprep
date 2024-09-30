@@ -30,12 +30,9 @@ Example
         ca_cert: /path/to/cert.crt
 """
 
-import json
 import logging
-import random
 import re
 import ssl
-import time
 from functools import cached_property
 from typing import List, Optional, Tuple, Union
 
@@ -44,10 +41,9 @@ from attrs import define, field, validators
 from opensearchpy import OpenSearchException, helpers
 from opensearchpy.serializer import JSONSerializer
 
-from logprep.abc.output import FatalOutputError, Output
+from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.metrics.metrics import Metric
 from logprep.util.helper import get_dict_size_in_byte
-from logprep.util.time import TimeParser
 
 logger = logging.getLogger("OpenSearchOutput")
 
@@ -101,8 +97,6 @@ class OpensearchOutput(Output):
         """Default index to write to if no index was set in the document or the document could not
         be indexed. The document will be transformed into a string to prevent rejections by the
         default index."""
-        error_index: str = field(validator=validators.instance_of(str))
-        """Index to write documents to that could not be processed."""
         message_backlog_size: int = field(validator=validators.instance_of(int))
         """Amount of documents to store before sending them."""
         maximum_message_size_mb: Optional[Union[float, int]] = field(
@@ -128,10 +122,6 @@ class OpensearchOutput(Output):
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
         """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
-
-        parallel_bulk: bool = field(default=True, validator=validators.instance_of(bool))
-        """Configure if all events in the backlog should be send, in parallel, via multiple threads
-        to Opensearch. (Default: :code:`True`)"""
         thread_count: int = field(
             default=4, validator=[validators.instance_of(int), validators.gt(1)]
         )
@@ -149,11 +139,9 @@ class OpensearchOutput(Output):
         )
         """Desired cluster status for health check as list of strings. Default is ["green"]"""
 
-    __slots__ = ["_message_backlog", "_size_error_pattern"]
+    __slots__ = ["_message_backlog"]
 
     _message_backlog: List
-
-    _size_error_pattern: re.Pattern[str]
 
     @cached_property
     def ssl_context(self) -> ssl.SSLContext:
@@ -211,13 +199,16 @@ class OpensearchOutput(Output):
     def _replace_pattern(self):
         return re.compile(r"%{\S+?}")
 
-    def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
-        super().__init__(name, configuration)
-        self._message_backlog = []
-        self._size_error_pattern = re.compile(
+    @cached_property
+    def _size_error_pattern(self):
+        return re.compile(
             r".*coordinating_operation_bytes=(?P<size>\d+), "
             r"max_coordinating_and_primary_bytes=(?P<max_size>\d+).*"
         )
+
+    def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
+        super().__init__(name, configuration)
+        self._message_backlog = []
 
     def setup(self):
         super().setup()
@@ -236,34 +227,23 @@ class OpensearchOutput(Output):
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self._config.hosts}"
 
-    def store(self, document: dict):
-        """Store a document in the index.
+    def store(self, document: dict) -> None:
+        """Store a document in the index defined in the document or to the default index.
 
         Parameters
         ----------
         document : dict
            Document to store.
-
-        Returns
-        -------
-        Returns True to inform the pipeline to call the batch_finished_callback method in the
-        configured input
         """
         if document.get("_index") is None:
-            document = self._build_failed_index_document(document, "Missing index in document")
+            document["_index"] = self._config.default_index
 
-        self._add_dates(document)
         self.metrics.number_of_processed_events += 1
         self._message_backlog.append(document)
         self._write_to_search_context()
 
-    def store_custom(self, document: dict, target: str):
+    def store_custom(self, document: dict, target: str) -> None:
         """Store document into backlog to be written into Opensearch with the target index.
-
-        Only add to backlog instead of writing the batch and calling batch_finished_callback,
-        since store_custom can be called before the event has been fully processed.
-        Setting the offset or committing before fully processing an event can lead to data loss if
-        Logprep terminates.
 
         Parameters
         ----------
@@ -271,44 +251,21 @@ class OpensearchOutput(Output):
             Document to be stored into the target index.
         target : str
             Index to store the document in.
-        Raises
-        ------
-        CriticalOutputError
-            Raises if any error except a BufferError occurs while writing into opensearch.
-
         """
         document["_index"] = target
-        self._add_dates(document)
         self.metrics.number_of_processed_events += 1
         self._message_backlog.append(document)
-
-    def _build_failed_index_document(self, message_document: dict, reason: str):
-        document = {
-            "reason": reason,
-            "@timestamp": TimeParser.now().isoformat(),
-            "_index": self._config.default_index,
-        }
-        try:
-            document["message"] = json.dumps(message_document)
-        except TypeError:
-            document["message"] = str(message_document)
-        return document
-
-    def _add_dates(self, document):
-        date_format_matches = self._replace_pattern.findall(document["_index"])
-        if date_format_matches:
-            now = TimeParser.now()
-            for date_format_match in date_format_matches:
-                formatted_date = now.strftime(date_format_match[2:-1])
-                document["_index"] = re.sub(date_format_match, formatted_date, document["_index"])
+        self._write_to_search_context()
 
     def _write_to_search_context(self):
         """Writes documents from a buffer into Opensearch indices.
 
         Writes documents in a bulk if the document buffer limit has been reached.
-        This reduces connections to Opensearch.
+        This reduces connections to Opensearch and improves performance.
         The target index is determined per document by the value of the meta field '_index'.
-        A configured default index is used if '_index' hasn't been set.
+        A configured default index is used if '_index' hasn't been set. All images are indexed
+        using the optype 'create' to prevent overwriting existing documents and to ensure
+        usage of data streams.
 
         Returns
         -------
@@ -322,125 +279,34 @@ class OpensearchOutput(Output):
     def _write_backlog(self):
         if not self._message_backlog:
             return
-
         self._bulk(
             self._search_context,
             self._message_backlog,
             max_retries=self._config.max_retries,
             chunk_size=len(self._message_backlog),
         )
-        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-            self.input_connector.batch_finished_callback()
         self._message_backlog.clear()
 
-    def _bulk(self, client, actions, *args, **kwargs):
-        try:
-            if self._config.parallel_bulk:
-                self._parallel_bulk(client, actions, *args, **kwargs)
-                return
-            helpers.bulk(client, actions, *args, **kwargs)
-        except search.SerializationError as error:
-            self._handle_serialization_error(error)
-        except search.ConnectionError as error:
-            self._handle_connection_error(error)
-        except helpers.BulkIndexError as error:
-            self._handle_bulk_index_error(error)
-        except search.exceptions.TransportError as error:
-            self._handle_transport_error(error)
-
-    def _parallel_bulk(self, client, actions, *args, **kwargs):
-        bulk_delays = 1
-        for _ in range(self._config.max_retries + 1):
-            try:
-                for success, item in helpers.parallel_bulk(
-                    client,
-                    actions=actions,
-                    chunk_size=self._config.chunk_size,
-                    queue_size=self._config.queue_size,
-                    raise_on_error=True,
-                    raise_on_exception=True,
-                ):
-                    if not success:
-                        result = item[list(item.keys())[0]]
-                        if "error" in result:
-                            raise result.get("error")
-                break
-            except search.ConnectionError as error:
-                raise error
-            except search.exceptions.TransportError as error:
-                if self._message_exceeds_max_size_error(error):
-                    raise error
-                time.sleep(bulk_delays)
-                bulk_delays += random.randint(500, 1000) / 1000
-        else:
-            raise FatalOutputError(
-                self, "Opensearch too many requests, all parallel bulk retries failed"
-            )
-
-    def _handle_serialization_error(self, error: search.SerializationError):
-        """Handle serialization error for opensearch bulk indexing.
-
-        If at least one document in a chunk can't be serialized, no events will be sent.
-        The chunk size is thus set to be the same size as the message backlog size.
-        Therefore, it won't result in duplicates once the data is resent.
-
-        Parameters
-        ----------
-        error : SerializationError
-            SerializationError for the error message.
-
-        Raises
-        ------
-        FatalOutputError
-            This causes a pipeline rebuild and gives an appropriate error log message.
-
-        """
-        raise FatalOutputError(self, f"{error.args[1]} in document {error.args[0]}")
-
-    def _handle_connection_error(self, error: search.ConnectionError):
-        """Handle connection error for opensearch bulk indexing.
-
-        No documents will be sent if there is no connection to begin with.
-        Therefore, it won't result in duplicates once the the data is resent.
-        If the connection is lost during indexing, duplicate documents could be sent.
-
-        Parameters
-        ----------
-        error : ConnectionError
-           ConnectionError for the error message.
-
-        Raises
-        ------
-        FatalOutputError
-            This causes a pipeline rebuild and gives an appropriate error log message.
-
-        """
-        raise FatalOutputError(self, error.error)
-
-    def _handle_bulk_index_error(self, error: helpers.BulkIndexError):
-        """Handle bulk indexing error for opensearch bulk indexing.
-
-        Documents that could not be sent to opensearch due to index errors are collected and
-        sent into an error index that should always accept all documents.
-        This can lead to a rebuild of the pipeline if this causes another exception.
-
-        Parameters
-        ----------
-        error : BulkIndexError
-           BulkIndexError to collect IndexErrors from.
-
-        """
-        error_documents = []
-        for bulk_error in error.errors:
-            _, error_info = bulk_error.popitem()
-            data = error_info.get("data") if "data" in error_info else None
-            error_type = error_info.get("error").get("type")
-            error_reason = error_info.get("error").get("reason")
-            reason = f"{error_type}: {error_reason}"
-            error_document = self._build_failed_index_document(data, reason)
-            self._add_dates(error_document)
-            error_documents.append(error_document)
-        self._bulk(self._search_context, error_documents)
+    def _bulk(self, client, actions, *args, **kwargs) -> Optional[List[dict]]:
+        failed = []
+        succeeded = []
+        for success, item in helpers.parallel_bulk(
+            client,
+            actions=actions,
+            chunk_size=self._config.chunk_size,
+            queue_size=self._config.queue_size,
+            raise_on_error=False,
+            raise_on_exception=False,
+        ):
+            if success:
+                succeeded.append(item)
+            else:
+                failed.append(item)
+        if succeeded and logger.isEnabledFor(logging.DEBUG):
+            for item in succeeded:
+                logger.debug("Document indexed: %s", item)
+        if failed:
+            raise CriticalOutputError(self, "failed to index", failed)
 
     def _handle_transport_error(self, error: search.exceptions.TransportError):
         """Handle transport error for opensearch bulk indexing.
@@ -453,9 +319,6 @@ class OpensearchOutput(Output):
            TransportError for the error message.
 
         """
-        if self._config.maximum_message_size_mb is None:
-            raise FatalOutputError(self, error.error)
-
         if self._message_exceeds_max_size_error(error):
             (
                 messages_under_size_limit,
@@ -474,48 +337,17 @@ class OpensearchOutput(Output):
             raise FatalOutputError(self, error.error)
 
     def _message_exceeds_max_size_error(self, error):
-        if error.status_code == 429:
-            if error.error == "circuit_breaking_exception":
+        if error.status_code != 429:
+            return False
+        if error.error == "circuit_breaking_exception":
+            return True
+
+        if error.error == "rejected_execution_exception":
+            reason = error.info.get("error", {}).get("reason", "")
+            match = self._size_error_pattern.match(reason)
+            if match and int(match.group("size")) >= int(match.group("max_size")):
                 return True
-
-            if error.error == "rejected_execution_exception":
-                reason = error.info.get("error", {}).get("reason", "")
-                match = self._size_error_pattern.match(reason)
-                if match and int(match.group("size")) >= int(match.group("max_size")):
-                    return True
         return False
-
-    def _build_messages_for_large_error_documents(
-        self, messages_over_size_limit: List[Tuple[dict, int]]
-    ) -> List[dict]:
-        """Build error message for messages that were larger than the allowed size limit.
-
-        Only a snipped of the message is stored in the error document, since the original message
-        was too large to be written in the first place.
-
-        Parameters
-        ----------
-        messages_over_size_limit : List[Tuple[dict, int]]
-           Messages that were too large with their corresponding sizes in byte.
-
-        """
-        error_documents = []
-        for message, size in messages_over_size_limit:
-            error_message = (
-                f"Discarded message that is larger than the allowed size limit "
-                f"({size / 10 ** 6} MB/{self._config.maximum_message_size_mb} MB)"
-            )
-            logger.warning(error_message)
-
-            error_document = {
-                "processed_snipped": f'{self._encoder.encode(message).decode("utf-8")[:1000]} ...',
-                "error": error_message,
-                "@timestamp": TimeParser.now().isoformat(),
-                "_index": self._config.error_index,
-            }
-            self._add_dates(error_document)
-            error_documents.append(error_document)
-        return error_documents
 
     def _split_message_backlog_by_size_limit(self):
         messages_under_size_limit = []
