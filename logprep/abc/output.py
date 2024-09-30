@@ -31,6 +31,8 @@ class OutputWarning(LogprepException):
 class CriticalOutputError(OutputError):
     """A significant error occurred - log and don't process the event."""
 
+    __match_args__ = ("raw_input",)
+
     def __init__(self, output: "Output", message: str, raw_input: Any) -> None:
         self.raw_input = raw_input
         super().__init__(output, f"{message} -> event was written to error output if configured")

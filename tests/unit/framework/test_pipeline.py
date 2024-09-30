@@ -1,11 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-import logging
 import multiprocessing
 import queue
-from copy import copy, deepcopy
-from logging import DEBUG
+from copy import deepcopy
 from typing import Tuple
 from unittest import mock
 
@@ -494,17 +492,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         assert self.pipeline._input.output_connector == self.pipeline._output["dummy"]
 
-    def test_pipeline_does_not_call_batch_finished_callback_if_output_store_does_not_return_true(
-        self, _
-    ):
-        self.pipeline._setup()
-        self.pipeline._input.get_next.return_value = {"some": "event"}
-        self.pipeline._input.batch_finished_callback = mock.MagicMock()
-        self.pipeline._output["dummy"].store = mock.MagicMock()
-        self.pipeline._output["dummy"].store.return_value = None
-        self.pipeline.process_pipeline()
-        self.pipeline._input.batch_finished_callback.assert_not_called()
-
     def test_shut_down_drains_input_queues(self, _):
         self.pipeline._setup()
         input_config = {
@@ -666,6 +653,54 @@ class TestPipeline(ConfigurationForTests):
         with mock.patch("logging.Logger.warning") as mock_warning:
             self.pipeline.enqueue_error(error)
         mock_warning.assert_called_with("No error queue defined, event was dropped")
+
+    @pytest.mark.parametrize(
+        "event_data, expected_event",
+        [
+            (
+                "raw_input",
+                "raw_input",
+            ),
+            (
+                ["raw_input"],
+                "raw_input",
+            ),
+            (
+                {"foo": "bar"},
+                "{'foo': 'bar'}",
+            ),
+            (
+                [{"foo": "bar"}, {"foo": "baz"}],
+                "{'foo': 'bar'}",
+            ),
+            (
+                [{"index": {"error": "error_msg", "data": "raw_input"}}],
+                "raw_input",
+            ),
+            (
+                [
+                    {"index": {"error": "error_msg", "data": "raw_input1"}},
+                    {"index": {"error": "error_msg", "data": "raw_input2"}},
+                ],
+                "raw_input1",
+            ),
+        ],
+    )
+    def test_enqueue_error_handles_critical_output_errors_with_different_event_data(
+        self, _, event_data, expected_event
+    ):
+        error = CriticalOutputError(mock.MagicMock(), "error_msg", event_data)
+        self.pipeline.enqueue_error(error)
+        enqueued_item = self.pipeline.error_queue.get(0.01)
+        assert enqueued_item["event"] == expected_event
+        assert "error_msg" in enqueued_item["errors"]
+
+    def test_enqueue_error_calls_batch_finished_callback(self, _):
+        error = CriticalInputError(self.pipeline._input, "test-error", "raw_input")
+        self.pipeline._input.batch_finished_callback = mock.MagicMock()
+        self.pipeline.error_queue = None
+        self.pipeline.enqueue_error(error)
+        self.pipeline._input.batch_finished_callback.assert_called()
 
 
 class TestPipelineWithActualInput:

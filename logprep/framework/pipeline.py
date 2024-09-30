@@ -289,6 +289,8 @@ class Pipeline:
                     self._store_extra_data(itertools.chain(*result_data))
             if event:
                 self._store_event(event)
+        if self._input:
+            self._input.batch_finished_callback()
         return result
 
     def _store_event(self, event: dict) -> None:
@@ -356,22 +358,29 @@ class Pipeline:
         no error queue is defined."""
         if self.error_queue:
             event: dict | list = None
-            if isinstance(item, PipelineResult):
-                event = {"event": str(item.event), "errors": str(item.errors)}
-            elif isinstance(item, (CriticalInputError, CriticalOutputError)):
-                if isinstance(item.raw_input, list):
-                    default_error = str(item)
-                    event = [
+            match item:
+                case CriticalOutputError(
+                    [
                         {
-                            "event": i["event"] if "event" in i else i,
-                            "errors": (i["errors"] if "errors" in i else default_error),
-                        }
-                        for i in item.raw_input
+                            "index": {"data": data, "error": error},
+                        },
+                        *values,
                     ]
-                else:
-                    event = {"event": str(item.raw_input), "errors": str(item)}
-            else:
-                event = {"event": item, "errors": "An unknown error occurred"}
+                ):
+                    event = [{"event": data, "errors": error}]
+                    if values:
+                        event += [
+                            {"event": i["index"]["data"], "errors": i["index"]["error"]}
+                            for i in values
+                        ]
+                case CriticalOutputError(raw_input) if isinstance(raw_input, dict):
+                    event = {"event": str(raw_input), "errors": str(item)}
+                case CriticalOutputError(raw_input) if isinstance(raw_input, (list, tuple)):
+                    event = [{"event": str(i), "errors": str(item)} for i in raw_input]
+                case CriticalOutputError(raw_input) if isinstance(raw_input, (str, bytes)):
+                    event = {"event": str(raw_input), "errors": str(item)}
+                case _:
+                    event = {"event": str(item), "errors": "Unknown error"}
             if isinstance(event, list):
                 for i in event:
                     self.error_queue.put(i)
@@ -379,3 +388,5 @@ class Pipeline:
                 self.error_queue.put(event)
         else:
             self.logger.warning("No error queue defined, event was dropped")
+        if self._input:
+            self._input.batch_finished_callback()
