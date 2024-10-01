@@ -1,10 +1,10 @@
 version: 1
-process_count: 1
+process_count: 2
 timeout: 0.1
 restart_count: 2
 config_refresh_interval: 5
 logger:
-  level: DEBUG
+  level: INFO
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
@@ -12,6 +12,8 @@ logger:
     "Runner": { "level": "DEBUG" }
     "Processor": { "level": "ERROR" }
     "Exporter": { "level": "ERROR" }
+    "uvicorn": { "level": "ERROR" }
+    "uvicorn.access": { "level": "ERROR" }
     "OpenSearchOutput": { "level": "ERROR" }
 metrics:
   enabled: true
@@ -118,7 +120,8 @@ output:
     hosts:
       - 127.0.0.1:9200
     default_index: processed
-    message_backlog_size: 5
+    default_op_type: create
+    message_backlog_size: 2500
     timeout: 10000
     flush_timeout: 60
     max_retries: 3

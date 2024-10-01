@@ -4,6 +4,8 @@
 ### Breaking
 
 * remove AutoRuleCorpusTester
+* reimplement error handling by introducing the option to configure an error output
+  * if no error output is configured, failed event will be dropped
 
 ### Features
 
