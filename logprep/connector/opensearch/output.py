@@ -145,9 +145,16 @@ class OpensearchOutput(Output):
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
 
-    __slots__ = ["_message_backlog"]
+    __slots__ = ["_message_backlog", "_failed", "_succeeded"]
+
+    _failed: List
+    """Temporary list of failed messages."""
+
+    _succeeded: List
+    """Temporary list of succeeded messages."""
 
     _message_backlog: List
+    """List of messages to be sent to Opensearch."""
 
     @cached_property
     def ssl_context(self) -> ssl.SSLContext:
@@ -219,6 +226,8 @@ class OpensearchOutput(Output):
     def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
         super().__init__(name, configuration)
         self._message_backlog = []
+        self._failed = []
+        self._succeeded = []
 
     def setup(self):
         super().setup()
@@ -277,18 +286,23 @@ class OpensearchOutput(Output):
     def _write_backlog(self):
         if not self._message_backlog:
             return
-
-        self._bulk(
-            self._search_context,
-            self._message_backlog,
-            max_retries=self._config.max_retries,
-            chunk_size=len(self._message_backlog),
-        )
-        self._message_backlog.clear()
+        logger.debug("Flushing %d documents to Opensearch", len(self._message_backlog))
+        try:
+            self._bulk(
+                self._search_context,
+                self._message_backlog,
+                max_retries=self._config.max_retries,
+                chunk_size=len(self._message_backlog),
+            )
+        except CriticalOutputError as error:
+            raise error from error
+        finally:
+            self._message_backlog.clear()
+            self._failed.clear()
+            self._succeeded.clear()
 
     def _bulk(self, client, actions, *args, **kwargs) -> Optional[List[dict]]:
-        failed = []
-        succeeded = []
+        succeeded, failed = self._succeeded, self._failed
         for index, result in enumerate(
             helpers.parallel_bulk(
                 client,
@@ -300,9 +314,10 @@ class OpensearchOutput(Output):
             )
         ):
             success, item = result
-            if success:
-                succeeded.append(item)
-            else:
+            if logger.isEnabledFor(logging.DEBUG):
+                if success:
+                    succeeded.append(item)
+            if not success:
                 failed.append({"errors": item, "event": actions[index]})
         if succeeded and logger.isEnabledFor(logging.DEBUG):
             for item in succeeded:
