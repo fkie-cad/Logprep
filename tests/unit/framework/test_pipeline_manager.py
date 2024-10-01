@@ -529,7 +529,7 @@ class TestComponentQueueListener:
         listener = ComponentQueueListener(queue, target, output_config)
         listener.queue.put(listener.sentinel)
         listener._listen()
-        assert listener.queue.empty()
+        assert not listener._instance.is_alive()
 
     def test_stop_injects_sentinel(self):
         target = "store"
