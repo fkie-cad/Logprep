@@ -290,7 +290,6 @@ class TestPipelineManager:
         with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
             manager = PipelineManager(self.config)
         assert manager._error_queue is not None
-        assert manager._error_output is not None
         assert manager._error_listener is not None
         manager._error_listener.start.assert_called()  # pylint: disable=no-member
 
@@ -298,69 +297,19 @@ class TestPipelineManager:
         self.config.error_output = {}
         manager = PipelineManager(self.config)
         assert manager._error_queue is None
-        assert manager._error_output is None
         assert manager._error_listener is None
 
-    def test_setup_error_queue_calls_setup_on_error_output_at_minimum_once(self):
+    def test_setup_error_queue_raises_system_exit_if_error_listener_fails(self):
         self.config.error_output = {"dummy": {"type": "dummy_output"}}
-        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
-            with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as setup_mock:
-                manager = PipelineManager(self.config)
-        assert manager._error_queue is not None
-        assert manager._error_output is not None
-        assert manager._error_listener is not None
-        setup_mock.assert_called()
-
-    def test_setup_error_queue_calls_setup_and_raises_sys_exit_if_should_exit(self, caplog):
-        self.config.error_output = {"dummy": {"type": "dummy_output"}}
-        with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as setup_mock:
-            with mock.patch(
-                "logprep.framework.pipeline_manager.PipelineManager.should_exit", return_value=True
-            ) as should_exit_mock:
-                setup_mock.side_effect = SystemExit
+        mock_listener = mock.MagicMock()
+        mock_listener.setup_successful = False
+        with mock.patch(
+            "logprep.framework.pipeline_manager.ComponentQueueListener", return_value=mock_listener
+        ):
+            with mock.patch("logging.Logger.error") as mock_error:
                 with pytest.raises(SystemExit):
-                    manager = PipelineManager(self.config)
-                    assert manager._error_queue is not None
-                    assert manager._error_output is not None
-                    assert manager._error_listener is not None
-        setup_mock.assert_called()
-        should_exit_mock.assert_called()
-        assert "Exiting..." in caplog.text
-
-    def test_setup_error_queue_calls_setup_and_tries_again(self, caplog):
-        self.config.error_output = {"dummy": {"type": "dummy_output"}}
-        with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as setup_mock:
-            with mock.patch(
-                "logprep.framework.pipeline_manager.PipelineManager.should_exit"
-            ) as should_exit_mock:
-                setup_mock.side_effect = SystemExit
-                should_exit_mock.side_effect = [False, True]
-                manager = PipelineManager(self.config)
-                assert manager._error_queue is not None
-                assert manager._error_output is not None
-                assert manager._error_listener is not None
-        setup_mock.assert_called()
-        should_exit_mock.assert_called()
-        assert "Trying again..." in caplog.text
-
-    def test_setup_error_queue_calls_tries_infinite_on_negative_restart_count(self, caplog):
-        self.config.error_output = {"dummy": {"type": "dummy_output"}}
-        self.config.restart_count = -1
-        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
-            with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as setup_mock:
-                with mock.patch(
-                    "logprep.framework.pipeline_manager.PipelineManager.should_exit"
-                ) as should_exit_mock:
-                    setup_mock.side_effect = [SystemExit, None]
-                    should_exit_mock.side_effect = [False, True]
-                    manager = PipelineManager(self.config)
-                    assert manager._error_queue is not None
-                    assert manager._error_output is not None
-                    assert manager._error_listener is not None
-        setup_mock.assert_called()
-        assert setup_mock.call_count == 2
-        should_exit_mock.assert_not_called()
-        assert "Try again infinite..." in caplog.text
+                    PipelineManager(self.config)
+        mock_error.assert_called()
 
     def test_should_exit_returns_bool_based_on_restart_count(self):
         self.config.restart_count = 2

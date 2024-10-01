@@ -7,6 +7,7 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.queues
 import random
+import sys
 import threading
 import time
 from typing import Any
@@ -14,7 +15,6 @@ from typing import Any
 from attr import define, field, validators
 
 from logprep.abc.component import Component
-from logprep.abc.output import Output
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline
@@ -85,9 +85,6 @@ class ComponentQueueListener:
     """The implementation to use for the listener. Options are threading or multiprocessing.
     Default is threading."""
 
-    setup_successful: bool = field(default=False, init=False)
-    """Flag to indicate if the setup of the component was successful."""
-
     def __attrs_post_init__(self):
         if self._implementation == "threading":
             self._instance = threading.Thread(target=self._listen, daemon=True)
@@ -101,22 +98,17 @@ class ComponentQueueListener:
 
     def _get_component_instance(self):
         component = Factory.create(self.config)
-        for _ in range(5):
-            try:
-                component.setup()
-            except SystemExit:
-                logger.warning("Error output not reachable. Try again...")
-                time.sleep(3)
-                continue
-            if component.health():
-                break
-        else:
-            raise SystemExit(EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value)
+        try:
+            component.setup()
+            self.queue.put(1)
+        except SystemExit as error:
+            logger.error("Error output not reachable. Exiting...")
+            self.queue.put(self.sentinel)
+            raise error from error
         return component
 
     def _listen(self):
         component = self._get_component_instance()
-        self.setup_successful = True
         target = getattr(component, self.target)
         while 1:
             item = self.queue.get()
@@ -174,6 +166,7 @@ class PipelineManager:
         self.metrics = self.Metrics(labels={"component": "manager"})
         self.loghandler: LogprepMPQueueListener = None
         self._error_queue: multiprocessing.Queue | None = None
+        self._error_listener: ComponentQueueListener | None = None
         self._configuration: Configuration = configuration
         self._pipelines: list[multiprocessing.Process] = []
         self.prometheus_exporter: PrometheusExporter | None = None
@@ -200,11 +193,10 @@ class PipelineManager:
             self._error_queue, "store", self._configuration.error_output
         )
         self._error_listener.start()
-        while 1:
-            if self._error_listener.setup_successful:
-                break
-            logger.debug("Waiting for error output to be ready...")
-            time.sleep(1)
+        # wait for the error listener to be ready before starting the pipelines
+        if self._error_queue.get(block=True) is None:
+            self.stop()
+            sys.exit(EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value)
 
     def _setup_logging(self):
         console_logger = logging.getLogger("console")

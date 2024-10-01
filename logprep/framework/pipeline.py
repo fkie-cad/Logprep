@@ -388,7 +388,6 @@ class Pipeline:
                     self.logger.debug(f"Enqueuing error item: {i}")
                     self.error_queue.put(i, timeout=0.1)
                     self.logger.debug("Enqueued error item")
-
             else:
                 self.logger.debug(f"Enqueuing error item: {event}")
                 self.error_queue.put(event, timeout=0.1)
