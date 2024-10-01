@@ -93,7 +93,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_raises_critical_output_on_any_exception(self, _):
         self.object._producer.produce.side_effect = [
-            BaseException("bad things happened"),
+            Exception("bad things happened"),
             None,
             None,
         ]
