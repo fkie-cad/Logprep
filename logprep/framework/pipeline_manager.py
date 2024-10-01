@@ -80,7 +80,7 @@ class ComponentQueueListener:
     """The process that is forked to listen to the queue."""
 
     _implementation: str = field(
-        init=False, default="threading", validator=validators.in_(["threading", "multiprocessing"])
+        default="threading", validator=validators.in_(["threading", "multiprocessing"])
     )
     """The implementation to use for the listener. Options are threading or multiprocessing.
     Default is threading."""
@@ -121,7 +121,7 @@ class ComponentQueueListener:
             try:
                 target(item)
             except Exception as error:  # pylint: disable=broad-except
-                logger.error("Error processing item: %s", error)
+                logger.error("Error processing item: %s due to %s", item, error)
 
     def stop(self):
         """Stop the listener."""
@@ -295,11 +295,12 @@ class PipelineManager:
         self.set_count(self._configuration.process_count)
 
     def restart(self):
-        """Restarts all pipelines"""
+        """Restarts the manager."""
         self.stop()
         self.start()
 
     def reload(self):
+        """Restarts all pipelines."""
         self.set_count(0)
         self.set_count(self._configuration.process_count)
 
