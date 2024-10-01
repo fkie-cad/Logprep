@@ -311,7 +311,10 @@ class TestPipelineManager:
 
     def test_should_exit_returns_bool_based_on_restart_count(self):
         self.config.restart_count = 2
-        manager = PipelineManager(self.config)
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue") as mock_queue:
+                mock_queue.get.return_value = "not null"
+                manager = PipelineManager(self.config)
         assert not manager.should_exit()
         manager.restart_count = 1
         assert not manager.should_exit()
@@ -341,8 +344,13 @@ class TestPipelineManager:
         self.config.error_output = {"dummy": {"type": "dummy_output"}}
         with mock.patch("multiprocessing.Process"):
             with mock.patch("logprep.framework.pipeline_manager.Pipeline") as mock_pipeline:
-                manager = PipelineManager(self.config)
-                manager.restart()
+                with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+                    with mock.patch(
+                        "logprep.framework.pipeline_manager.ThrottlingQueue.get"
+                    ) as mock_get:
+                        mock_get.return_value = "not None"
+                        manager = PipelineManager(self.config)
+                        manager.restart()
         mock_pipeline.assert_called()
         mock_pipeline.assert_called_with(
             pipeline_index=3,  # last call index
@@ -354,8 +362,13 @@ class TestPipelineManager:
         self.config.error_output = {}
         with mock.patch("multiprocessing.Process"):
             with mock.patch("logprep.framework.pipeline_manager.Pipeline") as mock_pipeline:
-                manager = PipelineManager(self.config)
-                manager.restart()
+                with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+                    with mock.patch(
+                        "logprep.framework.pipeline_manager.ThrottlingQueue.get"
+                    ) as mock_get:
+                        mock_get.return_value = "not None"
+                        manager = PipelineManager(self.config)
+                        manager.restart()
         mock_pipeline.assert_called()
         mock_pipeline.assert_called_with(
             pipeline_index=3,  # last call index
