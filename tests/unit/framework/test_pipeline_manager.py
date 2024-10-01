@@ -606,3 +606,12 @@ class TestComponentQueueListener:
             listener.queue.put(listener.sentinel)
             listener._listen()
         mock_store.assert_called_with("test")
+
+    def test_listen_creates_component(self):
+        assert False
+
+    def test_get_component_instance_setups_component(self):
+        assert False
+
+    def test_get_component_instance_raises_if_setup_not_successful(self):
+        assert False

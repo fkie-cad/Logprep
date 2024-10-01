@@ -363,6 +363,7 @@ class Pipeline:
             if self._input:
                 self._input.batch_finished_callback()
             return
+        self.logger.debug(f"Enqueuing error item: {item}")
         event: dict | list = None
         match item:
             case CriticalOutputError():
@@ -378,12 +379,20 @@ class Pipeline:
                 event = [{"event": str(i), "errors": "Unknown error"} for i in item]
             case _:
                 event = {"event": str(item), "errors": "Unknown error"}
+        if event is None:
+            self.logger.error("Tried to enqueue sentinel -> aborted!")
+            return
         try:
             if isinstance(event, list):
                 for i in event:
-                    self.error_queue.put(i)
+                    self.logger.debug(f"Enqueuing error item: {i}")
+                    self.error_queue.put(i, timeout=0.1)
+                    self.logger.debug("Enqueued error item")
+
             else:
-                self.error_queue.put(event)
+                self.logger.debug(f"Enqueuing error item: {event}")
+                self.error_queue.put(event, timeout=0.1)
+                self.logger.debug("Enqueued error item")
         except Exception as error:  # pylint: disable=broad-except
             self.logger.error((f"Couldn't enqueue error item due to: {error} | Item: '{event}'"))
         if self._input:
@@ -404,3 +413,5 @@ class Pipeline:
                 return [{"event": str(i), "errors": str(item.message)} for i in raw_input]
             case CriticalOutputError(raw_input) if isinstance(raw_input, (str, bytes)):
                 return {"event": str(raw_input), "errors": str(item.message)}
+            case _:
+                return {"event": str(item.raw_input), "errors": str(item.message)}

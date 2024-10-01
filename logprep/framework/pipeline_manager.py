@@ -85,6 +85,9 @@ class ComponentQueueListener:
     """The implementation to use for the listener. Options are threading or multiprocessing.
     Default is threading."""
 
+    setup_successful: bool = field(default=False, init=False)
+    """Flag to indicate if the setup of the component was successful."""
+
     def __attrs_post_init__(self):
         if self._implementation == "threading":
             self._instance = threading.Thread(target=self._listen, daemon=True)
@@ -107,12 +110,15 @@ class ComponentQueueListener:
                 continue
             if component.health():
                 break
+        else:
+            raise SystemExit(EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value)
         return component
 
     def _listen(self):
         component = self._get_component_instance()
+        self.setup_successful = True
         target = getattr(component, self.target)
-        while True:
+        while 1:
             item = self.queue.get()
             logger.debug("Got item from queue: %s", item)
             if item is self.sentinel:
@@ -194,6 +200,11 @@ class PipelineManager:
             self._error_queue, "store", self._configuration.error_output
         )
         self._error_listener.start()
+        while 1:
+            if self._error_listener.setup_successful:
+                break
+            logger.debug("Waiting for error output to be ready...")
+            time.sleep(1)
 
     def _setup_logging(self):
         console_logger = logging.getLogger("console")
@@ -312,7 +323,9 @@ class PipelineManager:
         )
         if pipeline.pipeline_index == 1 and self.prometheus_exporter:
             self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
-        process = threading.Thread(target=pipeline.run, daemon=True, name=f"Pipeline-{index}")
+        process = multiprocessing.Process(
+            target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
+        )
         process.stop = pipeline.stop
         process.start()
         logger.info("Created new pipeline")
