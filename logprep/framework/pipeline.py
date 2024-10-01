@@ -151,7 +151,7 @@ class Pipeline:
     _logprep_config: Configuration
     """ the logprep configuration dict """
 
-    _continue_iterating: Value
+    _continue_iterating: Any
     """ a flag to signal if iterating continues """
 
     pipeline_index: int
