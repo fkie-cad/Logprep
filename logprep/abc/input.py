@@ -36,10 +36,11 @@ class CriticalInputError(InputError):
     """A significant error occurred - log and don't process the event."""
 
     def __init__(self, input_connector: "Input", message, raw_input):
-        self.raw_input = raw_input  # is written to error output
         super().__init__(
             input_connector, f"{message} -> event was written to error output if configured"
         )
+        self.raw_input = raw_input  # is written to error output
+        self.message = message
 
 
 class CriticalInputParsingError(CriticalInputError):

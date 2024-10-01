@@ -34,8 +34,9 @@ class CriticalOutputError(OutputError):
     __match_args__ = ("raw_input",)
 
     def __init__(self, output: "Output", message: str, raw_input: Any) -> None:
-        self.raw_input = raw_input
         super().__init__(output, f"{message} -> event was written to error output if configured")
+        self.raw_input = raw_input
+        self.message = message
 
 
 class FatalOutputError(OutputError):

@@ -367,20 +367,25 @@ class Pipeline:
         match item:
             case CriticalOutputError():
                 event = self._get_output_error_event(item)
-            case PipelineResult(event, errors):
+            case PipelineResult(input_event, errors):
                 event = {
-                    "event": str(event),
-                    "errors": str(errors),
+                    "event": str(input_event),
+                    "errors": ", ".join((str(error.message) for error in errors)),
                 }
             case CriticalInputError():
-                event = {"event": str(item.raw_input), "errors": str(item)}
+                event = {"event": str(item.raw_input), "errors": str(item.message)}
+            case list():
+                event = [{"event": str(i), "errors": "Unknown error"} for i in item]
             case _:
                 event = {"event": str(item), "errors": "Unknown error"}
-        if isinstance(event, list):
-            for i in event:
-                self.error_queue.put(i)
-        else:
-            self.error_queue.put(event)
+        try:
+            if isinstance(event, list):
+                for i in event:
+                    self.error_queue.put(i)
+            else:
+                self.error_queue.put(event)
+        except Exception as error:  # pylint: disable=broad-except
+            self.logger.error((f"Couldn't enqueue error item due to: {error} | Item: '{event}'"))
         if self._input:
             self._input.batch_finished_callback()
 
@@ -394,8 +399,8 @@ class Pipeline:
             case CriticalOutputError({"errors": error, "event": event}):
                 return {"event": str(event), "errors": str(error)}
             case CriticalOutputError(raw_input) if isinstance(raw_input, dict):
-                return {"event": str(raw_input), "errors": str(item)}
+                return {"event": str(raw_input), "errors": str(item.message)}
             case CriticalOutputError(raw_input) if isinstance(raw_input, (list, tuple)):
-                return [{"event": str(i), "errors": str(item)} for i in raw_input]
+                return [{"event": str(i), "errors": str(item.message)} for i in raw_input]
             case CriticalOutputError(raw_input) if isinstance(raw_input, (str, bytes)):
-                return {"event": str(raw_input), "errors": str(item)}
+                return {"event": str(raw_input), "errors": str(item.message)}

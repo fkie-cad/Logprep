@@ -71,7 +71,10 @@ def get_mock_create():
             case {"type": component_type} if "processor_with_errors" in component_type:
                 component = mock.create_autospec(spec=Processor)
                 processor_result = mock.create_autospec(spec=ProcessorResult)
-                processor_result.errors = [mock.MagicMock(), mock.MagicMock()]
+                rule = mock.MagicMock()
+                rule.id = "test_rule_id"
+                error = ProcessingCriticalError("this is a processing critical error", rule)
+                processor_result.errors = [error]
                 component.process.return_value = processor_result
             case {"type": component_type} if "processor_with_warnings" in component_type:
                 component = mock.create_autospec(spec=Processor)
@@ -262,7 +265,7 @@ class TestPipeline(ConfigurationForTests):
         assert self.pipeline._output["dummy"].store.call_count == 2, "all events are processed"
 
     @mock.patch("logging.Logger.error")
-    def test_processor_critical_error_is_logged_event_is_stored_in_error_output(
+    def test_processing_critical_error_is_logged_event_is_stored_in_error_output(
         self, mock_error, _
     ):
         self.pipeline.error_queue = queue.Queue()
@@ -273,19 +276,19 @@ class TestPipeline(ConfigurationForTests):
         mock_rule = mock.MagicMock()
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
             processor_name="",
-            errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event1)],
+            errors=[ProcessingCriticalError("really bad things happened", mock_rule)],
         )
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = input_event2
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
             processor_name="",
-            errors=[ProcessingCriticalError("really bad things happened", mock_rule, input_event2)],
+            errors=[ProcessingCriticalError("really bad things happened", mock_rule)],
         )
 
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 2, "2 events gone into processing"
         assert mock_error.call_count == 2, f"two errors occurred: {mock_error.mock_calls}"
-        assert "ProcessingCriticalError: really bad things happened" in mock_error.call_args[0][0]
+        assert "ProcessingCriticalError: 'really bad things happened'" in mock_error.call_args[0][0]
         assert self.pipeline._output["dummy"].store.call_count == 0, "no event in output"
         queued_item = self.pipeline.error_queue.get(0.01)
         assert queued_item["event"] == str(input_event1), "first message was enqueued"
@@ -309,7 +312,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._pipeline[0].process.return_value = ProcessorResult(
             processor_name="", warnings=[warning]
         )
-        error = ProcessingCriticalError("really bad things happened", mock_rule, input_event1)
+        error = ProcessingCriticalError("really bad things happened", mock_rule)
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
             processor_name="", errors=[error]
         )
@@ -602,51 +605,6 @@ class TestPipeline(ConfigurationForTests):
         mock_process_event.assert_not_called()
         assert isinstance(result, type(None))
 
-    def test_enqueue_error_handles_pipeline_result(self, mock_create):
-        event = {"foo": "bar"}
-        pipeline = [
-            mock_create({"dummy1": {"type": "dummy_processor"}}),
-            mock_create({"dummy2": {"type": "dummy_processor"}}),
-        ]
-        pipeline[1].process.return_value = ProcessorResult(
-            processor_name="dummy2",
-            data=[{"foo": "bar"}],
-            errors=[ProcessingCriticalError("error", mock.MagicMock(), event)],
-        )
-        pipeline_result = PipelineResult(
-            event=event,
-            pipeline=pipeline,
-        )
-        self.pipeline.enqueue_error(pipeline_result)
-        assert self.pipeline.error_queue.qsize() == 1
-        enqueued_item = self.pipeline.error_queue.get(0.01)
-        assert enqueued_item["event"] == str({"foo": "bar"})
-        assert str(pipeline_result.errors) in enqueued_item["errors"]
-
-    def test_enqueue_error_handles_critical_input_error(self, _):
-        error = CriticalInputError(self.pipeline._input, "test-error", "raw_input")
-        self.pipeline.enqueue_error(error)
-        assert self.pipeline.error_queue.qsize() == 1
-        enqueued_item = self.pipeline.error_queue.get(0.01)
-        assert enqueued_item["event"] == "raw_input"
-        assert str(error) in enqueued_item["errors"]
-
-    def test_enqueue_error_handles_critical_output_error(self, _):
-        error = CriticalOutputError(self.pipeline._output["dummy"], "test-error", "raw_input")
-        self.pipeline.enqueue_error(error)
-        assert self.pipeline.error_queue.qsize() == 1
-        enqueued_item = self.pipeline.error_queue.get(0.01)
-        assert enqueued_item["event"] == "raw_input"
-        assert str(error) in enqueued_item["errors"]
-
-    def test_enqueue_error_handles_critical_input_parsing_error(self, _):
-        error = CriticalInputParsingError(self.pipeline._input, "test-error", "raw_input")
-        self.pipeline.enqueue_error(error)
-        assert self.pipeline.error_queue.qsize() == 1
-        enqueued_item = self.pipeline.error_queue.get(0.01)
-        assert enqueued_item["event"] == "raw_input"
-        assert str(error) in enqueued_item["errors"]
-
     def test_enqueue_error_logs_warning_if_no_error_queue(self, _):
         error = CriticalInputError(self.pipeline._input, "test-error", "raw_input")
         self.pipeline.error_queue = None
@@ -655,45 +613,104 @@ class TestPipeline(ConfigurationForTests):
         mock_warning.assert_called_with("No error queue defined, event was dropped")
 
     @pytest.mark.parametrize(
-        "event_data, expected_event",
+        "item, expected_event",
         [
             (
-                "raw_input",
-                "raw_input",
+                CriticalOutputError(mock.MagicMock(), "this is an output error", "raw_input"),
+                {"event": "raw_input", "errors": "this is an output error"},
             ),
             (
-                ["raw_input"],
-                "raw_input",
+                CriticalOutputError(mock.MagicMock(), "this is an output error", ["raw_input"]),
+                {"event": "raw_input", "errors": "this is an output error"},
             ),
             (
-                {"foo": "bar"},
-                "{'foo': 'bar'}",
+                CriticalOutputError(mock.MagicMock(), "another error", {"foo": "bar"}),
+                {"event": "{'foo': 'bar'}", "errors": "another error"},
             ),
             (
-                [{"foo": "bar"}, {"foo": "baz"}],
-                "{'foo': 'bar'}",
+                CriticalOutputError(
+                    mock.MagicMock(), "another error", [{"foo": "bar"}, {"foo": "baz"}]
+                ),
+                {"event": "{'foo': 'bar'}", "errors": "another error"},
             ),
             (
-                [{"event": {"test": "message"}, "errors": {"error": "error_msg"}}],
-                "{'test': 'message'}",
+                CriticalOutputError(
+                    mock.MagicMock(),
+                    "just another error",
+                    [{"event": {"test": "message"}, "errors": {"error": "error_msg"}}],
+                ),
+                {"event": "{'test': 'message'}", "errors": "{'error': 'error_msg'}"},
             ),
             (
-                [
-                    {"event": {"test": f"message{i}"}, "errors": {"error": "error_msg"}}
-                    for i in range(2)
-                ],
-                "{'test': 'message0'}",
+                CriticalOutputError(
+                    mock.MagicMock(),
+                    "another error message",
+                    [
+                        {"event": {"test": f"message{i}"}, "errors": {"error": "error_msg"}}
+                        for i in range(2)
+                    ],
+                ),
+                {"event": "{'test': 'message0'}", "errors": "{'error': 'error_msg'}"},
+            ),
+            (
+                CriticalInputError(mock.MagicMock(), "this is an input error", "raw_input"),
+                {"event": "raw_input", "errors": "this is an input error"},
+            ),
+            (
+                CriticalInputParsingError(
+                    mock.MagicMock(), "this is an input parsing error", "raw_input"
+                ),
+                {"event": "raw_input", "errors": "this is an input parsing error"},
+            ),
+            (
+                PipelineResult(
+                    event={"test": "message"},
+                    pipeline=[
+                        get_mock_create()(
+                            {"mock_processor1": {"type": "mock_processor_with_errors"}}
+                        )
+                    ],
+                ),
+                {
+                    "event": "{'test': 'message'}",
+                    "errors": "'this is a processing critical error' -> rule.id: 'test_rule_id'",
+                },
+            ),
+            (
+                PipelineResult(
+                    event={"test": "message"},
+                    pipeline=[
+                        get_mock_create()(
+                            {"mock_processor1": {"type": "mock_processor_with_errors"}}
+                        ),
+                        get_mock_create()(
+                            {"mock_processor1": {"type": "mock_processor_with_errors"}}
+                        ),
+                    ],
+                ),
+                {
+                    "event": "{'test': 'message'}",
+                    "errors": "'this is a processing critical error' -> rule.id: 'test_rule_id', 'this is a processing critical error' -> rule.id: 'test_rule_id'",
+                },
+            ),
+            (
+                "some string",
+                {"event": "some string", "errors": "Unknown error"},
+            ),
+            (
+                {"some": "dict"},
+                {"event": "{'some': 'dict'}", "errors": "Unknown error"},
+            ),
+            (
+                ["some", "list"],
+                {"event": "some", "errors": "Unknown error"},
             ),
         ],
     )
-    def test_enqueue_error_handles_critical_output_errors_with_different_event_data(
-        self, _, event_data, expected_event
-    ):
-        error = CriticalOutputError(mock.MagicMock(), "error_msg", event_data)
-        self.pipeline.enqueue_error(error)
+    def test_enqueue_error_handles_items(self, _, item, expected_event):
+        self.pipeline.enqueue_error(item)
         enqueued_item = self.pipeline.error_queue.get(0.01)
-        assert enqueued_item["event"] == expected_event
-        assert "error_msg" in enqueued_item["errors"]
+        assert enqueued_item == expected_event
 
     def test_enqueue_error_calls_batch_finished_callback(self, _):
         error = CriticalInputError(self.pipeline._input, "test-error", "raw_input")
@@ -708,6 +725,14 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.error_queue = None
         self.pipeline.enqueue_error(error)
         self.pipeline._input.batch_finished_callback.assert_called()
+
+    def test_enqueue_error_logs_input_on_exception(self, _):
+        error = CriticalInputError(self.pipeline._input, "test-error", "raw_input")
+        self.pipeline.error_queue = queue.Queue()
+        self.pipeline.error_queue.put = mock.MagicMock(side_effect=Exception)
+        with mock.patch("logging.Logger.error") as mock_error:
+            self.pipeline.enqueue_error(error)
+        mock_error.assert_called()
 
 
 class TestPipelineWithActualInput:

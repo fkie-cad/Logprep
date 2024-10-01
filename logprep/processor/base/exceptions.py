@@ -54,18 +54,18 @@ class ProcessingError(LogprepException):
 
     def __init__(self, message: str, rule: "Rule"):
         rule.metrics.number_of_errors += 1
+        self.rule = rule
         super().__init__(f"{self.__class__.__name__}: {message}")
 
 
 class ProcessingCriticalError(ProcessingError):
     """A critical error occurred - stop processing of this event"""
 
-    def __init__(self, message: str, rule: "Rule", event: dict):
-        message = (
-            f"{message} -> event was send to error output and further processing stopped"
-            f", {rule.id=}, {rule.description=}, {event=}"
-        )
-        super().__init__(f"{self.__class__.__name__}: {message}", rule)
+    def __init__(self, message: str, rule: "Rule"):
+        message = f"'{message}' -> rule.id: '{rule.id}'"
+        full_message = f"{message} -> event was send to error output and further processing stopped"
+        super().__init__(f"{self.__class__.__name__}: {full_message}", rule)
+        self.message = message
 
 
 class ProcessingWarning(Warning):
