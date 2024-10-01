@@ -17,7 +17,7 @@ from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Value, current_process
-from typing import Any, Generator, Iterable, List, Tuple
+from typing import Any, List, Tuple
 
 import attrs
 
@@ -233,6 +233,7 @@ class Pipeline:
     def _setup(self):
         self.logger.debug("Creating connectors")
         for _, output in self._output.items():
+            # TODO remove this
             output.input_connector = self._input
             if output.default:
                 self._input.output_connector = output

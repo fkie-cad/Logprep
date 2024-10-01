@@ -288,7 +288,9 @@ class TestPipelineManager:
     def test_setup_error_queue_sets_error_queue_and_starts_listener(self):
         self.config.error_output = {"dummy": {"type": "dummy_output"}}
         with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
-            manager = PipelineManager(self.config)
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue") as mock_queue:
+                mock_queue.get.return_value = "not null"
+                manager = PipelineManager(self.config)
         assert manager._error_queue is not None
         assert manager._error_listener is not None
         manager._error_listener.start.assert_called()  # pylint: disable=no-member
@@ -301,15 +303,11 @@ class TestPipelineManager:
 
     def test_setup_error_queue_raises_system_exit_if_error_listener_fails(self):
         self.config.error_output = {"dummy": {"type": "dummy_output"}}
-        mock_listener = mock.MagicMock()
-        mock_listener.setup_successful = False
-        with mock.patch(
-            "logprep.framework.pipeline_manager.ComponentQueueListener", return_value=mock_listener
-        ):
-            with mock.patch("logging.Logger.error") as mock_error:
-                with pytest.raises(SystemExit):
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue.get") as mock_get:
+                mock_get.return_value = None
+                with pytest.raises(SystemExit, match="4"):
                     PipelineManager(self.config)
-        mock_error.assert_called()
 
     def test_should_exit_returns_bool_based_on_restart_count(self):
         self.config.restart_count = 2
@@ -323,16 +321,20 @@ class TestPipelineManager:
     def test_stop_calls_stop_on_error_listener(self):
         self.config.error_output = {"dummy": {"type": "dummy_output"}}
         with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
-            manager = PipelineManager(self.config)
-            manager.stop()
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue.get") as mock_get:
+                mock_get.return_value = "not None"
+                manager = PipelineManager(self.config)
+                manager.stop()
         manager._error_listener.stop.assert_called()  # pylint: disable=no-member
 
     def test_stop_calls_stop_on_loghandler(self):
         self.config.error_output = {"dummy": {"type": "dummy_output"}}
         with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
-            manager = PipelineManager(self.config)
-            manager.loghandler = mock.MagicMock()
-            manager.stop()
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue.get") as mock_get:
+                mock_get.return_value = "not None"
+                manager = PipelineManager(self.config)
+                manager.loghandler = mock.MagicMock()
+                manager.stop()
         manager.loghandler.stop.assert_called()
 
     def test_restart_with_error_output_calls_pipeline_with_error_queue(self):
