@@ -274,8 +274,8 @@ class Processor(Component):
         except ProcessingCriticalError as error:
             self.result.errors.append(error)  # is needed to prevent wrapping it in itself
             event.clear()
-        except Exception as error:
-            self.result.errors.append(ProcessingCriticalError(str(error), rule, event))
+        except Exception as error:  # pylint: disable=broad-except
+            self.result.errors.append(ProcessingCriticalError(str(error), rule))
             event.clear()
         if not hasattr(rule, "delete_source_fields"):
             return

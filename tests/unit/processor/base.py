@@ -322,9 +322,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         with mock.patch.object(
             self.object,
             "_apply_rules",
-            side_effect=ProcessingCriticalError(
-                "side effect", rule=self.object.rules[0], event=self.match_all_event
-            ),
+            side_effect=ProcessingCriticalError("side effect", rule=self.object.rules[0]),
         ):
             result = self.object.process(self.match_all_event)
         assert len(result.errors) > 0, "minimum one error should be in result object"
