@@ -566,3 +566,9 @@ class TestComponentQueueListener:
 
     def test_get_component_instance_raises_if_setup_not_successful(self):
         assert False
+
+    def test_stop_calls_component_shutdown(self):
+        assert False
+
+    def test_stop_ensures_error_queue_is_drained(self):
+        assert False
