@@ -492,7 +492,6 @@ class ConfluentKafkaInput(Input):
                 topic_partition.topic,
                 topic_partition.partition,
             )
-        self.output_connector._write_backlog()
         self.batch_finished_callback()
 
     def _lost_callback(self, consumer, topic_partitions):
