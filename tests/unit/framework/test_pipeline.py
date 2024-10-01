@@ -487,14 +487,6 @@ class TestPipeline(ConfigurationForTests):
         assert called_input_config.get("version_information").get("logprep"), "ensure values"
         assert called_input_config.get("version_information").get("configuration"), "ensure values"
 
-    def test_setup_connects_output_with_input(self, _):
-        self.pipeline._setup()
-        assert self.pipeline._output["dummy"].input_connector == self.pipeline._input
-
-    def test_setup_connects_input_with_output(self, _):
-        self.pipeline._setup()
-        assert self.pipeline._input.output_connector == self.pipeline._output["dummy"]
-
     def test_shut_down_drains_input_queues(self, _):
         self.pipeline._setup()
         input_config = {

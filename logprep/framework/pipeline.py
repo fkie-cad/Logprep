@@ -233,10 +233,6 @@ class Pipeline:
     def _setup(self):
         self.logger.debug("Creating connectors")
         for _, output in self._output.items():
-            # TODO remove this
-            output.input_connector = self._input
-            if output.default:
-                self._input.output_connector = output
             output.setup()
         self.logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"

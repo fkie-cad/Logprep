@@ -10,7 +10,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from functools import partial
 from hmac import HMAC
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import Optional, Tuple
 
 from attrs import define, field, validators
 
@@ -20,9 +20,6 @@ from logprep.metrics.metrics import Metric
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser
 from logprep.util.validators import dict_structure_validator
-
-if TYPE_CHECKING:  # pragma: no cover
-    from logprep.abc.output import Output
 
 
 class InputError(LogprepException):
@@ -188,7 +185,6 @@ class Input(Connector):
         )
 
     pipeline_index: int
-    output_connector: Optional["Output"]
     __slots__ = ["pipeline_index", "output_connector"]
 
     @property

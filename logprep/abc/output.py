@@ -10,7 +10,6 @@ from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
-from logprep.abc.input import Input
 
 
 class OutputError(LogprepException):
@@ -57,8 +56,6 @@ class Output(Connector):
         """
 
     __slots__ = {"input_connector"}
-
-    input_connector: Optional[Input]
 
     @property
     def default(self):
