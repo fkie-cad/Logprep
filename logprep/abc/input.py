@@ -7,6 +7,7 @@ import hashlib
 import os
 import zlib
 from abc import abstractmethod
+from copy import deepcopy
 from functools import partial
 from hmac import HMAC
 from typing import TYPE_CHECKING, Optional, Tuple
@@ -39,7 +40,7 @@ class CriticalInputError(InputError):
         super().__init__(
             input_connector, f"{message} -> event was written to error output if configured"
         )
-        self.raw_input = raw_input  # is written to error output
+        self.raw_input = deepcopy(raw_input)  # is written to error output
         self.message = message
 
 

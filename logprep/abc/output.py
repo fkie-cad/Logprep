@@ -3,6 +3,7 @@ New output endpoint types are created by implementing it.
 """
 
 from abc import abstractmethod
+from copy import deepcopy
 from typing import Any, Optional
 
 from attrs import define, field, validators
@@ -35,7 +36,7 @@ class CriticalOutputError(OutputError):
 
     def __init__(self, output: "Output", message: str, raw_input: Any) -> None:
         super().__init__(output, f"{message} -> event was written to error output if configured")
-        self.raw_input = raw_input
+        self.raw_input = deepcopy(raw_input)
         self.message = message
 
 
