@@ -150,14 +150,14 @@ class ConfluentKafkaOutput(Output):
         """The topic into which the processed events should be written to."""
         error_topic: str = field(validator=validators.instance_of(str))
         """The topic into which the failed events should be written to."""
-        flush_timeout: float = field(validator=validators.instance_of(int), default=0.1)
+        flush_timeout: float = field(validator=validators.instance_of(float), default=0.1)
         """The maximum time in seconds to wait for the producer to flush the messages
         to kafka broker. If the buffer is full, the producer will block until the buffer
         is empty or the timeout is reached. This implies that the producer does not
         wait for all messages to be send to the broker, if the timeout is reached
         before the buffer is empty. Default is :code:`0.1`.
         """
-        send_timeout: int = field(validator=validators.instance_of(int), default=0.1)
+        send_timeout: float = field(validator=validators.instance_of(float), default=0.1)
         """The maximum time in seconds to wait for an answer from the broker on polling.
         Default is :code:`0.1`."""
         kafka_config: Optional[MappingProxyType] = field(
@@ -294,7 +294,7 @@ class ConfluentKafkaOutput(Output):
             self._producer.poll(self._config.send_timeout)
             self.metrics.number_of_processed_events += 1
         except BufferError:
-            # block program until buffer is empty
+            # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self._config.flush_timeout)
         except BaseException as error:
             raise CriticalOutputError(
@@ -335,9 +335,12 @@ class ConfluentKafkaOutput(Output):
             self._producer.flush(timeout=self._config.flush_timeout)
 
     def shut_down(self) -> None:
-        """ensures that all messages are flushed"""
+        """ensures that all messages are flushed. According to
+        https://confluent-kafka-python.readthedocs.io/en/latest/#confluent_kafka.Producer.flush
+        flush without the timeout parameter will block until all messages are delivered.
+        """
         if self._producer is not None:
-            self._producer.flush(self._config.flush_timeout)
+            self._producer.flush()
 
     def health(self) -> bool:
         """Check the health of kafka producer."""
