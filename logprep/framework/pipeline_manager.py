@@ -120,12 +120,24 @@ class ComponentQueueListener:
                 target(item)
             except Exception as error:  # pylint: disable=broad-except
                 logger.error("Error processing item: %s due to %s", item, error)
+        self._drain_queue(target)
+        component.shut_down()
+
+    def _drain_queue(self, target):
+        while not self.queue.empty():
+            item = self.queue.get()
+            if item is self.sentinel:
+                logger.debug("Got another sentinel")
+            try:
+                target(item)
+            except Exception as error:  # pylint: disable=broad-except
+                logger.error("Error processing item: %s due to %s", item, error)
+        self.queue.close()  # close queue after draining to prevent message loss
 
     def stop(self):
         """Stop the listener."""
         self.queue.put(self.sentinel)
         self._instance.join()
-        self.queue.close()
         logger.debug("Stopped listener.")
 
 
