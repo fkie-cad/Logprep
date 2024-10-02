@@ -24,6 +24,7 @@
 * move `Configuration` to top level of documentation
 * add `CONTRIBUTING` file
 * sets the default for `flush_timeout` and `send_timeout` in `kafka_output` connector to `0` seconds
+* changed python base image for logprep to `bitnami/python` in cause of better CVE governance
 
 ### Bugfix
 
