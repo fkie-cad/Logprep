@@ -523,14 +523,19 @@ class TestComponentQueueListener:
             listener.start()
         mock_start.assert_called()
 
+    @mock.patch(
+        "logprep.framework.pipeline_manager.ComponentQueueListener._get_component_instance",
+        new=mock.MagicMock(),
+    )
     def test_sentinel_breaks_while_loop(self):
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         listener = ComponentQueueListener(queue, target, output_config)
         listener.queue.put(listener.sentinel)
-        listener._listen()
-        assert not listener._instance.is_alive()
+        with mock.patch("logging.Logger.debug") as mock_debug:
+            listener._listen()
+        mock_debug.assert_called_with("Got sentinel. Stopping listener.")
 
     def test_stop_injects_sentinel(self):
         target = "store"
@@ -555,6 +560,7 @@ class TestComponentQueueListener:
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
         with mock.patch("logprep.connector.dummy.output.DummyOutput.store") as mock_store:
             listener = ComponentQueueListener(queue, target, output_config)
             listener.queue.put("test")
@@ -566,6 +572,7 @@ class TestComponentQueueListener:
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
         listener = ComponentQueueListener(queue, target, output_config)
         with mock.patch("logprep.factory.Factory.create") as mock_create:
             listener.queue.put("test")
@@ -577,6 +584,7 @@ class TestComponentQueueListener:
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
         listener = ComponentQueueListener(queue, target, output_config)
         with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as mock_setup:
             listener.queue.put("test")
@@ -598,6 +606,7 @@ class TestComponentQueueListener:
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
         listener = ComponentQueueListener(queue, target, output_config)
         with mock.patch("logprep.connector.dummy.output.DummyOutput.shut_down") as mock_shutdown:
             listener.queue.put("test")
@@ -605,20 +614,24 @@ class TestComponentQueueListener:
             listener._listen()
         mock_shutdown.assert_called()
 
-    def test_listen_ensures_error_queue_is_drained_before_shutdown(self):
+    @mock.patch(
+        "logprep.framework.pipeline_manager.ComponentQueueListener._get_component_instance",
+        new=mock.MagicMock(),
+    )
+    def test_listen_drains_queue_on_shutdown(self):
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
-        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue = multiprocessing.Queue()
         listener = ComponentQueueListener(queue, target, output_config)
-        random_number = random.randint(10, 50)
         listener.queue.put(listener.sentinel)
-        for _ in range(random_number):
-            listener.queue.put("test")
-        while not listener.queue.qsize() == random_number + 1:
-            pass
+        listener.queue.put("test")
         listener._listen()
         assert listener.queue.qsize() == 0
 
+    @mock.patch(
+        "logprep.framework.pipeline_manager.ComponentQueueListener._get_component_instance",
+        new=mock.MagicMock(),
+    )
     def test_listen_ensures_error_queue_is_closed_after_drained(self):
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}

@@ -105,6 +105,9 @@ class ComponentQueueListener:
             logger.error("Error output not reachable. Exiting...")
             self.queue.put(self.sentinel)
             raise error from error
+        # wait for setup method in pipeline manager to receive the message
+        while not self.queue.empty():
+            logger.debug("Waiting for receiver to be ready")
         return component
 
     def _listen(self):
