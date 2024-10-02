@@ -148,10 +148,18 @@ class ConfluentKafkaOutput(Output):
 
         topic: str = field(validator=validators.instance_of(str))
         """The topic into which the processed events should be written to."""
-        error_topic: str
-        """The topic into which events should be written that couldn't be processed successfully."""
-        flush_timeout: float
-        send_timeout: int = field(validator=validators.instance_of(int), default=0)
+        error_topic: str = field(validator=validators.instance_of(str))
+        """The topic into which the failed events should be written to."""
+        flush_timeout: float = field(validator=validators.instance_of(int), default=0.1)
+        """The maximum time in seconds to wait for the producer to flush the messages
+        to kafka broker. If the buffer is full, the producer will block until the buffer
+        is empty or the timeout is reached. This implies that the producer does not
+        wait for all messages to be send to the broker, if the timeout is reached
+        before the buffer is empty. Default is :code:`0.1`.
+        """
+        send_timeout: int = field(validator=validators.instance_of(int), default=0.1)
+        """The maximum time in seconds to wait for an answer from the broker on polling.
+        Default is :code:`0.1`."""
         kafka_config: Optional[MappingProxyType] = field(
             validator=[
                 validators.instance_of(MappingProxyType),
