@@ -23,7 +23,7 @@
 * add manual how to use local images with minikube example setup to documentation
 * move `Configuration` to top level of documentation
 * add `CONTRIBUTING` file
-* sets the default for `flush_timeout` and `send_timeout` in `kafka_output` connector to `0.1` seconds
+* sets the default for `flush_timeout` and `send_timeout` in `kafka_output` connector to `0` seconds
 
 ### Bugfix
 
