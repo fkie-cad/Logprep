@@ -195,3 +195,12 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object._producer.list_topics.side_effect = KafkaException("test error")
         assert not self.object.health()
         assert self.object.metrics.number_of_errors == 1
+
+    def test_shutdown_logs_and_counts_error_if_queue_not_fully_flushed(self):
+        self.object.metrics.number_of_errors = 0
+        self.object._producer = mock.MagicMock()
+        self.object._producer.flush.return_value = 1
+        with mock.patch("logging.Logger.error") as mock_error:
+            self.object.shut_down()
+        mock_error.assert_called()
+        self.object.metrics.number_of_errors = 1
