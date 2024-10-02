@@ -7,6 +7,8 @@
 * removes the option to use synchronous `bulk` or `parallel_bulk` operation in favor of `parallel_bulk` in `opensearch_output`
 * reimplement error handling by introducing the option to configure an error output
   * if no error output is configured, failed event will be dropped
+* remove the retry mechanic from `opensearch_output` connector to reduce implementation complexity
+  * all documents are now stored as failed in the error output if configured
 
 ### Features
 
@@ -18,6 +20,9 @@
 * make `imagePullPolicy` configurable for helm chart deployments
 * make `terminationGracePeriodSeconds` configurable in helm chart values
 * adds ability to configure error output
+* adds option `default_op_type` to `opensearch_output` connector to set the default operation for indexing documents (default: index)
+* adds option `max_chunk_bytes` to `opensearch_output` connector to set the maximum size of the request in bytes (default: 100MB)
+
 
 ### Improvements
 

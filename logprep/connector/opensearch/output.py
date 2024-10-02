@@ -41,9 +41,8 @@ from attrs import define, field, validators
 from opensearchpy import OpenSearchException, helpers
 from opensearchpy.serializer import JSONSerializer
 
-from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
+from logprep.abc.output import CriticalOutputError, Output
 from logprep.metrics.metrics import Metric
-from logprep.util.helper import get_dict_size_in_byte
 
 logger = logging.getLogger("OpenSearchOutput")
 
@@ -99,20 +98,8 @@ class OpensearchOutput(Output):
         default index."""
         message_backlog_size: int = field(validator=validators.instance_of(int))
         """Amount of documents to store before sending them."""
-        maximum_message_size_mb: Optional[Union[float, int]] = field(
-            validator=validators.optional(validators.instance_of((float, int))),
-            converter=(lambda x: x * 10**6 if x else None),
-            default=None,
-        )
-        """(Optional) Maximum estimated size of a document in MB before discarding it if it causes
-        an error."""
         timeout: int = field(validator=validators.instance_of(int), default=500)
         """(Optional) Timeout for the connection (default is 500ms)."""
-        max_retries: int = field(validator=validators.instance_of(int), default=0)
-        """(Optional) Maximum number of retries for documents rejected with code 429 (default is 0).
-        Increases backoff time by 2 seconds per try, but never exceeds 600 seconds. When using
-        parallel_bulk in the opensearch connector then the backoff time starts with 1 second. With
-        each consecutive retry 500 to 1000 ms will be added to the delay, chosen randomly """
         user: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) User used for authentication."""
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
@@ -134,6 +121,9 @@ class OpensearchOutput(Output):
             default=500, validator=[validators.instance_of(int), validators.gt(1)]
         )
         """Chunk size to use for bulk requests."""
+        max_chunk_bytes: int = field(
+            default=100 * 1024 * 1024, validator=[validators.instance_of(int), validators.gt(1)]
+        )
         desired_cluster_status: list = field(
             default=["green"], validator=validators.instance_of(list)
         )
@@ -291,7 +281,6 @@ class OpensearchOutput(Output):
             self._bulk(
                 self._search_context,
                 self._message_backlog,
-                max_retries=self._config.max_retries,
                 chunk_size=len(self._message_backlog),
             )
         except CriticalOutputError as error:
@@ -302,17 +291,19 @@ class OpensearchOutput(Output):
             self._succeeded.clear()
 
     def _bulk(self, client, actions, *args, **kwargs) -> Optional[List[dict]]:
+        """Bulk index documents into Opensearch.
+        uses the parallel_bulk function from the opensearchpy library.
+        all args are passed to :code:`streaming_bulk` function.
+        """
+        kwargs |= {
+            "max_chunk_bytes": self._config.max_chunk_bytes,
+            "chunk_size": self._config.chunk_size,
+            "queue_size": self._config.queue_size,
+            "raise_on_error": False,
+            "raise_on_exception": False,
+        }
         succeeded, failed = self._succeeded, self._failed
-        for index, result in enumerate(
-            helpers.parallel_bulk(
-                client,
-                actions=actions,
-                chunk_size=self._config.chunk_size,
-                queue_size=self._config.queue_size,
-                raise_on_error=False,
-                raise_on_exception=False,
-            )
-        ):
+        for index, result in enumerate(helpers.parallel_bulk(client, actions, **kwargs)):
             success, item = result
             if logger.isEnabledFor(logging.DEBUG):
                 if success:
@@ -324,60 +315,6 @@ class OpensearchOutput(Output):
                 logger.debug("Document indexed: %s", item)
         if failed:
             raise CriticalOutputError(self, "failed to index", failed)
-
-    def _handle_transport_error(self, error: search.exceptions.TransportError):
-        """Handle transport error for opensearch bulk indexing.
-
-        Discard messages that exceed the maximum size if they caused an error.
-
-        Parameters
-        ----------
-        error : TransportError
-           TransportError for the error message.
-
-        """
-        if self._message_exceeds_max_size_error(error):
-            (
-                messages_under_size_limit,
-                messages_over_size_limit,
-            ) = self._split_message_backlog_by_size_limit()
-
-            if len(messages_over_size_limit) == 0:
-                raise FatalOutputError(self, error.error)
-
-            error_documents = self._build_messages_for_large_error_documents(
-                messages_over_size_limit
-            )
-            self._message_backlog = error_documents + messages_under_size_limit
-            self._bulk(self._search_context, self._message_backlog)
-        else:
-            raise FatalOutputError(self, error.error)
-
-    def _message_exceeds_max_size_error(self, error):
-        if error.status_code != 429:
-            return False
-        if error.error == "circuit_breaking_exception":
-            return True
-
-        if error.error == "rejected_execution_exception":
-            reason = error.info.get("error", {}).get("reason", "")
-            match = self._size_error_pattern.match(reason)
-            if match and int(match.group("size")) >= int(match.group("max_size")):
-                return True
-        return False
-
-    def _split_message_backlog_by_size_limit(self):
-        messages_under_size_limit = []
-        messages_over_size_limit = []
-        total_size = 0
-        for message in self._message_backlog:
-            message_size = get_dict_size_in_byte(message)
-            if message_size < self._config.maximum_message_size_mb:
-                messages_under_size_limit.append(message)
-                total_size += message_size
-            else:
-                messages_over_size_limit.append((message, message_size))
-        return messages_under_size_limit, messages_over_size_limit
 
     def health(self) -> bool:
         """Check the health of the component."""

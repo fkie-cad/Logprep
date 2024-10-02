@@ -304,19 +304,6 @@ def get_source_fields_dict(event, rule):
     return source_field_dict
 
 
-def get_dict_size_in_byte(dictionary: dict) -> int:
-    """returns the size of a nested dictionary in bytes"""
-    size = sys.getsizeof(dictionary)
-    if isinstance(dictionary, dict):
-        keys_size = sum(map(get_dict_size_in_byte, dictionary.keys()))
-        values_size = sum(map(get_dict_size_in_byte, dictionary.values()))
-        return size + keys_size + values_size
-    if isinstance(dictionary, list):
-        elements_size = sum(map(get_dict_size_in_byte, dictionary))
-        return size + elements_size
-    return size
-
-
 def get_versions_string(config: "Configuration" = None) -> str:
     """
     Prints the version and exists. If a configuration was found then it's version
