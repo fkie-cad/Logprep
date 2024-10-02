@@ -455,12 +455,6 @@ class TestLueceneFilter:
     def test_creates_lucene_compliance_filter_two_matching_regex_keys_of_two(self):
         lucene_filter = LuceneFilter.create(
             'regex_key_one: "/.*value.*/" AND regex_key_two: "/.*value.*/"',
-            special_fields={"regex_fields": ["regex_key_one", "regex_key_two"]},
-        )
-
-        a = And(
-            RegExFilterExpression(["regex_key_one"], ".*value.*"),
-            RegExFilterExpression(["regex_key_two"], ".*value.*"),
         )
 
         assert lucene_filter == And(
@@ -470,8 +464,7 @@ class TestLueceneFilter:
 
     def test_creates_lucene_compliance_filter_with_one_matching_and_one_missmatching_regex_key_of_two(self):
         lucene_filter = LuceneFilter.create(
-            'regex_key_one: ".*value.*" AND key_two: "value"',
-            special_fields={"regex_fields": ["regex_key_one", "i_dont_exist"]},
+            'regex_key_one: "/.*value.*/" AND key_two: "value"',
         )
 
         assert lucene_filter == And(
