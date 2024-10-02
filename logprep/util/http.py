@@ -1,5 +1,6 @@
 """logprep http utils"""
 
+import atexit
 import inspect
 import json
 import logging
@@ -52,7 +53,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         logger_name: str
             Name of the logger instance
         """
-
+        atexit.register(self.shut_down, wait=0.1)
         if (
             hasattr(self, "thread")
             and self.thread is not None

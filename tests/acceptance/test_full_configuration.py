@@ -166,6 +166,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
         assert "error" not in output.lower(), "error message"
         assert "critical" not in output.lower(), "error message"
         assert "exception" not in output.lower(), "error message"
+        assert not re.search("Shutting down", output)
         if "Startup complete" in output:
             break
     time.sleep(2)

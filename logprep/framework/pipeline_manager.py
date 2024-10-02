@@ -8,7 +8,6 @@ import multiprocessing
 import multiprocessing.managers
 import multiprocessing.queues
 import random
-import signal
 import time
 
 from attr import define, field
@@ -89,18 +88,21 @@ class PipelineManager:
         self.restart_count = 0
         self.restart_timeout_ms = random.randint(100, 1000)
         self.metrics = self.Metrics(labels={"component": "manager"})
-        self.loghandler = None
-        if multiprocessing.current_process().name == "MainProcess":
-            self._set_http_input_queue(configuration)
-            self._setup_logging()
+        self.loghandler: LogprepMPQueueListener = None
+        self._error_queue: multiprocessing.Queue | None = None
+        self._configuration: Configuration = configuration
         self._pipelines: list[multiprocessing.Process] = []
-        self._configuration = configuration
+        self.prometheus_exporter: PrometheusExporter | None = None
+        if multiprocessing.current_process().name == "MainProcess":
+            self._setup_logging()
+            self._setup_prometheus_exporter()
+            self._set_http_input_queue()
 
+    def _setup_prometheus_exporter(self):
         prometheus_config = self._configuration.metrics
-        if prometheus_config.enabled:
+        if prometheus_config.enabled and not self.prometheus_exporter:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
-        else:
-            self.prometheus_exporter = None
+            self.prometheus_exporter.prepare_multiprocessing()
 
     def _setup_logging(self):
         console_logger = logging.getLogger("console")
@@ -109,12 +111,13 @@ class PipelineManager:
             self.loghandler = LogprepMPQueueListener(logqueue, console_handler)
             self.loghandler.start()
 
-    def _set_http_input_queue(self, configuration):
+    def _set_http_input_queue(self):
         """
         this workaround has to be done because the queue size is not configurable
         after initialization and the queue has to be shared between the multiple processes
         """
-        input_config = next(iter(configuration.input.values()))
+        input_config = list(self._configuration.input.values())
+        input_config = input_config[0] if input_config else {}
         is_http_input = input_config.get("type") == "http_input"
         if not is_http_input and HttpInput.messages is not None:
             return
@@ -169,27 +172,39 @@ class PipelineManager:
             self._pipelines.insert(index, self._create_pipeline(pipeline_index))
             exit_code = failed_pipeline.exitcode
             logger.warning(
-                "Restarting failed pipeline on index %s " "with exit code: %s",
+                "Restarting failed pipeline on index %s with exit code: %s",
                 pipeline_index,
                 exit_code,
             )
         if self._configuration.restart_count < 0:
             return
+        self._wait_to_restart()
+
+    def _wait_to_restart(self):
         self.restart_count += 1
         time.sleep(self.restart_timeout_ms / 1000)
         self.restart_timeout_ms = self.restart_timeout_ms * 2
 
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
-        self._decrease_to_count(0)
+        self.set_count(0)
         if self.prometheus_exporter:
-            self.prometheus_exporter.server.server.handle_exit(signal.SIGTERM, None)
+            self.prometheus_exporter.server.shut_down()
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
+        logger.info("Shutdown complete")
+        if self.loghandler is not None:
+            self.loghandler.stop()
 
-    def restart(self, daemon=True):
+    def start(self):
+        """Start processing."""
+        self.set_count(self._configuration.process_count)
+
+    def restart(self):
         """Restarts all pipelines"""
-        if self.prometheus_exporter:
-            self.prometheus_exporter.run(daemon=daemon)
+        self.stop()
+        self.start()
+
+    def reload(self):
         self.set_count(0)
         self.set_count(self._configuration.process_count)
 
@@ -204,3 +219,12 @@ class PipelineManager:
         process.start()
         logger.info("Created new pipeline")
         return process
+
+    def should_exit(self) -> bool:
+        """Check if the manager should exit."""
+        return all(
+            (
+                self._configuration.restart_count >= 0,
+                self.restart_count >= self._configuration.restart_count,
+            )
+        )

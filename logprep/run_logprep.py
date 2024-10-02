@@ -82,6 +82,9 @@ def run(configs: tuple[str], version=None) -> None:
         runner = Runner.get_runner(configuration)
         logger.debug("Configuration loaded")
         runner.start()
+    except SystemExit as error:
+        logger.error(f"Error during setup: error code {error.code}")
+        sys.exit(error.code)
     # pylint: disable=broad-except
     except Exception as error:
         if os.environ.get("DEBUG", False):

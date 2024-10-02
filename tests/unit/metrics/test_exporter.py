@@ -15,7 +15,7 @@ from logprep.util.configuration import MetricsConfig
 
 
 @mock.patch(
-    "logprep.metrics.exporter.PrometheusExporter._prepare_multiprocessing",
+    "logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing",
     new=lambda *args, **kwargs: None,
 )
 class TestPrometheusExporter:
@@ -107,7 +107,7 @@ class TestPrometheusExporter:
 
 
 @mock.patch(
-    "logprep.metrics.exporter.PrometheusExporter._prepare_multiprocessing",
+    "logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing",
     new=lambda *args, **kwargs: None,
 )
 class TestHealthEndpoint:

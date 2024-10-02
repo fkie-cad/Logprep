@@ -1,7 +1,8 @@
 version: 2
-process_count: 8
-config_refresh_interval: 300
+process_count: 4
+config_refresh_interval: 5
 profile_pipelines: false
+restart_count: 3
 logger:
   level: INFO
   loggers:
@@ -47,6 +48,7 @@ input:
       /json: json
       /lab/123/(ABC|DEF)/pl.*: plaintext
       /lab/123/ABC/auditlog: jsonl
+
 output:
   kafka:
     type: confluentkafka_output

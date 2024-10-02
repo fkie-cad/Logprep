@@ -2,6 +2,7 @@
 
 # pylint: disable=logging-fstring-interpolation
 
+import atexit
 import logging
 import sys
 from importlib.metadata import version
@@ -42,8 +43,6 @@ class Runner:
     >>> runner.start()
 
     """
-
-    scheduler: Scheduler
 
     _runner = None
 
@@ -130,11 +129,12 @@ class Runner:
 
     # For production, use the get_runner method to create/get access to a singleton!
     def __init__(self, configuration: Configuration) -> None:
+        self._manager: PipelineManager | None = None
+        atexit.register(self.stop_and_exit)
         self.exit_code = EXITCODES.SUCCESS
         self._configuration = configuration
         self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._logger = logging.getLogger("Runner")
-
         self._manager = PipelineManager(configuration)
         self.scheduler = Scheduler()
 
@@ -144,38 +144,29 @@ class Runner:
         This runs until an SIGTERM, SIGINT or KeyboardInterrupt signal is received, or an unhandled
         error occurs.
         """
-
         self._set_version_info_metric()
         self._schedule_config_refresh_job()
-        self._manager.restart()
+        self._manager.start()
         self._logger.info("Startup complete")
         self._logger.debug("Runner iterating")
         self._iterate()
+
+    def stop_and_exit(self):
+        """Stop the runner and exit the process."""
         self._logger.info("Shutting down")
-        self._manager.stop()
-        self._logger.info("Shutdown complete")
-        if self._manager.loghandler is not None:
-            self._manager.loghandler.stop()
-        sys.exit(self.exit_code.value)
+        if self._manager:
+            self._manager.stop()
 
     def _iterate(self):
         for _ in self._keep_iterating():
             if self._exit_received:
                 break
             self.scheduler.run_pending()
-            if self._should_exit():
-                self.exit_code = EXITCODES.PIPELINE_ERROR
+            if self._manager.should_exit():
+                self.exit_code = EXITCODES.PIPELINE_ERROR.value
                 self._logger.error("Restart count exceeded. Exiting.")
-                break
+                sys.exit(self.exit_code)
             self._manager.restart_failed_pipeline()
-
-    def _should_exit(self):
-        return all(
-            (
-                self._configuration.restart_count >= 0,
-                self._manager.restart_count >= self._configuration.restart_count,
-            )
-        )
 
     def reload_configuration(self):
         """Reloads the configuration"""
@@ -183,7 +174,7 @@ class Runner:
             self._configuration.reload()
             self._logger.info("Successfully reloaded configuration")
             self.metrics.number_of_config_refreshes += 1
-            self._manager.restart()
+            self._manager.reload()
             self._schedule_config_refresh_job()
             self._logger.info(f"Configuration version: {self._configuration.version}")
             self._set_version_info_metric()
