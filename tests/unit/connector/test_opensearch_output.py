@@ -70,20 +70,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object.store_custom(event, custom_index)
         assert self.object._message_backlog[0] == expected
 
-    @mock.patch(
-        "opensearchpy.helpers.parallel_bulk",
-        side_effect=search.ConnectionError(-1),
-    )
-    @mock.patch("time.sleep", mock.MagicMock())  # to speed up test execution
-    def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
-        config = copy.deepcopy(self.CONFIG)
-        config["message_backlog_size"] = 1
-        self.object = Factory.create({"opensearch_output": config})
-        self.object._handle_connection_error = mock.MagicMock()
-        self.object._message_backlog.append({"dummy": "event"})
-        self.object._write_to_search_context()
-        self.object._handle_connection_error.assert_called()
-
     def test_setup_registers_flush_timeout_tasks(self):
         job_count = len(Component._scheduler.jobs)
         with mock.patch.object(self.object, "_search_context", new=mock.MagicMock()):
@@ -140,41 +126,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_setup_populates_cached_properties(self, mock_getmembers):
         self.object.setup()
         mock_getmembers.assert_called_with(self.object)
-
-    @mock.patch(
-        "opensearchpy.helpers.parallel_bulk",
-        side_effect=search.TransportError(429, "rejected_execution_exception", {}),
-    )
-    @mock.patch("time.sleep")
-    def test_write_backlog_fails_if_all_retries_are_exceeded(self, _, mock_sleep):
-        config = copy.deepcopy(self.CONFIG)
-        config["maximum_message_size_mb"] = 1
-        config["max_retries"] = 5
-        self.object = Factory.create({"opensearch_output": config})
-        self.object._message_backlog = [{"some": "event"}]
-        with pytest.raises(
-            FatalOutputError, match="Opensearch too many requests, all parallel bulk retries failed"
-        ):
-            self.object._write_backlog()
-        assert mock_sleep.call_count == 6  # one initial try + 5 retries
-        assert self.object._message_backlog == [{"some": "event"}]
-
-    @mock.patch("time.sleep")
-    def test_write_backlog_is_successful_after_two_retries(self, mock_sleep):
-        side_effects = [
-            search.TransportError(429, "rejected_execution_exception", {}),
-            search.TransportError(429, "rejected_execution_exception", {}),
-            [],
-        ]
-        with mock.patch("opensearchpy.helpers.parallel_bulk", side_effect=side_effects):
-            config = copy.deepcopy(self.CONFIG)
-            config["maximum_message_size_mb"] = 1
-            config["max_retries"] = 5
-            self.object = Factory.create({"opensearch_output": config})
-            self.object._message_backlog = [{"some": "event"}]
-            self.object._write_backlog()
-            assert mock_sleep.call_count == 2
-            assert self.object._message_backlog == []
 
     def test_health_returns_true_on_success(self):
         self.object._search_context = mock.MagicMock()

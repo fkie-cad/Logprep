@@ -34,7 +34,7 @@ import logging
 import re
 import ssl
 from functools import cached_property
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 import opensearchpy as search
 from attrs import define, field, validators

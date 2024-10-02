@@ -373,14 +373,11 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         assert self.object.metrics.number_of_warnings == 1
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_revoke_callback_writes_output_backlog_and_calls_batch_finished_callback(
-        self, mock_consumer
-    ):
+    def test_revoke_callback_calls_batch_finished_callback(self, mock_consumer):
         self.object.output_connector = mock.MagicMock()
         self.object.batch_finished_callback = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         self.object._revoke_callback(mock_consumer, mock_partitions)
-        self.object.output_connector._write_backlog.assert_called()
         self.object.batch_finished_callback.assert_called()
 
     def test_health_returns_true_if_no_error(self):

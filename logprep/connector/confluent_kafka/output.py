@@ -145,8 +145,6 @@ class ConfluentKafkaOutput(Output):
 
         topic: str = field(validator=validators.instance_of(str))
         """The topic into which the processed events should be written to."""
-        error_topic: str = field(validator=validators.instance_of(str))
-        """The topic into which the failed events should be written to."""
         flush_timeout: float = field(
             validator=validators.instance_of(float), converter=float, default=0
         )
