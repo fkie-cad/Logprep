@@ -235,7 +235,17 @@ class LuceneTransformer:
         for key in self._special_fields_map:
             self._special_fields[key] = special_fields.get(key) if special_fields.get(key) else []
 
+        if not self._special_fields['regex_fields']:
+            self.recognize_regex_and_add_special_fields()
+
         self._last_search_field = None
+
+    def recognize_regex_and_add_special_fields(self):
+        for child in self._tree.children:
+            value = child.children[0].value[1:-1]
+            if value.startswith('/') and value.endswith('/'):
+                self._special_fields['regex_fields'].append(child.name)
+                child.children[0].value = f'"{value[1:-1]}"'
 
     def build_filter(self) -> FilterExpression:
         """Transform luqum tree into FilterExpression
