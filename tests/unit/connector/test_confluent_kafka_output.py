@@ -109,12 +109,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
 
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_store_calls_batch_finished_callback(self, _):  # pylint: disable=arguments-differ
-        self.object.input_connector = mock.MagicMock()
-        self.object.store({"message": "my event message"})
-        self.object.input_connector.batch_finished_callback.assert_called()
-
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
         kafka_config = {"myconfig": "the config", "bootstrap.servers": "testserver:9092"}
         config = deepcopy(self.CONFIG)

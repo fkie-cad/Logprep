@@ -269,8 +269,6 @@ class ConfluentKafkaOutput(Output):
         configured input
         """
         self.store_custom(document, self._config.topic)
-        if self.input_connector:
-            self.input_connector.batch_finished_callback()
 
     @Metric.measure_time()
     def store_custom(self, document: dict, target: str) -> None:

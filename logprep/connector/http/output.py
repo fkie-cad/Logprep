@@ -195,8 +195,6 @@ class HttpOutput(Output):
                 response.raise_for_status()
                 self.metrics.number_of_processed_events += document_count
                 self.metrics.number_of_http_requests += 1
-                if self.input_connector is not None:
-                    self.input_connector.batch_finished_callback()
             except requests.RequestException as error:
                 logger.error("Failed to send event: %s", str(error))
                 logger.debug("Failed event: %s", document)

@@ -205,12 +205,6 @@ class TestS3Output(BaseOutputTestCase):
         self.object._s3_resource = mock.MagicMock()
         super().test_store_counts_processed_events()
 
-    def test_store_calls_batch_finished_callback(self):
-        self.object._s3_resource = mock.MagicMock()
-        self.object.input_connector = mock.MagicMock()
-        self.object.store({"message": "my event message"})
-        self.object.input_connector.batch_finished_callback.assert_called()
-
     def test_store_does_not_call_batch_finished_callback_if_disabled(self):
         s3_config = deepcopy(self.CONFIG)
         s3_config.update({"call_input_callback": False})

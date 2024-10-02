@@ -292,9 +292,6 @@ class S3Output(Output):
         if not self._config.call_input_callback:
             return
 
-        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-            self.input_connector.batch_finished_callback()
-
     @_handle_s3_error
     def _write_document_batch(self, document_batch: dict, identifier: str) -> None:
         logger.debug('Writing "%s" to s3 bucket "%s"', identifier, self._config.bucket)
