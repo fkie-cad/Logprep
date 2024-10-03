@@ -22,6 +22,7 @@
 * adds ability to configure error output
 * adds option `default_op_type` to `opensearch_output` connector to set the default operation for indexing documents (default: index)
 * adds option `max_chunk_bytes` to `opensearch_output` connector to set the maximum size of the request in bytes (default: 100MB)
+* adds option `error_backlog_size` to logprep configuration to configure the queue size of the error queue
 
 
 ### Improvements

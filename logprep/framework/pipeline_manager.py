@@ -200,10 +200,9 @@ class PipelineManager:
     def _setup_error_queue(self):
         if not self._configuration.error_output:
             return
-        message_backlog_size = self._configuration.error_output.get(
-            "message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE
+        self._error_queue = ThrottlingQueue(
+            multiprocessing.get_context(), self._configuration.error_backlog_size
         )
-        self._error_queue = ThrottlingQueue(multiprocessing.get_context(), message_backlog_size)
         self._error_listener = ComponentQueueListener(
             self._error_queue, "store", self._configuration.error_output
         )

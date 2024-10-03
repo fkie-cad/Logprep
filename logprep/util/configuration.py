@@ -223,6 +223,7 @@ from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFac
 from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
     DEFAULT_LOG_CONFIG,
+    DEFAULT_MESSAGE_BACKLOG_SIZE,
     DEFAULT_RESTART_COUNT,
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
 )
@@ -574,6 +575,10 @@ class Configuration:
     """Start the profiler to profile the pipeline. Defaults to :code:`False`."""
     print_auto_test_stack_trace: bool = field(default=False, eq=False)
     """Print stack trace when auto test fails. Defaults to :code:`False`."""
+    error_backlog_size: int = field(
+        validator=validators.instance_of(int), default=DEFAULT_MESSAGE_BACKLOG_SIZE, eq=False
+    )
+    """Size of the error backlog. Defaults to :code:`15000`."""
 
     _getter: Getter = field(
         validator=validators.instance_of(Getter),
