@@ -292,6 +292,10 @@ class OpensearchOutput(Output):
             )
         except CriticalOutputError as error:
             raise error from error
+        except Exception as error:  # pylint: disable=broad-except
+            logger.error("Failed to index documents: %s", error)
+            self.metrics.number_of_errors += 1
+            raise CriticalOutputError(self, str(error), self._message_backlog) from error
         finally:
             self._message_backlog.clear()
             self._failed.clear()
