@@ -10,7 +10,7 @@ jobs:
     uses: ./.github/workflows/testing.yml
 
   code-quality:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     strategy:
       matrix:
