@@ -124,6 +124,11 @@ class OpensearchOutput(Output):
         max_chunk_bytes: int = field(
             default=100 * 1024 * 1024, validator=[validators.instance_of(int), validators.gt(1)]
         )
+        """Max chunk size to use for bulk requests. The default is 100MB."""
+        max_retries: int = field(
+            default=3, validator=[validators.instance_of(int), validators.gt(0)]
+        )
+        """Max retries for all requests. Default is 3."""
         desired_cluster_status: list = field(
             default=["green"], validator=validators.instance_of(list)
         )
@@ -189,6 +194,7 @@ class OpensearchOutput(Output):
 
     @cached_property
     def _search_context(self):
+        """Returns the opensearch client."""
         return search.OpenSearch(
             self._config.hosts,
             scheme=self.schema,
@@ -198,6 +204,7 @@ class OpensearchOutput(Output):
             timeout=self._config.timeout,
             serializer=MSGPECSerializer(self),
             pool_maxsize=20,
+            max_retries=self._config.max_retries,
             # default for connection pooling is 10 see:
             # https://github.com/opensearch-project/opensearch-py/blob/main/guides/connection_classes.md
         )

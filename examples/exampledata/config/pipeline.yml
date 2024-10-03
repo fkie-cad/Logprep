@@ -124,7 +124,6 @@ output:
     message_backlog_size: 2500
     timeout: 10000
     flush_timeout: 60
-    max_retries: 3
     user: admin
     secret: admin
     desired_cluster_status: ["green", "yellow"]
