@@ -7,8 +7,6 @@
 * removes the option to use synchronous `bulk` or `parallel_bulk` operation in favor of `parallel_bulk` in `opensearch_output`
 * reimplement error handling by introducing the option to configure an error output
   * if no error output is configured, failed event will be dropped
-* remove the retry mechanic from `opensearch_output` connector to reduce implementation complexity
-  * all documents are now stored as failed in the error output if configured
 
 ### Features
 
