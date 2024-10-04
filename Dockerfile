@@ -10,8 +10,7 @@ ADD . /logprep
 WORKDIR /logprep
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN python -m pip install --upgrade pip wheel setuptools>=72.2.0
-RUN python -m venv /opt/venv
+RUN python -m venv --without-pip /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
 
