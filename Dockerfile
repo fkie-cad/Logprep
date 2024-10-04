@@ -19,6 +19,10 @@ RUN if [ "$LOGPREP_VERSION" = "dev" ]; then pip install .;\
     else pip install "logprep==$LOGPREP_VERSION"; fi; \
     logprep --version
 
+# geoip2 4.8.0 lists a vulnerable setuptools version as a dependency. setuptools is unneeded at runtime, so it is uninstalled.
+# More recent (currently unreleased) versions of geoip2 removed setuptools from dependencies.
+RUN pip uninstall -y setuptools
+
 
 FROM bitnami/python:${PYTHON_VERSION} as prod
 ARG http_proxy
