@@ -85,7 +85,6 @@ dependencies = [
   "urlextract",
   "urllib3>=1.26.17",         # CVE-2023-43804
   "uvicorn",
-  "wheel",
   "deepdiff",
   "msgspec",
   "boto3",
