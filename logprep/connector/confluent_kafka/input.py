@@ -32,7 +32,7 @@ import logging
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
-from typing import Callable, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
@@ -229,6 +229,11 @@ class ConfluentKafkaInput(Input):
         - bootstrap.servers (STRING): a comma separated list of kafka brokers
         - group.id (STRING): a unique identifier for the consumer group
 
+        The following keys are injected by the connector and should not be set:
+
+        - "enable.auto.offset.store" is set to "false",
+        - "enable.auto.commit" is set to "true",
+
         For additional configuration options see the official:
         `librdkafka configuration <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
 
@@ -256,6 +261,8 @@ class ConfluentKafkaInput(Input):
         """
         injected_config = {
             "logger": logger,
+            "enable.auto.offset.store": "false",
+            "enable.auto.commit": "true",
             "on_commit": self._commit_callback,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
@@ -448,21 +455,15 @@ class ConfluentKafkaInput(Input):
         return self._config.kafka_config.get("enable.auto.commit") == "true"
 
     def batch_finished_callback(self) -> None:
-        """Store offsets for each kafka partition in `self._last_valid_records`
-        and if configured commit them. Should be called by output connectors if
-        they are finished processing a batch of records.
+        """Store offsets for each kafka partition in `self._last_valid_records`.
+        Should be called by output connectors if they are finished processing
+        a batch of records.
         """
         if self._enable_auto_offset_store:
             return
-        self._handle_offsets(self._consumer.store_offsets)
-        if not self._enable_auto_commit:
-            self._handle_offsets(self._consumer.commit)
-        self._last_valid_records.clear()
-
-    def _handle_offsets(self, offset_handler: Callable) -> None:
         for message in self._last_valid_records.values():
             try:
-                offset_handler(message=message)
+                self._consumer.store_offsets(message=message)
             except KafkaException as error:
                 raise InputWarning(self, f"{error}, {message}") from error
 
@@ -503,8 +504,6 @@ class ConfluentKafkaInput(Input):
                 topic_partition.topic,
                 topic_partition.partition,
             )
-            topic_partition.offset = OFFSET_STORED
-        self._consumer.assign(topic_partitions)
 
     def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
