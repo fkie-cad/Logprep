@@ -462,7 +462,7 @@ class TestLueceneFilter:
             RegExFilterExpression(["regex_key_two"], ".*value.*"),
         )
 
-    def test_creates_lucene_compliance_filter_with_one_matching_and_one_missmatching_regex_key_of_two(self):
+    def test_creates_lucene_compliance_filter_one_matching_one_missmatch_regex_key_of_two(self):
         lucene_filter = LuceneFilter.create(
             'regex_key_one: "/.*value.*/" AND key_two: "value"',
         )
