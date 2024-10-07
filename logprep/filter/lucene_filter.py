@@ -119,6 +119,7 @@ from logprep.filter.expression.filter_expression import (
 
 logger = logging.getLogger("LuceneFilter")
 
+
 class LuceneFilterError(BaseException):
     """Base class for LuceneFilter related exceptions."""
 
@@ -241,14 +242,15 @@ class LuceneTransformer:
             self.recognize_regex_and_add_special_fields()
         else:
             # DEPRECATION: regex_fields are no longer necessary.
-            logger.warning("[Deprecation]: special_fields are no longer necessary. "
-                           "Use Lucene regex annotation for filter "
+            logger.warning(
+                "[Deprecation]: special_fields are no longer necessary. "
+                           "Use Lucene regex annotation for filter. "
             )
 
         self._last_search_field = None
 
     def recognize_regex_and_add_special_fields(self):
-        """ Recognize regex expressions in filter and add those fields to regex_fields. """
+        """Recognize regex expressions in filter and add those fields to regex_fields. """
         for child in self._tree.children:
             try:
                 value = child.children[0].value[1:-1]
