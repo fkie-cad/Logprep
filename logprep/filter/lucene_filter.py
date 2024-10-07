@@ -240,12 +240,15 @@ class LuceneTransformer:
         if not self._special_fields['regex_fields']:
             self.recognize_regex_and_add_special_fields()
         else:
+            # DEPRECATION: regex_fields are no longer necessary.
             logger.warning("[Deprecation]: special_fields are no longer necessary. "
                            "Use Lucene regex annotation for filter ")
 
         self._last_search_field = None
 
     def recognize_regex_and_add_special_fields(self):
+        """ Recognize regex expressions in filter and add those fields to regex_fields.
+        """
         for child in self._tree.children:
             value = child.children[0].value[1:-1]
             if value.startswith('/') and value.endswith('/'):
