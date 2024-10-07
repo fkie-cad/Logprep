@@ -250,10 +250,13 @@ class LuceneTransformer:
         """ Recognize regex expressions in filter and add those fields to regex_fields.
         """
         for child in self._tree.children:
-            value = child.children[0].value[1:-1]
-            if value.startswith('/') and value.endswith('/'):
-                self._special_fields['regex_fields'].append(child.name)
-                child.children[0].value = f'"{value[1:-1]}"'
+            try:
+                value = child.children[0].value[1:-1]
+                if value.startswith('/') and value.endswith('/'):
+                    self._special_fields['regex_fields'].append(child.name)
+                    child.children[0].value = f'"{value[1:-1]}"'
+            except:
+                pass
 
     def build_filter(self) -> FilterExpression:
         """Transform luqum tree into FilterExpression
