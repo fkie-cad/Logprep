@@ -8,16 +8,20 @@ ARG no_proxy
 
 ADD . /logprep
 WORKDIR /logprep
+
+# Install the Rust toolchain
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN python -m venv --without-pip /opt/venv
-# Make sure we use the virtualenv:
+
+# Use a python virtual environment
+RUN python -m venv --upgrade-deps /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+
 
 RUN if [ "$LOGPREP_VERSION" = "dev" ]; then pip install .;\
     elif [ "$LOGPREP_VERSION" = "latest" ]; then pip install git+https://github.com/fkie-cad/Logprep.git@latest; \
     else pip install "logprep==$LOGPREP_VERSION"; fi; \
-    logprep --version
+    /opt/venv/bin/logprep --version
 
 # geoip2 4.8.0 lists a vulnerable setuptools version as a dependency. setuptools is unneeded at runtime, so it is uninstalled.
 # More recent (currently unreleased) versions of geoip2 removed setuptools from dependencies.
