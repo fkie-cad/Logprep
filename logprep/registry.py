@@ -38,6 +38,7 @@ from logprep.processor.labeler.processor import Labeler
 from logprep.processor.list_comparison.processor import ListComparison
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
+from logprep.processor.replacer.processor import Replacer
 from logprep.processor.requester.processor import Requester
 from logprep.processor.selective_extractor.processor import SelectiveExtractor
 from logprep.processor.string_splitter.processor import StringSplitter
@@ -74,6 +75,7 @@ class Registry:
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,
+        "replacer": Replacer,
         "selective_extractor": SelectiveExtractor,
         "string_splitter": StringSplitter,
         "template_replacer": TemplateReplacer,

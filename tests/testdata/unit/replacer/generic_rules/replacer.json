@@ -1,0 +1,10 @@
+[
+    {
+        "filter": "another-message",
+        "replacer": {
+            "mapping": {
+                "field": "message with %{replace that}"
+            }
+        }
+    }
+]
