@@ -86,6 +86,7 @@ from itertools import chain, zip_longest
 # pylint: enable=anomalous-backslash-in-string
 from typing import List, Optional, Union
 
+import logging
 import luqum
 from luqum.parser import IllegalCharacterError, ParseSyntaxError, parser
 from luqum.tree import (
@@ -116,6 +117,7 @@ from logprep.filter.expression.filter_expression import (
     StringFilterExpression,
 )
 
+logger = logging.getLogger("LuceneFilter")
 
 class LuceneFilterError(BaseException):
     """Base class for LuceneFilter related exceptions."""
@@ -237,6 +239,9 @@ class LuceneTransformer:
 
         if not self._special_fields['regex_fields']:
             self.recognize_regex_and_add_special_fields()
+        else:
+            logger.warning("[Deprecation]: special_fields are no longer necessary. "
+                           "Use Lucene regex annotation for filter ")
 
         self._last_search_field = None
 
