@@ -153,6 +153,7 @@ class LuceneFilter:
 
         """
         escaped_string = LuceneFilter._add_lucene_escaping(query_string)
+
         try:
             tree = parser.parse(escaped_string)
             transformer = LuceneTransformer(tree, special_fields)
@@ -236,17 +237,23 @@ class LuceneTransformer:
         for key in self._special_fields_map:
             self._special_fields[key] = special_fields.get(key) if special_fields.get(key) else []
 
-        if not self._special_fields['regex_fields']:
+        if not self._special_fields["regex_fields"]:
             self.recognize_regex_and_add_special_fields()
+        else:
+            # DEPRECATION: regex_fields are no longer necessary.
+            logger.warning("[Deprecation]: special_fields are no longer necessary. "
+                           "Use Lucene regex annotation for filter "
+            )
 
         self._last_search_field = None
 
     def recognize_regex_and_add_special_fields(self):
+        """ Recognize regex expressions in filter and add those fields to regex_fields. """
         for child in self._tree.children:
             try:
                 value = child.children[0].value[1:-1]
-                if value.startswith('/') and value.endswith('/'):
-                    self._special_fields['regex_fields'].append(child.name)
+                if value.startswith("/") and value.endswith("/"):
+                    self._special_fields["regex_fields"].append(child.name)
                     child.children[0].value = f'"{value[1:-1]}"'
             except:
                 pass
