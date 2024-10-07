@@ -84,24 +84,40 @@ import re
 from itertools import chain, zip_longest
 
 # pylint: enable=anomalous-backslash-in-string
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
+import logging
 import luqum
-from luqum.parser import parser, ParseSyntaxError, IllegalCharacterError
-from luqum.tree import OrOperation, AndOperation, Group, FieldGroup, SearchField, Phrase, Word, Not
+from luqum.parser import IllegalCharacterError, ParseSyntaxError, parser
+from luqum.tree import (
+    AndOperation,
+    FieldGroup,
+    Group,
+    Not,
+    OrOperation,
+    Phrase,
+    Regex,
+    SearchField,
+    Word,
+)
 
 from logprep.filter.expression.filter_expression import (
-    Or,
-    And,
-    StringFilterExpression,
-    SigmaFilterExpression,
-    RegExFilterExpression,
-    Not as NotExpression,
-    Exists,
-    Null,
     Always,
+    And,
+    Exists,
     FilterExpression,
+    LuceneRegexExpression,
 )
+from logprep.filter.expression.filter_expression import Not as NotExpression
+from logprep.filter.expression.filter_expression import (
+    Null,
+    Or,
+    RegExFilterExpression,
+    SigmaFilterExpression,
+    StringFilterExpression,
+)
+
+logger = logging.getLogger("LuceneFilter")
 
 
 class LuceneFilterError(BaseException):
@@ -222,7 +238,27 @@ class LuceneTransformer:
         for key in self._special_fields_map:
             self._special_fields[key] = special_fields.get(key) if special_fields.get(key) else []
 
+        if not self._special_fields["regex_fields"]:
+            self.recognize_regex_and_add_special_fields()
+        else:
+            # DEPRECATION: regex_fields are no longer necessary.
+            logger.warning(
+                "[Deprecation]: special_fields are no longer necessary. "
+                "Use Lucene regex annotation for filter. "
+            )
+
         self._last_search_field = None
+
+    def recognize_regex_and_add_special_fields(self):
+        """Recognize regex expressions in filter and add those fields to regex_fields."""
+        for child in self._tree.children:
+            try:
+                value = child.children[0].value[1:-1]
+                if value.startswith("/") and value.endswith("/"):
+                    self._special_fields["regex_fields"].append(child.name)
+                    child.children[0].value = f'"{value[1:-1]}"'
+            except:
+                pass
 
     def build_filter(self) -> FilterExpression:
         """Transform luqum tree into FilterExpression
@@ -261,7 +297,12 @@ class LuceneTransformer:
             if self._last_search_field:
                 return self._create_field_group_expression(tree)
             return self._create_value_expression(tree)
+        if isinstance(tree, Regex):
+            return self._create_regex_expression(tree)
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
+
+    def _create_regex_expression(self, tree: luqum.tree) -> LuceneRegexExpression:
+        pass
 
     def _create_field_group_expression(self, tree: luqum.tree) -> FilterExpression:
         """Creates filter expression that is resulting from a field group.
