@@ -32,7 +32,7 @@ from pathlib import Path
 from re import error
 
 import numpy as np
-import pkg_resources
+from importlib import resources
 from attrs import define, field, validators
 
 from logprep.util.decorators import timeout
@@ -42,8 +42,8 @@ if sys.version_info.minor < 11:
     # added to re module in python 3.11
     import regex as re  # pylint: disable=shadowed-import
 
-DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs-v1")]
 
+DEFAULT_PATTERNS_DIRS = [str(resources.files(__package__) / "patterns/ecs-v1")]
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
 ONIGURUMA = r"\(\?<([^()]*)>\(?(([^()]*|\(([^()]*|\([^()]*\))*\))*)\)?\)"
