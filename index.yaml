@@ -3,6 +3,16 @@ entries:
   logprep:
   - apiVersion: v2
     appVersion: 13.1.2
+    created: "2024-10-08T12:25:10.28351031Z"
+    description: Logprep helm chart
+    digest: dba085c86a51aefbdd2931a04697789942472aa37e43abaa06c4343685879264
+    name: logprep
+    type: application
+    urls:
+    - https://github.com/fkie-cad/Logprep/releases/download/logprep-13.4.0/logprep-13.4.0.tgz
+    version: 13.4.0
+  - apiVersion: v2
+    appVersion: 13.1.2
     created: "2024-09-19T13:27:22.26801865Z"
     description: Logprep helm chart
     digest: 285e15511d55072dbb493253d4cc8107c8127d0be08bace428ca65ccae4f9570
@@ -91,4 +101,4 @@ entries:
     urls:
     - https://github.com/fkie-cad/Logprep/releases/download/logprep-1.0.1/logprep-1.0.1.tgz
     version: 1.0.1
-generated: "2024-09-19T13:27:22.268055669Z"
+generated: "2024-10-08T12:25:10.283548902Z"
