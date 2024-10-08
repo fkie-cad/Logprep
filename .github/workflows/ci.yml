@@ -150,18 +150,18 @@ jobs:
           image-ref: ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
           format: sarif
           output: trivy-results.sarif
-          
-      # Trivy-db uses `0600` permissions.
-      # But `action/cache` use `runner` user by default
-      # So we need to change the permissions before caching the database.
-      - name: Change permissions for trivy.db
-        run: chmod 0644 ./cache/db/trivy.db
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image
+
+      # Trivy-db uses `0600` permissions.
+      # But `action/cache` use `runner` user by default
+      # So we need to change the permissions before caching the database.
+      - name: Change permissions for trivy.db
+        run: sudo chmod 0644 ./cache/db/trivy.db
   
       # This step will build the image again, but every layer will already be cached, so it is nearly instantaneous.
       - name: Push image
