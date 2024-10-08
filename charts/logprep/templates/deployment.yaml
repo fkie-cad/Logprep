@@ -129,6 +129,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 10
           {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       volumes:
         - name: logprep-temp
           emptyDir:
