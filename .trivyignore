@@ -1,0 +1,2 @@
+# Ignore Python 3.10 CVE that is only fixed in Python 3.11 as long as we still support Python 3.10.
+CVE-2023-36632
