@@ -160,3 +160,7 @@ configurations:
 #       admin
 #       admin2
 artifacts: []
+
+# The termination grace period for the pod
+# Defaults to 300 seconds to ensure that queues are drained before the pod is terminated
+terminationGracePeriodSeconds: 300
