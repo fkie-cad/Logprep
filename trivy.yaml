@@ -1,0 +1,15 @@
+# https://aquasecurity.github.io/trivy/v0.56/docs/references/configuration/config-file/
+format: table
+report: all
+ignorefile: .trivyignore
+exit-code: 1
+severity:
+  - HIGH
+  - CRITICAL
+timeout: 10m
+scan:
+  scanners:
+    - vuln
+    - secret
+vulnerability:
+  ignore-unfixed: true
