@@ -138,33 +138,6 @@ jobs:
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: |
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
-
-  trivy-scan:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-        
-    runs-on: ubuntu-latest
-
-    # Execute after containerbuild, but allow the containerbuild jobs to have failed.
-    # That way we do not skip scanning, when a single containerbuild job failed.
-    needs: containerbuild
-    if: ${{ always() }}
-    
-    steps:
-      - name: Ensure containerbuild succeeded
-        if: needs.containerbuild.result != 'success'
-        run: |
-          echo "containerbuild for python-${{ matrix.python-version }} failed or was cancelled"
-          exit 1
-          
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
   
       # To avoid the trivy-db becoming outdated, we save the cache for one day
       - name: Get date
