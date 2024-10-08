@@ -111,7 +111,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and export to Docker
+      - name: Build image and export to Docker
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -122,15 +122,53 @@ jobs:
           tags: |
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
 
-      - name: Test
+      - name: Ensure logprep is available in image
         run: |
           docker run --rm ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }} --version
 
-      - name: Build images
+      # To avoid the trivy-db becoming outdated, we save the cache for one day
+      - name: Get date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Restore trivy cache
+        uses: actions/cache@v4
+        with:
+          path: cache/db
+          key: trivy-cache-${{ steps.date.outputs.date }}
+          restore-keys:
+            trivy-cache-
+      
+      - name: Scan image using Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          cache-dir: ./cache
+          scan-type: image
+          image-ref: ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL
+          
+      # Trivy-db uses `0600` permissions.
+      # But `action/cache` use `runner` user by default
+      # So we need to change the permissions before caching the database.
+      - name: Change permissions for trivy.db
+        run: chmod 0644 ./cache/db/trivy.db
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          catogory: trivy-image
+  
+      # This step will build the image again, but every layer will already be cached, so it is nearly instantaneous.
+      - name: Push image
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true # Will only build if this is not here
+          push: true
           build-args: |
             LOGPREP_VERSION=dev
             PYTHON_VERSION=${{ matrix.python-version }}
