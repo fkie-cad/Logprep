@@ -146,10 +146,19 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
         
     runs-on: ubuntu-latest
-    
+
+    # Execute after containerbuild, but allow the containerbuild jobs to have failed.
+    # That way we do not skip scanning, when a single containerbuild job failed.
     needs: containerbuild
+    if: ${{ always() }}
     
     steps:
+      - name: Ensure containerbuild succeeded
+        if: needs.containerbuild.result != 'success'
+        run: |
+          echo "containerbuild for python-${{ matrix.python-version }} failed or was cancelled"
+          exit 1
+          
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
