@@ -159,9 +159,10 @@ jobs:
           scan-type: image
           image-ref: ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
           format: table
+          timeout: 10m
           exit-code: 1
           ignore-unfixed: true
-          severity: CRITICAL
+          severity: HIGH,CRITICAL
 
       # Trivy-db uses `0600` permissions.
       # But `action/cache` use `runner` user by default
