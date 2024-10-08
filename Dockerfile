@@ -1,6 +1,6 @@
 ARG PYTHON_VERSION=3.10
 
-FROM python:${PYTHON_VERSION} as build
+FROM bitnami/python:${PYTHON_VERSION} as build
 ARG LOGPREP_VERSION=latest
 ARG http_proxy
 ARG https_proxy
@@ -28,7 +28,7 @@ RUN if [ "$LOGPREP_VERSION" = "dev" ]; then pip install .;\
 RUN pip uninstall -y setuptools
 
 
-FROM python:${PYTHON_VERSION} as prod
+FROM bitnami/python:${PYTHON_VERSION} as prod
 ARG http_proxy
 ARG https_proxy
 COPY --from=build /opt/venv /opt/venv
