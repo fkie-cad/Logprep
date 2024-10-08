@@ -154,8 +154,9 @@ jobs:
       
       - name: Scan image using Trivy
         uses: aquasecurity/trivy-action@0.24.0
+        env:
+          TRIVY_CACHE_DIR: ./cache
         with:
-          cache-dir: ./cache
           scan-type: image
           image-ref: ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
           trivy-config: trivy.yaml
