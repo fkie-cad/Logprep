@@ -29,6 +29,7 @@ Example
 """
 # pylint: enable=line-too-long
 import logging
+import os
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
@@ -270,7 +271,9 @@ class ConfluentKafkaInput(Input):
         }
         DEFAULTS.update({"client.id": getfqdn()})
         DEFAULTS.update(
-            {"group.instance.id": f"{getfqdn().strip('.')}-Pipeline{self.pipeline_index}"}
+            {
+                "group.instance.id": f"{getfqdn().strip('.')}-Pipeline{self.pipeline_index}-pid{os.getpid()}"
+            }
         )
         return DEFAULTS | self._config.kafka_config | injected_config
 
