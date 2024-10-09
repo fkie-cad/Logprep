@@ -254,6 +254,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             "statistics.interval.ms": "30000",
             "bootstrap.servers": "testserver:9092",
             "group.id": "testgroup",
+            "group.instance.id": f"{socket.getfqdn().strip('.')}-PipelineNone",
             "logger": logger,
             "on_commit": self.object._commit_callback,
             "stats_cb": self.object._stats_callback,
@@ -277,26 +278,28 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         assert injected_config.get("enable.auto.commit") == "true"
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_client_id_can_be_overwritten(self, mock_consumer):
+    @mock.patch("logprep.connector.confluent_kafka.input.AdminClient")
+    def test_client_id_can_be_overwritten(self, _, mock_consumer):
         input_config = deepcopy(self.CONFIG)
         input_config["kafka_config"]["client.id"] = "thisclientid"
         kafka_input = Factory.create({"test": input_config})
         metadata = mock.MagicMock()
         metadata.topics = [kafka_input._config.topic]
-        kafka_input._consumer.list_topics.return_value = metadata
+        kafka_input._admin.list_topics.return_value = metadata
         kafka_input.setup()
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("client.id") == "thisclientid"
         assert not mock_consumer.call_args[0][0].get("client.id") == socket.getfqdn()
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_statistics_interval_can_be_overwritten(self, mock_consumer):
+    @mock.patch("logprep.connector.confluent_kafka.input.AdminClient")
+    def test_statistics_interval_can_be_overwritten(self, _, mock_consumer):
         input_config = deepcopy(self.CONFIG)
         input_config["kafka_config"]["statistics.interval.ms"] = "999999999"
         kafka_input = Factory.create({"test": input_config})
         metadata = mock.MagicMock()
         metadata.topics = [kafka_input._config.topic]
-        kafka_input._consumer.list_topics.return_value = metadata
+        kafka_input._admin.list_topics.return_value = metadata
         kafka_input.setup()
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"
@@ -381,10 +384,10 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.batch_finished_callback.assert_called()
 
     def test_health_returns_true_if_no_error(self):
-        self.object._consumer = mock.MagicMock()
+        self.object._admin = mock.MagicMock()
         metadata = mock.MagicMock()
         metadata.topics = [self.object._config.topic]
-        self.object._consumer.list_topics.return_value = metadata
+        self.object._admin.list_topics.return_value = metadata
         assert self.object.health()
 
     def test_health_returns_false_if_topic_not_present(self):

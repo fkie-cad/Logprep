@@ -45,6 +45,7 @@ from confluent_kafka import (
     KafkaException,
     TopicPartition,
 )
+from confluent_kafka.admin import AdminClient
 
 from logprep.abc.connector import Connector
 from logprep.abc.input import (
@@ -268,7 +269,22 @@ class ConfluentKafkaInput(Input):
             "error_cb": self._error_callback,
         }
         DEFAULTS.update({"client.id": getfqdn()})
+        DEFAULTS.update(
+            {"group.instance.id": f"{getfqdn().strip('.')}-Pipeline{self.pipeline_index}"}
+        )
         return DEFAULTS | self._config.kafka_config | injected_config
+
+    @cached_property
+    def _admin(self) -> AdminClient:
+        """configures and returns the admin client
+
+        Returns
+        -------
+        AdminClient
+            confluent_kafka admin client object
+        """
+        admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
+        return AdminClient(admin_config)
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -279,14 +295,7 @@ class ConfluentKafkaInput(Input):
         Consumer
             confluent_kafka consumer object
         """
-        consumer = Consumer(self._kafka_config)
-        consumer.subscribe(
-            [self._config.topic],
-            on_assign=self._assign_callback,
-            on_revoke=self._revoke_callback,
-            on_lost=self._lost_callback,
-        )
-        return consumer
+        return Consumer(self._kafka_config)
 
     def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
@@ -519,7 +528,7 @@ class ConfluentKafkaInput(Input):
         """
 
         try:
-            metadata = self._consumer.list_topics(timeout=self._config.health_timeout)
+            metadata = self._admin.list_topics(timeout=self._config.health_timeout)
             if not self._config.topic in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self._config.topic)
                 return False
@@ -532,6 +541,12 @@ class ConfluentKafkaInput(Input):
     def setup(self) -> None:
         """Set the component up."""
         try:
+            self._consumer.subscribe(
+                [self._config.topic],
+                on_assign=self._assign_callback,
+                on_revoke=self._revoke_callback,
+                on_lost=self._lost_callback,
+            )
             super().setup()
         except KafkaException as error:
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error

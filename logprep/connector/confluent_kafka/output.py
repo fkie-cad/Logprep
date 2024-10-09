@@ -31,6 +31,7 @@ from typing import Optional
 
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
+from confluent_kafka.admin import AdminClient
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.metrics.metrics import GaugeMetric, Metric
@@ -202,6 +203,18 @@ class ConfluentKafkaOutput(Output):
         return DEFAULTS | self._config.kafka_config | injected_config
 
     @cached_property
+    def _admin(self) -> AdminClient:
+        """configures and returns the admin client
+
+        Returns
+        -------
+        AdminClient
+            confluent_kafka admin client object
+        """
+        admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
+        return AdminClient(admin_config)
+
+    @cached_property
     def _producer(self) -> Producer:
         return Producer(self._kafka_config)
 
@@ -319,7 +332,7 @@ class ConfluentKafkaOutput(Output):
     def health(self) -> bool:
         """Check the health of kafka producer."""
         try:
-            metadata = self._producer.list_topics(timeout=self._config.health_timeout)
+            metadata = self._admin.list_topics(timeout=self._config.health_timeout)
             if not self._config.topic in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self._config.topic)
                 return False

@@ -184,9 +184,6 @@ class Input(Connector):
             },
         )
 
-    pipeline_index: int
-    __slots__ = ["pipeline_index", "output_connector"]
-
     @property
     def _add_hmac(self):
         """Check and return if a hmac should be added or not."""
