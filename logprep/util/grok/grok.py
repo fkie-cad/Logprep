@@ -27,21 +27,15 @@ import re
 import string
 import sys
 from hashlib import md5
+from importlib import resources
 from itertools import chain
 from pathlib import Path
 from re import error
 
 import numpy as np
-from importlib import resources
 from attrs import define, field, validators
 
 from logprep.util.decorators import timeout
-
-if sys.version_info.minor < 11:
-    # because needed possessive quantifiers and atomic grouping
-    # added to re module in python 3.11
-    import regex as re  # pylint: disable=shadowed-import
-
 
 DEFAULT_PATTERNS_DIRS = [str(resources.files(__package__) / "patterns/ecs-v1")]
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"

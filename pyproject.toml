@@ -79,7 +79,6 @@ dependencies = [
   "joblib",
   "pyyaml",
   "requests>=2.31.0",
-  "regex",
   "ruamel.yaml",
   "schedule",
   "urllib3>=1.26.17",              # CVE-2023-43804
