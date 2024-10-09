@@ -251,13 +251,23 @@ class LuceneTransformer:
 
     def recognize_regex_and_add_special_fields(self):
         """Recognize regex expressions in filter and add those fields to regex_fields."""
+        # for child in self._tree.children:
+        #     try:
+        #         value = child.children[0].value[1:-1]
+        #         if value.startswith("/") and value.endswith("/"):
+        #             self._special_fields["regex_fields"].append(child.name)
+        #             child.children[0].value = f'"{value[1:-1]}"'
+        #     except:
+        #         pass
         for child in self._tree.children:
             try:
-                value = child.children[0].value[1:-1]
-                if value.startswith("/") and value.endswith("/"):
-                    self._special_fields["regex_fields"].append(child.name)
-                    child.children[0].value = f'"{value[1:-1]}"'
-            except:
+                for sub_child in child.children:
+                    value = getattr(sub_child, 'value')[1:-1]
+                    if value and value.startswith("/") and value.endswith("/"):
+                        self._special_fields["regex_fields"].append(child.name)
+                        sub_child.value = f'"{value.strip("/")}"'
+                        break
+            except Exception:
                 pass
 
     def build_filter(self) -> FilterExpression:
