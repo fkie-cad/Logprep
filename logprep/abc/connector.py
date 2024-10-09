@@ -21,14 +21,6 @@ class Connector(Component):
         )
         """Number of successful events"""
 
-        number_of_failed_events: CounterMetric = field(
-            factory=lambda: CounterMetric(
-                description="Number of failed events",
-                name="number_of_failed_events",
-            )
-        )
-        """Number of failed events"""
-
         processing_time_per_event: HistogramMetric = field(
             factory=lambda: HistogramMetric(
                 description="Time in seconds that it took to store an event",

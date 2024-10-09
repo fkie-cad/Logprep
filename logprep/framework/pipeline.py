@@ -371,6 +371,7 @@ class Pipeline:
                     "errors": ", ".join((str(error.message) for error in errors)),
                 }
             case CriticalInputError():
+                item.input.metrics.number_of_failed_events += 1
                 event = {"event": str(item.raw_input), "errors": str(item.message)}
             case list():
                 event = [{"event": str(i), "errors": "Unknown error"} for i in item]
@@ -400,14 +401,21 @@ class Pipeline:
                 event = [
                     {"event": str(i["event"]), "errors": str(i["errors"])} for i in item.raw_input
                 ]
+                item.output.metrics.number_of_failed_events += len(event)
                 return event
             case CriticalOutputError({"errors": error, "event": event}):
+                item.output.metrics.number_of_failed_events += 1
                 return {"event": str(event), "errors": str(error)}
             case CriticalOutputError(raw_input) if isinstance(raw_input, dict):
+                item.output.metrics.number_of_failed_events += 1
                 return {"event": str(raw_input), "errors": str(item.message)}
             case CriticalOutputError(raw_input) if isinstance(raw_input, (list, tuple)):
-                return [{"event": str(i), "errors": str(item.message)} for i in raw_input]
+                event = [{"event": str(i), "errors": str(item.message)} for i in raw_input]
+                item.output.metrics.number_of_failed_events += len(event)
+                return event
             case CriticalOutputError(raw_input) if isinstance(raw_input, (str, bytes)):
+                item.output.metrics.number_of_failed_events += 1
                 return {"event": str(raw_input), "errors": str(item.message)}
             case _:
+                item.output.metrics.number_of_failed_events += 1
                 return {"event": str(item.raw_input), "errors": str(item.message)}

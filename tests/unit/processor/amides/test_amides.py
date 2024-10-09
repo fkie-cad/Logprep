@@ -25,6 +25,7 @@ class TestAmides(BaseProcessorTestCase):
     }
 
     expected_metrics = [
+        "logprep_number_of_failed_events",
         "logprep_amides_total_cmdlines",
         "logprep_amides_new_results",
         "logprep_amides_cached_results",

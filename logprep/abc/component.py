@@ -14,7 +14,7 @@ from attr import define, field, validators
 from attrs import asdict
 from schedule import Scheduler
 
-from logprep.metrics.metrics import Metric
+from logprep.metrics.metrics import CounterMetric, Metric
 from logprep.util.defaults import DEFAULT_HEALTH_TIMEOUT, EXITCODES
 from logprep.util.helper import camel_to_snake
 
@@ -46,6 +46,14 @@ class Component(ABC):
         """Base Metric class to track and expose statistics about logprep"""
 
         _labels: dict
+
+        number_of_failed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of failed events",
+                name="number_of_failed_events",
+            )
+        )
+        """Number of failed events"""
 
         def __attrs_post_init__(self):
             for attribute in asdict(self):

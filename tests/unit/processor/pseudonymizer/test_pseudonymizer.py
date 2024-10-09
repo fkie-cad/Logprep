@@ -715,6 +715,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
     }
 
     expected_metrics = [
+        "logprep_number_of_failed_events",
         "logprep_pseudonymizer_pseudonymized_urls",
         "logprep_pseudonymizer_new_results",
         "logprep_pseudonymizer_cached_results",
