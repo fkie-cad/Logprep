@@ -47,7 +47,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "logprep_confluent_kafka_output_librdkafka_txmsg_bytes",
         "logprep_processing_time_per_event",
         "logprep_number_of_processed_events",
-        "logprep_number_of_failed_events",
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
     ]

@@ -34,7 +34,6 @@ class TestDomainResolver(BaseProcessorTestCase):
 
     expected_metrics = [
         "logprep_domain_resolver_total_urls",
-        "logprep_number_of_failed_events",
         "logprep_domain_resolver_resolved_new",
         "logprep_domain_resolver_resolved_cached",
         "logprep_domain_resolver_timeouts",

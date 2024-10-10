@@ -26,6 +26,7 @@ class TestOutput(BaseOutputTestCase):
         "logprep_status_codes",
         "logprep_timeouts",
         "logprep_connection_errors",
+        "logprep_number_of_failed_events",
     ]
 
     @responses.activate

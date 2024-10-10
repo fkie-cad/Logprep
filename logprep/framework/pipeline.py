@@ -37,7 +37,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
-from logprep.metrics.metrics import HistogramMetric, Metric
+from logprep.metrics.metrics import CounterMetric, HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.configuration import Configuration
 from logprep.util.pipeline_profiler import PipelineProfiler
@@ -139,6 +139,14 @@ class Pipeline:
     @attrs.define(kw_only=True)
     class Metrics(Component.Metrics):
         """Tracks statistics about a pipeline"""
+
+        number_of_failed_events: CounterMetric = attrs.field(
+            factory=lambda: CounterMetric(
+                description="Number of failed events",
+                name="number_of_failed_events",
+            )
+        )
+        """Number of failed events"""
 
         processing_time_per_event: HistogramMetric = attrs.field(
             factory=lambda: HistogramMetric(
@@ -366,12 +374,13 @@ class Pipeline:
             case CriticalOutputError():
                 event = self._get_output_error_event(item)
             case PipelineResult(input_event, errors):
+                self.metrics.number_of_failed_events += 1
                 event = {
                     "event": str(input_event),
                     "errors": ", ".join((str(error.message) for error in errors)),
                 }
             case CriticalInputError():
-                item.input.metrics.number_of_failed_events += 1
+                self.metrics.number_of_failed_events += 1
                 event = {"event": str(item.raw_input), "errors": str(item.message)}
             case list():
                 event = [{"event": str(i), "errors": "Unknown error"} for i in item]
@@ -401,21 +410,21 @@ class Pipeline:
                 event = [
                     {"event": str(i["event"]), "errors": str(i["errors"])} for i in item.raw_input
                 ]
-                item.output.metrics.number_of_failed_events += len(event)
+                self.metrics.number_of_failed_events += len(event)
                 return event
             case CriticalOutputError({"errors": error, "event": event}):
-                item.output.metrics.number_of_failed_events += 1
+                self.metrics.number_of_failed_events += 1
                 return {"event": str(event), "errors": str(error)}
             case CriticalOutputError(raw_input) if isinstance(raw_input, dict):
-                item.output.metrics.number_of_failed_events += 1
+                self.metrics.number_of_failed_events += 1
                 return {"event": str(raw_input), "errors": str(item.message)}
             case CriticalOutputError(raw_input) if isinstance(raw_input, (list, tuple)):
                 event = [{"event": str(i), "errors": str(item.message)} for i in raw_input]
-                item.output.metrics.number_of_failed_events += len(event)
+                self.metrics.number_of_failed_events += len(event)
                 return event
             case CriticalOutputError(raw_input) if isinstance(raw_input, (str, bytes)):
-                item.output.metrics.number_of_failed_events += 1
+                self.metrics.number_of_failed_events += 1
                 return {"event": str(raw_input), "errors": str(item.message)}
             case _:
-                item.output.metrics.number_of_failed_events += 1
+                self.metrics.number_of_failed_events += 1
                 return {"event": str(item.raw_input), "errors": str(item.message)}

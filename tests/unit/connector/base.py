@@ -28,7 +28,6 @@ class BaseConnectorTestCase(BaseComponentTestCase):
     expected_metrics = [
         "logprep_processing_time_per_event",
         "logprep_number_of_processed_events",
-        "logprep_number_of_failed_events",
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
     ]

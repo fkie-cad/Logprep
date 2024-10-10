@@ -17,7 +17,6 @@ class OutputError(LogprepException):
 
     def __init__(self, output: "Output", message: str) -> None:
         output.metrics.number_of_errors += 1
-        self.output = output
         super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
 
 

@@ -47,14 +47,6 @@ class Component(ABC):
 
         _labels: dict
 
-        number_of_failed_events: CounterMetric = field(
-            factory=lambda: CounterMetric(
-                description="Number of failed events",
-                name="number_of_failed_events",
-            )
-        )
-        """Number of failed events"""
-
         def __attrs_post_init__(self):
             for attribute in asdict(self):
                 attribute = getattr(self, attribute)

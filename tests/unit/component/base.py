@@ -31,10 +31,6 @@ class BaseComponentTestCase(ABC):
 
     metric_attributes: dict
 
-    expected_metrics = [
-        "logprep_number_of_failed_events",
-    ]
-
     def setup_method(self) -> None:
         config = {"Test Instance Name": self.CONFIG}
         self.object = Factory.create(configuration=config)

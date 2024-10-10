@@ -272,7 +272,6 @@ class Processor(Component):
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
-            self.metrics.number_of_failed_events += 1
             self.result.errors.append(error)  # is needed to prevent wrapping it in itself
             event.clear()
         except Exception as error:  # pylint: disable=broad-except

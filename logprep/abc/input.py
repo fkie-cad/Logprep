@@ -27,7 +27,6 @@ class InputError(LogprepException):
 
     def __init__(self, input_connector: "Input", message: str) -> None:
         input_connector.metrics.number_of_errors += 1
-        self.input = input_connector
         super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
 
 

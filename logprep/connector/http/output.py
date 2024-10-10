@@ -59,6 +59,14 @@ class HttpOutput(Output):
     class Metrics(Output.Metrics):
         """Tracks statistics about this connector"""
 
+        number_of_failed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of failed events",
+                name="number_of_failed_events",
+            )
+        )
+        """Number of failed events"""
+
         number_of_http_requests: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Requests total",
