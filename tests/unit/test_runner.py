@@ -131,6 +131,18 @@ class TestRunner:
                 runner.start()
             mock_run_pending.call_count = 3
 
+    def test_iteration_sets_error_queue_size(self, runner):
+        with mock.patch.object(runner, "_manager") as mock_manager:
+            mock_manager.restart_count = 0
+            runner.metrics.number_of_events_in_error_queue = 0
+            mock_manager.should_exit.side_effect = [False, False, True]
+            mock_manager.error_queue.qsize.return_value = 42
+            with pytest.raises(SystemExit):
+                runner.start()
+            assert (
+                runner.metrics.number_of_events_in_error_queue == 84
+            )  # because of mocking with int
+
     def test_iteration_calls_should_exit(self, runner):
         with mock.patch.object(runner, "_manager") as mock_manager:
             mock_manager.restart_count = 0

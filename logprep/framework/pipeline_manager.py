@@ -180,7 +180,7 @@ class PipelineManager:
         self.restart_timeout_ms: int = random.randint(100, 1000)
         self.metrics = self.Metrics(labels={"component": "manager"})
         self.loghandler: LogprepMPQueueListener = None
-        self._error_queue: multiprocessing.Queue | None = None
+        self.error_queue: multiprocessing.Queue | None = None
         self._error_listener: ComponentQueueListener | None = None
         self._configuration: Configuration = configuration
         self._pipelines: list[multiprocessing.Process] = []
@@ -200,15 +200,15 @@ class PipelineManager:
     def _setup_error_queue(self):
         if not self._configuration.error_output:
             return
-        self._error_queue = ThrottlingQueue(
+        self.error_queue = ThrottlingQueue(
             multiprocessing.get_context(), self._configuration.error_backlog_size
         )
         self._error_listener = ComponentQueueListener(
-            self._error_queue, "store", self._configuration.error_output
+            self.error_queue, "store", self._configuration.error_output
         )
         self._error_listener.start()
         # wait for the error listener to be ready before starting the pipelines
-        if self._error_queue.get(block=True) is None:
+        if self.error_queue.get(block=True) is None:
             self.stop()
             sys.exit(EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value)
 
@@ -325,7 +325,7 @@ class PipelineManager:
         pipeline = Pipeline(
             pipeline_index=index,
             config=self._configuration,
-            error_queue=self._error_queue,
+            error_queue=self.error_queue,
         )
         if pipeline.pipeline_index == 1 and self.prometheus_exporter:
             self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
