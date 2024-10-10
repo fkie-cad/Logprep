@@ -1,0 +1,14 @@
+{{- if .Values.error_output }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "logprep.fullname" . }}-error-output
+  labels:
+    {{- include "logprep.labels" . | nindent 4 }}
+data:
+  error-output-config.yaml: |
+    error_output:
+      {{- trimSuffix "_output" .Values.error_output.type | nindent 6}}:
+      {{- toYaml .Values.error_output | nindent 8}}
+{{- end }}

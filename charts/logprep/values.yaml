@@ -127,6 +127,28 @@ input: {}
 # for available configuration options.
 output: {}
 
+# The logprep error output connector configuration
+# Note: If this is not set, error events will be dropped.
+# Available error outputs are the same as the normal outputs.
+# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/output.html
+# Example:
+#
+# error_output:
+#   type: confluentkafka_output
+#   topic: errors
+#   flush_timeout: 300
+#   send_timeout: 0
+#   kafka_config:
+#     bootstrap.servers: 127.0.0.1:9092
+#     compression.type: none
+#     statistics.interval.ms: "60000"
+#     queue.buffering.max.messages: "10"
+#     queue.buffering.max.kbytes: "1024"
+#     queue.buffering.max.ms: "1000"
+#     batch.size: "100"
+#     request.required.acks: "-1"
+error_output: {}
+
 # Additional logprep configurations
 # Note: The configuration keys 'logger', 'metrics', 'input' and 'output' will overwrite the
 # corresponding keys in these configurations as they will be merged into

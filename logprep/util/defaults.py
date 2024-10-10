@@ -14,8 +14,11 @@ class EXITCODES(Enum):
     """An error in the configuration."""
     PIPELINE_ERROR = 3
     """An error during pipeline processing."""
+    ERROR_OUTPUT_NOT_REACHABLE = 4
+    """The configured error output is not reachable."""
 
 
+DEFAULT_MESSAGE_BACKLOG_SIZE = 15000
 DEFAULT_RESTART_COUNT = 5
 DEFAULT_CONFIG_LOCATION = "file:///etc/logprep/pipeline.yml"
 DEFAULT_LOG_FORMAT = "%(asctime)-15s %(process)-6s %(name)-10s %(levelname)-8s: %(message)s"

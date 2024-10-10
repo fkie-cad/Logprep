@@ -45,7 +45,6 @@ Configuration File Structure
         kafka:
             type: confluentkafka_output
             topic: producer
-            error_topic: producer_error
             flush_timeout: 30
             send_timeout: 2
             kafka_config:
@@ -184,7 +183,6 @@ The following config file will be valid by setting the given environment variabl
         kafka:
             type: confluentkafka_output
             topic: producer
-            error_topic: producer_error
             flush_timeout: 30
             send_timeout: 2
             kafka_config:
@@ -225,6 +223,7 @@ from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFac
 from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
     DEFAULT_LOG_CONFIG,
+    DEFAULT_MESSAGE_BACKLOG_SIZE,
     DEFAULT_RESTART_COUNT,
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
 )
@@ -527,6 +526,14 @@ class Configuration:
     Output connector configuration. Defaults to :code:`{}`.
     For detailed configurations see :ref:`output`.
     """
+    error_output: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
+    """
+    Error output connector configuration. Defaults to :code:`{}`.
+    This is optional. If no error output is configured, logprep will not handle events that
+    could not be processed by the pipeline, not parsed correctly by input connectors or not
+    stored correctly by output connectors.
+    For detailed configurations see :ref:`output`.
+    """
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)
     """
     Pipeline configuration. Defaults to :code:`[]`.
@@ -568,6 +575,10 @@ class Configuration:
     """Start the profiler to profile the pipeline. Defaults to :code:`False`."""
     print_auto_test_stack_trace: bool = field(default=False, eq=False)
     """Print stack trace when auto test fails. Defaults to :code:`False`."""
+    error_backlog_size: int = field(
+        validator=validators.instance_of(int), default=DEFAULT_MESSAGE_BACKLOG_SIZE, eq=False
+    )
+    """Size of the error backlog. Defaults to :code:`15000`."""
 
     _getter: Getter = field(
         validator=validators.instance_of(Getter),
@@ -822,6 +833,12 @@ class Configuration:
             errors.append(RequiredConfigurationKeyMissingError("output"))
         else:
             for output_name, output_config in self.output.items():
+                try:
+                    Factory.create({output_name: output_config})
+                except Exception as error:  # pylint: disable=broad-except
+                    errors.append(error)
+        if self.error_output:
+            for output_name, output_config in self.error_output.items():
                 try:
                     Factory.create({output_name: output_config})
                 except Exception as error:  # pylint: disable=broad-except
