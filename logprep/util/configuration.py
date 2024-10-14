@@ -579,6 +579,9 @@ class Configuration:
         validator=validators.instance_of(int), default=DEFAULT_MESSAGE_BACKLOG_SIZE, eq=False
     )
     """Size of the error backlog. Defaults to :code:`15000`."""
+    component_queue_listener_implementation: str = field(
+        validator=validators.in_(("threading", "multiprocessing")), default="threading", eq=False
+    )
 
     _getter: Getter = field(
         validator=validators.instance_of(Getter),

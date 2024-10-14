@@ -204,7 +204,10 @@ class PipelineManager:
             multiprocessing.get_context(), self._configuration.error_backlog_size
         )
         self._error_listener = ComponentQueueListener(
-            self.error_queue, "store", self._configuration.error_output
+            self.error_queue,
+            "store",
+            self._configuration.error_output,
+            implementation=self._configuration.component_queue_listener_implementation,
         )
         self._error_listener.start()
         # wait for the error listener to be ready before starting the pipelines
