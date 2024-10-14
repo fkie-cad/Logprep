@@ -140,13 +140,10 @@ class OpensearchOutput(Output):
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
 
-    __slots__ = ["_message_backlog", "_failed", "_succeeded"]
+    __slots__ = ["_message_backlog", "_failed"]
 
     _failed: List
     """Temporary list of failed messages."""
-
-    _succeeded: List
-    """Temporary list of succeeded messages."""
 
     _message_backlog: List
     """List of messages to be sent to Opensearch."""
@@ -203,28 +200,16 @@ class OpensearchOutput(Output):
             verify_certs=True,  # default is True, but we want to be explicit
             timeout=self._config.timeout,
             serializer=MSGPECSerializer(self),
-            pool_maxsize=20,
             max_retries=self._config.max_retries,
+            pool_maxsize=10,
             # default for connection pooling is 10 see:
             # https://github.com/opensearch-project/opensearch-py/blob/main/guides/connection_classes.md
-        )
-
-    @cached_property
-    def _replace_pattern(self):
-        return re.compile(r"%{\S+?}")
-
-    @cached_property
-    def _size_error_pattern(self):
-        return re.compile(
-            r".*coordinating_operation_bytes=(?P<size>\d+), "
-            r"max_coordinating_and_primary_bytes=(?P<max_size>\d+).*"
         )
 
     def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
         super().__init__(name, configuration)
         self._message_backlog = []
         self._failed = []
-        self._succeeded = []
 
     def setup(self):
         super().setup()
@@ -299,7 +284,6 @@ class OpensearchOutput(Output):
         finally:
             self._message_backlog.clear()
             self._failed.clear()
-            self._succeeded.clear()
 
     def _bulk(self, client, actions, *args, **kwargs) -> Optional[List[dict]]:
         """Bulk index documents into Opensearch.
@@ -313,17 +297,15 @@ class OpensearchOutput(Output):
             "raise_on_error": False,
             "raise_on_exception": False,
         }
-        succeeded, failed = self._succeeded, self._failed
-        for index, result in enumerate(helpers.parallel_bulk(client, actions, **kwargs)):
+        failed = self._failed
+        for result in helpers.parallel_bulk(client, actions, **kwargs):
             success, item = result
-            if logger.isEnabledFor(logging.DEBUG):
-                if success:
-                    succeeded.append(item)
-            if not success:
-                failed.append({"errors": item, "event": actions[index]})
-        if succeeded and logger.isEnabledFor(logging.DEBUG):
-            for item in succeeded:
-                logger.debug("Document indexed: %s", item)
+            if success:
+                continue
+            error_result = item.get(self._config.default_op_type)
+            data = error_result.get("data", "None")
+            error = error_result.get("error", "None")
+            failed.append({"errors": error, "event": data})
         if failed:
             raise CriticalOutputError(self, "failed to index", failed)
 

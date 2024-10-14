@@ -171,18 +171,14 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             self.object._write_backlog()
         assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
 
-    def test_write_backlog_clears_failed_and_succeeded_on_success(self):
+    def test_write_backlog_clears_failed_on_success(self):
         self.object._message_backlog = [{"some": "event"}]
-        self.object._succeeded = [{"some": "event"}]
         self.object._write_backlog()
         assert len(self.object._failed) == 0, "temporary failed backlog should be cleared"
-        assert len(self.object._succeeded) == 0, "temporary succeeded backlog should be cleared"
 
-    def test_write_backlog_clears_failed_and_succeeded_on_failure(self):
+    def test_write_backlog_clears_failed_on_failure(self):
         self.object._message_backlog = [{"some": "event"}]
         self.object._failed = [{"some": "event"}]
-        self.object._succeeded = [{"some": "event"}]
         with pytest.raises(CriticalOutputError):
             self.object._write_backlog()
         assert len(self.object._failed) == 0, "temporary failed backlog should be cleared"
-        assert len(self.object._succeeded) == 0, "temporary succeeded backlog should be cleared"
