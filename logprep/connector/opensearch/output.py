@@ -270,11 +270,7 @@ class OpensearchOutput(Output):
             return
         logger.debug("Flushing %d documents to Opensearch", len(self._message_backlog))
         try:
-            self._bulk(
-                self._search_context,
-                self._message_backlog,
-                chunk_size=len(self._message_backlog),
-            )
+            self._bulk(self._search_context, self._message_backlog)
         except CriticalOutputError as error:
             raise error from error
         except Exception as error:  # pylint: disable=broad-except
