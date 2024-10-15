@@ -298,13 +298,13 @@ class OpensearchOutput(Output):
             "raise_on_exception": False,
         }
         failed = self._failed
-        for result in helpers.parallel_bulk(client, actions, **kwargs):
+        for index, result in enumerate(helpers.parallel_bulk(client, actions, **kwargs)):
             success, item = result
             if success:
                 continue
             error_result = item.get(self._config.default_op_type)
-            data = error_result.get("data", "None")
-            error = error_result.get("error", "None")
+            error = error_result.get("error", "Failed to index document")
+            data = actions[index]
             failed.append({"errors": error, "event": data})
         if failed:
             raise CriticalOutputError(self, "failed to index", failed)
