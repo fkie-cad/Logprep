@@ -32,15 +32,15 @@ class TestJsonInput(BaseInputTestCase):
     def test_get_next_returns_document(self, mock_parse):
         mock_parse.return_value = [{"message": "test_message"}]
         expected = {"message": "test_message"}
-        document, _ = self.object.get_next(self.timeout)
+        document = self.object.get_next(self.timeout)
         assert document == expected
 
     @mock.patch(parse_function)
     def test_get_next_returns_multiple_documents(self, mock_parse):
         mock_parse.return_value = [{"order": 0}, {"order": 1}]
-        event, _ = self.object.get_next(self.timeout)
+        event = self.object.get_next(self.timeout)
         assert {"order": 0} == event
-        event, _ = self.object.get_next(self.timeout)
+        event = self.object.get_next(self.timeout)
         assert {"order": 1} == event
 
     @mock.patch(parse_function)
@@ -53,19 +53,19 @@ class TestJsonInput(BaseInputTestCase):
     def test_raises_exception_if_one_element_is_not_a_dict(self, mock_parse):
         mock_parse.return_value = [{"order": 0}, "not a dict", {"order": 1}]
         with pytest.raises(CriticalInputError, match=r"not a dict"):
-            _, _ = self.object.get_next(self.timeout)
-            _, _ = self.object.get_next(self.timeout)
-            _, _ = self.object.get_next(self.timeout)
+            _ = self.object.get_next(self.timeout)
+            _ = self.object.get_next(self.timeout)
+            _ = self.object.get_next(self.timeout)
 
     @mock.patch(parse_function)
     def test_repeat_documents_repeats_documents(self, mock_parse):
         config = copy.deepcopy(self.CONFIG)
         config["repeat_documents"] = True
         mock_parse.return_value = [{"order": 0}, {"order": 1}, {"order": 2}]
-        object = Factory.create(configuration={"Test Instance Name": config})
+        connector = Factory.create(configuration={"Test Instance Name": config})
 
         for order in range(0, 9):
-            event, _ = object.get_next(self.timeout)
+            event = connector.get_next(self.timeout)
             assert event.get("order") == order % 3
 
     @pytest.mark.skip(reason="not implemented")

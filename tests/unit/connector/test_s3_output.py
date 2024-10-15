@@ -43,7 +43,6 @@ class TestS3Output(BaseOutputTestCase):
     expected_metrics = [
         "logprep_processing_time_per_event",
         "logprep_number_of_processed_events",
-        "logprep_number_of_failed_events",
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
         "logprep_number_of_successful_writes",
@@ -113,35 +112,6 @@ class TestS3Output(BaseOutputTestCase):
 
         s3_output.store_custom(event, custom_prefix)
         assert s3_output._message_backlog[custom_prefix][0] == expected
-
-    @pytest.mark.parametrize("base_prefix", base_prefix_tests_cases)
-    def test_store_failed(self, base_prefix):
-        error_prefix = f"{base_prefix}/error_prefix" if base_prefix else "error_prefix"
-        event_received = {"field": "received"}
-        event = {"field": "content"}
-        error_message = "error message"
-        expected = {
-            "error": error_message,
-            "original": event_received,
-            "processed": event,
-            "@timestamp": str(datetime.now()),
-        }
-        s3_config = deepcopy(self.CONFIG)
-        s3_config.update({"error_prefix": error_prefix, "message_backlog_size": 2})
-        s3_output = Factory.create({"s3": s3_config})
-
-        s3_output.store_failed(error_message, event_received, event)
-
-        error_document = s3_output._message_backlog[error_prefix][0]
-        # timestamp is compared to be approximately the same,
-        # since it is variable and then removed to compare the rest
-        error_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
-        expected_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
-        assert isclose(error_time, expected_time)
-        del error_document["@timestamp"]
-        del expected["@timestamp"]
-
-        assert error_document == expected
 
     def test_create_s3_building_prefix_with_invalid_json(self):
         expected = {"reason": "A reason for failed prefix"}
@@ -234,12 +204,6 @@ class TestS3Output(BaseOutputTestCase):
         self.object._s3_resource = mock.MagicMock()
         super().test_store_counts_processed_events()
 
-    def test_store_calls_batch_finished_callback(self):
-        self.object._s3_resource = mock.MagicMock()
-        self.object.input_connector = mock.MagicMock()
-        self.object.store({"message": "my event message"})
-        self.object.input_connector.batch_finished_callback.assert_called()
-
     def test_store_does_not_call_batch_finished_callback_if_disabled(self):
         s3_config = deepcopy(self.CONFIG)
         s3_config.update({"call_input_callback": False})
@@ -275,10 +239,6 @@ class TestS3Output(BaseOutputTestCase):
         ) as mock_backlog_size:
             self.object._write_backlog()
             mock_backlog_size.assert_not_called()
-
-    def test_store_failed_counts_failed_events(self):
-        self.object._write_backlog = mock.MagicMock()
-        super().test_store_failed_counts_failed_events()
 
     def test_setup_registers_flush_timeout_tasks(self):
         job_count = len(self.object._scheduler.jobs)

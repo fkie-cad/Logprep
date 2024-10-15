@@ -94,7 +94,7 @@ process
 
 This method is implemented in the :py:class:`~logprep.abc.processor.Processor` and is called for every log message. 
 To process the event it invokes the processors `apply_rules` method.
-If you want to do somthing to the event after all rules have been applied, then you could overwrite this method and implement your code after calling the `super().process(event)`.
+If you want to do something to the event after all rules have been applied, then you could overwrite this method and implement your code after calling the `super().process(event)`.
 The log message is being passed as a dictionary and modified 'in place', meaning that modifications are being performed directly on the input event.
 
 .. code-block:: python 
@@ -112,11 +112,14 @@ The log message is being passed as a dictionary and modified 'in place', meaning
 Exceptions/Error Handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An exception should be thrown if an error occurs during the processing of a log message.
-All exceptions are being logged and should return a helpful error message with `str(exception)`.
-Exceptions derived from `ProcessorWarningError` have no impact on the operation of the processor.
+An exception should not been thrown on processor level. Instead it should be added to
+the :py:class:`~logprep.abc.processor.ProcessorResult` if an error occurs during the processing of a log message.
+All exceptions are being logged in :py:class:`~logprep.framework.pipeline.Pipeline` and should provide a helpful
+error message with `str(exception)`. You do not have to log the exception in the processor itself.
+Exceptions derived from :py:class:`~logprep.processor.base.exceptions.ProcessingWarning` have no impact on the
+operation of the processor.
 Other exceptions stop the processing of a log message.
-However, the log message will be separately stored as failed (see :ref:`connector_output`, `store_failed``).
+However, the log message will be separately stored as failed (see :ref:`error_output`).
 
 
 Metrics

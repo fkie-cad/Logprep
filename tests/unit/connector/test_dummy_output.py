@@ -77,13 +77,3 @@ class TestDummyOutput(BaseOutputTestCase):
         with raises(Exception, match="FatalOutputError"):
             dummy_output.store({"order": 1})
         dummy_output.store({"order": 2})
-
-    def test_stores_failed_events_in_respective_list(self):
-        self.object.store_failed("message", {"doc": "received"}, {"doc": "processed"})
-
-        assert len(self.object.failed_events) == 1
-        assert self.object.failed_events[0] == (
-            "message",
-            {"doc": "received"},
-            {"doc": "processed"},
-        )

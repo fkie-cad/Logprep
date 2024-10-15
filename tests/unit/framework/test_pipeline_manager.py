@@ -1,15 +1,24 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+# pylint: disable=unnecessary-lambda-assignment
 import multiprocessing
+import random
+import threading
 from copy import deepcopy
 from logging import Logger
 from logging.config import dictConfig
 from unittest import mock
 
+import pytest
+
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
-from logprep.framework.pipeline_manager import PipelineManager, ThrottlingQueue
+from logprep.framework.pipeline_manager import (
+    ComponentQueueListener,
+    PipelineManager,
+    ThrottlingQueue,
+)
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
@@ -144,7 +153,7 @@ class TestPipelineManager:
             manager.stop()
             prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
 
-    def test_prometheus_exporter_is_instanciated_if_metrics_enabled(self):
+    def test_prometheus_exporter_is_instantiated_if_metrics_enabled(self):
         config = deepcopy(self.config)
         config.metrics = MetricsConfig(enabled=True, port=8000)
         with mock.patch("logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing"):
@@ -277,6 +286,75 @@ class TestPipelineManager:
         manager.stop()
         manager.loghandler.stop.assert_called()
 
+    def test_setup_error_queue_sets_error_queue_and_starts_listener(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue") as mock_queue:
+                mock_queue.get.return_value = "not null"
+                manager = PipelineManager(self.config)
+        assert manager.error_queue is not None
+        assert manager._error_listener is not None
+        manager._error_listener.start.assert_called()  # pylint: disable=no-member
+
+    def test_setup_does_not_sets_error_queue_if_no_error_output(self):
+        self.config.error_output = {}
+        manager = PipelineManager(self.config)
+        assert manager.error_queue is None
+        assert manager._error_listener is None
+
+    def test_setup_error_queue_raises_system_exit_if_error_listener_fails(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue.get") as mock_get:
+                mock_get.return_value = None
+                with pytest.raises(SystemExit, match="4"):
+                    PipelineManager(self.config)
+
+    def test_stop_calls_stop_on_error_listener(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue.get") as mock_get:
+                mock_get.return_value = "not None"
+                manager = PipelineManager(self.config)
+                manager.stop()
+        manager._error_listener.stop.assert_called()  # pylint: disable=no-member
+
+    def test_restart_with_error_output_calls_pipeline_with_error_queue(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("multiprocessing.Process"):
+            with mock.patch("logprep.framework.pipeline_manager.Pipeline") as mock_pipeline:
+                with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+                    with mock.patch(
+                        "logprep.framework.pipeline_manager.ThrottlingQueue.get"
+                    ) as mock_get:
+                        mock_get.return_value = "not None"
+                        manager = PipelineManager(self.config)
+                        manager.restart()
+        mock_pipeline.assert_called()
+        mock_pipeline.assert_called_with(
+            pipeline_index=3,  # last call index
+            config=manager._configuration,
+            error_queue=manager.error_queue,
+        )
+
+    def test_restart_without_error_output_calls_pipeline_with_error_queue(self):
+        self.config.error_output = {}
+        with mock.patch("multiprocessing.Process"):
+            with mock.patch("logprep.framework.pipeline_manager.Pipeline") as mock_pipeline:
+                with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
+                    with mock.patch(
+                        "logprep.framework.pipeline_manager.ThrottlingQueue.get"
+                    ) as mock_get:
+                        mock_get.return_value = "not None"
+                        manager = PipelineManager(self.config)
+                        manager.restart()
+        mock_pipeline.assert_called()
+        mock_pipeline.assert_called_with(
+            pipeline_index=3,  # last call index
+            config=manager._configuration,
+            error_queue=None,
+        )
+
 
 class TestThrottlingQueue:
 
@@ -314,3 +392,229 @@ class TestThrottlingQueue:
             with mock.patch.object(queue, "qsize", return_value=95):
                 queue.throttle()
             assert mock_sleep.call_args[0][0] > first_sleep_time
+
+
+class TestComponentQueueListener:
+
+    @pytest.mark.parametrize(
+        "parameters, error",
+        [
+            (
+                {
+                    "config": {"random_name": {"type": "dummy_output"}},
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": "random",
+                },
+                None,
+            ),
+            (
+                {
+                    "config": {"random_name": {"type": "dummy_output"}},
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": "random",
+                    "sentinel": object(),
+                },
+                None,
+            ),
+            (
+                {
+                    "config": {"random_name": {"type": "dummy_output"}},
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": "random",
+                    "sentinel": object(),
+                    "implementation": "threading",
+                },
+                None,
+            ),
+            (
+                {
+                    "config": {"random_name": {"type": "dummy_output"}},
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": "random",
+                    "sentinel": object(),
+                    "implementation": "multiprocessing",
+                },
+                None,
+            ),
+            (
+                {
+                    "config": {"random_name": {"type": "dummy_output"}},
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": lambda x: x,
+                },
+                TypeError,
+            ),
+            (
+                {
+                    "config": {"random_name": {"type": "dummy_output"}},
+                    "queue": "I am not a queue",
+                    "target": "random",
+                },
+                TypeError,
+            ),
+            (
+                {
+                    "config": "I am not a config",
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": "random",
+                },
+                TypeError,
+            ),
+        ],
+    )
+    def test_sets_parameters(self, parameters, error):
+        if error:
+            with pytest.raises(error):
+                ComponentQueueListener(**parameters)
+        else:
+            ComponentQueueListener(**parameters)
+
+    def test_init_sets_thread_but_does_not_start_it(self):
+        target = "store"
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        output_config = {"random_name": {"type": "dummy_output"}}
+        listener = ComponentQueueListener(queue, target, output_config)
+        assert listener._instance is not None
+        assert isinstance(listener._instance, threading.Thread)
+        assert not listener._instance.is_alive()
+
+    def test_init_sets_process_target(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        with mock.patch("threading.Thread") as thread_mock:
+            listener = ComponentQueueListener(queue, target, output_config)
+        thread_mock.assert_called_with(target=listener._listen, daemon=True)
+
+    def test_start_starts_thread(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = ComponentQueueListener(queue, target, output_config)
+        with mock.patch.object(listener._instance, "start") as mock_start:
+            listener.start()
+        mock_start.assert_called()
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.ComponentQueueListener._get_component_instance",
+        new=mock.MagicMock(),
+    )
+    def test_sentinel_breaks_while_loop(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = ComponentQueueListener(queue, target, output_config)
+        listener.queue.put(listener.sentinel)
+        with mock.patch("logging.Logger.debug") as mock_debug:
+            listener._listen()
+        mock_debug.assert_called_with("Got sentinel. Stopping listener.")
+
+    def test_stop_injects_sentinel(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        with mock.patch("threading.Thread"):
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            listener = ComponentQueueListener(queue, target, output_config)
+            with mock.patch.object(queue, "put") as mock_put:
+                listener.stop()
+            mock_put.assert_called_with(listener.sentinel)
+
+    def test_stop_joins_process(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        with mock.patch("threading.Thread"):
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            listener = ComponentQueueListener(queue, target, output_config)
+            listener.stop()
+            listener._instance.join.assert_called()
+
+    def test_listen_calls_target(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.store") as mock_store:
+            listener = ComponentQueueListener(queue, target, output_config)
+            listener.queue.put("test")
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_store.assert_called_with("test")
+
+    def test_listen_creates_component(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        listener = ComponentQueueListener(queue, target, output_config)
+        with mock.patch("logprep.factory.Factory.create") as mock_create:
+            listener.queue.put("test")
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_create.assert_called_with(output_config)
+
+    def test_listen_setups_component(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        listener = ComponentQueueListener(queue, target, output_config)
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as mock_setup:
+            listener.queue.put("test")
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_setup.assert_called()
+
+    def test_get_component_instance_raises_if_setup_not_successful(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = ComponentQueueListener(queue, target, output_config)
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as mock_setup:
+            mock_setup.side_effect = SystemExit(4)
+            with pytest.raises(SystemExit, match="4"):
+                listener._listen()
+
+    def test_listen_calls_component_shutdown_by_injecting_sentinel(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        listener = ComponentQueueListener(queue, target, output_config)
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.shut_down") as mock_shutdown:
+            listener.queue.put("test")
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_shutdown.assert_called()
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.ComponentQueueListener._get_component_instance",
+        new=mock.MagicMock(),
+    )
+    def test_listen_drains_queue_on_shutdown(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = multiprocessing.Queue()
+        listener = ComponentQueueListener(queue, target, output_config)
+        listener.queue.put(listener.sentinel)
+        listener.queue.put("test")
+        listener._listen()
+        assert listener.queue.qsize() == 0
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.ComponentQueueListener._get_component_instance",
+        new=mock.MagicMock(),
+    )
+    def test_listen_ensures_error_queue_is_closed_after_drained(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = ComponentQueueListener(queue, target, output_config)
+        random_number = random.randint(10, 50)
+        listener.queue.put(listener.sentinel)
+        for _ in range(random_number):
+            listener.queue.put("test")
+        while not listener.queue.qsize() == random_number + 1:
+            pass
+        listener._listen()
+        with pytest.raises(ValueError, match="is closed"):
+            listener.queue.put("test")
