@@ -1,0 +1,13 @@
+filter: 'winlog.event_data.param2: "pause"'
+labeler:
+  label:
+    action:
+      - terminate
+description: "..."
+---
+filter: 'winlog.event_data.param2: "dada"'
+labeler:
+  label:
+    action:
+      - terminate
+description: "..."

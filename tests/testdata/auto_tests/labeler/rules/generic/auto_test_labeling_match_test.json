@@ -5,7 +5,11 @@
     },
     "processed": {
       "some_field": "stop",
-      "label": {"action": ["terminate"]}
+      "label": {
+        "action": [
+          "terminate"
+        ]
+      }
     }
   },
   {
@@ -14,7 +18,11 @@
     },
     "processed": {
       "some_field": "end",
-      "label": {"action": ["terminate"]}
+      "label": {
+        "action": [
+          "terminate"
+        ]
+      }
     }
   }
 ]
