@@ -76,7 +76,7 @@ class ComponentQueueListener:
     sentinel: Any = field(default=None)
     """The sentinel object to stop the process. This has to implement identity comparison."""
 
-    _instance: multiprocessing.Process = field(init=False)
+    _instance: multiprocessing.Process | threading.Thread = field(init=False)
     """The process that is forked to listen to the queue."""
 
     _implementation: str = field(
