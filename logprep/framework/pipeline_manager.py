@@ -96,7 +96,7 @@ class ComponentQueueListener:
         logger.debug("Starting listener with target: %s", self.target)
         self._instance.start()
 
-    def _get_component_instance(self):
+    def get_component_instance(self):
         component = Factory.create(self.config)
         try:
             component.setup()
@@ -111,7 +111,7 @@ class ComponentQueueListener:
         return component
 
     def _listen(self):
-        component = self._get_component_instance()
+        component = self.get_component_instance()
         target = getattr(component, self.target)
         while 1:
             item = self.queue.get()
@@ -331,7 +331,13 @@ class PipelineManager:
             error_queue=self.error_queue,
         )
         if pipeline.pipeline_index == 1 and self.prometheus_exporter:
-            self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
+            if self._error_listener:
+                error_output_healthcheck = self._error_listener.get_component_instance().health
+                self.prometheus_exporter.update_healthchecks(
+                    [error_output_healthcheck, *pipeline.get_health_functions()]
+                )
+            else:
+                self.prometheus_exporter.update_healthchecks(pipeline.get_health_functions())
         process = multiprocessing.Process(
             target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )

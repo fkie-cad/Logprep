@@ -496,7 +496,7 @@ class TestComponentQueueListener:
         mock_start.assert_called()
 
     @mock.patch(
-        "logprep.framework.pipeline_manager.ComponentQueueListener._get_component_instance",
+        "logprep.framework.pipeline_manager.ComponentQueueListener.get_component_instance",
         new=mock.MagicMock(),
     )
     def test_sentinel_breaks_while_loop(self):
@@ -564,7 +564,7 @@ class TestComponentQueueListener:
             listener._listen()
         mock_setup.assert_called()
 
-    def test_get_component_instance_raises_if_setup_not_successful(self):
+    def testget_component_instance_raises_if_setup_not_successful(self):
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
@@ -587,7 +587,7 @@ class TestComponentQueueListener:
         mock_shutdown.assert_called()
 
     @mock.patch(
-        "logprep.framework.pipeline_manager.ComponentQueueListener._get_component_instance",
+        "logprep.framework.pipeline_manager.ComponentQueueListener.get_component_instance",
         new=mock.MagicMock(),
     )
     def test_listen_drains_queue_on_shutdown(self):
@@ -601,7 +601,7 @@ class TestComponentQueueListener:
         assert listener.queue.qsize() == 0
 
     @mock.patch(
-        "logprep.framework.pipeline_manager.ComponentQueueListener._get_component_instance",
+        "logprep.framework.pipeline_manager.ComponentQueueListener.get_component_instance",
         new=mock.MagicMock(),
     )
     def test_listen_ensures_error_queue_is_closed_after_drained(self):
