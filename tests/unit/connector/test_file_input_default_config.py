@@ -149,7 +149,7 @@ class TestFileInput(BaseInputTestCase):
     def test_log_from_file_with_get_next(self):
         wait_for_interval(CHECK_INTERVAL)
         get_next_log_line = self.object.get_next(timeout=0.001)
-        assert get_next_log_line[0].get("message") == test_initial_log_data[0]
+        assert get_next_log_line.get("message") == test_initial_log_data[0]
 
     def test_log_from_file_is_put_in_queue(self):
         wait_for_interval(CHECK_INTERVAL)

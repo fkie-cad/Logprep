@@ -54,6 +54,9 @@ spec:
             - output-config.yaml
             - logger-config.yaml
             - exporter-config.yaml
+            {{- if .Values.error_output }}
+            - error-output-config.yaml
+            {{- end }}
           env:
             {{- if eq .Values.logger.level "DEBUG" }}
             - name: DEBUG # to get python stacktrace on error
@@ -103,6 +106,11 @@ spec:
             - name: output-config
               mountPath: /home/logprep/output-config.yaml
               subPath: output-config.yaml
+            {{- if .Values.error_output }}
+            - name: error-output-config
+              mountPath: /home/logprep/error-output-config.yaml
+              subPath: error-output-config.yaml
+            {{- end }}
             {{- if .Values.extraMounts }}
             {{- toYaml .Values.extraMounts | nindent 12 }}
             {{- end }}
@@ -155,6 +163,11 @@ spec:
         - name: output-config
           configMap:
             name: {{ include "logprep.fullname" . }}-output
+        {{- if .Values.error_output }}
+        - name: error-output-config
+          configMap:
+            name: {{ include "logprep.fullname" . }}-error-output
+        {{- end }}
         {{- if .Values.artifacts }}
         - name: artifacts
           configMap:

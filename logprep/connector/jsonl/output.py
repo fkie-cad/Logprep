@@ -19,7 +19,6 @@ Example
 """
 
 import json
-from logging import Logger
 
 from attrs import define, field, validators
 
@@ -45,7 +44,6 @@ class JsonlOutput(Output):
 
         output_file = field(validator=validators.instance_of(str))
         output_file_custom = field(validator=validators.instance_of(str), default="")
-        output_file_error = field(validator=validators.instance_of(str), default="")
 
     last_timeout: float
     events: list
@@ -67,8 +65,6 @@ class JsonlOutput(Output):
         open(self._config.output_file, "a+", encoding="utf8").close()
         if self._config.output_file_custom:
             open(self._config.output_file_custom, "a+", encoding="utf8").close()
-        if self._config.output_file_error:
-            open(self._config.output_file_error, "a+", encoding="utf8").close()
 
     @staticmethod
     def _write_json(filepath: str, line: dict):
@@ -80,8 +76,6 @@ class JsonlOutput(Output):
         self.events.append(document)
         JsonlOutput._write_json(self._config.output_file, document)
         self.metrics.number_of_processed_events += 1
-        if self.input_connector:
-            self.input_connector.batch_finished_callback()
 
     def store_custom(self, document: dict, target: str):
         document = {target: document}
@@ -90,17 +84,3 @@ class JsonlOutput(Output):
         if self._config.output_file_custom:
             JsonlOutput._write_json(self._config.output_file_custom, document)
         self.metrics.number_of_processed_events += 1
-
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
-        self.metrics.number_of_failed_events += 1
-        self.failed_events.append((error_message, document_received, document_processed))
-
-        if self._config.output_file_error:
-            JsonlOutput._write_json(
-                self._config.output_file_error,
-                {
-                    "error_message": error_message,
-                    "document_received": document_received,
-                    "document_processed": document_processed,
-                },
-            )

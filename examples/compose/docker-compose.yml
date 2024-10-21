@@ -1,5 +1,3 @@
-version: "3.9"
-
 # The following command must be executed after each restart on linux or opensearch exits with an error
 # sudo sysctl -w vm.max_map_count=262144
 

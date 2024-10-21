@@ -41,8 +41,8 @@ from logprep.util.helper import add_field_to, get_dotted_field_value
 class GenericResolverError(ProcessingCriticalError):
     """Base class for GenericResolver related exceptions."""
 
-    def __init__(self, name: str, message: str, rule: GenericResolverRule, event: dict):
-        super().__init__(f"{name}: {message}", rule=rule, event=event)
+    def __init__(self, name: str, message: str, rule: GenericResolverRule):
+        super().__init__(f"{name}: {message}", rule=rule)
 
 
 class GenericResolver(FieldManager):
@@ -82,7 +82,6 @@ class GenericResolver(FieldManager):
                             self.name,
                             "Mapping group is missing in mapping file pattern!",
                             rule=rule,
-                            event=event,
                         )
                     dest_val = replacements.get(mapping)
                     if dest_val:
@@ -151,12 +150,10 @@ class GenericResolver(FieldManager):
                             f'\'{rule.resolve_from_file["path"]}\''
                             f" must be a dictionary with string values!",
                             rule=rule,
-                            event=None,
                         )
                 except FileNotFoundError as error:
                     raise GenericResolverError(
                         self.name,
                         f'Additions file \'{rule.resolve_from_file["path"]}' f"' not found!",
                         rule=rule,
-                        event=None,
                     ) from error

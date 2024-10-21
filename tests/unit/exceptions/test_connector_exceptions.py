@@ -44,6 +44,20 @@ class TestCriticalOutputError(ExceptionBaseTest):
         self.object = Factory.create({"test connector": {"type": "dummy_output", "default": False}})
         self.exception_args = (self.object, "the error message", b"raw input")
 
+    def test_init_copies_raw_input(self):
+        self.object = Factory.create({"test connector": {"type": "dummy_output", "default": False}})
+        raw_input = {"key": "value"}
+        exception = self.exception(self.object, "the error message", raw_input)
+        assert exception.raw_input == raw_input
+        assert exception.raw_input is not raw_input
+
+    def test_init_deepcopy_raw_input(self):
+        self.object = Factory.create({"test connector": {"type": "dummy_output", "default": False}})
+        raw_input = [{"key": "value"}, {"key": {"key": "value"}}]
+        exception = self.exception(self.object, "the error message", raw_input)
+        assert exception.raw_input == raw_input
+        assert exception.raw_input is not raw_input
+
 
 class TestOutputError(ExceptionBaseTest):
     exception = OutputError
@@ -92,6 +106,20 @@ class TestCriticalInputError(ExceptionBaseTest):
         self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
         self.exception_args = (self.object, "the error message", b"raw input")
 
+    def test_init_copies_raw_input(self):
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
+        raw_input = {"key": "value"}
+        exception = self.exception(self.object, "the error message", raw_input)
+        assert exception.raw_input == raw_input
+        assert exception.raw_input is not raw_input
+
+    def test_init_deepcopy_raw_input(self):
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
+        raw_input = [{"key": "value"}, {"key": {"key": "value"}}]
+        exception = self.exception(self.object, "the error message", raw_input)
+        assert exception.raw_input == raw_input
+        assert exception.raw_input is not raw_input
+
 
 class TestCriticalInputParsingError(ExceptionBaseTest):
     exception = CriticalInputParsingError
@@ -103,6 +131,20 @@ class TestCriticalInputParsingError(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
         self.exception_args = (self.object, "the error message", b"raw input")
+
+    def test_init_copies_raw_input(self):
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
+        raw_input = {"key": "value"}
+        exception = self.exception(self.object, "the error message", raw_input)
+        assert exception.raw_input == raw_input
+        assert exception.raw_input is not raw_input
+
+    def test_init_deepcopy_raw_input(self):
+        self.object = Factory.create({"test connector": {"type": "dummy_input", "documents": []}})
+        raw_input = [{"key": "value"}, {"key": {"key": "value"}}]
+        exception = self.exception(self.object, "the error message", raw_input)
+        assert exception.raw_input == raw_input
+        assert exception.raw_input is not raw_input
 
 
 class TestFatalInputError(ExceptionBaseTest):

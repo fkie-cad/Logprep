@@ -213,7 +213,7 @@ class TestHttpConnector(BaseInputTestCase):
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
         requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
-        assert self.object.get_next(0.001) == (data, None)
+        assert self.object.get_next(0.001) == data
 
     def test_get_next_returns_first_in_first_out(self):
         data = [
@@ -223,9 +223,9 @@ class TestHttpConnector(BaseInputTestCase):
         ]
         for message in data:
             requests.post(url=self.target + "/json", json=message, timeout=0.5)
-        assert self.object.get_next(0.001) == (data[0], None)
-        assert self.object.get_next(0.001) == (data[1], None)
-        assert self.object.get_next(0.001) == (data[2], None)
+        assert self.object.get_next(0.001) == data[0]
+        assert self.object.get_next(0.001) == data[1]
+        assert self.object.get_next(0.001) == data[2]
 
     def test_get_next_returns_first_in_first_out_for_mixed_endpoints(self):
         data = [
@@ -239,12 +239,12 @@ class TestHttpConnector(BaseInputTestCase):
                 requests.post(url=self.target + "/json", json=post_data, timeout=0.5)
             if endpoint == "plaintext":
                 requests.post(url=self.target + "/plaintext", data=post_data, timeout=0.5)
-        assert self.object.get_next(0.001)[0] == data[0].get("data")
-        assert self.object.get_next(0.001)[0] == {"message": data[1].get("data")}
-        assert self.object.get_next(0.001)[0] == data[2].get("data")
+        assert self.object.get_next(0.001) == data[0].get("data")
+        assert self.object.get_next(0.001) == {"message": data[1].get("data")}
+        assert self.object.get_next(0.001) == data[2].get("data")
 
     def test_get_next_returns_none_for_empty_queue(self):
-        assert self.object.get_next(0.001)[0] is None
+        assert self.object.get_next(0.001) is None
 
     def test_server_returns_uvicorn_server_instance(self):
         assert isinstance(self.object.http_server.server, uvicorn.Server)
@@ -321,7 +321,7 @@ class TestHttpConnector(BaseInputTestCase):
                 "hmac": "f0221a62c4ea38a4cc3af176faba010212e0ce7e0052c71fe726cbf3cb03dfd1",
             },
         }
-        connector_next_msg, _ = connector.get_next(1)
+        connector_next_msg = connector.get_next(1)
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
 
     def test_endpoint_returns_401_if_authorization_not_provided(self, credentials_file_path):

@@ -23,7 +23,6 @@ output:
   kafka:
     type: confluentkafka_output
     topic: producer3
-    error_topic: producer_error3
     flush_timeout: 30
     send_timeout: 2
     kafka_config:

@@ -124,7 +124,7 @@ class TestRunLogprepCli:
 
     @mock.patch("logprep.util.configuration.Configuration._verify")
     def test_test_config_verifies_configuration_unsuccessfully(self, mock_verify):
-        mock_verify.side_effect = InvalidConfigurationError
+        mock_verify.side_effect = InvalidConfigurationError("test error")
         args = ["test", "config", "tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
@@ -224,7 +224,7 @@ class TestRunLogprepCli:
 
     def test_logprep_exits_on_invalid_configuration(self):
         with mock.patch("logprep.util.configuration.Configuration._verify") as mock_verify:
-            mock_verify.side_effect = InvalidConfigurationError
+            mock_verify.side_effect = InvalidConfigurationError("test error")
             config_path = "tests/testdata/config/config.yml"
             result = self.cli_runner.invoke(cli, ["run", config_path])
             assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
