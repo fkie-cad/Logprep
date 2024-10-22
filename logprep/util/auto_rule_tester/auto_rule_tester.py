@@ -737,7 +737,7 @@ class AutoRuleTester:
 
     @staticmethod
     def _get_rules_to_add(processor_cfg) -> list:
-        """Áccumulate rules depending on processor (config)
+        """Accumulate rules depending on processor (config)
 
         Parameters
         ----------
@@ -753,9 +753,10 @@ class AutoRuleTester:
 
         if processor_cfg.get("rules"):
             rules_to_add.append(("rules", processor_cfg["rules"]))
-        elif processor_cfg.get("generic_rules") and processor_cfg.get("specific_rules"):
+        elif (
+            processor_cfg.get("generic_rules") and processor_cfg.get("specific_rules")
+        ):
             rules_to_add.append(("generic_rules", processor_cfg["generic_rules"][0]))
             rules_to_add.append(("specific_rules", processor_cfg["specific_rules"][0]))
 
         return rules_to_add
-    
