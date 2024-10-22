@@ -137,7 +137,7 @@ class ProcessorExtensions:
         problems["warnings"].extend(id_warnings)
 
     def print_rules(self, rules, t_idx=None):
-        """Iterate through every printable and assign right processing resulting in 
+        """Iterate through every printable and assign right processing resulting in
         a coloured output
 
         Parameters
@@ -153,7 +153,7 @@ class ProcessorExtensions:
 
     @staticmethod
     def print_diff_test(key, rule, t_idx=None):
-        """Determine right processing for printable: no iterable, indexed and non 
+        """Determine right processing for printable: no iterable, indexed and non
         index queried iterable
 
         Parameters
