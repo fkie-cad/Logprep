@@ -47,23 +47,21 @@ Auto-testing does also perform a verification of the pipeline section of the Log
 
 import hashlib
 import json
-from pathlib import Path
 import re
 import sys
 import tempfile
 from collections import OrderedDict, defaultdict
+from collections.abc import Iterable
 from difflib import ndiff
 from logging import getLogger
 from os import path
+from pathlib import Path
 from pprint import pprint
-from typing import TYPE_CHECKING
-from collections.abc import Iterable
-
-from more_itertools import nth
+from typing import TYPE_CHECKING, Union
 
 from colorama import Fore
+from more_itertools import nth
 from ruamel.yaml import YAML, YAMLError
-from typing import Union
 
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -139,7 +137,8 @@ class ProcessorExtensions:
         problems["warnings"].extend(id_warnings)
 
     def print_rules(self, rules, t_idx=None):
-        """Iterate through every printable and assign right processing resulting in a coloured output
+        """Iterate through every printable and assign right processing resulting in 
+        a coloured output
 
         Parameters
         ----------
@@ -154,7 +153,8 @@ class ProcessorExtensions:
 
     @staticmethod
     def print_diff_test(key, rule, t_idx=None):
-        """Determine right processing for printable: no iterable, indexed and non index queried iterable
+        """Determine right processing for printable: no iterable, indexed and non 
+        index queried iterable
 
         Parameters
         ----------
@@ -230,7 +230,7 @@ class ProcessorExtensions:
                     return json.load(file)
 
         except (json.JSONDecodeError, YAMLError) as error:
-            raise ValueError(f"Error decoding {file_path}: {str(error)}")
+            raise ValueError(f"Error decoding {file_path}: {str(error)}") from error
 
 
 class AutoRuleTester:
@@ -284,7 +284,6 @@ class AutoRuleTester:
         """
         if any(processor_test_cfg["rules"] for processor_test_cfg in rules_pn.values()):
             self._run_tests_for_rules(rules_pn)
-            return
         else:
             print_fcolor(Fore.YELLOW, "~\nThere are no rules within any of the rules directories!")
 
@@ -409,7 +408,8 @@ class AutoRuleTester:
     def _prepare_test_eval(
         self, processor: "Processor", rule_dict: dict, rule_type: str, temp_rule_path: str
     ) -> None:
-        """Prepare test eval: Create rule file, then reset tree of processor and then load the rules for the processor
+        """Prepare test eval: Create rule file, then reset tree of processor and then load
+         the rules for the processor
 
         Parameters
         ----------
@@ -427,7 +427,8 @@ class AutoRuleTester:
         self._load_rules(processor, rule_type)
 
     def _eval_file_rule_test(self, rule_test: dict, processor: "Processor", r_idx: int):
-        """Main logic to check each rule file, compare and validate it, then print out results. For each processor a process is spawned.
+        """Main logic to check each rule file, compare and validate it, then print out results.
+         For each processor a process is spawned.
 
         Parameters
         ----------
@@ -455,7 +456,7 @@ class AutoRuleTester:
                         f"- Can't process RULE FILE {rule_test['file']}. No extra output generated"
                     )
                     sys.exit(1)
-            except BaseException as error:
+            except Exception:
                 self._success = False
                 self._result["- Failed Tests"] += 1
                 continue
@@ -552,7 +553,6 @@ class AutoRuleTester:
         """
         rule_tests = {"with tests": [], "without tests": []}
         for _, processor_test_cfg in rules_pn.items():
-            processor_type = processor_test_cfg["type"]
             rules = processor_test_cfg["rules"]
 
             for rule in rules:
