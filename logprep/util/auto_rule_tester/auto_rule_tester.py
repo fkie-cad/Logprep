@@ -758,4 +758,4 @@ class AutoRuleTester:
             rules_to_add.append(("specific_rules", processor_cfg["specific_rules"][0]))
 
         return rules_to_add
-    
+
