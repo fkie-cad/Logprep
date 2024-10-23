@@ -154,7 +154,6 @@ class LuceneFilter:
 
         """
         escaped_string = LuceneFilter._add_lucene_escaping(query_string)
-
         try:
             tree = parser.parse(escaped_string)
             transformer = LuceneTransformer(tree, special_fields)
@@ -238,37 +237,8 @@ class LuceneTransformer:
         for key in self._special_fields_map:
             self._special_fields[key] = special_fields.get(key) if special_fields.get(key) else []
 
-        if not self._special_fields["regex_fields"]:
-            self.recognize_regex_and_add_special_fields()
-        else:
-            # DEPRECATION: regex_fields are no longer necessary.
-            logger.warning(
-                "[Deprecation]: special_fields are no longer necessary. "
-                "Use Lucene regex annotation for filter. "
-            )
-
         self._last_search_field = None
 
-    def recognize_regex_and_add_special_fields(self):
-        """Recognize regex expressions in filter and add those fields to regex_fields."""
-        # for child in self._tree.children:
-        #     try:
-        #         value = child.children[0].value[1:-1]
-        #         if value.startswith("/") and value.endswith("/"):
-        #             self._special_fields["regex_fields"].append(child.name)
-        #             child.children[0].value = f'"{value[1:-1]}"'
-        #     except:
-        #         pass
-        for child in self._tree.children:
-            try:
-                for sub_child in child.children:
-                    value = getattr(sub_child, 'value')[1:-1]
-                    if value and value.startswith("/") and value.endswith("/"):
-                        self._special_fields["regex_fields"].append(child.name)
-                        sub_child.value = f'"{value.strip("/")}"'
-                        break
-            except Exception:
-                pass
 
     def build_filter(self) -> FilterExpression:
         """Transform luqum tree into FilterExpression
@@ -364,6 +334,12 @@ class LuceneTransformer:
             for sf_key, sf_value in self._special_fields.items():
                 if sf_value is True or dotted_field in sf_value:
                     return self._special_fields_map[sf_key](key, value)
+
+        # hier weiter
+        if value.startswith("/") and value.endswith("/"):
+            value = value[1:-1]
+            #return self._special_fields_map['regex_fields'](key, value)
+            return RegExFilterExpression(key, value)
         return StringFilterExpression(key, value)
 
     @staticmethod
