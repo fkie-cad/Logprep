@@ -120,7 +120,6 @@ class Processor(Component):
 
     __slots__ = [
         "rule_class",
-        "has_custom_tests",
         "_event",
         "_specific_tree",
         "_generic_tree",
@@ -130,7 +129,6 @@ class Processor(Component):
     ]
 
     rule_class: "Rule"
-    has_custom_tests: bool
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
@@ -155,7 +153,6 @@ class Processor(Component):
             generic_rules_targets=self._config.generic_rules,
             specific_rules_targets=self._config.specific_rules,
         )
-        self.has_custom_tests = False
         self.result = None
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
