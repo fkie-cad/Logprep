@@ -1,3 +1,6 @@
+# pylint: disable=protected-access
+# pylint: disable=broad-exception-caught
+# pylint: disable=missing-function-docstring)
 import logging
 import re
 from unittest import mock
