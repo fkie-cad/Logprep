@@ -330,12 +330,18 @@ class LuceneTransformer:
                 return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
 
         dotted_field = ".".join(key)
+
         if self._special_fields.items():
             for sf_key, sf_value in self._special_fields.items():
                 if sf_value is True or dotted_field in sf_value:
+                    if sf_key == 'regex_fields':
+                        logger.warning(
+                            "[Deprecated]: regex_fields are no longer necessary. "
+                            "Use Lucene regex annotation."
+                        )
+
                     return self._special_fields_map[sf_key](key, value)
 
-        # hier weiter
         if value.startswith("/") and value.endswith("/"):
             value = value.strip("/")
             return RegExFilterExpression(key, value)
