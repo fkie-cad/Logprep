@@ -54,7 +54,6 @@ class ProcessingError(LogprepException):
 
     def __init__(self, message: str, rule: "Rule"):
         rule.metrics.number_of_errors += 1
-        self.rule = rule
         super().__init__(f"{self.__class__.__name__}: {message}")
 
 
