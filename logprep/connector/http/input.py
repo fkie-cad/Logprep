@@ -439,10 +439,8 @@ class HttpInput(Input):
         """
 
         super().setup()
-        if not hasattr(self, "pipeline_index"):
-            raise FatalInputError(
-                self, "Necessary instance attribute `pipeline_index` could not be found."
-            )
+        if self.pipeline_index is None:
+            raise FatalInputError(self, "Necessary instance attribute `pipeline_index` is not set.")
         # Start HTTP Input only when in first process
         if self.pipeline_index != 1:
             return

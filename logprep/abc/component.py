@@ -55,10 +55,11 @@ class Component(ABC):
                     attribute.init_tracker()
 
     # __dict__ is added to support functools.cached_property
-    __slots__ = ["name", "_config", "__dict__"]
+    __slots__ = ["name", "_config", "pipeline_index", "__dict__"]
 
     # instance attributes
     name: str
+    pipeline_index: int
     _config: Config
 
     # class attributes
@@ -71,9 +72,10 @@ class Component(ABC):
         """Labels for the metrics"""
         return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
 
-    def __init__(self, name: str, configuration: "Component.Config"):
+    def __init__(self, name: str, configuration: "Component.Config", pipeline_index: int = None):
         self._config = configuration
         self.name = name
+        self.pipeline_index = pipeline_index
 
     @cached_property
     def metrics(self):

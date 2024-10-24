@@ -30,34 +30,27 @@ def setup_module():
 @pytest.mark.skipif(in_ci, reason="requires kafka")
 class TestKafkaConnection:
     def get_topic_partition_size(self, topic_partition: TopicPartition) -> int:
-        time.sleep(1)  # nosemgrep
+        time.sleep(1)
         consumer = Consumer(kafka_config | {"group.id": str(uuid.uuid4())})
         lowwater, highwater = consumer.get_watermark_offsets(topic_partition)
         consumer.close()
         return highwater - lowwater
 
     def wait_for_topic_creation(self):
-        while (
-            self.topic_name not in self.admin.list_topics().topics
-            and self.error_topic_name not in self.admin.list_topics().topics
-        ):
-            time.sleep(2)  # nosemgrep
+        while self.topic_name not in self.admin.list_topics().topics:
+            time.sleep(2)
 
     def setup_method(self):
         self.admin = AdminClient(kafka_config)
         self.topic_name = str(uuid.uuid4())
         self.topic = NewTopic(self.topic_name, num_partitions=1, replication_factor=1)
         self.topic_partition = TopicPartition(self.topic_name, 0)
-        self.error_topic_name = str(uuid.uuid4())
-        self.error_topic = NewTopic(self.error_topic_name, num_partitions=1, replication_factor=1)
-        self.error_topic_partition = TopicPartition(self.topic_name, 0)
-        self.admin.create_topics([self.topic, self.error_topic])
+        self.admin.create_topics([self.topic])
         self.wait_for_topic_creation()
 
         ouput_config = {
             "type": "confluentkafka_output",
             "topic": self.topic_name,
-            "error_topic": self.error_topic_name,
             "flush_timeout": 1,
             "kafka_config": {
                 "bootstrap.servers": "localhost:9092",

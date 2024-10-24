@@ -28,18 +28,18 @@ class TestDummyInput(BaseInputTestCase):
         config["documents"] = [{"order": 0}, {"order": 1}, {"order": 2}]
         self.object = Factory.create({"Test Instance Name": config})
         for order in range(0, 3):
-            event, _ = self.object.get_next(self.timeout)
+            event = self.object.get_next(self.timeout)
             assert event.get("order") == order
 
     def test_raises_exceptions_instead_of_returning_them_in_document(self):
         config = copy.deepcopy(self.CONFIG)
         config["documents"] = [{"order": 0}, DummyError, {"order": 1}]
         self.object = Factory.create({"Test Instance Name": config})
-        event, _ = self.object.get_next(self.timeout)
+        event = self.object.get_next(self.timeout)
         assert event.get("order") == 0
         with raises(DummyError):
             _, _ = self.object.get_next(self.timeout)
-        event, _ = self.object.get_next(self.timeout)
+        event = self.object.get_next(self.timeout)
         assert event.get("order") == 1
 
     def test_raises_exceptions_instead_of_returning_them(self):
@@ -56,5 +56,5 @@ class TestDummyInput(BaseInputTestCase):
         connector = Factory.create(configuration={"Test Instance Name": config})
 
         for order in range(0, 9):
-            event, _ = connector.get_next(self.timeout)
+            event = connector.get_next(self.timeout)
             assert event.get("order") == order % 3

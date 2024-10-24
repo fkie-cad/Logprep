@@ -3,13 +3,13 @@ New output endpoint types are created by implementing it.
 """
 
 from abc import abstractmethod
-from typing import Optional
+from copy import deepcopy
+from typing import Any, Optional
 
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
-from logprep.abc.input import Input
 
 
 class OutputError(LogprepException):
@@ -31,10 +31,12 @@ class OutputWarning(LogprepException):
 class CriticalOutputError(OutputError):
     """A significant error occurred - log and don't process the event."""
 
-    def __init__(self, output, message, raw_input):
-        if raw_input:
-            output.store_failed(str(self), raw_input, {})
-        super().__init__(output, f"{message} for event: {raw_input}")
+    __match_args__ = ("raw_input",)
+
+    def __init__(self, output: "Output", message: str, raw_input: Any) -> None:
+        super().__init__(output, f"{message} -> event was written to error output if configured")
+        self.raw_input = deepcopy(raw_input)
+        self.message = message
 
 
 class FatalOutputError(OutputError):
@@ -52,10 +54,6 @@ class Output(Connector):
         """ (Optional) if :code:`false` the event are not delivered to this output.
         But this output can be called as output for extra_data.
         """
-
-    __slots__ = {"input_connector"}
-
-    input_connector: Optional[Input]
 
     @property
     def default(self):
@@ -89,10 +87,6 @@ class Output(Connector):
     @abstractmethod
     def store_custom(self, document: dict, target: str):
         """Store additional data in a custom location inside the output destination."""
-
-    @abstractmethod
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
-        """Store an event when an error occurred during the processing."""
 
     def _write_backlog(self):
         """Write the backlog to the output destination."""

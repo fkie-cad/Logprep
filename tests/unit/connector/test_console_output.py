@@ -35,9 +35,3 @@ class TestConsoleOutput(BaseOutputTestCase):
         message = {"message": "mymessage"}
         self.object.store_custom(message, target="stdout")
         mock_pprint.assert_called_with(message, stream=sys.stdout)
-
-    @mock.patch("logprep.connector.console.output.pprint")
-    def test_store_failed_calls_pprint_with_message_on_stderr(self, mock_pprint):
-        message = {"message": "mymessage"}
-        self.object.store_failed("myerrormessage", message, message)
-        mock_pprint.assert_called_with(f"myerrormessage: {message}, {message}", stream=sys.stderr)

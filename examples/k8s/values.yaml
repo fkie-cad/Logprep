@@ -33,7 +33,6 @@ connector:
   output:
     type: confluentkafka_output
     topic: consumer
-    error_topic: errors
     flush_timeout: 300
     send_timeout: 0
     kafka_config:

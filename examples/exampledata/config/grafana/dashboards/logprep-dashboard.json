@@ -18,7 +18,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
   "links": [
     {
       "asDropdown": true,
@@ -114,9 +113,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -196,9 +197,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -278,9 +281,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -360,9 +365,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -442,9 +449,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -524,9 +533,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -606,9 +617,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -676,9 +689,11 @@
           "fields": "/^logprep$/",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -761,9 +776,11 @@
           "fields": "/^config$/",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -845,9 +862,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -934,9 +953,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -1013,9 +1034,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -1096,9 +1119,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -1184,9 +1209,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -1252,9 +1279,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -1335,9 +1364,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -1402,9 +1433,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -1422,7 +1455,6 @@
         }
       ],
       "title": "Config Refresh Interval",
-      "transformations": [],
       "type": "stat"
     },
     {
@@ -1473,9 +1505,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -1493,7 +1527,6 @@
         }
       ],
       "title": "Config Reloads",
-      "transformations": [],
       "type": "stat"
     },
     {
@@ -1542,9 +1575,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -1575,7 +1610,6 @@
         "y": 7
       },
       "id": 131,
-      "links": [],
       "options": {
         "alertInstanceLabelFilter": "",
         "alertName": "",
@@ -1655,9 +1689,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -1736,9 +1772,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -1817,9 +1855,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -1890,9 +1930,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -1973,9 +2015,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -2001,7 +2045,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "Number of objects that were collected by the garbage collector.",
+      "description": "Number of events in error queue",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2055,9 +2099,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -2067,7 +2113,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(python_gc_objects_collected_total[1m]))",
+          "expr": "sum(logprep_number_of_events_in_error_queue)",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -2075,7 +2121,7 @@
           "refId": "A"
         }
       ],
-      "title": "collected/s",
+      "title": "error queue",
       "type": "stat"
     },
     {
@@ -2122,9 +2168,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "targets": [
         {
           "datasource": {
@@ -2223,9 +2271,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -2301,9 +2351,11 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.4.2",
       "repeatDirection": "h",
       "targets": [
         {
@@ -2349,6 +2401,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2459,6 +2512,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2576,6 +2630,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -4104,8 +4159,7 @@
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 38,
-  "style": "dark",
+  "schemaVersion": 39,
   "tags": [
     "App"
   ],
