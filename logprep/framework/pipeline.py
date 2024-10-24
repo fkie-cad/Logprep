@@ -417,16 +417,10 @@ class Pipeline:
             case CriticalOutputError({"errors": error, "event": event}):
                 self.metrics.number_of_failed_events += 1
                 return {"event": str(event), "errors": str(error)}
-            case CriticalOutputError(raw_input) if isinstance(raw_input, dict):
-                self.metrics.number_of_failed_events += 1
-                return {"event": str(raw_input), "errors": str(item.message)}
             case CriticalOutputError(raw_input) if isinstance(raw_input, (list, tuple)):
                 event = [{"event": str(i), "errors": str(item.message)} for i in raw_input]
                 self.metrics.number_of_failed_events += len(event)
                 return event
-            case CriticalOutputError(raw_input) if isinstance(raw_input, (str, bytes)):
-                self.metrics.number_of_failed_events += 1
-                return {"event": str(raw_input), "errors": str(item.message)}
             case _:
                 self.metrics.number_of_failed_events += 1
                 return {"event": str(item.raw_input), "errors": str(item.message)}

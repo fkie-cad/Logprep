@@ -621,6 +621,14 @@ class TestPipeline(ConfigurationForTests):
             ),
             (
                 CriticalOutputError(
+                    mock.MagicMock(),
+                    "another error",
+                    {"errors": "some error", "event": {"some": "event"}},
+                ),
+                {"event": "{'some': 'event'}", "errors": "some error"},
+            ),
+            (
+                CriticalOutputError(
                     mock.MagicMock(), "another error", [{"foo": "bar"}, {"foo": "baz"}]
                 ),
                 {"event": "{'foo': 'bar'}", "errors": "another error"},
