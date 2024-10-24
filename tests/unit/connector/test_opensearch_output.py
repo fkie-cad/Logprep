@@ -148,8 +148,10 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
 
     def test_write_backlog_clears_failed_on_success(self):
+        self.object._message_backlog = [{"some": "event"}]
         self.object._failed = [{"some": "event"}]
-        self.object._write_backlog()
+        with mock.patch("logprep.connector.opensearch.output.OpensearchOutput._bulk"):
+            self.object._write_backlog()
         assert len(self.object._failed) == 0, "temporary failed backlog should be cleared"
 
     def test_write_backlog_clears_failed_on_failure(self):

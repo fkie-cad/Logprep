@@ -8,7 +8,6 @@ import multiprocessing.managers
 import multiprocessing.queues
 import random
 import sys
-import threading
 import time
 from typing import Any
 
@@ -58,7 +57,7 @@ class ThrottlingQueue(multiprocessing.queues.Queue):
 
 
 @define()
-class ComponentQueueListener:
+class OutputQueueListener:
     """This forks a process and handles all items from the given queue into
     the specified callable. It uses a sentinel object to stop the process."""
 
@@ -73,28 +72,19 @@ class ComponentQueueListener:
     config: dict = field(validator=validators.instance_of(dict))
     """The configuration of the component used in this listener instance."""
 
-    sentinel: Any = field(default=None)
+    sentinel: Any = field(default=None, init=False)
     """The sentinel object to stop the process. This has to implement identity comparison."""
 
-    _instance: multiprocessing.Process | threading.Thread = field(init=False)
+    _process: multiprocessing.Process = field(init=False)
     """The process that is forked to listen to the queue."""
 
-    _implementation: str = field(
-        default="threading", validator=validators.in_(["threading", "multiprocessing"])
-    )
-    """The implementation to use for the listener. Options are threading or multiprocessing.
-    Default is threading."""
-
     def __attrs_post_init__(self):
-        if self._implementation == "threading":
-            self._instance = threading.Thread(target=self._listen, daemon=True)
-        elif self._implementation == "multiprocessing":
-            self._instance = multiprocessing.Process(target=self._listen, daemon=True)
+        self._process = multiprocessing.Process(target=self._listen, daemon=True)
 
     def start(self):
         """Start the listener."""
         logger.debug("Starting listener with target: %s", self.target)
-        self._instance.start()
+        self._process.start()
 
     def get_component_instance(self):
         component = Factory.create(self.config)
@@ -144,7 +134,7 @@ class ComponentQueueListener:
     def stop(self):
         """Stop the listener."""
         self.queue.put(self.sentinel)
-        self._instance.join()
+        self._process.join()
         logger.debug("Stopped listener.")
 
 
@@ -185,7 +175,7 @@ class PipelineManager:
         self.metrics = self.Metrics(labels={"component": "manager"})
         self.loghandler: LogprepMPQueueListener = None
         self.error_queue: multiprocessing.Queue | None = None
-        self._error_listener: ComponentQueueListener | None = None
+        self._error_listener: OutputQueueListener | None = None
         self._configuration: Configuration = configuration
         self._pipelines: list[multiprocessing.Process] = []
         self.prometheus_exporter: PrometheusExporter | None = None
@@ -207,11 +197,10 @@ class PipelineManager:
         self.error_queue = ThrottlingQueue(
             multiprocessing.get_context(), self._configuration.error_backlog_size
         )
-        self._error_listener = ComponentQueueListener(
+        self._error_listener = OutputQueueListener(
             self.error_queue,
             "store",
             self._configuration.error_output,
-            implementation=self._configuration.component_queue_listener_implementation,
         )
         self._error_listener.start()
         # wait for the error listener to be ready before starting the pipelines

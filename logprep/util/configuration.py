@@ -364,10 +364,10 @@ class LoggerConfig:
     format: str = field(default="", validator=[validators.instance_of(str)], eq=False)
     """The format of the log message as supported by the :code:`LogprepFormatter`.
     Defaults to :code:`"%(asctime)-15s %(name)-10s %(levelname)-8s: %(message)s"`.
-    
+
     .. autoclass:: logprep.util.logging.LogprepFormatter
       :no-index:
-    
+
     """
     datefmt: str = field(default="", validator=[validators.instance_of(str)], eq=False)
     """The date format of the log message. Defaults to :code:`"%Y-%m-%d %H:%M:%S"`."""
@@ -545,9 +545,9 @@ class Configuration:
         converter=lambda x: MetricsConfig(**x) if isinstance(x, dict) else x,
         eq=False,
     )
-    """Metrics configuration. Defaults to 
+    """Metrics configuration. Defaults to
     :code:`{"enabled": False, "port": 8000, "uvicorn_config": {}}`.
-    
+
     The key :code:`uvicorn_config` can be configured with any uvicorn config parameters.
     For further information see the `uvicorn documentation <https://www.uvicorn.org/settings/>`_.
 
@@ -579,9 +579,6 @@ class Configuration:
         validator=validators.instance_of(int), default=DEFAULT_MESSAGE_BACKLOG_SIZE, eq=False
     )
     """Size of the error backlog. Defaults to :code:`15000`."""
-    component_queue_listener_implementation: str = field(
-        validator=validators.in_(("threading", "multiprocessing")), default="threading", eq=False
-    )
 
     _getter: Getter = field(
         validator=validators.instance_of(Getter),
