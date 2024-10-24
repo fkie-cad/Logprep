@@ -337,9 +337,9 @@ class LuceneTransformer:
 
         # hier weiter
         if value.startswith("/") and value.endswith("/"):
-            value = value[1:-1]
-            #return self._special_fields_map['regex_fields'](key, value)
+            value = value.strip("/")
             return RegExFilterExpression(key, value)
+
         return StringFilterExpression(key, value)
 
     @staticmethod
