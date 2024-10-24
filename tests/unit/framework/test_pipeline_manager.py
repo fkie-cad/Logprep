@@ -471,7 +471,7 @@ class TestOutputQueueListener:
         mock_start.assert_called()
 
     @mock.patch(
-        "logprep.framework.pipeline_manager.OutputQueueListener.get_component_instance",
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
         new=mock.MagicMock(),
     )
     def test_sentinel_breaks_while_loop(self):
@@ -562,7 +562,7 @@ class TestOutputQueueListener:
         mock_shutdown.assert_called()
 
     @mock.patch(
-        "logprep.framework.pipeline_manager.OutputQueueListener.get_component_instance",
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
         new=mock.MagicMock(),
     )
     def test_listen_drains_queue_on_shutdown(self):
@@ -576,7 +576,7 @@ class TestOutputQueueListener:
         assert listener.queue.qsize() == 0
 
     @mock.patch(
-        "logprep.framework.pipeline_manager.OutputQueueListener.get_component_instance",
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
         new=mock.MagicMock(),
     )
     def test_listen_ensures_error_queue_is_closed_after_drained(self):

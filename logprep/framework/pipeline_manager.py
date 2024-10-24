@@ -86,10 +86,26 @@ class OutputQueueListener:
         logger.debug("Starting listener with target: %s", self.target)
         self._process.start()
 
-    def get_component_instance(self):
-        component = Factory.create(self.config)
+    def get_output_instance(self):
+        """
+        Returns an instance of an output.
+
+        This method creates an instance of an output using the Factory and configures it with the setup method.
+        If an error occurs during setup, it logs an error message, puts a sentinel value into the queue, and raises
+        the error. The method waits until the queue is empty before returning the component instance. The '1' added to
+        the queue and the waiting for the queue being empty again is to ensure that the process are synchronized.
+
+        Raises:
+        -------
+        SystemExit: If an error occurs during the setup of the output component.
+
+        Returns:
+        -------
+        The configured output instance.
+        """
+        output = Factory.create(self.config)
         try:
-            component.setup()
+            output.setup()
             self.queue.put(1)
         except SystemExit as error:
             logger.error("Error output not reachable. Exiting...")
@@ -98,10 +114,10 @@ class OutputQueueListener:
         # wait for setup method in pipeline manager to receive the message
         while not self.queue.empty():
             logger.debug("Waiting for receiver to be ready")
-        return component
+        return output
 
     def _listen(self):
-        component = self.get_component_instance()
+        component = self.get_output_instance()
         target = getattr(component, self.target)
         while 1:
             item = self.queue.get()
@@ -121,8 +137,11 @@ class OutputQueueListener:
     def _drain_queue(self, target):
         while not self.queue.empty():
             item = self.queue.get()
+            if item == 1:  # first queue item, added for process synchronization
+                continue
             if item is self.sentinel:
                 logger.debug("Got another sentinel")
+                continue
             try:
                 target(item)
             except Exception as error:  # pylint: disable=broad-except
@@ -324,8 +343,8 @@ class PipelineManager:
             error_queue=self.error_queue,
         )
         if pipeline.pipeline_index == 1 and self.prometheus_exporter:
-            if self._error_listener:
-                error_output_healthcheck = self._error_listener.get_component_instance().health
+            if self._configuration.error_output and self._error_listener:
+                error_output_healthcheck = self._error_listener.get_output_instance().health
                 self.prometheus_exporter.update_healthchecks(
                     [error_output_healthcheck, *pipeline.get_health_functions()]
                 )
