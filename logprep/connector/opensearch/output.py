@@ -274,18 +274,16 @@ class OpensearchOutput(Output):
             raise error from error
         except Exception as error:  # pylint: disable=broad-except
             logger.error("Failed to index documents: %s", error)
-            self.metrics.number_of_errors += 1
             raise CriticalOutputError(self, str(error), self._message_backlog) from error
         finally:
             self._message_backlog.clear()
             self._failed.clear()
 
-    def _bulk(self, client, actions, *args, **kwargs) -> Optional[List[dict]]:
+    def _bulk(self, client, actions):
         """Bulk index documents into Opensearch.
-        uses the parallel_bulk function from the opensearchpy library.
-        all args are passed to :code:`streaming_bulk` function.
+        Uses the parallel_bulk function from the opensearchpy library.
         """
-        kwargs |= {
+        kwargs = {
             "max_chunk_bytes": self._config.max_chunk_bytes,
             "chunk_size": self._config.chunk_size,
             "queue_size": self._config.queue_size,

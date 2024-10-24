@@ -68,10 +68,10 @@ class ComponentQueueListener:
     """The queue to listen to."""
 
     target: str = field(validator=validators.instance_of(str))
-    """The method name to call with the items from the queue."""
+    """The method name of the component which will be used to handle the items from the queue."""
 
     config: dict = field(validator=validators.instance_of(dict))
-    """The configuration for the listener component."""
+    """The configuration of the component used in this listener instance."""
 
     sentinel: Any = field(default=None)
     """The sentinel object to stop the process. This has to implement identity comparison."""
@@ -122,7 +122,7 @@ class ComponentQueueListener:
             try:
                 target(item)
             except Exception as error:  # pylint: disable=broad-except
-                logger.error("Error processing item: %s due to %s", item, error)
+                logger.error(f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{item}'")
         self._drain_queue(target)
         component.shut_down()
 
@@ -134,7 +134,7 @@ class ComponentQueueListener:
             try:
                 target(item)
             except Exception as error:  # pylint: disable=broad-except
-                logger.error("Error processing item: %s due to %s", item, error)
+                logger.error(f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{item}'")
         self.queue.close()  # close queue after draining to prevent message loss
 
     def stop(self):
@@ -211,7 +211,7 @@ class PipelineManager:
         )
         self._error_listener.start()
         # wait for the error listener to be ready before starting the pipelines
-        if self.error_queue.get(block=True) is None:
+        if self.error_queue.get(block=True) is self._error_listener.sentinel:
             self.stop()
             sys.exit(EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value)
 

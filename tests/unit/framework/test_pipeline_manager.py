@@ -21,7 +21,7 @@ from logprep.framework.pipeline_manager import (
 )
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
-from logprep.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.logging import logqueue
 from tests.testdata.metadata import path_to_config
 
@@ -307,7 +307,7 @@ class TestPipelineManager:
         with mock.patch("logprep.framework.pipeline_manager.ComponentQueueListener"):
             with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue.get") as mock_get:
                 mock_get.return_value = None
-                with pytest.raises(SystemExit, match="4"):
+                with pytest.raises(SystemExit, match=EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value):
                     PipelineManager(self.config)
 
     def test_stop_calls_stop_on_error_listener(self):
@@ -564,7 +564,7 @@ class TestComponentQueueListener:
             listener._listen()
         mock_setup.assert_called()
 
-    def testget_component_instance_raises_if_setup_not_successful(self):
+    def test_get_component_instance_raises_if_setup_not_successful(self):
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)

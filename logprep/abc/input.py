@@ -361,7 +361,6 @@ class Input(Connector):
         """
         hmac_options = self._config.preprocessing.get("hmac", {})
         hmac_target_field_name = hmac_options.get("target")
-        non_critical_error_msg = None
 
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
@@ -372,10 +371,8 @@ class Input(Connector):
             received_orig_message = get_dotted_field_value(event_dict, hmac_target_field_name)
 
         if received_orig_message is None:
-            non_critical_error_msg = (
-                f"Couldn't find the hmac target " f"field '{hmac_target_field_name}'"
-            )
-            raise CriticalInputError(self, non_critical_error_msg, raw_event)
+            error_message = f"Couldn't find the hmac target field '{hmac_target_field_name}'"
+            raise CriticalInputError(self, error_message, raw_event)
         if isinstance(received_orig_message, str):
             received_orig_message = received_orig_message.encode("utf-8")
         hmac = HMAC(

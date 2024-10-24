@@ -3,7 +3,6 @@
 # pylint: disable=missing-docstring
 
 import json
-import re
 import tempfile
 import uuid
 from logging import DEBUG, basicConfig, getLogger

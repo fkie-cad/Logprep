@@ -274,7 +274,7 @@ class Pipeline:
         self._shut_down()
 
     @_handle_pipeline_error
-    def process_pipeline(self) -> PipelineResult:
+    def process_pipeline(self) -> PipelineResult | None:
         """Retrieve next event, process event with full pipeline and store or return results"""
         Component.run_pending_tasks()
         event = self._input.get_next(self._timeout)
@@ -345,7 +345,7 @@ class Pipeline:
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False
 
-    def get_health_functions(self) -> Tuple[bool]:
+    def get_health_functions(self) -> Tuple:
         """Return health function of components"""
         output_health_functions = []
         if self._output:
@@ -400,11 +400,11 @@ class Pipeline:
                 self.error_queue.put(event, timeout=0.1)
                 self.logger.debug("Enqueued error item")
         except Exception as error:  # pylint: disable=broad-except
-            self.logger.error((f"Couldn't enqueue error item due to: {error} | Item: '{event}'"))
+            self.logger.error(f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{event}'")
         if self._input:
             self._input.batch_finished_callback()
 
-    def _get_output_error_event(self, item: CriticalOutputError) -> dict:
+    def _get_output_error_event(self, item: CriticalOutputError) -> dict | list:
         match item:
             case CriticalOutputError([{"errors": _, "event": _}, *_]):
                 event = [

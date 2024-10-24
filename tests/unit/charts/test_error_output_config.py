@@ -41,7 +41,7 @@ class TestErrorOutputConfig(TestBaseChartTest):
         error_output_config = error_output_config[0]
         assert error_output_config["data"]["error-output-config.yaml"] == expected_output_config
 
-    def test_deployment_mounts_output_config(self):
+    def test_deployment_mounts_error_output_config(self):
         self.manifests = self.render_chart("logprep", {"error_output": kafka_output_config})
         deployment = self.manifests.by_query("kind: Deployment")[0]
         volume_mounts = deployment["spec.template.spec.containers"][0]["volumeMounts"]
@@ -64,7 +64,7 @@ class TestErrorOutputConfig(TestBaseChartTest):
         assert volume
         assert volume["configMap"]["name"] == error_output_config_name
 
-    def test_error_output_config_is_used_to_start_logprep(self):
+    def test_error_output_config_is_used_in_start_command_of_logprep(self):
         self.manifests = self.render_chart("logprep", {"error_output": kafka_output_config})
         container = self.deployment["spec.template.spec.containers"][0]
         volume_mounts = container["volumeMounts"]

@@ -84,7 +84,7 @@ log message, based on a configured geo-ip database.
 Or the `Dropper` deletes fields from the log message.
 
 As detailed overview of all processors can be found in the
-[processor documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/processor.html).
+[processor documentation](https://logprep.readthedocs.io/en/latest/configuration/processor.html).
 
 To influence the behaviour of those processors, each can be configured with a set of rules.
 These rules define two things.
@@ -147,9 +147,9 @@ kafka-topic. Addionally, you can use the Opensearch or Opensearch output connect
 messages directly to Opensearch or Opensearch after processing.
 
 The details regarding the connectors can be found in the
-[input connector documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/input.html)
+[input connector documentation](https://logprep.readthedocs.io/en/latest/configuration/input.html)
 and
-[output connector documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/output.html).
+[output connector documentation](https://logprep.readthedocs.io/en/latest/configuration/output.html).
 
 ### Configuration
 
@@ -228,7 +228,7 @@ The condition of this rule would check if the field `message` exists in the log.
 If it does exist then the dropper would delete this field from the log message.
 
 Details about the rule language and how to write rules for the processors can be found in the
-[rule configuration documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/rules.html).
+[rule configuration documentation](https://logprep.readthedocs.io/en/latest/configuration/rules.html).
 
 ## Getting Started
 

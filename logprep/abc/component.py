@@ -14,7 +14,7 @@ from attr import define, field, validators
 from attrs import asdict
 from schedule import Scheduler
 
-from logprep.metrics.metrics import CounterMetric, Metric
+from logprep.metrics.metrics import Metric
 from logprep.util.defaults import DEFAULT_HEALTH_TIMEOUT, EXITCODES
 from logprep.util.helper import camel_to_snake
 

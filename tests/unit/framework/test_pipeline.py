@@ -155,7 +155,7 @@ class TestPipeline(ConfigurationForTests):
         last_processor.process.assert_not_called()
         assert not event, "event was deleted"
 
-    def test_not_empty_documents_are_stored_in_the_output(self, _):
+    def test_documents_are_stored_in_the_output(self, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = {"message": "test"}
         self.pipeline._store_event = mock.MagicMock()
@@ -811,7 +811,6 @@ class TestPipelineWithActualInput:
             b'{"applyrule":"yes"}',
         )
         pipeline.enqueue_error.assert_called_with(expected_error)
-        # assert result.event["hmac"]["hmac"] == "error"
 
     def test_pipeline_run_raises_assertion_when_run_without_input(self):
         self.config.input = {}
@@ -947,7 +946,7 @@ class TestPipelineResult:
             assert pipeline_result.pipeline == parameters["pipeline"]
             assert isinstance(pipeline_result.results[0], ProcessorResult)
 
-    def test_pipeline_result_produces_results(self, mock_processor):
+    def test_pipeline_result_instantiation_produces_results(self, mock_processor):
         pipeline_result = PipelineResult(
             event={"some": "event"},
             pipeline=[

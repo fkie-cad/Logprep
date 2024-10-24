@@ -30,7 +30,7 @@ def setup_module():
 @pytest.mark.skipif(in_ci, reason="requires kafka")
 class TestKafkaConnection:
     def get_topic_partition_size(self, topic_partition: TopicPartition) -> int:
-        time.sleep(1)  # nosemgrep
+        time.sleep(1)
         consumer = Consumer(kafka_config | {"group.id": str(uuid.uuid4())})
         lowwater, highwater = consumer.get_watermark_offsets(topic_partition)
         consumer.close()
@@ -38,7 +38,7 @@ class TestKafkaConnection:
 
     def wait_for_topic_creation(self):
         while self.topic_name not in self.admin.list_topics().topics:
-            time.sleep(2)  # nosemgrep
+            time.sleep(2)
 
     def setup_method(self):
         self.admin = AdminClient(kafka_config)

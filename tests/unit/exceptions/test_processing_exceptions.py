@@ -3,8 +3,6 @@
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
 
-from unittest import mock
-
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,

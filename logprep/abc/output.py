@@ -55,8 +55,6 @@ class Output(Connector):
         But this output can be called as output for extra_data.
         """
 
-    __slots__ = {"input_connector"}
-
     @property
     def default(self):
         """returns the default parameter"""

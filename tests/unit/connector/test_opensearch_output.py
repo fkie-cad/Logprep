@@ -94,30 +94,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object.store({"event": "test_event"})
         assert len(self.object._message_backlog) == 0
 
-    @pytest.mark.skip(reason="This test is only for local debugging")
-    def test_opensearch_parallel_bulk(self):
-        config = {
-            "type": "opensearch_output",
-            "hosts": ["localhost:9200"],
-            "default_index": "default_index",
-            "error_index": "error_index",
-            "message_backlog_size": 1,
-            "timeout": 5000,
-        }
-        output: OpensearchOutput = Factory.create({"opensearch_output": config})
-        uuid_str = str(uuid.uuid4())
-        result = output._search_context.search(
-            index="defaultindex", body={"query": {"match": {"foo": uuid_str}}}
-        )
-        len_before = len(result["hits"]["hits"])
-        output._message_backlog = [{"foo": uuid_str, "_index": "defaultindex"}]
-        output._write_backlog()
-        time.sleep(1)
-        result = output._search_context.search(
-            index="defaultindex", body={"query": {"match": {"foo": uuid_str}}}
-        )
-        assert len(result["hits"]["hits"]) > len_before
-
     @mock.patch(
         "logprep.connector.opensearch.output.OpensearchOutput._search_context",
         new=mock.MagicMock(),
@@ -172,7 +148,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
 
     def test_write_backlog_clears_failed_on_success(self):
-        self.object._message_backlog = [{"some": "event"}]
+        self.object._failed = [{"some": "event"}]
         self.object._write_backlog()
         assert len(self.object._failed) == 0, "temporary failed backlog should be cleared"
 
