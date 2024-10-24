@@ -122,7 +122,9 @@ class ComponentQueueListener:
             try:
                 target(item)
             except Exception as error:  # pylint: disable=broad-except
-                logger.error(f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{item}'")
+                logger.error(
+                    f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{item}'"
+                )
         self._drain_queue(target)
         component.shut_down()
 
@@ -134,7 +136,9 @@ class ComponentQueueListener:
             try:
                 target(item)
             except Exception as error:  # pylint: disable=broad-except
-                logger.error(f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{item}'")
+                logger.error(
+                    f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{item}'"
+                )
         self.queue.close()  # close queue after draining to prevent message loss
 
     def stop(self):

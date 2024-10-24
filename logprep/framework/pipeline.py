@@ -400,7 +400,9 @@ class Pipeline:
                 self.error_queue.put(event, timeout=0.1)
                 self.logger.debug("Enqueued error item")
         except Exception as error:  # pylint: disable=broad-except
-            self.logger.error(f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{event}'")
+            self.logger.error(
+                f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{event}'"
+            )
         if self._input:
             self._input.batch_finished_callback()
 
