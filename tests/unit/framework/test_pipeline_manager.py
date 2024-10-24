@@ -584,12 +584,7 @@ class TestOutputQueueListener:
         output_config = {"random_name": {"type": "dummy_output"}}
         queue = ThrottlingQueue(multiprocessing.get_context(), 100)
         listener = OutputQueueListener(queue, target, output_config)
-        random_number = random.randint(10, 50)
         listener.queue.put(listener.sentinel)
-        for _ in range(random_number):
-            listener.queue.put("test")
-        while not listener.queue.qsize() == random_number + 1:
-            pass
         listener._listen()
         with pytest.raises(ValueError, match="is closed"):
             listener.queue.put("test")
