@@ -239,7 +239,6 @@ class LuceneTransformer:
 
         self._last_search_field = None
 
-
     def build_filter(self) -> FilterExpression:
         """Transform luqum tree into FilterExpression
 
