@@ -239,7 +239,6 @@ class LuceneTransformer:
 
         self._last_search_field = None
 
-
     def build_filter(self) -> FilterExpression:
         """Transform luqum tree into FilterExpression
 
@@ -334,7 +333,7 @@ class LuceneTransformer:
         if self._special_fields.items():
             for sf_key, sf_value in self._special_fields.items():
                 if sf_value is True or dotted_field in sf_value:
-                    if sf_key == 'regex_fields':
+                    if sf_key == "regex_fields":
                         logger.warning(
                             "[Deprecated]: regex_fields are no longer necessary. "
                             "Use Lucene regex annotation."
