@@ -473,13 +473,6 @@ class TestLueceneFilter:
 
         assert lucene_filter == RegExFilterExpression(["regex_key_one"], ".*value.*")
 
-    def test_tmp_dev(self):
-        lucene_filter = LuceneFilter.create(
-            'regex_key_one: ".*value.*"',
-            special_fields={"regex_fields": ["regex_key_one"]},
-        )
-
-        assert lucene_filter == RegExFilterExpression(["regex_key_one"], ".*value.*")
 
     def test_creates_lucene_compliance_filter_one_matching_one_missmatch_regex_key_of_two(self):
         lucene_filter = LuceneFilter.create(
