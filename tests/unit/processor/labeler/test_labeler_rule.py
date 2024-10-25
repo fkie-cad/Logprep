@@ -215,7 +215,6 @@ class TestRule:
 
         assert rule.matches(document)
 
-
     def test_lucene_regex_matches_returns_true_for_matching_document(self):
         rule_definition = {
             "filter": 'applyrule: "/.*yes.*/"',
@@ -225,7 +224,6 @@ class TestRule:
         assert rule.matches({"applyrule": "yes"})
         assert rule.matches({"applyrule": "yes!"})
         assert rule.matches({"applyrule": "no? yes!"})
-
 
     def test_lucene_regex_matches_returns_false_for_non_matching_document(self):
         rule_definition = {
@@ -244,7 +242,6 @@ class TestRule:
         for document in non_matching_documents:
             assert not rule.matches(document)
 
-
     def test_complex_lucene_regex_matches_returns_true_for_matching_document(self):
         rule_definition = {
             "filter": r'applyrule: "/(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}/"',
@@ -256,7 +253,6 @@ class TestRule:
         assert rule.matches({"applyrule": "UPlo99999"})
         assert rule.matches({"applyrule": "UPlo$$$$"})
         assert rule.matches({"applyrule": "UP$$$$88"})
-
 
     def test_complex_lucene_regex_does_not_match_returns_true_for_matching_document(self):
         rule_definition = {
