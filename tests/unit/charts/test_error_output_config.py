@@ -79,3 +79,8 @@ class TestErrorOutputConfig(TestBaseChartTest):
             "kind: ConfigMap AND metadata.name: logprep-logprep-error-output"
         )
         assert not error_output_config
+        container = self.deployment["spec.template.spec.containers"][0]
+        volume_mounts = container["volumeMounts"]
+        volume_mount = [mount["name"] for mount in volume_mounts]
+        assert "error-output-config" not in volume_mount
+        assert "error-output-config.yaml" not in " ".join(container["command"])
