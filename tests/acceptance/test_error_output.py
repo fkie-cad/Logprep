@@ -4,6 +4,7 @@
 
 import json
 import tempfile
+import time
 import uuid
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
@@ -70,8 +71,11 @@ def test_error_output_for_missing_hmac_target_field(tmp_path, config: Configurat
     proc = start_logprep(config_path)
     output = proc.stdout.readline().decode("utf8")
     wait_for_output(proc, "Couldn't find the hmac target field")
+    start = time.time()
     while not error_output_path.read_text(encoding="utf8"):
         output = proc.stdout.readline().decode("utf8")
         assert "not JSON serializable" not in output
+        if time.time() - start > 10:
+            assert False, "Timeout reached"
     error_content = error_output_path.read_text(encoding="utf8")
     assert content in error_content
