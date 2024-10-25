@@ -59,7 +59,9 @@ def teardown_function():
     stop_logprep()
 
 
-def test_error_output_for_missing_hmac_target_field(tmp_path, config: Configuration):
+def test_error_output_for_critical_input_error_with_missing_hmac_target_field(
+    tmp_path, config: Configuration
+):
     input_path = Path(config.input["jsonl_input"]["documents_path"])
     error_output_path = Path(config.error_output["jsonl"]["output_file"])
     content = str(uuid.uuid4())
@@ -79,3 +81,23 @@ def test_error_output_for_missing_hmac_target_field(tmp_path, config: Configurat
             assert False, "Timeout reached"
     error_content = error_output_path.read_text(encoding="utf8")
     assert content in error_content
+
+
+def test_error_output_errors_are_logged_if_error_output_has_an_error(
+    tmp_path, config: Configuration
+):
+    config.input = {
+        "dummy": {"type": "dummy_input", "documents": [{"something": "yeah"}, "Exception"]}
+    }
+    config.error_output = {"dummy": {"type": "dummy_output", "exceptions": ["Exception"]}}
+    config.error_backlog_size = 1
+    config.output.update({"kafka": {"type": "dummy_output", "default": False}})
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml(), encoding="utf-8")
+    proc = start_logprep(config_path)
+    wait_for_output(
+        proc,
+        ".*\[Error Event\] Couldn't enqueue error item due to:.*",
+        test_timeout=30,
+        forbidden_outputs=[],
+    )

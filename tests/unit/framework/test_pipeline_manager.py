@@ -3,7 +3,6 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=unnecessary-lambda-assignment
 import multiprocessing
-import random
 from copy import deepcopy
 from logging import Logger
 from logging.config import dictConfig

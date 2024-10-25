@@ -261,18 +261,15 @@ def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
     )
 
 
-def wait_for_output(proc, expected_output, test_timeout=10):
+def wait_for_output(proc, expected_output, test_timeout=10, forbidden_outputs=None):
+    if forbidden_outputs is None:
+        forbidden_outputs = ["Invalid", "Exception", "critical", "Error", "ERROR"]
+
     @timeout(test_timeout)
     def wait_for_output_inner(
         proc,
         expected_output,
-        forbidden_outputs=[
-            "Invalid",
-            "Exception",
-            "critical",
-            "Error",
-            "ERROR",
-        ],
+        forbidden_outputs,
     ):
         output = proc.stdout.readline()
         while 1:
@@ -282,8 +279,8 @@ def wait_for_output(proc, expected_output, test_timeout=10):
                 assert not re.search(forbidden_output, output.decode("utf8")), output
             output = proc.stdout.readline()
 
-    wait_for_output_inner(proc, expected_output)
-    time.sleep(0.1)  # nosemgrep
+    wait_for_output_inner(proc, expected_output, forbidden_outputs)
+    time.sleep(0.1)
 
 
 def stop_logprep(proc=None):
