@@ -121,6 +121,8 @@ class OutputQueueListener:
         target = getattr(component, self.target)
         while 1:
             item = self.queue.get()
+            if item == 1:
+                continue
             logger.debug("Got item from queue: %s", item)
             if item is self.sentinel:
                 logger.debug("Got sentinel. Stopping listener.")
