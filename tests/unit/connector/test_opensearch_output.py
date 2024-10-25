@@ -59,6 +59,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object.store(event)
 
         assert self.object._message_backlog[0] == event
+        assert self.object._message_backlog[0].get("_index") == config.get("default_index")
 
     def test_store_custom_sends_event_to_expected_index(self):
         custom_index = "custom_index"
