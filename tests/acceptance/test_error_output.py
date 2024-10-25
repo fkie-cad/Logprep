@@ -72,7 +72,10 @@ def test_error_output_for_critical_input_error_with_missing_hmac_target_field(
     config_path.write_text(config.as_yaml(), encoding="utf-8")
     proc = start_logprep(config_path)
     output = proc.stdout.readline().decode("utf8")
-    wait_for_output(proc, "Couldn't find the hmac target field")
+    # exclude error from forbidden_outputs as the config file path has the word error in it
+    wait_for_output(
+        proc, "Couldn't find the hmac target field", forbidden_outputs=["Invalid", "Exception"]
+    )
     start = time.time()
     while not error_output_path.read_text(encoding="utf8"):
         output = proc.stdout.readline().decode("utf8")
