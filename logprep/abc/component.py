@@ -102,7 +102,7 @@ class Component(ABC):
         """Set the component up."""
         self._populate_cached_properties()
         if not "http" in self._config.type:
-            # HTTP input connector spins up an http server
+            # HTTP input connector spins up a http server
             # only on the first pipeline process
             # but this runs on all pipeline processes which leads to never
             # completing the setup phase

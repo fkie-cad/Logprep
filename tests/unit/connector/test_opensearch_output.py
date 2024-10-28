@@ -161,3 +161,15 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         with pytest.raises(CriticalOutputError):
             self.object._write_backlog()
         assert len(self.object._failed) == 0, "temporary failed backlog should be cleared"
+
+    def test_write_backlog_creates_failed_event(self):
+        error_message = "test error"
+        event = {"some": "event"}
+        helpers.parallel_bulk = mock.MagicMock(
+            return_value=[(False, {"index": {"error": error_message}})]
+        )
+        self.object._message_backlog = [event]
+        with pytest.raises(CriticalOutputError) as error:
+            self.object._write_backlog()
+        assert error.value.message == "failed to index"
+        assert error.value.raw_input == [{"errors": error_message, "event": event}]
