@@ -9,7 +9,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
-from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException
+from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException, Message
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -103,7 +103,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_input = Factory.create({"test": input_config})
         kafka_consumer = kafka_input._consumer
         message = "test message"
-        kafka_input._last_valid_records = {0: message}
+        kafka_input._last_valid_record = message
         kafka_input.batch_finished_callback()
         kafka_consumer.store_offsets.assert_called()
         kafka_consumer.store_offsets.assert_called_with(message=message)
