@@ -67,7 +67,7 @@ dependencies = [
   "jsonref",
   "luqum",
   "more-itertools==8.10.0",
-  "mysql-connector-python<9",
+  "mysql-connector-python>=9.1.0",  #  CVE-2024-21272
   "numpy>=1.26.0",
   "opensearch-py",
   "prometheus_client",

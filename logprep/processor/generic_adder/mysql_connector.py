@@ -33,7 +33,7 @@ class MySQLConnector:
     _last_table_checksum: Optional[int]
     """Checksum of the database table that was obtained on the last update check"""
 
-    _cursor: mysql.connector.connection.CursorBase
+    _cursor: mysql.connector.connection.MySQLCursor
 
     def __init__(self, sql_config: dict):
         """Initialize the MySQLConnector.
