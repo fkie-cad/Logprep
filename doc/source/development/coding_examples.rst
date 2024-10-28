@@ -4,6 +4,7 @@ Processor Case Examples
 .. toctree::
    :maxdepth: 1
 
+   notebooks/processor_examples/regex.ipynb
    notebooks/processor_examples/concatenator.ipynb
    notebooks/processor_examples/calculator.ipynb
    notebooks/processor_examples/dissector.ipynb
