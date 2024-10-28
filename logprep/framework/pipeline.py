@@ -369,7 +369,6 @@ class Pipeline:
                 self._input.batch_finished_callback()
             return
         self.logger.debug(f"Enqueuing error item: {item}")
-        event: dict | list = None
         match item:
             case CriticalOutputError():
                 event = self._get_output_error_event(item)
@@ -386,9 +385,6 @@ class Pipeline:
                 event = [{"event": str(i), "errors": "Unknown error"} for i in item]
             case _:
                 event = {"event": str(item), "errors": "Unknown error"}
-        if event is None:
-            self.logger.error("Tried to enqueue sentinel -> aborted!")
-            return
         try:
             if isinstance(event, list):
                 for i in event:
