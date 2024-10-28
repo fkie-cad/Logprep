@@ -32,6 +32,7 @@
 * ensure `logprep.abc.Component.Config` is immutable and can be applied multiple times
 * remove lost callback reassign behavior from `kafka_input` connector
 * remove manual commit option from `kafka_input` connector
+* pin `mysql-connector-python` to >=9.1.0 to accommodate for CVE-2024-21272 and update `MySQLConnector` to work with the new version
 
 ## 13.1.2
 ### Bugfix
