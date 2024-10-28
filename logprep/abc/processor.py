@@ -161,7 +161,7 @@ class Processor(Component):
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
             self._rules = self.rules
-            logger.info("Bypassing rule tree for processor %s", self.name)
+            logger.debug("Bypassing rule tree for processor %s", self.name)
 
     @property
     def _specific_rules(self):
