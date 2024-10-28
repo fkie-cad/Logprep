@@ -195,20 +195,18 @@ class TestPipelineManager:
             pipeline_manager.restart_failed_pipeline()
             mock_create_pipeline.assert_called_once_with(1)
 
+    @mock.patch("multiprocessing.Process")
     def test_restart_failed_pipeline_adds_error_output_health_check_to_metrics_exporter(
         self, tmp_path
     ):
-        mock_env = {"PROMETHEUS_MULTIPROC_DIR": str(tmp_path)}
-        with mock.patch.dict("os.environ", mock_env):
-            with mock.patch("logprep.framework.pipeline_manager.OutputQueueListener"):
-                with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue") as mock_queue:
-                    self.config.metrics = MetricsConfig(enabled=True)
-                    self.config.error_output = {"dummy": {"type": "dummy_output"}}
-                    pipeline_manager = PipelineManager(self.config)
-                    mock_export = mock.MagicMock()
-                    pipeline_manager.prometheus_exporter = mock_export
-                    pipeline_manager.set_count(1)
-                    mock_export.update_healthchecks.assert_called()
+        with mock.patch("logprep.framework.pipeline_manager.OutputQueueListener"):
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue"):
+                self.config.error_output = {"dummy": {"type": "dummy_output"}}
+                pipeline_manager = PipelineManager(self.config)
+                mock_export = mock.MagicMock()
+                pipeline_manager.prometheus_exporter = mock_export
+                pipeline_manager.restart()
+                mock_export.update_healthchecks.assert_called()
 
     def test_pipeline_manager_sets_queue_size_for_http_input(self):
         config = deepcopy(self.config)
