@@ -62,7 +62,18 @@ RegEx-Filter
 ------------
 
 It is possible use regex expressions to match values.
-For this, the field with the regex pattern must be added to the optional field
+To be recognized as a regular expression the filter field has to be start and end with
+:code:`/`.
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'ip_address: "/192\.168\.0\..*/"'
+
+
+[Deprecated, but still functional] The field with the regex pattern must be added to the optional field
 :code:`regex_fields` in the rule definition.
 
 In the following example the field :code:`ip_address` is defined as regex field.
