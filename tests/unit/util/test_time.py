@@ -168,22 +168,22 @@ class TestTimeParser:
         assert timestamp.tzinfo.tzname(timestamp) == expected_timezone_name
         for attribute, value in expected.items():
             assert getattr(timestamp, attribute) == value
-            
+
     @pytest.mark.parametrize(
         "timestamp, expected_timezone_name, expected",
         [
             (
-                "1615634593", 
+                "1615634593",
                 "UTC",
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
             (
-                "1615634593000",  
+                "1615634593000",
                 "UTC",
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
             (
-                "1615634593000000",  
+                "1615634593000000",
                 "UTC",
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
