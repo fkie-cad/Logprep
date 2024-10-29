@@ -2,6 +2,12 @@
 
 ## next release
 ### Breaking
+### Features
+### Improvements
+### Bugfix
+
+## 14.0.0
+### Breaking
 
 * remove AutoRuleCorpusTester
 * removes the option to use synchronous `bulk` or `parallel_bulk` operation in favor of `parallel_bulk` in `opensearch_output`
