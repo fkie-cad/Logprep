@@ -134,7 +134,7 @@ class TimeParser:
             The parsed timestamp as datetime object.
         """
         if source_format == "UNIX":
-            parsed_datetime = int(timestamp) if len(timestamp) <= 10 else int(timestamp) / 1000
+            parsed_datetime = int(timestamp) if len(timestamp) <= 10 else int(timestamp) / 10 ** (len(timestamp) - 10)
             parsed_datetime = cls.from_timestamp(parsed_datetime)
         elif source_format == "ISO8601":
             parsed_datetime = cls.from_string(timestamp, set_missing_utc=False)
