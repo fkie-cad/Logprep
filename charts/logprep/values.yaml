@@ -98,7 +98,7 @@ exporter:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 
 # Logprep logging configuration.
-# See: https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
+# See: https://logprep.readthedocs.io/en/latest/configuration/index.html#configuration-file-structure
 # for available configuration options.
 logger:
   level: DEBUG
@@ -110,7 +110,7 @@ logger:
 # If the type is `http_input`, an extra service will be populated and the readiness
 # probe will be set to the health check of the configured http input.
 #
-# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/input.html
+# See https://logprep.readthedocs.io/en/latest/configuration/input.html
 # for available configuration options.
 # Note:
 # For the `http_input` endpoints you have to add the endpoint `/health: plaintext` to ensure
@@ -123,9 +123,31 @@ input: {}
 # `type` of the output. For example, if the type is `opensearch_output`, the
 # name of the output will be `opensearch`. Keep this in mind if you specify
 # additional outputs in the configurations section.
-# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/output.html
+# See https://logprep.readthedocs.io/en/latest/configuration/output.html
 # for available configuration options.
 output: {}
+
+# The logprep error output connector configuration
+# Note: If this is not set, failed events will be dropped.
+# Available error outputs are the same as the normal outputs.
+# See https://logprep.readthedocs.io/en/latest/configuration/output.html
+# Example:
+#
+# error_output:
+#   type: confluentkafka_output
+#   topic: errors
+#   flush_timeout: 300
+#   send_timeout: 0
+#   kafka_config:
+#     bootstrap.servers: 127.0.0.1:9092
+#     compression.type: none
+#     statistics.interval.ms: "60000"
+#     queue.buffering.max.messages: "10"
+#     queue.buffering.max.kbytes: "1024"
+#     queue.buffering.max.ms: "1000"
+#     batch.size: "100"
+#     request.required.acks: "-1"
+error_output: {}
 
 # Additional logprep configurations
 # Note: The configuration keys 'logger', 'metrics', 'input' and 'output' will overwrite the
@@ -141,7 +163,7 @@ output: {}
 #       pipeline: []
 #   - name: https://rule-server.de
 #
-# See https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html#configuration-file-structure
+# See https://logprep.readthedocs.io/en/latest/configuration/index.html#configuration-file-structure
 # for available configuration options.
 configurations:
   - name: logprep-config

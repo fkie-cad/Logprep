@@ -27,7 +27,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
     CONFIG = {
         "type": "confluentkafka_output",
         "topic": "test_input_raw",
-        "error_topic": "test_error_topic",
         "flush_timeout": 0.1,
         "kafka_config": {
             "bootstrap.servers": "testserver:9092",
@@ -48,7 +47,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "logprep_confluent_kafka_output_librdkafka_txmsg_bytes",
         "logprep_processing_time_per_event",
         "logprep_number_of_processed_events",
-        "logprep_number_of_failed_events",
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
     ]
@@ -79,37 +77,10 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         assert expected_call in kafka_producer.produce.mock_calls
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_store_failed_calls_producer_produce(self, _):
-        kafka_producer = self.object._producer
-        event_received = {"field": "received"}
-        event = {"field": "content"}
-        error_message = "error message"
-        self.object.store_failed(error_message, event_received, event)
-        kafka_producer.produce.assert_called()
-        mock_produce_call = kafka_producer.produce.mock_calls[0]
-        assert self.CONFIG.get("error_topic") in mock_produce_call[1]
-        assert "value" in mock_produce_call[2]
-        mock_produce_call_value = mock_produce_call[2].get("value")
-        mock_produce_call_value = json.loads(mock_produce_call_value.decode("utf8"))
-        assert "error" in mock_produce_call_value
-        assert "original" in mock_produce_call_value
-        assert "processed" in mock_produce_call_value
-        assert "timestamp" in mock_produce_call_value
-
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_custom_calls_producer_flush_on_buffererror(self, _):
         kafka_producer = self.object._producer
         kafka_producer.produce.side_effect = BufferError
         self.object.store_custom({"message": "does not matter"}, "doesnotcare")
-        kafka_producer.flush.assert_called()
-
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_store_failed_calls_producer_flush_on_buffererror(self, _):
-        kafka_producer = self.object._producer
-        kafka_producer.produce.side_effect = BufferError
-        self.object.store_failed(
-            "doesnotcare", {"message": "does not matter"}, {"message": "does not matter"}
-        )
         kafka_producer.flush.assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
@@ -121,32 +92,21 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_raises_critical_output_on_any_exception(self, _):
         self.object._producer.produce.side_effect = [
-            BaseException("bad things happened"),
+            Exception("bad things happened"),
             None,
             None,
         ]
-        self.object.store_failed = mock.MagicMock()
         with pytest.raises(
             CriticalOutputError,
-            match=r"CriticalOutputError in ConfluentKafkaOutput"
-            r" \(Test Instance Name\) - Kafka Output: testserver:9092: "
-            r"Error storing output document -> bad things happened for event: "
-            r"\{'message': 'test message'\}",
+            match=r"bad things happened",
         ):
             self.object.store({"message": "test message"})
-        self.object.store_failed.assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
         self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
-
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_store_calls_batch_finished_callback(self, _):  # pylint: disable=arguments-differ
-        self.object.input_connector = mock.MagicMock()
-        self.object.store({"message": "my event message"})
-        self.object.input_connector.batch_finished_callback.assert_called()
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
         kafka_config = {"myconfig": "the config", "bootstrap.servers": "testserver:9092"}
@@ -164,35 +124,35 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             Factory.create({"test": config})
 
     def test_health_returns_true_if_no_error(self):
-        self.object._producer = mock.MagicMock()
+        self.object._admin = mock.MagicMock()
         metadata = mock.MagicMock()
         metadata.topics = [self.object._config.topic]
-        self.object._producer.list_topics.return_value = metadata
+        self.object._admin.list_topics.return_value = metadata
         assert self.object.health()
 
     def test_health_returns_false_if_topic_not_present(self):
-        self.object._producer = mock.MagicMock()
+        self.object._admin = mock.MagicMock()
         metadata = mock.MagicMock()
         metadata.topics = ["not_the_topic"]
-        self.object._producer.list_topics.return_value = metadata
+        self.object._admin.list_topics.return_value = metadata
         assert not self.object.health()
 
     def test_health_returns_false_on_kafka_exception(self):
-        self.object._producer = mock.MagicMock()
-        self.object._producer.list_topics.side_effect = KafkaException("test error")
+        self.object._admin = mock.MagicMock()
+        self.object._admin.list_topics.side_effect = KafkaException("test error")
         assert not self.object.health()
 
     def test_health_logs_error_on_kafka_exception(self):
-        self.object._producer = mock.MagicMock()
-        self.object._producer.list_topics.side_effect = KafkaException("test error")
+        self.object._admin = mock.MagicMock()
+        self.object._admin.list_topics.side_effect = KafkaException("test error")
         with mock.patch("logging.Logger.error") as mock_error:
             self.object.health()
         mock_error.assert_called()
 
     def test_health_counts_metrics_on_kafka_exception(self):
         self.object.metrics.number_of_errors = 0
-        self.object._producer = mock.MagicMock()
-        self.object._producer.list_topics.side_effect = KafkaException("test error")
+        self.object._admin = mock.MagicMock()
+        self.object._admin.list_topics.side_effect = KafkaException("test error")
         assert not self.object.health()
         assert self.object.metrics.number_of_errors == 1
 

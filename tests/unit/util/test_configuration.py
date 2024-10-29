@@ -499,6 +499,13 @@ pipeline:
                 },
                 1,
             ),
+            (
+                "error_output with unknown type",
+                {
+                    "error_output": {"kafka_output": {"type": "UNKNOWN"}},
+                },
+                1,
+            ),
         ],
     )
     def test_verify_verifies_config(self, tmp_path, test_case, test_config, error_count):
@@ -538,7 +545,6 @@ output:
     kafka:
         type: confluentkafka_output
         topic: producer
-        error_topic: producer_error
         flush_timeout: 30
         send_timeout: 2
         kafka_config:

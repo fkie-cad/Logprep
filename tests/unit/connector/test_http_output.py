@@ -26,6 +26,7 @@ class TestOutput(BaseOutputTestCase):
         "logprep_status_codes",
         "logprep_timeouts",
         "logprep_connection_errors",
+        "logprep_number_of_failed_events",
     ]
 
     @responses.activate
@@ -49,13 +50,6 @@ class TestOutput(BaseOutputTestCase):
         assert self.object.metrics.number_of_failed_events == 2
         assert self.object.metrics.number_of_processed_events == 0
         assert self.object.metrics.number_of_http_requests == 1
-
-    @responses.activate
-    def test_store_calls_batch_finished_callback(self):
-        responses.add(responses.POST, f"{TARGET_URL}/", status=200)
-        self.object.input_connector = mock.MagicMock()
-        self.object.store({"message": "my event message"})
-        self.object.input_connector.batch_finished_callback.assert_called()
 
     @pytest.mark.parametrize(
         "testcase, input_data, number_of_expected_requests, number_of_expeted_events",

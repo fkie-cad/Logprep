@@ -85,19 +85,10 @@ class DummyOutput(Output):
                 raise Exception(exception)  # pylint: disable=broad-exception-raised
         self.events.append(document)
         self.metrics.number_of_processed_events += 1
-        if self.input_connector:
-            self.input_connector.batch_finished_callback()
 
     def store_custom(self, document: dict, target: str):
         """Store additional data in a custom location inside the output destination."""
         self.store(document)
-
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
-        """Store an event when an error occurred during the processing."""
-        if self._config.do_nothing:
-            return
-        self.metrics.number_of_failed_events += 1
-        self.failed_events.append((error_message, document_received, document_processed))
 
     def shut_down(self):
         self.shut_down_called_count += 1

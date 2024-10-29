@@ -36,9 +36,6 @@ of the :code:`target_url`.
 
    This connector does not verify the SSL Context, which could lead to exposing sensitive data.
 
-.. warning::
-    The :code:`store_failed` method only counts the number of failed events and does not send them
-    to a dead letter queue.
 """
 
 import json
@@ -61,6 +58,14 @@ class HttpOutput(Output):
     @define(kw_only=True)
     class Metrics(Output.Metrics):
         """Tracks statistics about this connector"""
+
+        number_of_failed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of failed events",
+                name="number_of_failed_events",
+            )
+        )
+        """Number of failed events"""
 
         number_of_http_requests: CounterMetric = field(
             factory=lambda: CounterMetric(
@@ -164,9 +169,6 @@ class HttpOutput(Output):
             target = self._config.target_url
         self.store_custom(document, target)
 
-    def store_failed(self, error_message, document_received, document_processed) -> None:
-        self.metrics.number_of_failed_events += 1
-
     def store_custom(self, document: dict | tuple | list, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
         if isinstance(document, (tuple, list)):
@@ -201,8 +203,6 @@ class HttpOutput(Output):
                 response.raise_for_status()
                 self.metrics.number_of_processed_events += document_count
                 self.metrics.number_of_http_requests += 1
-                if self.input_connector is not None:
-                    self.input_connector.batch_finished_callback()
             except requests.RequestException as error:
                 logger.error("Failed to send event: %s", str(error))
                 logger.debug("Failed event: %s", document)

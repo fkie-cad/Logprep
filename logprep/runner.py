@@ -58,6 +58,14 @@ class Runner:
     class Metrics(Component.Metrics):
         """Metrics for the Logprep Runner."""
 
+        number_of_events_in_error_queue: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Current number of events in error queue",
+                name="number_of_events_in_error_queue",
+            )
+        )
+        """Current size of the error queue."""
+
         version_info: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Logprep version information",
@@ -166,6 +174,8 @@ class Runner:
                 self.exit_code = EXITCODES.PIPELINE_ERROR.value
                 self._logger.error("Restart count exceeded. Exiting.")
                 sys.exit(self.exit_code)
+            if self._manager.error_queue is not None:
+                self.metrics.number_of_events_in_error_queue += self._manager.error_queue.qsize()
             self._manager.restart_failed_pipeline()
 
     def reload_configuration(self):

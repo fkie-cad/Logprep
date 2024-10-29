@@ -4,7 +4,7 @@ Implementing a new Connector
 
 Connectors are used to fetch or store log messages.
 Input and ouput connectors work each independently, with the exception that an output connector
-might call a callback function inside the input, to notify that the current batch was sucessfully 
+might call a callback function inside the input, to notify that the current batch was sucessfully
 processed. Only then the input would start collecting new inputs.
 Because of this independence, it is possible to receive messages from one system and to store them
 in another, i.e. reading from Kafka and writing to OpenSearch.
@@ -40,7 +40,7 @@ An exception should be thrown if an error occurs on calling this function.
 These exceptions must inherit from the exception classes in :py:class:`~logprep.input.input.Input`.
 They should return a helpful message when calling `str(exception)`.
 Exceptions requiring Logprep to restart should inherit from `FatalInputError`.
-Exceptions that inherit from `WarningInputError` will be logged, but they do not require any error 
+Exceptions that inherit from `WarningInputError` will be logged, but they do not require any error
 handling.
 
 .. _connector_output:
@@ -62,12 +62,18 @@ They should return a helpful message when calling `str(exception)`.
 Analogous to the input, exceptions that require a restart of Logprep should inherit from `FatalOutputError`.
 Exceptions that inherit from `OutputWarning` will be logged, but they do not require any error handling.
 
-:py:meth:`~logprep.output.output.Output.store_failed`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This method is being called if an error occurred during the processing of a log message.
-The original log message, the partially processed log message and the error message are being passed to this method.
-These will be stored separately from regular log messages for debugging and error handling.
+.. _error_output:
+
+Error Output
+------------
+
+Error output is setup in :py:class:`~logprep.framework.pipeline_manager.PipelineManager`. The error
+output connector is instantiated and setup only once during the initialization of the pipeline manager
+together with :py:class:`~logprep.framework.pipeline_manager.OutputQueueListener`.
+The listener is used to listen on the populated error queue and to send the log messages to the
+:code:`store` method of the error output connector.
+The error queue is given to the listener and to all pipelines instantiated by the pipeline manager.
 
 
 Factory

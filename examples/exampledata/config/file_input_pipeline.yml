@@ -1,0 +1,41 @@
+version: 2
+process_count: 4
+config_refresh_interval: 5
+profile_pipelines: false
+restart_count: 3
+logger:
+  level: INFO
+  loggers:
+    uvicorn:
+      level: INFO
+    uvicorn.access:
+      level: INFO
+    uvicorn.error:
+      level: INFO
+
+metrics:
+  enabled: true
+  port: 8003
+  uvicorn_config:
+    host: 0.0.0.0
+    access_log: true
+    server_header: false
+    date_header: false
+    workers: 1
+    ws: none
+    interface: asgi3
+    backlog: 16384
+    timeout_keep_alive: 65
+input:
+  file_input:
+    type: file_input
+    logfile_path: /tmp/logfiletest
+    start: begin
+    interval: 1
+    watch_file: True
+output:
+  dummy:
+    type: dummy_output
+error_output:
+  console:
+    type: console_output

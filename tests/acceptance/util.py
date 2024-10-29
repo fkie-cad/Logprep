@@ -135,7 +135,10 @@ def get_runner_outputs(patched_runner: Runner) -> list:
     output_paths = [
         output_path for key, output_path in output_config.items() if "output_file" in key
     ]
-
+    if patched_runner._configuration.error_output:
+        config = list(patched_runner._configuration.error_output.values())[0]
+        if "output_file" in config:
+            output_paths.append(config["output_file"])
     for output_path in output_paths:
         remove_file_if_exists(output_path)
 
@@ -226,7 +229,6 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
                 "type": "jsonl_output",
                 "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
                 "output_file_custom": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out",
-                "output_file_error": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_error.out",
             }
         },
     }
@@ -259,15 +261,26 @@ def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
     )
 
 
-def wait_for_output(proc, expected_output, test_timeout=10):
+def wait_for_output(proc, expected_output, test_timeout=10, forbidden_outputs=None):
+    if forbidden_outputs is None:
+        forbidden_outputs = ["Invalid", "Exception", "critical", "Error", "ERROR"]
+
     @timeout(test_timeout)
-    def wait_for_output_inner(proc, expected_output):
+    def wait_for_output_inner(
+        proc,
+        expected_output,
+        forbidden_outputs,
+    ):
         output = proc.stdout.readline()
-        while not re.search(expected_output, output.decode("utf8")):
+        while 1:
+            if re.search(expected_output, output.decode("utf8")):
+                break
+            for forbidden_output in forbidden_outputs:
+                assert not re.search(forbidden_output, output.decode("utf8")), output
             output = proc.stdout.readline()
 
-    wait_for_output_inner(proc, expected_output)
-    time.sleep(0.1)  # nosemgrep
+    wait_for_output_inner(proc, expected_output, forbidden_outputs)
+    time.sleep(0.1)
 
 
 def stop_logprep(proc=None):

@@ -1,18 +1,26 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+# pylint: disable=unnecessary-lambda-assignment
 import multiprocessing
+import time
 from copy import deepcopy
 from logging import Logger
 from logging.config import dictConfig
 from unittest import mock
 
+import pytest
+
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
-from logprep.framework.pipeline_manager import PipelineManager, ThrottlingQueue
+from logprep.framework.pipeline_manager import (
+    OutputQueueListener,
+    PipelineManager,
+    ThrottlingQueue,
+)
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
-from logprep.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.logging import logqueue
 from tests.testdata.metadata import path_to_config
 
@@ -144,7 +152,7 @@ class TestPipelineManager:
             manager.stop()
             prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
 
-    def test_prometheus_exporter_is_instanciated_if_metrics_enabled(self):
+    def test_prometheus_exporter_is_instantiated_if_metrics_enabled(self):
         config = deepcopy(self.config)
         config.metrics = MetricsConfig(enabled=True, port=8000)
         with mock.patch("logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing"):
@@ -186,6 +194,19 @@ class TestPipelineManager:
         with mock.patch.object(pipeline_manager, "_create_pipeline") as mock_create_pipeline:
             pipeline_manager.restart_failed_pipeline()
             mock_create_pipeline.assert_called_once_with(1)
+
+    def test_restart_failed_pipeline_adds_error_output_health_check_to_metrics_exporter(
+        self, tmp_path
+    ):
+        with mock.patch("logprep.framework.pipeline_manager.OutputQueueListener"):
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue"):
+                config = deepcopy(self.config)
+                config.error_output = {"dummy": {"type": "dummy_output"}}
+                pipeline_manager = PipelineManager(config)
+                mock_export = mock.MagicMock()
+                pipeline_manager.prometheus_exporter = mock_export
+                pipeline_manager.restart()
+                mock_export.update_healthchecks.assert_called()
 
     def test_pipeline_manager_sets_queue_size_for_http_input(self):
         config = deepcopy(self.config)
@@ -277,6 +298,80 @@ class TestPipelineManager:
         manager.stop()
         manager.loghandler.stop.assert_called()
 
+    def test_setup_error_queue_sets_error_queue_and_starts_listener(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.OutputQueueListener"):
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue") as mock_queue:
+                mock_queue.get.return_value = "not null"
+                manager = PipelineManager(self.config)
+        assert manager.error_queue is not None
+        assert manager._error_listener is not None
+        manager._error_listener.start.assert_called()  # pylint: disable=no-member
+
+    def test_setup_does_not_sets_error_queue_if_no_error_output(self):
+        self.config.error_output = {}
+        manager = PipelineManager(self.config)
+        assert manager.error_queue is None
+        assert manager._error_listener is None
+
+    def test_setup_error_queue_raises_system_exit_if_error_listener_fails(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.OutputQueueListener") as mock_listener:
+            mock_queue_listener = mock.MagicMock()
+            mock_queue_listener.sentinel = None
+            mock_listener.return_value = mock_queue_listener
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue.get") as mock_get:
+                mock_get.return_value = None
+                with pytest.raises(
+                    SystemExit, match=str(EXITCODES.ERROR_OUTPUT_NOT_REACHABLE.value)
+                ):
+                    PipelineManager(self.config)
+
+    def test_stop_calls_stop_on_error_listener(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("logprep.framework.pipeline_manager.OutputQueueListener"):
+            with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue.get") as mock_get:
+                mock_get.return_value = "not None"
+                manager = PipelineManager(self.config)
+                manager.stop()
+        manager._error_listener.stop.assert_called()  # pylint: disable=no-member
+
+    def test_restart_with_error_output_calls_pipeline_with_error_queue(self):
+        self.config.error_output = {"dummy": {"type": "dummy_output"}}
+        with mock.patch("multiprocessing.Process"):
+            with mock.patch("logprep.framework.pipeline_manager.Pipeline") as mock_pipeline:
+                with mock.patch("logprep.framework.pipeline_manager.OutputQueueListener"):
+                    with mock.patch(
+                        "logprep.framework.pipeline_manager.ThrottlingQueue.get"
+                    ) as mock_get:
+                        mock_get.return_value = "not None"
+                        manager = PipelineManager(self.config)
+                        manager.restart()
+        mock_pipeline.assert_called()
+        mock_pipeline.assert_called_with(
+            pipeline_index=3,  # last call index
+            config=manager._configuration,
+            error_queue=manager.error_queue,
+        )
+
+    def test_restart_without_error_output_calls_pipeline_with_error_queue(self):
+        self.config.error_output = {}
+        with mock.patch("multiprocessing.Process"):
+            with mock.patch("logprep.framework.pipeline_manager.Pipeline") as mock_pipeline:
+                with mock.patch("logprep.framework.pipeline_manager.OutputQueueListener"):
+                    with mock.patch(
+                        "logprep.framework.pipeline_manager.ThrottlingQueue.get"
+                    ) as mock_get:
+                        mock_get.return_value = "not None"
+                        manager = PipelineManager(self.config)
+                        manager.restart()
+        mock_pipeline.assert_called()
+        mock_pipeline.assert_called_with(
+            pipeline_index=3,  # last call index
+            config=manager._configuration,
+            error_queue=None,
+        )
+
 
 class TestThrottlingQueue:
 
@@ -314,3 +409,272 @@ class TestThrottlingQueue:
             with mock.patch.object(queue, "qsize", return_value=95):
                 queue.throttle()
             assert mock_sleep.call_args[0][0] > first_sleep_time
+
+
+class TestOutputQueueListener:
+
+    @pytest.mark.parametrize(
+        "parameters, error",
+        [
+            (
+                {
+                    "config": {"random_name": {"type": "dummy_output"}},
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": "random",
+                },
+                None,
+            ),
+            (
+                {
+                    "config": {"random_name": {"type": "dummy_output"}},
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": lambda x: x,
+                },
+                TypeError,
+            ),
+            (
+                {
+                    "config": {"random_name": {"type": "dummy_output"}},
+                    "queue": "I am not a queue",
+                    "target": "random",
+                },
+                TypeError,
+            ),
+            (
+                {
+                    "config": "I am not a config",
+                    "queue": ThrottlingQueue(multiprocessing.get_context(), 100),
+                    "target": "random",
+                },
+                TypeError,
+            ),
+        ],
+    )
+    def test_sets_parameters(self, parameters, error):
+        if error:
+            with pytest.raises(error):
+                OutputQueueListener(**parameters)
+        else:
+            OutputQueueListener(**parameters)
+
+    def test_init_sets_process_but_does_not_start_it(self):
+        target = "store"
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        output_config = {"random_name": {"type": "dummy_output"}}
+        listener = OutputQueueListener(queue, target, output_config)
+        assert listener._process is not None
+        assert isinstance(listener._process, multiprocessing.Process)
+        assert not listener._process.is_alive()
+
+    def test_init_sets_process_target(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        with mock.patch("multiprocessing.Process") as mock_process:
+            listener = OutputQueueListener(queue, target, output_config)
+        mock_process.assert_called_with(target=listener._listen, daemon=True)
+
+    def test_start_starts_process(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = OutputQueueListener(queue, target, output_config)
+        with mock.patch.object(listener._process, "start") as mock_start:
+            listener.start()
+        mock_start.assert_called()
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
+        new=mock.MagicMock(),
+    )
+    def test_sentinel_breaks_while_loop(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = OutputQueueListener(queue, target, output_config)
+        listener.queue.put(listener.sentinel)
+        with mock.patch("logging.Logger.debug") as mock_debug:
+            listener._listen()
+        mock_debug.assert_called_with("Got sentinel. Stopping listener.")
+
+    def test_stop_injects_sentinel(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        with mock.patch("multiprocessing.Process"):
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            listener = OutputQueueListener(queue, target, output_config)
+            with mock.patch.object(queue, "put") as mock_put:
+                listener.stop()
+            mock_put.assert_called_with(listener.sentinel)
+
+    def test_stop_joins_process(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        with mock.patch("multiprocessing.Process"):
+            queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+            listener = OutputQueueListener(queue, target, output_config)
+            listener.stop()
+            listener._process.join.assert_called()
+
+    def test_listen_calls_target(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.store") as mock_store:
+            listener = OutputQueueListener(queue, target, output_config)
+            listener.queue.put("test")
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_store.assert_called_with("test")
+
+    def test_listen_creates_component(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        listener = OutputQueueListener(queue, target, output_config)
+        with mock.patch("logprep.factory.Factory.create") as mock_create:
+            listener.queue.put("test")
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_create.assert_called_with(output_config)
+
+    def test_listen_setups_component(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        listener = OutputQueueListener(queue, target, output_config)
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as mock_setup:
+            listener.queue.put("test")
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_setup.assert_called()
+
+    def test_get_component_instance_raises_if_setup_not_successful(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = OutputQueueListener(queue, target, output_config)
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.setup") as mock_setup:
+            mock_setup.side_effect = SystemExit(4)
+            with pytest.raises(SystemExit, match="4"):
+                listener._listen()
+
+    def test_listen_calls_component_shutdown_by_injecting_sentinel(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        listener = OutputQueueListener(queue, target, output_config)
+        with mock.patch("logprep.connector.dummy.output.DummyOutput.shut_down") as mock_shutdown:
+            listener.queue.put("test")
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_shutdown.assert_called()
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
+        new=mock.MagicMock(),
+    )
+    def test_listen_drains_queue_on_shutdown(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = multiprocessing.Queue()
+        listener = OutputQueueListener(queue, target, output_config)
+        listener.queue.put(listener.sentinel)
+        listener.queue.put("test")
+        listener._listen()
+        assert listener.queue.qsize() == 0
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
+        new=mock.MagicMock(),
+    )
+    def test_listen_ensures_error_queue_is_closed_after_drained(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = OutputQueueListener(queue, target, output_config)
+        listener.queue.put(listener.sentinel)
+        listener._listen()
+        with pytest.raises(ValueError, match="is closed"):
+            listener.queue.put("test")
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
+    )
+    def test_listen_ignores_sync_item_1_and_sentinel(self, mock_get_output_instance):
+        mock_component = mock.MagicMock()
+        mock_target = mock.MagicMock()
+        mock_component.store = mock_target
+        mock_get_output_instance.return_value = mock_component
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = OutputQueueListener(queue, target, output_config)
+        listener.queue.put(1)
+        listener.queue.put(listener.sentinel)
+        listener._listen()
+        mock_target.assert_not_called()
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
+    )
+    @mock.patch("logging.Logger.error")
+    def test_listen_logs_event_on_unexpected_exception(self, mock_error, mock_get_output_instance):
+        mock_component = mock.MagicMock()
+        mock_target = mock.MagicMock()
+        mock_target.side_effect = Exception("TestException")
+        mock_component.store = mock_target
+        mock_get_output_instance.return_value = mock_component
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = OutputQueueListener(queue, target, output_config)
+        event = {"event": "test"}
+        listener.queue.put(event)
+        listener.queue.put(listener.sentinel)
+        time.sleep(0.1)  # test will sometimes fail without it, probably due to ThrottlingQueue
+        listener._listen()
+        expected_error_log = (
+            f"[Error Event] Couldn't enqueue error item due to: TestException | Item: '{event}'"
+        )
+        mock_error.assert_called_with(expected_error_log)
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
+        new=mock.MagicMock(),
+    )
+    def test_drain_queue_ignores_sync_item_1_and_sentinel(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = OutputQueueListener(queue, target, output_config)
+        listener.queue.put(1)
+        listener.queue.put(listener.sentinel)
+        mock_target = mock.MagicMock()
+        listener._drain_queue(mock_target)
+        mock_target.assert_not_called()
+
+    @mock.patch(
+        "logprep.framework.pipeline_manager.OutputQueueListener.get_output_instance",
+        new=mock.MagicMock(),
+    )
+    @mock.patch("logging.Logger.error")
+    def test_drain_queue_logs_event_on_unexpected_exception(self, mock_error):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        listener = OutputQueueListener(queue, target, output_config)
+        event = {"event": "test"}
+        listener.queue.put(event)
+        mock_target = mock.MagicMock()
+        mock_target.side_effect = Exception("TestException")
+        time.sleep(0.1)  # test will sometimes fail without it, probably due to ThrottlingQueue
+        listener._drain_queue(mock_target)
+        expected_error_log = (
+            f"[Error Event] Couldn't enqueue error item due to: TestException | Item: '{event}'"
+        )
+        mock_error.assert_called_with(expected_error_log)

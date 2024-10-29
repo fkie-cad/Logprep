@@ -9,7 +9,6 @@ from tests.unit.charts.test_base import TestBaseChartTest
 opensearch_config = {
     "ca_cert": "/path/to/cert.crt",
     "default_index": "default_index",
-    "error_index": "error_index",
     "hosts": ["127.0.0.1:9200"],
     "message_backlog_size": 10000,
     "timeout": 10000,

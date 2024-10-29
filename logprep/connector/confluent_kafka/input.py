@@ -29,6 +29,7 @@ Example
 """
 # pylint: enable=line-too-long
 import logging
+import os
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
@@ -43,8 +44,10 @@ from confluent_kafka import (
     OFFSET_STORED,
     Consumer,
     KafkaException,
+    Message,
     TopicPartition,
 )
+from confluent_kafka.admin import AdminClient
 
 from logprep.abc.connector import Connector
 from logprep.abc.input import (
@@ -242,13 +245,13 @@ class ConfluentKafkaInput(Input):
 
         """
 
-    _last_valid_records: dict
+    _last_valid_record: Message
 
-    __slots__ = ["_last_valid_records"]
+    __slots__ = ["_last_valid_record"]
 
     def __init__(self, name: str, configuration: "Connector.Config") -> None:
         super().__init__(name, configuration)
-        self._last_valid_records = {}
+        self._last_valid_record = None
 
     @property
     def _kafka_config(self) -> dict:
@@ -268,7 +271,24 @@ class ConfluentKafkaInput(Input):
             "error_cb": self._error_callback,
         }
         DEFAULTS.update({"client.id": getfqdn()})
+        DEFAULTS.update(
+            {
+                "group.instance.id": f"{getfqdn().strip('.')}-Pipeline{self.pipeline_index}-pid{os.getpid()}"
+            }
+        )
         return DEFAULTS | self._config.kafka_config | injected_config
+
+    @cached_property
+    def _admin(self) -> AdminClient:
+        """configures and returns the admin client
+
+        Returns
+        -------
+        AdminClient
+            confluent_kafka admin client object
+        """
+        admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
+        return AdminClient(admin_config)
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -279,14 +299,7 @@ class ConfluentKafkaInput(Input):
         Consumer
             confluent_kafka consumer object
         """
-        consumer = Consumer(self._kafka_config)
-        consumer.subscribe(
-            [self._config.topic],
-            on_assign=self._assign_callback,
-            on_revoke=self._revoke_callback,
-            on_lost=self._lost_callback,
-        )
-        return consumer
+        return Consumer(self._kafka_config)
 
     def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
@@ -406,7 +419,7 @@ class ConfluentKafkaInput(Input):
             raise CriticalInputError(
                 self, "A confluent-kafka record contains an error code", str(kafka_error)
             )
-        self._last_valid_records[message.partition()] = message
+        self._last_valid_record = message
         labels = {"description": f"topic: {self._config.topic} - partition: {message.partition()}"}
         self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
         return message.value()
@@ -455,17 +468,15 @@ class ConfluentKafkaInput(Input):
         return self._config.kafka_config.get("enable.auto.commit") == "true"
 
     def batch_finished_callback(self) -> None:
-        """Store offsets for each kafka partition in `self._last_valid_records`.
-        Should be called by output connectors if they are finished processing
-        a batch of records.
+        """Store offsets for last message referenced by `self._last_valid_records`.
+        Should be called after delivering the current message to the output or error queue.
         """
         if self._enable_auto_offset_store:
             return
-        for message in self._last_valid_records.values():
-            try:
-                self._consumer.store_offsets(message=message)
-            except KafkaException as error:
-                raise InputWarning(self, f"{error}, {message}") from error
+        try:
+            self._consumer.store_offsets(message=self._last_valid_record)
+        except KafkaException as error:
+            raise InputWarning(self, f"{error}, {self._last_valid_record}") from error
 
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
@@ -492,7 +503,6 @@ class ConfluentKafkaInput(Input):
                 topic_partition.topic,
                 topic_partition.partition,
             )
-        self.output_connector._write_backlog()
         self.batch_finished_callback()
 
     def _lost_callback(self, consumer, topic_partitions):
@@ -520,7 +530,7 @@ class ConfluentKafkaInput(Input):
         """
 
         try:
-            metadata = self._consumer.list_topics(timeout=self._config.health_timeout)
+            metadata = self._admin.list_topics(timeout=self._config.health_timeout)
             if not self._config.topic in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self._config.topic)
                 return False
@@ -533,6 +543,12 @@ class ConfluentKafkaInput(Input):
     def setup(self) -> None:
         """Set the component up."""
         try:
+            self._consumer.subscribe(
+                [self._config.topic],
+                on_assign=self._assign_callback,
+                on_revoke=self._revoke_callback,
+                on_lost=self._lost_callback,
+            )
             super().setup()
         except KafkaException as error:
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error

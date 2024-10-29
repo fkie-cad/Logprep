@@ -14,7 +14,6 @@ Example
       my_confluent_kafka_output:
         type: confluentkafka_output
         topic: my_default_topic
-        error_topic: my_error_topic
         flush_timeout: 0.2
         send_timeout: 0
         kafka_config:
@@ -24,9 +23,7 @@ Example
             queue.buffering.max.ms: 0.5
 """
 
-import json
 import logging
-from datetime import datetime
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
@@ -34,6 +31,7 @@ from typing import Optional
 
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
+from confluent_kafka.admin import AdminClient
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.metrics.metrics import GaugeMetric, Metric
@@ -148,8 +146,6 @@ class ConfluentKafkaOutput(Output):
 
         topic: str = field(validator=validators.instance_of(str))
         """The topic into which the processed events should be written to."""
-        error_topic: str = field(validator=validators.instance_of(str))
-        """The topic into which the failed events should be written to."""
         flush_timeout: float = field(
             validator=validators.instance_of(float), converter=float, default=0
         )
@@ -205,6 +201,18 @@ class ConfluentKafkaOutput(Output):
         }
         DEFAULTS.update({"client.id": getfqdn()})
         return DEFAULTS | self._config.kafka_config | injected_config
+
+    @cached_property
+    def _admin(self) -> AdminClient:
+        """configures and returns the admin client
+
+        Returns
+        -------
+        AdminClient
+            confluent_kafka admin client object
+        """
+        admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
+        return AdminClient(admin_config)
 
     @cached_property
     def _producer(self) -> Producer:
@@ -274,8 +282,6 @@ class ConfluentKafkaOutput(Output):
         configured input
         """
         self.store_custom(document, self._config.topic)
-        if self.input_connector:
-            self.input_connector.batch_finished_callback()
 
     @Metric.measure_time()
     def store_custom(self, document: dict, target: str) -> None:
@@ -295,48 +301,15 @@ class ConfluentKafkaOutput(Output):
         """
         try:
             self._producer.produce(target, value=self._encoder.encode(document))
+            logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
             self.metrics.number_of_processed_events += 1
         except BufferError:
             # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self._config.flush_timeout)
-        except BaseException as error:
-            raise CriticalOutputError(
-                self, f"Error storing output document -> {error}", document
-            ) from error
-
-    @Metric.measure_time()
-    def store_failed(
-        self, error_message: str, document_received: dict, document_processed: dict
-    ) -> None:
-        """Write errors into error topic for documents that failed processing.
-
-        Parameters
-        ----------
-        error_message : str
-           Error message to write into Kafka document.
-        document_received : dict
-            Document as it was before processing.
-        document_processed : dict
-            Document after processing until an error occurred.
-
-        """
-        self.metrics.number_of_failed_events += 1
-        value = {
-            "error": error_message,
-            "original": document_received,
-            "processed": document_processed,
-            "timestamp": str(datetime.now()),
-        }
-        try:
-            self._producer.produce(
-                self._config.error_topic,
-                value=json.dumps(value, separators=(",", ":")).encode("utf-8"),
-            )
-            self._producer.poll(self._config.send_timeout)
-        except BufferError:
-            # block program until buffer is empty
-            self._producer.flush(timeout=self._config.flush_timeout)
+            logger.debug("Buffer full, flushing")
+        except Exception as error:
+            raise CriticalOutputError(self, str(error), document) from error
 
     def shut_down(self) -> None:
         """ensures that all messages are flushed. According to
@@ -359,7 +332,7 @@ class ConfluentKafkaOutput(Output):
     def health(self) -> bool:
         """Check the health of kafka producer."""
         try:
-            metadata = self._producer.list_topics(timeout=self._config.health_timeout)
+            metadata = self._admin.list_topics(timeout=self._config.health_timeout)
             if not self._config.topic in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self._config.topic)
                 return False

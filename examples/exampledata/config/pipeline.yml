@@ -3,6 +3,7 @@ process_count: 2
 timeout: 0.1
 restart_count: 2
 config_refresh_interval: 5
+error_backlog_size: 1500000
 logger:
   level: INFO
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
@@ -10,6 +11,11 @@ logger:
   loggers:
     "py.warnings": { "level": "ERROR" }
     "Runner": { "level": "DEBUG" }
+    "Processor": { "level": "ERROR" }
+    "Exporter": { "level": "ERROR" }
+    "uvicorn": { "level": "ERROR" }
+    "uvicorn.access": { "level": "ERROR" }
+    "OpenSearchOutput": { "level": "ERROR" }
 metrics:
   enabled: true
   port: 8001
@@ -115,11 +121,10 @@ output:
     hosts:
       - 127.0.0.1:9200
     default_index: processed
-    error_index: errors
+    default_op_type: create
     message_backlog_size: 2500
     timeout: 10000
     flush_timeout: 60
-    max_retries: 3
     user: admin
     secret: admin
     desired_cluster_status: ["green", "yellow"]
@@ -127,8 +132,23 @@ output:
     type: confluentkafka_output
     default: false
     topic: producer
-    error_topic: errors
     flush_timeout: 300
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       statistics.interval.ms: "60000"
+
+error_output:
+  kafka:
+    type: confluentkafka_output
+    topic: errors
+    flush_timeout: 300
+    send_timeout: 0
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      compression.type: none
+      statistics.interval.ms: "60000"
+      queue.buffering.max.messages: "10"
+      queue.buffering.max.kbytes: "1024"
+      queue.buffering.max.ms: "1000"
+      batch.size: "100"
+      request.required.acks: "-1"

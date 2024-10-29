@@ -5,7 +5,6 @@ They can be multi-processed.
 
 """
 
-import copy
 import itertools
 import logging
 import logging.handlers
@@ -18,14 +17,13 @@ from ctypes import c_bool
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Value, current_process
-from typing import Any, Generator, List, Tuple
+from typing import Any, List, Tuple
 
 import attrs
 
 from logprep.abc.component import Component
 from logprep.abc.input import (
     CriticalInputError,
-    CriticalInputParsingError,
     FatalInputError,
     Input,
     InputWarning,
@@ -39,7 +37,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
-from logprep.metrics.metrics import HistogramMetric, Metric
+from logprep.metrics.metrics import CounterMetric, HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.configuration import Configuration
 from logprep.util.pipeline_profiler import PipelineProfiler
@@ -64,22 +62,30 @@ class PipelineResult:
         The result object
     """
 
+    __match_args__ = ("event", "errors")
+
     results: List[ProcessorResult] = attrs.field(
         validator=[
             attrs.validators.instance_of(list),
             attrs.validators.deep_iterable(
                 member_validator=attrs.validators.instance_of(ProcessorResult)
             ),
-        ]
+        ],
+        init=False,
     )
     """List of ProcessorResults. Is populated in __attrs_post_init__"""
     event: dict = attrs.field(validator=attrs.validators.instance_of(dict))
     """The event that was processed"""
-    event_received: dict = attrs.field(
-        validator=attrs.validators.instance_of(dict), converter=copy.deepcopy
+
+    pipeline: list[Processor] = attrs.field(
+        validator=[
+            attrs.validators.deep_iterable(
+                member_validator=attrs.validators.instance_of(Processor),
+                iterable_validator=attrs.validators.instance_of(list),
+            ),
+            attrs.validators.min_len(1),
+        ]
     )
-    """The event that was received"""
-    pipeline: list[Processor]
     """The pipeline that processed the event"""
 
     @cached_property
@@ -113,17 +119,12 @@ def _handle_pipeline_error(func):
             self.stop()
         except (OutputWarning, InputWarning) as error:
             self.logger.warning(str(error))
-        except CriticalOutputError as error:
+        except (CriticalInputError, CriticalOutputError) as error:
+            self.enqueue_error(error)
             self.logger.error(str(error))
         except (FatalOutputError, FatalInputError) as error:
             self.logger.error(str(error))
             self.stop()
-        except CriticalInputError as error:
-            if (raw_input := error.raw_input) and self._output:  # pylint: disable=protected-access
-                for _, output in self._output.items():  # pylint: disable=protected-access
-                    if output.default:
-                        output.store_failed(str(self), raw_input, {})
-            self.logger.error(str(error))
         return None
 
     return _inner
@@ -139,6 +140,14 @@ class Pipeline:
     class Metrics(Component.Metrics):
         """Tracks statistics about a pipeline"""
 
+        number_of_failed_events: CounterMetric = attrs.field(
+            factory=lambda: CounterMetric(
+                description="Number of failed events",
+                name="number_of_failed_events",
+            )
+        )
+        """Number of failed events"""
+
         processing_time_per_event: HistogramMetric = attrs.field(
             factory=lambda: HistogramMetric(
                 description="Time in seconds that it took to process an event",
@@ -150,7 +159,7 @@ class Pipeline:
     _logprep_config: Configuration
     """ the logprep configuration dict """
 
-    _continue_iterating: Value
+    _continue_iterating: Any
     """ a flag to signal if iterating continues """
 
     pipeline_index: int
@@ -212,7 +221,13 @@ class Pipeline:
         )
         return Factory.create(input_connector_config)
 
-    def __init__(self, config: Configuration, pipeline_index: int = None) -> None:
+    def __init__(
+        self,
+        config: Configuration,
+        pipeline_index: int | None = None,
+        error_queue: multiprocessing.queues.Queue | None = None,
+    ) -> None:
+        self.error_queue = error_queue
         self.logger = logging.getLogger("Pipeline")
         self.logger.name = f"Pipeline{pipeline_index}"
         self._logprep_config = config
@@ -226,9 +241,6 @@ class Pipeline:
     def _setup(self):
         self.logger.debug("Creating connectors")
         for _, output in self._output.items():
-            output.input_connector = self._input
-            if output.default:
-                self._input.output_connector = output
             output.setup()
         self.logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
@@ -262,21 +274,20 @@ class Pipeline:
         self._shut_down()
 
     @_handle_pipeline_error
-    def process_pipeline(self) -> PipelineResult:
+    def process_pipeline(self) -> PipelineResult | None:
         """Retrieve next event, process event with full pipeline and store or return results"""
         Component.run_pending_tasks()
-
-        event = self._get_event()
-        result = None
+        event = self._input.get_next(self._timeout)
         if not event:
-            return None, None
+            return
+        result = None
         if self._pipeline:
             result: PipelineResult = self.process_event(event)
             if result.warnings:
                 self.logger.warning(",".join((str(warning) for warning in result.warnings)))
             if result.errors:
                 self.logger.error(",".join((str(error) for error in result.errors)))
-                self._store_failed_event(result.errors, result.event_received, event)
+                self.enqueue_error(result)
                 return
         if self._output:
             if self._pipeline:
@@ -285,6 +296,8 @@ class Pipeline:
                     self._store_extra_data(itertools.chain(*result_data))
             if event:
                 self._store_event(event)
+        if self._input:
+            self._input.batch_finished_callback()
         return result
 
     def _store_event(self, event: dict) -> None:
@@ -293,33 +306,13 @@ class Pipeline:
                 output.store(event)
                 self.logger.debug(f"Stored output in {output_name}")
 
-    def _store_failed_event(self, error, event_received, event):
-        for _, output in self._output.items():
-            if output.default:
-                output.store_failed(str(error), event_received, event)
-
-    def _get_event(self) -> dict:
-        try:
-            event, non_critical_error_msg = self._input.get_next(self._timeout)
-            if non_critical_error_msg and self._output:
-                self._store_failed_event(non_critical_error_msg, event, None)
-            return event
-        except CriticalInputParsingError as error:
-            input_data = error.raw_input
-            if isinstance(input_data, bytes):
-                input_data = input_data.decode("utf8")
-            self._store_failed_event(error, {"invalid_json": input_data}, "")
-
     @Metric.measure_time()
     def process_event(self, event: dict):
         """process all processors for one event"""
-        result = PipelineResult(
-            results=[],
-            event_received=event,
+        return PipelineResult(
             event=event,
             pipeline=self._pipeline,
         )
-        return result
 
     def _store_extra_data(self, result_data: List | itertools.chain) -> None:
         self.logger.debug("Storing extra data")
@@ -352,7 +345,7 @@ class Pipeline:
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False
 
-    def get_health_functions(self) -> Tuple[bool]:
+    def get_health_functions(self) -> Tuple:
         """Return health function of components"""
         output_health_functions = []
         if self._output:
@@ -364,3 +357,66 @@ class Pipeline:
                 output_health_functions,
             )
         )
+
+    def enqueue_error(
+        self, item: PipelineResult | CriticalInputError | CriticalOutputError
+    ) -> None:
+        """Enqueues an error to the error queue or logs a warning if
+        no error queue is defined."""
+        if not self.error_queue:
+            self.logger.warning("No error queue defined, event was dropped")
+            if self._input:
+                self._input.batch_finished_callback()
+            return
+        self.logger.debug(f"Enqueuing error item: {item}")
+        match item:
+            case CriticalOutputError():
+                event = self._get_output_error_event(item)
+            case PipelineResult(input_event, errors):
+                self.metrics.number_of_failed_events += 1
+                event = {
+                    "event": str(input_event),
+                    "errors": ", ".join((str(error.message) for error in errors)),
+                }
+            case CriticalInputError():
+                self.metrics.number_of_failed_events += 1
+                event = {"event": str(item.raw_input), "errors": str(item.message)}
+            case list():
+                event = [{"event": str(i), "errors": "Unknown error"} for i in item]
+            case _:
+                event = {"event": str(item), "errors": "Unknown error"}
+        try:
+            if isinstance(event, list):
+                for i in event:
+                    self.logger.debug(f"Enqueuing error item: {i}")
+                    self.error_queue.put(i, timeout=0.1)
+                    self.logger.debug("Enqueued error item")
+            else:
+                self.logger.debug(f"Enqueuing error item: {event}")
+                self.error_queue.put(event, timeout=0.1)
+                self.logger.debug("Enqueued error item")
+        except Exception as error:  # pylint: disable=broad-except
+            self.logger.error(
+                f"[Error Event] Couldn't enqueue error item due to: {error} | Item: '{event}'"
+            )
+        if self._input:
+            self._input.batch_finished_callback()
+
+    def _get_output_error_event(self, item: CriticalOutputError) -> dict | list:
+        match item:
+            case CriticalOutputError([{"errors": _, "event": _}, *_]):
+                event = [
+                    {"event": str(i["event"]), "errors": str(i["errors"])} for i in item.raw_input
+                ]
+                self.metrics.number_of_failed_events += len(event)
+                return event
+            case CriticalOutputError({"errors": error, "event": event}):
+                self.metrics.number_of_failed_events += 1
+                return {"event": str(event), "errors": str(error)}
+            case CriticalOutputError(raw_input) if isinstance(raw_input, (list, tuple)):
+                event = [{"event": str(i), "errors": str(item.message)} for i in raw_input]
+                self.metrics.number_of_failed_events += len(event)
+                return event
+            case _:
+                self.metrics.number_of_failed_events += 1
+                return {"event": str(item.raw_input), "errors": str(item.message)}

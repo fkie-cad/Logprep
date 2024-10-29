@@ -7,9 +7,10 @@ import hashlib
 import os
 import zlib
 from abc import abstractmethod
+from copy import deepcopy
 from functools import partial
 from hmac import HMAC
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import Optional, Tuple
 
 from attrs import define, field, validators
 
@@ -19,9 +20,6 @@ from logprep.metrics.metrics import Metric
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser
 from logprep.util.validators import dict_structure_validator
-
-if TYPE_CHECKING:  # pragma: no cover
-    from logprep.abc.output import Output
 
 
 class InputError(LogprepException):
@@ -36,8 +34,11 @@ class CriticalInputError(InputError):
     """A significant error occurred - log and don't process the event."""
 
     def __init__(self, input_connector: "Input", message, raw_input):
-        self.raw_input = raw_input
-        super().__init__(input_connector, f"{message} -> {raw_input}")
+        super().__init__(
+            input_connector, f"{message} -> event was written to error output if configured"
+        )
+        self.raw_input = deepcopy(raw_input)  # is written to error output
+        self.message = message
 
 
 class CriticalInputParsingError(CriticalInputError):
@@ -85,7 +86,7 @@ class HmacConfig:
 
 @define(kw_only=True)
 class TimeDeltaConfig:
-    """TimeDetla Configurations
+    """TimeDelta Configurations
     Works only if the preprocessor log_arrival_time_target_field is set."""
 
     target_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
@@ -183,10 +184,6 @@ class Input(Connector):
             },
         )
 
-    pipeline_index: int
-    output_connector: Optional["Output"]
-    __slots__ = ["pipeline_index", "output_connector"]
-
     @property
     def _add_hmac(self):
         """Check and return if a hmac should be added or not."""
@@ -259,7 +256,7 @@ class Input(Connector):
         """
 
     @Metric.measure_time()
-    def get_next(self, timeout: float) -> Tuple[Optional[dict], Optional[str]]:
+    def get_next(self, timeout: float) -> dict | None:
         """Return the next document
 
         Parameters
@@ -278,14 +275,13 @@ class Input(Connector):
             After timeout (usually a fraction of seconds) if no input data was available by then.
         """
         event, raw_event = self._get_event(timeout)
-        non_critical_error_msg = None
         if event is None:
-            return None, None
+            return
         self.metrics.number_of_processed_events += 1
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
         if self._add_hmac:
-            event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
+            event = self._add_hmac_to(event, raw_event)
         if self._add_version_info:
             self._add_version_information_to_event(event)
         if self._add_log_arrival_time_information:
@@ -294,7 +290,7 @@ class Input(Connector):
             self._add_arrival_timedelta_information_to_event(event)
         if self._add_env_enrichment:
             self._add_env_enrichment_to_event(event)
-        return event, non_critical_error_msg
+        return event
 
     def batch_finished_callback(self):
         """Can be called by output connectors after processing a batch of one or more records."""
@@ -356,10 +352,15 @@ class Input(Connector):
         event_dict: dict
             The original event extended with a field that has the hmac and the corresponding target
             field, which was used to calculate the hmac.
+
+        Raises
+        ------
+        CriticalInputError
+            If the hmac could not be added to the event because the desired output field already
+            exists or cant't be found.
         """
         hmac_options = self._config.preprocessing.get("hmac", {})
         hmac_target_field_name = hmac_options.get("target")
-        non_critical_error_msg = None
 
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
@@ -370,21 +371,15 @@ class Input(Connector):
             received_orig_message = get_dotted_field_value(event_dict, hmac_target_field_name)
 
         if received_orig_message is None:
-            hmac = "error"
-            received_orig_message = (
-                f"<expected hmac target field '{hmac_target_field_name}' not found>".encode()
-            )
-            non_critical_error_msg = (
-                f"Couldn't find the hmac target " f"field '{hmac_target_field_name}'"
-            )
-        else:
-            if isinstance(received_orig_message, str):
-                received_orig_message = received_orig_message.encode("utf-8")
-            hmac = HMAC(
-                key=hmac_options.get("key").encode(),
-                msg=received_orig_message,
-                digestmod=hashlib.sha256,
-            ).hexdigest()
+            error_message = f"Couldn't find the hmac target field '{hmac_target_field_name}'"
+            raise CriticalInputError(self, error_message, raw_event)
+        if isinstance(received_orig_message, str):
+            received_orig_message = received_orig_message.encode("utf-8")
+        hmac = HMAC(
+            key=hmac_options.get("key").encode(),
+            msg=received_orig_message,
+            digestmod=hashlib.sha256,
+        ).hexdigest()
         compressed = zlib.compress(received_orig_message, level=-1)
         hmac_output = {"hmac": hmac, "compressed_base64": base64.b64encode(compressed).decode()}
         add_was_successful = add_field_to(
@@ -393,9 +388,11 @@ class Input(Connector):
             hmac_output,
         )
         if not add_was_successful:
-            non_critical_error_msg = (
+            raise CriticalInputError(
+                self,
                 f"Couldn't add the hmac to the input event as the desired "
                 f"output field '{hmac_options.get('output_field')}' already "
-                f"exist."
+                f"exist.",
+                event_dict,
             )
-        return event_dict, non_critical_error_msg
+        return event_dict

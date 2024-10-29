@@ -252,31 +252,6 @@ class S3Output(Output):
         self.metrics.number_of_processed_events += 1
         self._add_to_backlog(document, target)
 
-    def store_failed(
-        self, error_message: str, document_received: dict, document_processed: dict
-    ) -> None:
-        """Write errors into s3 bucket using error prefix for documents that failed processing.
-
-        Parameters
-        ----------
-        error_message : str
-           Error message to write into document.
-        document_received : dict
-            Document as it was before processing.
-        document_processed : dict
-            Document after processing until an error occurred.
-
-        """
-        self.metrics.number_of_failed_events += 1
-        error_document = {
-            "error": error_message,
-            "original": document_received,
-            "processed": document_processed,
-            "@timestamp": TimeParser.now().isoformat(),
-        }
-        self._add_to_backlog(error_document, self._config.error_prefix)
-        self._write_to_s3_resource()
-
     def _add_dates(self, prefix: str) -> str:
         date_format_matches = self._replace_pattern.findall(prefix)
         if date_format_matches:
@@ -316,9 +291,6 @@ class S3Output(Output):
 
         if not self._config.call_input_callback:
             return
-
-        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-            self.input_connector.batch_finished_callback()
 
     @_handle_s3_error
     def _write_document_batch(self, document_batch: dict, identifier: str) -> None:

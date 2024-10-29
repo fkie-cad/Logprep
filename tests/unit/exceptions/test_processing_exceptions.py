@@ -23,7 +23,7 @@ class TestProcessingWarning(ExceptionBaseTest):
     counted_metric_name = "number_of_warnings"
 
 
-class TestFieldExsitsWarning(ExceptionBaseTest):
+class TestFieldExistsWarning(ExceptionBaseTest):
     exception = FieldExistsWarning
     error_message = (
         r"FieldExistsWarning: The following fields could not be written,"
@@ -42,12 +42,16 @@ class TestProcessingCriticalError(ExceptionBaseTest):
     exception = ProcessingCriticalError
 
     error_message = (
-        r"ProcessingCriticalError: the error message ->"
-        r" event was send to error output and further processing stopped, "
-        r"rule.id='.+', rule.description='', event=\{'message': 'test_event'\}"
+        r"ProcessingCriticalError: 'the error message' -> "
+        r"rule.id: '.*' -> "
+        r"event was send to error output and further processing stopped"
     )
 
     counted_metric_name = "number_of_errors"
+
+    def setup_method(self):
+        super().setup_method()
+        self.exception_args = ("the error message", self.object)
 
 
 class TestProcessingError(ExceptionBaseTest):
