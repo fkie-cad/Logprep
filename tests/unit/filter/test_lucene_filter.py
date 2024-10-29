@@ -5,16 +5,20 @@ import re
 import pytest
 from pytest import raises
 
-from logprep.filter.lucene_filter import LuceneFilter, LuceneFilterError, LuceneTransformer
 from logprep.filter.expression.filter_expression import (
-    StringFilterExpression,
-    RegExFilterExpression,
-    Or,
     And,
-    Null,
     Always,
     Exists,
     Not,
+    Null,
+    Or,
+    RegExFilterExpression,
+    StringFilterExpression,
+)
+from logprep.filter.lucene_filter import (
+    LuceneFilter,
+    LuceneFilterError,
+    LuceneTransformer,
 )
 
 
@@ -451,3 +455,30 @@ class TestLueceneFilter:
     def test_create_filter_error(self, testcase, input_str, message):
         with raises(LuceneFilterError, match=re.escape(message)):
             LuceneFilter.create(f'foo: "{input_str}"')
+
+    def test_creates_lucene_compliance_filter_two_matching_regex_keys_of_two(self):
+        lucene_filter = LuceneFilter.create(
+            'regex_key_one: "/.*value.*/" AND regex_key_two: "/.*value.*/"',
+        )
+
+        assert lucene_filter == And(
+            RegExFilterExpression(["regex_key_one"], ".*value.*"),
+            RegExFilterExpression(["regex_key_two"], ".*value.*"),
+        )
+
+    def test_creates_lucene_compliance_filter_one_regex_key(self):
+        lucene_filter = LuceneFilter.create(
+            'regex_key_one: "/.*value.*/"',
+        )
+
+        assert lucene_filter == RegExFilterExpression(["regex_key_one"], ".*value.*")
+
+    def test_creates_lucene_compliance_filter_one_matching_one_missmatch_regex_key_of_two(self):
+        lucene_filter = LuceneFilter.create(
+            'regex_key_one: "/.*value.*/" AND key_two: "value"',
+        )
+
+        assert lucene_filter == And(
+            RegExFilterExpression(["regex_key_one"], ".*value.*"),
+            StringFilterExpression(["key_two"], "value"),
+        )

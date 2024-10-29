@@ -13,6 +13,7 @@
 * adds `desired_cluster_status` option to opensearch output to signal healthy cluster status
 * initially run health checks on setup for every configured component
 * make `imagePullPolicy` configurable for helm chart deployments
+* it is now possible to use Lucene compliant Filter Expressions
 * make `terminationGracePeriodSeconds` configurable in helm chart values
 
 

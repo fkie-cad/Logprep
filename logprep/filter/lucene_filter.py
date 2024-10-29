@@ -62,7 +62,18 @@ RegEx-Filter
 ------------
 
 It is possible use regex expressions to match values.
-For this, the field with the regex pattern must be added to the optional field
+To be recognized as a regular expression the filter field has to be start and end with
+:code:`/`.
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'ip_address: "/192\.168\.0\..*/"'
+
+
+[Deprecated, but still functional] The field with the regex pattern must be added to the optional field
 :code:`regex_fields` in the rule definition.
 
 In the following example the field :code:`ip_address` is defined as regex field.
@@ -84,24 +95,39 @@ import re
 from itertools import chain, zip_longest
 
 # pylint: enable=anomalous-backslash-in-string
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
+import logging
 import luqum
-from luqum.parser import parser, ParseSyntaxError, IllegalCharacterError
-from luqum.tree import OrOperation, AndOperation, Group, FieldGroup, SearchField, Phrase, Word, Not
+from luqum.parser import IllegalCharacterError, ParseSyntaxError, parser
+from luqum.tree import (
+    AndOperation,
+    FieldGroup,
+    Group,
+    Not,
+    OrOperation,
+    Phrase,
+    Regex,
+    SearchField,
+    Word,
+)
 
 from logprep.filter.expression.filter_expression import (
-    Or,
-    And,
-    StringFilterExpression,
-    SigmaFilterExpression,
-    RegExFilterExpression,
-    Not as NotExpression,
-    Exists,
-    Null,
     Always,
+    And,
+    Exists,
     FilterExpression,
 )
+from logprep.filter.expression.filter_expression import Not as NotExpression
+from logprep.filter.expression.filter_expression import (
+    Null,
+    Or,
+    RegExFilterExpression,
+    SigmaFilterExpression,
+    StringFilterExpression,
+)
+
+logger = logging.getLogger("LuceneFilter")
 
 
 class LuceneFilterError(BaseException):
@@ -309,10 +335,22 @@ class LuceneTransformer:
                 return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
 
         dotted_field = ".".join(key)
+
         if self._special_fields.items():
             for sf_key, sf_value in self._special_fields.items():
                 if sf_value is True or dotted_field in sf_value:
+                    if sf_key == "regex_fields":
+                        logger.warning(
+                            "[Deprecated]: regex_fields are no longer necessary. "
+                            "Use Lucene regex annotation."
+                        )
+
                     return self._special_fields_map[sf_key](key, value)
+
+        if value.startswith("/") and value.endswith("/"):
+            value = value.strip("/")
+            return RegExFilterExpression(key, value)
+
         return StringFilterExpression(key, value)
 
     @staticmethod

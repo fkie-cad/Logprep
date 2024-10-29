@@ -3,7 +3,7 @@
 import re
 from abc import ABC, abstractmethod
 from itertools import chain, zip_longest
-from typing import List, Any
+from typing import Any, List
 
 
 class FilterExpressionError(BaseException):
