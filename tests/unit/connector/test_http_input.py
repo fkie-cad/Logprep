@@ -541,3 +541,54 @@ class TestHttpConnector(BaseInputTestCase):
     @pytest.mark.skip("Not implemented")
     def test_setup_calls_wait_for_health(self):
         pass
+
+
+    def test_falcon_test(self):
+        from falcon import testing
+        from unittest import mock
+        # Initialize the TestClient with your Falcon app
+        client = testing.TestClient(self.object.app)
+
+        # Mock the behavior of the health check to simulate a timeout
+        with mock.patch("your_module.health_check_function", side_effect=Exception("Timeout")):
+            with mock.patch("logging.Logger.error") as mock_logger:
+                assert not self.object.health(), "Health endpoint should not be ready"
+                mock_logger.assert_called()
+
+
+    def test_falcon_newtest(self):
+        import falcon
+        from falcon import testing
+        from .fal_tmp import Resource
+
+        app = falcon.App()
+
+        images = Resource()
+        app.add_route('/images', images)
+
+        client =  testing.TestClient(app)
+        response = client.simulate_get('/images')
+        assert response.status == falcon.HTTP_OK
+
+
+    def test_falcon_htest(self):
+        import falcon
+        from falcon import testing
+        from .fal_tmp import Resource
+
+        endpoint = self.object.health_endpoints[0]
+
+        app = falcon.App()
+
+        images = Resource()
+        app.add_route(endpoint, images)
+
+        client = testing.TestClient(app)
+        with mock.patch.object(images, "on_get") as mock_handler:
+            # Simulate a failure by raising an exception
+            mock_handler.side_effect = Exception("Simulated failure")
+
+            with mock.patch("logging.Logger.error") as mock_logger:
+                response = client.simulate_get(endpoint)
+                assert response.status == falcon.HTTP_500, "should return 500"
+                mock_logger.assert_called()
