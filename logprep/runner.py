@@ -174,8 +174,8 @@ class Runner:
                 self.exit_code = EXITCODES.PIPELINE_ERROR.value
                 self._logger.error("Restart count exceeded. Exiting.")
                 sys.exit(self.exit_code)
-            if self._manager.error_queue is not None:
-                self.metrics.number_of_events_in_error_queue += self._manager.error_queue.qsize()
+            #if self._manager.error_queue is not None:
+            #    self.metrics.number_of_events_in_error_queue += self._manager.error_queue.qsize()
             self._manager.restart_failed_pipeline()
 
     def reload_configuration(self):

@@ -4,6 +4,12 @@ import logging
 import multiprocessing as mp
 from logging.handlers import QueueListener
 from socket import gethostname
+import platform
+if platform.system() != "Linux":
+    from multiprocessing import set_start_method
+    set_start_method("fork")
+
+
 
 logqueue = mp.Queue(-1)
 

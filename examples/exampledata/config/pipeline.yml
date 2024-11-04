@@ -3,9 +3,9 @@ process_count: 2
 timeout: 0.1
 restart_count: 2
 config_refresh_interval: 5
-error_backlog_size: 1500000
+error_backlog_size: 150
 logger:
-  level: INFO
+  level: DEBUG
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:

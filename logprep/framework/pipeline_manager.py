@@ -52,7 +52,7 @@ class ThrottlingQueue(multiprocessing.queues.Queue):
 
     def put(self, obj, block=True, timeout=None, batch_size=1):
         """Put an obj into the queue."""
-        self.throttle(batch_size)
+        #self.throttle(batch_size)
         super().put(obj, block=block, timeout=timeout)
 
 

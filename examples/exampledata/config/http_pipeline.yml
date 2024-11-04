@@ -3,6 +3,7 @@ process_count: 4
 config_refresh_interval: 5
 profile_pipelines: false
 restart_count: 3
+error_backlog_size: 150
 logger:
   level: INFO
   loggers:
@@ -29,7 +30,7 @@ metrics:
 input:
   httpinput:
     type: http_input
-    message_backlog_size: 1500000
+    message_backlog_size: 150
     collect_meta: true
     metafield_name: "@metadata"
     uvicorn_config:

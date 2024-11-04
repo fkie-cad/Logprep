@@ -336,7 +336,7 @@ class Pipeline:
         if not hasattr(self._input, "messages"):
             return
         if isinstance(self._input.messages, multiprocessing.queues.Queue):
-            while self._input.messages.qsize():
+            while not self._input.messages.empty():
                 self.process_pipeline()
 
     def stop(self) -> None:
