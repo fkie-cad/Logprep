@@ -128,7 +128,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             return list(reversed(return_sequence)).pop()
 
         kafka_consumer.store_offsets.side_effect = raise_generator(return_sequence)
-        kafka_input._last_valid_records = {0: "message"}
+        kafka_input._last_valid_record = {0: "message"}
         with pytest.raises(InputWarning):
             kafka_input.batch_finished_callback()
 
