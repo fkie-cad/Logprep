@@ -479,7 +479,7 @@ class HttpInput(Input):
 
     def _get_event(self, timeout: float) -> Tuple:
         """Returns the first message from the queue"""
-        self.metrics.message_backlog_size += self.messages.qsize()
+        #self.metrics.message_backlog_size += self.messages.qsize()
         try:
             message = self.messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
