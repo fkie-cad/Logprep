@@ -128,20 +128,21 @@ class GenericResolverRule(FieldManagerRule):
 
         def __attrs_post_init__(self):
             if self.resolve_from_file:
+                file_path = self.resolve_from_file["path"]
                 if "?P<mapping>" not in self.resolve_from_file["pattern"]:
                     raise InvalidConfigurationError(
                         f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
                     )
-                if not Path(self.resolve_from_file["path"]).is_file():
+                if not Path(file_path).is_file():
                     raise InvalidConfigurationError(
-                        f"Additions file '{self.resolve_from_file["path"]}' not found! (Rule ID: '{self.id}')",
+                        f"Additions file '{file_path}' not found! (Rule ID: '{self.id}')",
                     )
-                add_dict = GetterFactory.from_string(self.resolve_from_file["path"]).get_yaml()
+                add_dict = GetterFactory.from_string(file_path).get_yaml()
                 if not isinstance(add_dict, dict) or not all(
                     isinstance(value, str) for value in add_dict.values()
                 ):
                     raise InvalidConfigurationError(
-                        f"Additions file '{self.resolve_from_file["path"]}' must be a dictionary with string values! (Rule ID: '{self.id}')",
+                        f"Additions file '{file_path}' must be a dictionary with string values! (Rule ID: '{self.id}')",
                     )
                 self.resolve_from_file["additions"] = add_dict
 
