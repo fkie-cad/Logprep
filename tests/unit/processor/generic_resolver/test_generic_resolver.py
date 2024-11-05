@@ -4,10 +4,7 @@
 # pylint: disable=wrong-import-position
 from collections import OrderedDict
 
-from logprep.processor.base.exceptions import (
-    FieldExistsWarning,
-    ProcessingCriticalError,
-)
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -276,40 +273,6 @@ class TestGenericResolver(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document == expected
-
-    def test_resolve_dotted_field_no_conflict_match_from_file_group_mapping_does_not_exist(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
-                    "pattern": r"\d*(?P<foobar>[a-z]+)\d*",
-                },
-                "resolve_list": {"FOO": "BAR"},
-            },
-        }
-        self._load_specific_rule(rule)
-        document = {"to_resolve": "ab"}
-        result = self.object.process(document)
-        assert isinstance(result.errors[0], ProcessingCriticalError)
-        assert "Mapping group is missing in mapping" in result.errors[0].args[0]
-
-    def test_resolve_generic_match_from_file_and_file_does_not_exist(self):
-        rule = {
-            "filter": "to.resolve",
-            "generic_resolver": {
-                "field_mapping": {"to.resolve": "resolved"},
-                "resolve_from_file": {"path": "foo", "pattern": "bar"},
-            },
-        }
-        self._load_specific_rule(rule)
-        document = {"to": {"resolve": "something HELLO1"}}
-        result = self.object.process(document)
-        assert isinstance(result.errors[0], ProcessingCriticalError)
-        assert "Additions file 'foo' not found" in result.errors[0].args[0]
 
     def test_resolve_dotted_field_no_conflict_no_match(self):
         rule = {

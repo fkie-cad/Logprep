@@ -72,9 +72,13 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
    :noindex:
 """
 
+from pathlib import Path
+
 from attrs import define, field, validators
 
+from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.util.getter import GetterFactory
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -121,6 +125,25 @@ class GenericResolverRule(FieldManagerRule):
         a regex pattern which can be used to resolve values.
         The resolve list in the file at :code:`path` is then used in conjunction with
         the regex pattern in :code:`pattern`."""
+
+        def __attrs_post_init__(self):
+            if self.resolve_from_file:
+                if "?P<mapping>" not in self.resolve_from_file["pattern"]:
+                    raise InvalidConfigurationError(
+                        f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
+                    )
+                if not Path(self.resolve_from_file["path"]).is_file():
+                    raise InvalidConfigurationError(
+                        f"Additions file '{self.resolve_from_file["path"]}' not found! (Rule ID: '{self.id}')",
+                    )
+                add_dict = GetterFactory.from_string(self.resolve_from_file["path"]).get_yaml()
+                if not isinstance(add_dict, dict) or not all(
+                    isinstance(value, str) for value in add_dict.values()
+                ):
+                    raise InvalidConfigurationError(
+                        f"Additions file '{self.resolve_from_file["path"]}' must be a dictionary with string values! (Rule ID: '{self.id}')",
+                    )
+                self.resolve_from_file["additions"] = add_dict
 
     @property
     def field_mapping(self) -> dict:
