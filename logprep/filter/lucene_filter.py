@@ -61,8 +61,8 @@ This example is not complete, since rules are specific to processors and require
 RegEx-Filter
 ------------
 
-It is possible use regex expressions to match values.
-To be recognized as a regular expression the filter field has to be start and end with
+It is possible to use regex expressions to match values.
+To be recognized as a regular expression, the filter field has to start with
 :code:`/`.
 
 

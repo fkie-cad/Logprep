@@ -57,6 +57,7 @@ class TestHttpConnector(BaseInputTestCase):
         super().setup_method()
         self.object.pipeline_index = 1
         self.object.setup()
+        self.app = self.object.http_server.server.config.app
         self.target = self.object.target
 
     CONFIG: dict = {
@@ -109,6 +110,12 @@ class TestHttpConnector(BaseInputTestCase):
         assert connector.http_server is None
 
     def test_get_method_returns_200(self):
+        print('' )
+        import falcon
+        from falcon import testing
+        clientt = testing.TestClient(self.app)
+        a = clientt.simulate_get(url=f"{self.target}/json")
+        a = clientt.simulate_get('/json')
         resp = requests.get(url=f"{self.target}/json", timeout=0.5)
         assert resp.status_code == 200
 
