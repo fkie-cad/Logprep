@@ -4,6 +4,7 @@
 ### Breaking
 ### Features
 ### Improvements
+* replace `BaseException` with `Exception` for custom errors
 ### Bugfix
 
 ## 14.0.0
@@ -53,7 +54,7 @@
 
 * fixes a bug not increasing but decreasing timeout throttle factor of ThrottlingQueue
 * handle DecodeError and unexpected Exceptions on requests in `http_input` separately
-* fixes unbound local error in http input connector 
+* fixes unbound local error in http input connector
 
 ## 13.1.1
 ### Improvements
@@ -97,7 +98,7 @@
 
 ### Bugfix
 
-* This release limits the mysql-connector-python dependency to have version less the 9 
+* This release limits the mysql-connector-python dependency to have version less the 9
 
 ## 13.0.0
 
