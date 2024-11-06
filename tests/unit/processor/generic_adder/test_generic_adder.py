@@ -489,11 +489,11 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         assert not self.object._check_if_file_not_exists_or_stale(time.time())
 
     def test_check_if_file_stale_after_enough_time_has_passed(self):
-        time.sleep(0.2)  # nosemgrep
+        time.sleep(0.2)
         assert self.object._check_if_file_not_exists_or_stale(time.time())
 
     def test_check_if_file_not_stale_after_enough_time_has_passed_but_file_has_been_changed(self):
-        time.sleep(0.2)  # nosemgrep
+        time.sleep(0.2)
         with open(self.object._db_file_path, "r", encoding="utf-8") as db_file:
             file_temp = db_file.read()
         now = time.time()
@@ -561,7 +561,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         document_2 = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
 
         self.object.process(document_1)
-        time.sleep(0.2)  # nosemgrep
+        time.sleep(0.2)
         mock_simulate_table_change()
         self.object.process(document_2)
 
@@ -579,7 +579,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         self.object._db_table = {}
         self.object._initialize_sql(self.CONFIG["sql_config"])
         mock_simulate_table_change()
-        time.sleep(0.2)  # nosemgrep
+        time.sleep(0.2)
         self.object.process(document)
 
         assert document == expected
@@ -621,14 +621,14 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         assert self.object._db_connector.time_to_check_for_change() is False
 
     def test_time_to_check_for_change_read_for_change(self):
-        time.sleep(self.object._file_check_interval)  # nosemgrep
+        time.sleep(self.object._file_check_interval)
         assert self.object._db_connector.time_to_check_for_change() is True
 
     def test_update_from_db_and_write_to_file_change_and_stale(self):
         assert os.path.isfile(self.object._db_file_path)
         last_file_change = os.path.getmtime(self.object._db_file_path)
         mock_simulate_table_change()
-        time.sleep(self.object._file_check_interval)  # nosemgrep
+        time.sleep(self.object._file_check_interval)
         self.object._update_from_db_and_write_to_file()
         assert self.object._db_table == {
             "TEST_0": (["b", "fi"], ["c", "fo"]),
@@ -640,7 +640,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
     def test_update_from_db_and_write_to_file_no_change_and_stale(self):
         assert os.path.isfile(self.object._db_file_path)
         last_file_change = os.path.getmtime(self.object._db_file_path)
-        time.sleep(self.object._file_check_interval)  # nosemgrep
+        time.sleep(self.object._file_check_interval)
         self.object._update_from_db_and_write_to_file()
         assert self.object._db_table == {
             "TEST_0": (["b", "foo"], ["c", "bar"]),
@@ -654,7 +654,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         last_file_change = os.path.getmtime(self.object._db_file_path)
         self.object._file_check_interval = 9999999
         mock_simulate_table_change()
-        time.sleep(0.01)  # nosemgrep
+        time.sleep(0.01)
         self.object._update_from_db_and_write_to_file()
         assert self.object._db_table == {
             "TEST_0": (["b", "fi"], ["c", "fo"]),
@@ -667,7 +667,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         assert os.path.isfile(self.object._db_file_path)
         last_file_change = os.path.getmtime(self.object._db_file_path)
         self.object._file_check_interval = 9999999
-        time.sleep(0.01)  # nosemgrep
+        time.sleep(0.01)
         self.object._update_from_db_and_write_to_file()
         assert self.object._db_table == {
             "TEST_0": (["b", "foo"], ["c", "bar"]),
@@ -679,7 +679,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
     def test_update_from_db_and_write_to_file_no_existing_file_stale(self):
         assert os.path.isfile(self.object._db_file_path)
         os.remove(self.object._db_file_path)
-        time.sleep(self.object._file_check_interval)  # nosemgrep
+        time.sleep(self.object._file_check_interval)
         self.object._db_connector._last_table_checksum = None
         self.object._update_from_db_and_write_to_file()
         assert self.object._db_table == {

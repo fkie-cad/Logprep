@@ -70,9 +70,7 @@ class Dissector(FieldManager):
                 if loop_content is None:
                     if rule.ignore_missing_fields:
                         continue
-                    error = BaseException(
-                        f"dissector: mapping field '{source_field}' does not exist"
-                    )
+                    error = Exception(f"dissector: mapping field '{source_field}' does not exist")
                     self._handle_warning_error(event, rule, error)
             if delimiter is not None and loop_content is not None:
                 content, _, loop_content = loop_content.partition(delimiter)
