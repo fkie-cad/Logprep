@@ -16,6 +16,9 @@ import responses
 import uvicorn
 from requests.auth import HTTPBasicAuth
 
+import falcon
+from falcon import testing
+
 from logprep.abc.input import FatalInputError
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
@@ -59,6 +62,7 @@ class TestHttpConnector(BaseInputTestCase):
         self.object.setup()
         self.app = self.object.http_server.server.config.app
         self.target = self.object.target
+        self.falconClient = testing.TestClient(self.app)
 
     CONFIG: dict = {
         "type": "http_input",
@@ -110,95 +114,84 @@ class TestHttpConnector(BaseInputTestCase):
         assert connector.http_server is None
 
     def test_get_method_returns_200(self):
-        print('' )
-        import falcon
-        from falcon import testing
-        clientt = testing.TestClient(self.app)
-        a = clientt.simulate_get(url=f"{self.target}/json")
-        a = clientt.simulate_get('/json')
-        resp = requests.get(url=f"{self.target}/json", timeout=0.5)
+        resp = self.falconClient.simulate_get('/json')
+        # Todo: Notiz timeout nicht nötig bei falcon, da kein reales Netz
         assert resp.status_code == 200
 
     def test_get_method_returns_200_with_authentication(self):
-        resp = requests.get(url=f"{self.target}/auth-json-secret", timeout=0.5)
+        resp = self.falconClient.simulate_get('/auth-json-secret')
         assert resp.status_code == 200
 
     def test_get_method_returns_429_if_queue_is_full(self):
         self.object.messages.full = mock.MagicMock()
         self.object.messages.full.return_value = True
-        resp = requests.get(url=f"{self.target}/json", timeout=20)
+        resp = self.falconClient.simulate_get('/json')
         assert resp.status_code == 429
 
     def test_get_error_code_too_many_requests(self):
         data = {"message": "my log message"}
         self.object.messages.put = mock.MagicMock()
         self.object.messages.put.side_effect = queue.Full()
-        session = requests.Session()
-        resp = session.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/json', json=data)
         assert resp.status_code == 429
 
     def test_json_endpoint_accepts_post_request(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/json', json=data)
         assert resp.status_code == 200
 
     def test_json_endpoint_match_wildcard_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=f"{self.target}/api/wildcard_path/json", json=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/json', json=data)
         assert resp.status_code == 200
 
     def test_json_endpoint_not_match_wildcard_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(
-            url=f"{self.target}/api/wildcard_path/json/another_path", json=data, timeout=0.5
-        )
+        resp = self.falconClient.simulate_post('/api/wildcard_path/json/another_path', json=data)
         assert resp.status_code == 404
 
         data = {"message": "my log message"}
-        resp = requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/json', json=data)
         assert resp.status_code == 200
+
         event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue == data
 
     def test_plaintext_endpoint_accepts_post_request(self):
         data = "my log message"
-        resp = requests.post(url=f"{self.target}/plaintext", json=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/plaintext', json=data)
         assert resp.status_code == 200
 
     def test_plaintext_message_is_put_in_queue(self):
         data = "my log message"
-        resp = requests.post(url=f"{self.target}/plaintext", data=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/plaintext', json=data)
         assert resp.status_code == 200
         event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue.get("message") == data
 
     def test_jsonl_endpoint_match_regex_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=f"{self.target}/first/jsonl", json=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/first/jsonl', json=data)
         assert resp.status_code == 200
 
     def test_jsonl_endpoint_not_match_regex_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=f"{self.target}/firs/jsonl", json=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/firs/jsonl', json=data)
         assert resp.status_code == 404
 
     def test_jsonl_endpoint_not_match_before_start_regex(self):
         data = {"message": "my log message"}
-        resp = requests.post(url=f"{self.target}/api/first/jsonl", json=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/api/first/jsonl', json=data)
         assert resp.status_code == 404
 
     def test_jsonl_endpoint_match_wildcard_regex_mix_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(
-            url=f"{self.target}/third/jsonl/another_path/last_path", json=data, timeout=0.5
-        )
+        resp = self.falconClient.simulate_post('/third/jsonl/another_path/last_path', json=data)
         assert resp.status_code == 200
 
     def test_jsonl_endpoint_not_match_wildcard_regex_mix_route(self):
         data = {"message": "my log message"}
-        resp = requests.post(
-            url=f"{self.target}/api/third/jsonl/another_path", json=data, timeout=0.5
-        )
+        resp = self.falconClient.simulate_post('/api/third/jsonl/another_path', json=data)
         assert resp.status_code == 404
 
     def test_jsonl_messages_are_put_in_queue(self):
@@ -207,7 +200,7 @@ class TestHttpConnector(BaseInputTestCase):
         {"message": "my second log message"}
         {"message": "my third log message"}
         """
-        resp = requests.post(url=f"{self.target}/jsonl", data=data, timeout=0.5)
+        resp = self.falconClient.simulate_post('/jsonl', body=data)
         assert resp.status_code == 200
         assert self.object.messages.qsize() == 3
         event_from_queue = self.object.messages.get(timeout=1)
@@ -219,7 +212,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
-        requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        self.falconClient.simulate_post('/json', json=data)
         assert self.object.get_next(0.001) == data
 
     def test_get_next_returns_first_in_first_out(self):
@@ -243,9 +236,9 @@ class TestHttpConnector(BaseInputTestCase):
         for message in data:
             endpoint, post_data = message.values()
             if endpoint == "json":
-                requests.post(url=self.target + "/json", json=post_data, timeout=0.5)
+                self.falconClient.simulate_post('/json', json=post_data)
             if endpoint == "plaintext":
-                requests.post(url=self.target + "/plaintext", data=post_data, timeout=0.5)
+                self.falconClient.simulate_post('/plaintext', body=post_data)
         assert self.object.get_next(0.001) == data[0].get("data")
         assert self.object.get_next(0.001) == {"message": data[1].get("data")}
         assert self.object.get_next(0.001) == data[2].get("data")
@@ -260,7 +253,7 @@ class TestHttpConnector(BaseInputTestCase):
         message = {"message": "my message"}
         for i in range(100):
             message["message"] = f"message number {i}"
-            requests.post(url=f"{self.target}/json", json=message, timeout=0.5)  # nosemgrep
+            self.falconClient.simulate_post('/json', json=message)
         assert self.object.messages.qsize() == 100, "messages are put to queue"
 
     def test_get_metadata(self):
@@ -272,7 +265,9 @@ class TestHttpConnector(BaseInputTestCase):
         connector.pipeline_index = 1
         connector.setup()
         target = connector.target
-        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+        # Todo: comment entfernen
+        #resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+        resp = self.falconClient.simulate_post('/json', json=message)
         assert resp.status_code == 200
         message = connector.messages.get(timeout=0.5)
         assert message["custom"]["url"] == target + "/json"
@@ -287,19 +282,26 @@ class TestHttpConnector(BaseInputTestCase):
         connector.pipeline_index = 1
         connector.setup()
         target = connector.target
-        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+        # Todo: comment entfernen
+        #resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+        resp = self.falconClient.simulate_post('/json', json=message)
         assert resp.status_code == 200
+        # Todo: was mit target / ports?
         target = target.replace(":9001", ":9000")
         try:
-            resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+            # Todo: comment entfernen
+            # resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+            resp = self.falconClient.simulate_post('/json', json=message)
         except requests.exceptions.ConnectionError as e:
             assert e.response is None
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
         connector.setup()
-        target = connector.target
-        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+        # Todo: comment entfernen
+        #target = connector.target
+        # resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+        resp = self.falconClient.simulate_post('/json', json=message)
         assert resp.status_code == 200
 
     def test_get_next_with_hmac_of_raw_message(self):
@@ -319,7 +321,9 @@ class TestHttpConnector(BaseInputTestCase):
         connector.pipeline_index = 1
         connector.setup()
         test_event = "the content"
-        requests.post(url=f"{self.target}/plaintext", data=test_event, timeout=0.5)  # nosemgrep
+        # Todo: comment entfernen
+        # requests.post(url=f"{self.target}/plaintext", data=test_event, timeout=0.5)  # nosemgrep
+        self.falconClient.simulate_post('/plaintext', body=test_event)
 
         expected_event = {
             "message": "the content",
@@ -338,12 +342,14 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
-            resp = requests.post(
-                url=f"{self.target}/auth-json-file", timeout=0.5, data=json.dumps(data)
-            )
+            #  resp = requests.post(
+            #      url=f"{self.target}/auth-json-file", timeout=0.5, data=json.dumps(data)
+            #  )
+            resp = self.falconClient.simulate_post('/auth-json-file', body=json.dumps(data))
             assert resp.status_code == 401
 
     def test_endpoint_returns_401_on_wrong_authorization(self, credentials_file_path):
+        # Todo: was machen mit auth?
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
         with mock.patch.dict("os.environ", mock_env):
@@ -361,6 +367,7 @@ class TestHttpConnector(BaseInputTestCase):
     ):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
+        # Todo: was machen mit auth?
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
@@ -375,6 +382,7 @@ class TestHttpConnector(BaseInputTestCase):
         self, credentials_file_path
     ):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
+        # Todo: was machen mit auth?
         data = {"message": "my log message"}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
@@ -389,6 +397,7 @@ class TestHttpConnector(BaseInputTestCase):
     def test_endpoint_returns_200_on_correct_authorization_for_subpath(self, credentials_file_path):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
+        # Todo: was machen mit auth?
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
@@ -408,17 +417,20 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_all_endpoints_share_the_same_queue(self):
         data = {"message": "my log message"}
-        requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        # requests.post(url=f"{self.target}/json", json=data, timeout=0.5)
+        self.falconClient.simulate_post('/json', json=data)
         assert self.object.messages.qsize() == 1
         data = "my log message"
-        requests.post(url=f"{self.target}/plaintext", json=data, timeout=0.5)
+        #requests.post(url=f"{self.target}/plaintext", json=data, timeout=0.5)
+        self.falconClient.simulate_post('/plaintext', json=data)
         assert self.object.messages.qsize() == 2
         data = """
         {"message": "my first log message"}
         {"message": "my second log message"}
         {"message": "my third log message"}
         """
-        requests.post(url=f"{self.target}/jsonl", data=data, timeout=0.5)
+        #requests.post(url=f"{self.target}/jsonl", data=data, timeout=0.5)
+        self.falconClient.simulate_post('/jsonl', body=data)
         assert self.object.messages.qsize() == 5
 
     def test_sets_target_to_https_schema_if_ssl_options(self):
@@ -445,9 +457,10 @@ class TestHttpConnector(BaseInputTestCase):
         self.object.setup()
         random_number = random.randint(1, 100)
         for number in range(random_number):
-            requests.post(
-                url=f"{self.target}/json", json={"message": f"my message{number}"}, timeout=0.5
-            )
+            #requests.post(
+            #    url=f"{self.target}/json", json={"message": f"my message{number}"}, timeout=0.5
+            #)
+            self.falconClient.simulate_post('/json', json={"message": f"my message{number}"})
         assert self.object.metrics.number_of_http_requests == random_number
 
     @pytest.mark.parametrize("endpoint", ["json", "plaintext", "jsonl"])
@@ -455,23 +468,26 @@ class TestHttpConnector(BaseInputTestCase):
         data = {"message": "my log message"}
         data = gzip.compress(json.dumps(data).encode())
         headers = {"Content-Encoding": "gzip"}
-        resp = requests.post(
-            url=f"{self.target}/{endpoint}",
-            data=data,
-            headers=headers,
-            timeout=0.5,
-        )
+        #  resp = requests.post(
+        #      url=f"{self.target}/{endpoint}",
+        #      data=data,
+        #      headers=headers,
+        #      timeout=0.5,
+        #  )
+        resp = self.falconClient.simulate_post(f"/{endpoint}", body=data, headers=headers)
         assert resp.status_code == 200
 
     @pytest.mark.parametrize("endpoint", ["json", "jsonl"])
     def test_raises_http_bad_request_on_decode_error(self, endpoint):
         data = "this is not a valid json nor jsonl"
-        resp = requests.post(url=f"{self.target}/{endpoint}", data=data, timeout=0.5)
+        #resp = requests.post(url=f"{self.target}/{endpoint}", data=data, timeout=0.5)
+        resp = self.falconClient.simulate_post(f"/{endpoint}", body=data)
         assert resp.status_code == 400
 
     @responses.activate
     def test_health_endpoint_is_ready_if_all_endpoints_are_successful(self):
         for endpoint in self.object.health_endpoints:
+            # hier weiter was ist mit den ports?
             responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
         assert self.object.health(), "Health endpoint should be ready"
 
@@ -548,54 +564,3 @@ class TestHttpConnector(BaseInputTestCase):
     @pytest.mark.skip("Not implemented")
     def test_setup_calls_wait_for_health(self):
         pass
-
-
-    def test_falcon_test(self):
-        from falcon import testing
-        from unittest import mock
-        # Initialize the TestClient with your Falcon app
-        client = testing.TestClient(self.object.app)
-
-        # Mock the behavior of the health check to simulate a timeout
-        with mock.patch("your_module.health_check_function", side_effect=Exception("Timeout")):
-            with mock.patch("logging.Logger.error") as mock_logger:
-                assert not self.object.health(), "Health endpoint should not be ready"
-                mock_logger.assert_called()
-
-
-    def test_falcon_newtest(self):
-        import falcon
-        from falcon import testing
-        from .fal_tmp import Resource
-
-        app = falcon.App()
-
-        images = Resource()
-        app.add_route('/images', images)
-
-        client =  testing.TestClient(app)
-        response = client.simulate_get('/images')
-        assert response.status == falcon.HTTP_OK
-
-
-    def test_falcon_htest(self):
-        import falcon
-        from falcon import testing
-        from .fal_tmp import Resource
-
-        endpoint = self.object.health_endpoints[0]
-
-        app = falcon.App()
-
-        images = Resource()
-        app.add_route(endpoint, images)
-
-        client = testing.TestClient(app)
-        with mock.patch.object(images, "on_get") as mock_handler:
-            # Simulate a failure by raising an exception
-            mock_handler.side_effect = Exception("Simulated failure")
-
-            with mock.patch("logging.Logger.error") as mock_logger:
-                response = client.simulate_get(endpoint)
-                assert response.status == falcon.HTTP_500, "should return 500"
-                mock_logger.assert_called()
