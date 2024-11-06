@@ -82,9 +82,9 @@ class Grokker(FieldManager):
             except TimeoutError as error:
                 self._handle_missing_fields(event, rule, rule.actions.keys(), source_values)
                 raise ProcessingError(
-                    self,
                     f"Grok pattern timeout for source field: '{dotted_field}' in rule '{rule}', "
                     f"the grok pattern might be too complex.",
+                    rule,
                 ) from error
             if result is None or result == {}:
                 continue

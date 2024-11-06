@@ -57,10 +57,17 @@ def _add_and_not_overwrite_key(sub_dict, key):
     return sub_dict.get(key)
 
 
-def add_field_to(event, output_field, content, extends_lists=False, overwrite_output_field=False):
+def add_field_to(
+    event,
+    output_field,
+    content,
+    extends_lists=False,
+    overwrite_output_field=False,
+    raise_on_failure=None,
+):
     """
-    Add content to an output_field in the given event. Output_field can be a dotted subfield.
-    In case of missing fields all intermediate fields will be created.
+    Add content to the output_field in the given event. Output_field can be a dotted subfield.
+    In case of missing fields, all intermediate fields will be created.
     Parameters
     ----------
     event: dict
@@ -68,47 +75,41 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     output_field: str
         Dotted subfield string indicating the target of the output value, e.g. destination.ip
     content: str, float, int, list, dict
-        Value that should be written into the output_field, can be a str, list or dict object
+        Value that should be written into the output_field, can be a str, list, or dict object
     extends_lists: bool
         Flag that determines whether output_field lists should be extended
     overwrite_output_field: bool
         Flag that determines whether the output_field should be overwritten
-
     Returns
     ------
-    This method returns true if no conflicting fields were found during the process of the creation
-    of the dotted subfields. If conflicting fields were found False is returned.
+    bool
+        True if no conflicting fields were found during the process of the creation
+        of the dotted subfields, otherwise False.
     """
-
-    assert not (
-        extends_lists and overwrite_output_field
-    ), "An output field can't be overwritten and extended at the same time"
-    output_field_path = [event, *get_dotted_field_list(output_field)]
-    target_key = output_field_path.pop()
-
-    if overwrite_output_field:
-        target_field = reduce(_add_and_overwrite_key, output_field_path)
-        target_field |= {target_key: content}
-        return True
-
+    if extends_lists and overwrite_output_field:
+        raise ValueError("An output field can't be overwritten and extended at the same time")
+    field_path = [event, *get_dotted_field_list(output_field)]
+    target_key = field_path.pop()
     try:
-        target_field = reduce(_add_and_not_overwrite_key, output_field_path)
-    except KeyError:
-        return False
-
-    target_field_value = target_field.get(target_key)
-    if target_field_value is None:
-        target_field |= {target_key: content}
-        return True
-    if extends_lists:
-        if not isinstance(target_field_value, list):
-            return False
+        target_parent = reduce(_add_and_not_overwrite_key, field_path)
+    except KeyError as error:
+        if raise_on_failure:
+            raise raise_on_failure from error
+        return
+    if overwrite_output_field:
+        target_parent[target_key] = content
+    else:
+        existing_value = target_parent.get(target_key)
+        if existing_value is None:
+            target_parent[target_key] = content
+        if not extends_lists or not isinstance(existing_value, list):
+            if raise_on_failure:
+                raise raise_on_failure
+            return
         if isinstance(content, list):
-            target_field |= {target_key: [*target_field_value, *content]}
+            target_parent[target_key].extend(content)
         else:
-            target_field_value.append(content)
-        return True
-    return False
+            target_parent[target_key].append(content)
 
 
 def _get_slice_arg(slice_item):

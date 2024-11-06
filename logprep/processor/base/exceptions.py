@@ -72,8 +72,10 @@ class ProcessingWarning(Warning):
 
     def __init__(self, message: str, rule: "Rule", event: dict, tags: List[str] = None):
         self.tags = tags if tags else []
-        rule.metrics.number_of_warnings += 1
-        message = f"{message}, {rule.id=}, {rule.description=}, {event=}"
+        if rule:
+            rule.metrics.number_of_warnings += 1
+            message += f", {rule.id=}, {rule.description=}"
+        message += f", {event=}"
         super().__init__(f"{self.__class__.__name__}: {message}")
 
 
