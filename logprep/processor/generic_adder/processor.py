@@ -46,10 +46,9 @@ from filelock import FileLock
 
 from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, add_batch_to
 
 
 def sql_config_validator(_, attribute, value):
@@ -225,8 +224,6 @@ class GenericAdder(Processor):
         FieldExistsWarning
             Raises if an addition would overwrite an existing field or value.
         """
-        conflicting_fields = []
-
         use_db = rule.db_target and self._db_table
         if use_db:
             self._update_db_table()
@@ -234,20 +231,9 @@ class GenericAdder(Processor):
         else:
             items_to_add = rule.add.items()
 
-        # Add the items to the event
-        for dotted_field, value in items_to_add:
-            add_successful = add_field_to(
-                event,
-                target_field=dotted_field,
-                content=value,
-                extends_lists=rule.extend_target_list,
-                overwrite_output_field=rule.overwrite_target,
-            )
-            if not add_successful:
-                conflicting_fields.append(dotted_field)
-
-        if conflicting_fields:
-            raise FieldExistsWarning(rule, event, conflicting_fields)
+        if items_to_add:
+            targets, contents = zip(*items_to_add)
+            add_batch_to(event, targets, contents, rule.extend_target_list, rule.overwrite_target)
 
     def _get_items_to_add_from_db(self, event: dict, rule: GenericAdderRule) -> list:
         """Get the sub part of the value from the event using a regex pattern"""
