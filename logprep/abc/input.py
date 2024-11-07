@@ -17,6 +17,7 @@ from attrs import define, field, validators
 from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser
 from logprep.util.validators import dict_structure_validator
@@ -280,16 +281,19 @@ class Input(Connector):
         self.metrics.number_of_processed_events += 1
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
-        if self._add_hmac:
-            event = self._add_hmac_to(event, raw_event)
-        if self._add_version_info:
-            self._add_version_information_to_event(event)
-        if self._add_log_arrival_time_information:
-            self._add_arrival_time_information_to_event(event)
-        if self._add_log_arrival_timedelta_information:
-            self._add_arrival_timedelta_information_to_event(event)
-        if self._add_env_enrichment:
-            self._add_env_enrichment_to_event(event)
+        try:
+            if self._add_hmac:
+                event = self._add_hmac_to(event, raw_event)
+            if self._add_version_info:
+                self._add_version_information_to_event(event)
+            if self._add_log_arrival_time_information:
+                self._add_arrival_time_information_to_event(event)
+            if self._add_log_arrival_timedelta_information:
+                self._add_arrival_timedelta_information_to_event(event)
+            if self._add_env_enrichment:
+                self._add_env_enrichment_to_event(event)
+        except FieldExistsWarning as error:
+            raise CriticalInputError(self, error.args[0], event) from error
         return event
 
     def batch_finished_callback(self):
@@ -331,7 +335,7 @@ class Input(Connector):
         add_field_to(event, target_field, self._config._version_information)
         # pylint: enable=protected-access
 
-    def _add_hmac_to(self, event_dict, raw_event) -> Tuple[dict, str]:
+    def _add_hmac_to(self, event_dict, raw_event) -> dict:
         """
         Calculates an HMAC (Hash-based message authentication code) based on a given target field
         and adds it to the given event. If the target field has the value '<RAW_MSG>' the full raw
@@ -357,7 +361,7 @@ class Input(Connector):
         ------
         CriticalInputError
             If the hmac could not be added to the event because the desired output field already
-            exists or cant't be found.
+            exists or can't be found.
         """
         hmac_options = self._config.preprocessing.get("hmac", {})
         hmac_target_field_name = hmac_options.get("target")
@@ -382,17 +386,5 @@ class Input(Connector):
         ).hexdigest()
         compressed = zlib.compress(received_orig_message, level=-1)
         hmac_output = {"hmac": hmac, "compressed_base64": base64.b64encode(compressed).decode()}
-        add_was_successful = add_field_to(
-            event_dict,
-            hmac_options.get("output_field"),
-            hmac_output,
-        )
-        if not add_was_successful:
-            raise CriticalInputError(
-                self,
-                f"Couldn't add the hmac to the input event as the desired "
-                f"output field '{hmac_options.get('output_field')}' already "
-                f"exist.",
-                event_dict,
-            )
+        add_field_to(event_dict, hmac_options.get("output_field"), hmac_output)
         return event_dict

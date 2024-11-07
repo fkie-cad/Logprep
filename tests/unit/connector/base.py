@@ -266,8 +266,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector._get_event = mock.MagicMock(
             return_value=(test_event.copy(), raw_encoded_test_event)
         )
-        non_critical_error_msg = "Couldn't add the hmac to the input event as the desired output field 'message' already exist."
-        with pytest.raises(CriticalInputError, match=non_critical_error_msg) as error:
+        with pytest.raises(CriticalInputError, match="could not be written") as error:
             _ = connector.get_next(1)
         assert error.value.raw_input == {"message": {"with_subfield": "content"}}
 

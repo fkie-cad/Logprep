@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Optional, Union
 from colorama import Back, Fore
 from colorama.ansi import AnsiBack, AnsiFore
 
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -63,7 +64,6 @@ def add_field_to(
     content,
     extends_lists=False,
     overwrite_output_field=False,
-    raise_on_failure=None,
 ):
     """
     Add content to the output_field in the given event. Output_field can be a dotted subfield.
@@ -80,11 +80,13 @@ def add_field_to(
         Flag that determines whether output_field lists should be extended
     overwrite_output_field: bool
         Flag that determines whether the output_field should be overwritten
-    Returns
+    Raises
     ------
-    bool
-        True if no conflicting fields were found during the process of the creation
-        of the dotted subfields, otherwise False.
+    ValueError
+        If both extends_lists and overwrite_output_field are set to True.
+    FieldExistsWarning
+        If the output field already exists and overwrite_output_field is False, or if extends_lists is True but
+        the existing field is not a list.
     """
     if extends_lists and overwrite_output_field:
         raise ValueError("An output field can't be overwritten and extended at the same time")
@@ -93,19 +95,16 @@ def add_field_to(
     try:
         target_parent = reduce(_add_and_not_overwrite_key, field_path)
     except KeyError as error:
-        if raise_on_failure:
-            raise raise_on_failure from error
-        return
+        raise FieldExistsWarning(event, [output_field]) from error
     if overwrite_output_field:
         target_parent[target_key] = content
     else:
         existing_value = target_parent.get(target_key)
         if existing_value is None:
             target_parent[target_key] = content
-        if not extends_lists or not isinstance(existing_value, list):
-            if raise_on_failure:
-                raise raise_on_failure
             return
+        if not extends_lists or not isinstance(existing_value, list):
+            raise FieldExistsWarning(event, [output_field])
         if isinstance(content, list):
             target_parent[target_key].extend(content)
         else:

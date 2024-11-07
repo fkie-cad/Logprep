@@ -70,7 +70,7 @@ class ProcessingCriticalError(ProcessingError):
 class ProcessingWarning(Warning):
     """A warning occurred - log the warning, but continue processing the event."""
 
-    def __init__(self, message: str, rule: "Rule", event: dict, tags: List[str] = None):
+    def __init__(self, message: str, event: dict, rule: "Rule" = None, tags: List[str] = None):
         self.tags = tags if tags else []
         if rule:
             rule.metrics.number_of_warnings += 1
@@ -82,10 +82,15 @@ class ProcessingWarning(Warning):
 class FieldExistsWarning(ProcessingWarning):
     """Raised if field already exists."""
 
-    def __init__(self, rule: "Rule", event: dict, skipped_fields: List[str]):
+    def __init__(
+        self,
+        event: dict,
+        skipped_fields: List[str],
+        rule: "Rule" = None,
+    ):
         message = (
             "The following fields could not be written, because "
             "one or more subfields existed and could not be extended: "
             f"{', '.join(skipped_fields)}"
         )
-        super().__init__(message, rule, event)
+        super().__init__(message, event, rule)

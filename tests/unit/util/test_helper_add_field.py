@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from logprep.abc.exceptions import LogprepException
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.helper import add_field_to
 
 
@@ -31,15 +31,13 @@ class TestHelperAddField:
 
     def test_provoke_str_duplicate_in_root_field(self):
         document = {"source": {"ip": "8.8.8.8"}, "field": "exists already"}
-        error = LogprepException("test error")
-        with pytest.raises(LogprepException, match=r"test error"):
-            add_field_to(document, "field", "content", raise_on_failure=error)
+        with pytest.raises(FieldExistsWarning, match=r"could not be written"):
+            add_field_to(document, "field", "content")
 
     def test_provoke_str_duplicate_in_dotted_subfield(self):
         document = {"source": {"ip": "8.8.8.8"}, "sub": {"field": "exists already"}}
-        error = LogprepException("test error")
-        with pytest.raises(LogprepException, match=r"test error"):
-            add_field_to(document, "sub.field", "content", raise_on_failure=error)
+        with pytest.raises(FieldExistsWarning, match=r"could not be written"):
+            add_field_to(document, "sub.field", "content")
 
     def test_add_dict_content_as_new_root_field(self):
         document = {"source": {"ip": "8.8.8.8"}}
@@ -64,15 +62,13 @@ class TestHelperAddField:
 
     def test_provoke_dict_duplicate_in_root_field(self):
         document = {"source": {"ip": "8.8.8.8"}, "field": {"already_existing": "dict"}}
-        error = LogprepException("test error")
-        with pytest.raises(LogprepException, match=r"test error"):
-            add_field_to(document, "field", {"dict": "content"}, raise_on_failure=error)
+        with pytest.raises(FieldExistsWarning, match=r"could not be written"):
+            add_field_to(document, "field", {"dict": "content"})
 
     def test_provoke_dict_duplicate_in_dotted_subfield(self):
         document = {"source": {"ip": "8.8.8.8"}, "sub": {"field": {"already_existing": "dict"}}}
-        error = LogprepException("test error")
-        with pytest.raises(LogprepException, match=r"test error"):
-            add_field_to(document, "sub.field", {"dict": "content"}, raise_on_failure=error)
+        with pytest.raises(FieldExistsWarning, match=r"could not be written"):
+            add_field_to(document, "sub.field", {"dict": "content"})
 
     def test_add_field_to_overwrites_output_field_in_root_level(self):
         document = {"some": "field", "output_field": "has already content"}
@@ -110,9 +106,8 @@ class TestHelperAddField:
     def test_returns_false_if_dotted_field_value_key_exists(self):
         document = {"user": "Franz"}
         content = ["user_inlist"]
-        error = LogprepException("test error")
-        with pytest.raises(LogprepException, match=r"test error"):
-            add_field_to(document, "user.in_list", content, raise_on_failure=error)
+        with pytest.raises(FieldExistsWarning, match=r"could not be written"):
+            add_field_to(document, "user.in_list", content)
 
     def test_add_list_with_nested_keys(self):
         testdict = {
