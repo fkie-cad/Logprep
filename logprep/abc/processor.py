@@ -381,15 +381,13 @@ class Processor(Component):
         return False
 
     def _write_target_field(self, event: dict, rule: "Rule", result: any) -> None:
-        add_successful = add_field_to(
+        add_field_to(
             event,
             target_field=rule.target_field,
             content=result,
             extends_lists=rule.extend_target_list,
             overwrite_output_field=rule.overwrite_target,
         )
-        if not add_successful:
-            raise FieldExistsWarning(rule, event, [rule.target_field])
 
     def setup(self):
         super().setup()

@@ -46,11 +46,10 @@ from attr import define, field, validators
 from filelock import FileLock
 from tldextract import TLDExtract
 
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_and_overwrite, add_field_to, get_dotted_field_value
+from logprep.util.helper import add_and_overwrite, get_dotted_field_value, add_batch_to
 from logprep.util.validators import list_of_urls_validator
 
 logger = logging.getLogger("DomainLabelExtractor")
@@ -136,19 +135,13 @@ class DomainLabelExtractor(FieldManager):
 
         labels = self._tld_extractor(domain)
         if labels.suffix != "":
-            labels_dict = {
-                "registered_domain": labels.domain + "." + labels.suffix,
-                "top_level_domain": labels.suffix,
-                "subdomain": labels.subdomain,
-            }
-            for label, value in labels_dict.items():
-                output_field = f"{rule.target_field}.{label}"
-                add_successful = add_field_to(
-                    event, output_field, value, overwrite_output_field=rule.overwrite_target
-                )
-
-                if not add_successful:
-                    raise FieldExistsWarning(rule, event, [output_field])
+            targets = [
+                f"{rule.target_field}.registered_domain",
+                f"{rule.target_field}.top_level_domain",
+                f"{rule.target_field}.subdomain",
+            ]
+            contents = [f"{labels.domain}.{labels.suffix}", labels.suffix, labels.subdomain]
+            add_batch_to(event, targets, contents, overwrite_output_field=rule.overwrite_target)
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
             add_and_overwrite(event, self._config.tagging_field_name, tagging_field)
