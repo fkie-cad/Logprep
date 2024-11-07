@@ -91,6 +91,6 @@ class FieldExistsWarning(ProcessingWarning):
         message = (
             "The following fields could not be written, because "
             "one or more subfields existed and could not be extended: "
-            f"{', '.join(skipped_fields)}"
+            f"{skipped_fields}"
         )
         super().__init__(message, event, rule)

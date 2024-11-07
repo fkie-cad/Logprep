@@ -1,5 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
 
+import itertools
 import re
 import sys
 from functools import lru_cache, partial, reduce
@@ -40,14 +41,6 @@ def print_fcolor(fore: AnsiFore, message: str):
     color_print_line(None, fore, message)
 
 
-def _add_and_overwrite_key(sub_dict, key):
-    current_value = sub_dict.get(key)
-    if isinstance(current_value, dict):
-        return current_value
-    sub_dict.update({key: {}})
-    return sub_dict.get(key)
-
-
 def _add_and_not_overwrite_key(sub_dict, key):
     current_value = sub_dict.get(key)
     if isinstance(current_value, dict):
@@ -58,9 +51,30 @@ def _add_and_not_overwrite_key(sub_dict, key):
     return sub_dict.get(key)
 
 
+def add_field_to_silent_fail(*args):
+    try:
+        add_field_to(*args)
+    except FieldExistsWarning:
+        return args[1]
+
+
+def add_batch_to(event, targets, contents, extends_lists=False, overwrite_output_field=False):
+    unsuccessful_targets = map(
+        add_field_to_silent_fail,
+        itertools.repeat(event, len(targets)),
+        targets,
+        contents,
+        itertools.repeat(extends_lists, len(targets)),
+        itertools.repeat(overwrite_output_field, len(targets)),
+    )
+    unsuccessful_targets = [item for item in unsuccessful_targets if item is not None]
+    if unsuccessful_targets:
+        raise FieldExistsWarning(event, unsuccessful_targets)
+
+
 def add_field_to(
     event,
-    output_field,
+    target_field,
     content,
     extends_lists=False,
     overwrite_output_field=False,
@@ -72,7 +86,7 @@ def add_field_to(
     ----------
     event: dict
         Original log-event that logprep is currently processing
-    output_field: str
+    target_field: str
         Dotted subfield string indicating the target of the output value, e.g. destination.ip
     content: str, float, int, list, dict
         Value that should be written into the output_field, can be a str, list, or dict object
@@ -90,12 +104,12 @@ def add_field_to(
     """
     if extends_lists and overwrite_output_field:
         raise ValueError("An output field can't be overwritten and extended at the same time")
-    field_path = [event, *get_dotted_field_list(output_field)]
+    field_path = [event, *get_dotted_field_list(target_field)]
     target_key = field_path.pop()
     try:
         target_parent = reduce(_add_and_not_overwrite_key, field_path)
     except KeyError as error:
-        raise FieldExistsWarning(event, [output_field]) from error
+        raise FieldExistsWarning(event, [target_field]) from error
     if overwrite_output_field:
         target_parent[target_key] = content
     else:
@@ -104,7 +118,7 @@ def add_field_to(
             target_parent[target_key] = content
             return
         if not extends_lists or not isinstance(existing_value, list):
-            raise FieldExistsWarning(event, [output_field])
+            raise FieldExistsWarning(event, [target_field])
         if isinstance(content, list):
             target_parent[target_key].extend(content)
         else:
@@ -155,7 +169,7 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
 @lru_cache(maxsize=100000)
 def get_dotted_field_list(dotted_field: str) -> list[str]:
     """make lookup of dotted field in the dotted_field_lookup_table and ensures
-    it is added if not found. Additionally the string will be interned for faster
+    it is added if not found. Additionally, the string will be interned for faster
     followup lookups.
 
     Parameters

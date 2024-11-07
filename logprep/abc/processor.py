@@ -366,7 +366,7 @@ class Processor(Component):
                 add_and_overwrite(event, "tags", sorted(list({*error.tags, *tags, *failure_tags})))
             self.result.warnings.append(error)
         else:
-            self.result.warnings.append(ProcessingWarning(str(error), rule, event))
+            self.result.warnings.append(ProcessingWarning(str(error), event, rule))
 
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(
@@ -383,7 +383,7 @@ class Processor(Component):
     def _write_target_field(self, event: dict, rule: "Rule", result: any) -> None:
         add_successful = add_field_to(
             event,
-            output_field=rule.target_field,
+            target_field=rule.target_field,
             content=result,
             extends_lists=rule.extend_target_list,
             overwrite_output_field=rule.overwrite_target,

@@ -238,7 +238,7 @@ class GenericAdder(Processor):
         for dotted_field, value in items_to_add:
             add_successful = add_field_to(
                 event,
-                output_field=dotted_field,
+                target_field=dotted_field,
                 content=value,
                 extends_lists=rule.extend_target_list,
                 overwrite_output_field=rule.overwrite_target,

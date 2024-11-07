@@ -137,7 +137,7 @@ class GeoipEnricher(FieldManager):
                 full_output_field = rule.customize_target_subfields.get(target_subfield)
             adding_was_successful = add_field_to(
                 event=event,
-                output_field=full_output_field,
+                target_field=full_output_field,
                 content=value,
                 extends_lists=False,
                 overwrite_output_field=rule.overwrite_target,

@@ -40,6 +40,7 @@ from logprep.util.helper import (
     add_field_to,
     get_dotted_field_value,
     pop_dotted_field_value,
+    add_batch_to,
 )
 
 
@@ -72,34 +73,17 @@ class FieldManager(Processor):
         self._write_to_single_target(args, extend_target_list, overwrite_target, rule)
 
     def _apply_mapping(self, event, rule, rule_args):
-        source_fields, _, mapping, _, _ = rule_args
+        source_fields, _, mapping, extend_target_list, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
         if not any(source_field_values):
             return
         source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
-        self._write_to_multiple_targets(event, targets, source_field_values, rule, rule_args)
+        add_batch_to(event, targets, source_field_values, extend_target_list, overwrite_target)
         if rule.delete_source_fields:
             for dotted_field in source_fields:
                 pop_dotted_field_value(event, dotted_field)
-
-    def _write_to_multiple_targets(self, event, target_fields, field_values, rule, rule_args):
-        _, _, _, extend_target_list, overwrite_target = rule_args
-        results = map(
-            add_field_to,
-            itertools.repeat(event, len(target_fields)),
-            target_fields,
-            field_values,
-            itertools.repeat(extend_target_list, len(target_fields)),
-            itertools.repeat(overwrite_target, len(target_fields)),
-        )
-        if not all(results):
-            unsuccessful_indices = [i for i, x in enumerate(results) if not x]
-            unsuccessful_targets = [
-                x for i, x in enumerate(target_fields) if i in unsuccessful_indices
-            ]
-            raise FieldExistsWarning(rule, event, unsuccessful_targets)
 
     def _write_to_single_target(self, args, extend_target_list, overwrite_target, rule):
         event, target_field, source_fields_values = args
@@ -161,11 +145,9 @@ class FieldManager(Processor):
                 return
 
             case _:
-                success = add_field_to(
+                add_field_to(
                     event, target_field, source_fields_values, state.extend, state.overwrite
                 )
-                if not success:
-                    raise FieldExistsWarning(rule, event, [target_field])
 
     def _overwrite_from_source_values(self, source_fields_values):
         duplicates = []
