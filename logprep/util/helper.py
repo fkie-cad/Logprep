@@ -41,6 +41,14 @@ def print_fcolor(fore: AnsiFore, message: str):
     color_print_line(None, fore, message)
 
 
+def _add_and_overwrite_key(sub_dict, key):
+    current_value = sub_dict.get(key)
+    if isinstance(current_value, dict):
+        return current_value
+    sub_dict.update({key: {}})
+    return sub_dict.get(key)
+
+
 def _add_and_not_overwrite_key(sub_dict, key):
     current_value = sub_dict.get(key)
     if isinstance(current_value, dict):
@@ -106,13 +114,15 @@ def add_field_to(
         raise ValueError("An output field can't be overwritten and extended at the same time")
     field_path = [event, *get_dotted_field_list(target_field)]
     target_key = field_path.pop()
-    try:
-        target_parent = reduce(_add_and_not_overwrite_key, field_path)
-    except KeyError as error:
-        raise FieldExistsWarning(event, [target_field]) from error
+
     if overwrite_output_field:
+        target_parent = reduce(_add_and_overwrite_key, field_path)
         target_parent[target_key] = content
     else:
+        try:
+            target_parent = reduce(_add_and_not_overwrite_key, field_path)
+        except KeyError as error:
+            raise FieldExistsWarning(event, [target_field]) from error
         existing_value = target_parent.get(target_key)
         if existing_value is None:
             target_parent[target_key] = content
