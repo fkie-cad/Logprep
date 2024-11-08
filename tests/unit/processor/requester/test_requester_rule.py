@@ -1,6 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import pytest
+
 from logprep.processor.requester.rule import RequesterRule
 
 
@@ -16,6 +17,21 @@ class TestRequesterRule:
     @pytest.mark.parametrize(
         ["rule", "error", "message"],
         [
+            (
+                {
+                    "filter": "domain",
+                    "requester": {
+                        "url": "https://internal.cmdb.local/api/v1/locations",
+                        "method": "POST",
+                        "target_field": "cmdb.location",
+                        "headers": {"Authorization": "Bearer askdfjpiowejf283u9r"},
+                        "json": {"hostname": "${message.hostname}"},
+                    },
+                    "description": "...",
+                },
+                None,
+                None,
+            ),
             (
                 {
                     "filter": "message",
