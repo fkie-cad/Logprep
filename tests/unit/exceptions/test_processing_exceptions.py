@@ -35,7 +35,7 @@ class TestFieldExistsWarning(ExceptionBaseTest):
 
     def setup_method(self):
         super().setup_method()
-        self.exception_args = (self.object, self.event, ["my_field"])
+        self.exception_args = (self.event, ["my_field"], self.object)
 
 
 class TestProcessingCriticalError(ExceptionBaseTest):

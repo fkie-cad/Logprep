@@ -308,7 +308,7 @@ class TestPipeline(ConfigurationForTests):
             mock_create({"mock_processor1": {"type": "mock_processor"}}),
             mock_create({"mock_processor2": {"type": "mock_processor"}}),
         ]
-        warning = FieldExistsWarning(mock_rule, input_event1, ["foo"])
+        warning = FieldExistsWarning(input_event1, ["foo"], mock_rule)
         self.pipeline._pipeline[0].process.return_value = ProcessorResult(
             processor_name="", warnings=[warning]
         )
