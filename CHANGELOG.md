@@ -9,6 +9,7 @@
 
 - fix `confluent_kafka.store_offsets` if `last_valid_record` is `None`, can happen if a rebalancing happens
   before the first message was pulled.
+- fix pseudonymizer cache metrics not updated
 
 ## 14.0.0
 ### Breaking
