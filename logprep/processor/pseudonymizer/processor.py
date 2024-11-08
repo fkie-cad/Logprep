@@ -344,9 +344,9 @@ class Pseudonymizer(FieldManager):
     def _update_cache_metrics(self):
         cache_info_pseudonyms = self._get_pseudonym_dict_cached.cache_info()
         cache_info_urls = self._pseudonymize_url_cached.cache_info()
-        self.metrics.new_results = cache_info_pseudonyms.misses + cache_info_urls.misses
-        self.metrics.cached_results = cache_info_pseudonyms.hits + cache_info_urls.hits
-        self.metrics.num_cache_entries = cache_info_pseudonyms.currsize + cache_info_urls.currsize
-        self.metrics.cache_load = (cache_info_pseudonyms.currsize + cache_info_urls.currsize) / (
+        self.metrics.new_results += cache_info_pseudonyms.misses + cache_info_urls.misses
+        self.metrics.cached_results += cache_info_pseudonyms.hits + cache_info_urls.hits
+        self.metrics.num_cache_entries += cache_info_pseudonyms.currsize + cache_info_urls.currsize
+        self.metrics.cache_load += (cache_info_pseudonyms.currsize + cache_info_urls.currsize) / (
             cache_info_pseudonyms.maxsize + cache_info_urls.maxsize
         )

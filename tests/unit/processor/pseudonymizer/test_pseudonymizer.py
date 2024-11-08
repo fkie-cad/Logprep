@@ -821,9 +821,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert len(self.object.result.data) == 1
 
     def test_resolve_from_cache_pseudonym(self):
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
             "pseudonymizer": {
@@ -844,15 +841,15 @@ class TestPseudonymizer(BaseProcessorTestCase):
             }
         }
         self._load_specific_rule(rule_dict)
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
         self.object.process(event)
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
         assert self.object.metrics.num_cache_entries == 1
 
     def test_resolve_from_cache_pseudonymize_urls(self):
-        self.object.metrics.new_results = 0
-        self.object.metrics.cached_results = 0
-        self.object.metrics.num_cache_entries = 0
         rule_dict = {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -869,6 +866,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "and_pseudo_this": "https://www.pseudo.this.de",
         }
         self._load_specific_rule(rule_dict)
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
         self.object.process(event)
         # 1 subdomains -> pseudonym_cache, 1 url -> url_cache
         assert self.object.metrics.new_results == 2
@@ -1089,3 +1089,38 @@ class TestPseudonymizer(BaseProcessorTestCase):
         )
         with pytest.raises(InvalidConfigurationError, match=error_message):
             self.object.setup()
+
+    def test_cache_metrics_updated(self):
+        rule_dict = {
+            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
+            "pseudonymizer": {
+                "mapping": {
+                    "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                }
+            },
+        }
+        event = {
+            "@timestamp": "custom timestamp",
+            "winlog": {
+                "event_id": 1234,
+                "provider_name": "Test456",
+                "event_data": {
+                    "param1": "Pseudonymize me - appears twice!",
+                },
+            },
+        }
+        self._load_specific_rule(rule_dict)
+
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
+        self.object.metrics.cache_load = 0
+
+        self.object.process(deepcopy(event))
+        self.object.process(deepcopy(event))
+        self.object.process(event)
+
+        assert self.object.metrics.new_results == 0
+        assert self.object.metrics.cached_results == 0
+        assert self.object.metrics.num_cache_entries == 0
+        assert self.object.metrics.cache_load == 0
