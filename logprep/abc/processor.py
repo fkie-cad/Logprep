@@ -375,7 +375,7 @@ class Processor(Component):
         if missing_fields:
             if rule.ignore_missing_fields:
                 return True
-            error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
+            error = Exception(f"{self.name}: no value for fields: {missing_fields}")
             self._handle_warning_error(event, rule, error)
             return True
         return False

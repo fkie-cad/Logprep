@@ -45,7 +45,7 @@ class TestDummyOutput(BaseOutputTestCase):
         config.update({"exceptions": ["FatalOutputError"]})
         dummy_output = Factory.create({"test connector": config})
 
-        with raises(BaseException, match="FatalOutputError"):
+        with raises(Exception, match="FatalOutputError"):
             dummy_output.store({"order": 0})
 
     def test_raises_exception_on_call_to_store_custom(self):

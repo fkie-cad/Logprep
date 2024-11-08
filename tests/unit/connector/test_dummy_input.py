@@ -10,7 +10,7 @@ from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
 
-class DummyError(BaseException):
+class DummyError(Exception):
     pass
 
 
@@ -44,9 +44,9 @@ class TestDummyInput(BaseInputTestCase):
 
     def test_raises_exceptions_instead_of_returning_them(self):
         config = copy.deepcopy(self.CONFIG)
-        config["documents"] = [BaseException]
+        config["documents"] = [Exception]
         self.object = Factory.create({"Test Instance Name": config})
-        with raises(BaseException):
+        with raises(Exception):
             self.object.get_next(self.timeout)
 
     def test_repeat_documents_repeats_documents(self):

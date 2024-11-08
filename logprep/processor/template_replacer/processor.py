@@ -45,7 +45,7 @@ from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class TemplateReplacerError(BaseException):
+class TemplateReplacerError(Exception):
     """Base class for TemplateReplacer related exceptions."""
 
     def __init__(self, name: str, message: str):

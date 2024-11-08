@@ -48,14 +48,14 @@ class TestSignatureEngine:
     def test_exception_if_raw_text_with_start_tag():
         log_record = LogRecord(raw_text="Test log with start tag <+> must raise an exception")
         sign_engine = SignatureEngine()
-        with pytest.raises(BaseException, match=r"Start-tag <\+> in raw log message"):
+        with pytest.raises(Exception, match=r"Start-tag <\+> in raw log message"):
             sign_engine.run(log_record, LogSaltModeTestComposition.rules[0])
 
     @staticmethod
     def test_exception_if_raw_text_with_end_tag():
         log_record = LogRecord(raw_text="Test log with end tag </+> must raise an exception")
         sign_engine = SignatureEngine()
-        with pytest.raises(BaseException, match=r"End-tag </\+> in raw log message"):
+        with pytest.raises(Exception, match=r"End-tag </\+> in raw log message"):
             sign_engine.run(log_record, LogSaltModeTestComposition.rules[0])
 
     @staticmethod
@@ -64,7 +64,7 @@ class TestSignatureEngine:
             "Test log with a start tag <+>, but a missing end tag, " "must raise an exception"
         )
         stp = SignatureTagParser()
-        with pytest.raises(BaseException):
+        with pytest.raises(Exception):
             stp.calculate_signature(sig_text)
 
 

@@ -6,7 +6,7 @@ from typing import Optional
 PATTERN_CONVERSION = [("[[:alnum:]]", r"\w")]
 
 
-class GrokPatternLoaderError(BaseException):
+class GrokPatternLoaderError(Exception):
     """Base class for GrokPatternLoader related exceptions."""
 
     def __init__(self, message: str):

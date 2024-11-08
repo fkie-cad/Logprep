@@ -4,7 +4,7 @@ DummyInput
 
 A dummy input that returns the documents it was initialized with.
 
-If a "document" is derived from BaseException, that exception will be thrown instead of
+If a "document" is derived from Exception, that exception will be thrown instead of
 returning a document. The exception will be removed and subsequent calls may return documents or
 throw other exceptions in the given order.
 
@@ -36,7 +36,7 @@ class DummyInput(Input):
     class Config(Input.Config):
         """DummyInput specific configuration"""
 
-        documents: List[Union[dict, type, BaseException]]
+        documents: List[Union[dict, type, Exception]]
         """A list of documents that should be returned."""
         repeat_documents: Optional[str] = field(
             validator=validators.instance_of(bool), default=False
@@ -57,6 +57,6 @@ class DummyInput(Input):
 
         document = self._documents.pop(0)
 
-        if (document.__class__ == type) and issubclass(document, BaseException):
+        if (document.__class__ == type) and issubclass(document, Exception):
             raise document
         return document, None

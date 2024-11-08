@@ -4,6 +4,7 @@
 ### Breaking
 ### Features
 ### Improvements
+* replace `BaseException` with `Exception` for custom errors
 ### Bugfix
 
 - fix `confluent_kafka.store_offsets` if `last_valid_record` is `None`, can happen if a rebalancing happens

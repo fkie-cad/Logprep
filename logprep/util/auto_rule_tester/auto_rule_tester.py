@@ -77,7 +77,7 @@ yaml = YAML(typ="safe", pure=True)
 
 
 # pylint: disable=protected-access
-class AutoRuleTesterException(BaseException):
+class AutoRuleTesterException(Exception):
     """Base class for AutoRuleTester related exceptions."""
 
     def __init__(self, message: str):

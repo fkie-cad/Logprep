@@ -36,7 +36,7 @@ from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class ListComparisonError(BaseException):
+class ListComparisonError(Exception):
     """Base class for ListComparison related exceptions."""
 
     def __init__(self, name: str, message: str):

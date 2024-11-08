@@ -197,8 +197,7 @@ class FieldManager(Processor):
 
     def _get_missing_fields_error(self, source_fields, field_values):
         missing_fields = [key for key, value in zip(source_fields, field_values) if value is None]
-        error = BaseException(f"{self.name}: missing source_fields: {missing_fields}")
-        return error
+        return Exception(f"{self.name}: missing source_fields: {missing_fields}")
 
     @staticmethod
     def _get_flatten_source_fields(source_fields_values):
