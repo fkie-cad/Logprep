@@ -46,7 +46,7 @@ from logprep.processor.base.exceptions import (
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value, add_batch_to
 
 logger = logging.getLogger("Grokker")
 
@@ -89,20 +89,19 @@ class Grokker(FieldManager):
             if result is None or result == {}:
                 continue
             matches.append(True)
-            for dotted_field, value in result.items():
-                if value is None:
-                    continue
-                success = add_field_to(
-                    event, dotted_field, value, rule.extend_target_list, rule.overwrite_target
-                )
-                if not success:
-                    conflicting_fields.append(dotted_field)
+            filtered_items = {k: v for k, v in result.items() if v is not None}
+            targets, contents = zip(*filtered_items.items())
+            add_batch_to(
+                event,
+                targets,
+                contents,
+                extends_lists=rule.extend_target_list,
+                overwrite_output_field=rule.overwrite_target,
+            )
         if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
             return
-        if conflicting_fields:
-            raise FieldExistsWarning(rule, event, conflicting_fields)
         if not matches:
-            raise ProcessingWarning("no grok pattern matched", rule, event)
+            raise ProcessingWarning("no grok pattern matched", event, rule)
 
     def setup(self):
         """Loads the action mapping. Has to be called before processing"""
