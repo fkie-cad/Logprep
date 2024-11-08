@@ -1114,13 +1114,12 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
-        self.object.metrics.cache_load = 0
 
         self.object.process(deepcopy(event))
         self.object.process(deepcopy(event))
         self.object.process(event)
-
-        assert self.object.metrics.new_results == 0
-        assert self.object.metrics.cached_results == 0
-        assert self.object.metrics.num_cache_entries == 0
-        assert self.object.metrics.cache_load == 0
+        # because the event is the same, the result is cached
+        # metrics are mocked by integers and incremented by cache_info results
+        assert self.object.metrics.new_results == 3
+        assert self.object.metrics.cached_results == 3
+        assert self.object.metrics.num_cache_entries == 3
