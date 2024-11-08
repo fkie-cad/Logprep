@@ -2,6 +2,7 @@
   {
     "filter": "drop_me",
     "dropper": {
+      "id": "dropper-1",
       "drop": [
         "drop_me"
       ]

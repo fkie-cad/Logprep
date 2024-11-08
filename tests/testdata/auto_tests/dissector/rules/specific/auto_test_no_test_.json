@@ -1,6 +1,7 @@
 [{
   "filter": "message",
   "dissector": {
+    "id": "dissector-2",
     "mapping": {
       "message": "%{source} %{target}"
     }

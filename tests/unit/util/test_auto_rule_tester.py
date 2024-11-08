@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
+from logprep.util.configuration import Configuration
 
 LOGGER = logging.getLogger()
 
@@ -14,6 +15,7 @@ LOGGER = logging.getLogger()
 @pytest.fixture(name="auto_rule_tester")
 def fixture_auto_rule_tester():
     config_path = "tests/testdata/config/config-auto-tests.yml"
+    Configuration.from_source(config_path)._verify()
     return AutoRuleTester(config_path)
 
 
