@@ -88,6 +88,7 @@ class FieldExistsWarning(ProcessingWarning):
         skipped_fields: List[str],
         rule: "Rule" = None,
     ):
+        self.skipped_fields = skipped_fields
         message = (
             "The following fields could not be written, because "
             "one or more subfields existed and could not be extended: "

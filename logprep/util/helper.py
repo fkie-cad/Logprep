@@ -83,8 +83,8 @@ def add_batch_to(event, targets, contents, extends_lists=False, overwrite_output
 def add_batch_to_silent_fail(*args, **kwargs):
     try:
         add_batch_to(*args, **kwargs)
-    except FieldExistsWarning:
-        ...
+    except FieldExistsWarning as error:
+        return error.skipped_fields
 
 
 def add_field_to(
