@@ -61,4 +61,4 @@ class Timestamper(FieldManager):
             parsed_successfully = True
             break
         if not parsed_successfully:
-            raise ProcessingWarning(str("Could not parse timestamp"), rule, event)
+            raise ProcessingWarning(str("Could not parse timestamp"), event, rule)
