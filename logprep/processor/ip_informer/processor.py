@@ -54,7 +54,7 @@ class IpInformer(FieldManager):
         if results:
             self._write_target_field(event, rule, results)
         for msg, error in self._processing_warnings:
-            raise ProcessingWarning(msg, rule, event) from error
+            raise ProcessingWarning(msg, event, rule) from error
 
     def _get_results(self, ip_address_list: Iterable, rule: IpInformerRule) -> dict:
         results = [(ip, self._ip_properties(ip, rule)) for ip in ip_address_list]
