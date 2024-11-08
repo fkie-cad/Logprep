@@ -33,7 +33,10 @@ from attr import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
-from logprep.util.helper import add_field_to, get_dotted_field_value, add_and_overwrite
+from logprep.util.helper import (
+    get_dotted_field_value,
+    add_batch_to_silent_fail,
+)
 
 
 class Labeler(Processor):
@@ -73,35 +76,9 @@ class Labeler(Processor):
 
     def _apply_rules(self, event, rule):
         """Applies the rule to the current event"""
-        self._add_label_fields(event, rule)
-        self._add_label_values(event, rule)
-        self._convert_label_categories_to_sorted_list(event)
-
-    @staticmethod
-    def _add_label_fields(event: dict, rule: LabelerRule):
-        """Prepares the event by adding empty label fields"""
-        add_field_to(event, "label", {})
-        for key in rule.label:
-            add_field_to(event, f"label.{key}", set())
-
-    @staticmethod
-    def _add_label_values(event: dict, rule: LabelerRule):
-        """Adds the labels from the rule to the event"""
-        for key in rule.label:
-            label_key = f"label.{key}"
-            label = get_dotted_field_value(event, label_key)
-            if not isinstance(label, set):
-                label = set(label)
-                add_and_overwrite(event, label_key, label)
-            label.update(rule.label[key])
-
-    @staticmethod
-    def _convert_label_categories_to_sorted_list(event: dict):
-        label = get_dotted_field_value(event, "label")
-        if label is None:
-            return
-        for category in label:
-            category_key = f"label.{category}"
-            category_value = get_dotted_field_value(event, category_key)
-            sorted_category = sorted(list(category_value))
-            add_and_overwrite(event, category_key, sorted_category)
+        targets = [f"label.{key}" for key in rule.label.keys()]
+        contents = rule.label.values()
+        add_batch_to_silent_fail(event, targets, contents)
+        # convert sets into sorted lists
+        contents = [sorted(list(get_dotted_field_value(event, target))) for target in targets]
+        add_batch_to_silent_fail(event, targets, contents, overwrite_output_field=True)

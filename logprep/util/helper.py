@@ -80,6 +80,13 @@ def add_batch_to(event, targets, contents, extends_lists=False, overwrite_output
         raise FieldExistsWarning(event, unsuccessful_targets)
 
 
+def add_batch_to_silent_fail(*args, **kwargs):
+    try:
+        add_batch_to(*args, **kwargs)
+    except FieldExistsWarning:
+        ...
+
+
 def add_field_to(
     event,
     target_field,
@@ -307,6 +314,14 @@ append_as_list = partial(add_field_to, extends_lists=True)
 def add_and_overwrite(event, target_field, content, *_):
     """wrapper for add_field_to"""
     add_field_to(event, target_field, content, overwrite_output_field=True)
+
+
+def add_and_overwrite_silent_fail(event, target_field, content, *_):
+    """wrapper for add_field_to"""
+    try:
+        add_field_to(event, target_field, content, overwrite_output_field=True)
+    except FieldExistsWarning:
+        ...
 
 
 def append(event, target_field, content, separator):
