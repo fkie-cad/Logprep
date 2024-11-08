@@ -114,16 +114,8 @@ class TemplateReplacer(FieldManager):
         If target value isn't None, then it exists and its parents must be dicts.
         Therefore, they wouldn't be replaced, and we can overwrite the existing target field.
         """
-        if get_dotted_field_value(event, self._target_field) is None:
-            add_successful = add_field_to(
-                event,
-                self._target_field,
-                replacement,
-            )
-            if not add_successful:
-                raise FieldExistsWarning(rule, event, [self._target_field])
-        else:
-            add_field_to(event, self._target_field, replacement, overwrite_output_field=True)
+        overwrite = get_dotted_field_value(event, self._target_field) is not None
+        add_field_to(event, self._target_field, replacement, overwrite_output_field=overwrite)
 
     def setup(self):
         super().setup()
