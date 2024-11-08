@@ -253,7 +253,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = {"message": "test"}
         mock_rule = mock.MagicMock()
-        processing_warning = ProcessingWarning("not so bad", mock_rule, {"message": "test"})
+        processing_warning = ProcessingWarning("not so bad", {"message": "test"}, mock_rule)
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
             processor_name="mock_processor", warnings=[processing_warning]
         )
