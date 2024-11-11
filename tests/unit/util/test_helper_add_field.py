@@ -122,3 +122,10 @@ class TestHelperAddField:
         }
         add_field_to(testdict, "key1.key2.key3.key4.key5.list", ["content"], extends_lists=True)
         assert testdict == expected
+
+    def test_add_value_not_as_list_if_it_is_a_new_value_even_though_extends_lists_is_true(self):
+        document = {
+            "some": "field",
+        }
+        add_field_to(document, "new", "list", extends_lists=True)
+        assert document.get("new") == "list"
