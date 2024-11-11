@@ -109,6 +109,15 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_consumer.store_offsets.assert_called_with(message=message)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_batch_finished_callback_calls_store_offsets(self, _):
+        input_config = deepcopy(self.CONFIG)
+        kafka_input = Factory.create({"test": input_config})
+        kafka_consumer = kafka_input._consumer
+        kafka_input._last_valid_record = None
+        kafka_input.batch_finished_callback()
+        kafka_consumer.store_offsets.assert_not_called()
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_batch_finished_callback_raises_input_warning_on_kafka_exception(self, _):
         input_config = deepcopy(self.CONFIG)
         kafka_input = Factory.create({"test": input_config})
@@ -119,7 +128,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             return list(reversed(return_sequence)).pop()
 
         kafka_consumer.store_offsets.side_effect = raise_generator(return_sequence)
-        kafka_input._last_valid_records = {0: "message"}
+        kafka_input._last_valid_record = {0: "message"}
         with pytest.raises(InputWarning):
             kafka_input.batch_finished_callback()
 
@@ -225,7 +234,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
     def test_commit_callback_raises_warning_error_and_counts_failures(self):
         with pytest.raises(InputWarning, match="Could not commit offsets"):
-            self.object._commit_callback(BaseException, ["topic_partition"])
+            self.object._commit_callback(Exception, ["topic_partition"])
             assert self.object._commit_failures == 1
 
     def test_commit_callback_counts_commit_success(self):

@@ -12,7 +12,7 @@ from logprep.processor.base.exceptions import (
 from logprep.util.getter import GetterFactory
 
 
-class LabelingSchemaError(BaseException):
+class LabelingSchemaError(Exception):
     """Base class for LabelingSchema related exceptions."""
 
 

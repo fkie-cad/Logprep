@@ -473,6 +473,9 @@ class ConfluentKafkaInput(Input):
         """
         if self._enable_auto_offset_store:
             return
+        # in case the ConfluentKafkaInput._revoke_callback is triggered before the first message was polled
+        if not self._last_valid_record:
+            return
         try:
             self._consumer.store_offsets(message=self._last_valid_record)
         except KafkaException as error:

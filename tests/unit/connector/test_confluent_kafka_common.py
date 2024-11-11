@@ -31,7 +31,7 @@ class CommonConfluentKafkaTestCase:
     def test_error_callback_logs_error(self):
         self.object.metrics.number_of_errors = 0
         with mock.patch("logging.Logger.error") as mock_error:
-            test_error = BaseException("test error")
+            test_error = Exception("test error")
             self.object._error_callback(test_error)
             mock_error.assert_called()
             mock_error.assert_called_with(f"{self.object.describe()}: {test_error}")

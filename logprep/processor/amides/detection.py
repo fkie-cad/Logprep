@@ -10,7 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from logprep.processor.amides.features import CommaSeparation
 
 
-class DetectionModelError(BaseException):
+class DetectionModelError(Exception):
     """Base exception class for all RuleModel-related errors."""
 
 
@@ -98,7 +98,7 @@ class MisuseDetector(DetectionModel):
         return False, round(confidence_value, 3)
 
 
-class RuleAttributorError(BaseException):
+class RuleAttributorError(Exception):
     """Base class for all RuleAttributor-related Errors."""
 
 
