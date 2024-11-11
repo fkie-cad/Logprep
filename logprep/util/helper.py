@@ -59,9 +59,9 @@ def _add_and_not_overwrite_key(sub_dict, key):
     return sub_dict.get(key)
 
 
-def add_field_to_silent_fail(*args):
+def add_field_to_silent_fail(*args, **kwargs):
     try:
-        add_field_to(*args)
+        add_field_to(*args, **kwargs)
     except FieldExistsWarning:
         return args[1]
 

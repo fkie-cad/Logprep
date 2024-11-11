@@ -33,7 +33,7 @@ Processor Configuration
 
 import errno
 from os import makedirs, path
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple
 
 from attr import define, field
 
@@ -43,7 +43,7 @@ from logprep.processor.base.exceptions import (
     ProcessingCriticalError,
 )
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, add_field_to_silent_fail
 from logprep.util.validators import directory_validator
 
 # pylint: disable=no-name-in-module
@@ -56,6 +56,7 @@ except ModuleNotFoundError as error:  # pragma: no cover
 
 # pylint: disable=ungrouped-imports
 from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
+
 
 # pylint: enable=ungrouped-imports
 
@@ -113,39 +114,23 @@ class HyperscanResolver(FieldManager):
             if matches:
                 dest_val = pattern_id_to_dest_val_map[matches[matches.index(min(matches))]]
                 if dest_val:
-                    add_success = self._add_uniquely_to_list(event, rule, resolve_target, dest_val)
-                    if not add_success:
-                        conflicting_fields.append(resolve_target)
+                    current_content = get_dotted_field_value(event, resolve_target)
+                    if isinstance(current_content, list) and dest_val in current_content:
+                        continue
+                    if rule.extend_target_list and current_content is None:
+                        dest_val = [dest_val]
+                    failed_target = add_field_to_silent_fail(
+                        event,
+                        resolve_target,
+                        dest_val,
+                        extends_lists=rule.extend_target_list,
+                        overwrite_output_field=rule.overwrite_target,
+                    )
+                    if failed_target:
+                        conflicting_fields.append(failed_target)
         self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_values)
         if conflicting_fields:
-            raise FieldExistsWarning(rule, event, conflicting_fields)
-
-    @staticmethod
-    def _add_uniquely_to_list(
-        event: dict,
-        rule: HyperscanResolverRule,
-        target: str,
-        content: Union[str, float, int, list, dict],
-    ) -> bool:
-        """Extend list if content is not already in the list"""
-        add_success = True
-        target_val = get_dotted_field_value(event, target)
-        target_is_list = isinstance(target_val, list)
-        if rule.extend_target_list and not target_is_list:
-            empty_list = []
-            add_success &= add_field_to(
-                event,
-                target,
-                empty_list,
-                overwrite_output_field=rule.overwrite_target,
-            )
-            if add_success:
-                target_is_list = True
-                target_val = empty_list
-        if target_is_list and content in target_val:
-            return add_success
-        add_success = add_field_to(event, target, content, extends_lists=rule.extend_target_list)
-        return add_success
+            raise FieldExistsWarning(event, conflicting_fields, rule)
 
     @staticmethod
     def _match_with_hyperscan(hyperscan_db: Database, src_val: str) -> list:

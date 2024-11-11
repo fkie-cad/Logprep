@@ -27,9 +27,10 @@ Processor Configuration
 
 import re
 
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, add_field_to_silent_fail
 
 
 class GenericResolver(FieldManager):
@@ -44,6 +45,7 @@ class GenericResolver(FieldManager):
             for source_field in rule.field_mapping.keys()
         ]
         self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_field_values)
+        conflicting_fields = []
         for source_field, target_field in rule.field_mapping.items():
             source_field_value = get_dotted_field_value(event, source_field)
             if source_field_value is None:
@@ -56,13 +58,17 @@ class GenericResolver(FieldManager):
                 continue
             if rule.extend_target_list and current_content is None:
                 content = [content]
-            add_field_to(
+            failed_target = add_field_to_silent_fail(
                 event,
                 target_field,
                 content,
                 extends_lists=rule.extend_target_list,
                 overwrite_output_field=rule.overwrite_target,
             )
+            if failed_target:
+                conflicting_fields.append(failed_target)
+        if conflicting_fields:
+            raise FieldExistsWarning(event, conflicting_fields, rule)
 
     def _find_content_of_first_matching_pattern(self, rule, source_field_value):
         if rule.resolve_from_file:
