@@ -257,3 +257,11 @@ class TestLabeler(BaseProcessorTestCase):
         labeler = Factory.create({"test instance": config})
 
         assert labeler._schema == expected_schema
+
+    def test_extend_list_of_existing_labels(self):
+        rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows", "foo"]}}}
+        document = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
+        expected = {"applyrule": "yes", "label": {"reporter": ["foo", "windows"]}}
+        self._load_specific_rule(rule)
+        self.object.process(document)
+        assert document == expected

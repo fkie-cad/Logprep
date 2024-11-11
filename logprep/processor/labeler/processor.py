@@ -78,7 +78,7 @@ class Labeler(Processor):
         """Applies the rule to the current event"""
         targets = [f"label.{key}" for key in rule.label.keys()]
         contents = rule.label.values()
-        add_batch_to_silent_fail(event, targets, contents)
+        add_batch_to_silent_fail(event, targets, contents, extends_lists=True)
         # convert sets into sorted lists
-        contents = [sorted(list(get_dotted_field_value(event, target))) for target in targets]
+        contents = [sorted(set(get_dotted_field_value(event, target))) for target in targets]
         add_batch_to_silent_fail(event, targets, contents, overwrite_output_field=True)

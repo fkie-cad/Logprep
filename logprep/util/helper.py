@@ -136,7 +136,7 @@ def add_field_to(
             return
         if not extends_lists or not isinstance(existing_value, list):
             raise FieldExistsWarning(event, [target_field])
-        if isinstance(content, list):
+        if isinstance(content, list | set):
             target_parent[target_key].extend(content)
         else:
             target_parent[target_key].append(content)
