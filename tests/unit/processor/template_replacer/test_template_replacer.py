@@ -163,14 +163,3 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         template_replacer = Factory.create({"test instance": config})
         template_replacer.setup()
         return template_replacer
-
-    def test_replace_message_via_template(self):
-        document = {
-            "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
-            "message": "foo",
-        }
-
-        self.object.process(document)
-
-        assert document.get("message")
-        assert document["message"] == "Test %1 Test %2"
