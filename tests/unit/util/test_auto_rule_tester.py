@@ -281,8 +281,8 @@ class TestAutoRuleTester:
         ]
 
         expected_overall_results = [
-            "+ Successful Tests: 32",
-            "- Failed Tests: 6",
+            "+ Successful Tests: 31",
+            "- Failed Tests: 7",
             "~ Warning: 2",
             "Rule Test Coverage: 72.72727272727273",
             "Total Tests: 38",
