@@ -37,9 +37,12 @@ from typing import Any, Dict, Tuple, Union
 
 from attr import define, field
 
-from logprep.processor.base.exceptions import FieldExistsWarning, SkipImportError
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    SkipImportError,
+    ProcessingCriticalError,
+)
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.processor.generic_resolver.processor import GenericResolverError
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
 
@@ -55,10 +58,6 @@ except ModuleNotFoundError as error:  # pragma: no cover
 from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
 
 # pylint: enable=ungrouped-imports
-
-
-class HyperscanResolverError(GenericResolverError):
-    """Base class for HyperscanResolver related exceptions."""
 
 
 class HyperscanResolver(FieldManager):
@@ -169,7 +168,7 @@ class HyperscanResolver(FieldManager):
             try:
                 database, value_mapping = self._load_database(database_id, resolve_list)
             except FileNotFoundError:
-                database, value_mapping = self._create_database(resolve_list)
+                database, value_mapping = self._create_database(resolve_list, rule)
 
                 if rule.store_db_persistent:
                     self._save_database(database, database_id)
@@ -201,7 +200,7 @@ class HyperscanResolver(FieldManager):
         with open(f"{self._hyperscan_database_path}/{database_id}.db", "wb") as db_file:
             db_file.write(serialized_db)
 
-    def _create_database(self, resolve_list: dict):
+    def _create_database(self, resolve_list: dict, rule):
         database = Database()
         value_mapping = {}
         db_patterns = []
@@ -211,7 +210,9 @@ class HyperscanResolver(FieldManager):
             value_mapping[idx] = resolve_list[pattern]
 
         if not db_patterns:
-            raise HyperscanResolverError(self.name, "No patter to compile for hyperscan database!")
+            raise ProcessingCriticalError(
+                f"{self.name} No patter to compile for hyperscan database!", rule
+            )
 
         expressions, ids, flags = zip(*db_patterns)
         database.compile(expressions=expressions, ids=ids, elements=len(db_patterns), flags=flags)

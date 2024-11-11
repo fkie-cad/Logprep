@@ -28,40 +28,20 @@ Processor Configuration
 import re
 from typing import Union
 
-from logprep.processor.base.exceptions import (
-    FieldExistsWarning,
-    ProcessingCriticalError,
-)
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
-
-
-class GenericResolverError(ProcessingCriticalError):
-    """Base class for GenericResolver related exceptions."""
-
-    def __init__(self, name: str, message: str, rule: GenericResolverRule):
-        super().__init__(f"{name}: {message}", rule=rule)
 
 
 class GenericResolver(FieldManager):
     """Resolve values in documents by referencing a mapping list."""
 
-    __slots__ = ["_replacements_from_file"]
-
-    _replacements_from_file: dict
-
     rule_class = GenericResolverRule
-
-    def __init__(self, name: str, configuration: FieldManager.Config):
-        super().__init__(name=name, configuration=configuration)
-        self._replacements_from_file = {}
 
     def _apply_rules(self, event, rule):
         """Apply the given rule to the current event"""
         conflicting_fields = []
-        self.ensure_rules_from_file(rule)
 
         source_values = []
         for source_field, target_field in rule.field_mapping.items():
@@ -73,17 +53,10 @@ class GenericResolver(FieldManager):
             # FILE
             if rule.resolve_from_file:
                 pattern = f'^{rule.resolve_from_file["pattern"]}$'
-                replacements = self._replacements_from_file[rule.resolve_from_file["path"]]
+                replacements = rule.resolve_from_file["additions"]
                 matches = re.match(pattern, source_value)
                 if matches:
-                    mapping = matches.group("mapping") if "mapping" in matches.groupdict() else None
-                    if mapping is None:
-                        raise GenericResolverError(
-                            self.name,
-                            "Mapping group is missing in mapping file pattern!",
-                            rule=rule,
-                        )
-                    dest_val = replacements.get(mapping)
+                    dest_val = replacements.get(matches.group("mapping"))
                     if dest_val:
                         success = self._add_uniquely_to_list(event, rule, target_field, dest_val)
                         if not success:
@@ -132,28 +105,3 @@ class GenericResolver(FieldManager):
             return add_success
         add_success = add_field_to(event, target, content, extends_lists=rule.extend_target_list)
         return add_success
-
-    def ensure_rules_from_file(self, rule):
-        """loads rules from file"""
-        if rule.resolve_from_file:
-            if rule.resolve_from_file["path"] not in self._replacements_from_file:
-                try:
-                    add_dict = GetterFactory.from_string(rule.resolve_from_file["path"]).get_yaml()
-                    if isinstance(add_dict, dict) and all(
-                        isinstance(value, str) for value in add_dict.values()
-                    ):
-                        self._replacements_from_file[rule.resolve_from_file["path"]] = add_dict
-                    else:
-                        raise GenericResolverError(
-                            self.name,
-                            f"Additions file "
-                            f'\'{rule.resolve_from_file["path"]}\''
-                            f" must be a dictionary with string values!",
-                            rule=rule,
-                        )
-                except FileNotFoundError as error:
-                    raise GenericResolverError(
-                        self.name,
-                        f'Additions file \'{rule.resolve_from_file["path"]}' f"' not found!",
-                        rule=rule,
-                    ) from error

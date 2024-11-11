@@ -4,7 +4,10 @@
 ### Breaking
 ### Features
 ### Improvements
+
 * replace `BaseException` with `Exception` for custom errors
+* refactor `generic_resolver` to validate rules on startup instead of application of each rule
+
 ### Bugfix
 
 - fix `confluent_kafka.store_offsets` if `last_valid_record` is `None`, can happen if a rebalancing happens
