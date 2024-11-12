@@ -29,7 +29,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "topic": "test_input_raw",
         "flush_timeout": 0.1,
         "kafka_config": {
-            "bootstrap.servers": "testserver:9092",
+            "bootstrap.servers": "localhost:9092",
         },
     }
 
@@ -109,7 +109,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         assert self.object.metrics.number_of_processed_events == 1
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
-        kafka_config = {"myconfig": "the config", "bootstrap.servers": "testserver:9092"}
+        kafka_config = {"myconfig": "the config", "bootstrap.servers": "localhost:9092"}
         config = deepcopy(self.CONFIG)
         config.update({"kafka_config": kafka_config})
         connector = Factory.create({"test connector": config})
@@ -164,3 +164,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             self.object.shut_down()
         mock_error.assert_called()
         self.object.metrics.number_of_errors = 1
+
+    def test_health_returns_bool(self):
+        with mock.patch.object(self.object, "_admin"):
+            super().test_health_returns_bool()
