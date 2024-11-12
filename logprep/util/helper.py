@@ -65,7 +65,7 @@ def add_field_to(
     content,
     extends_lists=False,
     overwrite_output_field=False,
-):
+) -> None:
     """
     Add content to the output_field in the given event. Output_field can be a dotted subfield.
     In case of missing fields, all intermediate fields will be created.
@@ -114,9 +114,10 @@ def add_field_to(
         target_parent[target_key].append(content)
 
 
-def add_field_to_silent_fail(*args, **kwargs):
+def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
     """
-    Adds a field to an object, ignoring the FieldExistsWarning if the field already exists.
+    Adds a field to an object, ignoring the FieldExistsWarning if the field already exists. Is only needed in the
+    add_batch_to map function. Without this the map would terminate early.
 
     Parameters:
         args: tuple
@@ -136,7 +137,9 @@ def add_field_to_silent_fail(*args, **kwargs):
         return args[1]
 
 
-def add_batch_to(event, targets, contents, extends_lists=False, overwrite_output_field=False):
+def add_batch_to(
+    event, targets, contents, extends_lists=False, overwrite_output_field=False
+) -> None:
     """
     Handles the batch addition operation while raising a FieldExistsWarning with all unsuccessful targets.
 
@@ -157,7 +160,7 @@ def add_batch_to(event, targets, contents, extends_lists=False, overwrite_output
         existence restrictions.
     """
     unsuccessful_targets = map(
-        add_field_to_silent_fail,
+        _add_field_to_silent_fail,
         itertools.repeat(event, len(targets)),
         targets,
         contents,
@@ -167,28 +170,6 @@ def add_batch_to(event, targets, contents, extends_lists=False, overwrite_output
     unsuccessful_targets = [item for item in unsuccessful_targets if item is not None]
     if unsuccessful_targets:
         raise FieldExistsWarning(event, unsuccessful_targets)
-
-
-def add_batch_to_silent_fail(*args, **kwargs) -> None | list:
-    """
-    Handles the batch addition operation while silently handling FieldExistsWarning.
-
-    Parameters
-    ----------
-    *args : tuple
-        Variable length argument list.
-    **kwargs : dict
-        Arbitrary keyword arguments.
-
-    Returns
-    -------
-    skipped_fields : list
-        A list of fields that were skipped due to FieldExistWarning.
-    """
-    try:
-        add_batch_to(*args, **kwargs)
-    except FieldExistsWarning as error:
-        return error.skipped_fields
 
 
 def _get_slice_arg(slice_item):
@@ -363,14 +344,6 @@ append_as_list = partial(add_field_to, extends_lists=True)
 def add_and_overwrite(event, target_field, content, *_):
     """wrapper for add_field_to"""
     add_field_to(event, target_field, content, overwrite_output_field=True)
-
-
-def add_and_overwrite_silent_fail(event, target_field, content, *_):
-    """wrapper for add_field_to"""
-    try:
-        add_field_to(event, target_field, content, overwrite_output_field=True)
-    except FieldExistsWarning:
-        ...
 
 
 def append(event, target_field, content, separator):

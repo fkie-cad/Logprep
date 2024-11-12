@@ -30,7 +30,7 @@ import re
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.util.helper import get_dotted_field_value, add_field_to_silent_fail
+from logprep.util.helper import get_dotted_field_value, add_field_to
 
 
 class GenericResolver(FieldManager):
@@ -58,15 +58,16 @@ class GenericResolver(FieldManager):
                 continue
             if rule.extend_target_list and current_content is None:
                 content = [content]
-            failed_target = add_field_to_silent_fail(
-                event,
-                target_field,
-                content,
-                extends_lists=rule.extend_target_list,
-                overwrite_output_field=rule.overwrite_target,
-            )
-            if failed_target:
-                conflicting_fields.append(failed_target)
+            try:
+                add_field_to(
+                    event,
+                    target_field,
+                    content,
+                    extends_lists=rule.extend_target_list,
+                    overwrite_output_field=rule.overwrite_target,
+                )
+            except FieldExistsWarning as error:
+                conflicting_fields.extend(error.skipped_fields)
         if conflicting_fields:
             raise FieldExistsWarning(event, conflicting_fields, rule)
 

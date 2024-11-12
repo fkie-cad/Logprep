@@ -35,7 +35,7 @@ from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
 from logprep.util.helper import (
     get_dotted_field_value,
-    add_batch_to_silent_fail,
+    add_batch_to,
 )
 
 
@@ -78,7 +78,7 @@ class Labeler(Processor):
         """Applies the rule to the current event"""
         targets = [f"label.{key}" for key in rule.label.keys()]
         contents = rule.label.values()
-        add_batch_to_silent_fail(event, targets, contents, extends_lists=True)
+        add_batch_to(event, targets, contents, extends_lists=True)
         # convert sets into sorted lists
         contents = [sorted(set(get_dotted_field_value(event, target))) for target in targets]
-        add_batch_to_silent_fail(event, targets, contents, overwrite_output_field=True)
+        add_batch_to(event, targets, contents, overwrite_output_field=True)

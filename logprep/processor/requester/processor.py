@@ -46,8 +46,8 @@ from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.requester.rule import RequesterRule
 from logprep.util.helper import (
     get_source_fields_dict,
-    add_field_to_silent_fail,
-    add_batch_to_silent_fail,
+    add_field_to,
+    add_batch_to,
 )
 
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
@@ -71,28 +71,31 @@ class Requester(FieldManager):
             self._handle_response(event, rule, response)
 
     def _handle_response(self, event, rule, response):
-        failed_targets = []
+        conflicting_fields = []
         if rule.target_field:
             result = self._get_result(response)
-            failed_target = add_field_to_silent_fail(
-                event,
-                rule.target_field,
-                result,
-                rule.extend_target_list,
-                rule.overwrite_target,
-            )
-            failed_targets.append(failed_target)
+            try:
+                add_field_to(
+                    event,
+                    rule.target_field,
+                    result,
+                    rule.extend_target_list,
+                    rule.overwrite_target,
+                )
+            except FieldExistsWarning as error:
+                conflicting_fields.extend(error.skipped_fields)
         if rule.target_field_mapping:
             source_fields = rule.target_field_mapping.keys()
             contents = self._get_field_values(self._get_result(response), source_fields)
             targets = rule.target_field_mapping.values()
-            failed = add_batch_to_silent_fail(
-                event, targets, contents, rule.extend_target_list, rule.overwrite_target
-            )
-            failed_targets.append(failed)
-        failed_targets = [failed for failed in failed_targets if failed is not None]
-        if failed_targets:
-            raise FieldExistsWarning(event, failed_targets, rule)
+            try:
+                add_batch_to(
+                    event, targets, contents, rule.extend_target_list, rule.overwrite_target
+                )
+            except FieldExistsWarning as error:
+                conflicting_fields.extend(error.skipped_fields)
+        if conflicting_fields:
+            raise FieldExistsWarning(event, conflicting_fields, rule)
 
     def _request(self, event, rule, kwargs):
         try:

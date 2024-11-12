@@ -2,6 +2,10 @@
 
 ## next release
 ### Breaking
+
+* `CriticalInputError` is raised when the input preprocessor values can't be set, this was so far only true
+  for the hmac preprocessor, but is now also applied for all other preprocessors.
+
 ### Features
 ### Improvements
 
