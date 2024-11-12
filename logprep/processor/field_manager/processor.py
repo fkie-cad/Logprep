@@ -29,18 +29,16 @@ Processor Configuration
 .. automodule:: logprep.processor.field_manager.rule
 """
 
-import itertools
 from collections import namedtuple
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
     add_and_overwrite,
+    add_batch_to,
     add_field_to,
     get_dotted_field_value,
     pop_dotted_field_value,
-    add_batch_to,
 )
 
 
