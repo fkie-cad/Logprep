@@ -2,14 +2,16 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=line-too-long
+import asyncio
 import os.path
 from unittest import mock
 
 import pytest
 import requests
-from prometheus_client import REGISTRY
+from asgiref.testing import ApplicationCommunicator
+from prometheus_client import REGISTRY, CollectorRegistry
 
-from logprep.metrics.exporter import PrometheusExporter
+from logprep.metrics.exporter import PrometheusExporter, make_patched_asgi_app
 from logprep.util import http
 from logprep.util.configuration import MetricsConfig
 
@@ -148,38 +150,63 @@ class TestHealthEndpoint:
 
         exporter.server.shut_down()
 
-    @pytest.mark.parametrize(
-        "functions, expected",
-        [
-            ([lambda: True], 200),
-            ([lambda: True, lambda: True], 200),
-            ([lambda: False], 503),
-            ([lambda: False, lambda: False], 503),
-            ([lambda: False, lambda: True, lambda: True], 503),
-        ],
-    )
-    def test_health_check_returns_status_code(self, functions, expected):
+    def test_health_check_returns_body_and_status_code(self):
         exporter = PrometheusExporter(self.metrics_config)
         exporter.run(daemon=False)
-        exporter.update_healthchecks(functions)
+        exporter.update_healthchecks([lambda: True])
         resp = requests.get("http://localhost:8000/health", timeout=0.5)
-        assert resp.status_code == expected
+        assert resp.status_code == 200
+        assert resp.content.decode() == "OK"
         exporter.server.shut_down()
 
+
+class TestAsgiApp:
+    """These tests uses the `asgiref.testing.ApplicationCommunicator` to test the ASGI app itself
+    For more information see: https://dokk.org/documentation/django-channels/2.4.0/topics/testing/
+    """
+
+    def setup_method(self):
+        self.registry = CollectorRegistry()
+        self.captured_status = None
+        self.captured_headers = None
+        # Setup ASGI scope
+        self.scope = {
+            "client": ("127.0.0.1", 32767),
+            "headers": [],
+            "http_version": "1.0",
+            "method": "GET",
+            "path": "/",
+            "query_string": b"",
+            "scheme": "http",
+            "server": ("127.0.0.1", 80),
+            "type": "http",
+        }
+        self.communicator = None
+
+    def teardown_method(self):
+        if self.communicator:
+            asyncio.get_event_loop().run_until_complete(self.communicator.wait())
+
+    def seed_app(self, app):
+        self.communicator = ApplicationCommunicator(app, self.scope)
+
     @pytest.mark.parametrize(
-        "functions, expected",
+        "functions, expected_status, expected_body",
         [
-            ([lambda: True], "OK"),
-            ([lambda: True, lambda: True], "OK"),
-            ([lambda: False], "FAIL"),
-            ([lambda: False, lambda: False], "FAIL"),
-            ([lambda: False, lambda: True, lambda: True], "FAIL"),
+            ([lambda: True], 200, b"OK"),
+            ([lambda: True, lambda: True], 200, b"OK"),
+            ([lambda: False], 503, b"FAIL"),
+            ([lambda: False, lambda: False], 503, b"FAIL"),
+            ([lambda: False, lambda: True, lambda: True], 503, b"FAIL"),
         ],
     )
-    def test_health_check_returns_body(self, functions, expected):
-        exporter = PrometheusExporter(self.metrics_config)
-        exporter.run(daemon=False)
-        exporter.update_healthchecks(functions)
-        resp = requests.get("http://localhost:8000/health", timeout=0.5)
-        assert resp.content.decode() == expected
-        exporter.server.shut_down()
+    @pytest.mark.asyncio
+    async def test_asgi_app(self, functions, expected_status, expected_body):
+        app = make_patched_asgi_app(functions)
+        self.scope["path"] = "/health"
+        self.seed_app(app)
+        await self.communicator.send_input({"type": "http.request"})
+        event = await self.communicator.receive_output(timeout=1)
+        assert event["status"] == expected_status
+        event = await self.communicator.receive_output(timeout=1)
+        assert expected_body in event["body"]
