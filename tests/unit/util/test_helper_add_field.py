@@ -33,11 +33,13 @@ class TestHelperAddField:
         document = {"source": {"ip": "8.8.8.8"}, "field": "exists already"}
         with pytest.raises(FieldExistsWarning, match=r"could not be written"):
             add_field_to(document, "field", "content")
+        assert document
 
     def test_provoke_str_duplicate_in_dotted_subfield(self):
         document = {"source": {"ip": "8.8.8.8"}, "sub": {"field": "exists already"}}
         with pytest.raises(FieldExistsWarning, match=r"could not be written"):
             add_field_to(document, "sub.field", "content")
+        assert document
 
     def test_add_dict_content_as_new_root_field(self):
         document = {"source": {"ip": "8.8.8.8"}}
@@ -64,6 +66,7 @@ class TestHelperAddField:
         document = {"source": {"ip": "8.8.8.8"}, "field": {"already_existing": "dict"}}
         with pytest.raises(FieldExistsWarning, match=r"could not be written"):
             add_field_to(document, "field", {"dict": "content"})
+        assert document
 
     def test_provoke_dict_duplicate_in_dotted_subfield(self):
         document = {"source": {"ip": "8.8.8.8"}, "sub": {"field": {"already_existing": "dict"}}}
@@ -102,12 +105,14 @@ class TestHelperAddField:
                 extends_lists=True,
                 overwrite_target_field=True,
             )
+        assert document
 
     def test_returns_false_if_dotted_field_value_key_exists(self):
         document = {"user": "Franz"}
         content = ["user_inlist"]
         with pytest.raises(FieldExistsWarning, match=r"could not be written"):
             add_field_to(document, "user.in_list", content)
+        assert document
 
     def test_add_list_with_nested_keys(self):
         testdict = {
@@ -123,9 +128,11 @@ class TestHelperAddField:
         add_field_to(testdict, "key1.key2.key3.key4.key5.list", ["content"], extends_lists=True)
         assert testdict == expected
 
-    def test_add_value_not_as_list_if_it_is_a_new_value_even_though_extends_lists_is_true(self):
+    def test_add_field_to_adds_value_not_as_list(self):
+        # checks if a newly added field is added not as list, even when `extends_list` is True
         document = {
             "some": "field",
         }
         add_field_to(document, "new", "list", extends_lists=True)
         assert document.get("new") == "list"
+        assert not isinstance(document.get("new"), list)
