@@ -97,21 +97,21 @@ def add_field_to(
     if overwrite_output_field:
         target_parent = reduce(_add_and_overwrite_key, field_path)
         target_parent[target_key] = content
+        return
+    try:
+        target_parent = reduce(_add_and_not_overwrite_key, field_path)
+    except KeyError as error:
+        raise FieldExistsWarning(event, [target_field]) from error
+    existing_value = target_parent.get(target_key)
+    if existing_value is None:
+        target_parent[target_key] = content
+        return
+    if not extends_lists or not isinstance(existing_value, list):
+        raise FieldExistsWarning(event, [target_field])
+    if isinstance(content, list | set):
+        target_parent[target_key].extend(content)
     else:
-        try:
-            target_parent = reduce(_add_and_not_overwrite_key, field_path)
-        except KeyError as error:
-            raise FieldExistsWarning(event, [target_field]) from error
-        existing_value = target_parent.get(target_key)
-        if existing_value is None:
-            target_parent[target_key] = content
-            return
-        if not extends_lists or not isinstance(existing_value, list):
-            raise FieldExistsWarning(event, [target_field])
-        if isinstance(content, list | set):
-            target_parent[target_key].extend(content)
-        else:
-            target_parent[target_key].append(content)
+        target_parent[target_key].append(content)
 
 
 def add_field_to_silent_fail(*args, **kwargs):
