@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 from asgiref.testing import ApplicationCommunicator
-from prometheus_client import REGISTRY, CollectorRegistry
+from prometheus_client import CollectorRegistry
 
 from logprep.metrics.exporter import PrometheusExporter, make_patched_asgi_app
 from logprep.util import http
@@ -21,7 +21,6 @@ from logprep.util.configuration import MetricsConfig
 )
 class TestPrometheusExporter:
     def setup_method(self):
-        REGISTRY.__init__()
         self.metrics_config = MetricsConfig(enabled=True, port=8000)
 
     def test_correct_setup(self):
