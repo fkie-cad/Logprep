@@ -356,13 +356,15 @@ class Processor(Component):
         if failure_tags is None:
             failure_tags = rule.failure_tags
         if tags is None:
-            add_and_overwrite(event, "tags", sorted(list({*failure_tags})))
+            new_field = {"tags": sorted(list({*failure_tags}))}
         else:
-            add_and_overwrite(event, "tags", sorted(list({*tags, *failure_tags})))
+            new_field = {"tags": sorted(list({*tags, *failure_tags}))}
+        add_and_overwrite(event, new_field)
         if isinstance(error, ProcessingWarning):
             if error.tags:
                 tags = tags if tags else []
-                add_and_overwrite(event, "tags", sorted(list({*error.tags, *tags, *failure_tags})))
+                new_field = {"tags": sorted(list({*error.tags, *tags, *failure_tags}))}
+                add_and_overwrite(event, new_field)
             self.result.warnings.append(error)
         else:
             self.result.warnings.append(ProcessingWarning(str(error), event, rule))
@@ -382,8 +384,7 @@ class Processor(Component):
     def _write_target_field(self, event: dict, rule: "Rule", result: any) -> None:
         add_field_to(
             event,
-            target_field=rule.target_field,
-            content=result,
+            field={rule.target_field: result},
             extends_lists=rule.extend_target_list,
             overwrite_target_field=rule.overwrite_target,
         )

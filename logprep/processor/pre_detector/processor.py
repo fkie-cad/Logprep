@@ -126,7 +126,7 @@ class PreDetector(Processor):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
         if pre_detection_id is None:
             pre_detection_id = str(uuid4())
-            add_field_to(event, "pre_detection_id", pre_detection_id)
+            add_field_to(event, {"pre_detection_id": pre_detection_id})
         detection_result = self._generate_detection_result(pre_detection_id, event, rule)
         self.result.data.append((detection_result, self._config.outputs))
 
@@ -135,11 +135,13 @@ class PreDetector(Processor):
         pre_detection_id: str, event: dict, rule: PreDetectorRule
     ) -> dict:
         detection_result = rule.detection_data
-        detection_result["rule_filter"] = rule.filter_str
-        detection_result["description"] = rule.description
-        detection_result["pre_detection_id"] = pre_detection_id
-
-        host_name = get_dotted_field_value(event, "host.name")
-        if host_name is not None:
-            detection_result["host"] = {"name": host_name}
+        detection_result.update(
+            {
+                "rule_filter": rule.filter_str,
+                "description": rule.description,
+                "pre_detection_id": pre_detection_id,
+            }
+        )
+        if host_name := get_dotted_field_value(event, "host.name"):
+            detection_result.update({"host": {"name": host_name}})
         return detection_result

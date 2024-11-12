@@ -130,21 +130,20 @@ class DomainLabelExtractor(FieldManager):
 
         if self._is_valid_ip(domain):
             tagging_field.append(f"ip_in_{rule.source_fields[0].replace('.', '_')}")
-            add_and_overwrite(event, self._config.tagging_field_name, tagging_field)
+            add_and_overwrite(event, field={self._config.tagging_field_name: tagging_field})
             return
 
         labels = self._tld_extractor(domain)
         if labels.suffix != "":
-            targets = [
-                f"{rule.target_field}.registered_domain",
-                f"{rule.target_field}.top_level_domain",
-                f"{rule.target_field}.subdomain",
-            ]
-            contents = [f"{labels.domain}.{labels.suffix}", labels.suffix, labels.subdomain]
-            add_batch_to(event, targets, contents, overwrite_target_field=rule.overwrite_target)
+            fields = {
+                f"{rule.target_field}.registered_domain": f"{labels.domain}.{labels.suffix}",
+                f"{rule.target_field}.top_level_domain": labels.suffix,
+                f"{rule.target_field}.subdomain": labels.subdomain,
+            }
+            add_batch_to(event, fields, overwrite_target_field=rule.overwrite_target)
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
-            add_and_overwrite(event, self._config.tagging_field_name, tagging_field)
+            add_and_overwrite(event, field={self._config.tagging_field_name: tagging_field})
 
     @staticmethod
     def _is_valid_ip(domain):

@@ -48,7 +48,7 @@ from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.util.helper import get_dotted_field_value, add_batch_to
+from logprep.util.helper import add_batch_to, get_dotted_field_value
 
 
 def sql_config_validator(_, attribute, value):
@@ -224,35 +224,32 @@ class GenericAdder(Processor):
         FieldExistsWarning
             Raises if an addition would overwrite an existing field or value.
         """
+        items_to_add = rule.add
         use_db = rule.db_target and self._db_table
         if use_db:
             self._update_db_table()
             items_to_add = self._get_items_to_add_from_db(event, rule)
-        else:
-            items_to_add = rule.add.items()
-
         if items_to_add:
-            targets, contents = zip(*items_to_add)
-            add_batch_to(event, targets, contents, rule.extend_target_list, rule.overwrite_target)
+            add_batch_to(event, items_to_add, rule.extend_target_list, rule.overwrite_target)
 
-    def _get_items_to_add_from_db(self, event: dict, rule: GenericAdderRule) -> list:
+    def _get_items_to_add_from_db(self, event: dict, rule: GenericAdderRule) -> dict | None:
         """Get the sub part of the value from the event using a regex pattern"""
-        items_to_add = []
         if not rule.db_pattern:
-            return items_to_add
-
+            return
         value_to_check_in_db = get_dotted_field_value(event, rule.db_target)
         match_with_value_in_db = rule.db_pattern.match(value_to_check_in_db)
         if match_with_value_in_db:
             # Get values to add from db table using the sub part
             value_to_map = match_with_value_in_db.group(1).upper()
             add_from_db = self._db_table.get(value_to_map, [])
-
             if rule.db_destination_prefix:
-                for idx, _ in enumerate(add_from_db):
-                    if not add_from_db[idx][0].startswith(rule.db_destination_prefix):
-                        add_from_db[idx][0] = f"{rule.db_destination_prefix}.{add_from_db[idx][0]}"
+                add_from_db = [
+                    (self._add_prefix_if_not_present(key, rule), value)
+                    for key, value in add_from_db
+                ]
+            return dict(add_from_db)
 
-            for item in add_from_db:
-                items_to_add.append(item)
-        return items_to_add
+    def _add_prefix_if_not_present(self, key: str, rule: "GenericAdderRule") -> str:
+        if not key.startswith(rule.db_destination_prefix):
+            return f"{rule.db_destination_prefix}.{key}"
+        return key

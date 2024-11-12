@@ -44,11 +44,7 @@ import requests
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.requester.rule import RequesterRule
-from logprep.util.helper import (
-    get_source_fields_dict,
-    add_field_to,
-    add_batch_to,
-)
+from logprep.util.helper import add_batch_to, add_field_to, get_source_fields_dict
 
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
@@ -73,14 +69,12 @@ class Requester(FieldManager):
     def _handle_response(self, event, rule, response):
         conflicting_fields = []
         if rule.target_field:
-            result = self._get_result(response)
             try:
                 add_field_to(
                     event,
-                    rule.target_field,
-                    result,
-                    rule.extend_target_list,
-                    rule.overwrite_target,
+                    field={rule.target_field: self._get_result(response)},
+                    extends_lists=rule.extend_target_list,
+                    overwrite_target_field=rule.overwrite_target,
                 )
             except FieldExistsWarning as error:
                 conflicting_fields.extend(error.skipped_fields)
@@ -90,7 +84,10 @@ class Requester(FieldManager):
             targets = rule.target_field_mapping.values()
             try:
                 add_batch_to(
-                    event, targets, contents, rule.extend_target_list, rule.overwrite_target
+                    event,
+                    dict(zip(targets, contents)),
+                    rule.extend_target_list,
+                    rule.overwrite_target,
                 )
             except FieldExistsWarning as error:
                 conflicting_fields.extend(error.skipped_fields)

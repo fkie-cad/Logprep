@@ -85,12 +85,9 @@ class Grokker(FieldManager):
             if result is None or result == {}:
                 continue
             matches.append(True)
-            filtered_items = {k: v for k, v in result.items() if v is not None}
-            targets, contents = zip(*filtered_items.items())
             add_batch_to(
                 event,
-                targets,
-                contents,
+                result,
                 extends_lists=rule.extend_target_list,
                 overwrite_target_field=rule.overwrite_target,
             )

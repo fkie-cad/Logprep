@@ -60,11 +60,10 @@ def _add_and_not_overwrite_key(sub_dict, key):
 
 
 def add_field_to(
-    event,
-    target_field,
-    content,
-    extends_lists=False,
-    overwrite_target_field=False,
+    event: dict,
+    field: dict,
+    extends_lists: bool = False,
+    overwrite_target_field: bool = False,
 ) -> None:
     """
     Add content to the target_field in the given event. target_field can be a dotted subfield.
@@ -73,10 +72,10 @@ def add_field_to(
     ----------
     event: dict
         Original log-event that logprep is currently processing
-    target_field: str
-        Dotted subfield string indicating the target of the output value, e.g. destination.ip
-    content: str, float, int, list, dict
-        Value that should be written into the target_field
+    field: dict
+        A key value pair describing the field that should be added. The key is the dotted subfield string indicating
+        the target. The value is the content that should be added to the named target. The content can be of type
+        str, float, int, list, dict.
     extends_lists: bool
         Flag that determines whether target_field lists should be extended
     overwrite_target_field: bool
@@ -91,6 +90,9 @@ def add_field_to(
     """
     if extends_lists and overwrite_target_field:
         raise ValueError("An output field can't be overwritten and extended at the same time")
+    if isinstance(field, dict):
+        field = list(field.items())[0]
+    target_field, content = field
     field_path = [event, *get_dotted_field_list(target_field)]
     target_key = field_path.pop()
 
@@ -133,13 +135,11 @@ def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
     """
     try:
         add_field_to(*args, **kwargs)
-    except FieldExistsWarning:
-        return args[1]
+    except FieldExistsWarning as error:
+        return error.skipped_fields[0]
 
 
-def add_batch_to(
-    event, targets, contents, extends_lists=False, overwrite_target_field=False
-) -> None:
+def add_batch_to(event, fields, extends_lists=False, overwrite_target_field=False) -> None:
     """
     Handles the batch addition operation while raising a FieldExistsWarning with all unsuccessful targets.
 
@@ -159,13 +159,14 @@ def add_batch_to(
         FieldExistsWarning: If there are targets to which the content could not be added due to field
         existence restrictions.
     """
+    fields = {key: value for key, value in fields.items() if value is not None}
+    number_fields = len(dict(fields))
     unsuccessful_targets = map(
         _add_field_to_silent_fail,
-        itertools.repeat(event, len(targets)),
-        targets,
-        contents,
-        itertools.repeat(extends_lists, len(targets)),
-        itertools.repeat(overwrite_target_field, len(targets)),
+        itertools.repeat(event, number_fields),
+        fields.items(),
+        itertools.repeat(extends_lists, number_fields),
+        itertools.repeat(overwrite_target_field, number_fields),
     )
     unsuccessful_targets = [item for item in unsuccessful_targets if item is not None]
     if unsuccessful_targets:
@@ -341,20 +342,21 @@ def snake_to_camel(snake: str) -> str:
 append_as_list = partial(add_field_to, extends_lists=True)
 
 
-def add_and_overwrite(event, target_field, content, *_):
+def add_and_overwrite(event, field, *_):
     """wrapper for add_field_to"""
-    add_field_to(event, target_field, content, overwrite_target_field=True)
+    add_field_to(event, field, overwrite_target_field=True)
 
 
-def append(event, target_field, content, separator):
+def append(event, field, separator):
     """appends to event"""
+    target_field, content = list(field.items())[0]
     target_value = get_dotted_field_value(event, target_field)
     if not isinstance(target_value, list):
         target_value = "" if target_value is None else target_value
         target_value = f"{target_value}{separator}{content}"
-        add_and_overwrite(event, target_field, target_value)
+        add_and_overwrite(event, field={target_field: target_value})
     else:
-        append_as_list(event, target_field, content)
+        append_as_list(event, field)
 
 
 def get_source_fields_dict(event, rule):

@@ -78,7 +78,9 @@ class FieldManager(Processor):
         if not any(source_field_values):
             return
         source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
-        add_batch_to(event, targets, source_field_values, extend_target_list, overwrite_target)
+        add_batch_to(
+            event, dict(zip(targets, source_field_values)), extend_target_list, overwrite_target
+        )
         if rule.delete_source_fields:
             for dotted_field in source_fields:
                 pop_dotted_field_value(event, dotted_field)
@@ -104,7 +106,7 @@ class FieldManager(Processor):
             case State(
                 extend=True, overwrite=True, single_source_element=False, target_is_list=False
             ):
-                add_and_overwrite(event, target_field, source_fields_values)
+                add_and_overwrite(event, field={target_field: source_fields_values})
                 return
 
             case State(
@@ -116,16 +118,16 @@ class FieldManager(Processor):
             ):
                 flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
                 source_fields_values = [*flattened_source_fields]
-                add_and_overwrite(event, target_field, source_fields_values)
+                add_and_overwrite(event, field={target_field: source_fields_values})
                 return
 
             case State(extend=True, overwrite=False, target_is_list=False, target_is_none=True):
-                add_and_overwrite(event, target_field, source_fields_values)
+                add_and_overwrite(event, field={target_field: source_fields_values})
                 return
 
             case State(extend=True, overwrite=False, target_is_list=False):
                 source_fields_values = [target_field_value, *source_fields_values]
-                add_and_overwrite(event, target_field, source_fields_values)
+                add_and_overwrite(event, field={target_field: source_fields_values})
                 return
 
             case State(
@@ -133,19 +135,18 @@ class FieldManager(Processor):
             ):
                 flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
                 source_fields_values = [*target_field_value, *flattened_source_fields]
-                add_and_overwrite(event, target_field, source_fields_values)
+                add_and_overwrite(event, field={target_field: source_fields_values})
                 return
 
             case State(overwrite=True, extend=True):
                 flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
                 source_fields_values = [*flattened_source_fields]
-                add_and_overwrite(event, target_field, source_fields_values)
+                add_and_overwrite(event, field={target_field: source_fields_values})
                 return
 
             case _:
-                add_field_to(
-                    event, target_field, source_fields_values, state.extend, state.overwrite
-                )
+                field = {target_field: source_fields_values}
+                add_field_to(event, field, state.extend, state.overwrite)
 
     def _overwrite_from_source_values(self, source_fields_values):
         duplicates = []

@@ -140,8 +140,7 @@ class Clusterer(FieldManager):
             cluster_signature = cluster_signature_based_on_message
         add_field_to(
             event,
-            self._config.output_field_name,
-            cluster_signature,
+            field={self._config.output_field_name: cluster_signature},
             extends_lists=rule.extend_target_list,
             overwrite_target_field=rule.overwrite_target,
         )

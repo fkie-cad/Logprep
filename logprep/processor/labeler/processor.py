@@ -73,9 +73,11 @@ class Labeler(Processor):
 
     def _apply_rules(self, event, rule):
         """Applies the rule to the current event"""
-        targets = [f"label.{key}" for key in rule.label.keys()]
-        contents = rule.label.values()
-        add_batch_to(event, targets, contents, extends_lists=True)
+        fields = {key: value for key, value in rule.prefixed_label.items()}
+        add_batch_to(event, fields, extends_lists=True)
         # convert sets into sorted lists
-        contents = [sorted(set(get_dotted_field_value(event, target))) for target in targets]
-        add_batch_to(event, targets, contents, overwrite_target_field=True)
+        fields = {
+            key: sorted(set(get_dotted_field_value(event, key)))
+            for key, _ in rule.prefixed_label.items()
+        }
+        add_batch_to(event, fields, overwrite_target_field=True)

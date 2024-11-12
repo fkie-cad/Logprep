@@ -128,16 +128,13 @@ class GeoipEnricher(FieldManager):
         geoip_data = self._try_getting_geoip_data(ip_string)
         if not geoip_data:
             return
-        filtered_geoip_data = {k: v for k, v in geoip_data.items() if v is not None}
-        targets, contents = zip(*filtered_geoip_data.items())
-        targets = [
-            rule.customize_target_subfields.get(target, f"{rule.target_field}.{target}")
-            for target in targets
-        ]
+        fields = {
+            rule.customize_target_subfields.get(target, f"{rule.target_field}.{target}"): value
+            for target, value in geoip_data.items()
+        }
         add_batch_to(
             event,
-            targets,
-            contents,
+            fields,
             extends_lists=False,
             overwrite_target_field=rule.overwrite_target,
         )

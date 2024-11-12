@@ -61,8 +61,7 @@ class GenericResolver(FieldManager):
             try:
                 add_field_to(
                     event,
-                    target_field,
-                    content,
+                    field={target_field: content},
                     extends_lists=rule.extend_target_list,
                     overwrite_target_field=rule.overwrite_target,
                 )

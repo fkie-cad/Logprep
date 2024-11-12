@@ -18,7 +18,7 @@ from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import FieldExistsWarning
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_batch_to, add_field_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser
 from logprep.util.validators import dict_structure_validator
 
@@ -304,13 +304,19 @@ class Input(Connector):
         enrichments = self._config.preprocessing.get("enrich_by_env_variables")
         if not enrichments:
             return
-        for target_field, variable_name in enrichments.items():
-            add_field_to(event, target_field, os.environ.get(variable_name, ""))
+        fields = {
+            target: os.environ.get(variable_name, "")
+            for target, variable_name in enrichments.items()
+        }
+        add_batch_to(event, fields)
 
     def _add_arrival_time_information_to_event(self, event: dict):
-        now = TimeParser.now()
-        target_field = self._config.preprocessing.get("log_arrival_time_target_field")
-        add_field_to(event, target_field, now.isoformat())
+        new_field = {
+            self._config.preprocessing.get(
+                "log_arrival_time_target_field"
+            ): TimeParser.now().isoformat()
+        }
+        add_field_to(event, new_field)
 
     def _add_arrival_timedelta_information_to_event(self, event: dict):
         log_arrival_timedelta_config = self._config.preprocessing.get("log_arrival_timedelta")
@@ -326,13 +332,13 @@ class Input(Connector):
                 TimeParser.from_string(log_arrival_time).astimezone(UTC)
                 - TimeParser.from_string(time_reference).astimezone(UTC)
             ).total_seconds()
-            add_field_to(event, target_field, delta_time_sec)
+            add_field_to(event, field={target_field: delta_time_sec})
 
     def _add_version_information_to_event(self, event: dict):
         """Add the version information to the event"""
         target_field = self._config.preprocessing.get("version_info_target_field")
         # pylint: disable=protected-access
-        add_field_to(event, target_field, self._config._version_information)
+        add_field_to(event, field={target_field: self._config._version_information})
         # pylint: enable=protected-access
 
     def _add_hmac_to(self, event_dict, raw_event) -> dict:
@@ -385,6 +391,11 @@ class Input(Connector):
             digestmod=hashlib.sha256,
         ).hexdigest()
         compressed = zlib.compress(received_orig_message, level=-1)
-        hmac_output = {"hmac": hmac, "compressed_base64": base64.b64encode(compressed).decode()}
-        add_field_to(event_dict, hmac_options.get("output_field"), hmac_output)
+        new_field = {
+            hmac_options.get("output_field"): {
+                "hmac": hmac,
+                "compressed_base64": base64.b64encode(compressed).decode(),
+            }
+        }
+        add_field_to(event_dict, new_field)
         return event_dict

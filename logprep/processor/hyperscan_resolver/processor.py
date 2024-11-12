@@ -121,8 +121,7 @@ class HyperscanResolver(FieldManager):
                     try:
                         add_field_to(
                             event,
-                            resolve_target,
-                            dest_val,
+                            field={resolve_target: dest_val},
                             extends_lists=rule.extend_target_list,
                             overwrite_target_field=rule.overwrite_target,
                         )

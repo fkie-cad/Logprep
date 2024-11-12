@@ -222,7 +222,9 @@ class DomainResolver(Processor):
 
     def _store_debug_infos(self, event, requires_storing):
         event_dbg = {
-            "obtained_from_cache": not requires_storing,
-            "cache_size": len(self._domain_ip_map.keys()),
+            "resolved_ip_debug": {
+                "obtained_from_cache": not requires_storing,
+                "cache_size": len(self._domain_ip_map.keys()),
+            }
         }
-        add_field_to(event, "resolved_ip_debug", event_dbg, overwrite_target_field=True)
+        add_field_to(event, event_dbg, overwrite_target_field=True)
