@@ -30,7 +30,7 @@ import re
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class GenericResolver(FieldManager):
@@ -64,7 +64,7 @@ class GenericResolver(FieldManager):
                     target_field,
                     content,
                     extends_lists=rule.extend_target_list,
-                    overwrite_output_field=rule.overwrite_target,
+                    overwrite_target_field=rule.overwrite_target,
                 )
             except FieldExistsWarning as error:
                 conflicting_fields.extend(error.skipped_fields)

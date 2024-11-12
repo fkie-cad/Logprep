@@ -33,10 +33,7 @@ from attr import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
-from logprep.util.helper import (
-    get_dotted_field_value,
-    add_batch_to,
-)
+from logprep.util.helper import add_batch_to, get_dotted_field_value
 
 
 class Labeler(Processor):
@@ -81,4 +78,4 @@ class Labeler(Processor):
         add_batch_to(event, targets, contents, extends_lists=True)
         # convert sets into sorted lists
         contents = [sorted(set(get_dotted_field_value(event, target))) for target in targets]
-        add_batch_to(event, targets, contents, overwrite_output_field=True)
+        add_batch_to(event, targets, contents, overwrite_target_field=True)

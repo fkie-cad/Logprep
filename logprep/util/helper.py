@@ -64,10 +64,10 @@ def add_field_to(
     target_field,
     content,
     extends_lists=False,
-    overwrite_output_field=False,
+    overwrite_target_field=False,
 ) -> None:
     """
-    Add content to the output_field in the given event. Output_field can be a dotted subfield.
+    Add content to the target_field in the given event. target_field can be a dotted subfield.
     In case of missing fields, all intermediate fields will be created.
     Parameters
     ----------
@@ -76,25 +76,25 @@ def add_field_to(
     target_field: str
         Dotted subfield string indicating the target of the output value, e.g. destination.ip
     content: str, float, int, list, dict
-        Value that should be written into the output_field, can be a str, list, or dict object
+        Value that should be written into the target_field
     extends_lists: bool
-        Flag that determines whether output_field lists should be extended
-    overwrite_output_field: bool
-        Flag that determines whether the output_field should be overwritten
+        Flag that determines whether target_field lists should be extended
+    overwrite_target_field: bool
+        Flag that determines whether the target_field should be overwritten
     Raises
     ------
     ValueError
-        If both extends_lists and overwrite_output_field are set to True.
+        If both extends_lists and overwrite_target_field are set to True.
     FieldExistsWarning
-        If the output field already exists and overwrite_output_field is False, or if extends_lists is True but
+        If the target_field already exists and overwrite_target_field is False, or if extends_lists is True but
         the existing field is not a list.
     """
-    if extends_lists and overwrite_output_field:
+    if extends_lists and overwrite_target_field:
         raise ValueError("An output field can't be overwritten and extended at the same time")
     field_path = [event, *get_dotted_field_list(target_field)]
     target_key = field_path.pop()
 
-    if overwrite_output_field:
+    if overwrite_target_field:
         target_parent = reduce(_add_and_overwrite_key, field_path)
         target_parent[target_key] = content
         return
@@ -138,7 +138,7 @@ def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
 
 
 def add_batch_to(
-    event, targets, contents, extends_lists=False, overwrite_output_field=False
+    event, targets, contents, extends_lists=False, overwrite_target_field=False
 ) -> None:
     """
     Handles the batch addition operation while raising a FieldExistsWarning with all unsuccessful targets.
@@ -152,7 +152,7 @@ def add_batch_to(
             A list of contents corresponding to each target field.
         extends_lists: bool
             A boolean indicating whether to extend lists if the target field already exists.
-        overwrite_output_field: bool
+        overwrite_target_field: bool
             A boolean indicating whether to overwrite the target field if it already exists.
 
     Raises:
@@ -165,7 +165,7 @@ def add_batch_to(
         targets,
         contents,
         itertools.repeat(extends_lists, len(targets)),
-        itertools.repeat(overwrite_output_field, len(targets)),
+        itertools.repeat(overwrite_target_field, len(targets)),
     )
     unsuccessful_targets = [item for item in unsuccessful_targets if item is not None]
     if unsuccessful_targets:
@@ -343,7 +343,7 @@ append_as_list = partial(add_field_to, extends_lists=True)
 
 def add_and_overwrite(event, target_field, content, *_):
     """wrapper for add_field_to"""
-    add_field_to(event, target_field, content, overwrite_output_field=True)
+    add_field_to(event, target_field, content, overwrite_target_field=True)
 
 
 def append(event, target_field, content, separator):

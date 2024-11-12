@@ -143,7 +143,7 @@ class Clusterer(FieldManager):
             self._config.output_field_name,
             cluster_signature,
             extends_lists=rule.extend_target_list,
-            overwrite_output_field=rule.overwrite_target,
+            overwrite_target_field=rule.overwrite_target,
         )
         self._last_non_extracted_signature = sig_text
 

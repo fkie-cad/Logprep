@@ -49,7 +49,7 @@ from tldextract import TLDExtract
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_and_overwrite, get_dotted_field_value, add_batch_to
+from logprep.util.helper import add_and_overwrite, add_batch_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
 logger = logging.getLogger("DomainLabelExtractor")
@@ -141,7 +141,7 @@ class DomainLabelExtractor(FieldManager):
                 f"{rule.target_field}.subdomain",
             ]
             contents = [f"{labels.domain}.{labels.suffix}", labels.suffix, labels.subdomain]
-            add_batch_to(event, targets, contents, overwrite_output_field=rule.overwrite_target)
+            add_batch_to(event, targets, contents, overwrite_target_field=rule.overwrite_target)
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
             add_and_overwrite(event, self._config.tagging_field_name, tagging_field)

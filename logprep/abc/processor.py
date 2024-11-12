@@ -12,7 +12,6 @@ from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
 from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import (
-    FieldExistsWarning,
     ProcessingCriticalError,
     ProcessingError,
     ProcessingWarning,
@@ -386,7 +385,7 @@ class Processor(Component):
             target_field=rule.target_field,
             content=result,
             extends_lists=rule.extend_target_list,
-            overwrite_output_field=rule.overwrite_target,
+            overwrite_target_field=rule.overwrite_target,
         )
 
     def setup(self):

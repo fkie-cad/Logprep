@@ -38,7 +38,6 @@ from typing import Any, List, Optional
 
 from attr import define, field, validators
 
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
@@ -115,7 +114,7 @@ class TemplateReplacer(FieldManager):
         Therefore, they wouldn't be replaced, and we can overwrite the existing target field.
         """
         overwrite = get_dotted_field_value(event, self._target_field) is not None
-        add_field_to(event, self._target_field, replacement, overwrite_output_field=overwrite)
+        add_field_to(event, self._target_field, replacement, overwrite_target_field=overwrite)
 
     def setup(self):
         super().setup()

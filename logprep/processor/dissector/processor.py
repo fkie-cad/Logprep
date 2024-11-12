@@ -90,6 +90,6 @@ class Dissector(FieldManager):
         for target_field, converter in rule.convert_actions:
             try:
                 target_value = converter(get_dotted_field_value(event, target_field))
-                add_field_to(event, target_field, target_value, overwrite_output_field=True)
+                add_field_to(event, target_field, target_value, overwrite_target_field=True)
             except ValueError as error:
                 self._handle_warning_error(event, rule, error)

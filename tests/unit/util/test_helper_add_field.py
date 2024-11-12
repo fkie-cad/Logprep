@@ -72,13 +72,13 @@ class TestHelperAddField:
 
     def test_add_field_to_overwrites_output_field_in_root_level(self):
         document = {"some": "field", "output_field": "has already content"}
-        add_field_to(document, "output_field", {"dict": "content"}, overwrite_output_field=True)
+        add_field_to(document, "output_field", {"dict": "content"}, overwrite_target_field=True)
         assert document.get("output_field") == {"dict": "content"}
 
     def test_add_field_to_overwrites_output_field_in_nested_level(self):
         document = {"some": "field", "nested": {"output": {"field": "has already content"}}}
         add_field_to(
-            document, "nested.output.field", {"dict": "content"}, overwrite_output_field=True
+            document, "nested.output.field", {"dict": "content"}, overwrite_target_field=True
         )
         assert document.get("nested", {}).get("output", {}).get("field") == {"dict": "content"}
 
@@ -100,7 +100,7 @@ class TestHelperAddField:
                 "some_list",
                 ["first", "second"],
                 extends_lists=True,
-                overwrite_output_field=True,
+                overwrite_target_field=True,
             )
 
     def test_returns_false_if_dotted_field_value_key_exists(self):

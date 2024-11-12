@@ -39,11 +39,11 @@ from attr import define, field
 
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
-    SkipImportError,
     ProcessingCriticalError,
+    SkipImportError,
 )
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
 
 # pylint: disable=no-name-in-module
@@ -56,7 +56,6 @@ except ModuleNotFoundError as error:  # pragma: no cover
 
 # pylint: disable=ungrouped-imports
 from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
-
 
 # pylint: enable=ungrouped-imports
 
@@ -125,7 +124,7 @@ class HyperscanResolver(FieldManager):
                             resolve_target,
                             dest_val,
                             extends_lists=rule.extend_target_list,
-                            overwrite_output_field=rule.overwrite_target,
+                            overwrite_target_field=rule.overwrite_target,
                         )
                     except FieldExistsWarning as error:
                         conflicting_fields.extend(error.skipped_fields)

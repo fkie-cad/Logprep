@@ -38,15 +38,11 @@ from zipfile import ZipFile
 
 from attrs import define, field, validators
 
-from logprep.processor.base.exceptions import (
-    FieldExistsWarning,
-    ProcessingError,
-    ProcessingWarning,
-)
+from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value, add_batch_to
+from logprep.util.helper import add_batch_to, get_dotted_field_value
 
 logger = logging.getLogger("Grokker")
 
@@ -96,7 +92,7 @@ class Grokker(FieldManager):
                 targets,
                 contents,
                 extends_lists=rule.extend_target_list,
-                overwrite_output_field=rule.overwrite_target,
+                overwrite_target_field=rule.overwrite_target,
             )
         if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
             return
