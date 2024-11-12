@@ -1,4 +1,6 @@
 # pylint: disable=missing-docstring
+# pylint: disable=line-too-long
+# pylint: disable=too-many-locals
 import os
 import re
 import tempfile
