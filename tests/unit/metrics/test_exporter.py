@@ -7,7 +7,6 @@ import os.path
 from unittest import mock
 
 import pytest
-import requests
 from asgiref.testing import ApplicationCommunicator
 from prometheus_client import REGISTRY, CollectorRegistry
 
@@ -109,63 +108,19 @@ class TestPrometheusExporter:
 
 
 @mock.patch(
+    "logprep.util.http.ThreadingHTTPServer", new=mock.create_autospec(http.ThreadingHTTPServer)
+)
+@mock.patch(
     "logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing",
     new=lambda *args, **kwargs: None,
 )
 class TestHealthEndpoint:
-    def setup_method(self):
-        REGISTRY.__init__()
-        self.metrics_config = MetricsConfig(enabled=True, port=8000)
-
-    def test_health_endpoint_returns_503_as_default_health_state(self):
-        exporter = PrometheusExporter(self.metrics_config)
-        exporter.run(daemon=False)
-        resp = requests.get("http://localhost:8000/health", timeout=0.5)
-        assert resp.status_code == 503
-        exporter.server.shut_down()
-
-    def test_health_endpoint_calls_health_check_functions(self):
-        exporter = PrometheusExporter(self.metrics_config)
-        function_mock = mock.Mock(return_value=True)
-        exporter.healthcheck_functions = [function_mock]
-        exporter.run(daemon=False)
-        resp = requests.get("http://localhost:8000/health", timeout=0.5)
-        assert resp.status_code == 200
-        assert function_mock.call_count == 1
-
-        exporter.server.shut_down()
-
-    def test_health_endpoint_calls_updated_functions(self):
-        exporter = PrometheusExporter(self.metrics_config)
-        function_mock = mock.Mock(return_value=True)
-        exporter.healthcheck_functions = [function_mock]
-        exporter.run(daemon=False)
-        requests.get("http://localhost:8000/health", timeout=0.5)
-        assert function_mock.call_count == 1, "initial function should be called"
-        new_function_mock = mock.Mock(return_value=True)
-        exporter.update_healthchecks([new_function_mock])
-        requests.get("http://localhost:8000/health", timeout=0.5)
-        assert new_function_mock.call_count == 1, "New function should be called"
-        assert function_mock.call_count == 1, "Old function should not be called"
-
-        exporter.server.shut_down()
-
-    def test_health_check_returns_body_and_status_code(self):
-        exporter = PrometheusExporter(self.metrics_config)
-        exporter.run(daemon=False)
-        exporter.update_healthchecks([lambda: True])
-        resp = requests.get("http://localhost:8000/health", timeout=0.5)
-        assert resp.status_code == 200
-        assert resp.content.decode() == "OK"
-        exporter.server.shut_down()
-
-
-class TestAsgiApp:
     """These tests uses the `asgiref.testing.ApplicationCommunicator` to test the ASGI app itself
     For more information see: https://dokk.org/documentation/django-channels/2.4.0/topics/testing/
     """
 
     def setup_method(self):
+        self.metrics_config = MetricsConfig(enabled=True, port=8000)
         self.registry = CollectorRegistry()
         self.captured_status = None
         self.captured_headers = None
@@ -210,3 +165,45 @@ class TestAsgiApp:
         assert event["status"] == expected_status
         event = await self.communicator.receive_output(timeout=1)
         assert expected_body in event["body"]
+
+    @pytest.mark.asyncio
+    async def test_health_endpoint_calls_health_check_functions(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        function_mock = mock.Mock(return_value=True)
+        exporter.healthcheck_functions = [function_mock]
+        exporter.run(daemon=False)
+        self.scope["path"] = "/health"
+        self.seed_app(exporter.app)
+        await self.communicator.send_input({"type": "http.request"})
+        event = await self.communicator.receive_output(timeout=1)
+        assert event["status"] == 200
+        event = await self.communicator.receive_output(timeout=1)
+        assert b"OK" in event["body"]
+        function_mock.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_health_checks_injects_new_functions(self):
+        exporter = PrometheusExporter(self.metrics_config)
+        function_mock = mock.Mock(return_value=True)
+        exporter.healthcheck_functions = [function_mock]
+        exporter.run(daemon=False)
+        exporter.server.thread = None
+        self.scope["path"] = "/health"
+        self.seed_app(exporter.app)
+        await self.communicator.send_input({"type": "http.request"})
+        event = await self.communicator.receive_output(timeout=1)
+        assert event["status"] == 200
+        event = await self.communicator.receive_output(timeout=1)
+        assert b"OK" in event["body"]
+        assert function_mock.call_count == 1, "initial function should be called"
+        new_function_mock = mock.Mock(return_value=True)
+        exporter.update_healthchecks([new_function_mock])
+        self.scope["path"] = "/health"
+        self.seed_app(exporter.app)
+        await self.communicator.send_input({"type": "http.request"})
+        event = await self.communicator.receive_output(timeout=1)
+        assert event["status"] == 200
+        event = await self.communicator.receive_output(timeout=1)
+        assert b"OK" in event["body"]
+        assert new_function_mock.call_count == 1, "New function should be called"
+        assert function_mock.call_count == 1, "Old function should not be called"

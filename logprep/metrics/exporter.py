@@ -52,6 +52,7 @@ class PrometheusExporter:
         self.server = None
         self.healthcheck_functions = None
         self._multiprocessing_prepared = False
+        self.app = None
 
     def prepare_multiprocessing(self):
         """
@@ -99,10 +100,12 @@ class PrometheusExporter:
 
     def init_server(self, daemon=True) -> None:
         """Initializes the server"""
+        if not self.app:
+            self.app = make_patched_asgi_app(self.healthcheck_functions)
         port = self.configuration.port
         self.server = http.ThreadingHTTPServer(
             self.configuration.uvicorn_config | {"port": port, "host": "0.0.0.0"},
-            make_patched_asgi_app(self.healthcheck_functions),
+            self.app,
             daemon=daemon,
             logger_name="Exporter",
         )
@@ -116,6 +119,7 @@ class PrometheusExporter:
     def update_healthchecks(self, healthcheck_functions: Iterable[Callable], daemon=True) -> None:
         """Updates the healthcheck functions"""
         self.healthcheck_functions = healthcheck_functions
+        self.app = make_patched_asgi_app(self.healthcheck_functions)
         if self.server and self.server.thread and self.server.thread.is_alive():
             self.server.shut_down()
         self.init_server(daemon=daemon)

@@ -115,7 +115,7 @@ output:
             output = proc.stdout.readline().decode("utf8")
 
 
-def test_logprep_exposes_prometheus_metrics(tmp_path):
+def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     temp_dir = tempfile.gettempdir()
     input_file_path = Path(os.path.join(temp_dir, "input.txt"))
     input_file_path.touch()
@@ -245,5 +245,10 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     assert (
         len(re.findall(both_calculators, metrics)) == 4
     ), "More or less than 4 rules were found for both calculator"
+
+    # check health endpoint
+    response = requests.get("http://127.0.0.1:8003/health", timeout=7)
+    response.raise_for_status()
+    assert "OK" == response.text
 
     proc.kill()
