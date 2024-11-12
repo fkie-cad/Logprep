@@ -5,8 +5,6 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 from copy import deepcopy
-from datetime import datetime
-from math import isclose
 from unittest import mock
 
 import pytest
@@ -30,7 +28,7 @@ class NotJsonSerializableMock:
 class TestS3Output(BaseOutputTestCase):
     CONFIG = {
         "type": "s3_output",
-        "endpoint_url": "http://host:123",
+        "endpoint_url": "http://localhost:23423",
         "aws_access_key_id": "foo_aws_access_key_id",
         "aws_secret_access_key": "foo_aws_secret_access_key",
         "bucket": "foo_bucket",
@@ -50,7 +48,8 @@ class TestS3Output(BaseOutputTestCase):
 
     def test_describe_returns_s3_output(self):
         assert (
-            self.object.describe() == "S3Output (Test Instance Name) - S3 Output: http://host:123"
+            self.object.describe()
+            == "S3Output (Test Instance Name) - S3 Output: http://localhost:23423"
         )
 
     base_prefix_tests_cases = ["", "test"]
