@@ -263,9 +263,7 @@ class TestHttpConnector(BaseInputTestCase):
         connector.pipeline_index = 1
         connector.setup()
         target = connector.target
-        # Todo: gibt es hier eine Lösung?
-        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
-        #resp = self.falconClient.simulate_post('/json', json=message)
+        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)
         assert resp.status_code == 200
         message = connector.messages.get(timeout=0.5)
         assert message["custom"]["url"] == target + "/json"
@@ -273,7 +271,6 @@ class TestHttpConnector(BaseInputTestCase):
         assert isinstance(message["custom"]["user_agent"], str)
 
     def test_server_multiple_config_changes(self):
-        # Todo: abklären hier request zu lassen -> comments entfernen
         message = {"message": "my message"}
         connector_config = deepcopy(self.CONFIG)
         connector_config["uvicorn_config"]["port"] = 9001
@@ -281,13 +278,11 @@ class TestHttpConnector(BaseInputTestCase):
         connector.pipeline_index = 1
         connector.setup()
         target = connector.target
-        #resp = self.client.simulate_post('/json', json=message)
-        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)
         assert resp.status_code == 200
         target = target.replace(":9001", ":9000")
         try:
-            #resp = self.client.simulate_post('/json', json=message)
-            resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
+            resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)
         except requests.exceptions.ConnectionError as e:
             assert e.response is None
         connector_config = deepcopy(self.CONFIG)
@@ -295,8 +290,7 @@ class TestHttpConnector(BaseInputTestCase):
         connector.pipeline_index = 1
         connector.setup()
         target = connector.target
-        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)  # nosemgrep
-        # resp = self.client.simulate_post('/json', json=message)
+        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)
         assert resp.status_code == 200
 
     def test_get_next_with_hmac_of_raw_message(self):
@@ -316,8 +310,6 @@ class TestHttpConnector(BaseInputTestCase):
         connector.pipeline_index = 1
         connector.setup()
         test_event = "the content"
-        # Todo: comment entfernen
-        # requests.post(url=f"{self.target}/plaintext", data=test_event, timeout=0.5)  # nosemgrep
         self.client.simulate_post('/plaintext', body=test_event)
 
         expected_event = {
@@ -340,12 +332,9 @@ class TestHttpConnector(BaseInputTestCase):
             resp = requests.post(
                 url=f"{self.target}/auth-json-file", timeout=0.5, data=json.dumps(data)
             )
-            # Todo: gibt es eine Lösung?
-            #resp = self.falconClient.simulate_post('/auth-json-file', body=json.dumps(data))
             assert resp.status_code == 401
 
     def test_endpoint_returns_401_on_wrong_authorization(self, credentials_file_path):
-        # Todo: was machen mit auth?
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
         with mock.patch.dict("os.environ", mock_env):
@@ -363,7 +352,6 @@ class TestHttpConnector(BaseInputTestCase):
     ):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        # Todo: was machen mit auth?
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
@@ -378,7 +366,6 @@ class TestHttpConnector(BaseInputTestCase):
         self, credentials_file_path
     ):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
-        # Todo: was machen mit auth?
         data = {"message": "my log message"}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
@@ -393,7 +380,6 @@ class TestHttpConnector(BaseInputTestCase):
     def test_endpoint_returns_200_on_correct_authorization_for_subpath(self, credentials_file_path):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
-        # Todo: was machen mit auth?
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
