@@ -39,7 +39,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 from logprep.util.time import TimeParser, TimeParserException
 
 
@@ -126,7 +126,7 @@ class PreDetector(Processor):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
         if pre_detection_id is None:
             pre_detection_id = str(uuid4())
-            add_field_to(event, {"pre_detection_id": pre_detection_id}, rule=rule)
+            add_fields_to(event, {"pre_detection_id": pre_detection_id}, rule=rule)
         detection_result = self._generate_detection_result(pre_detection_id, event, rule)
         self.result.data.append((detection_result, self._config.outputs))
 

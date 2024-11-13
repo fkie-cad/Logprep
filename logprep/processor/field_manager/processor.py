@@ -35,7 +35,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
     add_and_overwrite,
-    add_field_to,
+    add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
 )
@@ -77,7 +77,7 @@ class FieldManager(Processor):
         if not any(source_field_values):
             return
         source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
-        add_field_to(
+        add_fields_to(
             event,
             dict(zip(targets, source_field_values)),
             rule,
@@ -149,7 +149,7 @@ class FieldManager(Processor):
 
             case _:
                 field = {target_field: source_fields_values}
-                add_field_to(event, field, rule, state.extend, state.overwrite)
+                add_fields_to(event, field, rule, state.extend, state.overwrite)
 
     def _overwrite_from_source_values(self, source_fields_values):
         duplicates = []

@@ -41,7 +41,7 @@ from attr import define, field, validators
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
 class TemplateReplacerError(Exception):
@@ -114,7 +114,7 @@ class TemplateReplacer(FieldManager):
         Therefore, they wouldn't be replaced, and we can overwrite the existing target field.
         """
         overwrite = get_dotted_field_value(event, self._target_field) is not None
-        add_field_to(
+        add_fields_to(
             event,
             fields={self._target_field: replacement},
             rule=rule,

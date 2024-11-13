@@ -42,7 +42,7 @@ from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("Grokker")
 
@@ -85,7 +85,7 @@ class Grokker(FieldManager):
             if result is None or result == {}:
                 continue
             matches.append(True)
-            add_field_to(
+            add_fields_to(
                 event,
                 result,
                 rule=rule,

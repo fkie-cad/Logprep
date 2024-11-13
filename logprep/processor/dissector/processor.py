@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Callable, List, Tuple
 
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule
@@ -94,6 +94,8 @@ class Dissector(FieldManager):
         for target_field, converter in rule.convert_actions:
             try:
                 target_value = converter(get_dotted_field_value(event, target_field))
-                add_field_to(event, {target_field: target_value}, rule, overwrite_target_field=True)
+                add_fields_to(
+                    event, {target_field: target_value}, rule, overwrite_target_field=True
+                )
             except ValueError as error:
                 self._handle_warning_error(event, rule, error)

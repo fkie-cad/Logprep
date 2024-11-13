@@ -53,7 +53,7 @@ from logprep.processor.clusterer.signature_calculation.signature_phase import (
     SignaturePhaseStreaming,
 )
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
 class Clusterer(FieldManager):
@@ -138,7 +138,7 @@ class Clusterer(FieldManager):
             )
         else:
             cluster_signature = cluster_signature_based_on_message
-        add_field_to(
+        add_fields_to(
             event,
             fields={self._config.output_field_name: cluster_signature},
             extends_lists=rule.extend_target_list,

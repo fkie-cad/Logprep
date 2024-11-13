@@ -124,7 +124,7 @@ from _socket import gethostname
 from attrs import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
-from logprep.util.helper import add_field_to
+from logprep.util.helper import add_fields_to
 
 
 @define(kw_only=True, slots=False)
@@ -222,12 +222,14 @@ class Metric(ABC):
                 if hasattr(self, "rule_type"):
                     event = args[0]
                     if event:
-                        add_field_to(event, fields={f"processing_times.{self.rule_type}": duration})
+                        add_fields_to(
+                            event, fields={f"processing_times.{self.rule_type}": duration}
+                        )
                 if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
                     event = args[0]
                     if event:
-                        add_field_to(event, fields={"processing_times.pipeline": duration})
-                        add_field_to(event, fields={"processing_times.hostname": gethostname()})
+                        add_fields_to(event, fields={"processing_times.pipeline": duration})
+                        add_fields_to(event, fields={"processing_times.hostname": gethostname()})
                 return result
 
             return inner

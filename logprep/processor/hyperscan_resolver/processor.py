@@ -43,7 +43,7 @@ from logprep.processor.base.exceptions import (
     SkipImportError,
 )
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
 
 # pylint: disable=no-name-in-module
@@ -119,7 +119,7 @@ class HyperscanResolver(FieldManager):
                     if rule.extend_target_list and current_content is None:
                         dest_val = [dest_val]
                     try:
-                        add_field_to(
+                        add_fields_to(
                             event,
                             fields={resolve_target: dest_val},
                             rule=rule,

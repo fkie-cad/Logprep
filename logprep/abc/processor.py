@@ -19,7 +19,7 @@ from logprep.processor.base.exceptions import (
 from logprep.util import getter
 from logprep.util.helper import (
     add_and_overwrite,
-    add_field_to,
+    add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
 )
@@ -382,7 +382,7 @@ class Processor(Component):
         return False
 
     def _write_target_field(self, event: dict, rule: "Rule", result: any) -> None:
-        add_field_to(
+        add_fields_to(
             event,
             fields={rule.target_field: result},
             extends_lists=rule.extend_target_list,

@@ -31,7 +31,7 @@ Processor Configuration
 
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
-from logprep.util.helper import add_field_to, get_source_fields_dict
+from logprep.util.helper import add_fields_to, get_source_fields_dict
 
 
 class SelectiveExtractor(FieldManager):
@@ -64,5 +64,5 @@ class SelectiveExtractor(FieldManager):
         }
         if flattened_fields:
             filtered_event = {}
-            add_field_to(filtered_event, flattened_fields, rule)
+            add_fields_to(filtered_event, flattened_fields, rule)
             self.result.data.append((filtered_event, rule.outputs))

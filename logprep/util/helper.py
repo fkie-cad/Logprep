@@ -141,7 +141,7 @@ def _add_one_field_to_silent_fail(*args, **kwargs) -> None | str:
         return error.skipped_fields[0]
 
 
-def add_field_to(
+def add_fields_to(
     event: dict,
     fields: dict,
     rule: "Rule" = None,
@@ -356,12 +356,12 @@ def snake_to_camel(snake: str) -> str:
     return camel
 
 
-append_as_list = partial(add_field_to, extends_lists=True)
+append_as_list = partial(add_fields_to, extends_lists=True)
 
 
 def add_and_overwrite(event, fields, rule, *_):
     """wrapper for add_field_to"""
-    add_field_to(event, fields, rule, overwrite_target_field=True)
+    add_fields_to(event, fields, rule, overwrite_target_field=True)
 
 
 def append(event, field, separator, rule):
