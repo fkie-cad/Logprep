@@ -28,11 +28,14 @@ Processor Configuration
 .. automodule:: logprep.processor.dissector.rule
 """
 
-from typing import Callable, List, Tuple
+from typing import TYPE_CHECKING, Callable, List, Tuple
 
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import add_field_to, get_dotted_field_value
+
+if TYPE_CHECKING:
+    from logprep.processor.base.rule import Rule
 
 
 class Dissector(FieldManager):
@@ -46,12 +49,12 @@ class Dissector(FieldManager):
 
     def _apply_mapping(self, event, rule):
         action_mappings_sorted_by_position = sorted(
-            self._get_mappings(event, rule), key=lambda x: x[-1]
+            self._get_mappings(event, rule), key=lambda x: x[5]
         )
         for action, *args, _ in action_mappings_sorted_by_position:
             action(*args)
 
-    def _get_mappings(self, event, rule) -> List[Tuple[Callable, dict, dict, str, int]]:
+    def _get_mappings(self, event, rule) -> List[Tuple[Callable, dict, dict, str, "Rule", int]]:
         current_field = None
         target_field_mapping = {}
         for rule_action in rule.actions:
