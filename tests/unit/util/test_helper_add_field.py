@@ -128,9 +128,49 @@ class TestHelperAddField:
 
     def test_add_field_to_adds_value_not_as_list(self):
         # checks if a newly added field is added not as list, even when `extends_list` is True
-        document = {
-            "some": "field",
-        }
+        document = {"some": "field"}
         add_field_to(document, {"new": "list"}, extends_lists=True)
         assert document.get("new") == "list"
         assert not isinstance(document.get("new"), list)
+
+    def test_add_field_to_adds_multiple_fields(self):
+        document = {"some": "field"}
+        expected = {
+            "some": "field",
+            "new": "foo",
+            "new2": "bar",
+        }
+        add_field_to(document, {"new": "foo", "new2": "bar"})
+        assert document == expected
+
+    def test_add_field_too_adds_multiple_fields_and_overwrites_one(self):
+        document = {"some": "field", "exists_already": "original content"}
+        expected = {
+            "some": "field",
+            "exists_already": {"updated": "content"},
+            "new": "another content",
+        }
+        new_fields = {"exists_already": {"updated": "content"}, "new": "another content"}
+        add_field_to(document, new_fields, overwrite_target_field=True)
+        assert document == expected
+
+    def test_add_field_too_adds_multiple_fields_and_extends_one(self):
+        document = {"some": "field", "exists_already": ["original content"]}
+        expected = {
+            "some": "field",
+            "exists_already": ["original content", "extended content"],
+            "new": "another content",
+        }
+        new_fields = {"exists_already": ["extended content"], "new": "another content"}
+        add_field_to(document, new_fields, extends_lists=True)
+        assert document == expected
+
+    def test_add_field_adds_multiple_fields_and_raises_one_field_exists_warning(self):
+        document = {"some": "field", "exists_already": "original content"}
+        with pytest.raises(FieldExistsWarning, match=r"could not be written"):
+            add_field_to(document, {"exists_already": "new content", "new": "another content"})
+        assert document == {
+            "some": "field",
+            "exists_already": "original content",
+            "new": "another content",
+        }
