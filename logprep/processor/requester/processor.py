@@ -44,7 +44,7 @@ import requests
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.requester.rule import RequesterRule
-from logprep.util.helper import add_batch_to, add_field_to, get_source_fields_dict
+from logprep.util.helper import add_field_to, get_source_fields_dict
 
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
@@ -72,7 +72,7 @@ class Requester(FieldManager):
             try:
                 add_field_to(
                     event,
-                    field={rule.target_field: self._get_result(response)},
+                    fields={rule.target_field: self._get_result(response)},
                     extends_lists=rule.extend_target_list,
                     overwrite_target_field=rule.overwrite_target,
                 )
@@ -83,7 +83,7 @@ class Requester(FieldManager):
             contents = self._get_field_values(self._get_result(response), source_fields)
             targets = rule.target_field_mapping.values()
             try:
-                add_batch_to(
+                add_field_to(
                     event,
                     dict(zip(targets, contents)),
                     rule.extend_target_list,

@@ -41,7 +41,7 @@ from geoip2.errors import AddressNotFoundError
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_batch_to, get_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 logger = logging.getLogger("GeoipEnricher")
 
@@ -132,7 +132,7 @@ class GeoipEnricher(FieldManager):
             rule.customize_target_subfields.get(target, f"{rule.target_field}.{target}"): value
             for target, value in geoip_data.items()
         }
-        add_batch_to(
+        add_field_to(
             event,
             fields,
             extends_lists=False,

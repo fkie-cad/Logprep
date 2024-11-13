@@ -384,7 +384,7 @@ class Processor(Component):
     def _write_target_field(self, event: dict, rule: "Rule", result: any) -> None:
         add_field_to(
             event,
-            field={rule.target_field: result},
+            fields={rule.target_field: result},
             extends_lists=rule.extend_target_list,
             overwrite_target_field=rule.overwrite_target,
         )

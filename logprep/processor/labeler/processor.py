@@ -33,7 +33,7 @@ from attr import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
-from logprep.util.helper import add_batch_to, get_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class Labeler(Processor):
@@ -74,10 +74,10 @@ class Labeler(Processor):
     def _apply_rules(self, event, rule):
         """Applies the rule to the current event"""
         fields = {key: value for key, value in rule.prefixed_label.items()}
-        add_batch_to(event, fields, extends_lists=True)
+        add_field_to(event, fields, extends_lists=True)
         # convert sets into sorted lists
         fields = {
             key: sorted(set(get_dotted_field_value(event, key)))
             for key, _ in rule.prefixed_label.items()
         }
-        add_batch_to(event, fields, overwrite_target_field=True)
+        add_field_to(event, fields, overwrite_target_field=True)

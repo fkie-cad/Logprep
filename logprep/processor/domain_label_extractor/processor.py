@@ -49,7 +49,7 @@ from tldextract import TLDExtract
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_and_overwrite, add_batch_to, get_dotted_field_value
+from logprep.util.helper import add_and_overwrite, add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
 logger = logging.getLogger("DomainLabelExtractor")
@@ -130,7 +130,7 @@ class DomainLabelExtractor(FieldManager):
 
         if self._is_valid_ip(domain):
             tagging_field.append(f"ip_in_{rule.source_fields[0].replace('.', '_')}")
-            add_and_overwrite(event, field={self._config.tagging_field_name: tagging_field})
+            add_and_overwrite(event, fields={self._config.tagging_field_name: tagging_field})
             return
 
         labels = self._tld_extractor(domain)
@@ -140,10 +140,10 @@ class DomainLabelExtractor(FieldManager):
                 f"{rule.target_field}.top_level_domain": labels.suffix,
                 f"{rule.target_field}.subdomain": labels.subdomain,
             }
-            add_batch_to(event, fields, overwrite_target_field=rule.overwrite_target)
+            add_field_to(event, fields, overwrite_target_field=rule.overwrite_target)
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
-            add_and_overwrite(event, field={self._config.tagging_field_name: tagging_field})
+            add_and_overwrite(event, fields={self._config.tagging_field_name: tagging_field})
 
     @staticmethod
     def _is_valid_ip(domain):

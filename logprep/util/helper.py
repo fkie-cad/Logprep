@@ -59,9 +59,9 @@ def _add_and_not_overwrite_key(sub_dict, key):
     return sub_dict.get(key)
 
 
-def add_field_to(
+def _add_one_field_to(
     event: dict,
-    field: dict,
+    field: tuple,
     extends_lists: bool = False,
     overwrite_target_field: bool = False,
 ) -> None:
@@ -72,7 +72,7 @@ def add_field_to(
     ----------
     event: dict
         Original log-event that logprep is currently processing
-    field: dict
+    field: tuple
         A key value pair describing the field that should be added. The key is the dotted subfield string indicating
         the target. The value is the content that should be added to the named target. The content can be of type
         str, float, int, list, dict.
@@ -90,8 +90,6 @@ def add_field_to(
     """
     if extends_lists and overwrite_target_field:
         raise ValueError("An output field can't be overwritten and extended at the same time")
-    if isinstance(field, dict):
-        field = list(field.items())[0]
     target_field, content = field
     field_path = [event, *get_dotted_field_list(target_field)]
     target_key = field_path.pop()
@@ -116,7 +114,7 @@ def add_field_to(
         target_parent[target_key].append(content)
 
 
-def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
+def _add_one_field_to_silent_fail(*args, **kwargs) -> None | str:
     """
     Adds a field to an object, ignoring the FieldExistsWarning if the field already exists. Is only needed in the
     add_batch_to map function. Without this the map would terminate early.
@@ -134,22 +132,24 @@ def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
         FieldExistsWarning: If the field already exists, but this warning is caught and ignored.
     """
     try:
-        add_field_to(*args, **kwargs)
+        _add_one_field_to(*args, **kwargs)
     except FieldExistsWarning as error:
         return error.skipped_fields[0]
 
 
-def add_batch_to(event, fields, extends_lists=False, overwrite_target_field=False) -> None:
+def add_field_to(
+    event: dict, fields: dict, extends_lists: bool = False, overwrite_target_field: bool = False
+) -> None:
     """
     Handles the batch addition operation while raising a FieldExistsWarning with all unsuccessful targets.
 
     Parameters:
         event: dict
             The event object to which fields are to be added.
-        targets: list
-            A list of target field names where the contents will be added.
-        contents: list
-            A list of contents corresponding to each target field.
+        fields: dict
+            A dicht with key value pairs describing the fields that should be added. The key is the dotted subfield
+            string indicating the target. The value is the content that should be added to the named target. The
+            content can be of type: str, float, int, list, dict.
         extends_lists: bool
             A boolean indicating whether to extend lists if the target field already exists.
         overwrite_target_field: bool
@@ -159,10 +159,14 @@ def add_batch_to(event, fields, extends_lists=False, overwrite_target_field=Fals
         FieldExistsWarning: If there are targets to which the content could not be added due to field
         existence restrictions.
     """
+    # filter out None values
     fields = {key: value for key, value in fields.items() if value is not None}
     number_fields = len(dict(fields))
+    if number_fields == 1:
+        _add_one_field_to(event, list(fields.items())[0], extends_lists, overwrite_target_field)
+        return
     unsuccessful_targets = map(
-        _add_field_to_silent_fail,
+        _add_one_field_to_silent_fail,
         itertools.repeat(event, number_fields),
         fields.items(),
         itertools.repeat(extends_lists, number_fields),
@@ -342,9 +346,9 @@ def snake_to_camel(snake: str) -> str:
 append_as_list = partial(add_field_to, extends_lists=True)
 
 
-def add_and_overwrite(event, field, *_):
+def add_and_overwrite(event, fields, *_):
     """wrapper for add_field_to"""
-    add_field_to(event, field, overwrite_target_field=True)
+    add_field_to(event, fields, overwrite_target_field=True)
 
 
 def append(event, field, separator):
@@ -354,7 +358,7 @@ def append(event, field, separator):
     if not isinstance(target_value, list):
         target_value = "" if target_value is None else target_value
         target_value = f"{target_value}{separator}{content}"
-        add_and_overwrite(event, field={target_field: target_value})
+        add_and_overwrite(event, fields={target_field: target_value})
     else:
         append_as_list(event, field)
 
