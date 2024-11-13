@@ -15,6 +15,7 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 if TYPE_CHECKING:  # pragma: no cover
+    from logprep.processor.base.rule import Rule
     from logprep.util.configuration import Configuration
 
 
@@ -62,6 +63,7 @@ def _add_and_not_overwrite_key(sub_dict, key):
 def _add_one_field_to(
     event: dict,
     field: tuple,
+    rule: "Rule",
     extends_lists: bool = False,
     overwrite_target_field: bool = False,
 ) -> None:
@@ -76,6 +78,8 @@ def _add_one_field_to(
         A key value pair describing the field that should be added. The key is the dotted subfield string indicating
         the target. The value is the content that should be added to the named target. The content can be of type
         str, float, int, list, dict.
+    rule: Rule
+        A rule that initiated the field addition, is used for proper error handling.
     extends_lists: bool
         Flag that determines whether target_field lists should be extended
     overwrite_target_field: bool
@@ -101,13 +105,13 @@ def _add_one_field_to(
     try:
         target_parent = reduce(_add_and_not_overwrite_key, field_path)
     except KeyError as error:
-        raise FieldExistsWarning(event, [target_field]) from error
+        raise FieldExistsWarning(rule, event, [target_field]) from error
     existing_value = target_parent.get(target_key)
     if existing_value is None:
         target_parent[target_key] = content
         return
     if not extends_lists or not isinstance(existing_value, list):
-        raise FieldExistsWarning(event, [target_field])
+        raise FieldExistsWarning(rule, event, [target_field])
     if isinstance(content, list | set):
         target_parent[target_key].extend(content)
     else:
@@ -138,7 +142,11 @@ def _add_one_field_to_silent_fail(*args, **kwargs) -> None | str:
 
 
 def add_field_to(
-    event: dict, fields: dict, extends_lists: bool = False, overwrite_target_field: bool = False
+    event: dict,
+    fields: dict,
+    rule: "Rule" = None,
+    extends_lists: bool = False,
+    overwrite_target_field: bool = False,
 ) -> None:
     """
     Handles the batch addition operation while raising a FieldExistsWarning with all unsuccessful targets.
@@ -150,6 +158,8 @@ def add_field_to(
             A dicht with key value pairs describing the fields that should be added. The key is the dotted subfield
             string indicating the target. The value is the content that should be added to the named target. The
             content can be of type: str, float, int, list, dict.
+        rule: Rule
+            A rule that initiated the field addition, is used for proper error handling.
         extends_lists: bool
             A boolean indicating whether to extend lists if the target field already exists.
         overwrite_target_field: bool
@@ -163,18 +173,21 @@ def add_field_to(
     fields = {key: value for key, value in fields.items() if value is not None}
     number_fields = len(dict(fields))
     if number_fields == 1:
-        _add_one_field_to(event, list(fields.items())[0], extends_lists, overwrite_target_field)
+        _add_one_field_to(
+            event, list(fields.items())[0], rule, extends_lists, overwrite_target_field
+        )
         return
     unsuccessful_targets = map(
         _add_one_field_to_silent_fail,
         itertools.repeat(event, number_fields),
         fields.items(),
+        itertools.repeat(rule, number_fields),
         itertools.repeat(extends_lists, number_fields),
         itertools.repeat(overwrite_target_field, number_fields),
     )
     unsuccessful_targets = [item for item in unsuccessful_targets if item is not None]
     if unsuccessful_targets:
-        raise FieldExistsWarning(event, unsuccessful_targets)
+        raise FieldExistsWarning(rule, event, unsuccessful_targets)
 
 
 def _get_slice_arg(slice_item):
@@ -346,19 +359,19 @@ def snake_to_camel(snake: str) -> str:
 append_as_list = partial(add_field_to, extends_lists=True)
 
 
-def add_and_overwrite(event, fields, *_):
+def add_and_overwrite(event, fields, rule, *_):
     """wrapper for add_field_to"""
-    add_field_to(event, fields, overwrite_target_field=True)
+    add_field_to(event, fields, rule, overwrite_target_field=True)
 
 
-def append(event, field, separator):
+def append(event, field, separator, rule):
     """appends to event"""
     target_field, content = list(field.items())[0]
     target_value = get_dotted_field_value(event, target_field)
     if not isinstance(target_value, list):
         target_value = "" if target_value is None else target_value
         target_value = f"{target_value}{separator}{content}"
-        add_and_overwrite(event, fields={target_field: target_value})
+        add_and_overwrite(event, fields={target_field: target_value}, rule=rule)
     else:
         append_as_list(event, field)
 

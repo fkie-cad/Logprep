@@ -135,6 +135,7 @@ class GeoipEnricher(FieldManager):
         add_field_to(
             event,
             fields,
+            rule=rule,
             extends_lists=False,
             overwrite_target_field=rule.overwrite_target,
         )

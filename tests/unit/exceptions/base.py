@@ -22,7 +22,7 @@ class ExceptionBaseTest:
     def setup_method(self):
         self.object = Rule._create_from_dict({"filter": "message", "rule": {}})
         self.event = {"message": "test_event"}
-        self.exception_args = ("the error message", self.event, self.object)
+        self.exception_args = ("the error message", self.object, self.event)
 
     def test_error_message(self):
         with pytest.raises(self.exception, match=self.error_message):

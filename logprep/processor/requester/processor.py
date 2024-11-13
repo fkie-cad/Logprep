@@ -73,6 +73,7 @@ class Requester(FieldManager):
                 add_field_to(
                     event,
                     fields={rule.target_field: self._get_result(response)},
+                    rule=rule,
                     extends_lists=rule.extend_target_list,
                     overwrite_target_field=rule.overwrite_target,
                 )
@@ -86,13 +87,14 @@ class Requester(FieldManager):
                 add_field_to(
                     event,
                     dict(zip(targets, contents)),
+                    rule,
                     rule.extend_target_list,
                     rule.overwrite_target,
                 )
             except FieldExistsWarning as error:
                 conflicting_fields.extend(error.skipped_fields)
         if conflicting_fields:
-            raise FieldExistsWarning(event, conflicting_fields, rule)
+            raise FieldExistsWarning(rule, event, conflicting_fields)
 
     def _request(self, event, rule, kwargs):
         try:

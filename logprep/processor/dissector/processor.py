@@ -85,12 +85,12 @@ class Dissector(FieldManager):
             if strip_char:
                 content = content.strip(strip_char)
             field = {target_field: content}
-            yield rule_action, event, field, separator, position
+            yield rule_action, event, field, separator, rule, position
 
     def _apply_convert_datatype(self, event, rule):
         for target_field, converter in rule.convert_actions:
             try:
                 target_value = converter(get_dotted_field_value(event, target_field))
-                add_field_to(event, {target_field: target_value}, overwrite_target_field=True)
+                add_field_to(event, {target_field: target_value}, rule, overwrite_target_field=True)
             except ValueError as error:
                 self._handle_warning_error(event, rule, error)

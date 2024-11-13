@@ -253,7 +253,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = {"message": "test"}
         mock_rule = mock.MagicMock()
-        processing_warning = ProcessingWarning("not so bad", {"message": "test"}, mock_rule)
+        processing_warning = ProcessingWarning("not so bad", mock_rule, {"message": "test"})
         self.pipeline._pipeline[1].process.return_value = ProcessorResult(
             processor_name="mock_processor", warnings=[processing_warning]
         )
@@ -308,7 +308,7 @@ class TestPipeline(ConfigurationForTests):
             mock_create({"mock_processor1": {"type": "mock_processor"}}),
             mock_create({"mock_processor2": {"type": "mock_processor"}}),
         ]
-        warning = FieldExistsWarning(input_event1, ["foo"], mock_rule)
+        warning = FieldExistsWarning(mock_rule, input_event1, ["foo"])
         self.pipeline._pipeline[0].process.return_value = ProcessorResult(
             processor_name="", warnings=[warning]
         )

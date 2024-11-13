@@ -105,8 +105,8 @@ class PreDetector(Processor):
         except TimeParserException as error:
             raise ProcessingWarning(
                 "Could not parse timestamp",
-                self.result.event,
                 rule,
+                self.result.event,
                 tags=["_pre_detector_timeparsing_failure"],
             ) from error
 
@@ -126,7 +126,7 @@ class PreDetector(Processor):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
         if pre_detection_id is None:
             pre_detection_id = str(uuid4())
-            add_field_to(event, {"pre_detection_id": pre_detection_id})
+            add_field_to(event, {"pre_detection_id": pre_detection_id}, rule=rule)
         detection_result = self._generate_detection_result(pre_detection_id, event, rule)
         self.result.data.append((detection_result, self._config.outputs))
 

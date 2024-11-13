@@ -88,13 +88,14 @@ class Grokker(FieldManager):
             add_field_to(
                 event,
                 result,
+                rule=rule,
                 extends_lists=rule.extend_target_list,
                 overwrite_target_field=rule.overwrite_target,
             )
         if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
             return
         if not matches:
-            raise ProcessingWarning("no grok pattern matched", event, rule)
+            raise ProcessingWarning("no grok pattern matched", rule, event)
 
     def setup(self):
         """Loads the action mapping. Has to be called before processing"""

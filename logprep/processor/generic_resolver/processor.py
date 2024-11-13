@@ -62,13 +62,14 @@ class GenericResolver(FieldManager):
                 add_field_to(
                     event,
                     fields={target_field: content},
+                    rule=rule,
                     extends_lists=rule.extend_target_list,
                     overwrite_target_field=rule.overwrite_target,
                 )
             except FieldExistsWarning as error:
                 conflicting_fields.extend(error.skipped_fields)
         if conflicting_fields:
-            raise FieldExistsWarning(event, conflicting_fields, rule)
+            raise FieldExistsWarning(rule, event, conflicting_fields)
 
     def _find_content_of_first_matching_pattern(self, rule, source_field_value):
         if rule.resolve_from_file:

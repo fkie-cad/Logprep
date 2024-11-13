@@ -230,7 +230,7 @@ class GenericAdder(Processor):
             self._update_db_table()
             items_to_add = self._get_items_to_add_from_db(event, rule)
         if items_to_add:
-            add_field_to(event, items_to_add, rule.extend_target_list, rule.overwrite_target)
+            add_field_to(event, items_to_add, rule, rule.extend_target_list, rule.overwrite_target)
 
     def _get_items_to_add_from_db(self, event: dict, rule: GenericAdderRule) -> dict | None:
         """Get the sub part of the value from the event using a regex pattern"""

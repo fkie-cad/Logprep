@@ -115,7 +115,10 @@ class TemplateReplacer(FieldManager):
         """
         overwrite = get_dotted_field_value(event, self._target_field) is not None
         add_field_to(
-            event, fields={self._target_field: replacement}, overwrite_target_field=overwrite
+            event,
+            fields={self._target_field: replacement},
+            rule=rule,
+            overwrite_target_field=overwrite,
         )
 
     def setup(self):

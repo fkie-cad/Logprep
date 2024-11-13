@@ -130,7 +130,9 @@ class DomainLabelExtractor(FieldManager):
 
         if self._is_valid_ip(domain):
             tagging_field.append(f"ip_in_{rule.source_fields[0].replace('.', '_')}")
-            add_and_overwrite(event, fields={self._config.tagging_field_name: tagging_field})
+            add_and_overwrite(
+                event, fields={self._config.tagging_field_name: tagging_field}, rule=rule
+            )
             return
 
         labels = self._tld_extractor(domain)
@@ -140,10 +142,12 @@ class DomainLabelExtractor(FieldManager):
                 f"{rule.target_field}.top_level_domain": labels.suffix,
                 f"{rule.target_field}.subdomain": labels.subdomain,
             }
-            add_field_to(event, fields, overwrite_target_field=rule.overwrite_target)
+            add_field_to(event, fields, rule, overwrite_target_field=rule.overwrite_target)
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
-            add_and_overwrite(event, fields={self._config.tagging_field_name: tagging_field})
+            add_and_overwrite(
+                event, fields={self._config.tagging_field_name: tagging_field}, rule=rule
+            )
 
     @staticmethod
     def _is_valid_ip(domain):

@@ -42,6 +42,6 @@ class StringSplitter(FieldManager):
         source_field_content = get_dotted_field_value(event, source_field)
         self._handle_missing_fields(event, rule, rule.source_fields, [source_field_content])
         if not isinstance(source_field_content, str):
-            raise ProcessingWarning(f"source_field '{source_field}' is not a string", event, rule)
+            raise ProcessingWarning(f"source_field '{source_field}' is not a string", rule, event)
         result = source_field_content.split(rule.delimeter)
         self._write_target_field(event, rule, result)

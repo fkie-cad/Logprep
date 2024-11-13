@@ -359,15 +359,15 @@ class Processor(Component):
             new_field = {"tags": sorted(list({*failure_tags}))}
         else:
             new_field = {"tags": sorted(list({*tags, *failure_tags}))}
-        add_and_overwrite(event, new_field)
+        add_and_overwrite(event, new_field, rule)
         if isinstance(error, ProcessingWarning):
             if error.tags:
                 tags = tags if tags else []
                 new_field = {"tags": sorted(list({*error.tags, *tags, *failure_tags}))}
-                add_and_overwrite(event, new_field)
+                add_and_overwrite(event, new_field, rule)
             self.result.warnings.append(error)
         else:
-            self.result.warnings.append(ProcessingWarning(str(error), event, rule))
+            self.result.warnings.append(ProcessingWarning(str(error), rule, event))
 
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(

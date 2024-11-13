@@ -122,6 +122,7 @@ class HyperscanResolver(FieldManager):
                         add_field_to(
                             event,
                             fields={resolve_target: dest_val},
+                            rule=rule,
                             extends_lists=rule.extend_target_list,
                             overwrite_target_field=rule.overwrite_target,
                         )
@@ -129,7 +130,7 @@ class HyperscanResolver(FieldManager):
                         conflicting_fields.extend(error.skipped_fields)
         self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_values)
         if conflicting_fields:
-            raise FieldExistsWarning(event, conflicting_fields, rule)
+            raise FieldExistsWarning(rule, event, conflicting_fields)
 
     @staticmethod
     def _match_with_hyperscan(hyperscan_db: Database, src_val: str) -> list:
