@@ -4,8 +4,6 @@ from datetime import datetime, tzinfo
 from typing import Union
 from zoneinfo import ZoneInfo
 
-import ciso8601
-
 from logprep.abc.exceptions import LogprepException
 
 UTC = ZoneInfo("UTC")
@@ -35,7 +33,7 @@ class TimeParser:
             datetime object
         """
         try:
-            time_object = ciso8601.parse_datetime(source)  # pylint: disable=c-extension-no-member
+            time_object = datetime.fromisoformat(source)  # pylint: disable=c-extension-no-member
             if set_missing_utc:
                 time_object = cls._set_utc_if_timezone_is_missing(time_object)
             return time_object

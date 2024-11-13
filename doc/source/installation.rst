@@ -5,7 +5,7 @@ Installation
 PIP
 ===
 
-Python should be present on the system. Currently, Python 3.10 - 3.12 are supported.
+Python should be present on the system. Currently, Python 3.11 - 3.13 are supported.
 To install Logprep you have following options:
 
 **1. Option:** latest stable release
