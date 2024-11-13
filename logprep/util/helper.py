@@ -60,7 +60,7 @@ def _add_and_not_overwrite_key(sub_dict, key):
     return sub_dict.get(key)
 
 
-def _add_one_field_to(
+def _add_field_to(
     event: dict,
     field: tuple,
     rule: "Rule",
@@ -118,7 +118,7 @@ def _add_one_field_to(
         target_parent[target_key].append(content)
 
 
-def _add_one_field_to_silent_fail(*args, **kwargs) -> None | str:
+def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
     """
     Adds a field to an object, ignoring the FieldExistsWarning if the field already exists. Is only needed in the
     add_batch_to map function. Without this the map would terminate early.
@@ -136,7 +136,7 @@ def _add_one_field_to_silent_fail(*args, **kwargs) -> None | str:
         FieldExistsWarning: If the field already exists, but this warning is caught and ignored.
     """
     try:
-        _add_one_field_to(*args, **kwargs)
+        _add_field_to(*args, **kwargs)
     except FieldExistsWarning as error:
         return error.skipped_fields[0]
 
@@ -173,12 +173,10 @@ def add_fields_to(
     fields = {key: value for key, value in fields.items() if value is not None}
     number_fields = len(dict(fields))
     if number_fields == 1:
-        _add_one_field_to(
-            event, list(fields.items())[0], rule, extends_lists, overwrite_target_field
-        )
+        _add_field_to(event, list(fields.items())[0], rule, extends_lists, overwrite_target_field)
         return
     unsuccessful_targets = map(
-        _add_one_field_to_silent_fail,
+        _add_field_to_silent_fail,
         itertools.repeat(event, number_fields),
         fields.items(),
         itertools.repeat(rule, number_fields),
