@@ -65,7 +65,6 @@ class Grokker(FieldManager):
         """
 
     def _apply_rules(self, event: dict, rule: GrokkerRule):
-        conflicting_fields = []
         matches = []
         source_values = []
         for dotted_field, grok in rule.actions.items():
