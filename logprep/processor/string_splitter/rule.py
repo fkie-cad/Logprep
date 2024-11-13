@@ -61,12 +61,12 @@ class StringSplitterRule(FieldManagerRule):
                 validators.max_len(1),
             ],
         )
-        delimeter: str = field(validator=validators.instance_of(str), default=" ")
-        """The delimeter for splitting. Defaults to whitespace"""
+        delimiter: str = field(validator=validators.instance_of(str), default=" ")
+        """The delimiter for splitting. Defaults to whitespace"""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
     @property
-    def delimeter(self):
-        """returns the configured delimeter"""
-        return self._config.delimeter
+    def delimiter(self):
+        """returns the configured delimiter"""
+        return self._config.delimiter
