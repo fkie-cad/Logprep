@@ -4,9 +4,12 @@
 ### Breaking
 ### Features
 ### Improvements
+
+* fix `requester` documentation
+
 ### Bugfix
 
-- fix `confluent_kafka.store_offsets` if `last_valid_record` is `None`, can happen if a rebalancing happens
+* fix `confluent_kafka.store_offsets` if `last_valid_record` is `None`, can happen if a rebalancing happens
   before the first message was pulled.
 
 ## 14.0.0
