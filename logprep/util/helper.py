@@ -1,5 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
 
+import itertools
 import re
 import sys
 from functools import lru_cache, partial, reduce
@@ -10,9 +11,11 @@ from typing import TYPE_CHECKING, Optional, Union
 from colorama import Back, Fore
 from colorama.ansi import AnsiBack, AnsiFore
 
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 if TYPE_CHECKING:  # pragma: no cover
+    from logprep.processor.base.rule import Rule
     from logprep.util.configuration import Configuration
 
 
@@ -57,58 +60,132 @@ def _add_and_not_overwrite_key(sub_dict, key):
     return sub_dict.get(key)
 
 
-def add_field_to(event, output_field, content, extends_lists=False, overwrite_output_field=False):
+def _add_field_to(
+    event: dict,
+    field: tuple,
+    rule: "Rule",
+    extends_lists: bool = False,
+    overwrite_target_field: bool = False,
+) -> None:
     """
-    Add content to an output_field in the given event. Output_field can be a dotted subfield.
-    In case of missing fields all intermediate fields will be created.
+    Add content to the target_field in the given event. target_field can be a dotted subfield.
+    In case of missing fields, all intermediate fields will be created.
     Parameters
     ----------
     event: dict
         Original log-event that logprep is currently processing
-    output_field: str
-        Dotted subfield string indicating the target of the output value, e.g. destination.ip
-    content: str, float, int, list, dict
-        Value that should be written into the output_field, can be a str, list or dict object
+    field: tuple
+        A key value pair describing the field that should be added. The key is the dotted subfield string indicating
+        the target. The value is the content that should be added to the named target. The content can be of type
+        str, float, int, list, dict.
+    rule: Rule
+        A rule that initiated the field addition, is used for proper error handling.
     extends_lists: bool
-        Flag that determines whether output_field lists should be extended
-    overwrite_output_field: bool
-        Flag that determines whether the output_field should be overwritten
-
-    Returns
+        Flag that determines whether target_field lists should be extended
+    overwrite_target_field: bool
+        Flag that determines whether the target_field should be overwritten
+    Raises
     ------
-    This method returns true if no conflicting fields were found during the process of the creation
-    of the dotted subfields. If conflicting fields were found False is returned.
+    ValueError
+        If both extends_lists and overwrite_target_field are set to True.
+    FieldExistsWarning
+        If the target_field already exists and overwrite_target_field is False, or if extends_lists is True but
+        the existing field is not a list.
     """
+    if extends_lists and overwrite_target_field:
+        raise ValueError("An output field can't be overwritten and extended at the same time")
+    target_field, content = field
+    field_path = [event, *get_dotted_field_list(target_field)]
+    target_key = field_path.pop()
 
-    assert not (
-        extends_lists and overwrite_output_field
-    ), "An output field can't be overwritten and extended at the same time"
-    output_field_path = [event, *get_dotted_field_list(output_field)]
-    target_key = output_field_path.pop()
-
-    if overwrite_output_field:
-        target_field = reduce(_add_and_overwrite_key, output_field_path)
-        target_field |= {target_key: content}
-        return True
-
+    if overwrite_target_field:
+        target_parent = reduce(_add_and_overwrite_key, field_path)
+        target_parent[target_key] = content
+        return
     try:
-        target_field = reduce(_add_and_not_overwrite_key, output_field_path)
-    except KeyError:
-        return False
+        target_parent = reduce(_add_and_not_overwrite_key, field_path)
+    except KeyError as error:
+        raise FieldExistsWarning(rule, event, [target_field]) from error
+    existing_value = target_parent.get(target_key)
+    if existing_value is None:
+        target_parent[target_key] = content
+        return
+    if not extends_lists or not isinstance(existing_value, list):
+        raise FieldExistsWarning(rule, event, [target_field])
+    if isinstance(content, list | set):
+        target_parent[target_key].extend(content)
+    else:
+        target_parent[target_key].append(content)
 
-    target_field_value = target_field.get(target_key)
-    if target_field_value is None:
-        target_field |= {target_key: content}
-        return True
-    if extends_lists:
-        if not isinstance(target_field_value, list):
-            return False
-        if isinstance(content, list):
-            target_field |= {target_key: [*target_field_value, *content]}
-        else:
-            target_field_value.append(content)
-        return True
-    return False
+
+def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
+    """
+    Adds a field to an object, ignoring the FieldExistsWarning if the field already exists. Is only needed in the
+    add_batch_to map function. Without this the map would terminate early.
+
+    Parameters:
+        args: tuple
+            Positional arguments to pass to the add_field_to function.
+        kwargs: dict
+            Keyword arguments to pass to the add_field_to function.
+
+    Returns:
+        The field that was attempted to be added, if the field already exists.
+
+    Raises:
+        FieldExistsWarning: If the field already exists, but this warning is caught and ignored.
+    """
+    try:
+        _add_field_to(*args, **kwargs)
+    except FieldExistsWarning as error:
+        return error.skipped_fields[0]
+
+
+def add_fields_to(
+    event: dict,
+    fields: dict,
+    rule: "Rule" = None,
+    extends_lists: bool = False,
+    overwrite_target_field: bool = False,
+) -> None:
+    """
+    Handles the batch addition operation while raising a FieldExistsWarning with all unsuccessful targets.
+
+    Parameters:
+        event: dict
+            The event object to which fields are to be added.
+        fields: dict
+            A dicht with key value pairs describing the fields that should be added. The key is the dotted subfield
+            string indicating the target. The value is the content that should be added to the named target. The
+            content can be of type: str, float, int, list, dict.
+        rule: Rule
+            A rule that initiated the field addition, is used for proper error handling.
+        extends_lists: bool
+            A boolean indicating whether to extend lists if the target field already exists.
+        overwrite_target_field: bool
+            A boolean indicating whether to overwrite the target field if it already exists.
+
+    Raises:
+        FieldExistsWarning: If there are targets to which the content could not be added due to field
+        existence restrictions.
+    """
+    # filter out None values
+    fields = {key: value for key, value in fields.items() if value is not None}
+    number_fields = len(dict(fields))
+    if number_fields == 1:
+        _add_field_to(event, list(fields.items())[0], rule, extends_lists, overwrite_target_field)
+        return
+    unsuccessful_targets = map(
+        _add_field_to_silent_fail,
+        itertools.repeat(event, number_fields),
+        fields.items(),
+        itertools.repeat(rule, number_fields),
+        itertools.repeat(extends_lists, number_fields),
+        itertools.repeat(overwrite_target_field, number_fields),
+    )
+    unsuccessful_targets = [item for item in unsuccessful_targets if item is not None]
+    if unsuccessful_targets:
+        raise FieldExistsWarning(rule, event, unsuccessful_targets)
 
 
 def _get_slice_arg(slice_item):
@@ -155,7 +232,7 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
 @lru_cache(maxsize=100000)
 def get_dotted_field_list(dotted_field: str) -> list[str]:
     """make lookup of dotted field in the dotted_field_lookup_table and ensures
-    it is added if not found. Additionally the string will be interned for faster
+    it is added if not found. Additionally, the string will be interned for faster
     followup lookups.
 
     Parameters
@@ -277,23 +354,24 @@ def snake_to_camel(snake: str) -> str:
     return camel
 
 
-append_as_list = partial(add_field_to, extends_lists=True)
+append_as_list = partial(add_fields_to, extends_lists=True)
 
 
-def add_and_overwrite(event, target_field, content, *_):
+def add_and_overwrite(event, fields, rule, *_):
     """wrapper for add_field_to"""
-    add_field_to(event, target_field, content, overwrite_output_field=True)
+    add_fields_to(event, fields, rule, overwrite_target_field=True)
 
 
-def append(event, target_field, content, separator):
+def append(event, field, separator, rule):
     """appends to event"""
+    target_field, content = list(field.items())[0]
     target_value = get_dotted_field_value(event, target_field)
     if not isinstance(target_value, list):
         target_value = "" if target_value is None else target_value
         target_value = f"{target_value}{separator}{content}"
-        add_and_overwrite(event, target_field, target_value)
+        add_and_overwrite(event, fields={target_field: target_value}, rule=rule)
     else:
-        append_as_list(event, target_field, content)
+        append_as_list(event, field)
 
 
 def get_source_fields_dict(event, rule):

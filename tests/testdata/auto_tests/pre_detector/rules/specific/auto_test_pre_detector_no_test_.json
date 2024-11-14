@@ -1,7 +1,7 @@
 [{
   "filter": "some_field",
   "pre_detector": {
-    "id": "SOME_TEST_RULE_ID",
+    "id": "SOME_TEST_RULE_ID_2",
     "title": "SOME_TEST_RULE",
     "severity": "critical",
     "mitre": [],

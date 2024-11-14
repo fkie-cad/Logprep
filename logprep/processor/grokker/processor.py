@@ -38,15 +38,11 @@ from zipfile import ZipFile
 
 from attrs import define, field, validators
 
-from logprep.processor.base.exceptions import (
-    FieldExistsWarning,
-    ProcessingError,
-    ProcessingWarning,
-)
+from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("Grokker")
 
@@ -69,7 +65,6 @@ class Grokker(FieldManager):
         """
 
     def _apply_rules(self, event: dict, rule: GrokkerRule):
-        conflicting_fields = []
         matches = []
         source_values = []
         for dotted_field, grok in rule.actions.items():
@@ -82,25 +77,22 @@ class Grokker(FieldManager):
             except TimeoutError as error:
                 self._handle_missing_fields(event, rule, rule.actions.keys(), source_values)
                 raise ProcessingError(
-                    self,
                     f"Grok pattern timeout for source field: '{dotted_field}' in rule '{rule}', "
                     f"the grok pattern might be too complex.",
+                    rule,
                 ) from error
             if result is None or result == {}:
                 continue
             matches.append(True)
-            for dotted_field, value in result.items():
-                if value is None:
-                    continue
-                success = add_field_to(
-                    event, dotted_field, value, rule.extend_target_list, rule.overwrite_target
-                )
-                if not success:
-                    conflicting_fields.append(dotted_field)
+            add_fields_to(
+                event,
+                result,
+                rule=rule,
+                extends_lists=rule.extend_target_list,
+                overwrite_target_field=rule.overwrite_target,
+            )
         if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
             return
-        if conflicting_fields:
-            raise FieldExistsWarning(rule, event, conflicting_fields)
         if not matches:
             raise ProcessingWarning("no grok pattern matched", rule, event)
 

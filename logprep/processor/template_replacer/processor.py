@@ -38,11 +38,10 @@ from typing import Any, List, Optional
 
 from attr import define, field, validators
 
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
 class TemplateReplacerError(Exception):
@@ -114,16 +113,13 @@ class TemplateReplacer(FieldManager):
         If target value isn't None, then it exists and its parents must be dicts.
         Therefore, they wouldn't be replaced, and we can overwrite the existing target field.
         """
-        if get_dotted_field_value(event, self._target_field) is None:
-            add_successful = add_field_to(
-                event,
-                self._target_field,
-                replacement,
-            )
-            if not add_successful:
-                raise FieldExistsWarning(rule, event, [self._target_field])
-        else:
-            add_field_to(event, self._target_field, replacement, overwrite_output_field=True)
+        overwrite = get_dotted_field_value(event, self._target_field) is not None
+        add_fields_to(
+            event,
+            fields={self._target_field: replacement},
+            rule=rule,
+            overwrite_target_field=overwrite,
+        )
 
     def setup(self):
         super().setup()

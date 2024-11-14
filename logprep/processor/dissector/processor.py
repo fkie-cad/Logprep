@@ -28,11 +28,14 @@ Processor Configuration
 .. automodule:: logprep.processor.dissector.rule
 """
 
-from typing import Callable, List, Tuple
+from typing import TYPE_CHECKING, Callable, List, Tuple
 
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
+
+if TYPE_CHECKING:
+    from logprep.processor.base.rule import Rule
 
 
 class Dissector(FieldManager):
@@ -51,7 +54,7 @@ class Dissector(FieldManager):
         for action, *args, _ in action_mappings_sorted_by_position:
             action(*args)
 
-    def _get_mappings(self, event, rule) -> List[Tuple[Callable, dict, str, str, str, int]]:
+    def _get_mappings(self, event, rule) -> List[Tuple[Callable, dict, dict, str, "Rule", int]]:
         current_field = None
         target_field_mapping = {}
         for rule_action in rule.actions:
@@ -84,12 +87,15 @@ class Dissector(FieldManager):
                 target_field = target_field_mapping.get(target_field.lstrip("&"))
             if strip_char:
                 content = content.strip(strip_char)
-            yield rule_action, event, target_field, content, separator, position
+            field = {target_field: content}
+            yield rule_action, event, field, separator, rule, position
 
     def _apply_convert_datatype(self, event, rule):
         for target_field, converter in rule.convert_actions:
             try:
                 target_value = converter(get_dotted_field_value(event, target_field))
-                add_field_to(event, target_field, target_value, overwrite_output_field=True)
+                add_fields_to(
+                    event, {target_field: target_value}, rule, overwrite_target_field=True
+                )
             except ValueError as error:
                 self._handle_warning_error(event, rule, error)

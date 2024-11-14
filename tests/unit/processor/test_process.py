@@ -79,7 +79,7 @@ class TestSpecificGenericProcessing:
             "url": "url",
         }
         processor.process(event)
-        assert expected_event == event
+        assert event == expected_event
 
     def test_apply_processor_multiple_times_not_enabled(self):
         config = {"type": "dissector", "specific_rules": [], "generic_rules": []}

@@ -2,11 +2,20 @@
 
 ## next release
 ### Breaking
+
+* `CriticalInputError` is raised when the input preprocessor values can't be set, this was so far only true
+  for the hmac preprocessor, but is now also applied for all other preprocessors.
+* fix `delimiter` typo in `StringSplitterRule` configuration
+
 ### Features
 ### Improvements
 
 * replace `BaseException` with `Exception` for custom errors
 * refactor `generic_resolver` to validate rules on startup instead of application of each rule
+* rewrite the helper method `add_field_to` such that it always raises an `FieldExistsWarning` instead of return a bool.
+* add new helper method `add_fields_to` to directly add multiple fields to one event
+* refactored some processors to make use of the new helper methods
+
 
 ### Bugfix
 

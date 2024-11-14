@@ -2,6 +2,7 @@
   {
     "filter": "some_field: (stop OR end)",
     "labeler": {
+      "id": "labeler-2",
       "label": {
         "action": [
           "terminate"

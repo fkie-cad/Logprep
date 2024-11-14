@@ -64,7 +64,7 @@ from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
@@ -264,7 +264,9 @@ class Pseudonymizer(FieldManager):
                 ]
             else:
                 field_value = self._pseudonymize_field(rule, dotted_field, regex, field_value)
-            _ = add_field_to(event, dotted_field, field_value, overwrite_output_field=True)
+            add_fields_to(
+                event, fields={dotted_field: field_value}, rule=rule, overwrite_target_field=True
+            )
         if "@timestamp" in event:
             for pseudonym, _ in self.result.data:
                 pseudonym["@timestamp"] = event["@timestamp"]

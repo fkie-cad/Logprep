@@ -22,7 +22,7 @@ test_cases = [
             "string_splitter": {
                 "source_fields": ["message"],
                 "target_field": "result",
-                "delimeter": ", ",
+                "delimiter": ", ",
             },
         },
         {"message": "this, is, the, message"},

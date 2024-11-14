@@ -31,16 +31,8 @@ Processor Configuration
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.list_comparison.rule import ListComparisonRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
-
-
-class ListComparisonError(Exception):
-    """Base class for ListComparison related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"ListComparison ({name}): {message}")
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
 class ListComparison(Processor):
@@ -79,14 +71,10 @@ class ListComparison(Processor):
             Currently applied list comparison rule.
 
         """
-
         comparison_result, comparison_key = self._list_comparison(rule, event)
-
         if comparison_result is not None:
-            output_field = f"{ rule.target_field }.{ comparison_key }"
-            add_successful = add_field_to(event, output_field, comparison_result, True)
-            if not add_successful:
-                raise FieldExistsWarning(rule, event, [output_field])
+            fields = {f"{rule.target_field}.{comparison_key}": comparison_result}
+            add_fields_to(event, fields, rule=rule, extends_lists=True)
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict):
         """
