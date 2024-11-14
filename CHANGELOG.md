@@ -10,16 +10,16 @@
 ### Features
 ### Improvements
 
+* fix `requester` documentation
 * replace `BaseException` with `Exception` for custom errors
 * refactor `generic_resolver` to validate rules on startup instead of application of each rule
 * rewrite the helper method `add_field_to` such that it always raises an `FieldExistsWarning` instead of return a bool.
 * add new helper method `add_fields_to` to directly add multiple fields to one event
 * refactored some processors to make use of the new helper methods
 
-
 ### Bugfix
 
-- fix `confluent_kafka.store_offsets` if `last_valid_record` is `None`, can happen if a rebalancing happens
+* fix `confluent_kafka.store_offsets` if `last_valid_record` is `None`, can happen if a rebalancing happens
   before the first message was pulled.
 - fix pseudonymizer cache metrics not updated
 

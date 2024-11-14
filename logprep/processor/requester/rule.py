@@ -16,9 +16,8 @@ A speaking example for event enrichment via external api:
     requester:
       url: https://internal.cmdb.local/api/v1/locations
       method: POST
-      content_type: application/json
       target_field: cmdb.location
-      header:
+      headers:
         Authorization: Bearer askdfjpiowejf283u9r
       json:
         hostname: ${message.hostname}
