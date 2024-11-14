@@ -113,43 +113,43 @@ class TestHttpConnector(BaseInputTestCase):
         assert connector.http_server is None
 
     def test_get_method_returns_200(self):
-        resp = self.client.simulate_get('/json')
+        resp = self.client.simulate_get("/json")
         assert resp.status_code == 200
 
     def test_get_method_returns_200_with_authentication(self):
-        resp = self.client.simulate_get('/auth-json-secret')
+        resp = self.client.simulate_get("/auth-json-secret")
         assert resp.status_code == 200
 
     def test_get_method_returns_429_if_queue_is_full(self):
         self.object.messages.full = mock.MagicMock()
         self.object.messages.full.return_value = True
-        resp = self.client.simulate_get('/json')
+        resp = self.client.simulate_get("/json")
         assert resp.status_code == 429
 
     def test_get_error_code_too_many_requests(self):
         data = {"message": "my log message"}
         self.object.messages.put = mock.MagicMock()
         self.object.messages.put.side_effect = queue.Full()
-        resp = self.client.simulate_post('/json', json=data)
+        resp = self.client.simulate_post("/json", json=data)
         assert resp.status_code == 429
 
     def test_json_endpoint_accepts_post_request(self):
         data = {"message": "my log message"}
-        resp = self.client.simulate_post('/json', json=data)
+        resp = self.client.simulate_post("/json", json=data)
         assert resp.status_code == 200
 
     def test_json_endpoint_match_wildcard_route(self):
         data = {"message": "my log message"}
-        resp = self.client.simulate_post('/json', json=data)
+        resp = self.client.simulate_post("/json", json=data)
         assert resp.status_code == 200
 
     def test_json_endpoint_not_match_wildcard_route(self):
         data = {"message": "my log message"}
-        resp = self.client.simulate_post('/api/wildcard_path/json/another_path', json=data)
+        resp = self.client.simulate_post("/api/wildcard_path/json/another_path", json=data)
         assert resp.status_code == 404
 
         data = {"message": "my log message"}
-        resp = self.client.simulate_post('/json', json=data)
+        resp = self.client.simulate_post("/json", json=data)
         assert resp.status_code == 200
 
         event_from_queue = self.object.messages.get(timeout=0.001)
@@ -157,39 +157,39 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_plaintext_endpoint_accepts_post_request(self):
         data = "my log message"
-        resp = self.client.simulate_post('/plaintext', json=data)
+        resp = self.client.simulate_post("/plaintext", json=data)
         assert resp.status_code == 200
 
     def test_plaintext_message_is_put_in_queue(self):
         data = "my log message"
-        resp = self.client.simulate_post('/plaintext', body=data)
+        resp = self.client.simulate_post("/plaintext", body=data)
         assert resp.status_code == 200
         event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue.get("message") == data
 
     def test_jsonl_endpoint_match_regex_route(self):
         data = {"message": "my log message"}
-        resp = self.client.simulate_post('/first/jsonl', json=data)
+        resp = self.client.simulate_post("/first/jsonl", json=data)
         assert resp.status_code == 200
 
     def test_jsonl_endpoint_not_match_regex_route(self):
         data = {"message": "my log message"}
-        resp = self.client.simulate_post('/firs/jsonl', json=data)
+        resp = self.client.simulate_post("/firs/jsonl", json=data)
         assert resp.status_code == 404
 
     def test_jsonl_endpoint_not_match_before_start_regex(self):
         data = {"message": "my log message"}
-        resp = self.client.simulate_post('/api/first/jsonl', json=data)
+        resp = self.client.simulate_post("/api/first/jsonl", json=data)
         assert resp.status_code == 404
 
     def test_jsonl_endpoint_match_wildcard_regex_mix_route(self):
         data = {"message": "my log message"}
-        resp = self.client.simulate_post('/third/jsonl/another_path/last_path', json=data)
+        resp = self.client.simulate_post("/third/jsonl/another_path/last_path", json=data)
         assert resp.status_code == 200
 
     def test_jsonl_endpoint_not_match_wildcard_regex_mix_route(self):
         data = {"message": "my log message"}
-        resp = self.client.simulate_post('/api/third/jsonl/another_path', json=data)
+        resp = self.client.simulate_post("/api/third/jsonl/another_path", json=data)
         assert resp.status_code == 404
 
     def test_jsonl_messages_are_put_in_queue(self):
@@ -198,7 +198,7 @@ class TestHttpConnector(BaseInputTestCase):
         {"message": "my second log message"}
         {"message": "my third log message"}
         """
-        resp = self.client.simulate_post('/jsonl', body=data)
+        resp = self.client.simulate_post("/jsonl", body=data)
         assert resp.status_code == 200
         assert self.object.messages.qsize() == 3
         event_from_queue = self.object.messages.get(timeout=1)
@@ -210,7 +210,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
-        self.client.simulate_post('/json', json=data)
+        self.client.simulate_post("/json", json=data)
         assert self.object.get_next(0.001) == data
 
     def test_get_next_returns_first_in_first_out(self):
@@ -234,9 +234,9 @@ class TestHttpConnector(BaseInputTestCase):
         for message in data:
             endpoint, post_data = message.values()
             if endpoint == "json":
-                self.client.simulate_post('/json', json=post_data)
+                self.client.simulate_post("/json", json=post_data)
             if endpoint == "plaintext":
-                self.client.simulate_post('/plaintext', body=post_data)
+                self.client.simulate_post("/plaintext", body=post_data)
         assert self.object.get_next(0.001) == data[0].get("data")
         assert self.object.get_next(0.001) == {"message": data[1].get("data")}
         assert self.object.get_next(0.001) == data[2].get("data")
@@ -251,7 +251,7 @@ class TestHttpConnector(BaseInputTestCase):
         message = {"message": "my message"}
         for i in range(100):
             message["message"] = f"message number {i}"
-            self.client.simulate_post('/json', json=message)
+            self.client.simulate_post("/json", json=message)
         assert self.object.messages.qsize() == 100, "messages are put to queue"
 
     def test_get_metadata(self):
@@ -310,7 +310,7 @@ class TestHttpConnector(BaseInputTestCase):
         connector.pipeline_index = 1
         connector.setup()
         test_event = "the content"
-        self.client.simulate_post('/plaintext', body=test_event)
+        self.client.simulate_post("/plaintext", body=test_event)
 
         expected_event = {
             "message": "the content",
@@ -399,17 +399,17 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_all_endpoints_share_the_same_queue(self):
         data = {"message": "my log message"}
-        self.client.simulate_post('/json', json=data)
+        self.client.simulate_post("/json", json=data)
         assert self.object.messages.qsize() == 1
         data = "my log message"
-        self.client.simulate_post('/plaintext', json=data)
+        self.client.simulate_post("/plaintext", json=data)
         assert self.object.messages.qsize() == 2
         data = """
         {"message": "my first log message"}
         {"message": "my second log message"}
         {"message": "my third log message"}
         """
-        self.client.simulate_post('/jsonl', body=data)
+        self.client.simulate_post("/jsonl", body=data)
         assert self.object.messages.qsize() == 5
 
     def test_sets_target_to_https_schema_if_ssl_options(self):
@@ -436,7 +436,7 @@ class TestHttpConnector(BaseInputTestCase):
         self.object.setup()
         random_number = random.randint(1, 100)
         for number in range(random_number):
-            self.client.simulate_post('/json', json={"message": f"my message{number}"})
+            self.client.simulate_post("/json", json={"message": f"my message{number}"})
         assert self.object.metrics.number_of_http_requests == random_number
 
     @pytest.mark.parametrize("endpoint", ["json", "plaintext", "jsonl"])
