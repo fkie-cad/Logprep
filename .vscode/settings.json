@@ -2,6 +2,7 @@
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.analysis.importFormat": "absolute",
+    "python.testing.pytestPath": "pytest",
     "editor.formatOnSave": true,
     "editor.rulers": [
         80,
@@ -9,7 +10,9 @@
         120
     ],
     "editor.codeActionsOnSave": {
-        "source.organizeImports": "explicit"
+        "source.organizeImports": "explicit",
+        "source.unusedImports": "always",
+        "source.convertImportFormat": "always"
     },
     "autoDocstring.docstringFormat": "numpy",
     "files.exclude": {

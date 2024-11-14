@@ -56,10 +56,10 @@ keywords = [
   "logdata",
 ]
 dependencies = [
-  "aiohttp>=3.9.2",           # CVE-2024-23334
+  "aiohttp>=3.9.2",                # CVE-2024-23334
   "attrs",
-  "certifi>=2023.7.22",       # CVE-2023-37920
-  "ciso8601",                 # fastest iso8601 datetime parser. can be removed after dropping support for python < 3.11
+  "certifi>=2023.7.22",            # CVE-2023-37920
+  "ciso8601",                      # fastest iso8601 datetime parser. can be removed after dropping support for python < 3.11
   "colorama",
   "confluent-kafka>2",
   "geoip2",
@@ -67,7 +67,7 @@ dependencies = [
   "jsonref",
   "luqum",
   "more-itertools==8.10.0",
-  "mysql-connector-python>=9.1.0",  #  CVE-2024-21272
+  "mysql-connector-python>=9.1.0", #  CVE-2024-21272
   "numpy>=1.26.0",
   "opensearch-py",
   "prometheus_client",
@@ -84,7 +84,7 @@ dependencies = [
   "schedule",
   "tldextract",
   "urlextract",
-  "urllib3>=1.26.17",         # CVE-2023-43804
+  "urllib3>=1.26.17",              # CVE-2023-43804
   "uvicorn",
   "deepdiff",
   "msgspec",
@@ -113,6 +113,8 @@ dev = [
   "jinja2",
   "maturin",
   "cibuildwheel",
+  "asgiref",
+  "pytest-asyncio",
 ]
 
 doc = [
