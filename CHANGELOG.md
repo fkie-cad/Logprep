@@ -15,6 +15,7 @@
 * rewrite the helper method `add_field_to` such that it always raises an `FieldExistsWarning` instead of return a bool.
 * add new helper method `add_fields_to` to directly add multiple fields to one event
 * refactored some processors to make use of the new helper methods
+* add `pre-commit` hooks to the repository, install new dev dependency and run `pre-commit install` in the root dir
 
 
 ### Bugfix

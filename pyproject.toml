@@ -113,6 +113,7 @@ dev = [
   "jinja2",
   "maturin",
   "cibuildwheel",
+  "pre-commit"
 ]
 
 doc = [

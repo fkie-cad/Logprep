@@ -38,19 +38,23 @@ Issues and engagement in open discussions are also welcome.
 * The content should have line breaks after 72 characters.
 * The content should describe what was done and why it was done, but not how it was done.
 
+### Pre-Commit Hooks
+* We use pre-commit hooks to sanitize files before commiting
+* Install the pre-commit hooks with `pre-commit install` in the root directory
+
 ### Pull Request and Definition of Done
 * draft a Pull Request as soon as possible to signal your commitment.
 * write a clear description of what a maintainer have to expect from your PR.
-* add an entry in the CHANGELOG.md file for your feature, improvement or bugfix.
+* add an entry in the [CHANGELOG.md](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md) file for your feature, improvement or bugfix.
 * add the needed documentation in the docs.
 * add tests for your work.
 * ensure all tests run.
-* if you done all of the above, add a maintainer for review and mark your PR as ready.
+* if you have done all of the above, add a maintainer for review and mark your PR as ready.
 
 ### Deprecations
-* If a function or features gets deprecated a warning should be logged with `logger.warning`. The message should start with `[Deprecation]:` and end with an indication when this deprecation will expire, e.g.: `[Expires with logprep=4.0.0]`. 
-* Furthermore the corresponding code parts should be marked with a comment starting like `# DEPRECATION: <SHORT-Name> <Comment>`. This way it is later easy to find again the lines of code that have to be revised before the deprecation will be fully removed.
-* The [CHANGELOG.md](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md) should be updated such that the next release contains a remark that a feature will be marked as deprecated and indicating in the `Upcoming Changes` section that the deprecation will also be removed in the future. 
+* If a function or features gets deprecated a warning should be logged with `logger.warning`. The message should start with `[Deprecation]:` and end with an indication when this deprecation will expire, e.g.: `[Expires with logprep=4.0.0]`.
+* Furthermore, the corresponding code parts should be marked with a comment starting like `# DEPRECATION: <SHORT-Name> <Comment>`. This way it is later easy to find again the lines of code that have to be revised before the deprecation will be fully removed.
+* The [CHANGELOG.md](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md) should be updated such that the next release contains a remark that a feature will be marked as deprecated and indicating in the `Upcoming Changes` section that the deprecation will also be removed in the future.
 
 ### Code Quality and Style
 * We adhere to PEP-8.
@@ -78,14 +82,14 @@ Issues and engagement in open discussions are also welcome.
 * Before we make a new release we update the [CHANGELOG.md](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md)
 There we rename the section `next release` to the version that will be released and add a new section `next release`.
 This section is continuously updated during the development of the next release.
-* Once this update is pushed and merged we tag a new release in git, prefixed with `v`, resulting in a tag like `v2.0.1`. 
+* Once this update is pushed and merged we tag a new release in git, prefixed with `v`, resulting in a tag like `v2.0.1`.
 We adhere to the [SemVer](https://semver.org/) Specifications.
-* Once the tag is pushed we create a release in Github. The release description should contain the changes documented
+* Once the tag is pushed we create a release in GitHub. The release description should contain the changes documented
 in the [CHANGELOG.md](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md).
-* A configured Github Action then takes this published release and automatically uploads a new build to [PyPI Logprep](https://pypi.org/project/logprep/).
+* A configured GitHub Action then takes this published release and automatically uploads a new build to [PyPI Logprep](https://pypi.org/project/logprep/).
 
 ### Helm Chart Release Workflow
 
 * To release a new helm chart we update the versions in the [Chart.yaml](https://github.com/fkie-cad/Logprep/blob/main/charts/logprep/Chart.yaml) in a feature branch.
-* Then we merge this change to the main branch. 
-* There a pipeline packages the helm chart an makes the actual helm chart release on the release page.
+* Then we merge this change to the main branch.
+* There a pipeline packages the helm chart and makes the actual helm chart release on the release page.
