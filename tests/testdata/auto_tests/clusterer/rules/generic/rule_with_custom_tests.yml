@@ -1,5 +1,6 @@
 filter: message
 clusterer:
+  id: clusterer-rule-2
   source_fields: [message]
   pattern: '(bytes|Bytes|Byte)'
   repl: 'byte'

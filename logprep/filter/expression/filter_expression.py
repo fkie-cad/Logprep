@@ -6,7 +6,7 @@ from itertools import chain, zip_longest
 from typing import Any, List
 
 
-class FilterExpressionError(BaseException):
+class FilterExpressionError(Exception):
     """Base class for FilterExpression related exceptions."""
 
 

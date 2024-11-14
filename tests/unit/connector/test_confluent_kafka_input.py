@@ -234,7 +234,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
     def test_commit_callback_raises_warning_error_and_counts_failures(self):
         with pytest.raises(InputWarning, match="Could not commit offsets"):
-            self.object._commit_callback(BaseException, ["topic_partition"])
+            self.object._commit_callback(Exception, ["topic_partition"])
             assert self.object._commit_failures == 1
 
     def test_commit_callback_counts_commit_success(self):

@@ -38,11 +38,10 @@ from filelock import FileLock
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("GeoipEnricher")
 
@@ -129,18 +128,14 @@ class GeoipEnricher(FieldManager):
         geoip_data = self._try_getting_geoip_data(ip_string)
         if not geoip_data:
             return
-        for target_subfield, value in geoip_data.items():
-            if value is None:
-                continue
-            full_output_field = f"{rule.target_field}.{target_subfield}"
-            if target_subfield in rule.customize_target_subfields:
-                full_output_field = rule.customize_target_subfields.get(target_subfield)
-            adding_was_successful = add_field_to(
-                event=event,
-                output_field=full_output_field,
-                content=value,
-                extends_lists=False,
-                overwrite_output_field=rule.overwrite_target,
-            )
-            if not adding_was_successful:
-                raise FieldExistsWarning(rule, event, [full_output_field])
+        fields = {
+            rule.customize_target_subfields.get(target, f"{rule.target_field}.{target}"): value
+            for target, value in geoip_data.items()
+        }
+        add_fields_to(
+            event,
+            fields,
+            rule=rule,
+            extends_lists=False,
+            overwrite_target_field=rule.overwrite_target,
+        )

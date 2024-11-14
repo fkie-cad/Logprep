@@ -130,7 +130,7 @@ from logprep.filter.expression.filter_expression import (
 logger = logging.getLogger("LuceneFilter")
 
 
-class LuceneFilterError(BaseException):
+class LuceneFilterError(Exception):
     """Base class for LuceneFilter related exceptions."""
 
 

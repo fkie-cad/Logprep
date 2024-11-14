@@ -266,8 +266,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector._get_event = mock.MagicMock(
             return_value=(test_event.copy(), raw_encoded_test_event)
         )
-        non_critical_error_msg = "Couldn't add the hmac to the input event as the desired output field 'message' already exist."
-        with pytest.raises(CriticalInputError, match=non_critical_error_msg) as error:
+        with pytest.raises(CriticalInputError, match="could not be written") as error:
             _ = connector.get_next(1)
         assert error.value.raw_input == {"message": {"with_subfield": "content"}}
 
@@ -312,8 +311,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "version_info": "something random"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
-        result = connector.get_next(0.01)
-        assert result == {"any": "content", "version_info": "something random"}
+        with pytest.raises(CriticalInputError, match="could not be written") as error:
+            _ = connector.get_next(0.01)
+        assert error.value.raw_input == {"any": "content", "version_info": "something random"}
 
     def test_pipeline_preprocessing_only_version_information(self):
         preprocessing_config = {
@@ -326,8 +326,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "version_info": "something random"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
-        result = connector.get_next(0.01)
-        assert result == {"any": "content", "version_info": "something random"}
+        with pytest.raises(CriticalInputError, match="could not be written") as error:
+            _ = connector.get_next(0.01)
+        assert error.value.raw_input == {"any": "content", "version_info": "something random"}
 
     def test_get_raw_event_is_callable(self):
         # should be overwritten for special implementation
@@ -377,8 +378,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "arrival_time": "does not matter"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
-        result = connector.get_next(0.01)
-        assert result == {"any": "content", "arrival_time": "does not matter"}
+        with pytest.raises(CriticalInputError, match="could not be written") as error:
+            _ = connector.get_next(0.01)
+        assert error.value.raw_input == {"any": "content", "arrival_time": "does not matter"}
 
     def test_pipeline_preprocessing_adds_timestamp_delta_if_configured(self):
         preprocessing_config = {

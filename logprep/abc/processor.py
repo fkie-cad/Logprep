@@ -12,7 +12,6 @@ from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
 from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import (
-    FieldExistsWarning,
     ProcessingCriticalError,
     ProcessingError,
     ProcessingWarning,
@@ -20,7 +19,7 @@ from logprep.processor.base.exceptions import (
 from logprep.util import getter
 from logprep.util.helper import (
     add_and_overwrite,
-    add_field_to,
+    add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
 )
@@ -357,13 +356,15 @@ class Processor(Component):
         if failure_tags is None:
             failure_tags = rule.failure_tags
         if tags is None:
-            add_and_overwrite(event, "tags", sorted(list({*failure_tags})))
+            new_field = {"tags": sorted(list({*failure_tags}))}
         else:
-            add_and_overwrite(event, "tags", sorted(list({*tags, *failure_tags})))
+            new_field = {"tags": sorted(list({*tags, *failure_tags}))}
+        add_and_overwrite(event, new_field, rule)
         if isinstance(error, ProcessingWarning):
             if error.tags:
                 tags = tags if tags else []
-                add_and_overwrite(event, "tags", sorted(list({*error.tags, *tags, *failure_tags})))
+                new_field = {"tags": sorted(list({*error.tags, *tags, *failure_tags}))}
+                add_and_overwrite(event, new_field, rule)
             self.result.warnings.append(error)
         else:
             self.result.warnings.append(ProcessingWarning(str(error), rule, event))
@@ -375,21 +376,18 @@ class Processor(Component):
         if missing_fields:
             if rule.ignore_missing_fields:
                 return True
-            error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
+            error = Exception(f"{self.name}: no value for fields: {missing_fields}")
             self._handle_warning_error(event, rule, error)
             return True
         return False
 
     def _write_target_field(self, event: dict, rule: "Rule", result: any) -> None:
-        add_successful = add_field_to(
+        add_fields_to(
             event,
-            output_field=rule.target_field,
-            content=result,
+            fields={rule.target_field: result},
             extends_lists=rule.extend_target_list,
-            overwrite_output_field=rule.overwrite_target,
+            overwrite_target_field=rule.overwrite_target,
         )
-        if not add_successful:
-            raise FieldExistsWarning(rule, event, [rule.target_field])
 
     def setup(self):
         super().setup()

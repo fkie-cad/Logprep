@@ -1,7 +1,9 @@
 [
   {
     "filter": "winlog.provider_name: \"the provider\" AND winlog.event_id: 123",
-    "template_replacer": {},
+    "template_replacer": {
+      "id": "template-replacer-2"
+    },
     "description": ""
   }
 ]

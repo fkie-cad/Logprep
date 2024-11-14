@@ -172,6 +172,27 @@ test_cases = [
         },
     ),
     (
+        "use target_field and target_field_mapping at the same time, with error in target_field",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://mock-mock/",
+                "method": "GET",
+                "target_field": "message",  # will fail as it is already present
+                "target_field_mapping": {"key1.key2.key3": "result.custom"},
+            },
+        },
+        {"message": "the message"},
+        {"message": "the message", "result": {"custom": "value"}, "tags": ["_requester_failure"]},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "json": {"key1": {"key2": {"key3": "value"}}},
+            "content_type": "text/plain",
+            "status": 200,
+        },
+    ),
+    (
         "parses json result with simple target field mapping and overwrite target",
         {
             "filter": "message",

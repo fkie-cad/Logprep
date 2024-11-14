@@ -44,11 +44,7 @@ import requests
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.requester.rule import RequesterRule
-from logprep.util.helper import (
-    add_field_to,
-    get_dotted_field_value,
-    get_source_fields_dict,
-)
+from logprep.util.helper import add_fields_to, get_source_fields_dict
 
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
@@ -73,31 +69,32 @@ class Requester(FieldManager):
     def _handle_response(self, event, rule, response):
         conflicting_fields = []
         if rule.target_field:
-            result = self._get_result(response)
-            successful = add_field_to(
-                event,
-                rule.target_field,
-                result,
-                rule.extend_target_list,
-                rule.overwrite_target,
-            )
-            if not successful:
-                conflicting_fields.append(rule.target_field)
-        if rule.target_field_mapping:
-            result = self._get_result(response)
-            for source_field, target_field in rule.target_field_mapping.items():
-                source_field_value = get_dotted_field_value(result, source_field)
-                successful = add_field_to(
+            try:
+                add_fields_to(
                     event,
-                    target_field,
-                    source_field_value,
+                    fields={rule.target_field: self._get_result(response)},
+                    rule=rule,
+                    extends_lists=rule.extend_target_list,
+                    overwrite_target_field=rule.overwrite_target,
+                )
+            except FieldExistsWarning as error:
+                conflicting_fields.extend(error.skipped_fields)
+        if rule.target_field_mapping:
+            source_fields = rule.target_field_mapping.keys()
+            contents = self._get_field_values(self._get_result(response), source_fields)
+            targets = rule.target_field_mapping.values()
+            try:
+                add_fields_to(
+                    event,
+                    dict(zip(targets, contents)),
+                    rule,
                     rule.extend_target_list,
                     rule.overwrite_target,
                 )
-                if not successful:
-                    conflicting_fields.append(rule.target_field)
+            except FieldExistsWarning as error:
+                conflicting_fields.extend(error.skipped_fields)
         if conflicting_fields:
-            raise FieldExistsWarning(rule, event, [rule.target_field])
+            raise FieldExistsWarning(rule, event, conflicting_fields)
 
     def _request(self, event, rule, kwargs):
         try:

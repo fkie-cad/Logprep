@@ -60,6 +60,10 @@ class LabelerRule(FieldManagerRule):
 
     # pylint: enable=C0111
 
+    @property
+    def prefixed_label(self) -> dict:
+        return {f"label.{key}": value for key, value in self.label.items()}
+
     def conforms_to_schema(self, schema: LabelingSchema) -> bool:
         """Check if labels are valid."""
         return schema.validate_labels(self._config.label)

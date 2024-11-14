@@ -64,7 +64,7 @@ from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
@@ -264,7 +264,9 @@ class Pseudonymizer(FieldManager):
                 ]
             else:
                 field_value = self._pseudonymize_field(rule, dotted_field, regex, field_value)
-            _ = add_field_to(event, dotted_field, field_value, overwrite_output_field=True)
+            add_fields_to(
+                event, fields={dotted_field: field_value}, rule=rule, overwrite_target_field=True
+            )
         if "@timestamp" in event:
             for pseudonym, _ in self.result.data:
                 pseudonym["@timestamp"] = event["@timestamp"]
@@ -344,9 +346,9 @@ class Pseudonymizer(FieldManager):
     def _update_cache_metrics(self):
         cache_info_pseudonyms = self._get_pseudonym_dict_cached.cache_info()
         cache_info_urls = self._pseudonymize_url_cached.cache_info()
-        self.metrics.new_results = cache_info_pseudonyms.misses + cache_info_urls.misses
-        self.metrics.cached_results = cache_info_pseudonyms.hits + cache_info_urls.hits
-        self.metrics.num_cache_entries = cache_info_pseudonyms.currsize + cache_info_urls.currsize
-        self.metrics.cache_load = (cache_info_pseudonyms.currsize + cache_info_urls.currsize) / (
+        self.metrics.new_results += cache_info_pseudonyms.misses + cache_info_urls.misses
+        self.metrics.cached_results += cache_info_pseudonyms.hits + cache_info_urls.hits
+        self.metrics.num_cache_entries += cache_info_pseudonyms.currsize + cache_info_urls.currsize
+        self.metrics.cache_load += (cache_info_pseudonyms.currsize + cache_info_urls.currsize) / (
             cache_info_pseudonyms.maxsize + cache_info_urls.maxsize
         )

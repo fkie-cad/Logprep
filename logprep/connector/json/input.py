@@ -4,7 +4,7 @@ JsonInput
 
 A json input that returns the documents it was initialized with.
 
-If a "document" is derived from BaseException, that exception will be thrown instead of
+If a "document" is derived from Exception, that exception will be thrown instead of
 returning a document. The exception will be removed and subsequent calls may return documents or
 throw other exceptions in the given order.
 

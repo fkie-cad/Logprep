@@ -23,7 +23,7 @@ yaml = YAML(typ="safe", pure=True)
 
 
 # pylint: disable=protected-access
-class MatchingRuleTesterException(BaseException):
+class MatchingRuleTesterException(Exception):
     """Base class for MatchingRuleTester related exceptions."""
 
     def __init__(self, message: str):

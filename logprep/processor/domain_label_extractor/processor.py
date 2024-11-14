@@ -46,11 +46,10 @@ from attr import define, field, validators
 from filelock import FileLock
 from tldextract import TLDExtract
 
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_and_overwrite, add_field_to, get_dotted_field_value
+from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
 logger = logging.getLogger("DomainLabelExtractor")
@@ -131,27 +130,24 @@ class DomainLabelExtractor(FieldManager):
 
         if self._is_valid_ip(domain):
             tagging_field.append(f"ip_in_{rule.source_fields[0].replace('.', '_')}")
-            add_and_overwrite(event, self._config.tagging_field_name, tagging_field)
+            add_and_overwrite(
+                event, fields={self._config.tagging_field_name: tagging_field}, rule=rule
+            )
             return
 
         labels = self._tld_extractor(domain)
         if labels.suffix != "":
-            labels_dict = {
-                "registered_domain": labels.domain + "." + labels.suffix,
-                "top_level_domain": labels.suffix,
-                "subdomain": labels.subdomain,
+            fields = {
+                f"{rule.target_field}.registered_domain": f"{labels.domain}.{labels.suffix}",
+                f"{rule.target_field}.top_level_domain": labels.suffix,
+                f"{rule.target_field}.subdomain": labels.subdomain,
             }
-            for label, value in labels_dict.items():
-                output_field = f"{rule.target_field}.{label}"
-                add_successful = add_field_to(
-                    event, output_field, value, overwrite_output_field=rule.overwrite_target
-                )
-
-                if not add_successful:
-                    raise FieldExistsWarning(rule, event, [output_field])
+            add_fields_to(event, fields, rule, overwrite_target_field=rule.overwrite_target)
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
-            add_and_overwrite(event, self._config.tagging_field_name, tagging_field)
+            add_and_overwrite(
+                event, fields={self._config.tagging_field_name: tagging_field}, rule=rule
+            )
 
     @staticmethod
     def _is_valid_ip(domain):

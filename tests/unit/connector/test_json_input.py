@@ -11,7 +11,7 @@ from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
 
-class DummyError(BaseException):
+class DummyError(Exception):
     pass
 
 

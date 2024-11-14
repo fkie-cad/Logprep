@@ -2,14 +2,15 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=line-too-long
+import asyncio
 import os.path
 from unittest import mock
 
 import pytest
-import requests
-from prometheus_client import REGISTRY
+from asgiref.testing import ApplicationCommunicator
+from prometheus_client import CollectorRegistry
 
-from logprep.metrics.exporter import PrometheusExporter
+from logprep.metrics.exporter import PrometheusExporter, make_patched_asgi_app
 from logprep.util import http
 from logprep.util.configuration import MetricsConfig
 
@@ -20,7 +21,6 @@ from logprep.util.configuration import MetricsConfig
 )
 class TestPrometheusExporter:
     def setup_method(self):
-        REGISTRY.__init__()
         self.metrics_config = MetricsConfig(enabled=True, port=8000)
 
     def test_correct_setup(self):
@@ -107,79 +107,102 @@ class TestPrometheusExporter:
 
 
 @mock.patch(
+    "logprep.util.http.ThreadingHTTPServer", new=mock.create_autospec(http.ThreadingHTTPServer)
+)
+@mock.patch(
     "logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing",
     new=lambda *args, **kwargs: None,
 )
 class TestHealthEndpoint:
+    """These tests uses the `asgiref.testing.ApplicationCommunicator` to test the ASGI app itself
+    For more information see: https://dokk.org/documentation/django-channels/2.4.0/topics/testing/
+    """
+
     def setup_method(self):
-        REGISTRY.__init__()
         self.metrics_config = MetricsConfig(enabled=True, port=8000)
+        self.registry = CollectorRegistry()
+        self.captured_status = None
+        self.captured_headers = None
+        # Setup ASGI scope
+        self.scope = {
+            "client": ("127.0.0.1", 32767),
+            "headers": [],
+            "http_version": "1.0",
+            "method": "GET",
+            "path": "/",
+            "query_string": b"",
+            "scheme": "http",
+            "server": ("127.0.0.1", 80),
+            "type": "http",
+        }
+        self.communicator = None
 
-    def test_health_endpoint_returns_503_as_default_health_state(self):
-        exporter = PrometheusExporter(self.metrics_config)
-        exporter.run(daemon=False)
-        resp = requests.get("http://localhost:8000/health", timeout=0.5)
-        assert resp.status_code == 503
-        exporter.server.shut_down()
+    def teardown_method(self):
+        if self.communicator:
+            asyncio.get_event_loop().run_until_complete(self.communicator.wait())
 
-    def test_health_endpoint_calls_health_check_functions(self):
+    def seed_app(self, app):
+        self.communicator = ApplicationCommunicator(app, self.scope)
+
+    @pytest.mark.parametrize(
+        "functions, expected_status, expected_body",
+        [
+            ([lambda: True], 200, b"OK"),
+            ([lambda: True, lambda: True], 200, b"OK"),
+            ([lambda: False], 503, b"FAIL"),
+            ([lambda: False, lambda: False], 503, b"FAIL"),
+            ([lambda: False, lambda: True, lambda: True], 503, b"FAIL"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_asgi_app(self, functions, expected_status, expected_body):
+        app = make_patched_asgi_app(functions)
+        self.scope["path"] = "/health"
+        self.seed_app(app)
+        await self.communicator.send_input({"type": "http.request"})
+        event = await self.communicator.receive_output(timeout=1)
+        assert event["status"] == expected_status
+        event = await self.communicator.receive_output(timeout=1)
+        assert expected_body in event["body"]
+
+    @pytest.mark.asyncio
+    async def test_health_endpoint_calls_health_check_functions(self):
         exporter = PrometheusExporter(self.metrics_config)
         function_mock = mock.Mock(return_value=True)
         exporter.healthcheck_functions = [function_mock]
         exporter.run(daemon=False)
-        resp = requests.get("http://localhost:8000/health", timeout=0.5)
-        assert resp.status_code == 200
-        assert function_mock.call_count == 1
+        self.scope["path"] = "/health"
+        self.seed_app(exporter.app)
+        await self.communicator.send_input({"type": "http.request"})
+        event = await self.communicator.receive_output(timeout=1)
+        assert event["status"] == 200
+        event = await self.communicator.receive_output(timeout=1)
+        assert b"OK" in event["body"]
+        function_mock.assert_called_once()
 
-        exporter.server.shut_down()
-
-    def test_health_endpoint_calls_updated_functions(self):
+    @pytest.mark.asyncio
+    async def test_update_health_checks_injects_new_functions(self):
         exporter = PrometheusExporter(self.metrics_config)
         function_mock = mock.Mock(return_value=True)
         exporter.healthcheck_functions = [function_mock]
         exporter.run(daemon=False)
-        requests.get("http://localhost:8000/health", timeout=0.5)
+        exporter.server.thread = None
+        self.scope["path"] = "/health"
+        self.seed_app(exporter.app)
+        await self.communicator.send_input({"type": "http.request"})
+        event = await self.communicator.receive_output(timeout=1)
+        assert event["status"] == 200
+        event = await self.communicator.receive_output(timeout=1)
+        assert b"OK" in event["body"]
         assert function_mock.call_count == 1, "initial function should be called"
         new_function_mock = mock.Mock(return_value=True)
         exporter.update_healthchecks([new_function_mock])
-        requests.get("http://localhost:8000/health", timeout=0.5)
+        self.scope["path"] = "/health"
+        self.seed_app(exporter.app)
+        await self.communicator.send_input({"type": "http.request"})
+        event = await self.communicator.receive_output(timeout=1)
+        assert event["status"] == 200
+        event = await self.communicator.receive_output(timeout=1)
+        assert b"OK" in event["body"]
         assert new_function_mock.call_count == 1, "New function should be called"
         assert function_mock.call_count == 1, "Old function should not be called"
-
-        exporter.server.shut_down()
-
-    @pytest.mark.parametrize(
-        "functions, expected",
-        [
-            ([lambda: True], 200),
-            ([lambda: True, lambda: True], 200),
-            ([lambda: False], 503),
-            ([lambda: False, lambda: False], 503),
-            ([lambda: False, lambda: True, lambda: True], 503),
-        ],
-    )
-    def test_health_check_returns_status_code(self, functions, expected):
-        exporter = PrometheusExporter(self.metrics_config)
-        exporter.run(daemon=False)
-        exporter.update_healthchecks(functions)
-        resp = requests.get("http://localhost:8000/health", timeout=0.5)
-        assert resp.status_code == expected
-        exporter.server.shut_down()
-
-    @pytest.mark.parametrize(
-        "functions, expected",
-        [
-            ([lambda: True], "OK"),
-            ([lambda: True, lambda: True], "OK"),
-            ([lambda: False], "FAIL"),
-            ([lambda: False, lambda: False], "FAIL"),
-            ([lambda: False, lambda: True, lambda: True], "FAIL"),
-        ],
-    )
-    def test_health_check_returns_body(self, functions, expected):
-        exporter = PrometheusExporter(self.metrics_config)
-        exporter.run(daemon=False)
-        exporter.update_healthchecks(functions)
-        resp = requests.get("http://localhost:8000/health", timeout=0.5)
-        assert resp.content.decode() == expected
-        exporter.server.shut_down()

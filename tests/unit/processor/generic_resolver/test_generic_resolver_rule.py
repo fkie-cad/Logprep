@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 import pytest
 
+from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 
 
@@ -158,3 +159,48 @@ class TestGenericResolverRule:
         rule1 = GenericResolverRule._create_from_dict(specific_rule_definition)
         rule2 = GenericResolverRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
+
+    @pytest.mark.parametrize(
+        ["rule", "error", "message"],
+        [
+            (
+                {
+                    "filter": "to_resolve",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                            "pattern": r"\d*(?P<foobar>[a-z]+)\d*",
+                        },
+                        "resolve_list": {"FOO": "BAR"},
+                    },
+                },
+                InvalidConfigurationError,
+                "Mapping group is missing in mapping",
+            ),
+            (
+                {
+                    "filter": "to.resolve",
+                    "generic_resolver": {
+                        "field_mapping": {"to.resolve": "resolved"},
+                        "resolve_from_file": {
+                            "path": "foo",
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                    },
+                },
+                InvalidConfigurationError,
+                "Additions file 'foo' not found",
+            ),
+        ],
+    )
+    def test_create_from_dict_validates_config(self, rule, error, message):
+        if error:
+            with pytest.raises(error, match=message):
+                GenericResolverRule._create_from_dict(rule)
+        else:
+            rule_instance = GenericResolverRule._create_from_dict(rule)
+            assert hasattr(rule_instance, "_config")
+            for key, value in rule.get("generic_resolver").items():
+                assert hasattr(rule_instance._config, key)
+                assert value == getattr(rule_instance._config, key)
