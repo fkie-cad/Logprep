@@ -115,6 +115,7 @@ dev = [
   "cibuildwheel",
   "asgiref",
   "pytest-asyncio",
+  "pre-commit",
 ]
 
 doc = [
