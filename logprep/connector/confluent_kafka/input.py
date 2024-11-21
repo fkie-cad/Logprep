@@ -288,6 +288,9 @@ class ConfluentKafkaInput(Input):
             confluent_kafka admin client object
         """
         admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
+        for key, value in self._config.kafka_config.items():
+            if key.startswith(("security.", "ssl.")):
+                admin_config[key] = value
         return AdminClient(admin_config)
 
     @cached_property
