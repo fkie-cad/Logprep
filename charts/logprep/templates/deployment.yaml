@@ -20,7 +20,7 @@ spec:
       annotations:
         {{ toYaml .Values.podAnnotations| nindent 8 }}
     spec:
-      {{ - if .Values.podSecurityContext.enabled }}
+      {{- if .Values.podSecurityContext.enabled }}
       securityContext:
       {{- omit  .Values.podSecurityContext "enabled" | toYaml | nindent 8 }}
       imagePullSecrets:
