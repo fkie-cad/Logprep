@@ -25,7 +25,7 @@ podSecurityContext:
   runAsUser: 1000
 
 # if enabled: the default security context for the container 
-containerSecruityContext:
+containerSecurityContext:
   enabled: true
   runAsNonRoot: true
   readOnlyRootFilesystem: true

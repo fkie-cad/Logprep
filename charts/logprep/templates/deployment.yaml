@@ -29,8 +29,8 @@ spec:
         {{- end }}
       containers:
         - name: logprep
-          {{- if .Values.containerSecruityContext.enabled }}
-          securityContext: {{- omit  .Values.containerSecruityContext "enabled" | toYaml | nindent 12 }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit  .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
