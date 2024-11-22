@@ -17,6 +17,7 @@
 * add new helper method `add_fields_to` to directly add multiple fields to one event
 * refactored some processors to make use of the new helper methods
 * add `pre-commit` hooks to the repository, install new dev dependency and run `pre-commit install` in the root dir
+* the default `securityContext`for the pod is now configurable
 
 ### Bugfix
 

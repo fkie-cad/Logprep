@@ -18,14 +18,20 @@ resources:
     memory: "2Gi"
     cpu: "250m"
 
-# The default security context for the pod
-securityContext:
-  capabilities:
-    drop:
-      - ALL
-  runAsNonRoot: true
+# if enabled: the default security context for the pod
+podSecurityContext:
+  enabled: true
+  fsGroup: 1000
   runAsUser: 1000
+
+# if enabled: the default security context for the container 
+containerSecurityContext:
+  enabled: true
+  runAsNonRoot: true
   readOnlyRootFilesystem: true
+  capabilities:
+      drop:
+        - ALL
 
 # the image pull secret to use for the deployment
 # to mount extra secrets into the pod, use the extraVolumes and extraMounts fields

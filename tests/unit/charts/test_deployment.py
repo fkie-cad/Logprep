@@ -80,10 +80,23 @@ class TestDeployment(TestBaseChartTest):
         assert security_context["runAsUser"] == 1000
         assert security_context["fsGroup"] == 1000
         security_context = self.deployment["spec.template.spec.containers.0.securityContext"]
-        assert security_context["runAsUser"] == 1000
         assert security_context["capabilities"]["drop"] == ["ALL"]
         assert security_context["readOnlyRootFilesystem"] is True
         assert security_context["runAsNonRoot"] is True
+
+    def test_add_security_context(self):
+        self.manifests = self.render_chart(
+            "logprep",
+            {
+                "containerSecurityContext": {"allowPriviledgeEscalation": "false"},
+                "podSecurityContext": {"supplementalGroups": [4000]},
+            },
+        )
+        assert self.deployment["spec.template.spec.securityContext"]
+        security_context = self.deployment["spec.template.spec.securityContext"]
+        assert security_context["supplementalGroups"] == [4000]
+        security_context = self.deployment["spec.template.spec.containers.0.securityContext"]
+        assert security_context["allowPriviledgeEscalation"] == "false"
 
     def test_resources(self):
         assert self.deployment["spec.template.spec.containers.0.resources"]
