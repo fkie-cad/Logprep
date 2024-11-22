@@ -80,7 +80,6 @@ class TestDeployment(TestBaseChartTest):
         assert security_context["runAsUser"] == 1000
         assert security_context["fsGroup"] == 1000
         security_context = self.deployment["spec.template.spec.containers.0.securityContext"]
-        assert security_context["runAsUser"] == 1000
         assert security_context["capabilities"]["drop"] == ["ALL"]
         assert security_context["readOnlyRootFilesystem"] is True
         assert security_context["runAsNonRoot"] is True

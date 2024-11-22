@@ -21,14 +21,14 @@ resources:
 # if enabled: the default security context for the pod
 podSecurityContext:
   enabled: true
-  fsgroup: 1000
-  runAsNonRoot: true
+  fsGroup: 1000
   runAsUser: 1000
-  readOnlyRootFilesystem: true
 
 # if enabled: the default security context for the container 
 containerSecruityContext:
   enabled: true
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
   capabilities:
       drop:
         - ALL
