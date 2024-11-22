@@ -21,17 +21,17 @@ spec:
         {{ toYaml .Values.podAnnotations| nindent 8 }}
     spec:
       {{- if .Values.podSecurityContext.enabled }}
-      securityContext:
-      {{- omit  .Values.podSecurityContext "enabled" | toYaml | nindent 8 }}
+      securityContext: {{- omit  .Values.podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{ end }}
       imagePullSecrets:
         {{- if .Values.secrets.imagePullSecret }}
         - name: {{ .Values.secrets.imagePullSecret.name }}
         {{- end }}
       containers:
         - name: logprep
-            {{- if .Values.conatinerSecurityContext.enabled }}
-          securityContext:
-            {{- omit  .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- if .Values.conatinerSecurityContext.enabled }}
+          securityContext: {{- omit  .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{ end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
