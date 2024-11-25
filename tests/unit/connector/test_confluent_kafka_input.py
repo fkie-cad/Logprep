@@ -110,7 +110,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_consumer.store_offsets.assert_called_with(message=message)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_calls_store_offsets(self, _):
+    def test_batch_finished_callback_does_not_call_store_offsets(self, _):
         input_config = deepcopy(self.CONFIG)
         kafka_input = Factory.create({"test": input_config})
         kafka_consumer = kafka_input._consumer
