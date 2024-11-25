@@ -424,3 +424,32 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.list_topics.side_effect = KafkaException("test error")
         assert not self.object.health()
         assert self.object.metrics.number_of_errors == 1
+
+    @pytest.mark.parametrize(
+        ["kafka_config_update", "expected_admin_client_config"],
+        [
+            ({}, {"bootstrap.servers": "testserver:9092"}),
+            ({"statistics.foo": "bar"}, {"bootstrap.servers": "testserver:9092"}),
+            (
+                {"security.foo": "bar"},
+                {"bootstrap.servers": "testserver:9092", "security.foo": "bar"},
+            ),
+            (
+                {"ssl.foo": "bar"},
+                {"bootstrap.servers": "testserver:9092", "ssl.foo": "bar"},
+            ),
+            (
+                {"security.foo": "bar", "ssl.foo": "bar"},
+                {"bootstrap.servers": "testserver:9092", "security.foo": "bar", "ssl.foo": "bar"},
+            ),
+        ],
+    )
+    @mock.patch("logprep.connector.confluent_kafka.input.AdminClient")
+    def test_set_security_related_config_in_admin_client(
+        self, admin_client, kafka_config_update, expected_admin_client_config
+    ):
+        new_kafka_config = deepcopy(self.CONFIG)
+        new_kafka_config["kafka_config"].update(kafka_config_update)
+        input_connector = Factory.create({"input_connector": new_kafka_config})
+        _ = input_connector._admin
+        admin_client.assert_called_with(expected_admin_client_config)
