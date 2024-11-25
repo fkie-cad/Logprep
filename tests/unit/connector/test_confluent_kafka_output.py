@@ -3,7 +3,6 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
-# pylint: disable=no-self-use
 
 import json
 from copy import deepcopy

@@ -9,7 +9,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
-from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException, Message
+from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -71,7 +71,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_record.error = mock.MagicMock(
             return_value=KafkaError(
                 error=3,
-                reason="Subscribed topic not available: (Test Instance Name) : Broker: Unknown topic or partition",
+                reason="Subscribed topic not available: (Test Instance Name) : "
+                "Broker: Unknown topic or partition",
                 fatal=False,
                 retriable=False,
                 txn_requires_abort=False,
