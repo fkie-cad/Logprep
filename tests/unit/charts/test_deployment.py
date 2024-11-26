@@ -98,6 +98,18 @@ class TestDeployment(TestBaseChartTest):
         security_context = self.deployment["spec.template.spec.containers.0.securityContext"]
         assert security_context["allowPriviledgeEscalation"] == "false"
 
+    def test_init_containers(self):
+        self.manifests = self.render_chart(
+            "logprep",
+            {
+                "initContainers": {"name": "test-init"},
+            },
+        )
+
+        assert self.deployment["spec.template.spec.initContainers"]
+        init_container = self.deployment["spec.template.spec.initContainers"]
+        assert init_container["name"] == "test-init"
+
     def test_resources(self):
         assert self.deployment["spec.template.spec.containers.0.resources"]
         resources = self.deployment["spec.template.spec.containers.0.resources"]
