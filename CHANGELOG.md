@@ -9,7 +9,7 @@
 
 ### Features
 
-* configuration of `initContainers` in logprep helm chart is noch possible 
+* configuration of `initContainers` in logprep helm chart is now possible 
 
 ### Improvements
 
