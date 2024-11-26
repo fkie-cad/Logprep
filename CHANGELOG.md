@@ -8,6 +8,9 @@
 * fix `delimiter` typo in `StringSplitterRule` configuration
 
 ### Features
+
+* configuration of `initContainers` in logprep helm chart is noch possible 
+
 ### Improvements
 
 * fix `requester` documentation
