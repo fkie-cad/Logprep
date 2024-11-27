@@ -273,7 +273,8 @@ class ConfluentKafkaInput(Input):
         DEFAULTS.update({"client.id": getfqdn()})
         DEFAULTS.update(
             {
-                "group.instance.id": f"{getfqdn().strip('.')}-Pipeline{self.pipeline_index}-pid{os.getpid()}"
+                "group.instance.id": f"{getfqdn().strip('.')}-"
+                f"Pipeline{self.pipeline_index}-pid{os.getpid()}"
             }
         )
         return DEFAULTS | self._config.kafka_config | injected_config
@@ -288,6 +289,9 @@ class ConfluentKafkaInput(Input):
             confluent_kafka admin client object
         """
         admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
+        for key, value in self._config.kafka_config.items():
+            if key.startswith(("security.", "ssl.")):
+                admin_config[key] = value
         return AdminClient(admin_config)
 
     @cached_property
@@ -375,7 +379,8 @@ class ConfluentKafkaInput(Input):
             if offset in SPECIAL_OFFSETS:
                 offset = 0
             labels = {
-                "description": f"topic: {self._config.topic} - partition: {topic_partition.partition}"
+                "description": f"topic: {self._config.topic} - "
+                f"partition: {topic_partition.partition}"
             }
             self.metrics.committed_offsets.add_with_labels(offset, labels)
 
@@ -473,7 +478,8 @@ class ConfluentKafkaInput(Input):
         """
         if self._enable_auto_offset_store:
             return
-        # in case the ConfluentKafkaInput._revoke_callback is triggered before the first message was polled
+        # in case the ConfluentKafkaInput._revoke_callback is triggered before the first message
+        # was polled
         if not self._last_valid_record:
             return
         try:

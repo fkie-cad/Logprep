@@ -3,7 +3,6 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
-# pylint: disable=no-self-use
 
 import json
 from copy import deepcopy
@@ -168,3 +167,32 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
     def test_health_returns_bool(self):
         with mock.patch.object(self.object, "_admin"):
             super().test_health_returns_bool()
+
+    @pytest.mark.parametrize(
+        ["kafka_config_update", "expected_admin_client_config"],
+        [
+            ({}, {"bootstrap.servers": "localhost:9092"}),
+            ({"statistics.foo": "bar"}, {"bootstrap.servers": "localhost:9092"}),
+            (
+                {"security.foo": "bar"},
+                {"bootstrap.servers": "localhost:9092", "security.foo": "bar"},
+            ),
+            (
+                {"ssl.foo": "bar"},
+                {"bootstrap.servers": "localhost:9092", "ssl.foo": "bar"},
+            ),
+            (
+                {"security.foo": "bar", "ssl.foo": "bar"},
+                {"bootstrap.servers": "localhost:9092", "security.foo": "bar", "ssl.foo": "bar"},
+            ),
+        ],
+    )
+    @mock.patch("logprep.connector.confluent_kafka.output.AdminClient")
+    def test_set_security_related_config_in_admin_client(
+        self, admin_client, kafka_config_update, expected_admin_client_config
+    ):
+        new_kafka_config = deepcopy(self.CONFIG)
+        new_kafka_config["kafka_config"].update(kafka_config_update)
+        output_connector = Factory.create({"output_connector": new_kafka_config})
+        _ = output_connector._admin
+        admin_client.assert_called_with(expected_admin_client_config)

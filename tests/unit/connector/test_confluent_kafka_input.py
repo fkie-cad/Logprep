@@ -9,7 +9,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
-from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException, Message
+from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -71,7 +71,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_record.error = mock.MagicMock(
             return_value=KafkaError(
                 error=3,
-                reason="Subscribed topic not available: (Test Instance Name) : Broker: Unknown topic or partition",
+                reason="Subscribed topic not available: (Test Instance Name) : "
+                "Broker: Unknown topic or partition",
                 fatal=False,
                 retriable=False,
                 txn_requires_abort=False,
@@ -109,7 +110,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_consumer.store_offsets.assert_called_with(message=message)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_calls_store_offsets(self, _):
+    def test_batch_finished_callback_does_not_call_store_offsets(self, _):
         input_config = deepcopy(self.CONFIG)
         kafka_input = Factory.create({"test": input_config})
         kafka_consumer = kafka_input._consumer
@@ -424,3 +425,32 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.list_topics.side_effect = KafkaException("test error")
         assert not self.object.health()
         assert self.object.metrics.number_of_errors == 1
+
+    @pytest.mark.parametrize(
+        ["kafka_config_update", "expected_admin_client_config"],
+        [
+            ({}, {"bootstrap.servers": "testserver:9092"}),
+            ({"statistics.foo": "bar"}, {"bootstrap.servers": "testserver:9092"}),
+            (
+                {"security.foo": "bar"},
+                {"bootstrap.servers": "testserver:9092", "security.foo": "bar"},
+            ),
+            (
+                {"ssl.foo": "bar"},
+                {"bootstrap.servers": "testserver:9092", "ssl.foo": "bar"},
+            ),
+            (
+                {"security.foo": "bar", "ssl.foo": "bar"},
+                {"bootstrap.servers": "testserver:9092", "security.foo": "bar", "ssl.foo": "bar"},
+            ),
+        ],
+    )
+    @mock.patch("logprep.connector.confluent_kafka.input.AdminClient")
+    def test_set_security_related_config_in_admin_client(
+        self, admin_client, kafka_config_update, expected_admin_client_config
+    ):
+        new_kafka_config = deepcopy(self.CONFIG)
+        new_kafka_config["kafka_config"].update(kafka_config_update)
+        input_connector = Factory.create({"input_connector": new_kafka_config})
+        _ = input_connector._admin
+        admin_client.assert_called_with(expected_admin_client_config)

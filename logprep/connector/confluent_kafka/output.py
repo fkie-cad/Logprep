@@ -212,6 +212,9 @@ class ConfluentKafkaOutput(Output):
             confluent_kafka admin client object
         """
         admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
+        for key, value in self._config.kafka_config.items():
+            if key.startswith(("security.", "ssl.")):
+                admin_config[key] = value
         return AdminClient(admin_config)
 
     @cached_property
@@ -266,7 +269,10 @@ class ConfluentKafkaOutput(Output):
 
         """
         base_description = super().describe()
-        return f"{base_description} - Kafka Output: {self._config.kafka_config.get('bootstrap.servers')}"
+        return (
+            f"{base_description} - Kafka Output: "
+            f"{self._config.kafka_config.get('bootstrap.servers')}"
+        )
 
     def store(self, document: dict) -> Optional[bool]:
         """Store a document in the producer topic.
