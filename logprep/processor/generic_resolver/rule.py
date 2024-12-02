@@ -87,6 +87,7 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
    :inherited-members:
    :noindex:
 """
+
 import re
 from functools import cached_property
 from pathlib import Path
