@@ -3,7 +3,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 from collections import OrderedDict
+from copy import deepcopy
 
+from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -16,6 +18,13 @@ class TestGenericResolver(BaseProcessorTestCase):
         "generic_rules": ["tests/testdata/unit/generic_resolver/rules/generic/"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
+
+    expected_metrics = [
+        "logprep_generic_resolver_new_results",
+        "logprep_generic_resolver_cached_results",
+        "logprep_generic_resolver_num_cache_entries",
+        "logprep_generic_resolver_cache_load",
+    ]
 
     @property
     def specific_rules_dirs(self):
@@ -49,6 +58,28 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         self.object.process(document)
 
+        assert document == expected
+
+    def test_resolve_from_mapping_with_ignore_case(self):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+                "ignore_case": True,
+            },
+        }
+
+        self._load_specific_rule(rule)
+
+        expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
+        document = {"to_resolve": "something HELLO1"}
+        self.object.process(document)
+        assert document == expected
+
+        expected = {"to_resolve": "something hello1", "resolved": "Greeting"}
+        document = {"to_resolve": "something hello1"}
+        self.object.process(document)
         assert document == expected
 
     def test_resolve_not_dotted_field_no_conflict_and_to_list_entries_match(
@@ -134,6 +165,33 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         self.object.process(document)
 
+        assert document == expected
+
+    def test_resolve_from_file_with_ignore_case(
+        self,
+    ):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "ignore_case": True,
+                "resolve_list": {"FOO": "BAR"},
+            },
+        }
+        self._load_specific_rule(rule)
+
+        expected = {"to_resolve": "ab", "resolved": "ab_server_type"}
+        document = {"to_resolve": "ab"}
+        self.object.process(document)
+        assert document == expected
+
+        expected = {"to_resolve": "AB", "resolved": "ab_server_type"}
+        document = {"to_resolve": "AB"}
+        self.object.process(document)
         assert document == expected
 
     def test_resolve_from_file_and_from_list(self):
@@ -409,3 +467,163 @@ class TestGenericResolver(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document == expected
+
+    def test_resolve_from_cache_with_large_enough_cache(self):
+        config = deepcopy(self.CONFIG)
+        config["max_cache_entries"] = 10
+        self.object = Factory.create({"generic_resolver": config})
+
+        rule_dict = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        event = {"to_resolve": "foo"}
+        self._load_specific_rule(rule_dict)
+        self.object.setup()
+
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
+
+        self.object.process(event)
+
+        assert self.object.metrics.new_results == 1
+        assert self.object.metrics.cached_results == 0
+        assert self.object.metrics.num_cache_entries == 1
+
+        self.object.process(event)
+
+        assert self.object.metrics.new_results == 2
+        assert self.object.metrics.cached_results == 1
+        assert self.object.metrics.num_cache_entries == 2
+
+        self.object.process({"to_resolve": "bar"})
+
+        assert self.object.metrics.new_results == 4
+        assert self.object.metrics.cached_results == 2
+        assert self.object.metrics.num_cache_entries == 4
+
+    def test_resolve_from_cache_with_cache_smaller_than_results(self):
+        config = deepcopy(self.CONFIG)
+        config["max_cache_entries"] = 1
+        self.object = Factory.create({"generic_resolver": config})
+
+        rule_dict = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        event = {"to_resolve": "foo"}
+        self._load_specific_rule(rule_dict)
+        self.object.setup()
+
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
+
+        self.object.process(event)
+
+        assert self.object.metrics.new_results == 1
+        assert self.object.metrics.cached_results == 0
+        assert self.object.metrics.num_cache_entries == 1
+
+        self.object.process(event)
+
+        assert self.object.metrics.new_results == 2
+        assert self.object.metrics.cached_results == 1
+        assert self.object.metrics.num_cache_entries == 2
+
+        self.object.process({"to_resolve": "bar"})
+
+        assert self.object.metrics.new_results == 4
+        assert self.object.metrics.cached_results == 2
+        assert self.object.metrics.num_cache_entries == 3
+
+    def test_resolve_without_cache(self):
+        config = deepcopy(self.CONFIG)
+        config["max_cache_entries"] = 0
+        self.object = Factory.create({"generic_resolver": config})
+
+        rule_dict = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        event = {"to_resolve": "foo"}
+        self._load_specific_rule(rule_dict)
+        self.object.setup()
+
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
+
+        self.object.process(event)
+
+        assert self.object.metrics.new_results == 0
+        assert self.object.metrics.cached_results == 0
+        assert self.object.metrics.num_cache_entries == 0
+
+        self.object.process(event)
+
+        assert self.object.metrics.new_results == 0
+        assert self.object.metrics.cached_results == 0
+        assert self.object.metrics.num_cache_entries == 0
+
+        self.object.process({"to_resolve": "bar"})
+
+        assert self.object.metrics.new_results == 0
+        assert self.object.metrics.cached_results == 0
+        assert self.object.metrics.num_cache_entries == 0
+
+    def test_resolve_from_cache_with_interval_2_sec(self):
+        config = deepcopy(self.CONFIG)
+        config["cache_metrics_interval"] = 2
+        config["max_cache_entries"] = 10
+        self.object = Factory.create({"generic_resolver": config})
+
+        rule_dict = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".+ar": "res_bar", ".+oo": "res_foo"},
+            },
+        }
+        event = {"to_resolve": "foo"}
+        other_event = {"to_resolve": "bar"}
+        self._load_specific_rule(rule_dict)
+        self.object.setup()
+
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
+
+        self.object.process(event)
+
+        assert self.object.metrics.new_results == 0
+        assert self.object.metrics.cached_results == 0
+        assert self.object.metrics.num_cache_entries == 0
+
+        self.object.process(event)
+
+        assert self.object.metrics.new_results == 1
+        assert self.object.metrics.cached_results == 1
+        assert self.object.metrics.num_cache_entries == 1
+
+        self.object.process(other_event)
+
+        assert self.object.metrics.new_results == 1
+        assert self.object.metrics.cached_results == 1
+        assert self.object.metrics.num_cache_entries == 1
+
+        self.object.process(other_event)
+
+        assert self.object.metrics.new_results == 3
+        assert self.object.metrics.cached_results == 3
+        assert self.object.metrics.num_cache_entries == 3

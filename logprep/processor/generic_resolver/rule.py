@@ -38,6 +38,22 @@ in :code:`pattern`.
 The resolver will check for the pattern and get value captured by the :code:`mapping` group.
 This captured value is then used in the list from the file.
 
+:code:`ignore_case` can be set to ignore the case when matching values that will be resolved.
+It is disabled by default. In the following example :code:`to_resolve: heLLo` would be resolved,
+since :code:`ignore_case` is set to true.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        .*Hello.*: Greeting
+      ignore_case: true
+
 In the following example :code:`to_resolve` will be checked by the
 regex pattern :code:`\d*(?P<mapping>[a-z]+)\d*` and the list in :code:`path/to/resolve_mapping.yml`
 will be used to add new fields.
@@ -71,8 +87,10 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
    :inherited-members:
    :noindex:
 """
-
+import re
+from functools import cached_property
 from pathlib import Path
+from typing import Optional, Tuple, List
 
 from attrs import define, field, validators
 
@@ -98,16 +116,7 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
-        resolve_list: dict = field(
-            validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(str),
-                ),
-            ],
-            factory=dict,
-        )
+        resolve_list: dict = field(validator=[validators.instance_of(dict)], factory=dict)
         """lookup mapping in form of
         :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`"""
         resolve_from_file: dict = field(
@@ -125,6 +134,8 @@ class GenericResolverRule(FieldManagerRule):
         a regex pattern which can be used to resolve values.
         The resolve list in the file at :code:`path` is then used in conjunction with
         the regex pattern in :code:`pattern`."""
+        ignore_case: Optional[str] = field(validator=validators.instance_of(bool), default=False)
+        """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
         def __attrs_post_init__(self):
             if self.resolve_from_file:
@@ -142,8 +153,11 @@ class GenericResolverRule(FieldManagerRule):
                     isinstance(value, str) for value in add_dict.values()
                 ):
                     raise InvalidConfigurationError(
-                        f"Additions file '{file_path}' must be a dictionary with string values! (Rule ID: '{self.id}')",
+                        f"Additions file '{file_path}' must be a dictionary "
+                        f"with string values! (Rule ID: '{self.id}')",
                     )
+                if self.ignore_case:
+                    add_dict = {key.upper(): value for key, value in add_dict.items()}
                 self.resolve_from_file["additions"] = add_dict
 
     @property
@@ -156,7 +170,25 @@ class GenericResolverRule(FieldManagerRule):
         """Returns the resolve list"""
         return self._config.resolve_list
 
+    @cached_property
+    def compiled_resolve_list(self) -> List[Tuple[re.Pattern, str]]:
+        """Returns the resolve list with tuple pairs of compiled patterns and values"""
+        return [
+            (re.compile(pattern, re.I if self.ignore_case else 0), val)
+            for pattern, val in self._config.resolve_list.items()
+        ]
+
     @property
     def resolve_from_file(self) -> dict:
         """Returns the resolve file"""
         return self._config.resolve_from_file
+
+    @property
+    def ignore_case(self) -> bool:
+        """Returns if the matchin should be case-sensitive or not"""
+        return self._config.ignore_case
+
+    @cached_property
+    def pattern(self) -> re.Pattern:
+        """Pattern used ot resolve from file"""
+        return re.compile(f'^{self.resolve_from_file["pattern"]}$', re.I if self.ignore_case else 0)

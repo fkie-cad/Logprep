@@ -25,8 +25,13 @@ Processor Configuration
 .. automodule:: logprep.processor.generic_resolver.rule
 """
 
-import re
+from functools import cached_property, lru_cache
 
+from typing import Optional
+from attrs import define, field, validators
+
+from logprep.abc.processor import Processor
+from logprep.metrics.metrics import GaugeMetric
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
@@ -36,7 +41,76 @@ from logprep.util.helper import add_fields_to, get_dotted_field_value
 class GenericResolver(FieldManager):
     """Resolve values in documents by referencing a mapping list."""
 
+    @define(kw_only=True)
+    class Config(Processor.Config):
+        """ListComparison config"""
+
+        max_cache_entries: Optional[int] = field(
+            validator=validators.optional(validators.instance_of(int)), default=0
+        )
+        """(Optional) Size of cache for results when resolving form a list."""
+        cache_metrics_interval: Optional[int] = field(
+            validator=validators.optional(validators.instance_of(int)), default=1
+        )
+        """(Optional) Cache metrics won't be updated immediately.
+        Instead it's skipped a number of times determined by cache_metrics_interval (default: 1)."""
+
+    @define(kw_only=True)
+    class Metrics(FieldManager.Metrics):
+        """Tracks statistics about the generic resolver"""
+
+        new_results: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of new values",
+                name="generic_resolver_new_results",
+            )
+        )
+        """Number of new values"""
+
+        cached_results: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of values resolved from cache",
+                name="generic_resolver_cached_results",
+            )
+        )
+        """Number of resolved values from cache"""
+        num_cache_entries: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of resolved values in cache",
+                name="generic_resolver_num_cache_entries",
+            )
+        )
+        """Number of values in cache"""
+        cache_load: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Relative cache load.",
+                name="generic_resolver_cache_load",
+            )
+        )
+        """Relative cache load."""
+
+    __slots__ = ["_cache_metrics_count"]
+
+    _cache_metrics_count: int
+
     rule_class = GenericResolverRule
+
+    @property
+    def max_cache_entries(self):
+        """Returns the configured number of max_cache_entries"""
+        return self._config.max_cache_entries
+
+    @property
+    def cache_metrics_interval(self):
+        """Returns the configured cache_metrics_interval"""
+        return self._config.cache_metrics_interval
+
+    @cached_property
+    def _get_lru_cached_value_from_list(self):
+        """Returns lru cashed method to retrieve values from list if configured"""
+        if self.max_cache_entries <= 0:
+            return self._resolve_value_from_list
+        return lru_cache(maxsize=self.max_cache_entries)(self._resolve_value_from_list)
 
     def _apply_rules(self, event, rule):
         """Apply the given rule to the current event"""
@@ -68,18 +142,46 @@ class GenericResolver(FieldManager):
                 )
             except FieldExistsWarning as error:
                 conflicting_fields.extend(error.skipped_fields)
+
+        self._update_cache_metrics()
+
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
     def _find_content_of_first_matching_pattern(self, rule, source_field_value):
         if rule.resolve_from_file:
-            pattern = f'^{rule.resolve_from_file["pattern"]}$'
             replacements = rule.resolve_from_file["additions"]
-            matches = re.match(pattern, source_field_value)
+            matches = rule.pattern.match(source_field_value)
             if matches:
-                content = replacements.get(matches.group("mapping"))
+                mapping = matches.group("mapping")
+                if rule.ignore_case:
+                    mapping = mapping.upper()
+                content = replacements.get(mapping)
                 if content:
                     return content
-        for pattern, content in rule.resolve_list.items():
-            if re.search(pattern, source_field_value):
+        return self._get_lru_cached_value_from_list(rule, source_field_value)
+
+    def _resolve_value_from_list(
+        self, rule: GenericResolverRule, source_field_value: str
+    ) -> Optional[str]:
+        for pattern, content in rule.compiled_resolve_list:
+            if pattern.search(source_field_value):
                 return content
+
+    def _update_cache_metrics(self):
+        if self.max_cache_entries <= 0:
+            return
+        self._cache_metrics_count += 1
+        if self._cache_metrics_count < self.cache_metrics_interval:
+            return
+        self._cache_metrics_count = 0
+
+        cache_info = self._get_lru_cached_value_from_list.cache_info()
+        self.metrics.new_results += cache_info.misses
+        self.metrics.cached_results += cache_info.hits
+        self.metrics.num_cache_entries += cache_info.currsize
+        self.metrics.cache_load += cache_info.currsize / cache_info.maxsize
+
+    def setup(self):
+        super().setup()
+        self._cache_metrics_count = 0
