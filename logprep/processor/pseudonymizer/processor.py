@@ -50,7 +50,7 @@ Processor Configuration
 import re
 from functools import cached_property, lru_cache
 from itertools import chain
-from typing import Optional, Pattern
+from typing import Generator, Optional, Pattern
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from attrs import define, field, validators
@@ -279,7 +279,7 @@ class Pseudonymizer(FieldManager):
         else:
             plaintext_values = set(chain(*[value for value in regex.findall(field_value) if value]))
         if plaintext_values and dotted_field in rule.url_fields:
-            for url_string in self._url_extractor.gen_urls(field_value):
+            for url_string in self._gen_urls(field_value):
                 field_value = field_value.replace(
                     url_string, self._pseudonymize_url_cached(url_string)
                 )
@@ -292,6 +292,13 @@ class Pseudonymizer(FieldManager):
                 if clear_value:
                     field_value = re.sub(re.escape(clear_value), pseudonymized_value, field_value)
         return field_value
+
+    def _gen_urls(self, field_value: str) -> Generator:
+        url_pattern = re.compile(
+            r"(?:http[s]?://)?(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F])|[/?=]|#)+"
+        )
+        matches = url_pattern.findall(field_value)
+        return matches
 
     def _pseudonymize_string(self, value: str) -> str:
         if self.pseudonymized_pattern.match(value):
@@ -312,7 +319,7 @@ class Pseudonymizer(FieldManager):
         if url_string.startswith(("http://", "https://")):
             parsed_url = urlparse(url_string)
         else:
-            parsed_url = urlparse("http://" + url_string)
+            parsed_url = urlparse(f"http://{url_string}")
         if url.subdomain:
             url_string = url_string.replace(url.subdomain, self._pseudonymize_string(url.subdomain))
         if parsed_url.fragment:
