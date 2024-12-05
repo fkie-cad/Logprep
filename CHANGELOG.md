@@ -9,7 +9,7 @@
 
 ### Features
 
-* configuration of `initContainers` in logprep helm chart is now possible 
+* configuration of `initContainers` in logprep helm chart is now possible
 
 ### Improvements
 
@@ -24,6 +24,8 @@
 * refactored some processors to make use of the new helper methods
 * add `pre-commit` hooks to the repository, install new dev dependency and run `pre-commit install` in the root dir
 * the default `securityContext`for the pod is now configurable
+* remove `tldextract` dependency
+* remove `urlextract` dependency
 
 ### Bugfix
 
