@@ -16,6 +16,9 @@
 * fix `requester` documentation
 * replace `BaseException` with `Exception` for custom errors
 * refactor `generic_resolver` to validate rules on startup instead of application of each rule
+* regex pattern lists for the `generic_resolver` are pre-compiled
+* regex matching from lists in the `generic_resolver` is cached
+* matching in the `generic_resolver` can be case-insensitive
 * rewrite the helper method `add_field_to` such that it always raises an `FieldExistsWarning` instead of return a bool.
 * add new helper method `add_fields_to` to directly add multiple fields to one event
 * refactored some processors to make use of the new helper methods
