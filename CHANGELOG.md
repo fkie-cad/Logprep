@@ -21,12 +21,14 @@
 * refactored some processors to make use of the new helper methods
 * add `pre-commit` hooks to the repository, install new dev dependency and run `pre-commit install` in the root dir
 * the default `securityContext`for the pod is now configurable
+* allow `TimeParser` to get the current time with a specified timezone instead of always using local time and setting the timezone to UTC
 
 ### Bugfix
 
 * fix `confluent_kafka.store_offsets` if `last_valid_record` is `None`, can happen if a rebalancing happens
   before the first message was pulled.
-- fix pseudonymizer cache metrics not updated
+* fix pseudonymizer cache metrics not updated
+* fix incorrect timezones for log arrival time and delta time in input preprocessing
 
 ## 14.0.0
 ### Breaking
