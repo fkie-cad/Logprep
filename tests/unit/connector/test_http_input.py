@@ -13,16 +13,15 @@ from unittest import mock
 import pytest
 import requests
 import responses
-import uvicorn
-from requests.auth import HTTPBasicAuth
-
 from falcon import testing
+from requests.auth import HTTPBasicAuth
 
 from logprep.abc.input import FatalInputError
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
 from logprep.framework.pipeline_manager import ThrottlingQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from logprep.util.http import ThreadingHTTPServer
 from tests.unit.connector.base import BaseInputTestCase
 
 
@@ -50,6 +49,10 @@ input:
     return str(credential_file_path)
 
 
+original_thread_start = ThreadingHTTPServer.start
+ThreadingHTTPServer.start = mock.MagicMock()
+
+
 class TestHttpConnector(BaseInputTestCase):
 
     def setup_method(self):
@@ -59,9 +62,8 @@ class TestHttpConnector(BaseInputTestCase):
         super().setup_method()
         self.object.pipeline_index = 1
         self.object.setup()
-        self.app = self.object.http_server.server.config.app
         self.target = self.object.target
-        self.client = testing.TestClient(self.app)
+        self.client = testing.TestClient(self.object.app)
 
     CONFIG: dict = {
         "type": "http_input",
@@ -220,7 +222,7 @@ class TestHttpConnector(BaseInputTestCase):
             {"message": "third message"},
         ]
         for message in data:
-            requests.post(url=self.target + "/json", json=message, timeout=0.5)
+            self.client.post("/json", json=message)
         assert self.object.get_next(0.001) == data[0]
         assert self.object.get_next(0.001) == data[1]
         assert self.object.get_next(0.001) == data[2]
@@ -244,8 +246,8 @@ class TestHttpConnector(BaseInputTestCase):
     def test_get_next_returns_none_for_empty_queue(self):
         assert self.object.get_next(0.001) is None
 
-    def test_server_returns_uvicorn_server_instance(self):
-        assert isinstance(self.object.http_server.server, uvicorn.Server)
+    def test_http_server_is_of_instance_threading_http_server(self):
+        assert isinstance(self.object.http_server, ThreadingHTTPServer)
 
     def test_server_starts_threaded_server(self):
         message = {"message": "my message"}
@@ -262,11 +264,11 @@ class TestHttpConnector(BaseInputTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
         connector.setup()
-        target = connector.target
-        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)
+        client = testing.TestClient(connector.app)
+        resp = client.post("/json", json=message)
         assert resp.status_code == 200
         message = connector.messages.get(timeout=0.5)
-        assert message["custom"]["url"] == target + "/json"
+        assert message["custom"]["url"].endswith("/json")
         assert re.search(r"\d+\.\d+\.\d+\.\d+", message["custom"]["remote_addr"])
         assert isinstance(message["custom"]["user_agent"], str)
 
@@ -277,20 +279,14 @@ class TestHttpConnector(BaseInputTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
         connector.setup()
-        target = connector.target
-        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)
+        client = testing.TestClient(connector.app)
+        resp = client.post("/json", json=message)
         assert resp.status_code == 200
-        target = target.replace(":9001", ":9000")
-        try:
-            resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)
-        except requests.exceptions.ConnectionError as e:
-            assert e.response is None
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config})
         connector.pipeline_index = 1
         connector.setup()
-        target = connector.target
-        resp = requests.post(url=f"{target}/json", json=message, timeout=0.5)
+        resp = client.post("/json", json=message)
         assert resp.status_code == 200
 
     def test_get_next_with_hmac_of_raw_message(self):
