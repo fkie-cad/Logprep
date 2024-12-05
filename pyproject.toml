@@ -83,7 +83,6 @@ dependencies = [
   "ruamel.yaml",
   "schedule",
   "tldextract",
-  "urlextract",
   "urllib3>=1.26.17",              # CVE-2023-43804
   "uvicorn",
   "deepdiff",

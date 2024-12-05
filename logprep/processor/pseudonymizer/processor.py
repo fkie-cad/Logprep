@@ -55,7 +55,6 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 from attrs import define, field, validators
 from tldextract import TLDExtract
-from urlextract import URLExtract
 
 from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
@@ -200,7 +199,7 @@ class Pseudonymizer(FieldManager):
 
     @cached_property
     def _url_extractor(self):
-        return URLExtract()
+        return None
 
     @cached_property
     def _hasher(self):
