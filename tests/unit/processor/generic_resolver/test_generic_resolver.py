@@ -488,6 +488,8 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert document == expected
 
     def test_resolve_from_cache_with_large_enough_cache(self):
+        """The metrics are mocked and their values are the sum of previously added cache values,
+        instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 10
         self.object = Factory.create({"generic_resolver": config})
@@ -526,6 +528,8 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert self.object.metrics.num_cache_entries == 4
 
     def test_resolve_from_cache_with_cache_smaller_than_results(self):
+        """The metrics are mocked and their values are the sum of previously added cache values,
+        instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 1
         self.object = Factory.create({"generic_resolver": config})
@@ -602,6 +606,8 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert self.object.metrics.num_cache_entries == 0
 
     def test_resolve_from_cache_with_update_interval_2(self):
+        """The metrics are mocked and their values are the sum of previously added cache values,
+        instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
         config["cache_metrics_interval"] = 2
         config["max_cache_entries"] = 10
