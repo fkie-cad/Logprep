@@ -87,7 +87,10 @@ class FilterExpression(ABC):
         for item in key:
             if item not in current:
                 raise KeyDoesNotExistError
-            current = current[item]
+            try:
+                current = current[item]
+            except TypeError as error:
+                raise KeyDoesNotExistError from error
         return current
 
     def __eq__(self, other):
