@@ -48,12 +48,14 @@ class GenericResolver(FieldManager):
         max_cache_entries: Optional[int] = field(
             validator=validators.optional(validators.instance_of(int)), default=0
         )
-        """(Optional) Size of cache for results when resolving form a list."""
+        """(Optional) Size of cache for results when resolving form a list.
+        The cache can be disabled by setting it this option to :code:`0`."""
         cache_metrics_interval: Optional[int] = field(
             validator=validators.optional(validators.instance_of(int)), default=1
         )
         """(Optional) Cache metrics won't be updated immediately.
-        Instead it's skipped a number of times determined by cache_metrics_interval (default: 1)."""
+        Instead updating is skipped for a number of events before it's next update. 
+        :code:`cache_metrics_interval` sets the number of events between updates (default: 1)."""
 
     @define(kw_only=True)
     class Metrics(FieldManager.Metrics):
@@ -61,11 +63,11 @@ class GenericResolver(FieldManager):
 
         new_results: GaugeMetric = field(
             factory=lambda: GaugeMetric(
-                description="Number of new values",
+                description="Number of newly resolved values",
                 name="generic_resolver_new_results",
             )
         )
-        """Number of new values"""
+        """Number of newly resolved values"""
 
         cached_results: GaugeMetric = field(
             factory=lambda: GaugeMetric(
