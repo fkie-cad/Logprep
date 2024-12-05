@@ -60,6 +60,25 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
+    def test_resolve_with_dict_value(self):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": {"Greeting": "Hello"}},
+            },
+        }
+
+        self._load_specific_rule(rule)
+
+        expected = {"to_resolve": "something HELLO1", "resolved": {"Greeting": "Hello"}}
+
+        document = {"to_resolve": "something HELLO1"}
+
+        self.object.process(document)
+
+        assert document == expected
+
     def test_resolve_from_mapping_with_ignore_case(self):
         rule = {
             "filter": "to_resolve",
