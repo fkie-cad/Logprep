@@ -85,12 +85,11 @@ class FilterExpression(ABC):
 
         current = document
         for item in key:
+            if not isinstance(current, dict):
+                raise KeyDoesNotExistError
             if item not in current:
                 raise KeyDoesNotExistError
-            try:
-                current = current[item]
-            except TypeError as error:
-                raise KeyDoesNotExistError from error
+            current = current[item]
         return current
 
     def __eq__(self, other):
