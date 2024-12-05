@@ -8,9 +8,10 @@ import os
 import zlib
 from abc import abstractmethod
 from copy import deepcopy
-from functools import partial
+from functools import partial, cached_property
 from hmac import HMAC
 from typing import Optional, Tuple
+from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
@@ -198,6 +199,11 @@ class Input(Connector):
         """Check and return if the version info should be added to the event."""
         return bool(self._config.preprocessing.get("version_info_target_field"))
 
+    @cached_property
+    def _log_arrival_timestamp_timezone(self):
+        """Returns the timezone for log arrival timestamps"""
+        return ZoneInfo("UTC")
+
     @property
     def _add_log_arrival_time_information(self):
         """Check and return if the log arrival time info should be added to the event."""
@@ -311,12 +317,9 @@ class Input(Connector):
         add_fields_to(event, fields)
 
     def _add_arrival_time_information_to_event(self, event: dict):
-        new_field = {
-            self._config.preprocessing.get(
-                "log_arrival_time_target_field"
-            ): TimeParser.now().isoformat()
-        }
-        add_fields_to(event, new_field)
+        target = self._config.preprocessing.get("log_arrival_time_target_field")
+        time = TimeParser.now(self._log_arrival_timestamp_timezone).isoformat()
+        add_fields_to(event, {target: time})
 
     def _add_arrival_timedelta_information_to_event(self, event: dict):
         log_arrival_timedelta_config = self._config.preprocessing.get("log_arrival_timedelta")
