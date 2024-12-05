@@ -186,10 +186,10 @@ class GenericResolverRule(FieldManagerRule):
 
     @property
     def ignore_case(self) -> bool:
-        """Returns if the matchin should be case-sensitive or not"""
+        """Returns if the matching should be case-sensitive or not"""
         return self._config.ignore_case
 
     @cached_property
     def pattern(self) -> re.Pattern:
-        """Pattern used ot resolve from file"""
+        """Pattern used to resolve from file"""
         return re.compile(f'^{self.resolve_from_file["pattern"]}$', re.I if self.ignore_case else 0)

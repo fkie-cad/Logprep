@@ -43,7 +43,7 @@ class GenericResolver(FieldManager):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """ListComparison config"""
+        """GenericResolver config"""
 
         max_cache_entries: Optional[int] = field(
             validator=validators.optional(validators.instance_of(int)), default=0
