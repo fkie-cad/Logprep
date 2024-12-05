@@ -36,6 +36,11 @@ class TestFilterExpression:
         with pytest.raises(KeyDoesNotExistError):
             FilterExpression._get_value([], {"some": "value"})
 
+    def test_get_value_fails_when_key_matches_value_instead_of_key(self):
+        document = {"key": "not_a_key"}
+        with pytest.raises(KeyDoesNotExistError):
+            FilterExpression._get_value(["key", "not_a_key"], document)
+
     def test_get_value_returns_expected_value(self):
         document = {"one": {"two": "value"}, "ten": {"eleven": "another value"}}
 
