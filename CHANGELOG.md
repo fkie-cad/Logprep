@@ -29,7 +29,8 @@
 
 * fix `confluent_kafka.store_offsets` if `last_valid_record` is `None`, can happen if a rebalancing happens
   before the first message was pulled.
-- fix pseudonymizer cache metrics not updated
+* fix pseudonymizer cache metrics not updated
+* fix `auto_rule_tester` to work with `LOGPREP_BYPASS_RULE_TREE` enabled
 
 ## 14.0.0
 ### Breaking
