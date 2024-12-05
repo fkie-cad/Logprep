@@ -317,12 +317,9 @@ class Input(Connector):
         add_fields_to(event, fields)
 
     def _add_arrival_time_information_to_event(self, event: dict):
-        new_field = {
-            self._config.preprocessing.get("log_arrival_time_target_field"): TimeParser.now(
-                self._log_arrival_timestamp_timezone
-            ).isoformat()
-        }
-        add_fields_to(event, new_field)
+        target = self._config.preprocessing.get("log_arrival_time_target_field")
+        time = TimeParser.now(self._log_arrival_timestamp_timezone).isoformat()
+        add_fields_to(event, {target: time})
 
     def _add_arrival_timedelta_information_to_event(self, event: dict):
         log_arrival_timedelta_config = self._config.preprocessing.get("log_arrival_timedelta")
