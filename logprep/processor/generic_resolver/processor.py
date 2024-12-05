@@ -91,9 +91,9 @@ class GenericResolver(FieldManager):
         )
         """Relative cache load."""
 
-    __slots__ = ["_cache_metrics_count"]
+    __slots__ = ["_cache_metrics_skip_count"]
 
-    _cache_metrics_count: int
+    _cache_metrics_skip_count: int
 
     rule_class = GenericResolverRule
 
@@ -173,10 +173,10 @@ class GenericResolver(FieldManager):
     def _update_cache_metrics(self):
         if self.max_cache_entries <= 0:
             return
-        self._cache_metrics_count += 1
-        if self._cache_metrics_count < self.cache_metrics_interval:
+        self._cache_metrics_skip_count += 1
+        if self._cache_metrics_skip_count < self.cache_metrics_interval:
             return
-        self._cache_metrics_count = 0
+        self._cache_metrics_skip_count = 0
 
         cache_info = self._get_lru_cached_value_from_list.cache_info()
         self.metrics.new_results += cache_info.misses
@@ -186,4 +186,4 @@ class GenericResolver(FieldManager):
 
     def setup(self):
         super().setup()
-        self._cache_metrics_count = 0
+        self._cache_metrics_skip_count = 0

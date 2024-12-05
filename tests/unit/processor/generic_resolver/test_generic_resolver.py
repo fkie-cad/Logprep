@@ -582,7 +582,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 0
 
-    def test_resolve_from_cache_with_interval_2_sec(self):
+    def test_resolve_from_cache_with_update_interval_2(self):
         config = deepcopy(self.CONFIG)
         config["cache_metrics_interval"] = 2
         config["max_cache_entries"] = 10
