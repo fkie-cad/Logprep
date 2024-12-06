@@ -32,6 +32,14 @@ class TestExtractUrls:
                 ["www.test.de", "https://www.test.de"],
             ),
             (
+                "some text https://www.test.de:30080 other trailing text",
+                ["https://www.test.de:30080"],
+            ),
+            (
+                "some text https://www.test.de:30080/path?query=4#fragment other trailing text",
+                ["https://www.test.de:30080/path?query=4#fragment"],
+            ),
+            (
                 "www.test.de",
                 ["www.test.de"],
             ),
@@ -61,3 +69,7 @@ class TestExtractUrls:
         n = 300
         random_max_large_string = "".join(choice(ascii_lowercase) for _ in range(n))
         assert extract_urls(f"http://{random_max_large_string}.com") == []
+
+    def test_extract_urls_with_large_domain_label(self):
+        domain_label = "a" * 64
+        assert extract_urls(f"http://www.{domain_label}.com") == []

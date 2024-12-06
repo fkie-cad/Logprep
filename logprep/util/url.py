@@ -31,9 +31,9 @@ ipv4_re = (
 ipv6_re = r"\[[0-9a-f:.]+\]"  # (simple regex, validated later)
 
 # Host patterns
-hostname_re = r"[a-z" + ul + r"0-9](?:[a-z" + ul + r"0-9-]{0,61}[a-z" + ul + r"0-9])?"
-# Max length for domain name labels is 63 characters per RFC 1034 sec. 3.1
-domain_re = r"(?:\.(?!-)[a-z" + ul + r"0-9-]{1,63}(?<!-))*"
+hostname_re = r"[a-z" + ul + r"0-9](?:[a-z" + ul + r"0-9-]+[a-z" + ul + r"0-9])?"
+
+domain_re = r"(?:\.(?!-)[a-z" + ul + r"0-9-]+(?<!-))*"
 tld_re = (
     r"\."  # dot
     r"(?!-)"  # can't start with a dash
@@ -101,6 +101,11 @@ def is_valid_url(value: str) -> bool:
     # one byte for the length of the name and one byte for the trailing dot
     # that's used to indicate absolute names in DNS.
     if splitted_url.hostname is None or len(splitted_url.hostname) > 253:
+        return False
+
+    # Max length for domain name labels is 63 characters per RFC 1034 sec. 3.1
+    domain_labels = splitted_url.hostname.split(".")
+    if any(len(label) > 63 for label in domain_labels):
         return False
 
     return True
