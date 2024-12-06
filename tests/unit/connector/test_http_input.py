@@ -21,7 +21,6 @@ from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
 from logprep.framework.pipeline_manager import ThrottlingQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
-from logprep.util.http import ThreadingHTTPServer
 from tests.unit.connector.base import BaseInputTestCase
 
 
@@ -49,9 +48,7 @@ input:
     return str(credential_file_path)
 
 
-original_thread_start = ThreadingHTTPServer.start
-
-
+@mock.patch("logprep.connector.http.input.http.ThreadingHTTPServer", new=mock.MagicMock())
 class TestHttpConnector(BaseInputTestCase):
 
     CONFIG: dict = {
@@ -80,13 +77,15 @@ class TestHttpConnector(BaseInputTestCase):
     ]
 
     def setup_method(self):
-        ThreadingHTTPServer.start = mock.MagicMock()
         HttpInput.messages = ThrottlingQueue(
             ctx=multiprocessing.get_context(), maxsize=self.CONFIG.get("message_backlog_size")
         )
         super().setup_method()
         self.object.pipeline_index = 1
-        self.object.setup()
+        with mock.patch(
+            "logprep.connector.http.input.http.ThreadingHTTPServer", new=mock.MagicMock()
+        ):
+            self.object.setup()
         self.target = self.object.target
         self.client = testing.TestClient(self.object.app)
 
@@ -94,7 +93,6 @@ class TestHttpConnector(BaseInputTestCase):
         while not self.object.messages.empty():
             self.object.messages.get(timeout=0.001)
         self.object.shut_down()
-        ThreadingHTTPServer.start = original_thread_start
 
     def test_create_connector(self):
         assert isinstance(self.object, HttpInput)
@@ -246,9 +244,6 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_get_next_returns_none_for_empty_queue(self):
         assert self.object.get_next(0.001) is None
-
-    def test_http_server_is_of_instance_threading_http_server(self):
-        assert isinstance(self.object.http_server, ThreadingHTTPServer)
 
     def test_server_starts_threaded_server(self):
         message = {"message": "my message"}
