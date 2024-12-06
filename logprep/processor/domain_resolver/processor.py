@@ -212,7 +212,6 @@ class DomainResolver(Processor):
 
     def _resolve_ip(self, domain, hash_string=None):
         try:
-            print(socket.gethostbyname)
             result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
             resolved_ip = result.get(timeout=self._config.timeout)
             return resolved_ip
