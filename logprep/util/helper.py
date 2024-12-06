@@ -398,3 +398,86 @@ def get_versions_string(config: "Configuration" = None) -> str:
         config_version = f"no configuration found in {', '.join([DEFAULT_CONFIG_LOCATION])}"
     version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
     return version_string
+
+
+def extract_urls(field_value: str) -> list:
+    """
+    Extracts URLs from a given string.
+
+    Parameters
+    ----------
+    field_value: str
+        The field value from which URLs should be extracted.
+
+    Returns
+    -------
+    list
+        A list of URLs extracted from the field value.
+    """
+    ul = "\u00a1-\uffff"  # Unicode letters range (must not be a raw string).
+
+    # IP patterns
+    ipv4_re = (
+        r"(?:0|25[0-5]|2[0-4][0-9]|1[0-9]?[0-9]?|[1-9][0-9]?)"
+        r"(?:\.(?:0|25[0-5]|2[0-4][0-9]|1[0-9]?[0-9]?|[1-9][0-9]?)){3}"
+    )
+    ipv6_re = r"\[[0-9a-f:.]+\]"  # (simple regex, validated later)
+
+    # Host patterns
+    hostname_re = r"[a-z" + ul + r"0-9](?:[a-z" + ul + r"0-9-]{0,61}[a-z" + ul + r"0-9])?"
+    # Max length for domain name labels is 63 characters per RFC 1034 sec. 3.1
+    domain_re = r"(?:\.(?!-)[a-z" + ul + r"0-9-]{1,63}(?<!-))*"
+    tld_re = (
+        r"\."  # dot
+        r"(?!-)"  # can't start with a dash
+        r"(?:[a-z" + ul + "-]{2,63}"  # domain label
+        r"|xn--[a-z0-9]{1,59})"  # or punycode label
+        r"(?<!-)"  # can't end with a dash
+        r"\.?"  # may have a trailing dot
+    )
+    host_re = rf"{hostname_re}{domain_re}{tld_re}"
+
+    url_pattern = re.compile(
+        r"(?:(?:[a-z0-9.+-]*)://)?"  # scheme is validated separately
+        r"(?:[^\s:@/]+(?::[^\s:@/]*)?@)?"  # user:pass authentication
+        r"(?:" + ipv4_re + "|" + ipv6_re + "|" + host_re + ")"
+        r"(?::[0-9]{1,5})?"  # port
+        r"(?:[/?#][^\s]*)?",  # resource path
+        re.IGNORECASE,
+    )
+    matches = url_pattern.findall(field_value)
+    return list(filter(filter_valid_schemes, matches))
+
+
+def filter_valid_schemes(value: str) -> bool:
+    """
+    Filters out invalid URL schemes.
+
+    Parameters
+    ----------
+    value: str
+        The URL scheme to be checked.
+
+    Returns
+    -------
+    bool
+        True if the scheme is valid, False otherwise.
+    """
+    valid_schemes = [
+        "http",
+        "https",
+        "ftp",
+        "sftp",
+        "ssh",
+        "file",
+        "git",
+        "svn",
+        "svn+ssh",
+        "git+ssh",
+        "scp",
+        "rsync",
+    ]
+    if "://" not in value:
+        return True
+    scheme = value.split("://")[0].lower()
+    return scheme in valid_schemes

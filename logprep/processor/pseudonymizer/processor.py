@@ -50,7 +50,7 @@ Processor Configuration
 import re
 from functools import cached_property, lru_cache
 from itertools import chain
-from typing import Generator, Optional, Pattern
+from typing import Optional, Pattern
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from attrs import define, field, validators
@@ -293,11 +293,12 @@ class Pseudonymizer(FieldManager):
                     field_value = re.sub(re.escape(clear_value), pseudonymized_value, field_value)
         return field_value
 
-    def _gen_urls(self, field_value: str) -> Generator:
+    def _gen_urls(self, field_value: str) -> list:
         url_pattern = re.compile(
             r"(?:http[s]?://)?(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F])|[/?=]|#)+"
         )
         matches = url_pattern.findall(field_value)
+        matches = list(filter(lambda url: urlparse(url).scheme in ["http", "https", ""], matches))
         return matches
 
     def _pseudonymize_string(self, value: str) -> str:
