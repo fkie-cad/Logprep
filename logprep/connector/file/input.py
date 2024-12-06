@@ -23,7 +23,6 @@ Example
 import queue
 import threading
 import zlib
-from logging import Logger
 from typing import Callable, TextIO
 
 from attrs import define, field, validators
