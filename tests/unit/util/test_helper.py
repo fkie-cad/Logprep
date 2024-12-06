@@ -8,7 +8,6 @@ import pytest
 from logprep.util.configuration import Configuration
 from logprep.util.helper import (
     camel_to_snake,
-    extract_urls,
     get_dotted_field_value,
     get_versions_string,
     pop_dotted_field_value,
@@ -272,48 +271,3 @@ class TestGetVersionString:
 
         result = get_versions_string(None)
         assert re.search(expected_pattern, result)
-
-
-class TestExtractUrls:
-
-    @pytest.mark.parametrize(
-        "field_value, expected",
-        [
-            ("https://www.test.de", ["https://www.test.de"]),
-            (
-                "https://www.test.de https://www.test.de",
-                ["https://www.test.de", "https://www.test.de"],
-            ),
-            (
-                "some text https://www.test.de other text https://www.test.de",
-                ["https://www.test.de", "https://www.test.de"],
-            ),
-            (
-                "some text https://www.test.de, other text https://www.test.de",
-                ["https://www.test.de", "https://www.test.de"],
-            ),
-            (
-                "some text www.test.de other text https://www.test.de",
-                ["www.test.de", "https://www.test.de"],
-            ),
-            (
-                "www.test.de",
-                ["www.test.de"],
-            ),
-            (
-                "https://stackoverflow.com/questions/520031/whats-the-cleanest-way-to-extract-urls-from-a-string-using-python",
-                [
-                    "https://stackoverflow.com/questions/520031/whats-the-cleanest-way-to-extract-urls-from-a-string-using-python"
-                ],
-            ),
-            (
-                "https://stackoverflow.com/questions/520031/whats-the-cleanest-way-to-extract-urls-from-a-string-using-python",
-                [
-                    "https://stackoverflow.com/questions/520031/whats-the-cleanest-way-to-extract-urls-from-a-string-using-python"
-                ],
-            ),
-            ("fail://www.test.de", []),
-        ],
-    )
-    def test_extract_urls(self, field_value, expected):
-        assert extract_urls(field_value) == expected

@@ -69,6 +69,7 @@ from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridGCMEncrypter,
     Encrypter,
 )
+from logprep.util.url import extract_urls
 from logprep.util.validators import list_of_urls_validator
 
 
@@ -198,10 +199,6 @@ class Pseudonymizer(FieldManager):
     rule_class = PseudonymizerRule
 
     @cached_property
-    def _url_extractor(self):
-        return None
-
-    @cached_property
     def _hasher(self):
         return SHA256Hasher()
 
@@ -279,7 +276,7 @@ class Pseudonymizer(FieldManager):
         else:
             plaintext_values = set(chain(*[value for value in regex.findall(field_value) if value]))
         if plaintext_values and dotted_field in rule.url_fields:
-            for url_string in self._gen_urls(field_value):
+            for url_string in extract_urls(field_value):
                 field_value = field_value.replace(
                     url_string, self._pseudonymize_url_cached(url_string)
                 )
@@ -292,14 +289,6 @@ class Pseudonymizer(FieldManager):
                 if clear_value:
                     field_value = re.sub(re.escape(clear_value), pseudonymized_value, field_value)
         return field_value
-
-    def _gen_urls(self, field_value: str) -> list:
-        url_pattern = re.compile(
-            r"(?:http[s]?://)?(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F])|[/?=]|#)+"
-        )
-        matches = url_pattern.findall(field_value)
-        matches = list(filter(lambda url: urlparse(url).scheme in ["http", "https", ""], matches))
-        return matches
 
     def _pseudonymize_string(self, value: str) -> str:
         if self.pseudonymized_pattern.match(value):
