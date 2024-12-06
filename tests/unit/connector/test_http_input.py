@@ -14,7 +14,7 @@ import pytest
 import requests
 import responses
 from falcon import testing
-from requests.auth import HTTPBasicAuth
+from requests.auth import _basic_auth_str
 
 from logprep.abc.input import FatalInputError
 from logprep.connector.http.input import HttpInput
@@ -325,9 +325,8 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
-            resp = requests.post(
-                url=f"{self.target}/auth-json-file", timeout=0.5, data=json.dumps(data)
-            )
+            client = testing.TestClient(new_connector.app)
+            resp = client.post("/auth-json-file", body=json.dumps(data))
             assert resp.status_code == 401
 
     def test_endpoint_returns_401_on_wrong_authorization(self, credentials_file_path):
@@ -337,10 +336,9 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
-            basic = HTTPBasicAuth("wrong", "credentials")
-            resp = requests.post(
-                url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5, json=data
-            )
+            headers = {"Authorization": _basic_auth_str("wrong", "credentials")}
+            client = testing.TestClient(new_connector.app, headers=headers)
+            resp = client.post("/auth-json-file", body=json.dumps(data))
             assert resp.status_code == 401
 
     def test_endpoint_returns_200_on_correct_authorization_with_password_from_file(
@@ -352,10 +350,9 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
-            basic = HTTPBasicAuth("user", "file_password")
-            resp = requests.post(
-                url=f"{self.target}/auth-json-file", auth=basic, timeout=0.5, json=data
-            )
+            headers = {"Authorization": _basic_auth_str("user", "file_password")}
+            client = testing.TestClient(new_connector.app, headers=headers)
+            resp = client.post("/auth-json-file", body=json.dumps(data))
             assert resp.status_code == 200
 
     def test_endpoint_returns_200_on_correct_authorization_with_password_within_credentials_file(
@@ -367,10 +364,9 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
-            basic = HTTPBasicAuth("user", "secret_password")
-            resp = requests.post(
-                url=f"{self.target}/auth-json-secret", auth=basic, timeout=0.5, json=data
-            )
+            headers = {"Authorization": _basic_auth_str("user", "secret_password")}
+            client = testing.TestClient(new_connector.app, headers=headers)
+            resp = client.post("/auth-json-secret", body=json.dumps(data))
             assert resp.status_code == 200
 
     def test_endpoint_returns_200_on_correct_authorization_for_subpath(self, credentials_file_path):
@@ -380,10 +376,9 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector = Factory.create({"test connector": self.CONFIG})
             new_connector.pipeline_index = 1
             new_connector.setup()
-            basic = HTTPBasicAuth("user", "password")
-            resp = requests.post(
-                url=f"{self.target}/auth-json-secret/AB/json", auth=basic, timeout=0.5, json=data
-            )
+            headers = {"Authorization": _basic_auth_str("user", "password")}
+            client = testing.TestClient(new_connector.app, headers=headers)
+            resp = client.post("/auth-json-secret/AB/json", body=json.dumps(data))
             assert resp.status_code == 200
 
     def test_two_connector_instances_share_the_same_queue(self):
