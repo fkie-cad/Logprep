@@ -130,3 +130,20 @@ def is_valid_scheme(value: str) -> bool:
         return True
     scheme = value.split("://")[0].lower()
     return scheme in valid_schemes
+
+
+class Domain:
+    """Domain object for easy access to domain parts."""
+
+    def __init__(self, domain_string: str):
+        if "://" in domain_string:
+            self.fqdn = urlsplit(domain_string).hostname
+        else:
+            self.fqdn = domain_string
+        splitted_domain = self.fqdn.split(".")
+        self.subdomain = ".".join(splitted_domain[:-2])
+        self.domain = splitted_domain[-2]
+        self.suffix = splitted_domain[-1]
+
+    def __repr__(self):
+        return f"{self.subdomain}.{self.domain}.{self.suffix}"

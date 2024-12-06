@@ -50,6 +50,7 @@ from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRu
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
+from logprep.util.url import Domain
 from logprep.util.validators import list_of_urls_validator
 
 logger = logging.getLogger("DomainLabelExtractor")
@@ -135,7 +136,7 @@ class DomainLabelExtractor(FieldManager):
             )
             return
 
-        labels = self._tld_extractor(domain)
+        labels = Domain(domain)
         if labels.suffix != "":
             fields = {
                 f"{rule.target_field}.registered_domain": f"{labels.domain}.{labels.suffix}",
