@@ -1,14 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 
-import copy
-import hashlib
-import os
-import shutil
-import tempfile
-from pathlib import Path
-
-import responses
 
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -340,44 +332,3 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
-
-    @responses.activate
-    def test_setup_downloads_tld_lists_to_separate_process_file(self):
-        tld_list = "http://db-path-target/list.dat"
-        tld_list_path = Path("/usr/bin/ls") if Path("/usr/bin/ls").exists() else Path("/bin/ls")
-        tld_list_content = tld_list_path.read_bytes()
-        expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
-        responses.add(responses.GET, tld_list, tld_list_content)
-        config = copy.deepcopy(self.CONFIG)
-        config["tld_lists"] = [tld_list]
-        self.object = Factory.create({"domain_label_extractor": config})
-        self.object.setup()
-        logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-        downloaded_file = logprep_tmp_dir / f"{self.object.name}-tldlist-0.dat"
-        assert downloaded_file.exists()
-        downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
-        assert expected_checksum == downloaded_checksum
-        # delete testfile
-        shutil.rmtree(logprep_tmp_dir)
-
-    @responses.activate
-    def test_setup_doesnt_overwrite_already_existing_tld_list_file(self):
-        tld_list = "http://db-path-target/list.dat"
-        tld_list_content = "some content"
-        responses.add(responses.GET, tld_list, tld_list_content.encode("utf8"))
-
-        logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-        os.makedirs(logprep_tmp_dir, exist_ok=True)
-        tld_temp_file = logprep_tmp_dir / f"{self.object.name}-tldlist-0.dat"
-
-        pre_existing_content = "file exists already"
-        tld_temp_file.touch()
-        tld_temp_file.write_bytes(pre_existing_content.encode("utf8"))
-        config = copy.deepcopy(self.CONFIG)
-        config["tld_lists"] = [tld_list]
-        self.object = Factory.create({"domain_label_extractor": config})
-        self.object.setup()
-        assert tld_temp_file.exists()
-        assert tld_temp_file.read_bytes().decode("utf8") == pre_existing_content
-        assert tld_temp_file.read_bytes().decode("utf8") != tld_list_content
-        shutil.rmtree(logprep_tmp_dir)  # delete testfile

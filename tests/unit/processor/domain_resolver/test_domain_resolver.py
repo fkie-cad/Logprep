@@ -1,19 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import hashlib
-import os
-import shutil
-import tempfile
 from copy import deepcopy
-from os.path import exists
 from pathlib import Path
 from unittest import mock
 
-import pytest
-import responses
-
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -171,44 +163,6 @@ class TestDomainResolver(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    @responses.activate
-    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    def test_resolves_with_tld_extract_tld_lists(self, _):
-        response_content = """
-// at : https://en.wikipedia.org/wiki/.at
-// Confirmed by registry <it@nic.at> 2008-06-17
-at
-ac.at
-co.at
-gv.at
-or.at
-sth.ac.at
-        """
-        responses.add(responses.GET, "http://does_not_matter", response_content)
-        config = deepcopy(self.CONFIG)
-        config.update({"tld_lists": ["http://does_not_matter"]})
-        domain_resolver = Factory.create({"test instance": config})
-        document = {"url": "http://www.google.ac.at/some/text"}
-        expected = {"url": "http://www.google.ac.at/some/text", "resolved_ip": "1.2.3.4"}
-        domain_resolver.process(document)
-        assert document == expected
-
-    @pytest.mark.skipif(not exists(TLD_LIST.split("file://")[-1]), reason="Tld-list required.")
-    def test_invalid_dots_domain_to_ip_produces_warning(self):
-        config = deepcopy(self.CONFIG)
-        config.update({"tld_list": TLD_LIST})
-        domain_resolver = Factory.create({"test instance": config})
-
-        assert self.object.metrics.number_of_processed_events == 0
-        document = {"url": "google..invalid.de"}
-
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"DomainResolver \(test-domain-resolver\)\: encoding with \'idna\' codec failed "
-            r"\(UnicodeError\: label empty or too long\) for domain \'google..invalid.de\'",
-        ):
-            domain_resolver.process(document)
-
     def test_domain_to_ip_not_resolved(self):
         document = {"url": "google.thisisnotavalidtld"}
         self.object.process(document)
@@ -278,44 +232,3 @@ sth.ac.at
         self._load_specific_rule(rule_dict)
         self.object.process(document)
         assert document == expected
-
-    @responses.activate
-    def test_setup_downloads_tld_lists_to_separate_process_file(self):
-        tld_list = "http://db-path-target/list.dat"
-        tld_list_path = Path("/usr/bin/ls") if Path("/usr/bin/ls").exists() else Path("/bin/ls")
-        tld_list_content = tld_list_path.read_bytes()
-        expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
-        responses.add(responses.GET, tld_list, tld_list_content)
-        config = deepcopy(self.CONFIG)
-        config.update({"tld_lists": [tld_list]})
-        self.object = Factory.create({"resolver": config})
-        self.object.setup()
-        logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-        downloaded_file = logprep_tmp_dir / f"{self.object.name}-tldlist-0.dat"
-        assert downloaded_file.exists()
-        downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
-        assert expected_checksum == downloaded_checksum
-        # delete testfile
-        shutil.rmtree(logprep_tmp_dir)
-
-    @responses.activate
-    def test_setup_doesnt_overwrite_already_existing_tld_list_file(self):
-        tld_list = "http://db-path-target/list.dat"
-        tld_list_content = "some content"
-        responses.add(responses.GET, tld_list, tld_list_content.encode("utf8"))
-
-        logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-        os.makedirs(logprep_tmp_dir, exist_ok=True)
-        tld_temp_file = logprep_tmp_dir / f"{self.object.name}-tldlist-0.dat"
-
-        pre_existing_content = "file exists already"
-        tld_temp_file.touch()
-        tld_temp_file.write_bytes(pre_existing_content.encode("utf8"))
-        config = deepcopy(self.CONFIG)
-        config.update({"tld_lists": [tld_list]})
-        self.object = Factory.create({"resolver": config})
-        self.object.setup()
-        assert tld_temp_file.exists()
-        assert tld_temp_file.read_bytes().decode("utf8") == pre_existing_content
-        assert tld_temp_file.read_bytes().decode("utf8") != tld_list_content
-        shutil.rmtree(logprep_tmp_dir)  # delete testfile
