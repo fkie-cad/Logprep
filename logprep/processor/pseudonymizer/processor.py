@@ -50,11 +50,10 @@ Processor Configuration
 import re
 from functools import cached_property, lru_cache
 from itertools import chain
-from typing import Optional, Pattern
+from typing import Pattern
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from attrs import define, field, validators
-from tldextract import TLDExtract
 
 from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
@@ -70,7 +69,6 @@ from logprep.util.pseudo.encrypter import (
     Encrypter,
 )
 from logprep.util.url import extract_urls
-from logprep.util.validators import list_of_urls_validator
 
 
 class Pseudonymizer(FieldManager):
@@ -137,12 +135,6 @@ class Pseudonymizer(FieldManager):
         )
         """The maximum number of cached pseudonymized urls. Default is 10000.
         Behaves similarly to the max_cached_pseudonyms. Has to be greater than 0."""
-        tld_lists: Optional[list] = field(default=None, validator=[list_of_urls_validator])
-        """Optional list of path to files with top-level domain lists
-        (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,
-        a default list will be retrieved online and cached in a local directory. For local
-        files the path has to be given with :code:`file:///path/to/file.dat`."""
-
         mode: str = field(
             validator=[validators.instance_of(str), validators.in_(("GCM", "CTR"))], default="GCM"
         )
@@ -210,12 +202,6 @@ class Pseudonymizer(FieldManager):
             encrypter = DualPKCS1HybridGCMEncrypter()
         encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
         return encrypter
-
-    @cached_property
-    def _tld_extractor(self) -> TLDExtract:
-        if self._config.tld_lists is not None:
-            return TLDExtract(suffix_list_urls=self._config.tld_lists)
-        return TLDExtract()
 
     @cached_property
     def _regex_mapping(self) -> dict:
@@ -305,13 +291,15 @@ class Pseudonymizer(FieldManager):
         return {"pseudonym": hash_string, "origin": encrypted_origin}
 
     def _pseudonymize_url(self, url_string: str) -> str:
-        url = self._tld_extractor(url_string)
         if url_string.startswith(("http://", "https://")):
             parsed_url = urlparse(url_string)
         else:
             parsed_url = urlparse(f"http://{url_string}")
-        if url.subdomain:
-            url_string = url_string.replace(url.subdomain, self._pseudonymize_string(url.subdomain))
+        if parsed_url.hostname:
+            splitted_hostname = parsed_url.hostname.split(".")
+            if len(splitted_hostname) > 2:
+                subdomain = ".".join(splitted_hostname[0:-2])
+                url_string = url_string.replace(subdomain, self._pseudonymize_string(subdomain))
         if parsed_url.fragment:
             url_string = url_string.replace(
                 f"#{parsed_url.fragment}", f"#{self._pseudonymize_string(parsed_url.fragment)}"

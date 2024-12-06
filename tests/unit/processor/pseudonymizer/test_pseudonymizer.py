@@ -765,15 +765,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected, testcase
 
-    def test_tld_extractor_uses_file(self):
-        config = deepcopy(self.CONFIG)
-        config["tld_lists"] = [TLD_LIST]
-        object_with_tld_list = Factory.create({"pseudonymizer": config})
-        assert len(object_with_tld_list._tld_extractor.suffix_list_urls) == 1
-        assert object_with_tld_list._tld_extractor.suffix_list_urls[0].endswith(
-            "tests/testdata/mock_external/tld_list.dat",
-        )
-
     def _load_specific_rule(self, rule):
         config = deepcopy(self.CONFIG)
         config["regex_mapping"] = self.regex_mapping
@@ -893,7 +884,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
             ),
             (
                 "https://test.de/?a=b&c=d",
-                # nosemgrep
                 (
                     "https://test.de/?a="
                     "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
@@ -903,7 +893,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
             ),
             (
                 "https://test.de/#test",
-                # nosemgrep
                 (
                     "https://test.de/#"
                     "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
