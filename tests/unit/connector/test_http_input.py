@@ -54,17 +54,6 @@ original_thread_start = ThreadingHTTPServer.start
 
 class TestHttpConnector(BaseInputTestCase):
 
-    def setup_method(self):
-        # ThreadingHTTPServer.start = mock.MagicMock()
-        HttpInput.messages = ThrottlingQueue(
-            ctx=multiprocessing.get_context(), maxsize=self.CONFIG.get("message_backlog_size")
-        )
-        super().setup_method()
-        self.object.pipeline_index = 1
-        self.object.setup()
-        self.target = self.object.target
-        self.client = testing.TestClient(self.object.app)
-
     CONFIG: dict = {
         "type": "http_input",
         "message_backlog_size": 100,
@@ -90,11 +79,22 @@ class TestHttpConnector(BaseInputTestCase):
         "logprep_number_of_http_requests",
     ]
 
+    def setup_method(self):
+        ThreadingHTTPServer.start = mock.MagicMock()
+        HttpInput.messages = ThrottlingQueue(
+            ctx=multiprocessing.get_context(), maxsize=self.CONFIG.get("message_backlog_size")
+        )
+        super().setup_method()
+        self.object.pipeline_index = 1
+        self.object.setup()
+        self.target = self.object.target
+        self.client = testing.TestClient(self.object.app)
+
     def teardown_method(self):
         while not self.object.messages.empty():
             self.object.messages.get(timeout=0.001)
         self.object.shut_down()
-        # ThreadingHTTPServer.start = original_thread_start
+        ThreadingHTTPServer.start = original_thread_start
 
     def test_create_connector(self):
         assert isinstance(self.object, HttpInput)
