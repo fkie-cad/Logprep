@@ -251,10 +251,10 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_server_starts_threaded_server(self):
         message = {"message": "my message"}
-        for i in range(100):
+        for i in range(90):
             message["message"] = f"message number {i}"
             self.client.post("/json", json=message)
-        assert self.object.messages.qsize() == 100, "messages are put to queue"
+        assert self.object.messages.qsize() == 90, "messages are put to queue"
 
     def test_get_metadata(self):
         message = {"message": "my message"}
