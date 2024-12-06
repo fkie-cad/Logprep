@@ -22,7 +22,6 @@ Processor Configuration
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
-        tld_lists: /path/to/list/file
         tagging_field_name: resolved
 
 .. autoclass:: logprep.processor.domain_label_extractor.processor.DomainLabelExtractor.Config

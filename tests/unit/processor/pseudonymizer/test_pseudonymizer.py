@@ -5,7 +5,6 @@
 # pylint: disable=line-too-long
 import re
 from copy import deepcopy
-from pathlib import Path
 
 import pytest
 
@@ -17,11 +16,6 @@ from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridGCMEncrypter,
 )
 from tests.unit.processor.base import BaseProcessorTestCase
-
-REL_TLD_LIST_PATH = "tests/testdata/mock_external/tld_list.dat"
-
-TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
-
 
 test_cases = [  # testcase, rule, event, expected, regex_mapping
     (

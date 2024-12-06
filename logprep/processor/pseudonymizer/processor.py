@@ -35,8 +35,6 @@ Processor Configuration
         regex_mapping: /path/to/regex_mapping.json
         max_cached_pseudonyms: 1000000
         mode: GCM
-        tld_lists:
-            -/path/to/tld_list.dat
 
 .. autoclass:: logprep.processor.pseudonymizer.processor.Pseudonymizer.Config
    :members:
