@@ -38,6 +38,7 @@ the list is now fixed inside the packaged logprep
 * fix incorrect timezones for log arrival time and delta time in input preprocessing
 * fix `_get_value` in `FilterExpression` so that keys don't match on values
 * fix `auto_rule_tester` to work with `LOGPREP_BYPASS_RULE_TREE` enabled
+* fix `opensearch_output` not draining `message_backlog` on shutdown
 
 ## 14.0.0
 ### Breaking

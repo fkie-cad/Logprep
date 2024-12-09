@@ -5,23 +5,16 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-arguments
 import copy
-import json
 import os
-import re
-import time
-import uuid
 from unittest import mock
 
-import opensearchpy as search
 import pytest
 from opensearchpy import OpenSearchException as SearchException
 from opensearchpy import helpers
 
 from logprep.abc.component import Component
-from logprep.abc.output import CriticalOutputError, FatalOutputError
-from logprep.connector.opensearch.output import OpensearchOutput
+from logprep.abc.output import CriticalOutputError
 from logprep.factory import Factory
-from logprep.util.time import TimeParser
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -173,3 +166,8 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             self.object._write_backlog()
         assert error.value.message == "failed to index"
         assert error.value.raw_input == [{"errors": error_message, "event": event}]
+
+    def test_shut_down_clears_message_backlog(self):
+        self.object._message_backlog = [{"some": "event"}]
+        self.object.shut_down()
+        assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
