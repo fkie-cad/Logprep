@@ -31,7 +31,7 @@ A speaking example:
 
     {"ingest": "2022-12-06 10:00:00", "processed": "2022-12-06 10:00:05", "processing_time": "5.0"}
 
-.. autoclass:: logprep.processor.timestamper.rule.TimestamperRule.Config
+.. autoclass:: logprep.processor.timestamp_differ.rule.TimestampDifferRule.Config
    :members:
    :undoc-members:
    :inherited-members:
@@ -69,7 +69,7 @@ class TimestampDifferRule(FieldManagerRule):
         and the timestamp format can be specified in the form of:
         :code:`${dotted.field.path:timestamp-format}`. If no timestamp format is given, e.g.
         :code:`${dotted.field.path}`, the string will be assumed as an iso8601 compliant string and
-        parsed. For more information on the format syntax see 
+        parsed. For more information on the format syntax see
         `datetime strftime/strptime <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes>`_."""
         source_fields: list = field(factory=list)
         source_field_formats: list = field(factory=list)
