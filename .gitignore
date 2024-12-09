@@ -17,7 +17,6 @@ coverage.xml
 cov.xml
 -
 logs
-sql_db_table.json
 build/
 dist/
 error_file
