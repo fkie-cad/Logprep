@@ -2,9 +2,7 @@
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^
 
-The timestamp format can be specified per timestamp. Following patterns can be used to define the
-timestamp format:
-`Timestamp tokens <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes>`_.
+The timestamp format can be specified per timestamp.
 
 A speaking example:
 
@@ -69,8 +67,8 @@ class TimestampDifferRule(FieldManagerRule):
         and the timestamp format can be specified in the form of:
         :code:`${dotted.field.path:timestamp-format}`. If no timestamp format is given, e.g.
         :code:`${dotted.field.path}`, the string will be assumed as an iso8601 compliant string and
-        parsed. For more information on the format syntax see
-        `datetime strftime/strptime <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes>`_."""
+        parsed. For more information on the format syntax see `datetime strftime/strptime
+        <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes>`_."""
         source_fields: list = field(factory=list)
         source_field_formats: list = field(factory=list)
         output_format: str = field(
