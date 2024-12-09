@@ -74,6 +74,9 @@ class TestExtractUrls:
         domain_label = "a" * 64
         assert extract_urls(f"http://www.{domain_label}.com") == []
 
+
+class TestDomain:
+
     @pytest.mark.parametrize(
         "domain, expected_subdomain, expected_domain, expected_suffix, expected_fqdn",
         [
