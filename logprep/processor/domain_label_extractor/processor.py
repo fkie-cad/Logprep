@@ -35,6 +35,7 @@ Processor Configuration
 
 import ipaddress
 import logging
+from urllib.parse import urlsplit
 
 from attr import define, field, validators
 
@@ -95,7 +96,11 @@ class DomainLabelExtractor(FieldManager):
             )
             return
 
-        labels = Domain(domain)
+        urlsplit_result = urlsplit(domain)
+        if urlsplit_result.hostname is not None:
+            labels = Domain(urlsplit_result.hostname)
+        else:
+            labels = Domain(domain)
         if labels.suffix != "":
             fields = {
                 f"{rule.target_field}.registered_domain": f"{labels.domain}.{labels.suffix}",

@@ -4,6 +4,7 @@ https://docs.djangoproject.com/en/4.1/_modules/django/core/validators/
 """
 
 import re
+from pathlib import Path
 from urllib.parse import urlsplit
 
 valid_schemes = [
@@ -132,21 +133,34 @@ def is_valid_scheme(value: str) -> bool:
     return scheme in valid_schemes
 
 
+TLDLIST_PATH = Path(f"{Path(__file__).parent}/tldlist/public_suffix_list.dat")
+TLD_SET = {
+    tld
+    for tld in TLDLIST_PATH.read_text(encoding="utf8").splitlines()
+    if not tld.startswith("//") and tld != ""
+}
+
+
 class Domain:
     """Domain object for easy access to domain parts."""
 
-    def __init__(self, domain_string: str):
-        if "://" in domain_string:
-            self.fqdn = urlsplit(domain_string).hostname
-        else:
-            self.fqdn = domain_string
-        splitted_domain = self.fqdn.split(".")
-        self.subdomain = ".".join(splitted_domain[:-2])
-        self.domain = splitted_domain[-2]
-        self.suffix = splitted_domain[-1]
+    def __init__(self, fqdn: str):
+        self.fqdn = fqdn
+        self.subdomain = ""
+        self.domain = ""
+        self.suffix = ""
+        self._set_labels()
 
-    def get_suffix(self, domain: str) -> bool:
-        pass
+    def _set_labels(self):
+        suffix = self.fqdn
+        while suffix != "":
+            _, _, suffix = suffix.partition(".")
+            if suffix in TLD_SET:
+                break
+        self.suffix = suffix
+        if self.suffix != "":
+            domain, _, _ = self.fqdn.rpartition(suffix)
+            self.subdomain, _, self.domain = domain.strip(".").rpartition(".")
 
     def __repr__(self):
         return f"{self.subdomain}.{self.domain}.{self.suffix}"

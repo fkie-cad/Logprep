@@ -74,6 +74,22 @@ class TestExtractUrls:
         domain_label = "a" * 64
         assert extract_urls(f"http://www.{domain_label}.com") == []
 
-    def test_get_suffix_from_domain(self):
-        domain = Domain("www.google.com")
-        assert domain.suffix == "com"
+    @pytest.mark.parametrize(
+        "domain, expected_subdomain, expected_domain, expected_suffix",
+        [
+            ("www.thedomain.com", "www", "thedomain", "com"),
+            ("www.thedomain.co", "www", "thedomain", "co"),
+            ("www.thedomain.com.ua", "www", "thedomain", "com.ua"),
+            ("www.thedomain.co.uk", "www", "thedomain", "co.uk"),
+            ("save.edu.ao", "", "save", "edu.ao"),
+            ("thedomain.sport", "", "thedomain", "sport"),
+            ("thedomain.联通", "", "thedomain", "联通"),
+            ("www.thedomain.foobar", "", "", ""),
+        ],
+    )
+    def test_get_labels_from_domain(
+        self, domain, expected_subdomain, expected_domain, expected_suffix
+    ):
+        assert Domain(domain).suffix == expected_suffix
+        assert Domain(domain).domain == expected_domain
+        assert Domain(domain).subdomain == expected_subdomain
