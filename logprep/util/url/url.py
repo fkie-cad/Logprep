@@ -144,21 +144,23 @@ TLD_SET = {
 class Domain:
     """Domain object for easy access to domain parts."""
 
-    def __init__(self, fqdn: str):
-        self.fqdn = fqdn
+    def __init__(self, domain_str: str):
+        self.domain_str = domain_str
+        self.fqdn = ""
         self.subdomain = ""
         self.domain = ""
         self.suffix = ""
         self._set_labels()
 
     def _set_labels(self):
-        suffix = self.fqdn
+        suffix = self.domain_str
         while suffix != "":
             _, _, suffix = suffix.partition(".")
             if suffix in TLD_SET:
                 break
         self.suffix = suffix
         if self.suffix != "":
+            self.fqdn = self.domain_str
             domain, _, _ = self.fqdn.rpartition(suffix)
             self.subdomain, _, self.domain = domain.strip(".").rpartition(".")
 

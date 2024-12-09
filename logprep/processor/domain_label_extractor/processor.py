@@ -96,11 +96,11 @@ class DomainLabelExtractor(FieldManager):
             )
             return
 
-        urlsplit_result = urlsplit(domain)
-        if urlsplit_result.hostname is not None:
-            labels = Domain(urlsplit_result.hostname)
-        else:
-            labels = Domain(domain)
+        url = urlsplit(domain)
+        domain = url.hostname
+        if url.scheme == "":
+            domain = url.path
+        labels = Domain(domain)
         if labels.suffix != "":
             fields = {
                 f"{rule.target_field}.registered_domain": f"{labels.domain}.{labels.suffix}",

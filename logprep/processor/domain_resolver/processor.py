@@ -38,6 +38,7 @@ from functools import cached_property
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
 from typing import Optional
+from urllib.parse import urlsplit
 
 from attr import define, field, validators
 
@@ -47,7 +48,6 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_fields_to, get_dotted_field_value
-from logprep.util.url.url import Domain
 
 logger = logging.getLogger("DomainResolver")
 
@@ -151,7 +151,11 @@ class DomainResolver(Processor):
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
             return
-        domain = Domain(domain_or_url_str).fqdn
+
+        url = urlsplit(domain_or_url_str)
+        domain = url.hostname
+        if url.scheme == "":
+            domain = url.path
         if not domain:
             return
         self.metrics.total_urls += 1
