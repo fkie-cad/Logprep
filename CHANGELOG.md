@@ -6,10 +6,12 @@
 * `CriticalInputError` is raised when the input preprocessor values can't be set, this was so far only true
   for the hmac preprocessor, but is now also applied for all other preprocessors.
 * fix `delimiter` typo in `StringSplitterRule` configuration
+* removed the configuration `tld_lists` in `domain_resolver`, `domain_label_extractor` and `pseudonymizer` as
+the list is now fixed inside the packaged logprep
 
 ### Features
 
-* configuration of `initContainers` in logprep helm chart is now possible 
+* configuration of `initContainers` in logprep helm chart is now possible
 
 ### Improvements
 
@@ -24,6 +26,8 @@
 * refactored some processors to make use of the new helper methods
 * add `pre-commit` hooks to the repository, install new dev dependency and run `pre-commit install` in the root dir
 * the default `securityContext`for the pod is now configurable
+* remove `tldextract` dependency
+* remove `urlextract` dependency
 
 ### Bugfix
 

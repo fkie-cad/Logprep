@@ -22,7 +22,6 @@ Processor Configuration
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
-        tld_lists: /path/to/list/file
         tagging_field_name: resolved
 
 .. autoclass:: logprep.processor.domain_label_extractor.processor.DomainLabelExtractor.Config
@@ -36,21 +35,14 @@ Processor Configuration
 
 import ipaddress
 import logging
-import os
-import tempfile
-from functools import cached_property
-from pathlib import Path
-from typing import Optional
+from urllib.parse import urlsplit
 
 from attr import define, field, validators
-from filelock import FileLock
-from tldextract import TLDExtract
 
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
-from logprep.util.validators import list_of_urls_validator
+from logprep.util.url.url import Domain
 
 logger = logging.getLogger("DomainLabelExtractor")
 
@@ -68,39 +60,8 @@ class DomainLabelExtractor(FieldManager):
         """Optional configuration field that defines into which field in the event the
         informational tags should be written to. If this field is not present it defaults
         to :code:`tags`."""
-        tld_lists: Optional[list] = field(default=None, validator=[list_of_urls_validator])
-        """Optional list of path to files with top-level domain lists
-        (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,
-        a default list will be retrieved online and cached in a local directory. For local
-        files the path has to be given with :code:`file:///path/to/file.dat`."""
 
     rule_class = DomainLabelExtractorRule
-
-    __slots__ = ["detection_results", "_pre_detector_topic", "_ids"]
-
-    @cached_property
-    def _tld_extractor(self):
-        if self._config.tld_lists is not None:
-            _tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_lists)
-        else:
-            _tld_extractor = TLDExtract()
-        return _tld_extractor
-
-    def setup(self):
-        super().setup()
-        if self._config.tld_lists:
-            downloaded_tld_lists_paths = []
-            logger.debug("start tldlists download...")
-            for index, tld_list in enumerate(self._config.tld_lists):
-                logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-                os.makedirs(logprep_tmp_dir, exist_ok=True)
-                list_path = logprep_tmp_dir / f"{self.name}-tldlist-{index}.dat"
-                if not os.path.isfile(list_path):
-                    with FileLock(list_path):
-                        list_path.touch()
-                        list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
-                downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
-            logger.debug("finished tldlists download...")
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
@@ -135,7 +96,11 @@ class DomainLabelExtractor(FieldManager):
             )
             return
 
-        labels = self._tld_extractor(domain)
+        url = urlsplit(domain)
+        domain = url.hostname
+        if url.scheme == "":
+            domain = url.path
+        labels = Domain(domain)
         if labels.suffix != "":
             fields = {
                 f"{rule.target_field}.registered_domain": f"{labels.domain}.{labels.suffix}",
