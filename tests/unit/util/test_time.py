@@ -60,11 +60,22 @@ class TestTimeParser:
         for attribute, value in expected.items():
             assert getattr(timestamp, attribute) == value
 
+    @pytest.mark.parametrize("timezone", [None, ZoneInfo("UTC"), ZoneInfo("Europe/Berlin")])
+    def test_has_utc_if_timezone_was_set(self, timezone):
+        datetime_time = datetime.now(timezone)
+        time_parser_time = TimeParser.now(timezone)
+        assert time_parser_time.second == pytest.approx(datetime_time.second, abs=1)
+        if timezone is None:
+            assert time_parser_time.tzinfo == ZoneInfo("UTC")
+        else:
+            assert time_parser_time.tzinfo == timezone
+
     def test_set_utc_if_timezone_is_missing_sets_timezone(self):
-        time_object = datetime.now()
-        assert time_object.tzinfo is None
-        time_object = TimeParser._set_utc_if_timezone_is_missing(time_object)
-        assert time_object.tzinfo is ZoneInfo("UTC")
+        datetime_time = datetime.now()
+        assert datetime_time.tzinfo is None
+        time_parser_time = TimeParser._set_utc_if_timezone_is_missing(datetime_time)
+        assert time_parser_time.tzinfo is ZoneInfo("UTC")
+        assert time_parser_time.second == pytest.approx(datetime_time.second, abs=1)
 
     @pytest.mark.parametrize(
         "timestamp, source_format, source_timezone, expected_timezone_name, expected",
