@@ -23,10 +23,10 @@ An example config file would look like:
           host: 0.0.0.0
           port: 9000
         endpoints:
-          /firstendpoint: json 
+          /firstendpoint: json
           /second*: plaintext
           /(third|fourth)/endpoint: jsonl
-            
+
 The endpoint config supports regex and wildcard patterns:
   * :code:`/second*`: matches everything after asterisk
   * :code:`/(third|fourth)/endpoint` matches either third or forth in the first part
@@ -38,7 +38,7 @@ By providing a credentials file in environment variable :code:`LOGPREP_CREDENTIA
 add basic authentication for a specific endpoint. The format of this file would look like:
 
 ..  code-block:: yaml
-    :caption: Example for credentials file 
+    :caption: Example for credentials file
     :linenos:
 
     input:
@@ -49,7 +49,7 @@ add basic authentication for a specific endpoint. The format of this file would 
         /second*:
           username: user
           password: secret_password
-          
+
 You can choose between a plain secret with the key :code:`password` or a filebased secret
 with the key :code:`password_file`.
 
@@ -60,20 +60,20 @@ with the key :code:`password_file`.
         - basic auth must only be used with strong passwords
         - basic auth must only be used with TLS encryption
         - avoid to reveal your plaintext secrets in public repositories
-        
+
 Behaviour of HTTP Requests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
   * :code:`GET`:
-   
+
     * Responds always with 200 (ignores configured Basic Auth)
     * When Messages Queue is full, it responds with 429
   * :code:`POST`:
-  
+
     * Responds with 200 on non-Basic Auth Endpoints
     * Responds with 401 on Basic Auth Endpoints (and 200 with appropriate credentials)
     * When Messages Queue is full, it responds wiht 429
   * :code:`ALL OTHER`:
-  
+
     * Responds with 405
 """
 
@@ -353,7 +353,7 @@ class HttpInput(Input):
            :title: Uvicorn Webserver Configuration
            :location: uvicorn_config
            :suggested-value: uvicorn_config.access_log: true, uvicorn_config.server_header: false, uvicorn_config.data_header: false
-           
+
            Additionally to the below it is recommended to configure `ssl on the metrics server endpoint
            <https://www.uvicorn.org/settings/#https>`_
 
@@ -378,8 +378,8 @@ class HttpInput(Input):
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`. It's possible to use wildcards and
         regexps for pattern matching.
-        
-        
+
+
         .. autoclass:: logprep.connector.http.input.PlaintextHttpEndpoint
             :noindex:
         .. autoclass:: logprep.connector.http.input.JSONLHttpEndpoint
@@ -430,6 +430,7 @@ class HttpInput(Input):
         )
         schema = "https" if ssl_options else "http"
         self.target = f"{schema}://{host}:{port}"
+        self.app = None
         self.http_server = None
 
     def setup(self):
@@ -462,9 +463,9 @@ class HttpInput(Input):
                 self.metrics,
             )
 
-        app = self._get_asgi_app(endpoints_config)
+        self.app = self._get_asgi_app(endpoints_config)
         self.http_server = http.ThreadingHTTPServer(
-            self._config.uvicorn_config, app, daemon=False, logger_name="HTTPServer"
+            self._config.uvicorn_config, self.app, daemon=False, logger_name="HTTPServer"
         )
         self.http_server.start()
 

@@ -403,6 +403,8 @@ class AutoRuleTester:
             processor.load_rules(self._empty_rules_dirs, [])
         elif rule_type == "generic_rules":
             processor.load_rules([], self._empty_rules_dirs)
+        if processor._bypass_rule_tree:
+            processor._rules = processor.rules
         processor.setup()
 
     def _prepare_test_eval(

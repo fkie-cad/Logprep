@@ -6,22 +6,29 @@
 * `CriticalInputError` is raised when the input preprocessor values can't be set, this was so far only true
   for the hmac preprocessor, but is now also applied for all other preprocessors.
 * fix `delimiter` typo in `StringSplitterRule` configuration
+* removed the configuration `tld_lists` in `domain_resolver`, `domain_label_extractor` and `pseudonymizer` as
+the list is now fixed inside the packaged logprep
 
 ### Features
 
-* configuration of `initContainers` in logprep helm chart is now possible 
+* configuration of `initContainers` in logprep helm chart is now possible
 
 ### Improvements
 
 * fix `requester` documentation
 * replace `BaseException` with `Exception` for custom errors
 * refactor `generic_resolver` to validate rules on startup instead of application of each rule
+* regex pattern lists for the `generic_resolver` are pre-compiled
+* regex matching from lists in the `generic_resolver` is cached
+* matching in the `generic_resolver` can be case-insensitive
 * rewrite the helper method `add_field_to` such that it always raises an `FieldExistsWarning` instead of return a bool.
 * add new helper method `add_fields_to` to directly add multiple fields to one event
 * refactored some processors to make use of the new helper methods
 * add `pre-commit` hooks to the repository, install new dev dependency and run `pre-commit install` in the root dir
 * the default `securityContext`for the pod is now configurable
 * allow `TimeParser` to get the current time with a specified timezone instead of always using local time and setting the timezone to UTC
+* remove `tldextract` dependency
+* remove `urlextract` dependency
 
 ### Bugfix
 
@@ -29,6 +36,8 @@
   before the first message was pulled.
 * fix pseudonymizer cache metrics not updated
 * fix incorrect timezones for log arrival time and delta time in input preprocessing
+* fix `_get_value` in `FilterExpression` so that keys don't match on values
+* fix `auto_rule_tester` to work with `LOGPREP_BYPASS_RULE_TREE` enabled
 
 ## 14.0.0
 ### Breaking
