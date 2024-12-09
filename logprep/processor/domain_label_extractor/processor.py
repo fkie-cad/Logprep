@@ -41,7 +41,7 @@ from attr import define, field, validators
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
-from logprep.util.url import Domain
+from logprep.util.url.url import Domain
 
 logger = logging.getLogger("DomainLabelExtractor")
 

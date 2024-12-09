@@ -6,7 +6,7 @@ from string import ascii_lowercase
 
 import pytest
 
-from logprep.util.url import extract_urls
+from logprep.util.url.url import Domain, extract_urls
 
 
 class TestExtractUrls:
@@ -73,3 +73,7 @@ class TestExtractUrls:
     def test_extract_urls_with_large_domain_label(self):
         domain_label = "a" * 64
         assert extract_urls(f"http://www.{domain_label}.com") == []
+
+    def test_get_suffix_from_domain(self):
+        domain = Domain("www.google.com")
+        assert domain.suffix == "com"

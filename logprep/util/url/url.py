@@ -145,5 +145,8 @@ class Domain:
         self.domain = splitted_domain[-2]
         self.suffix = splitted_domain[-1]
 
+    def get_suffix(self, domain: str) -> bool:
+        pass
+
     def __repr__(self):
         return f"{self.subdomain}.{self.domain}.{self.suffix}"

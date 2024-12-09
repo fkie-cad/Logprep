@@ -47,7 +47,7 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_fields_to, get_dotted_field_value
-from logprep.util.url import Domain
+from logprep.util.url.url import Domain
 
 logger = logging.getLogger("DomainResolver")
 

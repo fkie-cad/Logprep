@@ -66,7 +66,7 @@ from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridGCMEncrypter,
     Encrypter,
 )
-from logprep.util.url import extract_urls
+from logprep.util.url.url import extract_urls
 
 
 class Pseudonymizer(FieldManager):
