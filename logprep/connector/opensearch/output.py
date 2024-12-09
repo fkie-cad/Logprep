@@ -313,3 +313,7 @@ class OpensearchOutput(Output):
             self.metrics.number_of_errors += 1
             return False
         return super().health() and resp.get("status") in self._config.desired_cluster_status
+
+    def shut_down(self):
+        self._write_backlog()
+        return super().shut_down()
