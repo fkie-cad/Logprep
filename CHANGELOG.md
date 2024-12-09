@@ -29,6 +29,7 @@ the list is now fixed inside the packaged logprep
 * allow `TimeParser` to get the current time with a specified timezone instead of always using local time and setting the timezone to UTC
 * remove `tldextract` dependency
 * remove `urlextract` dependency
+* fix wrong documentation for `timestamp_differ`
 
 ### Bugfix
 
