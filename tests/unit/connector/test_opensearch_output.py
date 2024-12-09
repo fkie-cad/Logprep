@@ -5,7 +5,6 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-arguments
 import copy
-import os
 from unittest import mock
 
 import pytest
@@ -17,15 +16,7 @@ from logprep.abc.output import CriticalOutputError
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
 
-
-class NotJsonSerializableMock:
-    pass
-
-
-in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
-
 helpers.parallel_bulk = mock.MagicMock()
-helpers.bulk = mock.MagicMock()
 
 
 class TestOpenSearchOutput(BaseOutputTestCase):
@@ -169,5 +160,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
 
     def test_shut_down_clears_message_backlog(self):
         self.object._message_backlog = [{"some": "event"}]
-        self.object.shut_down()
+        with mock.patch("logprep.connector.opensearch.output.OpensearchOutput._bulk"):
+            self.object.shut_down()
         assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
