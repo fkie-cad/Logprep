@@ -117,14 +117,14 @@ Processor Specific Metrics
 
 import os
 import time
+from _socket import gethostname
 from abc import ABC, abstractmethod
 from typing import Any, Union
 
-from _socket import gethostname
 from attrs import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
-from logprep.util.helper import add_fields_to
+from logprep.util.helper import _add_field_to_silent_fail
 
 
 @define(kw_only=True, slots=False)
@@ -222,14 +222,22 @@ class Metric(ABC):
                 if hasattr(self, "rule_type"):
                     event = args[0]
                     if event:
-                        add_fields_to(
-                            event, fields={f"processing_times.{self.rule_type}": duration}
+                        _add_field_to_silent_fail(
+                            event=event,
+                            field=(f"processing_times.{self.rule_type}", duration),
+                            rule=None,
                         )
                 if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
                     event = args[0]
                     if event:
-                        add_fields_to(event, fields={"processing_times.pipeline": duration})
-                        add_fields_to(event, fields={"processing_times.hostname": gethostname()})
+                        _add_field_to_silent_fail(
+                            event=event, field=("processing_times.pipeline", duration), rule=None
+                        )
+                        _add_field_to_silent_fail(
+                            event=event,
+                            field=("processing_times.hostname", gethostname()),
+                            rule=None,
+                        )
                 return result
 
             return inner

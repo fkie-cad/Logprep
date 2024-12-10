@@ -349,10 +349,6 @@ class TestComponentMetrics:
         metrics_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert "test_metric_without_label_values" not in metrics_output
 
-    @Metric.measure_time(metric_name="test_metric_histogram")
-    def decorated_function(self):
-        pass
-
     @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
     def test_measure_time_measures_and_appends_processing_times_but_not_hostname(self):
         @Metric.measure_time(metric_name="test_metric_histogram")
@@ -372,6 +368,36 @@ class TestComponentMetrics:
         assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
         assert not re.search(
             r"test_metric_histogram_bucket.* 2\.0", metric_output
+        )  # regex is greedy
+        assert "processing_times" in document
+        assert not "hostname" in document.get("processing_times")  # is only set by the pipeline
+        assert "test_rule" in document.get("processing_times")
+        assert document.get("processing_times").get("test_rule") > 0
+
+    @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
+    def test_measure_time_measures_and_appends_processing_times_two_times(self):
+        # simulates consecutive calls from processors that appear two times in
+        # the pipeline, more precise two of the same rule_types appear in the
+        # pipeline
+
+        @Metric.measure_time(metric_name="test_metric_histogram")
+        def decorated_function_append(self, document):
+            pass
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
+        document = {"test": "event"}
+        decorated_function_append(self, document)
+        decorated_function_append(self, document)
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 2\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 2\.0", metric_output)
+        assert not re.search(
+            r"test_metric_histogram_bucket.* 3\.0", metric_output
         )  # regex is greedy
         assert "processing_times" in document
         assert not "hostname" in document.get("processing_times")  # is only set by the pipeline
@@ -412,11 +438,15 @@ class TestComponentMetrics:
         mock_gethostname.assert_called_once()
 
     def test_measure_time_measures(self):
+        @Metric.measure_time(metric_name="test_metric_histogram")
+        def decorated_function(self):
+            pass
+
         metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
         assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
         assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
-        self.decorated_function()
+        decorated_function(self)
 
         metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
@@ -450,5 +480,5 @@ class TestComponentMetrics:
                 r"test_metric_histogram_bucket.* 2\.0", metric_output
             )  # regex is greedy
             assert document == {}
-            # assert call on time.perf_counter to ensure that correct decorator was accessed
+            # assert call on time.perf_counter to ensure that the correct decorator was accessed
             mock_perf_counter.assert_called()
