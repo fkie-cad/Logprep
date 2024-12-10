@@ -40,6 +40,7 @@ the list is now fixed inside the packaged logprep
 * fix `_get_value` in `FilterExpression` so that keys don't match on values
 * fix `auto_rule_tester` to work with `LOGPREP_BYPASS_RULE_TREE` enabled
 * fix `opensearch_output` not draining `message_backlog` on shutdown
+* silence `FieldExists` warning in metrics when `LOGPREP_APPEND_MEASUREMENT_TO_EVENT` is active
 
 ## 14.0.0
 ### Breaking
