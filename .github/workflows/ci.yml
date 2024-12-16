@@ -129,7 +129,8 @@ jobs:
 
       # This step will build the image again, but every layer will already be cached, so it is nearly instantaneous.
       - name: Push image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
+        id: build-and-push
         with:
           context: .
           push: true
@@ -174,7 +175,8 @@ jobs:
 
       - name: Sign image with a key
         run: |
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@{{ DIGEST }}
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
