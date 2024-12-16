@@ -244,7 +244,6 @@ A HTML documentation can be then found in `doc/_build/html/index.html`.
 ## Container signatures
 
 From release 15 on, Logprep containers are signed using the cosign tool.
-Logprep currently does not use the keyless signing and the transparency log.
 To verify the container, you can copy the following public key into a file
 `logprep.pub`:
 
@@ -258,5 +257,5 @@ kVtARE+LJfSFI25BanOG9jaxxRGVt+Sa1KtQbMcy7Glxu0s7XgD9VFGjTA==
 And use it to verify the signature:
 
 ```
-cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:3.11-latest --insecure-ignore-tlog=true
+cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:3.11-latest
 ```
