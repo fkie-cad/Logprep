@@ -11,6 +11,15 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/fkie-cad/logprep?style=social)
 </h3>
 
+## validating the image
+
+```
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEgkQXDi/N4TDFE2Ao0pulOFfbGm5g
+kVtARE+LJfSFI25BanOG9jaxxRGVt+Sa1KtQbMcy7Glxu0s7XgD9VFGjTA==
+-----END PUBLIC KEY-----
+```
+
 ## Introduction
 
 Logprep allows to collect, process and forward log messages from various data sources.
