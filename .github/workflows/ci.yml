@@ -173,14 +173,6 @@ jobs:
         with:
           cosign-release: 'v2.4.1'
 
-      - name: Sign image with a key
-        run: |
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
-        env:
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
-
       - name: Create SBOM of container image
         uses: anchore/sbom-action@v0
         with:
@@ -188,8 +180,11 @@ jobs:
           artifact-name: py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json
           output-file: py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json
 
-      - name: Attach SBOM attestation to image
+      - name: Sign image with a key and add sbom attestation
         run: |
-          cosign attest --key env://COSIGN_PRIVATE_KEY --predicate py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${{ steps.build-and-push.outputs.digest }}
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
+          cosign attest --key env://COSIGN_PRIVATE_KEY --predicate py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
