@@ -97,4 +97,5 @@ jobs:
     uses: ./.github/workflows/container-build.yml
     with:
       build-version: dev
-      tags: "${{ github.head_ref }}, banana"
+      tags: "${{ github.head_ref }}"
+      secrets: inherit

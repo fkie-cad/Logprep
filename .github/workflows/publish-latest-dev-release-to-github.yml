@@ -52,3 +52,4 @@ jobs:
     with:
       build-version: ${{ github.ref_name }}
       tags: "main, latest"
+      secrets: inherit
