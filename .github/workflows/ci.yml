@@ -183,7 +183,7 @@ jobs:
       - name: Sign image with a key and add sbom attestation
         run: |
           cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
-          cosign attest --key env://COSIGN_PRIVATE_KEY --predicate py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
+          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
