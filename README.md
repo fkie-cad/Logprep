@@ -26,18 +26,15 @@ message is sent to a configured output connector.
 Logprep is primarily designed to process log messages. Generally, Logprep can handle JSON messages,
 allowing further applications besides log handling.
 
-This readme provides basic information about the following topics:
-- [About Logprep](#about-logprep)
-- [Getting Started](https://logprep.readthedocs.io/en/latest/getting_started.html)
+- [About Logprep](https://github.com/fkie-cad/Logprep/blob/main/README.md#about-logprep)
+- [Installation](https://logprep.readthedocs.io/en/latest/installation.html)
 - [Deployment Examples](https://logprep.readthedocs.io/en/latest/examples/index.html)
 - [Event Generation](https://logprep.readthedocs.io/en/latest/user_manual/execution.html#event-generation)
 - [Documentation](https://logprep.readthedocs.io/en/latest)
-- [Contributing](CONTRIBUTING)
-- [License](LICENSE)
-- [Changelog](CHANGELOG.md)
-
-More detailed information can be found in the
-[Documentation](https://logprep.readthedocs.io/en/latest/).
+- [Container signatures](https://github.com/fkie-cad/Logprep/blob/main/README.md#container-signatures)
+- [Contributing](https://github.com/fkie-cad/Logprep/blob/main/CONTRIBUTING.md)
+- [License](https://github.com/fkie-cad/Logprep/blob/main/LICENSE)
+- [Changelog](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md)
 
 ## About Logprep
 
@@ -230,22 +227,6 @@ If it does exist then the dropper would delete this field from the log message.
 Details about the rule language and how to write rules for the processors can be found in the
 [rule configuration documentation](https://logprep.readthedocs.io/en/latest/configuration/rules.html).
 
-## Getting Started
-
-For installation instructions see: https://logprep.readthedocs.io/en/latest/installation.html
-For execution instructions see: https://logprep.readthedocs.io/en/latest/user_manual/execution.html
-
-### Reload the Configuration
-
-A `config_refresh_interval` can be set to periodically and automatically refresh the given configuration.
-This can be useful in case of containerized environments (such as Kubernetes), when pod volumes often change
-on the fly.
-
-If the configuration does not pass a consistency check, then an error message is logged and
-Logprep keeps running with the previous configuration.
-The configuration should be then checked and corrected on the basis of the error message.
-
-
 ## Documentation
 
 The documentation for Logprep is online at https://logprep.readthedocs.io/en/latest/ or it can
@@ -259,3 +240,22 @@ make html
 ```
 
 A HTML documentation can be then found in `doc/_build/html/index.html`.
+
+## Container signatures
+
+From release 15 on, Logprep containers are signed using the cosign tool.
+To verify the container, you can copy the following public key into a file
+`logprep.pub`:
+
+```
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEgkQXDi/N4TDFE2Ao0pulOFfbGm5g
+kVtARE+LJfSFI25BanOG9jaxxRGVt+Sa1KtQbMcy7Glxu0s7XgD9VFGjTA==
+-----END PUBLIC KEY-----
+```
+
+And use it to verify the signature:
+
+```
+cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:3.11-latest
+```

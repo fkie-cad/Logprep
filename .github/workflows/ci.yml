@@ -126,10 +126,11 @@ jobs:
       - name: Ensure logprep is available in image
         run: |
           docker run --rm ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }} --version
-  
+
       # This step will build the image again, but every layer will already be cached, so it is nearly instantaneous.
       - name: Push image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
+        id: build-and-push
         with:
           context: .
           push: true
@@ -138,7 +139,7 @@ jobs:
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: |
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
-  
+
       # To avoid the trivy-db becoming outdated, we save the cache for one day
       - name: Get date
         id: date
@@ -151,7 +152,7 @@ jobs:
           key: trivy-cache-${{ steps.date.outputs.date }}
           restore-keys:
             trivy-cache-
-      
+
       - name: Scan image using Trivy
         uses: aquasecurity/trivy-action@0.24.0
         env:
@@ -166,3 +167,16 @@ jobs:
       # So we need to change the permissions before caching the database.
       - name: Change permissions for trivy.db
         run: sudo chmod 0644 ./cache/db/trivy.db
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Sign image with a key
+        run: |
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
