@@ -60,7 +60,7 @@ jobs:
         run: |
           python - <<EOF
           import os
-          digest = "${{ steps.build-and-push.outputs.ImageID }}"
+          digest = "${{ steps.build.outputs.ImageID }}"
           with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
               file.write(f"imageid={digest.split(':')[1]}")
           EOF
