@@ -42,8 +42,8 @@ jobs:
           version = "${{ matrix.python-version }}"
           tags = "${{ inputs.tags }}".split(",")
           full_image = [f"{image}:py{version}-{tag.strip()}" for tag in tags]
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-              print(f"tags={'\n'.join(full_image)}", file=fh)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
+              file.write(f"tags={'\n'.join(full_image)}")
           EOF
 
       - name: Build image and export to Docker
