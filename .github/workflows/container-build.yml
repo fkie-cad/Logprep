@@ -20,22 +20,7 @@ jobs:
         python-version: [ "3.10", "3.11", "3.12" ]
 
     steps:
-      - name: Create Image Tags
-        id: image-tag
-        run: |
-          python - <<EOF
-          import os
-          image = "ghcr.io/fkie-cad/logprep"
-          version = "${{ matrix.python-version }}"
-          tags = "${{ inputs.tags }}".split(",")
-          full_image = [f"{image}:py{version}-{tag.strip()}" for tag in tags]
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-              print(f"tags={','.join(full_image)}", file=fh)
-          EOF
 
-      - name: Debug Image Tag
-        run: |
-          echo "${{ steps.image-tag.outputs.tags }}"
 
       - uses: actions/checkout@v4
         with:
@@ -48,6 +33,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Generate Image Tags
+        id: image-tag
+        run: |
+          python - <<EOF
+          import os
+          image = "ghcr.io/fkie-cad/logprep"
+          version = "${{ matrix.python-version }}"
+          tags = "${{ inputs.tags }}".split(",")
+          full_image = [f"{image}:py{version}-{tag.strip()}" for tag in tags]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+              print(f"tags={'\n'.join(full_image)}", file=fh)
+          EOF
+
       - name: Build image and export to Docker
         uses: docker/build-push-action@v6
         id: build-and-push
@@ -57,8 +55,7 @@ jobs:
           build-args: |
             LOGPREP_VERSION=${{ inputs.build-version }}
             PYTHON_VERSION=${{ matrix.python-version }}
-          tags: ${{ inputs.tags }}
-          # ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
+          tags: ${{ steps.image-tag.outputs.tags }}
 
       - name: Ensure logprep is available in image
         run: |
@@ -72,7 +69,7 @@ jobs:
           build-args: |
             LOGPREP_VERSION=${{ inputs.build-version }}
             PYTHON_VERSION=${{ matrix.python-version }}
-          tags: ${{ inputs.tags }}
+          tags: ${{ steps.image-tag.outputs.tags }}
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.7.0
