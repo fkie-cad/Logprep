@@ -181,11 +181,12 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
 
-      - name: Add SBOM to container image
+      - name: Create SBOM of container image
         uses: anchore/sbom-action@v0
         with:
           image: ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${{ steps.build-and-push.outputs.digest }}
+          artifact-name: py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json
 
-      - uses: anchore/sbom-action/publish-sbom@v0
-        with:
-          sbom-artifact-match: ".*\\.spdx$"
+      - name: Attach SBOM attestation to image
+        run: |
+          cosign attach attestation --attestation py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${{ steps.build-and-push.outputs.digest }}
