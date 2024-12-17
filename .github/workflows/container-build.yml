@@ -27,7 +27,7 @@ jobs:
           import os
           image = "ghcr.io/fkie-cad/logprep"
           version = "${{ matrix.python-version }}"
-          tags = "${{ input.tags }}".split(",")
+          tags = "${{ inputs.tags }}".split(",")
           full_image = [f"{image}:py{version}-{tag.strip()}" for tag in tags]
           os.environ["GITHUB_OUTPUT"] = f"tags={','.join(full_image)}"
           EOF
