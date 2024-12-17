@@ -83,14 +83,14 @@ jobs:
       - name: Create SBOM of container image
         uses: anchore/sbom-action@v0
         with:
-          image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          image: ghcr.io/fkie-cad/logprep:local
           artifact-name: logprep@${{ steps.build-and-push.outputs.digest }}.spdx.json
           output-file: logprep@${{ steps.build-and-push.outputs.digest }}.spdx.json
 
       - name: Sign image with a key and add sbom attestation
         run: |
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.build-and-push.outputs.digest }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:local
+          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.build-and-push.outputs.digest }}.spdx.json ghcr.io/fkie-cad/logprep:local
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
@@ -114,7 +114,7 @@ jobs:
           TRIVY_CACHE_DIR: ./cache
         with:
           scan-type: image
-          image-ref: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          image-ref: ghcr.io/fkie-cad/logprep:local
           trivy-config: trivy.yaml
 
       # Trivy-db uses `0600` permissions.
