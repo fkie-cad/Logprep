@@ -49,7 +49,7 @@ jobs:
   containerbuild:
     uses: ./.github/workflows/container-build.yml
     needs: create-github-prerelease
+    secrets: inherit
     with:
       build-version: ${{ github.ref_name }}
       tags: "main, latest"
-      secrets: inherit

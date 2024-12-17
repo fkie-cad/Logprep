@@ -95,7 +95,7 @@ jobs:
 
   containerbuild:
     uses: ./.github/workflows/container-build.yml
+    secrets: inherit
     with:
       build-version: dev
       tags: "${{ github.head_ref }}"
-      secrets: inherit
