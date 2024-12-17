@@ -244,7 +244,8 @@ A HTML documentation can be then found in `doc/_build/html/index.html`.
 
 ## Container signatures
 
-From release 15 on, Logprep containers are signed using the cosign tool.
+From release 15 on, Logprep containers are signed using the
+[cosign](https://github.com/sigstore/cosign) tool.
 To verify the container, you can copy the following public key into a file
 `logprep.pub`:
 
@@ -264,7 +265,8 @@ cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:3.11-latest
 ## Container SBOM
 
 From release 15 on, Logprep container images are shipped with a generated sbom.
-To verify the supply-chain, get the sbom data from the image attestation with:
+To verify the supply-chain, get the sbom data from the image
+[cosign](https://github.com/sigstore/cosign) attestation with:
 
 ```
 cosign verify-attestation --key logprep.pub ghcr.io/fkie-cad/logprep:py3.11-latest | jq '.payload | @base64d | fromjson | .predicate | .Data | fromjson' > sbom.json
