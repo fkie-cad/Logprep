@@ -64,7 +64,7 @@ jobs:
     needs: publish-latest-release-to-pypi
     with:
       build-version: ${{ github.ref_name }}
-      tags:
-        - ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.ref_name }}
-        - ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-stable
-        - ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest
+      tags: |
+        ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.ref_name }}
+        ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-stable
+        ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest

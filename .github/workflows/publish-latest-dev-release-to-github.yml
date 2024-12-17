@@ -51,6 +51,6 @@ jobs:
     needs: create-github-prerelease
     with:
       build-version: ${{ github.ref_name }}
-      tags:
-        - ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-main
-        - ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest
+      tags: |
+        ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-main
+        ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest
