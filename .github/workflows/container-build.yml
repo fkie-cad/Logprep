@@ -62,7 +62,7 @@ jobs:
           import os
           digest = "${{ steps.build-and-push.outputs.ImageID }}"
           with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
-              file.write(f"imageid={digest.split(':')[1]")
+              file.write(f"imageid={digest.split(':')[1]}")
           EOF
 
       - name: Ensure logprep is available in image
