@@ -89,13 +89,13 @@ jobs:
         uses: anchore/sbom-action@v0
         with:
           image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-          artifact-name: logprep@${{ steps.build-and-push.outputs.digest }}.spdx.json
-          output-file: logprep@${{ steps.build-and-push.outputs.digest }}.spdx.json
+          artifact-name: logprep@${{ steps.imageid.outputs.imageid }}.spdx.json
+          output-file: logprep@${{ steps.imageid.outputs.imageid }}.spdx.json
 
       - name: Sign image with a key and add sbom attestation
         run: |
           cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.build-and-push.outputs.digest }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.imageid.outputs.imageid }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
