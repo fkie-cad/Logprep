@@ -10,18 +10,13 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestDomainLabelExtractor(BaseProcessorTestCase):
     CONFIG = {
         "type": "domain_label_extractor",
-        "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],
-        "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"],
+        "rules": ["tests/testdata/unit/domain_label_extractor/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
     @property
-    def generic_rules_dirs(self):
-        return self.CONFIG.get("generic_rules")
-
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG.get("specific_rules")
+    def rules_dirs(self):
+        return self.CONFIG.get("rules")
 
     def test_domain_extraction_from_full_url(self):
         document = {"url": {"domain": "https://url.full.domain.de/path/file?param=1"}}
@@ -166,8 +161,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         config = {
             "Test DomainLabelExtractor Name": {
                 "type": "domain_label_extractor",
-                "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],
-                "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"],
+                "rules": ["tests/testdata/unit/domain_label_extractor/rules"],
                 "tagging_field_name": "special_tags",
                 "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
             }
@@ -187,8 +181,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         config = {
             "Test DomainLabelExtractor Name": {
                 "type": "domain_label_extractor",
-                "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],
-                "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"],
+                "rules": ["tests/testdata/unit/domain_label_extractor/rules"],
                 "tagging_field_name": "special_tags",
                 "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
             }
@@ -260,7 +253,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         assert document == expected
 
@@ -283,7 +276,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         assert document == expected
 
@@ -303,7 +296,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         assert document == expected
 
@@ -327,7 +320,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         result = self.object.process(document)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, List, Optional
 from attr import define, field, validators
 
 from logprep.abc.component import Component
-from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import (
     ProcessingCriticalError,
@@ -84,18 +84,7 @@ class Processor(Component):
     class Config(Component.Config):
         """Common Configurations"""
 
-        specific_rules: List[str] = field(
-            validator=[
-                validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
-            ]
-        )
-        """List of rule locations to load rules from.
-        In addition to paths to file directories it is possible to retrieve rules from a URI.
-        For valid URI formats see :ref:`getters`.
-        As last option it is possible to define entire rules with all their configuration parameters as list elements.
-        """
-        generic_rules: List[str] = field(
+        rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
                 validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
@@ -120,8 +109,7 @@ class Processor(Component):
     __slots__ = [
         "rule_class",
         "_event",
-        "_specific_tree",
-        "_generic_tree",
+        "_rule_tree",
         "result",
         "_bypass_rule_tree",
         "_rules",
@@ -129,8 +117,7 @@ class Processor(Component):
 
     rule_class: "Rule"
     _event: dict
-    _specific_tree: RuleTree
-    _generic_tree: RuleTree
+    _rule_tree: RuleTree
     _strategy = None
     _bypass_rule_tree: bool
     _rules: tuple["Rule"]
@@ -138,20 +125,8 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
-        self._specific_tree = RuleTree(
-            processor_name=self.name,
-            processor_config=self._config,
-            rule_tree_type=RuleTreeType.SPECIFIC,
-        )
-        self._generic_tree = RuleTree(
-            processor_name=self.name,
-            processor_config=self._config,
-            rule_tree_type=RuleTreeType.GENERIC,
-        )
-        self.load_rules(
-            generic_rules_targets=self._config.generic_rules,
-            specific_rules_targets=self._config.specific_rules,
-        )
+        self._rule_tree = RuleTree(processor_name=self.name, processor_config=self._config)
+        self.load_rules(rules_targets=self._config.rules)
         self.result = None
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
@@ -160,24 +135,14 @@ class Processor(Component):
             logger.debug("Bypassing rule tree for processor %s", self.name)
 
     @property
-    def _specific_rules(self):
-        """Returns all specific rules
+    def _tree_rules(self):
+        """Returns all rules
 
         Returns
         -------
-        specific_rules: list[Rule]
+        rules: list[Rule]
         """
-        return self._specific_tree.rules
-
-    @property
-    def _generic_rules(self):
-        """Returns all generic rules
-
-        Returns
-        -------
-        generic_rules: list[Rule]
-        """
-        return self._generic_tree.rules
+        return self._rule_tree.rules
 
     @property
     def rules(self):
@@ -187,7 +152,7 @@ class Processor(Component):
         -------
         rules: list[Rule]
         """
-        return [*self._generic_rules, *self._specific_rules]
+        return [*self._tree_rules]
 
     @property
     def metric_labels(self) -> dict:
@@ -219,8 +184,7 @@ class Processor(Component):
         if self._bypass_rule_tree:
             self._process_all_rules(event)
             return self.result
-        self._process_rule_tree(event, self._specific_tree)
-        self._process_rule_tree(event, self._generic_tree)
+        self._process_rule_tree(event, self._rule_tree)
         return self.result
 
     def _process_all_rules(self, event: dict):
@@ -322,23 +286,16 @@ class Processor(Component):
                 resolved_sources.append(rule_source)
         return resolved_sources
 
-    def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
+    def load_rules(self, rules_targets: List[str]):
         """method to add rules from directories or urls"""
-        specific_rules_targets = self.resolve_directories(specific_rules_targets)
-        generic_rules_targets = self.resolve_directories(generic_rules_targets)
-        for specific_rules_target in specific_rules_targets:
-            rules = self.rule_class.create_rules_from_target(specific_rules_target, self.name)
+        rules_targets = self.resolve_directories(rules_targets)
+        for rules_target in rules_targets:
+            rules = self.rule_class.create_rules_from_target(rules_target, self.name)
             for rule in rules:
-                self._specific_tree.add_rule(rule)
-        for generic_rules_target in generic_rules_targets:
-            rules = self.rule_class.create_rules_from_target(generic_rules_target, self.name)
-            for rule in rules:
-                self._generic_tree.add_rule(rule)
+                self._rule_tree.add_rule(rule)
         if logger.isEnabledFor(logging.DEBUG):  # pragma: no cover
-            number_specific_rules = self._specific_tree.number_of_rules
-            logger.debug(f"{self.describe()} loaded {number_specific_rules} specific rules")
-            number_generic_rules = self._generic_tree.number_of_rules
-            logger.debug(f"{self.describe()} loaded {number_generic_rules} generic rules")
+            number_rules = self._rule_tree.number_of_rules
+            logger.debug(f"{self.describe()} loaded {number_rules} rules")
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:

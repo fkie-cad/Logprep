@@ -44,8 +44,7 @@ class TestRuleTree:
             {
                 "processor": {
                     "type": "dissector",
-                    "generic_rules": [],
-                    "specific_rules": [],
+                    "rules": [],
                     "tree_config": "tests/testdata/unit/tree_config.json",
                 }
             }

@@ -16,10 +16,8 @@ Processor Configuration
 
     - my_grokker:
         type: grokker
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
         custom_patterns_dir: "http://the.patterns.us/patterns.zip"
 
 .. autoclass:: logprep.processor.grokker.processor.Grokker.Config

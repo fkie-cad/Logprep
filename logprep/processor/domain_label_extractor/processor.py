@@ -18,10 +18,8 @@ Processor Configuration
 
     - domainlabelextractorname:
         type: domain_label_extractor
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
         tagging_field_name: resolved
 
 .. autoclass:: logprep.processor.domain_label_extractor.processor.DomainLabelExtractor.Config

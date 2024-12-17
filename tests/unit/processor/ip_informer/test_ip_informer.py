@@ -411,19 +411,18 @@ failure_test_cases = [
 class TestIpInformer(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "ip_informer",
-        "specific_rules": ["tests/testdata/unit/ip_informer/specific/"],
-        "generic_rules": ["tests/testdata/unit/ip_informer/generic/"],
+        "rules": ["tests/testdata/unit/ip_informer/rules/"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)

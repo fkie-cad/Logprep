@@ -702,9 +702,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
         "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
         "hash_salt": "a_secret_tasty_ingredient",
-        "specific_rules": ["tests/testdata/unit/pseudonymizer/rules/specific/"],
-        "generic_rules": ["tests/testdata/unit/pseudonymizer/rules/generic/"],
-        "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
+        "rules": ["tests/testdata/unit/pseudonymizer/rules"],
+        "regex_mapping": "tests/testdata/unit/pseudonymizer/regex_mapping.yml",
         "max_cached_pseudonyms": 1000000,
     }
 
@@ -755,15 +754,15 @@ class TestPseudonymizer(BaseProcessorTestCase):
     def test_testcases(self, testcase, rule, event, expected, regex_mapping):
         if regex_mapping is not None:
             self.regex_mapping = regex_mapping
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected, testcase
 
-    def _load_specific_rule(self, rule):
+    def _load_rule(self, rule):
         config = deepcopy(self.CONFIG)
         config["regex_mapping"] = self.regex_mapping
         self.object = Factory.create({"pseudonymizer": config})
-        super()._load_specific_rule(rule)
+        super()._load_rule(rule)
         self.object.setup()
 
     def test_pseudonymize_url_fields_not_in_pseudonymize(self):
@@ -782,7 +781,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "url_fields": ["do_not_pseudo_this"],
         }
         self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
 
         assert event["do_not_pseudo_this"] == url
@@ -794,11 +793,11 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "pseudonymizer": {"mapping": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         }
-        self._load_specific_rule(rule_dict)  # First call
+        self._load_rule(rule_dict)  # First call
         expected_pattern = re.compile("(.*)")
-        assert self.object._specific_tree.rules[0].pseudonyms == {"something": expected_pattern}
+        assert self.object._rule_tree.rules[0].pseudonyms == {"something": expected_pattern}
         self.object._replace_regex_keywords_by_regex_expression()  # Second Call
-        assert self.object._specific_tree.rules[0].pseudonyms == {"something": expected_pattern}
+        assert self.object._rule_tree.rules[0].pseudonyms == {"something": expected_pattern}
 
     def test_pseudonymize_string_adds_pseudonyms(self):
         self.object.result = ProcessorResult(processor_name="test")
@@ -825,7 +824,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             }
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
@@ -850,7 +849,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "pseudo_this": "https://www.pseudo.this.de",
             "and_pseudo_this": "https://www.pseudo.this.de",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
@@ -917,7 +916,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_specific_rule(rule_dict)  # First call
+        self._load_rule(rule_dict)  # First call
         extra_output = self.object.process(event)
         assert extra_output.data
         assert isinstance(extra_output.data, list)
@@ -954,7 +953,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_specific_rule(rule_dict)  # First call
+        self._load_rule(rule_dict)  # First call
         extra_output = self.object.process(event)
         assert extra_output
         assert isinstance(extra_output.data, list)
@@ -992,7 +991,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_specific_rule(rule_dict)  # First call
+        self._load_rule(rule_dict)  # First call
         extra_output = self.object.process(event)
         assert extra_output.data
         assert isinstance(extra_output.data, list)
@@ -1040,7 +1039,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         extra_output = self.object.process(event)
         assert extra_output.data[0][0].get("pseudonym"), "pseudonym is set"
         assert "_pseudonymizer_missing_field_warning" in event.get("tags", [])
@@ -1065,8 +1064,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 }
             },
         }
-        self._load_specific_rule(rule_dict)
-        self.object._specific_rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
+        self._load_rule(rule_dict)
+        self.object._tree_rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
         error_message = (
             r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping '.*\/regex_mapping.yml'"
         )
@@ -1092,7 +1091,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
 
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0

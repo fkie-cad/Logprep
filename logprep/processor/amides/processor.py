@@ -63,10 +63,8 @@ Processor Configuration
 
     - amides:
         type: amides
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
         max_cache_entries: 10000
         decision_threshold: 0.0
         num_rule_attributions: 10

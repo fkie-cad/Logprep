@@ -336,7 +336,7 @@ class Rule:
         except InvalidRuleDefinitionError as error:
             raise InvalidRuleDefinitionError(f"{rule_target}: {error}") from error
         if len(rules) == 0:
-            raise InvalidRuleDefinitionError("no rules in file")
+            raise InvalidRuleDefinitionError(f"no rules in file {rule_target}")
         for rule in rules:
             rule.file_name = splitext(basename(rule_target))[0]
         return rules

@@ -38,20 +38,18 @@ class TestConfiguration:
     def test_reads_test_config(self):
         test_config = {
             "type": "mock_processor",
-            "specific_rules": ["tests/testdata/unit/dissector/rules/specific/"],
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
+            "rules": ["tests/testdata/unit/dissector/rules"],
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
         }
         config = Configuration.create("dummy name", test_config)
         assert config.type == "mock_processor"
         assert config.mandatory_attribute == "I am mandatory"
-        assert config.generic_rules == ["tests/testdata/unit/dissector/rules/generic/"]
+        assert config.rules == ["tests/testdata/unit/dissector/rules"]
 
     def test_raises_on_missing_type(self):
         test_config = {
-            "specific_rules": ["tests/testdata/unit/dissector/rules/specific/"],
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
+            "rules": ["tests/testdata/unit/dissector/rules"],
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
         }
@@ -61,8 +59,7 @@ class TestConfiguration:
     def test_raises_on_unknown_processor(self):
         test_config = {
             "type": "unknown_processor",
-            "specific_rules": ["tests/testdata/unit/dissector/rules/specific/"],
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
+            "rules": ["tests/testdata/unit/dissector/rules"],
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
         }
@@ -72,8 +69,7 @@ class TestConfiguration:
     def test_raises_if_one_mandatory_field_is_missing(self):
         test_config = {
             "type": "mock_processor",
-            "specific_rules": ["tests/testdata/unit/dissector/rules/specific/"],
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
+            "rules": ["tests/testdata/unit/dissector/rules"],
             "optional_attribute": "I am optional",
         }
         with pytest.raises(
@@ -84,31 +80,26 @@ class TestConfiguration:
     def test_raises_if_mandatory_attribute_from_base_is_missing(self):
         test_config = {
             "type": "mock_processor",
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
             "mandatory_attribute": "does not matter",
         }
         with pytest.raises(
             TypeError,
-            match=r"missing 1 required .* argument: 'specific_rules'",
+            match=r"missing 1 required .* argument: 'rules'",
         ):
             Configuration.create("dummy name", test_config)
 
     def test_raises_if_multiple_mandatory_field_are_missing(self):
-        test_config = {
-            "type": "mock_processor",
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
-        }
+        test_config = {"type": "mock_processor"}
         with pytest.raises(
             TypeError,
-            match=r"missing 2 required .* arguments: .*'specific_rules' and 'mandatory_attribute'",
+            match=r"missing 2 required .* arguments: .*'rules' and 'mandatory_attribute'",
         ):
             Configuration.create("dummy name", test_config)
 
     def test_raises_on_unknown_field(self):
         test_config = {
             "type": "mock_processor",
-            "specific_rules": ["tests/testdata/unit/dissector/rules/specific/"],
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
+            "rules": ["tests/testdata/unit/dissector/rules"],
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
             "i_shoul_not_be_here": "does not matter",
@@ -119,8 +110,7 @@ class TestConfiguration:
     def test_init_non_mandatory_fields_with_default(self):
         test_config = {
             "type": "mock_processor",
-            "specific_rules": ["tests/testdata/unit/dissector/rules/specific/"],
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
+            "rules": ["tests/testdata/unit/dissector/rules"],
             "mandatory_attribute": "I am mandatory",
         }
         config = Configuration.create("dummy name", test_config)
@@ -130,8 +120,7 @@ class TestConfiguration:
     def test_init_optional_field_in_sub_class(self):
         test_config = {
             "type": "mock_processor",
-            "specific_rules": ["tests/testdata/unit/dissector/rules/specific/"],
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
+            "rules": ["tests/testdata/unit/dissector/rules"],
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
         }
@@ -141,8 +130,7 @@ class TestConfiguration:
     def test_init_optional_field_in_base_class(self):
         test_config = {
             "type": "mock_processor",
-            "specific_rules": ["tests/testdata/unit/dissector/rules/specific/"],
-            "generic_rules": ["tests/testdata/unit/dissector/rules/generic/"],
+            "rules": ["tests/testdata/unit/dissector/rules"],
             "mandatory_attribute": "I am mandatory",
             "tree_config": "tests/testdata/unit/tree_config.json",
         }

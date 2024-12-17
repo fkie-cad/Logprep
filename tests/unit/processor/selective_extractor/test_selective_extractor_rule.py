@@ -14,8 +14,8 @@ from logprep.processor.selective_extractor.rule import (
 )
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "test",
         "selective_extractor": {
@@ -174,7 +174,7 @@ class TestSelectiveExtractorRule:
         ],
     )
     def test_rules_equality(
-        self, specific_rule_definition, testcase, other_rule_definition, is_equal
+        self, rule_definition, testcase, other_rule_definition, is_equal
     ):
         with mock.patch("pathlib.Path.is_file", return_value=True):
             read_lines = other_rule_definition.get("selective_extractor").get("extract_from_file")
@@ -182,7 +182,7 @@ class TestSelectiveExtractorRule:
                 read_lines = read_lines.encode("utf8")
 
             with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
-                rule1 = SelectiveExtractorRule._create_from_dict(specific_rule_definition)
+                rule1 = SelectiveExtractorRule._create_from_dict(rule_definition)
                 rule2 = SelectiveExtractorRule._create_from_dict(other_rule_definition)
                 assert (rule1 == rule2) == is_equal, testcase
 
@@ -301,6 +301,6 @@ class TestSelectiveExtractorRule:
                     extractor_rule = SelectiveExtractorRule._create_from_dict(rule_definition)
                     assert isinstance(extractor_rule, SelectiveExtractorRule)
 
-    def test_rule_is_hashable(self, specific_rule_definition):
-        rule = SelectiveExtractorRule._create_from_dict(specific_rule_definition)
+    def test_rule_is_hashable(self, rule_definition):
+        rule = SelectiveExtractorRule._create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)

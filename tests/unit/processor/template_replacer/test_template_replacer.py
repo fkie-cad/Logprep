@@ -12,8 +12,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestTemplateReplacer(BaseProcessorTestCase):
     CONFIG = {
         "type": "template_replacer",
-        "generic_rules": ["tests/testdata/unit/template_replacer/rules/generic"],
-        "specific_rules": ["tests/testdata/unit/template_replacer/rules/specific"],
+        "rules": ["tests/testdata/unit/template_replacer/rules"],
         "template": "tests/testdata/unit/template_replacer/replacer_template.yml",
         "pattern": {
             "delimiter": "-",
@@ -25,12 +24,8 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     }
 
     @property
-    def generic_rules_dirs(self):
-        return self.CONFIG.get("generic_rules")
-
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG.get("specific_rules")
+    def rules_dirs(self):
+        return self.CONFIG.get("rules")
 
     def setup_method(self):
         super().setup_method()

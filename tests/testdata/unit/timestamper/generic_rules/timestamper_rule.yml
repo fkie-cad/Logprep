@@ -1,3 +1,0 @@
-filter: "@timestamp1"
-timestamper:
-  source_fields: ["message"]

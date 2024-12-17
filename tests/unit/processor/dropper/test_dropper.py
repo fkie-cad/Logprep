@@ -9,22 +9,17 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestDropper(BaseProcessorTestCase):
     CONFIG = {
         "type": "dropper",
-        "specific_rules": ["tests/testdata/unit/dropper/rules/specific/"],
-        "generic_rules": ["tests/testdata/unit/dropper/rules/generic/"],
+        "rules": ["tests/testdata/unit/dropper/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
     @property
-    def specific_rules_dirs(self):
-        return self.CONFIG["specific_rules"]
-
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG["generic_rules"]
+    def rules_dirs(self):
+        return self.CONFIG["rules"]
 
     def test_dropper_instantiates(self):
         rule = {"filter": "drop_me", "dropper": {"drop": ["drop_me"]}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         assert isinstance(self.object, Dropper)
 
     def test_not_nested_field_gets_dropped_with_rule_loaded_from_file(self):
@@ -38,7 +33,7 @@ class TestDropper(BaseProcessorTestCase):
         rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"]}}
         expected = {}
         document = {"drop": {"me": "something"}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -47,7 +42,7 @@ class TestDropper(BaseProcessorTestCase):
         rule = {"filter": "keep_me.drop_me", "dropper": {"drop": ["keep_me.drop_me"]}}
         expected = {"keep_me": {"keep_me_too": "something"}}
         document = {"keep_me": {"drop_me": "something", "keep_me_too": "something"}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -59,7 +54,7 @@ class TestDropper(BaseProcessorTestCase):
         }
         expected = {"keep_me": {"drop": {}}}
         document = {"keep_me": {"drop": {"me": "something"}}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -68,7 +63,7 @@ class TestDropper(BaseProcessorTestCase):
         rule = {"filter": "please.drop.me.fully", "dropper": {"drop": ["please.drop.me.fully"]}}
         expected = {}
         document = {"please": {"drop": {"me": {"fully": "something"}}}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -80,7 +75,7 @@ class TestDropper(BaseProcessorTestCase):
         }
         expected = {"keep_me": {"drop": {}, "keep_me_too": "something"}}
         document = {"keep_me": {"drop": {"me": "something"}, "keep_me_too": "something"}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -89,7 +84,7 @@ class TestDropper(BaseProcessorTestCase):
         rule = {"filter": "drop.child", "dropper": {"drop": ["drop"]}}
         expected = {}
         document = {"drop": {"child": "something"}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -98,7 +93,7 @@ class TestDropper(BaseProcessorTestCase):
         rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"]}}
         expected = {}
         document = {"drop": {"me": {"child": "foo"}}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -107,7 +102,7 @@ class TestDropper(BaseProcessorTestCase):
         rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"]}}
         expected = {"drop": {"neighbour": "bar"}}
         document = {"drop": {"me": {"child": "foo"}, "neighbour": "bar"}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -116,7 +111,7 @@ class TestDropper(BaseProcessorTestCase):
         rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"], "drop_full": False}}
         expected = {"drop": {}}
         document = {"drop": {"me": {"child": "foo"}}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -125,7 +120,7 @@ class TestDropper(BaseProcessorTestCase):
         rule = {"filter": "drop.child", "dropper": {"drop": ["drop.child"], "drop_full": False}}
         expected = {"drop": {"neighbour": "bar"}}
         document = {"drop": {"child": {"grand_child": "foo"}, "neighbour": "bar"}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -133,7 +128,7 @@ class TestDropper(BaseProcessorTestCase):
     def test_apply_rules_is_called(self):
         rule = {"filter": "drop.child", "dropper": {"drop": ["drop.child"], "drop_full": False}}
         document = {"drop": {"child": {"grand_child": "foo"}, "neighbour": "bar"}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         with mock.patch(
             f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"
         ) as mock_apply_rules:
@@ -154,7 +149,7 @@ class TestDropper(BaseProcessorTestCase):
                 "drop_full": False,
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
     def test_key_not_in_event(self):
@@ -168,5 +163,5 @@ class TestDropper(BaseProcessorTestCase):
                 "drop_full": False,
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)

@@ -6,8 +6,8 @@ import pytest
 from logprep.processor.list_comparison.rule import ListComparisonRule
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "user",
         "list_comparison": {
@@ -86,16 +86,16 @@ class TestListComparisonRule:
         ],
     )
     def test_rules_equality(
-        self, specific_rule_definition, testcase, other_rule_definition, is_equal
+        self, rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule1 = ListComparisonRule._create_from_dict(specific_rule_definition)
+        rule1 = ListComparisonRule._create_from_dict(rule_definition)
         rule2 = ListComparisonRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
 
     def test_compare_set_not_empty_for_valid_rule_def_after_init_list_comparison(
-        self, specific_rule_definition
+        self, rule_definition
     ):
-        rule = ListComparisonRule._create_from_dict(specific_rule_definition)
+        rule = ListComparisonRule._create_from_dict(rule_definition)
 
         rule.init_list_comparison("tests/testdata/unit/list_comparison/rules")
 

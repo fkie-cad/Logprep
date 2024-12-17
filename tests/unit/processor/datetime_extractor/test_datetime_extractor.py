@@ -13,17 +13,12 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestDatetimeExtractor(BaseProcessorTestCase):
     CONFIG = {
         "type": "datetime_extractor",
-        "specific_rules": ["tests/testdata/unit/datetime_extractor/rules/specific"],
-        "generic_rules": ["tests/testdata/unit/datetime_extractor/rules/generic"],
+        "rules": ["tests/testdata/unit/datetime_extractor/rules"],
     }
 
     @property
-    def specific_rules_dirs(self):
-        return self.CONFIG.get("specific_rules")
-
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG.get("generic_rules")
+    def rules_dirs(self):
+        return self.CONFIG.get("rules")
 
     def test_an_event_extracted_datetime_utc(self):
         timestamp = "2019-07-30T14:37:42.861Z"
@@ -113,7 +108,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object._local_timezone = tzutc()
         self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
             self.object._local_timezone
@@ -146,7 +141,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object._local_timezone = tzutc()
         self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
             self.object._local_timezone
@@ -179,7 +174,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         result = self.object.process(document)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)

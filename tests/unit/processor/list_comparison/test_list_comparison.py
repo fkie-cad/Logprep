@@ -11,8 +11,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestListComparison(BaseProcessorTestCase):
     CONFIG = {
         "type": "list_comparison",
-        "specific_rules": ["tests/testdata/unit/list_comparison/rules/specific"],
-        "generic_rules": ["tests/testdata/unit/list_comparison/rules/generic"],
+        "rules": ["tests/testdata/unit/list_comparison/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
         "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
     }
@@ -105,7 +104,7 @@ class TestListComparison(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
         self.object.process(document)
 
@@ -128,7 +127,7 @@ class TestListComparison(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
         self.object.process(document)
 
@@ -156,7 +155,7 @@ class TestListComparison(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
         result = self.object.process(document)
         assert len(result.warnings) == 1
@@ -185,7 +184,7 @@ class TestListComparison(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
         result = self.object.process(document)
         assert len(result.warnings) == 1
@@ -223,7 +222,7 @@ class TestListComparison(BaseProcessorTestCase):
             "description": "",
         }
         expected = {"user_results": {"in_list": ["user_list.txt"]}}
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
         self.object.process(document)
         assert document == expected
@@ -241,7 +240,7 @@ class TestListComparison(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
         result = self.object.process(document)
         assert len(result.warnings) == 1
@@ -269,14 +268,13 @@ Hans
         }
         config = {
             "type": "list_comparison",
-            "specific_rules": [],
-            "generic_rules": [],
+            "rules": [],
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class._create_from_dict(rule_dict)
-        processor._specific_tree.add_rule(rule)
+        processor._rule_tree.add_rule(rule)
         processor.setup()
-        assert processor._specific_rules[0].compare_sets == {
+        assert processor._tree_rules[0].compare_sets == {
             "bad_users.list": {"Franz", "Heinz", "Hans"}
         }

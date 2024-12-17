@@ -7,8 +7,8 @@ import pytest
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "field.a",
         "datetime_extractor": {"source_fields": ["field.a"], "target_field": "datetime"},
@@ -83,9 +83,9 @@ class TestDatetimeExtractorRule:
         ],
     )
     def test_rules_equality(
-        self, specific_rule_definition, testcase, other_rule_definition, is_equal
+        self, rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule_1 = DatetimeExtractorRule._create_from_dict(specific_rule_definition)
+        rule_1 = DatetimeExtractorRule._create_from_dict(rule_definition)
         rule_2 = DatetimeExtractorRule._create_from_dict(other_rule_definition)
         assert (rule_1 == rule_2) == is_equal, testcase
 
@@ -172,6 +172,6 @@ class TestDatetimeExtractorRule:
             extractor_rule = DatetimeExtractorRule._create_from_dict(rule_definition)
             assert isinstance(extractor_rule, DatetimeExtractorRule)
 
-    def test_rule_is_hashable(self, specific_rule_definition):
-        rule = DatetimeExtractorRule._create_from_dict(specific_rule_definition)
+    def test_rule_is_hashable(self, rule_definition):
+        rule = DatetimeExtractorRule._create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)

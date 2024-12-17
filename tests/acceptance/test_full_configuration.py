@@ -91,10 +91,8 @@ pipeline:
         type: labeler
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
-        specific_rules:
-            - examples/exampledata/rules/labeler/specific
-        generic_rules:
-            - examples/exampledata/rules/labeler/generic
+        rules:
+            - examples/exampledata/rules/labeler/rules
 """,
         "LOGPREP_OUTPUT": """
 output:
@@ -154,8 +152,7 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     config.pipeline.append(
         {
             "calculator2": {
-                "generic_rules": ["tests/testdata/unit/calculator/generic_rules"],
-                "specific_rules": ["tests/testdata/unit/calculator/specific_rules"],
+                "rules": ["tests/testdata/unit/calculator/rules"],
                 "type": "calculator",
             }
         }

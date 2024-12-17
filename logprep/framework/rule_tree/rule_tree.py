@@ -13,22 +13,12 @@ if TYPE_CHECKING:  # pragma: no cover
     from logprep.processor.base.rule import Rule
 
 
-class RuleTreeType(Enum):
-    """Types of rule trees."""
-
-    SPECIFIC = 1
-    """Specific rule tree that is used to match specific rules."""
-    GENERIC = 2
-    """Generic rule tree that is used to match generic rules."""
-
-
 class RuleTree:
     """Represent a set of rules using a rule tree model."""
 
     __slots__ = (
         "rule_parser",
         "priority_dict",
-        "_rule_tree_type",
         "_rule_mapping",
         "_processor_config",
         "_processor_type",
@@ -39,7 +29,6 @@ class RuleTree:
 
     rule_parser: Optional[RuleParser]
     priority_dict: dict
-    _rule_tree_type: Union[RuleTreeType, str]
     _rule_mapping: dict
     _processor_name: str
     _processor_config: "Processor.Config"
@@ -51,7 +40,6 @@ class RuleTree:
         root: Node = None,
         processor_name: str = None,
         processor_config: "Processor.Config" = None,
-        rule_tree_type: RuleTreeType = None,
     ):
         """Rule tree initialization function.
 
@@ -71,7 +59,6 @@ class RuleTree:
         self._rule_mapping = {}
         self._processor_config = processor_config
         self._processor_name = processor_name if processor_name is not None else ""
-        self._rule_tree_type = rule_tree_type.name.lower() if rule_tree_type is not None else ""
         self._processor_type = processor_config.type if processor_name is not None else ""
         self._setup()
 

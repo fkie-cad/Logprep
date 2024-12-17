@@ -6,8 +6,8 @@ import pytest
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "field.a",
         "domain_label_extractor": {
@@ -85,9 +85,9 @@ class TestDomainLabelExtractorRule:
         ],
     )
     def test_rules_equality(
-        self, specific_rule_definition, testcase, other_rule_definition, is_equal
+        self, rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule_1 = DomainLabelExtractorRule._create_from_dict(specific_rule_definition)
+        rule_1 = DomainLabelExtractorRule._create_from_dict(rule_definition)
         rule_2 = DomainLabelExtractorRule._create_from_dict(other_rule_definition)
         assert (rule_1 == rule_2) == is_equal, testcase
 
@@ -174,6 +174,6 @@ class TestDomainLabelExtractorRule:
             extractor_rule = DomainLabelExtractorRule._create_from_dict(rule_definition)
             assert isinstance(extractor_rule, DomainLabelExtractorRule)
 
-    def test_rule_is_hashable(self, specific_rule_definition):
-        rule = DomainLabelExtractorRule._create_from_dict(specific_rule_definition)
+    def test_rule_is_hashable(self, rule_definition):
+        rule = DomainLabelExtractorRule._create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)

@@ -14,8 +14,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestGenericResolver(BaseProcessorTestCase):
     CONFIG = {
         "type": "generic_resolver",
-        "specific_rules": ["tests/testdata/unit/generic_resolver/rules/specific/"],
-        "generic_rules": ["tests/testdata/unit/generic_resolver/rules/generic/"],
+        "rules": ["tests/testdata/unit/generic_resolver/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
@@ -27,18 +26,13 @@ class TestGenericResolver(BaseProcessorTestCase):
     ]
 
     @property
-    def specific_rules_dirs(self):
-        """Return the paths of the specific rules"""
-        return self.CONFIG["specific_rules"]
-
-    @property
-    def generic_rules_dirs(self):
-        """Return the paths of the generic rules"""
-        return self.CONFIG["generic_rules"]
+    def rules_dirs(self):
+        """Return the paths of the rules"""
+        return self.CONFIG["rules"]
 
     def test_resolve_generic_instantiates(self):
         rule = {"filter": "anything", "generic_resolver": {"field_mapping": {}}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         assert isinstance(self.object, GenericResolver)
 
     def test_resolve_not_dotted_field_no_conflict_match(self):
@@ -50,7 +44,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
 
@@ -69,7 +63,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": {"Greeting": "Hello"}}
 
@@ -89,7 +83,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
         document = {"to_resolve": "something HELLO1"}
@@ -112,7 +106,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
 
@@ -135,7 +129,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something no"}
         document = {"to_resolve": "something no"}
@@ -152,7 +146,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to": {"resolve": "something HELLO1"}, "resolved": "Greeting"}
 
@@ -176,7 +170,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {"FOO": "BAR"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "ab", "resolved": "ab_server_type"}
 
@@ -201,7 +195,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {"FOO": "BAR"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "ab", "resolved": "ab_server_type"}
         document = {"to_resolve": "ab"}
@@ -229,7 +223,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to_resolve_1": "ab",
@@ -258,7 +252,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {"FOO": "BAR"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to_resolve": "not_in_list",
@@ -284,7 +278,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "extend_target_list": True,
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
 
@@ -308,7 +302,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "extend_target_list": True,
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
 
@@ -336,7 +330,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "extend_target_list": True,
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to_resolve": "12ab34",
@@ -359,7 +353,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to": {"resolve": "something no"}}
         document = {"to": {"resolve": "something no"}}
@@ -376,7 +370,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to": {"other_field": "something no"},
@@ -396,7 +390,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "re": {"solved": "Greeting"}}
         document = {"to_resolve": "something HELLO1"}
@@ -413,7 +407,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something no"}
         document = {"to_resolve": "something no"}
@@ -432,7 +426,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
         document = {"to": {"resolve": "something HELLO1"}}
@@ -449,7 +443,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
@@ -479,7 +473,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
         document = {"to": {"resolve": "something HELLO1"}}
 
@@ -502,7 +496,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
         event = {"to_resolve": "foo"}
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -542,7 +536,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
         event = {"to_resolve": "foo"}
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -580,7 +574,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
         event = {"to_resolve": "foo"}
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
 
         self.object.metrics.new_results = 0
@@ -622,7 +616,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         }
         event = {"to_resolve": "foo"}
         other_event = {"to_resolve": "bar"}
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.setup()
 
         self.object.metrics.new_results = 0

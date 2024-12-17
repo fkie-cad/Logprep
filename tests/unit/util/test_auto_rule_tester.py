@@ -26,14 +26,13 @@ class TestAutoRuleTester:
         rules_pn = {"dummy": {"type": "dummy", "rules": []}}
         file = "rule.yml"
         root = "tests/testdata/auto_tests/dummy"
-        rule_dirs_type = "doesnt_matter"
 
-        auto_rule_tester._get_rule_dict(file, root, processor_name, rules_pn, rule_dirs_type)
+        auto_rule_tester._get_rule_dict(file, root, processor_name, rules_pn)
 
         # raw literal
         expected_rule_dict = [
             {
-                "doesnt_matter": [
+                "rules": [
                     {
                         "filter": 'winlog.event_data.param2: "pause"',
                         "labeler": {"label": {"action": ["terminate"]}},
@@ -81,9 +80,8 @@ class TestAutoRuleTester:
         rules_pn = {"dummy": {"type": "dummy", "rules": []}}
         file = "rule.yml"
         root = "tests/testdata/auto_tests/dummy"
-        rule_dirs_type = "doesnt_matter"
 
-        auto_rule_tester._get_rule_dict(file, root, processor_name, rules_pn, rule_dirs_type)
+        auto_rule_tester._get_rule_dict(file, root, processor_name, rules_pn)
 
         def remove_dict_with_target_rule_idx(list_of_dicts):
             for idx, d in enumerate(list_of_dicts):
@@ -189,8 +187,7 @@ class TestAutoRuleTester:
             {
                 "dissector": {
                     "type": "dissector",
-                    "specific_rules": ["tests/testdata/auto_tests/dissector/rules/specific/"],
-                    "generic_rules": ["tests/testdata/auto_tests/dissector/rules/generic/"],
+                    "rules": ["tests/testdata/auto_tests/dissector/rules"],
                 }
             }
         ]
@@ -224,15 +221,14 @@ class TestAutoRuleTester:
             "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
             "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
             "hash_salt": "a_secret_tasty_ingredient",
-            "specific_rules": ["tests/testdata/unit/pseudonymizer/rules/specific/"],
-            "generic_rules": ["tests/testdata/unit/pseudonymizer/rules/generic/"],
-            "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
+            "rules": ["tests/testdata/unit/pseudonymizer/rules"],
+            "regex_mapping": "tests/testdata/unit/pseudonymizer/regex_mapping.yml",
             "max_cached_pseudonyms": 1000000,
         }
         mock_replace_regex_keywords_by_regex_expression.assert_not_called()
         processor = auto_rule_tester._get_processor_instance("pseudonymizer", pseudonymizer_cfg)
         auto_rule_tester._reset(processor)  # Called every time by auto tester before adding rules
-        auto_rule_tester._load_rules(processor, "specific_rules")
+        auto_rule_tester._load_rules(processor)
         assert mock_replace_regex_keywords_by_regex_expression.call_count == 1
 
     @mock.patch("logprep.processor.list_comparison.processor.ListComparison.setup")
@@ -241,8 +237,7 @@ class TestAutoRuleTester:
     ):
         list_comparison_cfg = {
             "type": "list_comparison",
-            "specific_rules": ["tests/testdata/unit/list_comparison/rules/specific"],
-            "generic_rules": ["tests/testdata/unit/list_comparison/rules/generic"],
+            "rules": ["tests/testdata/unit/list_comparison/rules"],
             "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
             "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
         }
@@ -251,7 +246,7 @@ class TestAutoRuleTester:
         auto_rule_tester._reset(
             processor
         )  # Called every time by auto tester before adding rules instead
-        auto_rule_tester._load_rules(processor, "specific_rules")
+        auto_rule_tester._load_rules(processor)
         mock_setup.assert_called_once()
 
     def test_full_auto_rule_test_run(self, auto_rule_tester, capsys):
@@ -259,25 +254,25 @@ class TestAutoRuleTester:
             auto_rule_tester.run()
         expected_rules_with_tests = [
             "with tests",
-            "tests/testdata/auto_tests/labeler/rules/generic/auto_test_labeling_match.json",
-            "tests/testdata/auto_tests/labeler/rules/specific/auto_test_labeling_mismatch.json",
-            "tests/testdata/auto_tests/dissector/rules/generic/auto_test_match.json",
-            "tests/testdata/auto_tests/dissector/rules/specific/auto_test_mismatch.json",
-            "tests/testdata/auto_tests/dropper/rules/generic/drop_field.json",
-            "tests/testdata/auto_tests/dropper/rules/specific/drop_field.json",
-            "tests/testdata/auto_tests/pre_detector/rules/generic/auto_test_pre_detector_match.json",
-            "tests/testdata/auto_tests/pre_detector/rules/specific/auto_test_pre_detector_mismatch.json",
-            "tests/testdata/auto_tests/pseudonymizer/rules/specific/auto_test_pseudonymizer_mismatch.json",
-            "tests/testdata/auto_tests/pseudonymizer/rules/generic/auto_test_pseudonymizer_match.json",
-            "tests/testdata/auto_tests/template_replacer/rules/generic/template_replacer.json",
-            "tests/testdata/auto_tests/template_replacer/rules/specific/template_replacer.json",
+            "tests/testdata/auto_tests/labeler/rules/auto_test_labeling_match.json",
+            "tests/testdata/auto_tests/labeler/rules/auto_test_labeling_mismatch.json",
+            "tests/testdata/auto_tests/dissector/rules/auto_test_match.json",
+            "tests/testdata/auto_tests/dissector/rules/auto_test_mismatch.json",
+            "tests/testdata/auto_tests/dropper/rules/drop_field_1.json",
+            "tests/testdata/auto_tests/dropper/rules/drop_field_2.json",
+            "tests/testdata/auto_tests/pre_detector/rules/auto_test_pre_detector_match.json",
+            "tests/testdata/auto_tests/pre_detector/rules/auto_test_pre_detector_mismatch.json",
+            "tests/testdata/auto_tests/pseudonymizer/rules/auto_test_pseudonymizer_mismatch.json",
+            "tests/testdata/auto_tests/pseudonymizer/rules/auto_test_pseudonymizer_match.json",
+            "tests/testdata/auto_tests/template_replacer/rules/template_replacer_1.json",
+            "tests/testdata/auto_tests/template_replacer/rules/template_replacer_2.json",
         ]
         expected_rules_without_tests = [
             "without tests",
-            "tests/testdata/auto_tests/labeler/rules/specific/auto_test_labeling_no_test_.json",
-            "tests/testdata/auto_tests/dissector/rules/specific/auto_test_no_test_.json",
-            "tests/testdata/auto_tests/pre_detector/rules/specific/auto_test_pre_detector_no_test_.json",
-            "tests/testdata/auto_tests/pseudonymizer/rules/specific/auto_test_pseudonymizer_no_test_.json",
+            "tests/testdata/auto_tests/labeler/rules/auto_test_labeling_no_test_.json",
+            "tests/testdata/auto_tests/dissector/rules/auto_test_no_test_.json",
+            "tests/testdata/auto_tests/pre_detector/rules/auto_test_pre_detector_no_test_.json",
+            "tests/testdata/auto_tests/pseudonymizer/rules/auto_test_pseudonymizer_no_test_.json",
         ]
 
         expected_overall_results = [

@@ -12,15 +12,13 @@ def config_fixture():
         {
             "dissector": {
                 "type": "dissector",
-                "specific_rules": ["tests/testdata/acceptance/dissector/rules/specific"],
-                "generic_rules": ["tests/testdata/acceptance/dissector/rules/generic"],
+                "rules": ["tests/testdata/acceptance/dissector/rules"],
             }
         },
         {
             "selective_extractor": {
                 "type": "selective_extractor",
-                "specific_rules": ["tests/testdata/acceptance/selective_extractor/rules/specific"],
-                "generic_rules": ["tests/testdata/acceptance/selective_extractor/rules/generic"],
+                "rules": ["tests/testdata/acceptance/selective_extractor/rules"],
             }
         },
     ]

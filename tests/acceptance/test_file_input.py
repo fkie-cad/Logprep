@@ -47,8 +47,7 @@ def config_fixture():
         {
             "dissector": {
                 "type": "dissector",
-                "specific_rules": ["tests/testdata/acceptance/dissector/rules/specific"],
-                "generic_rules": ["tests/testdata/acceptance/dissector/rules/generic"],
+                "rules": ["tests/testdata/acceptance/dissector/rules"],
             }
         }
     ]

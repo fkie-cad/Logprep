@@ -1,7 +1,0 @@
-[
-  {
-    "filter": "winlog.provider_name_specific AND winlog.event_id",
-    "template_replacer": {},
-    "description": ""
-  }
-]

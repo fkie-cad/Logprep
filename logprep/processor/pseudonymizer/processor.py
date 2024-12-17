@@ -23,10 +23,8 @@ Processor Configuration
 
     - pseudonymizername:
         type: pseudonymizer
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
         outputs:
             - kafka: pseudonyms_topic
         pubkey_analyst: /path/to/analyst_pubkey.pem
@@ -218,7 +216,7 @@ class Pseudonymizer(FieldManager):
         self._replace_regex_keywords_by_regex_expression()
 
     def _replace_regex_keywords_by_regex_expression(self):
-        for rule in self._specific_rules + self._generic_rules:
+        for rule in self._tree_rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
                 if regex_keyword in self._regex_mapping:
                     rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])

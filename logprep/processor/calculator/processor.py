@@ -11,10 +11,8 @@ Processor Configuration
 
     - calculatorname:
         type: calculator
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.calculator.processor.Calculator.Config
    :members:

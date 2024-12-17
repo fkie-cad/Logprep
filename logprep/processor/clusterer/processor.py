@@ -25,10 +25,8 @@ Processor Configuration
 
     - clusterername:
         type: clusterer
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
         output_field_name: target_field
 
 .. autoclass:: logprep.processor.clusterer.processor.Clusterer.Config
@@ -147,14 +145,12 @@ class Clusterer(FieldManager):
         self._last_non_extracted_signature = sig_text
 
     def _is_new_tree_iteration(self, rule: ClustererRule) -> bool:
-        for tree in (self._specific_tree, self._generic_tree):
-            rule_id = tree.get_rule_id(rule)
-            if rule_id is None:
-                continue
-            is_new_iteration = rule_id <= self._last_rule_id
-            self._last_rule_id = rule_id
-            return is_new_iteration
-        return True
+        rule_id = self._rule_tree.get_rule_id(rule)
+        if rule_id is None:
+            return True
+        is_new_iteration = rule_id <= self._last_rule_id
+        self._last_rule_id = rule_id
+        return is_new_iteration
 
     def _get_text_to_cluster(self, rule: ClustererRule, event: dict) -> Tuple[str, str]:
         sig_text = None

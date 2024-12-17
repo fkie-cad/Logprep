@@ -15,10 +15,8 @@ Processor Configuration
 
     - fieldmanagername:
         type: field_manager
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.field_manager.processor.FieldManager.Config
    :members:
