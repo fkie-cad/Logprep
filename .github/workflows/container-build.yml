@@ -1,0 +1,129 @@
+name: Reusable Container Build
+
+on:
+  workflow_call:
+    inputs:
+      build-version:
+        description: "Version of Logprep to build"
+        required: true
+        type: string
+      tags:
+        description: "Tags to apply to the image"
+        required: true
+        type: string
+
+jobs:
+  containerbuild:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.10", "3.11", "3.12" ]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Image Tags
+        id: image-tag
+        run: |
+          python - <<EOF
+          import os
+          image = "ghcr.io/fkie-cad/logprep"
+          version = "${{ matrix.python-version }}"
+          tags = "${{ inputs.tags }}".split(",")
+          full_image = [f"{image}:py{version}-{tag.strip()}" for tag in tags]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
+              file.write(f"tags={', '.join(full_image)}")
+          EOF
+
+      - name: Build image and export to Docker
+        uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          load: true
+          build-args: |
+            LOGPREP_VERSION=${{ inputs.build-version }}
+            PYTHON_VERSION=${{ matrix.python-version }}
+          tags: ${{ steps.image-tag.outputs.tags }}
+
+      - name: Extract image ID from sha256
+        id: imageid
+        run: |
+          python - <<EOF
+          import os
+          digest = "${{ steps.build.outputs.ImageID }}"
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
+              file.write(f"imageid={digest.split(':')[1]}")
+          EOF
+
+      - name: Ensure logprep is available in image
+        run: |
+          docker run --rm ${{ steps.imageid.outputs.imageid }} --version
+
+      - name: Push image
+        uses: docker/build-push-action@v6
+        id: build-and-push
+        with:
+          context: .
+          push: true
+          build-args: |
+            LOGPREP_VERSION=${{ inputs.build-version }}
+            PYTHON_VERSION=${{ matrix.python-version }}
+          tags: ${{ steps.image-tag.outputs.tags }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Create SBOM of container image
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          artifact-name: logprep@${{ steps.imageid.outputs.imageid }}.spdx.json
+          output-file: logprep@${{ steps.imageid.outputs.imageid }}.spdx.json
+
+      - name: Sign image with a key and add sbom attestation
+        run: |
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.imageid.outputs.imageid }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+      # To avoid the trivy-db becoming outdated, we save the cache for one day
+      - name: Get date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Restore trivy cache
+        uses: actions/cache@v4
+        with:
+          path: cache/db
+          key: trivy-cache-${{ steps.date.outputs.date }}
+          restore-keys:
+            trivy-cache-
+
+      - name: Scan image using Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        env:
+          TRIVY_CACHE_DIR: ./cache
+        with:
+          scan-type: image
+          image-ref: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          trivy-config: trivy.yaml
+
+      # Trivy-db uses `0600` permissions.
+      # But `action/cache` use `runner` user by default
+      # So we need to change the permissions before caching the database.
+      - name: Change permissions for trivy.db
+        run: sudo chmod 0644 ./cache/db/trivy.db
