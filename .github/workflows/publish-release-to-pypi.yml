@@ -111,3 +111,31 @@ jobs:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
+
+      # To avoid the trivy-db becoming outdated, we save the cache for one day
+      - name: Get date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Restore trivy cache
+        uses: actions/cache@v4
+        with:
+          path: cache/db
+          key: trivy-cache-${{ steps.date.outputs.date }}
+          restore-keys:
+            trivy-cache-
+
+      - name: Scan image using Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        env:
+          TRIVY_CACHE_DIR: ./cache
+        with:
+          scan-type: image
+          image-ref: ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
+          trivy-config: trivy.yaml
+
+      # Trivy-db uses `0600` permissions.
+      # But `action/cache` use `runner` user by default
+      # So we need to change the permissions before caching the database.
+      - name: Change permissions for trivy.db
+        run: sudo chmod 0644 ./cache/db/trivy.db
