@@ -59,7 +59,7 @@ jobs:
 
       - name: List Docker imagers
         run: |
-          docker images --digest
+          docker images --digests
 
       - name: Ensure logprep is available in image
         run: |
