@@ -49,7 +49,7 @@ jobs:
 
       - name: Ensure logprep is available in image
         run: |
-          docker run --rm ghcr.io/fkie-cad/logprep:${{ steps.build-and-push.outputs.metadata."image.name" }}@${{ steps.build-and-push.outputs.digest }} --version
+          docker run --rm ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }} --version
 
       - name: Push image
         uses: docker/build-push-action@v6
