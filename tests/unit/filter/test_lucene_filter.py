@@ -482,3 +482,27 @@ class TestLueceneFilter:
             RegExFilterExpression(["regex_key_one"], ".*value.*"),
             StringFilterExpression(["key_two"], "value"),
         )
+
+    def test_new_lucene_compliance(self):
+        lucene_filter = LuceneFilter.create(
+            'regex_key_one:".*value.*"'
+        )
+
+        assert lucene_filter == RegExFilterExpression(["regex_key_one"], ".*value.*")
+
+    def test_new_lucene_compliance2(self):
+        lucene_filter = LuceneFilter.create(
+            'regex_key_one:/.*value.*/'
+        )
+
+        assert lucene_filter == RegExFilterExpression(["regex_key_one"], ".*value.*")
+
+    def test_new_lucene_compliance3(self):
+        lucene_filter = LuceneFilter.create(
+            'regex_key_one:/.*value.*/ AND key_two: "/.*value.*/"',
+        )
+
+        assert lucene_filter == And(RegExFilterExpression(["regex_key_one"], ".*value.*"),
+                                    StringFilterExpression(["key_two"], "/.*value.*/"))
+
+
