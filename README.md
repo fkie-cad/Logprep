@@ -259,20 +259,42 @@ kVtARE+LJfSFI25BanOG9jaxxRGVt+Sa1KtQbMcy7Glxu0s7XgD9VFGjTA==
 And use it to verify the signature:
 
 ```
-cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:3.11-latest
+cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:py3.11-latest
+```
+
+The output should look like:
+
+```
+Verification for ghcr.io/fkie-cad/logprep:py3.11-latest --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The signatures were verified against the specified public key
+
+[{"critical":{"identity":{"docker-reference":"ghcr.io/fkie-cad/logprep"}, ...
 ```
 
 ## Container SBOM
 
 From release 15 on, Logprep container images are shipped with a generated sbom.
-To verify the supply-chain, get the sbom data from the image
-[cosign](https://github.com/sigstore/cosign) attestation with:
+To verify the attestation and extract the SBOM use
+[cosign](https://github.com/sigstore/cosign) with:
 
 ```
 cosign verify-attestation --key logprep.pub ghcr.io/fkie-cad/logprep:py3.11-latest | jq '.payload | @base64d | fromjson | .predicate | .Data | fromjson' > sbom.json
 ```
 
-And view sbom with:
+The output should look like:
+
+```
+Verification for ghcr.io/fkie-cad/logprep:py3.11-latest --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The signatures were verified against the specified public key
+```
+
+Finally, you can view the extracted sbom with:
 
 ```
 cat sbom.json | jq
