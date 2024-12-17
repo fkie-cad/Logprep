@@ -55,7 +55,7 @@ jobs:
           build-args: |
             LOGPREP_VERSION=${{ inputs.build-version }}
             PYTHON_VERSION=${{ matrix.python-version }}
-          tags: ${{ steps.image-tag.outputs.tags }}
+          tags: "${{ steps.image-tag.outputs.tags }}, ghcr.io/fkie-cad/logprep:local"
 
       - name: List Docker imagers
         run: |
@@ -63,8 +63,7 @@ jobs:
 
       - name: Ensure logprep is available in image
         run: |
-          docker run --rm $(docker images --filter=reference=${{ steps.build.outputs.metadata["image.name"] }} --format "{{.ID}}")
-#          docker run --rm ghcr.io/fkie-cad/logprep@${{ steps.build.outputs.digest }} --version
+          docker run --rm ghcr.io/fkie-cad/logprep:local --version
 
       - name: Push image
         uses: docker/build-push-action@v6
