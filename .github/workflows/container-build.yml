@@ -24,11 +24,13 @@ jobs:
         id: image-tag
         run: |
           python - <<EOF
+          import os
           image = "ghcr.io/fkie-cad/logprep"
           version = "${{ matrix.python-version }}"
           tags = "${{ inputs.tags }}".split(",")
           full_image = [f"{image}:py{version}-{tag.strip()}" for tag in tags]
-          print(f"::set-output tags={','.join(full_image)}")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+              print(f"tags={','.join(full_image)}", file=fh)
           EOF
 
       - name: Debug Image Tag
