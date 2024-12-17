@@ -97,5 +97,5 @@ jobs:
     uses: ./.github/workflows/container-build.yml
     with:
       build-version: dev
-      tags: |
-        ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
+      tags:
+        - ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
