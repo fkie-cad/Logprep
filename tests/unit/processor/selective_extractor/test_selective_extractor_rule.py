@@ -173,9 +173,7 @@ class TestSelectiveExtractorRule:
             ),
         ],
     )
-    def test_rules_equality(
-        self, rule_definition, testcase, other_rule_definition, is_equal
-    ):
+    def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
         with mock.patch("pathlib.Path.is_file", return_value=True):
             read_lines = other_rule_definition.get("selective_extractor").get("extract_from_file")
             if read_lines is not None:
