@@ -315,8 +315,6 @@ class LuceneTransformer:
         return expressions
 
     def _create_field(self, tree: luqum.tree) -> Optional[FilterExpression]:
-        # ok also hier bin ich denke ich richtig. ich muss jetzt mal ueberlegen, was hier was macht. und dann kann ich
-        # entscheiden wie ich es umsetze
         if isinstance(tree.expr, (Phrase, Word)):
             key = tree.name.replace("\\", "")
             key = key.split(".")
@@ -350,7 +348,6 @@ class LuceneTransformer:
         if self._special_fields.items():
             for sf_key, sf_value in self._special_fields.items():
                 if sf_value is True or dotted_field in sf_value:
-                    # Todo: this has to be removed at the end of the ticket.
                     if sf_key == "regex_fields":
                         logger.warning(
                             "[Deprecated]: regex_fields are no longer necessary. "
@@ -358,15 +355,6 @@ class LuceneTransformer:
                         )
 
                     return self._special_fields_map[sf_key](key, value)
-
-        #Todo: this has to be removed at the end of the ticket.
-
-        # if hasattr(self._tree, 'expr') and isinstance(self._tree.expr, Regex):
-        #     value = value.strip("/")
-        #    return RegExFilterExpression(key, value)
-        # if value.startswith("/") and value.endswith("/"):
-        #     value = value.strip("/")
-        #     return RegExFilterExpression(key, value)
 
         return StringFilterExpression(key, value)
 
