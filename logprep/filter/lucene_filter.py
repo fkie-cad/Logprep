@@ -315,6 +315,8 @@ class LuceneTransformer:
         return expressions
 
     def _create_field(self, tree: luqum.tree) -> Optional[FilterExpression]:
+        # ok also hier bin ich denke ich richtig. ich muss jetzt mal ueberlegen, was hier was macht. und dann kann ich
+        # entscheiden wie ich es umsetze
         if isinstance(tree.expr, (Phrase, Word)):
             key = tree.name.replace("\\", "")
             key = key.split(".")
@@ -324,6 +326,15 @@ class LuceneTransformer:
             value = self._strip_quote_from_string(tree.expr.value)
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression(key, value)
+        elif isinstance(tree.expr, Regex):
+            key = tree.name.replace("\\", "")
+            key = key.split(".")
+            if tree.expr.value == "null":
+                return Null(key)
+
+            value = self._strip_quote_from_string(tree.expr.value)
+            value = self._remove_lucene_escaping(value)
+            return self._get_filter_expression_regex(key, value)
         return None
 
     def _get_filter_expression(
@@ -339,6 +350,7 @@ class LuceneTransformer:
         if self._special_fields.items():
             for sf_key, sf_value in self._special_fields.items():
                 if sf_value is True or dotted_field in sf_value:
+                    # Todo: this has to be removed at the end of the ticket.
                     if sf_key == "regex_fields":
                         logger.warning(
                             "[Deprecated]: regex_fields are no longer necessary. "
@@ -347,11 +359,29 @@ class LuceneTransformer:
 
                     return self._special_fields_map[sf_key](key, value)
 
-        if value.startswith("/") and value.endswith("/"):
-            value = value.strip("/")
-            return RegExFilterExpression(key, value)
+        #Todo: this has to be removed at the end of the ticket.
+
+        # if hasattr(self._tree, 'expr') and isinstance(self._tree.expr, Regex):
+        #     value = value.strip("/")
+        #    return RegExFilterExpression(key, value)
+        # if value.startswith("/") and value.endswith("/"):
+        #     value = value.strip("/")
+        #     return RegExFilterExpression(key, value)
 
         return StringFilterExpression(key, value)
+
+    def _get_filter_expression_regex(
+            self, key: List[str], value
+    ) -> Union[RegExFilterExpression, StringFilterExpression]:
+        key_and_modifier = key[-1].split("|")
+        if len(key_and_modifier) == 2:
+            if key_and_modifier[-1] == "re":
+                return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
+
+
+        value = value.strip("/")
+        return RegExFilterExpression(key, value)
+
 
     @staticmethod
     def _create_value_expression(word: luqum.tree) -> Union[Exists, Always]:
