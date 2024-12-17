@@ -90,3 +90,16 @@ jobs:
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.ref_name }}
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-stable
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Sign image with a key
+        run: |
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
