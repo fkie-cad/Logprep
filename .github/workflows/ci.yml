@@ -185,3 +185,7 @@ jobs:
         uses: anchore/sbom-action@v0
         with:
           image: ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${{ steps.build-and-push.outputs.digest }}
+
+      - uses: anchore/sbom-action/publish-sbom@v0
+        with:
+          sbom-artifact-match: ".*\\.spdx$"
