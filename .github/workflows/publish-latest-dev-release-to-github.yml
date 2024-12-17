@@ -47,31 +47,10 @@ jobs:
             LICENSE
 
   containerbuild:
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build images
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: true # Will only build if this is not here
-          build-args: |
-            LOGPREP_VERSION=latest
-            PYTHON_VERSION=${{ matrix.python-version }}
-          tags: |
-            ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-main
-            ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest
+    uses: ./.github/workflows/container-build.yml
+    needs: create-github-prerelease
+    with:
+      build-version: ${{ github.ref_name }}
+      tags: |
+        ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-main
+        ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest
