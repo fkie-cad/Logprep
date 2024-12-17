@@ -64,4 +64,4 @@ jobs:
     needs: publish-latest-release-to-pypi
     with:
       build-version: ${{ github.ref_name }}
-      tags: ["${{ github.ref_name }}", "stable", "latest"]
+      tags: "${{ github.ref_name }}, stable, latest"

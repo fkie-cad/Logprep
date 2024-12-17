@@ -51,4 +51,4 @@ jobs:
     needs: create-github-prerelease
     with:
       build-version: ${{ github.ref_name }}
-      tags: ["main", "latest"]
+      tags: "main, latest"
