@@ -121,11 +121,11 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
         self._load_rule(self.object.rules[0])
         self.object.process(document)
+        assert document == expected
         assert len(self.object.result.warnings) == 1
         assert re.match(
             r".*missing source_fields: \['client\.ip'].*", str(self.object.result.warnings[0])
         )
-        assert document == expected
 
     def test_nothing_to_enrich(self):
         document = {"something": {"something": "1.2.3.4"}}
