@@ -48,7 +48,7 @@ jobs:
 
       - name: Build image and export to Docker
         uses: docker/build-push-action@v6
-        id: build-and-push
+        id: build
         with:
           context: .
           load: true
@@ -57,9 +57,14 @@ jobs:
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: ${{ steps.image-tag.outputs.tags }}
 
-      - name: Ensure logprep is available in image
+      - name: List Docker imagers
         run: |
-          docker run --rm ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }} --version
+          docker image ls
+
+      - name: Ensure logprep is available in image
+        needs: build
+        run: |
+          docker run --rm ghcr.io/fkie-cad/logprep@${{ steps.build.outputs.digest }} --version
 
       - name: Push image
         uses: docker/build-push-action@v6
