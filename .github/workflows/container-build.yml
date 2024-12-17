@@ -10,7 +10,7 @@ on:
       tags:
         description: "Tags to apply to the image"
         required: true
-        type: array
+        type: sequence
 
 jobs:
   containerbuild:
