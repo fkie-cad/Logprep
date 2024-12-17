@@ -9,6 +9,7 @@
 * removed the configuration `tld_lists` in `domain_resolver`, `domain_label_extractor` and `pseudonymizer` as
 the list is now fixed inside the packaged logprep
 * remove SQL feature from `generic_adder`, fields can only be added from rule config or from file
+* use a single rule tree instead of a generic and a specific rule tree
 
 ### Features
 
