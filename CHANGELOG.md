@@ -31,6 +31,7 @@ the list is now fixed inside the packaged logprep
 * remove `tldextract` dependency
 * remove `urlextract` dependency
 * fix wrong documentation for `timestamp_differ`
+* add container signatures to image build inside ci pipeline
 
 ### Bugfix
 
