@@ -140,6 +140,27 @@ jobs:
           tags: |
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Create SBOM of container image
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${{ steps.build-and-push.outputs.digest }}
+          artifact-name: py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json
+          output-file: py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json
+
+      - name: Sign image with a key and add sbom attestation
+        run: |
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
+          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate py${{ matrix.python-version }}-${{ github.head_ref }}.spdx.json ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+
       # To avoid the trivy-db becoming outdated, we save the cache for one day
       - name: Get date
         id: date
@@ -167,16 +188,3 @@ jobs:
       # So we need to change the permissions before caching the database.
       - name: Change permissions for trivy.db
         run: sudo chmod 0644 ./cache/db/trivy.db
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.7.0
-        with:
-          cosign-release: 'v2.4.1'
-
-      - name: Sign image with a key
-        run: |
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}@${DIGEST}
-        env:
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}

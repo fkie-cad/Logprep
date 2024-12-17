@@ -32,6 +32,7 @@ allowing further applications besides log handling.
 - [Event Generation](https://logprep.readthedocs.io/en/latest/user_manual/execution.html#event-generation)
 - [Documentation](https://logprep.readthedocs.io/en/latest)
 - [Container signatures](https://github.com/fkie-cad/Logprep/blob/main/README.md#container-signatures)
+- [Container SBOM](https://github.com/fkie-cad/Logprep/blob/main/README.md#container-sbom)
 - [Contributing](https://github.com/fkie-cad/Logprep/blob/main/CONTRIBUTING.md)
 - [License](https://github.com/fkie-cad/Logprep/blob/main/LICENSE)
 - [Changelog](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md)
@@ -243,7 +244,8 @@ A HTML documentation can be then found in `doc/_build/html/index.html`.
 
 ## Container signatures
 
-From release 15 on, Logprep containers are signed using the cosign tool.
+From release 15 on, Logprep containers are signed using the
+[cosign](https://github.com/sigstore/cosign) tool.
 To verify the container, you can copy the following public key into a file
 `logprep.pub`:
 
@@ -257,5 +259,43 @@ kVtARE+LJfSFI25BanOG9jaxxRGVt+Sa1KtQbMcy7Glxu0s7XgD9VFGjTA==
 And use it to verify the signature:
 
 ```
-cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:3.11-latest
+cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:py3.11-latest
+```
+
+The output should look like:
+
+```
+Verification for ghcr.io/fkie-cad/logprep:py3.11-latest --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The signatures were verified against the specified public key
+
+[{"critical":{"identity":{"docker-reference":"ghcr.io/fkie-cad/logprep"}, ...
+```
+
+## Container SBOM
+
+From release 15 on, Logprep container images are shipped with a generated sbom.
+To verify the attestation and extract the SBOM use
+[cosign](https://github.com/sigstore/cosign) with:
+
+```
+cosign verify-attestation --key logprep.pub ghcr.io/fkie-cad/logprep:py3.11-latest | jq '.payload | @base64d | fromjson | .predicate | .Data | fromjson' > sbom.json
+```
+
+The output should look like:
+
+```
+Verification for ghcr.io/fkie-cad/logprep:py3.11-latest --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The signatures were verified against the specified public key
+```
+
+Finally, you can view the extracted sbom with:
+
+```
+cat sbom.json | jq
 ```
