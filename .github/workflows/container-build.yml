@@ -10,7 +10,7 @@ on:
       tags:
         description: "Tags to apply to the image"
         required: true
-        type: string
+        type: array
 
 jobs:
   containerbuild:
@@ -41,10 +41,15 @@ jobs:
             LOGPREP_VERSION=${{ inputs.build-version }}
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: ${{ inputs.tags }}
+          # ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.head_ref }}
+
+      - name: Test Python
+        run: |
+          python --version
 
       - name: Ensure logprep is available in image
         run: |
-          docker run --rm ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }} --version
+          docker run --rm ghcr.io/fkie-cad/logprep:${{ steps.build-and-push.outputs.metadata."image.name" }}@${{ steps.build-and-push.outputs.digest }} --version
 
       - name: Push image
         uses: docker/build-push-action@v6
@@ -54,7 +59,7 @@ jobs:
           build-args: |
             LOGPREP_VERSION=${{ inputs.build-version }}
             PYTHON_VERSION=${{ matrix.python-version }}
-          tags: ${{ join(inputs.tags, '\n') }}
+          tags: ${{ inputs.tags }}
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.7.0
