@@ -38,7 +38,7 @@ jobs:
 
       - name: Debug Image Tag
         run: |
-          echo "${{ steps.image-tag.output }}"
+          echo "${{ steps.image-tag.outputs.stdout }}"
 
       - name: Build image and export to Docker
         uses: docker/build-push-action@v6
