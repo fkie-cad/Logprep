@@ -32,6 +32,7 @@ allowing further applications besides log handling.
 - [Event Generation](https://logprep.readthedocs.io/en/latest/user_manual/execution.html#event-generation)
 - [Documentation](https://logprep.readthedocs.io/en/latest)
 - [Container signatures](https://github.com/fkie-cad/Logprep/blob/main/README.md#container-signatures)
+- [Container SBOM](https://github.com/fkie-cad/Logprep/blob/main/README.md#container-sbom)
 - [Contributing](https://github.com/fkie-cad/Logprep/blob/main/CONTRIBUTING.md)
 - [License](https://github.com/fkie-cad/Logprep/blob/main/LICENSE)
 - [Changelog](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md)
@@ -258,4 +259,19 @@ And use it to verify the signature:
 
 ```
 cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:3.11-latest
+```
+
+## Container SBOM
+
+From release 15 on, Logprep container images are shipped with a generated sbom.
+To verify the supply-chain, get the sbom data from the image attestation with:
+
+```
+cosign verify-attestation --key logprep.pub ghcr.io/fkie-cad/logprep:py3.11-latest | jq '.payload | @base64d | fromjson | .predicate | .Data | fromjson' > sbom.json
+```
+
+And view sbom with:
+
+```
+cat sbom.json | jq
 ```
