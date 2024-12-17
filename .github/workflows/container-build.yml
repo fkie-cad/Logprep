@@ -23,7 +23,7 @@ jobs:
       - name: Create Image Tags
         id: image-tag
         run: |
-          python -c "print('tags', ', '.join([f'ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-{tag.strip()}' for tag in '${{ inputs.tags }}'.split(',')]), sep='')"  >> $GITHUB_OUTPUT
+          python -c "print('tags=', ', '.join([f'ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-{tag.strip()}' for tag in '${{ inputs.tags }}'.split(',')]), sep='')"  >> $GITHUB_OUTPUT
 
       - name: Debug Image Tag
         run: |
