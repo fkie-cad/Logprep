@@ -334,13 +334,22 @@ class LuceneTransformer:
             return self._get_filter_expression_regex(key, value)
         return None
 
-    def _get_filter_expression(
-        self, key: List[str], value
-    ) -> Union[RegExFilterExpression, StringFilterExpression]:
+    @staticmethod
+    def _check_key_and_modifier(key, value):
         key_and_modifier = key[-1].split("|")
         if len(key_and_modifier) == 2:
             if key_and_modifier[-1] == "re":
                 return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
+        return None
+
+
+    def _get_filter_expression(
+        self, key: List[str], value
+    ) -> Union[RegExFilterExpression, StringFilterExpression]:
+
+        key_and_modifier_check = LuceneTransformer._check_key_and_modifier(key, value)
+        if key_and_modifier_check is not None:
+            return key_and_modifier_check
 
         dotted_field = ".".join(key)
 
@@ -360,11 +369,10 @@ class LuceneTransformer:
     def _get_filter_expression_regex(
             self, key: List[str], value
     ) -> Union[RegExFilterExpression, StringFilterExpression]:
-        key_and_modifier = key[-1].split("|")
-        if len(key_and_modifier) == 2:
-            if key_and_modifier[-1] == "re":
-                return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
 
+        key_and_modifier_check = LuceneTransformer._check_key_and_modifier(key, value)
+        if key_and_modifier_check is not None:
+            return key_and_modifier_check
 
         value = value.strip("/")
         return RegExFilterExpression(key, value)
