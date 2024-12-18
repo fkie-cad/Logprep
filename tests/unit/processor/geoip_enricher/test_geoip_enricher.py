@@ -119,7 +119,6 @@ class TestGeoipEnricher(BaseProcessorTestCase):
     def test_source_field_is_none_emits_missing_fields_warning(self):
         document = {"client": {"ip": None}}
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
-        self._load_rule(self.object.rules[0])
         self.object.process(document)
         assert document == expected
         assert len(self.object.result.warnings) == 1
