@@ -488,4 +488,30 @@ class TestLueceneFilter:
         assert lucene_filter == And(RegExFilterExpression(["regex_key_one"], ".*value.*"),
                                     StringFilterExpression(["key_two"], "/.*value.*/"))
 
+    def test_new_lucene_compliance2(self):
+        lucene_filter = LuceneFilter.create(
+            'regex_key_one:/\/.*value.*/'
+        )
 
+        lucene_filter = LuceneFilter.create(
+            'regex_key_one:/\\/.*value.*/'
+        )
+
+        # lucene_filter = LuceneFilter.create(
+        #     'regex_key_one: "\/.*value.*"',
+        #     special_fields={"regex_fields": ["regex_key_one"]},
+        # )
+
+        # in opensearch mit lucene ausprobiert:  /\/value/  um  /value zu finden
+        # opensearch lucene regex ohne escapen funktioniert nicht. also //value// geht nicht, so wie es im notebook
+        # mit dem regex_field ist.
+
+        # so wie es hier ist funktioniert (mti /\/ ebenso wie mit /\\/ weil im Code sowieso beides auf /\\/ gesetzt wird)
+        # im Notebook mit yaml doc muss allerdings mit \\/ escaped werden, dass es funktioniert.
+        # Das waere noch gut, wenn man das nicht muesste.
+
+
+
+
+        assert lucene_filter == RegExFilterExpression(["regex_key_one"], "\/.*value.*")
+        #assert lucene_filter == RegExFilterExpression(["regex_key_one"], "/.*value.*")
