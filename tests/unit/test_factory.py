@@ -139,7 +139,7 @@ def test_creates_calculator_with_inline_rules():
             }
         }
     )
-    assert len(processor._tree_rules) == 1
+    assert len(processor.rules) == 1
 
 
 def test_creates_calculator_with_inline_rules_and_files():
@@ -157,9 +157,9 @@ def test_creates_calculator_with_inline_rules_and_files():
             }
         }
     )
-    assert len(processor._tree_rules) == 2
-    assert processor._tree_rules[0].filter_str == "message1: *"
-    assert processor._tree_rules[1].filter_str == "(field1: * AND field2: *)"
+    assert len(processor.rules) == 2
+    assert processor.rules[0].filter_str == "message1: *"
+    assert processor.rules[1].filter_str == "(field1: * AND field2: *)"
 
 
 def test_creates_calculator_with_inline_rules_and_file_and_directory():
@@ -177,7 +177,7 @@ def test_creates_calculator_with_inline_rules_and_file_and_directory():
             }
         }
     )
-    assert len(processor._tree_rules) == 3
+    assert len(processor.rules) == 3
 
 
 def test_dummy_input_creates_dummy_input_connector():

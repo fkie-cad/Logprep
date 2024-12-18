@@ -392,8 +392,6 @@ class AutoRuleTester:
             type
         """
         processor.load_rules(self._empty_rules_dirs)
-        if processor._bypass_rule_tree:
-            processor._rules = processor.rules
         processor.setup()
 
     def _prepare_test_eval(
@@ -496,7 +494,7 @@ class AutoRuleTester:
         processor : Processor
             processor to reset tree on
         """
-        if hasattr(processor, "_rules"):
+        if hasattr(processor, "rules"):
             processor.rules.clear()
         if hasattr(processor, "_rule_tree"):
             processor._rule_tree = RuleTree()

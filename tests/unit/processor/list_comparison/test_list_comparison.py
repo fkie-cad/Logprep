@@ -275,6 +275,6 @@ Hans
         rule = processor.rule_class._create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         processor.setup()
-        assert processor._tree_rules[0].compare_sets == {
+        assert processor.rules[0].compare_sets == {
             "bad_users.list": {"Franz", "Heinz", "Hans"}
         }

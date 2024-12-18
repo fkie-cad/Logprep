@@ -51,7 +51,7 @@ class ListComparison(Processor):
 
     def setup(self):
         super().setup()
-        for rule in [*self._tree_rules]:
+        for rule in self.rules:
             rule.init_list_comparison(self._config.list_search_base_path)
 
     def _apply_rules(self, event, rule):

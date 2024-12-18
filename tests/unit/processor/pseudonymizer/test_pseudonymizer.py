@@ -1065,7 +1065,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             },
         }
         self._load_rule(rule_dict)
-        self.object._tree_rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
+        self.object.rules[0].mapping["winlog.event_data.param2"] = "RE_DOES_NOT_EXIST"
         error_message = (
             r"Regex keyword 'RE_DOES_NOT_EXIST' not found in regex_mapping '.*\/regex_mapping.yml'"
         )

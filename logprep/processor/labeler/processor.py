@@ -64,7 +64,7 @@ class Labeler(Processor):
 
     def setup(self):
         super().setup()
-        for rule in self._tree_rules:
+        for rule in self.rules:
             if self._config.include_parent_labels:
                 rule.add_parent_labels_from_schema(self._schema)
             rule.conforms_to_schema(self._schema)

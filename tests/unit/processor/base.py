@@ -174,7 +174,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     def test_rules_returns_all_rules(self):
         rules = self.rules
-        object_rules = self.object._tree_rules
+        object_rules = self.object.rules
         assert len(rules) == len(object_rules)
 
     @mock.patch("logging.Logger.debug")

@@ -216,7 +216,7 @@ class Pseudonymizer(FieldManager):
         self._replace_regex_keywords_by_regex_expression()
 
     def _replace_regex_keywords_by_regex_expression(self):
-        for rule in self._tree_rules:
+        for rule in self.rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
                 if regex_keyword in self._regex_mapping:
                     rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])

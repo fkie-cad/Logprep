@@ -112,7 +112,6 @@ class Processor(Component):
         "_rule_tree",
         "result",
         "_bypass_rule_tree",
-        "_rules",
     ]
 
     rule_class: "Rule"
@@ -120,7 +119,6 @@ class Processor(Component):
     _rule_tree: RuleTree
     _strategy = None
     _bypass_rule_tree: bool
-    _rules: tuple["Rule"]
     result: ProcessorResult
 
     def __init__(self, name: str, configuration: "Processor.Config"):
@@ -131,18 +129,7 @@ class Processor(Component):
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
-            self._rules = self.rules
             logger.debug("Bypassing rule tree for processor %s", self.name)
-
-    @property
-    def _tree_rules(self):
-        """Returns all rules
-
-        Returns
-        -------
-        rules: list[Rule]
-        """
-        return self._rule_tree.rules
 
     @property
     def rules(self):
@@ -152,7 +139,7 @@ class Processor(Component):
         -------
         rules: list[Rule]
         """
-        return [*self._tree_rules]
+        return self._rule_tree.rules
 
     @property
     def metric_labels(self) -> dict:
@@ -195,7 +182,7 @@ class Processor(Component):
             rule.metrics.number_of_processed_events += 1
             return event
 
-        for rule in self._rules:
+        for rule in self.rules:
             if rule.matches(event):
                 _process_rule(rule, event)
 
