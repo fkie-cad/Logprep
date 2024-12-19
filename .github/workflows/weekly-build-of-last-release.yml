@@ -9,7 +9,7 @@ on:
 
 
 jobs:
-  get-lastest-release:
+  get-latest-release:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.get-tag.outputs.tag }}
