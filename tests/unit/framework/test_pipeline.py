@@ -903,8 +903,7 @@ class TestPipelineResult:
                             {
                                 "dummy": {
                                     "type": "dropper",
-                                    "specific_rules": [],
-                                    "generic_rules": [],
+                                    "rules": [],
                                 }
                             }
                         )
@@ -922,8 +921,7 @@ class TestPipelineResult:
                             {
                                 "dummy": {
                                     "type": "dropper",
-                                    "specific_rules": [],
-                                    "generic_rules": [],
+                                    "rules": [],
                                 }
                             }
                         )

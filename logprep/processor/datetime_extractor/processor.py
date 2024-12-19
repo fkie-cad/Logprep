@@ -12,10 +12,8 @@ Processor Configuration
 
     - datetimeextractorname:
         type: datetime_extractor
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.datetime_extractor.processor.DatetimeExtractor.Config
    :members:

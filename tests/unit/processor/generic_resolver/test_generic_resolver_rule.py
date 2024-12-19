@@ -8,8 +8,8 @@ from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "message",
         "generic_resolver": {
@@ -153,10 +153,8 @@ class TestGenericResolverRule:
             ),
         ],
     )
-    def test_rules_equality(
-        self, specific_rule_definition, testcase, other_rule_definition, is_equal
-    ):
-        rule1 = GenericResolverRule._create_from_dict(specific_rule_definition)
+    def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
+        rule1 = GenericResolverRule._create_from_dict(rule_definition)
         rule2 = GenericResolverRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
 

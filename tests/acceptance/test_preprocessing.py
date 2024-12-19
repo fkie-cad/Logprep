@@ -18,8 +18,7 @@ def get_config() -> Configuration:
         {
             "dissector": {
                 "type": "dissector",
-                "specific_rules": ["tests/testdata/acceptance/dissector/rules/specific"],
-                "generic_rules": ["tests/testdata/acceptance/dissector/rules/generic"],
+                "rules": ["tests/testdata/acceptance/dissector/rules"],
             }
         }
     ]

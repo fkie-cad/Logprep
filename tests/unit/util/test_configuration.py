@@ -201,8 +201,7 @@ pipeline:
         type: labeler
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
-        specific_rules: []
-        generic_rules: []
+        rules: []
 """
         )
         second_config = tmp_path / "pipeline2.yml"
@@ -211,8 +210,7 @@ pipeline:
 pipeline:
     - dissectorname:
         type: dissector
-        specific_rules: []
-        generic_rules: []
+        rules: []
 """
         )
         config = Configuration.from_sources([str(first_config), str(second_config)])
@@ -245,10 +243,8 @@ pipeline:
         labeler = config.pipeline[2]
         assert isinstance(labeler, dict)
         assert isinstance(labeler["labelername"], dict)
-        assert isinstance(labeler["labelername"]["specific_rules"], list)
-        assert isinstance(labeler["labelername"]["generic_rules"], list)
-        assert isinstance(labeler["labelername"]["specific_rules"][0], dict)
-        assert isinstance(labeler["labelername"]["generic_rules"][0], dict)
+        assert isinstance(labeler["labelername"]["rules"], list)
+        assert isinstance(labeler["labelername"]["rules"][0], dict)
 
     def test_verify_passes_for_valid_configuration(self):
         try:
@@ -281,21 +277,19 @@ pipeline:
                         {
                             "processor_name": {
                                 "type": "dissector",
-                                "specific_rules": [
+                                "rules": [
                                     {
                                         "filter": "message",
                                         "dissector": {
                                             "mapping": {"message": "%{source} %{target}"}
                                         },
                                         "description": "do nothing rule for dissector",
-                                    }
-                                ],
-                                "generic_rules": [
+                                    },
                                     {
                                         "filter": "message",
                                         "dissector": "THIS SHOULD BE A DICT",
                                         "description": "do nothing rule for dissector",
-                                    }
+                                    },
                                 ],
                             }
                         }
@@ -313,21 +307,19 @@ pipeline:
                         {
                             "processor_name": {
                                 "type": "dissector",
-                                "specific_rules": [
+                                "rules": [
                                     {
                                         "filter": "message",
                                         "dissector": {
                                             "mapping": {"message": "%{source} %{target}"}
                                         },
                                         "description": "do nothing rule for dissector",
-                                    }
-                                ],
-                                "generic_rules": [
+                                    },
                                     {
                                         "filter": "message",
                                         "dissector": "THIS SHOULD BE A DICT",
                                         "description": "do nothing rule for dissector",
-                                    }
+                                    },
                                 ],
                             },
                         },
@@ -374,22 +366,6 @@ pipeline:
                 1,
             ),
             (
-                "generic_rules missing from processor",
-                {
-                    "pipeline": [
-                        {
-                            "labelername": {
-                                "type": "labeler",
-                                "schema": "examples/exampledata/rules/labeler/schema.json",
-                                "include_parent_labels": "on",
-                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
-                            }
-                        }
-                    ]
-                },
-                1,
-            ),
-            (
                 "unknown option without spaces in processor",
                 {
                     "pipeline": [
@@ -398,8 +374,7 @@ pipeline:
                                 "type": "labeler",
                                 "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
-                                "generic_rules": ["examples/exampledata/rules/labeler/generic"],
+                                "rules": ["examples/exampledata/rules/labeler/rules"],
                                 "SOME_UNKNOWN_OPTION": "FOO",
                             }
                         }
@@ -416,8 +391,7 @@ pipeline:
                                 "type": "labeler",
                                 "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
-                                "generic_rules": ["examples/exampledata/rules/labeler/generic"],
+                                "rules": ["examples/exampledata/rules/labeler/rules"],
                                 "SOME UNKNOWN OPTION": "FOO",
                             }
                         }
@@ -449,8 +423,7 @@ pipeline:
                                 "type": "labeler",
                                 "schema": "examples/exampledata/rules/labeler/schema.json",
                                 "include_parent_labels": "on",
-                                "specific_rules": ["examples/exampledata/rules/labeler/specific"],
-                                "generic_rules": ["examples/exampledata/rules/labeler/generic"],
+                                "rules": ["examples/exampledata/rules/labeler/rules"],
                                 "SOME UNKNOWN OPTION": "FOO",
                             }
                         },
@@ -461,19 +434,14 @@ pipeline:
                                 "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
                                 "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
                                 "hash_salt": "a_secret_tasty_ingredient",
-                                "specific_rules": [
-                                    "tests/testdata/unit/pseudonymizer/rules/specific/"
-                                ],
-                                "generic_rules": [
-                                    "tests/testdata/unit/pseudonymizer/rules/generic/"
-                                ],
+                                "rules": ["tests/testdata/unit/pseudonymizer/rules"],
                                 "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
                                 "max_cached_pseudonyms": 1000000,
                             }
                         },
                     ],
                 },
-                2,
+                3,
             ),
             (
                 "rule with not existent output",
@@ -483,8 +451,7 @@ pipeline:
                         {
                             "selective_extractor": {
                                 "type": "selective_extractor",
-                                "generic_rules": [],
-                                "specific_rules": [
+                                "rules": [
                                     {
                                         "filter": "message",
                                         "selective_extractor": {
@@ -535,10 +502,8 @@ pipeline:
         type: labeler
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
-        specific_rules:
-            - examples/exampledata/rules/labeler/specific
-        generic_rules:
-            - examples/exampledata/rules/labeler/generic
+        rules:
+            - examples/exampledata/rules/labeler/rules
 """,
             "LOGPREP_OUTPUT": """
 output:
@@ -615,7 +580,7 @@ output:
 pipeline:
     - my dissector:
         type: dissector
-        specific_rules:
+        rules:
             - filter: message
               dissector:
                 id: same id
@@ -626,7 +591,6 @@ pipeline:
                 id: same id
                 mapping:
                   message: "%{other_field} %{next_field}"
-        generic_rules: []
 """
         )
         with pytest.raises(InvalidConfigurationErrors) as raised:
@@ -649,13 +613,12 @@ output:
 pipeline:
     - my dissector:
         type: dissector
-        specific_rules:
+        rules:
             - filter: message
               dissector:
                 id: same id
                 mapping:
                   message: "%{new_field} %{next_field}"
-        generic_rules:
             - filter: message
               dissector:
                 id: same id
@@ -791,8 +754,7 @@ pipeline:
         type: labeler
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
-        specific_rules: []
-        generic_rules: []
+        rules: []
 input:
     dummy:
         type: dummy_input
@@ -816,8 +778,7 @@ pipeline:
         type: labeler
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
-        specific_rules: []
-        generic_rules: []
+        rules: []
     - new_processor:
         type: THIS SHOULD BE A VALID PROCESSOR
 input:
@@ -865,8 +826,7 @@ pipeline:
         type: labeler
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
-        specific_rules: []
-        generic_rules: []
+        rules: []
 input:
     dummy:
         type: dummy_input
@@ -888,8 +848,8 @@ output:
         assert len(config_dict["output"]) == 1, "only last output should be in config"
         assert len(config_dict["pipeline"]) == 4, "all processors should be in config"
         labeler = config_dict["pipeline"][2]["labelername"]
-        assert len(labeler["specific_rules"]) == 1
-        assert isinstance(labeler["specific_rules"][0], dict)
+        assert len(labeler["rules"]) == 2
+        assert isinstance(labeler["rules"][0], dict)
 
     def test_as_json_returns_json(self):
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])
@@ -951,8 +911,7 @@ output:
             {
                 "new_processor": {
                     "type": "field_manager",
-                    "generic_rules": [],
-                    "specific_rules": [],
+                    "rules": [],
                 }
             }
         )
@@ -1040,8 +999,7 @@ output:
     {
         "my dissector": {
             "type": "dissector",
-            "specific_rules": [],
-            "generic_rules": [
+            "rules": [
                 {
                     "filter": "message",
                     "dissector": {
@@ -1069,8 +1027,7 @@ process_count: 1
 pipeline:
     - labelername:
         type: DOES_NOT_EXIST
-        generic_rules: []
-        specific_rules: []
+        rules: []
 input:
     dummy:
         type: dummy_input
@@ -1090,9 +1047,8 @@ output:
 pipeline:
     - the almighty dissector:
         type: dissector
-        generic_rules:
-            - tests/testdata/unit/dissector/generic_rules/dissector_rule.json
-        specific_rules: []
+        rules:
+            - tests/testdata/unit/dissector/rules/dissector_rule_1.json
 input:
     dummy:
         type: dummy_input
@@ -1104,7 +1060,7 @@ output:
         )
         config = Configuration.from_sources([str(config_path)])
         assert len(config.pipeline) == 1
-        assert len(config.pipeline[0]["the almighty dissector"]["generic_rules"]) == 1
+        assert len(config.pipeline[0]["the almighty dissector"]["rules"]) == 1
 
     @responses.activate
     def test_processor_config_with_url_path(self, tmp_path):
@@ -1114,9 +1070,8 @@ output:
 pipeline:
     - the almighty dissector:
         type: dissector
-        generic_rules:
+        rules:
             - http://localhost/dissector_rule.json
-        specific_rules: []
 input:
     dummy:
         type: dummy_input
@@ -1144,7 +1099,7 @@ output:
         )
         config = Configuration.from_sources([str(config_path)])
         assert len(config.pipeline) == 1
-        assert len(config.pipeline[0]["the almighty dissector"]["generic_rules"]) == 1
+        assert len(config.pipeline[0]["the almighty dissector"]["rules"]) == 1
 
     def test_verify_environment_raises_if_metrics_enabled_but_prometheus_multiproc_dir_not_set(
         self, config_path

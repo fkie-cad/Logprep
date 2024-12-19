@@ -435,19 +435,18 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
 class TestTimestampDiffer(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "timestamp_differ",
-        "specific_rules": ["tests/testdata/unit/timestamp_differ/specific_rules"],
-        "generic_rules": ["tests/testdata/unit/timestamp_differ/generic_rules"],
+        "rules": ["tests/testdata/unit/timestamp_differ/rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(error_message, str(result.warnings[0]))

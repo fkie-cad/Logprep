@@ -9,8 +9,8 @@ from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.dropper.rule import DropperRule
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "test",
         "dropper": {"drop": ["field1", "field2"]},
@@ -19,8 +19,8 @@ def fixture_specific_rule_definition():
 
 
 class TestDropperRule:
-    def test_rule_has_fields_to_drop(self, specific_rule_definition):
-        rule = DropperRule._create_from_dict(specific_rule_definition)
+    def test_rule_has_fields_to_drop(self, rule_definition):
+        rule = DropperRule._create_from_dict(rule_definition)
         fields_to_drop = rule.fields_to_drop
         assert isinstance(fields_to_drop, list)
         assert "field1" in fields_to_drop
@@ -60,11 +60,9 @@ class TestDropperRule:
             ),
         ],
     )
-    def test_rules_equality(
-        self, specific_rule_definition, testcase, other_rule_definition, is_equal
-    ):
+    def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
         rule1 = DropperRule._create_from_dict(
-            specific_rule_definition,
+            rule_definition,
         )
 
         print(other_rule_definition)
@@ -119,6 +117,6 @@ class TestDropperRule:
                     dropper_rule = DropperRule._create_from_dict(rule_definition)
                     assert isinstance(dropper_rule, DropperRule)
 
-    def test_rule_is_hashable(self, specific_rule_definition):
-        rule = DropperRule._create_from_dict(specific_rule_definition)
+    def test_rule_is_hashable(self, rule_definition):
+        rule = DropperRule._create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)

@@ -27,8 +27,7 @@ def fixture_config_template():
                 "type": "labeler",
                 "schema": "",
                 "include_parent_labels": True,
-                "specific_rules": None,
-                "generic_rules": None,
+                "rules": None,
             }
         }
     ]
@@ -36,35 +35,30 @@ def fixture_config_template():
 
 
 @pytest.mark.parametrize(
-    "specific_rules, generic_rules, schema, expected_output",
+    "rules, schema, expected_output",
     [
         (
-            ["acceptance/labeler/rules_static/rules/specific"],
-            ["acceptance/labeler/rules_static/rules/generic"],
-            "acceptance/labeler/rules_static/labeling/schema.json",
+            ["acceptance/labeler/no_regex/rules"],
+            "acceptance/labeler/no_regex/labeling/schema.json",
             "labeled_win_event_log.jsonl",
         ),
         (
             [
-                "acceptance/labeler/rules_static/rules/specific",
-                "acceptance/labeler/rules_static_only_regex/rules/specific",
+                "acceptance/labeler/no_regex/rules",
+                "acceptance/labeler/only_regex/rules",
             ],
-            [
-                "acceptance/labeler/rules_static/rules/generic",
-                "acceptance/labeler/rules_static_only_regex/rules/generic",
-            ],
-            "acceptance/labeler/rules_static_only_regex/labeling/schema.json",
+            "acceptance/labeler/only_regex/labeling/schema.json",
             "labeled_win_event_log_with_regex.jsonl",
         ),
     ],
 )
 def test_events_labeled_correctly(
-    tmp_path, config: Configuration, specific_rules, generic_rules, schema, expected_output
+    tmp_path, config: Configuration, rules, schema, expected_output
 ):  # pylint: disable=too-many-arguments
     expected_output_path = os.path.join(
         "tests/testdata/acceptance/expected_result", expected_output
     )
-    set_config(config, specific_rules, generic_rules, schema)
+    set_config(config, rules, schema)
     config.input["jsonl"]["documents_path"] = "tests/testdata/input_logdata/wineventlog_raw.jsonl"
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
@@ -79,11 +73,8 @@ def test_events_labeled_correctly(
     ), f"Missmatch in event at line {result['event_line_no']}!"
 
 
-def set_config(config: Configuration, specific_rules, generic_rules, schema):
+def set_config(config: Configuration, rules, schema):
     config.pipeline[0]["labelername"]["schema"] = os.path.join("tests/testdata", schema)
-    config.pipeline[0]["labelername"]["specific_rules"] = [
-        os.path.join("tests/testdata", rule) for rule in specific_rules
-    ]
-    config.pipeline[0]["labelername"]["generic_rules"] = [
-        os.path.join("tests/testdata", rule) for rule in generic_rules
+    config.pipeline[0]["labelername"]["rules"] = [
+        os.path.join("tests/testdata", rule) for rule in rules
     ]

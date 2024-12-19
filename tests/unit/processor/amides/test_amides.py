@@ -16,8 +16,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestAmides(BaseProcessorTestCase):
     CONFIG = {
         "type": "amides",
-        "generic_rules": ["tests/testdata/unit/amides/rules/generic"],
-        "specific_rules": ["tests/testdata/unit/amides/rules/specific"],
+        "rules": ["tests/testdata/unit/amides/rules"],
         "models_path": "tests/testdata/unit/amides/model.zip",
         "max_cache_entries": 5,
         "decision_threshold": 0.32,

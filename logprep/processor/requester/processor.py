@@ -22,10 +22,8 @@ Processor Configuration
 
     - requestername:
         type: requester
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.requester.processor.Requester.Config
    :members:

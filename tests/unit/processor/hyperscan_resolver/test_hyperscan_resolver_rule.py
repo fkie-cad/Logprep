@@ -9,8 +9,8 @@ from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
 pytest.importorskip("hyperscan")
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "some_filter",
         "hyperscan_resolver": {
@@ -22,8 +22,8 @@ def fixture_specific_rule_definition():
     }
 
 
-@pytest.fixture(name="specific_rule_with_resolve_file_definition")
-def fixture_specific_rule_with_resolve_file_definition():
+@pytest.fixture(name="rule_with_resolve_file_definition")
+def fixture_rule_with_resolve_file_definition():
     return {
         "filter": "some_filter",
         "hyperscan_resolver": {
@@ -143,13 +143,13 @@ def fixture_specific_rule_with_resolve_file_definition():
     ],
 )
 def test_rules_equality(
-    specific_rule_definition,
+    rule_definition,
     testcase,
     other_rule_definition,
     is_equal,
 ):
     rule1 = HyperscanResolverRule._create_from_dict(
-        specific_rule_definition,
+        rule_definition,
     )
 
     rule2 = HyperscanResolverRule._create_from_dict(
@@ -160,17 +160,17 @@ def test_rules_equality(
 
 
 def test_rules_with_differently_defined_but_equivalent_regex_pattern_definition_types_are_equal(
-    specific_rule_with_resolve_file_definition,
+    rule_with_resolve_file_definition,
 ):
     rule_no_regex = HyperscanResolverRule._create_from_dict(
-        specific_rule_with_resolve_file_definition,
+        rule_with_resolve_file_definition,
     )
 
-    specific_rule_with_resolve_file_definition["hyperscan_resolver"][
+    rule_with_resolve_file_definition["hyperscan_resolver"][
         "resolve_from_file"
     ] = "tests/testdata/unit/hyperscan_resolver/resolve_mapping_regex.yml"
     rule_regex = HyperscanResolverRule._create_from_dict(
-        specific_rule_with_resolve_file_definition,
+        rule_with_resolve_file_definition,
     )
 
     assert rule_no_regex == rule_regex

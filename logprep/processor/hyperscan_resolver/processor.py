@@ -16,10 +16,8 @@ Processor Configuration
 
     - hyperscanresolvername:
         type: hyperscan_resolver
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
         hyperscan_db_path: tmp/path/scan.db
 
 .. autoclass:: logprep.processor.hyperscan_resolver.processor.HyperscanResolver.Config

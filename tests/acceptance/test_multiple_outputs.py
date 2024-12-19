@@ -29,19 +29,13 @@ def get_config():
             {
                 "dissector": {
                     "type": "dissector",
-                    "specific_rules": ["tests/testdata/acceptance/dissector/rules/specific"],
-                    "generic_rules": ["tests/testdata/acceptance/dissector/rules/generic"],
+                    "rules": ["tests/testdata/acceptance/dissector/rules"],
                 }
             },
             {
                 "selective_extractor": {
                     "type": "selective_extractor",
-                    "specific_rules": [
-                        "tests/testdata/acceptance/selective_extractor/rules/specific"
-                    ],
-                    "generic_rules": [
-                        "tests/testdata/acceptance/selective_extractor/rules/generic"
-                    ],
+                    "rules": ["tests/testdata/acceptance/selective_extractor/rules"],
                 }
             },
             {
@@ -51,13 +45,8 @@ def get_config():
                     "pubkey_depseudo": "tests/testdata/acceptance/pseudonymizer/example_depseudo_pub.pem",
                     "hash_salt": "a_secret_tasty_ingredient",
                     "outputs": [{"second_output": "pseudonyms"}],
-                    "specific_rules": [
-                        "tests/testdata/acceptance/pseudonymizer/rules_static/specific"
-                    ],
-                    "generic_rules": [
-                        "tests/testdata/acceptance/pseudonymizer/rules_static/generic"
-                    ],
-                    "regex_mapping": "tests/testdata/acceptance/pseudonymizer/rules_static/regex_mapping.yml",
+                    "rules": ["tests/testdata/acceptance/pseudonymizer/rules"],
+                    "regex_mapping": "tests/testdata/acceptance/pseudonymizer/regex_mapping.yml",
                     "max_cached_pseudonyms": 1000000,
                 }
             },
@@ -65,8 +54,7 @@ def get_config():
                 "pre_detector": {
                     "type": "pre_detector",
                     "outputs": [{"jsonl": "pre_detector_topic"}],
-                    "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/generic"],
-                    "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/specific"],
+                    "rules": ["tests/testdata/acceptance/pre_detector/rules"],
                     "tree_config": "tests/testdata/acceptance/pre_detector/tree_config.json",
                 }
             },

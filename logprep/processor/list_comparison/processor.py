@@ -13,10 +13,8 @@ Processor Configuration
 
     - listcomparisonname:
         type: list_comparison
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
         list_search_base_path: /path/to/list/dir
 
 .. autoclass:: logprep.processor.list_comparison.processor.ListComparison.Config
@@ -53,7 +51,7 @@ class ListComparison(Processor):
 
     def setup(self):
         super().setup()
-        for rule in [*self._specific_rules, *self._generic_rules]:
+        for rule in self.rules:
             rule.init_list_comparison(self._config.list_search_base_path)
 
     def _apply_rules(self, event, rule):

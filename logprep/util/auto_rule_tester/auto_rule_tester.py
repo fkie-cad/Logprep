@@ -329,14 +329,15 @@ class AutoRuleTester:
         rule_test : dict
             the rules to test
         """
-        temp_rule_path = path.join(self._empty_rules_dirs[0], f"{hashlib.sha256()}.json")
+        temp_rule_path = path.join(
+            self._empty_rules_dirs[0], f"{hashlib.sha256().hexdigest()}.json"
+        )
         rules = self._get_rules(processor, rule_test)
 
-        for rule_type, rules in rules.items():
-            for idx, rule_dict in enumerate(rules):
-                self._prepare_test_eval(processor, rule_dict, rule_type, temp_rule_path)
-                self._eval_file_rule_test(rule_test, processor, idx)
-                remove_file_if_exists(temp_rule_path)
+        for idx, rule_dict in enumerate(rules):
+            self._prepare_test_eval(processor, rule_dict, temp_rule_path)
+            self._eval_file_rule_test(rule_test, processor, idx)
+            remove_file_if_exists(temp_rule_path)
 
     def _get_processors(self) -> OrderedDict:
         """Get processors in k/v-pairs
@@ -354,8 +355,8 @@ class AutoRuleTester:
         return processors_without_custom_test
 
     @staticmethod
-    def _get_rules(processor: "Processor", rule_test: dict) -> dict:
-        """Assign and get each type of rule
+    def _get_rules(processor: "Processor", rule_test: dict) -> list:
+        """Assign and get rule
 
         Parameters
         ----------
@@ -366,7 +367,7 @@ class AutoRuleTester:
 
         Returns
         -------
-        dict
+        list
             ruleset
 
         Raises
@@ -375,19 +376,12 @@ class AutoRuleTester:
             empty ruleset
         """
         if rule_test.get("rules"):
-            return {"rules": rule_test.get("rules", [])}
-        if rule_test.get("specific_rules") or rule_test.get("generic_rules"):
-            result = {}
-            if rule_test.get("specific_rules"):
-                result["specific_rules"] = rule_test.get("specific_rules", [])
-            if rule_test.get("generic_rules"):
-                result["generic_rules"] = rule_test.get("generic_rules", [])
-            return result
+            return rule_test.get("rules", [])
         raise AutoRuleTesterException(
             f"No rules provided for processor of type {processor.describe()}"
         )
 
-    def _load_rules(self, processor: "Processor", rule_type: str):
+    def _load_rules(self, processor: "Processor"):
         """Load each type of rules for each processor and set it up
 
         Parameters
@@ -397,18 +391,11 @@ class AutoRuleTester:
         rule_type : str
             type
         """
-        if rule_type == "rules":
-            processor.load_rules(self._empty_rules_dirs)
-        elif rule_type == "specific_rules":
-            processor.load_rules(self._empty_rules_dirs, [])
-        elif rule_type == "generic_rules":
-            processor.load_rules([], self._empty_rules_dirs)
-        if processor._bypass_rule_tree:
-            processor._rules = processor.rules
+        processor.load_rules(self._empty_rules_dirs)
         processor.setup()
 
     def _prepare_test_eval(
-        self, processor: "Processor", rule_dict: dict, rule_type: str, temp_rule_path: str
+        self, processor: "Processor", rule_dict: dict, temp_rule_path: str
     ) -> None:
         """Prepare test eval: Create rule file, then reset tree of processor and then load
          the rules for the processor
@@ -419,14 +406,12 @@ class AutoRuleTester:
             processor
         rule_dict : dict
             rules for proc
-        rule_type : str
-            type of rules
         temp_rule_path : str
             temporary path to rules
         """
         self._create_rule_file(rule_dict, temp_rule_path)
         self._reset(processor)
-        self._load_rules(processor, rule_type)
+        self._load_rules(processor)
 
     def _eval_file_rule_test(self, rule_test: dict, processor: "Processor", r_idx: int):
         """Main logic to check each rule file, compare and validate it, then print out results.
@@ -509,14 +494,10 @@ class AutoRuleTester:
         processor : Processor
             processor to reset tree on
         """
-        if hasattr(processor, "_rules"):
+        if hasattr(processor, "rules"):
             processor.rules.clear()
-        if hasattr(processor, "_tree"):
-            processor._tree = RuleTree()
-        if hasattr(processor, "_specific_tree"):
-            processor._specific_tree = RuleTree()
-        if hasattr(processor, "_generic_tree"):
-            processor._generic_tree = RuleTree()
+        if hasattr(processor, "_rule_tree"):
+            processor._rule_tree = RuleTree()
 
     @staticmethod
     def _create_rule_file(rule_dict: dict, rule_path: str):
@@ -608,9 +589,6 @@ class AutoRuleTester:
 
             if processor_cfg.get("rules"):
                 processor_cfg["rules"] = self._empty_rules_dirs
-            elif processor_cfg.get("generic_rules") and processor_cfg.get("specific_rules"):
-                processor_cfg["generic_rules"] = self._empty_rules_dirs
-                processor_cfg["specific_rules"] = self._empty_rules_dirs
 
     def _get_rules_per_processor_name(self, rules_dirs: dict) -> defaultdict:
         rules_pn = defaultdict(dict)
@@ -641,17 +619,17 @@ class AutoRuleTester:
         rules_pn[processor_name]["rules"] = []
         directories = {"Rules Directory": [f"{processor_name} ({processor_type}):"], "Path": []}
 
-        for _, (rule_type, rules_dir) in enumerate(proc_rules_dirs["rule_dirs"].items()):
-            directories["Path"].append(f"    - {rule_type}")
-            for path in Path(rules_dir).rglob("*"):
-                if path.is_file() and self._is_valid_rule_name(path.name):
+        for rules_dir in proc_rules_dirs["rule_dirs"]:
+            directories["Path"].append(f"    - {'rule_type'}")
+            for file_path in Path(rules_dir).rglob("*"):
+                if file_path.is_file() and self._is_valid_rule_name(file_path.name):
                     self._get_rule_dict(
-                        path.name, str(path.parent), processor_name, rules_pn, rule_type
+                        file_path.name, str(file_path.parent), processor_name, rules_pn
                     )
 
         self._pd_extra.print_rules(directories)
 
-    def _get_rule_dict(self, file, root, processor_name, rules_pn, rule_dirs_type) -> None:
+    def _get_rule_dict(self, file, root, processor_name, rules_pn) -> None:
         """Read out (multi-)rules and realize mapping via dict for further processing
 
         Parameters
@@ -664,8 +642,6 @@ class AutoRuleTester:
             name
         rules_pn : dict
             mapping of procs to rules
-        rule_dirs_type : str
-            type of rule
 
         Raises
         ------
@@ -702,7 +678,7 @@ class AutoRuleTester:
 
         rules_pn[processor_name]["rules"].append(
             {
-                rule_dirs_type: multi_rule,
+                "rules": multi_rule,
                 "tests": rule_tests,
                 "file": file_path,
             }
@@ -730,10 +706,10 @@ class AutoRuleTester:
             rules_dirs[processor_name]["type"] = processor_cfg["type"]
 
             if not rules_dirs[processor_name]["rule_dirs"]:
-                rules_dirs[processor_name]["rule_dirs"] = defaultdict(str)
+                rules_dirs[processor_name]["rule_dirs"] = []
 
             for rule_to_add in rules_to_add:
-                rules_dirs[processor_name]["rule_dirs"][rule_to_add[0]] += rule_to_add[1]
+                rules_dirs[processor_name]["rule_dirs"].append(rule_to_add)
 
         return rules_dirs
 
@@ -753,10 +729,8 @@ class AutoRuleTester:
         """
         rules_to_add = []
 
-        if processor_cfg.get("rules"):
-            rules_to_add.append(("rules", processor_cfg["rules"]))
-        elif processor_cfg.get("generic_rules") and processor_cfg.get("specific_rules"):
-            rules_to_add.append(("generic_rules", processor_cfg["generic_rules"][0]))
-            rules_to_add.append(("specific_rules", processor_cfg["specific_rules"][0]))
-
+        rule_path_lists = processor_cfg.get("rules")
+        if rule_path_lists:
+            for rule_path_list in rule_path_lists:
+                rules_to_add.append(rule_path_list)
         return rules_to_add

@@ -13,10 +13,8 @@ Processor Configuration
 
     - Concatenatorname:
         type: concatenator
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.concatenator.processor.Concatenator.Config
    :members:

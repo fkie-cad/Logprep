@@ -6,8 +6,8 @@ import pytest
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "message",
         "geoip_enricher": {"source_fields": ["source"], "target_field": "geoip"},
@@ -67,9 +67,7 @@ class TestListComparisonRule:
             ),
         ],
     )
-    def test_rules_equality(
-        self, specific_rule_definition, testcase, other_rule_definition, is_equal
-    ):
-        rule1 = GeoipEnricherRule._create_from_dict(specific_rule_definition)
+    def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
+        rule1 = GeoipEnricherRule._create_from_dict(rule_definition)
         rule2 = GeoipEnricherRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase

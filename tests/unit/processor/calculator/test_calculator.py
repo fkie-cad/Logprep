@@ -340,19 +340,18 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
 class TestCalculator(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "calculator",
-        "specific_rules": ["tests/testdata/unit/calculator/specific_rules"],
-        "generic_rules": ["tests/testdata/unit/calculator/generic_rules"],
+        "rules": ["tests/testdata/unit/calculator/rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         result = self.object.process(event)
         assert len(result.warnings) == 1

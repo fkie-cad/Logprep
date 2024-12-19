@@ -12,8 +12,7 @@ class TestClusterer(BaseProcessorTestCase):
     CONFIG = {
         "type": "clusterer",
         "output_field_name": "cluster_signature",
-        "generic_rules": ["tests/testdata/unit/clusterer/rules/generic"],
-        "specific_rules": ["tests/testdata/unit/clusterer/rules/specific"],
+        "rules": ["tests/testdata/unit/clusterer/rules"],
     }
 
     def test_has_tag_clusterable(self):
@@ -168,17 +167,16 @@ class TestClusterer(BaseProcessorTestCase):
 
         document = {"message": "test signature test"}
         rule = ClustererRule._create_from_dict(rule_definition)
-        self.object._generic_tree.add_rule(rule, None)
+        self.object._rule_tree.add_rule(rule, None)
         self.object._cluster(document, rule)
 
         assert document == expected
 
-    def test_rule_dependency(self, tmp_path):
+    def test_rule_dependency_one(self, tmp_path):
         config = deepcopy(self.CONFIG)
         empty_rules_path = tmp_path / "empty"
         empty_rules_path.mkdir()
-        config.update({"generic_rules": [empty_rules_path.as_posix()]})
-        config.update({"specific_rules": [empty_rules_path.as_posix()]})
+        config.update({"rules": [empty_rules_path.as_posix()]})
         clusterer = Factory.create({"test instance": config})
 
         rule_0 = {
@@ -190,7 +188,6 @@ class TestClusterer(BaseProcessorTestCase):
             },
             "description": "",
         }
-
         rule_1 = {
             "filter": "message",
             "clusterer": {
@@ -227,14 +224,51 @@ class TestClusterer(BaseProcessorTestCase):
             },
             "description": "",
         }
-        rules = [rule_0, rule_1, rule_2, rule_3, rule_4]
-        specific_rules = []
-        for idx, rule in enumerate(rules):
+        rules_to_add = [rule_0, rule_1, rule_2, rule_3, rule_4]
+        rules = []
+        for idx, rule in enumerate(rules_to_add):
             new_rule = ClustererRule._create_from_dict(rule)
             new_rule.file_name = str(idx)
-            specific_rules.append(new_rule)
-            clusterer._specific_tree.add_rule(new_rule, None)
-        rule_5 = {
+            rules.append(new_rule)
+            clusterer._rule_tree.add_rule(new_rule, None)
+
+        expected = {
+            "message": "test some signature xyz-foo",
+            "cluster_signature": "signature baz",
+        }
+
+        document = {"message": "test some signature xyz-foo"}
+        for rule in rules:
+            clusterer._cluster(document, rule)
+        assert document == expected
+
+        document = {"message": "test some signature xyz-foo"}
+        for rule in rules:
+            clusterer._cluster(document, rule)
+        assert document == expected
+
+        document = {"message": "test some signature xyz-foo"}
+        for rule in rules[1:]:
+            clusterer._cluster(document, rule)
+        assert document == expected
+
+    def test_rule_dependency_two(self, tmp_path):
+        config = deepcopy(self.CONFIG)
+        empty_rules_path = tmp_path / "empty"
+        empty_rules_path.mkdir()
+        config.update({"rules": [empty_rules_path.as_posix()]})
+        clusterer = Factory.create({"test instance": config})
+
+        expected = {
+            "message": "test some signature xyz-foo",
+            "cluster_signature": "test SIGN",
+        }
+        document = {
+            "message": "test some signature xyz-foo",
+            "cluster_signature": "signature baz",
+        }
+
+        rule_0 = {
             "filter": "no_match",
             "clusterer": {
                 "source_fields": ["message"],
@@ -243,7 +277,7 @@ class TestClusterer(BaseProcessorTestCase):
             },
             "description": "",
         }
-        rule_6 = {
+        rule_1 = {
             "filter": "message",
             "clusterer": {
                 "source_fields": ["message"],
@@ -252,7 +286,7 @@ class TestClusterer(BaseProcessorTestCase):
             },
             "description": "",
         }
-        rule_7 = {
+        rule_2 = {
             "filter": "message",
             "clusterer": {
                 "source_fields": ["message"],
@@ -261,7 +295,7 @@ class TestClusterer(BaseProcessorTestCase):
             },
             "description": "",
         }
-        rule_8 = {
+        rule_3 = {
             "filter": "message",
             "clusterer": {
                 "source_fields": ["message"],
@@ -270,40 +304,14 @@ class TestClusterer(BaseProcessorTestCase):
             },
             "description": "",
         }
-        rules = [rule_5, rule_6, rule_7, rule_8]
-        generic_rules = []
-
-        for idx, rule in enumerate(rules):
+        rules_to_add = [rule_0, rule_1, rule_2, rule_3]
+        rules = []
+        for idx, rule in enumerate(rules_to_add):
             new_rule = ClustererRule._create_from_dict(rule)
             new_rule.file_name = str(idx)
-            generic_rules.append(new_rule)
-            clusterer._generic_tree.add_rule(new_rule, None)
+            rules.append(new_rule)
+            clusterer._rule_tree.add_rule(new_rule, None)
 
-        expected = {
-            "message": "test some signature xyz-foo",
-            "cluster_signature": "signature baz",
-        }
-
-        document = {"message": "test some signature xyz-foo"}
-        for rule in specific_rules:
-            clusterer._cluster(document, rule)
-        assert document == expected
-
-        document = {"message": "test some signature xyz-foo"}
-        for rule in specific_rules:
-            clusterer._cluster(document, rule)
-        assert document == expected
-
-        document = {"message": "test some signature xyz-foo"}
-        for rule in specific_rules[1:]:
-            clusterer._cluster(document, rule)
-        assert document == expected
-
-        expected = {
-            "message": "test some signature xyz-foo",
-            "cluster_signature": "test SIGN",
-        }
-        document = {"message": "test some signature xyz-foo"}
-        for rule in specific_rules + generic_rules:
+        for rule in rules:
             clusterer._cluster(document, rule)
         assert document == expected

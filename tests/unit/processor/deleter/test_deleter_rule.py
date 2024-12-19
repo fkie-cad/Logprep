@@ -7,8 +7,8 @@ import pytest
 from logprep.processor.deleter.rule import DeleterRule
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "test",
         "deleter": {"delete": True},
@@ -54,11 +54,9 @@ class TestDeleterRule:
             ),
         ],
     )
-    def test_rules_equality(
-        self, specific_rule_definition, testcase, other_rule_definition, is_equal
-    ):
+    def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
         rule1 = DeleterRule._create_from_dict(
-            specific_rule_definition,
+            rule_definition,
         )
 
         print(other_rule_definition)
@@ -102,6 +100,6 @@ class TestDeleterRule:
                     deleter_rule = DeleterRule._create_from_dict(rule_definition)
                     assert isinstance(deleter_rule, DeleterRule)
 
-    def test_rule_is_hashable(self, specific_rule_definition):
-        rule = DeleterRule._create_from_dict(specific_rule_definition)
+    def test_rule_is_hashable(self, rule_definition):
+        rule = DeleterRule._create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)

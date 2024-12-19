@@ -11,8 +11,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestPreDetector(BaseProcessorTestCase):
     CONFIG = {
         "type": "pre_detector",
-        "generic_rules": ["tests/testdata/unit/pre_detector/rules/generic"],
-        "specific_rules": ["tests/testdata/unit/pre_detector/rules/specific"],
+        "rules": ["tests/testdata/unit/pre_detector/rules"],
         "outputs": [{"kafka": "pre_detector_alerts"}],
         "alert_ip_list_path": "tests/testdata/unit/pre_detector/alert_ips.yml",
     }
@@ -345,7 +344,7 @@ class TestPreDetector(BaseProcessorTestCase):
             "@timestamp": "2024-08-12T12:13:04+00:00",
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         detection_results = self.object.process(document)
         assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04Z"
 
@@ -405,7 +404,7 @@ class TestPreDetector(BaseProcessorTestCase):
         ],
     )
     def test_timestamp_is_normalized(self, testcase, rule, timestamp, expected):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {
             "@timestamp": timestamp,
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
@@ -433,7 +432,7 @@ class TestPreDetector(BaseProcessorTestCase):
             "second_match": "something",
             "@timestamp": "19960531153655",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         detection_results = self.object.process(document)
         assert detection_results.data[0][0].get("custom_timestamp") == "2024-08-11T02:11:45Z"
         assert (
@@ -455,7 +454,7 @@ class TestPreDetector(BaseProcessorTestCase):
         document = {
             "@timestamp": "this is not a timestamp",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         detection_results = self.object.process(document)
         assert detection_results.warnings
         assert len(detection_results.warnings) == 1

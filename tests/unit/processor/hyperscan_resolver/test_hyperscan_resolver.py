@@ -28,8 +28,7 @@ from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 class TestHyperscanResolverProcessor(BaseProcessorTestCase):
     CONFIG = {
         "type": "hyperscan_resolver",
-        "specific_rules": ["tests/testdata/unit/hyperscan_resolver/rules/specific/"],
-        "generic_rules": ["tests/testdata/unit/hyperscan_resolver/rules/generic/"],
+        "rules": ["tests/testdata/unit/hyperscan_resolver/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
         "hyperscan_db_path": "/tmp",
     }
@@ -37,7 +36,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
     def test_resolve_instantiates(self):
         rule = {"filter": "anything", "hyperscan_resolver": {"field_mapping": {}}}
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         assert isinstance(self.object, HyperscanResolver)
 
@@ -50,7 +49,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
         document = {"to_resolve": "something HELLO1"}
@@ -70,7 +69,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
         document = {"to_resolve": "something HELLO1"}
 
@@ -92,7 +91,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something no"}
         document = {"to_resolve": "something no"}
@@ -110,7 +109,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to": {"resolve": "something HELLO1"}, "resolved": "Greeting"}
         document = {"to": {"resolve": "something HELLO1"}}
@@ -130,7 +129,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "ab", "resolved": "ab_resolved"}
         document = {"to_resolve": "ab"}
@@ -150,7 +149,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to_resolve_1": "ab",
@@ -175,7 +174,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to_resolve": "not_in_list",
@@ -199,7 +198,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
@@ -221,7 +220,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
@@ -244,7 +243,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to_resolve": "12ab34",
@@ -268,7 +267,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
         }
 
         with pytest.raises(InvalidHyperscanResolverDefinition):
-            self._load_specific_rule(rule)
+            self._load_rule(rule)
 
     def test_resolve_dotted_no_conflict_no_match(self):
         rule = {
@@ -279,7 +278,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to": {"resolve": "something no"}}
         document = {"to": {"resolve": "something no"}}
@@ -296,7 +295,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to": {"other_field": "something no"},
@@ -317,7 +316,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "re": {"solved": "Greeting"}}
         document = {"to_resolve": "something HELLO1"}
@@ -335,7 +334,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "something no"}
         document = {"to_resolve": "something no"}
@@ -353,7 +352,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
         document = {"to": {"resolve": "something HELLO1"}}
@@ -370,7 +369,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "I already exist!"}}
         expected = {
             "to": {"resolve": "something HELLO1"},
@@ -397,7 +396,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
         document = {"to": {"resolve": "something HELLO1"}}
@@ -424,7 +423,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "ab", "resolved": "ab_resolved"}
         document = {"to_resolve": "ab"}
@@ -448,7 +447,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "ab)c", "resolved": "ab)c_resolved"}
         document = {"to_resolve": "ab)c"}
@@ -472,7 +471,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": r"ab\)c", "resolved": r"ab\)c_resolved"}
         document = {"to_resolve": r"ab\)c"}
@@ -497,7 +496,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         }
 
         with pytest.raises(Exception, match="unbalanced parenthesis"):
-            self._load_specific_rule(rule)
+            self._load_rule(rule)
 
     def test_resolve_from_file_and_from_list(self):
         rule = {
@@ -513,7 +512,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to_resolve_1": "ab",
@@ -541,7 +540,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to_resolve": "not_in_list",
@@ -568,7 +567,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
@@ -591,7 +590,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
@@ -614,7 +613,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "gh", "resolved": ["gh_resolved"]}
         document = {"to_resolve": "gh"}
@@ -636,7 +635,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "extend_target_list": True,
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"to_resolve": "12ab34"}
         result = self.object.process(document)
         assert isinstance(result.errors[0], ProcessingCriticalError)
@@ -657,7 +656,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
@@ -683,7 +682,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         expected = {
             "to_resolve": "12ab34",
@@ -712,7 +711,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             },
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
 
         document = {"to_resolve": "ab"}
 
@@ -732,4 +731,4 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             match=r"The following HyperscanResolver definition is invalid: Additions file '{"
             r"'path': 'i/do/not/exist', 'pattern': 'bar'}' not found!",
         ):
-            self._load_specific_rule(rule)
+            self._load_rule(rule)

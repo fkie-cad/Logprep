@@ -243,15 +243,14 @@ test_cases = [  # testcase, rule, event, expected
 class TestKeyChecker(BaseProcessorTestCase):
     CONFIG = {
         "type": "key_checker",
-        "specific_rules": ["tests/testdata/unit/key_checker/specific_rules/"],
-        "generic_rules": ["tests/testdata/unit/key_checker/generic_rules/"],
+        "rules": ["tests/testdata/unit/key_checker/rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases_positiv(
         self, testcase, rule, event, expected
     ):  # pylint: disable=unused-argument
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
@@ -263,7 +262,7 @@ class TestKeyChecker(BaseProcessorTestCase):
                 "target_field": "missing_fields",
             },
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         document = {
             "key1": {
                 "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},

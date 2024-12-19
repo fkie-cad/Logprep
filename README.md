@@ -91,7 +91,7 @@ and secondly they specify how to process the message.
 For example which fields should be deleted or to which IP-address the geolocation should be
 retrieved.
 
-For performance reasons on startup all rules per processor are aggregated to a generic and a specific rule tree, respectively.
+For performance reasons on startup all rules per processor are aggregated to a rule tree.
 Instead of evaluating all rules independently for each log message the message is checked against
 the rule tree.
 Each node in the rule tree represents a condition that has to be meet,
@@ -131,11 +131,6 @@ This configuration will lead to the prioritization of `tags` and `message` in th
 }
 ```
 
-Instead of writing very specific rules that apply to single log messages, it is also possible
-to define generic rules that apply to multiple messages.
-It is possible to define a set of generic and specific rules for each processor, resulting
-in two rule trees.
-
 ### Connectors
 
 Connectors are responsible for reading the input and writing the result to a desired output.
@@ -169,24 +164,20 @@ timeout: 0.1
 pipeline:
   - dissector:
       type: dissector
-      specific_rules:
+      rules:
         - https://your-api/dissector/
-      generic_rules:
-        - rules/01_dissector/generic/
+        - rules/01_dissector/rules/
   - geoip_enricher:
       type: geoip_enricher
-      specific_rules:
+      rules:
         - https://your-api/geoip/
-      generic_rules:
-        - rules/02_geoip_enricher/generic/
+        - rules/02_geoip_enricher/rules/
       tree_config: artifacts/tree_config.json
       db_path: artifacts/GeoDB.mmdb
   - dropper:
       type: dropper
-      specific_rules:
-        - rules/03_dropper/specific/
-      generic_rules:
-        - rules/03_dropper/generic/
+      rules:
+        - rules/03_dropper/rules/
 
 input:
   mykafka:
@@ -213,7 +204,7 @@ output:
 ```
 
 The following yaml represents a dropper rule which according to the previous configuration
-should be in the `rules/03_dropper/generic/` directory.
+should be in the `rules/03_dropper/rules/` directory.
 
 ```yaml
 filter: "message"

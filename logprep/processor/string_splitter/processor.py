@@ -12,10 +12,8 @@ Processor Configuration
 
     - samplename:
         type: string_splitter
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.string_splitter.processor.StringSplitter.Config
    :members:

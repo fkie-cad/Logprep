@@ -9,8 +9,8 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 pytest.importorskip("logprep.processor.domain_resolver")
 
 
-@pytest.fixture(name="specific_rule_definition")
-def fixture_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def fixture_rule_definition():
     return {
         "filter": "message",
         "domain_resolver": {
@@ -79,8 +79,8 @@ def fixture_specific_rule_definition():
         ),
     ],
 )
-def test_rules_equality(specific_rule_definition, testcase, other_rule_definition, is_equal):
-    rule1 = DomainResolverRule._create_from_dict(specific_rule_definition)
+def test_rules_equality(rule_definition, testcase, other_rule_definition, is_equal):
+    rule1 = DomainResolverRule._create_from_dict(rule_definition)
     rule2 = DomainResolverRule._create_from_dict(other_rule_definition)
 
     assert (rule1 == rule2) == is_equal, testcase

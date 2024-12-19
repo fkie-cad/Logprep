@@ -11,10 +11,8 @@ Processor Configuration
 
     - deletename:
         type: deleter
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.deleter.processor.Deleter.Config
    :members:

@@ -717,19 +717,18 @@ failure_test_cases = [  # testcase, rule, event, expected
 class TestDissector(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "dissector",
-        "generic_rules": ["tests/testdata/unit/dissector/generic_rules"],
-        "specific_rules": ["tests/testdata/unit/dissector/specific_rules"],
+        "rules": ["tests/testdata/unit/dissector/rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)

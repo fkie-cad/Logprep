@@ -77,8 +77,7 @@ def test_create_pseudonymizer_returns_pseudonymizer_processor():
                 "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
                 "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
                 "hash_salt": "a_secret_tasty_ingredient",
-                "specific_rules": ["tests/testdata/unit/pseudonymizer/rules/specific"],
-                "generic_rules": ["tests/testdata/unit/pseudonymizer/rules/generic"],
+                "rules": ["tests/testdata/unit/pseudonymizer/rules"],
                 "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
                 "outputs": [{"kafka": "topic"}],
                 "max_cached_pseudonyms": 1000000,
@@ -95,8 +94,7 @@ def test_create_clusterer_returns_clusterer_processor():
             "clusterer": {
                 "type": "clusterer",
                 "output_field_name": "cluster_signature",
-                "specific_rules": ["tests/testdata/unit/clusterer/rules/specific"],
-                "generic_rules": ["tests/testdata/unit/clusterer/rules/generic"],
+                "rules": ["tests/testdata/unit/clusterer/rules"],
             }
         }
     )
@@ -119,8 +117,7 @@ def test_create_labeler_creates_labeler_processor():
             "labelername": {
                 "type": "labeler",
                 "schema": path_to_schema,
-                "generic_rules": [path_to_single_rule],
-                "specific_rules": [path_to_single_rule],
+                "rules": [path_to_single_rule],
             }
         }
     )
@@ -133,23 +130,16 @@ def test_creates_calculator_with_inline_rules():
         {
             "calculator": {
                 "type": "calculator",
-                "generic_rules": [
+                "rules": [
                     {
                         "filter": "message",
                         "calculator": {"target_field": "target", "calc": "1 + 1"},
                     },
                 ],
-                "specific_rules": [
-                    {
-                        "filter": "message",
-                        "calculator": {"target_field": "target", "calc": "1 + 3"},
-                    },
-                ],
             }
         }
     )
-    assert len(processor._generic_rules) == 1
-    assert len(processor._specific_rules) == 1
+    assert len(processor.rules) == 1
 
 
 def test_creates_calculator_with_inline_rules_and_files():
@@ -157,27 +147,19 @@ def test_creates_calculator_with_inline_rules_and_files():
         {
             "calculator": {
                 "type": "calculator",
-                "generic_rules": [
+                "rules": [
                     {
                         "filter": "message1",
                         "calculator": {"target_field": "target", "calc": "1 + 1"},
                     },
-                    "tests/testdata/unit/calculator/generic_rules/calculator.json",
-                ],
-                "specific_rules": [
-                    {
-                        "filter": "message",
-                        "calculator": {"target_field": "target", "calc": "1 + 3"},
-                    },
-                    "tests/testdata/unit/calculator/specific_rules/calculator.json",
+                    "tests/testdata/unit/calculator/rules/calculator_1.json",
                 ],
             }
         }
     )
-    assert len(processor._generic_rules) == 2
-    assert len(processor._specific_rules) == 2
-    assert processor._generic_rules[0].filter_str == "message1: *"
-    assert processor._generic_rules[1].filter_str == "(field1: * AND field2: *)"
+    assert len(processor.rules) == 2
+    assert processor.rules[0].filter_str == "message1: *"
+    assert processor.rules[1].filter_str == "(field1: * AND field2: *)"
 
 
 def test_creates_calculator_with_inline_rules_and_file_and_directory():
@@ -185,25 +167,17 @@ def test_creates_calculator_with_inline_rules_and_file_and_directory():
         {
             "calculator": {
                 "type": "calculator",
-                "generic_rules": [
+                "rules": [
                     {
                         "filter": "message",
                         "calculator": {"target_field": "target", "calc": "1 + 1"},
                     },
-                    "tests/testdata/unit/calculator/generic_rules/",
-                ],
-                "specific_rules": [
-                    {
-                        "filter": "message",
-                        "calculator": {"target_field": "target", "calc": "1 + 3"},
-                    },
-                    "tests/testdata/unit/calculator/specific_rules/calculator.json",
+                    "tests/testdata/unit/calculator/rules/",
                 ],
             }
         }
     )
-    assert len(processor._generic_rules) == 2
-    assert len(processor._specific_rules) == 2
+    assert len(processor.rules) == 3
 
 
 def test_dummy_input_creates_dummy_input_connector():

@@ -26,8 +26,7 @@ def config():
                 "amides": {
                     "type": "amides",
                     "models_path": "tests/testdata/unit/amides/model.zip",
-                    "specific_rules": ["tests/testdata/unit/amides/rules/specific"],
-                    "generic_rules": ["tests/testdata/unit/amides/rules/generic"],
+                    "rules": ["tests/testdata/unit/amides/rules"],
                     "max_cache_entries": 1000,
                     "num_rule_attributions": 10,
                     "decision_threshold": 0.32,

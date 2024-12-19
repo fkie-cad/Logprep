@@ -11,10 +11,8 @@ Processor Configuration
 
     - geoipenrichername:
         type: geoip_enricher
-        specific_rules:
-            - tests/testdata/geoip_enricher/rules/
-        generic_rules:
-            - tests/testdata/geoip_enricher/rules/
+        rules:
+            - tests/testdata/geoip_enricher/rules
         db_path: /path/to/GeoLite2-City.mmdb
 
 .. autoclass:: logprep.processor.geoip_enricher.processor.GeoipEnricher.Config

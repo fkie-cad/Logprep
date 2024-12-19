@@ -10,18 +10,9 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestConcatenator(BaseProcessorTestCase):
     CONFIG = {
         "type": "concatenator",
-        "specific_rules": ["tests/testdata/unit/concatenator/rules/specific"],
-        "generic_rules": ["tests/testdata/unit/concatenator/rules/generic"],
+        "rules": ["tests/testdata/unit/concatenator/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
-
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG["generic_rules"]
-
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG["specific_rules"]
 
     @pytest.mark.parametrize(
         ["test_case", "rule", "document", "expected_output"],
@@ -166,7 +157,7 @@ class TestConcatenator(BaseProcessorTestCase):
         ],
     )
     def test_for_expected_output(self, test_case, rule, document, expected_output):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
         assert document == expected_output, test_case
 
@@ -183,7 +174,7 @@ class TestConcatenator(BaseProcessorTestCase):
                 "delete_source_fields": False,
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
         result = self.object.process(document)
         assert len(result.warnings) == 1

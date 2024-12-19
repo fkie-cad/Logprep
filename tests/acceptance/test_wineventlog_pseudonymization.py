@@ -35,13 +35,8 @@ def get_config():
                     "pubkey_depseudo": "tests/testdata/acceptance/pseudonymizer/example_depseudo_pub.pem",
                     "hash_salt": "a_secret_tasty_ingredient",
                     "outputs": [{"jsonl": "pseudonyms"}],
-                    "specific_rules": [
-                        "tests/testdata/acceptance/pseudonymizer/rules_static/specific"
-                    ],
-                    "generic_rules": [
-                        "tests/testdata/acceptance/pseudonymizer/rules_static/generic"
-                    ],
-                    "regex_mapping": "tests/testdata/acceptance/pseudonymizer/rules_static/regex_mapping.yml",
+                    "rules": ["tests/testdata/acceptance/pseudonymizer/rules"],
+                    "regex_mapping": "tests/testdata/acceptance/pseudonymizer/regex_mapping.yml",
                     "max_cached_pseudonyms": 1000000,
                 }
             }

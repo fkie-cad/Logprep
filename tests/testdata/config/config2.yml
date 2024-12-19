@@ -6,10 +6,8 @@ pipeline:
       type: labeler
       schema: tests/testdata/unit/labeler/schemas/schema3.json
       include_parent_labels: true
-      specific_rules:
-        - tests/testdata/unit/labeler/rules/specific/
-      generic_rules:
-        - tests/testdata/unit/labeler/rules/generic/
+      rules:
+        - tests/testdata/unit/labeler/rules
 
 input:
   kafka:

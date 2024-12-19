@@ -5,36 +5,28 @@ timeout: 0.1
 pipeline:
   - dissector:
       type: dissector
-      specific_rules:
-        - tests/testdata/unit/dissector/specific_rules/
-      generic_rules:
-        - tests/testdata/unit/dissector/generic_rules/
+      rules:
+        - tests/testdata/unit/dissector/rules/
   - calculatorname:
       type: calculator
-      specific_rules:
-        - tests/testdata/unit/calculator/generic_rules
-      generic_rules:
-        - tests/testdata/unit/calculator/specific_rules
+      rules:
+        - tests/testdata/unit/calculator/rules
   - labelername:
       type: labeler
       schema: tests/testdata/unit/labeler/schemas/schema3.json
       include_parent_labels: true
-      specific_rules:
-        - tests/testdata/unit/labeler/rules/specific/
-      generic_rules:
-        - tests/testdata/unit/labeler/rules/generic/
+      rules:
+        - tests/testdata/unit/labeler/rules/
   - pseudonymizer:
       type: pseudonymizer
       pubkey_analyst: tests/testdata/unit/pseudonymizer/example_analyst_pub.pem
       pubkey_depseudo: tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem
-      regex_mapping: tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml
+      regex_mapping: tests/testdata/unit/pseudonymizer/regex_mapping.yml
       hash_salt: a_secret_tasty_ingredient
       outputs:
         - kafka_output: pseudonyms
-      specific_rules:
-        - tests/testdata/unit/pseudonymizer/rules/specific/
-      generic_rules:
-        - tests/testdata/unit/pseudonymizer/rules/generic/
+      rules:
+        - tests/testdata/unit/pseudonymizer/rules/
       max_cached_pseudonyms: 1000000
 
 input:

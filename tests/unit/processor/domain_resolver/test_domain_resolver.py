@@ -15,8 +15,7 @@ TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 class TestDomainResolver(BaseProcessorTestCase):
     CONFIG = {
         "type": "domain_resolver",
-        "generic_rules": ["tests/testdata/unit/domain_resolver/rules/generic"],
-        "specific_rules": ["tests/testdata/unit/domain_resolver/rules/specific"],
+        "rules": ["tests/testdata/unit/domain_resolver/rules"],
         "timeout": 0.25,
         "max_cached_domains": 1000000,
         "max_caching_days": 1,
@@ -38,7 +37,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             "domain_resolver": {"source_fields": ["fqdn"]},
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"fqdn": "google.de"}
         expected = {"fqdn": "google.de", "resolved_ip": "1.2.3.4"}
         self.object.process(document)
@@ -52,7 +51,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             "domain_resolver": {"source_fields": ["fqdn"]},
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"fqdn": "google.de"}
         self.object.process(document)
         document = {"fqdn": "google.de"}
@@ -68,7 +67,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {"url": "https://www.google.de/something", "resolved_ip": "1.2.3.4"}
         self.object.process(document)
@@ -83,7 +82,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         with mock.patch("socket.gethostbyname", return_value="1.2.3.4"):
             self.object.process(document)
@@ -99,7 +98,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             "domain_resolver": {"source_fields": ["not_available"]},
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {"url": "https://www.google.de/something"}
         self.object.process(document)
@@ -115,7 +114,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {
             "url": "https://www.google.de/something",
@@ -135,7 +134,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         self.object.process(document)
         document = {"url": "https://www.google.de/something_else"}
@@ -157,7 +156,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"url": "https://www.google.de/something"}
         expected = {"url": "https://www.google.de/something", "resolved_ip": "1.2.3.4"}
         self.object.process(document)
@@ -211,7 +210,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         assert document == expected
 
@@ -229,6 +228,6 @@ class TestDomainResolver(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         assert document == expected

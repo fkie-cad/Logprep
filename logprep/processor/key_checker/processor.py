@@ -12,10 +12,8 @@ Processor Configuration
 
     - keycheckername:
         type: key_checker
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.key_checker.processor.KeyChecker.Config
    :members:

@@ -11,10 +11,8 @@ Processor Configuration
 
     - timestampdiffer_name:
         type: timestamp_differ
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.timestamp_differ.processor.TimestampDiffer.Config
    :members:

@@ -6,8 +6,8 @@ from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 
 
-@pytest.fixture(name="specific_rule_definition")
-def get_specific_rule_definition():
+@pytest.fixture(name="rule_definition")
+def get_rule_definition():
     return {
         "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
         "pseudonymizer": {
@@ -107,9 +107,7 @@ class TestPseudonomyzerRule:
             ),
         ],
     )
-    def test_rules_equality(
-        self, specific_rule_definition, testcase, other_rule_definition, is_equal
-    ):
-        rule_1 = PseudonymizerRule._create_from_dict(specific_rule_definition)
+    def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
+        rule_1 = PseudonymizerRule._create_from_dict(rule_definition)
         rule_2 = PseudonymizerRule._create_from_dict(other_rule_definition)
         assert (rule_1 == rule_2) == is_equal, testcase

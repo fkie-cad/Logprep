@@ -15,28 +15,20 @@ pipeline:
       type: labeler
       schema: tests/testdata/auto_tests/labeler/schema.json
       include_parent_labels: True
-      specific_rules:
-        - tests/testdata/auto_tests/labeler/rules/specific/
-      generic_rules:
-        - tests/testdata/auto_tests/labeler/rules/generic/
+      rules:
+        - tests/testdata/auto_tests/labeler/rules
   - dissector:
       type: dissector
-      specific_rules:
-        - tests/testdata/auto_tests/dissector/rules/specific
-      generic_rules:
-        - tests/testdata/auto_tests/dissector/rules/generic
+      rules:
+        - tests/testdata/auto_tests/dissector/rules
   - dropper:
       type: dropper
-      specific_rules:
-        - tests/testdata/auto_tests/dropper/rules/specific/
-      generic_rules:
-        - tests/testdata/auto_tests/dropper/rules/generic/
+      rules:
+        - tests/testdata/auto_tests/dropper/rules
   - pre_detector:
       type: pre_detector
-      specific_rules:
-        - tests/testdata/auto_tests/pre_detector/rules/specific/
-      generic_rules:
-        - tests/testdata/auto_tests/pre_detector/rules/generic/
+      rules:
+        - tests/testdata/auto_tests/pre_detector/rules
       outputs:
         - dummy_output: sre
   - pseudonymizer:
@@ -47,17 +39,13 @@ pipeline:
       hash_salt: a_secret_tasty_ingredient
       outputs:
         - dummy_output: pseudonyms
-      specific_rules:
-        - tests/testdata/auto_tests/pseudonymizer/rules/generic/
-      generic_rules:
-        - tests/testdata/auto_tests/pseudonymizer/rules/specific/
+      rules:
+        - tests/testdata/auto_tests/pseudonymizer/rules
       max_cached_pseudonyms: 1000000
   - templatereplacername:
       type: template_replacer
-      specific_rules:
-        - tests/testdata/auto_tests/template_replacer/rules/specific/
-      generic_rules:
-        - tests/testdata/auto_tests/template_replacer/rules/generic/
+      rules:
+        - tests/testdata/auto_tests/template_replacer/rules
       template: tests/testdata/unit/template_replacer/replacer_template.yml
       pattern:
         delimiter: ","
@@ -68,8 +56,6 @@ pipeline:
         target_field: target.field
   - clusterername:
       type: clusterer
-      specific_rules:
-        - tests/testdata/auto_tests/clusterer/rules/specific/
-      generic_rules:
-        - tests/testdata/auto_tests/clusterer/rules/generic/
+      rules:
+        - tests/testdata/auto_tests/clusterer/rules
       output_field_name: target_field

@@ -310,23 +310,14 @@ class TestGenericAdder(BaseProcessorTestCase):
 
     CONFIG = {
         "type": "generic_adder",
-        "generic_rules": ["tests/testdata/unit/generic_adder/rules/generic"],
-        "specific_rules": ["tests/testdata/unit/generic_adder/rules/specific"],
+        "rules": ["tests/testdata/unit/generic_adder/rules"],
     }
-
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG.get("generic_rules")
-
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG.get("specific_rules")
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_generic_adder_testcases(
         self, testcase, rule, event, expected
     ):  # pylint: disable=unused-argument
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
@@ -334,7 +325,7 @@ class TestGenericAdder(BaseProcessorTestCase):
     def test_generic_adder_testcases_failure_handling(
         self, testcase, rule, event, expected, error_message
     ):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))
@@ -343,7 +334,7 @@ class TestGenericAdder(BaseProcessorTestCase):
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
         with pytest.raises(InvalidRuleDefinitionError, match=r"files do not exist"):
             config = deepcopy(self.CONFIG)
-            config["specific_rules"] = [RULES_DIR_MISSING]
+            config["rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
             Factory.create(configuration)
 
@@ -353,6 +344,6 @@ class TestGenericAdder(BaseProcessorTestCase):
             match=r"must be a dictionary with string values",
         ):
             config = deepcopy(self.CONFIG)
-            config["generic_rules"] = [RULES_DIR_INVALID]
+            config["rules"] = [RULES_DIR_INVALID]
             configuration = {"test processor": config}
             Factory.create(configuration)

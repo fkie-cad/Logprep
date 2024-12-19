@@ -88,19 +88,10 @@ class TestGeoipEnricher(BaseProcessorTestCase):
 
     CONFIG = {
         "type": "geoip_enricher",
-        "specific_rules": ["tests/testdata/unit/geoip_enricher/rules/specific"],
-        "generic_rules": ["tests/testdata/unit/geoip_enricher/rules/generic"],
+        "rules": ["tests/testdata/unit/geoip_enricher/rules"],
         "db_path": "tests/testdata/mock_external/MockGeoLite2-City.mmdb",
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
-
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG["generic_rules"]
-
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG["specific_rules"]
 
     def test_geoip_data_added(self):
         document = {"client": {"ip": "1.2.3.4"}}
@@ -124,13 +115,12 @@ class TestGeoipEnricher(BaseProcessorTestCase):
     def test_source_field_is_none_emits_missing_fields_warning(self):
         document = {"client": {"ip": None}}
         expected = {"client": {"ip": None}, "tags": ["_geoip_enricher_missing_field_warning"]}
-        self._load_specific_rule(self.object.rules[0])
         self.object.process(document)
+        assert document == expected
         assert len(self.object.result.warnings) == 1
         assert re.match(
             r".*missing source_fields: \['client\.ip'].*", str(self.object.result.warnings[0])
         )
-        assert document == expected
 
     def test_nothing_to_enrich(self):
         document = {"something": {"something": "1.2.3.4"}}
@@ -188,7 +178,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         assert "client" in document
         assert "ip" not in document.get("client")
@@ -204,7 +194,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         assert "client" in document
         assert document.get("client").get("ip").get("type") is not None
@@ -233,7 +223,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         expected_event = {
             "client": {
@@ -273,7 +263,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         expected_event = {
             "client": {
@@ -313,7 +303,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             "description": "",
         }
         with pytest.raises(ValueError, match=r"\'customize_target_subfields\' must be in"):
-            self._load_specific_rule(rule_dict)
+            self._load_rule(rule_dict)
 
     def test_geoip_db_returns_only_limited_data_without_missing_coordinates(self):
         document = {"client": {"ip": "13.21.21.37"}}
@@ -324,7 +314,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         expected_event = {
             "client": {"ip": "13.21.21.37"},
@@ -349,7 +339,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
         self.object.process(document)
         expected_event = {
             "client": {"ip": source_ip},
