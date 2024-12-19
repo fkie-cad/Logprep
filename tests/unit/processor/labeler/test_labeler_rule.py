@@ -218,7 +218,7 @@ class TestRule:
 
     def test_lucene_regex_matches_returns_true_for_matching_document(self):
         rule_definition = {
-            "filter": 'applyrule: "/.*yes.*/"',
+            "filter": 'applyrule: /.*yes.*/',
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule._create_from_dict(rule_definition)
@@ -228,7 +228,7 @@ class TestRule:
 
     def test_lucene_regex_matches_returns_false_for_non_matching_document(self):
         rule_definition = {
-            "filter": 'applyrule: "/.*yes.*/"',
+            "filter": 'applyrule: /.*yes.*/',
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule._create_from_dict(rule_definition)
@@ -245,7 +245,7 @@ class TestRule:
 
     def test_complex_lucene_regex_matches_returns_true_for_matching_document(self):
         rule_definition = {
-            "filter": r'applyrule: "/(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}/"',
+            "filter": r'applyrule: /(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}/',
             # pylint: disable=line-too-long
             "labeler": {"label": {"reporter": ["windows"]}},
         }
@@ -257,7 +257,7 @@ class TestRule:
 
     def test_complex_lucene_regex_does_not_match_returns_true_for_matching_document(self):
         rule_definition = {
-            "filter": r'applyrule: "/(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}/"',
+            "filter": r'applyrule: /(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}/',
             # pylint: disable=line-too-long
             "labeler": {"label": {"reporter": ["windows"]}},
         }
