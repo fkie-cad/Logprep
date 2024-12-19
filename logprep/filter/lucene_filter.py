@@ -342,7 +342,6 @@ class LuceneTransformer:
                 return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
         return None
 
-
     def _get_filter_expression(
         self, key: List[str], value
     ) -> Union[RegExFilterExpression, StringFilterExpression]:
@@ -367,7 +366,7 @@ class LuceneTransformer:
         return StringFilterExpression(key, value)
 
     def _get_filter_expression_regex(
-            self, key: List[str], value
+        self, key: List[str], value
     ) -> Union[RegExFilterExpression, StringFilterExpression]:
 
         key_and_modifier_check = LuceneTransformer._check_key_and_modifier(key, value)
@@ -376,7 +375,6 @@ class LuceneTransformer:
 
         value = value.strip("/")
         return RegExFilterExpression(key, value)
-
 
     @staticmethod
     def _create_value_expression(word: luqum.tree) -> Union[Exists, Always]:
