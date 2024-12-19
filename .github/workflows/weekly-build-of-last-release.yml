@@ -1,0 +1,25 @@
+name: Weekly Image Build of last Release
+
+# https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule
+on:
+#  schedule:
+#    - cron: "5 0 * * 1"  # At 00:05 on Monday
+  pull_request:  # just for debugging
+    types: [opened, synchronize]
+
+
+jobs:
+  get-lastest-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get latest tag
+        run: |
+          echo 'tag=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }} "https://api.github.com/repos/fkie-cad/Logprep/tags" | jq ".[0].name" | tr -d "v")' >> "GITHUB_OUTPUT"
+
+  containerbuild:
+    uses: ./.github/workflows/container-build.yml
+    needs: get-lastest-release
+    secrets: inherit
+    with:
+      build-version: ${{ jobs.get-latest-release.outputs.tag }}
+      tags: "${{ jobs.get-latest-release.outputs.tag }}-weekly"
