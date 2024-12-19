@@ -24,7 +24,7 @@ jobs:
 
   containerbuild:
     uses: ./.github/workflows/container-build.yml
-    needs: get-lastest-release
+    needs: get-latest-release
     secrets: inherit
     with:
       build-version: ${{ needs.get-latest-release.outputs.tag }}
