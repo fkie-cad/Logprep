@@ -11,8 +11,11 @@ on:
 jobs:
   get-lastest-release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.get-tag.outputs.tag }}
     steps:
       - name: Get latest tag
+        id: get-tag
         run: |
           echo 'tag=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }} "https://api.github.com/repos/fkie-cad/Logprep/tags" | jq ".[0].name" | tr -d "v")' >> "GITHUB_OUTPUT"
 
@@ -21,5 +24,5 @@ jobs:
     needs: get-lastest-release
     secrets: inherit
     with:
-      build-version: ${{ jobs.get-latest-release.outputs.tag }}
-      tags: "${{ jobs.get-latest-release.outputs.tag }}-weekly"
+      build-version: ${{ needs.get-latest-release.outputs.tag }}
+      tags: "${{ needs.get-latest-release.outputs.tag }}-weekly"
