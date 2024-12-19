@@ -23,10 +23,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    @property
-    def rules_dirs(self):
-        return self.CONFIG.get("rules")
-
     def setup_method(self):
         super().setup_method()
         self.object.setup()

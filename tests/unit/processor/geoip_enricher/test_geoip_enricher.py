@@ -93,10 +93,6 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    @property
-    def rules_dirs(self):
-        return self.CONFIG["rules"]
-
     def test_geoip_data_added(self):
         document = {"client": {"ip": "1.2.3.4"}}
 

@@ -313,10 +313,6 @@ class TestGenericAdder(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/generic_adder/rules"],
     }
 
-    @property
-    def rules_dirs(self):
-        return self.CONFIG.get("rules")
-
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_generic_adder_testcases(
         self, testcase, rule, event, expected

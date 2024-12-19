@@ -64,11 +64,6 @@ class TestLabeler(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/labeler/rules"],
     }
 
-    @property
-    def rules_dirs(self):
-        """Return path to rule directories"""
-        return self.CONFIG["rules"]
-
     def _load_rule(self, rule, schema=None):  # pylint: disable=arguments-differ
         rule = LabelerRule._create_from_dict(rule)
         if schema:

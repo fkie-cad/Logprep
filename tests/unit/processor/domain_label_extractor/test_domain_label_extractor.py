@@ -14,10 +14,6 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    @property
-    def rules_dirs(self):
-        return self.CONFIG.get("rules")
-
     def test_domain_extraction_from_full_url(self):
         document = {"url": {"domain": "https://url.full.domain.de/path/file?param=1"}}
         expected_output = {

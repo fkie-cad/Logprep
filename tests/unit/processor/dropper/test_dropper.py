@@ -13,10 +13,6 @@ class TestDropper(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    @property
-    def rules_dirs(self):
-        return self.CONFIG["rules"]
-
     def test_dropper_instantiates(self):
         rule = {"filter": "drop_me", "dropper": {"drop": ["drop_me"]}}
         self._load_rule(rule)

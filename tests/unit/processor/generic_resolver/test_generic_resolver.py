@@ -25,11 +25,6 @@ class TestGenericResolver(BaseProcessorTestCase):
         "logprep_generic_resolver_cache_load",
     ]
 
-    @property
-    def rules_dirs(self):
-        """Return the paths of the rules"""
-        return self.CONFIG["rules"]
-
     def test_resolve_generic_instantiates(self):
         rule = {"filter": "anything", "generic_resolver": {"field_mapping": {}}}
         self._load_rule(rule)

@@ -14,10 +14,6 @@ class TestConcatenator(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    @property
-    def rules_dirs(self):
-        return self.CONFIG["rules"]
-
     @pytest.mark.parametrize(
         ["test_case", "rule", "document", "expected_output"],
         [

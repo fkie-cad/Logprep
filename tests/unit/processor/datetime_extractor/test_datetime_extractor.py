@@ -16,10 +16,6 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/datetime_extractor/rules"],
     }
 
-    @property
-    def rules_dirs(self):
-        return self.CONFIG.get("rules")
-
     def test_an_event_extracted_datetime_utc(self):
         timestamp = "2019-07-30T14:37:42.861Z"
         document = {"@timestamp": timestamp, "winlog": {"event_id": 123}}
