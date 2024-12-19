@@ -17,7 +17,7 @@ jobs:
       - name: Get latest tag
         id: get-tag
         run: |
-          echo "tag=$(curl -s -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' 'https://api.github.com/repos/fkie-cad/Logprep/tags' | jq '.[0].name' | tr -d 'v')" >> "GITHUB_OUTPUT"
+          echo "tag=$(curl -s -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' 'https://api.github.com/repos/fkie-cad/Logprep/tags' | jq '.[0].name' | tr -d 'v')" >> "$GITHUB_OUTPUT"
 
       - name: debug tag
         run: echo ${{ steps.get-tag.outputs.tag }}
