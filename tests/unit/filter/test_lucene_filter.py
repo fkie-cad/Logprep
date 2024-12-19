@@ -480,7 +480,7 @@ class TestLueceneFilter:
 
         assert lucene_filter == RegExFilterExpression(["regex_key_one"], ".*value.*")
 
-    def test_creates_lucene_compliance_filter_one_matching_one_missmatch_regex_key_of_two2(self):
+    def test_creates_lucene_compliance_filter_one_matching_one_missmatch_regex_key_of_two(self):
         lucene_filter = LuceneFilter.create(
             'regex_key_one:/.*value.*/ AND key_two: "/.*value.*/"',
         )
@@ -488,30 +488,16 @@ class TestLueceneFilter:
         assert lucene_filter == And(RegExFilterExpression(["regex_key_one"], ".*value.*"),
                                     StringFilterExpression(["key_two"], "/.*value.*/"))
 
-    def test_new_lucene_compliance2(self):
-        lucene_filter = LuceneFilter.create(
-            'regex_key_one:/\/.*value.*/'
-        )
-
+    def test_new_lucene_compliance_double_escape(self):
         lucene_filter = LuceneFilter.create(
             'regex_key_one:/\\/.*value.*/'
         )
 
-        # lucene_filter = LuceneFilter.create(
-        #     'regex_key_one: "\/.*value.*"',
-        #     special_fields={"regex_fields": ["regex_key_one"]},
-        # )
+        assert lucene_filter == RegExFilterExpression(["regex_key_one"], "\/.*value.*")
 
-        # in opensearch mit lucene ausprobiert:  /\/value/  um  /value zu finden
-        # opensearch lucene regex ohne escapen funktioniert nicht. also //value// geht nicht, so wie es im notebook
-        # mit dem regex_field ist.
-
-        # so wie es hier ist funktioniert (mti /\/ ebenso wie mit /\\/ weil im Code sowieso beides auf /\\/ gesetzt wird)
-        # im Notebook mit yaml doc muss allerdings mit \\/ escaped werden, dass es funktioniert.
-        # Das waere noch gut, wenn man das nicht muesste.
-
-
-
+    def test_new_lucene_compliance_single_escape(self):
+        lucene_filter = LuceneFilter.create(
+            'regex_key_one:/\/.*value.*/'
+        )
 
         assert lucene_filter == RegExFilterExpression(["regex_key_one"], "\/.*value.*")
-        #assert lucene_filter == RegExFilterExpression(["regex_key_one"], "/.*value.*")
