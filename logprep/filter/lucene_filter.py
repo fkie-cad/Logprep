@@ -70,7 +70,7 @@ To be recognized as a regular expression, the filter field has to start with
     :linenos:
     :caption: Example
 
-    filter: 'ip_address: "/192\.168\.0\..*/"'
+    filter: 'ip_address: /192\.168\.0\..*/'
 
 
 [Deprecated, but still functional] The field with the regex pattern must be added to the optional field
