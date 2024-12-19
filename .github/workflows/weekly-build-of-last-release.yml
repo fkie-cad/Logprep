@@ -19,10 +19,13 @@ jobs:
         run: |
           echo 'tag=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }} "https://api.github.com/repos/fkie-cad/Logprep/tags" | jq ".[0].name" | tr -d "v")' >> "GITHUB_OUTPUT"
 
-  containerbuild:
-    uses: ./.github/workflows/container-build.yml
-    needs: get-lastest-release
-    secrets: inherit
-    with:
-      build-version: ${{ needs.get-latest-release.outputs.tag }}
-      tags: "${{ needs.get-latest-release.outputs.tag }}-weekly"
+      - name: debug tag
+        run: echo ${{ steps.get-tag.outputs.tag }}
+
+#  containerbuild:
+#    uses: ./.github/workflows/container-build.yml
+#    needs: get-lastest-release
+#    secrets: inherit
+#    with:
+#      build-version: ${{ needs.get-latest-release.outputs.tag }}
+#      tags: "${{ needs.get-latest-release.outputs.tag }}-weekly"
