@@ -458,7 +458,7 @@ class TestLueceneFilter:
 
     def test_creates_lucene_compliance_filter_two_matching_regex_keys_of_two(self):
         lucene_filter = LuceneFilter.create(
-            'regex_key_one: /.*value.*/ AND regex_key_two: /.*value.*/',
+            "regex_key_one: /.*value.*/ AND regex_key_two: /.*value.*/",
         )
 
         assert lucene_filter == And(
@@ -474,9 +474,7 @@ class TestLueceneFilter:
         assert lucene_filter == StringFilterExpression(["regex_key_one"], "/.*value.*/")
 
     def test_new_lucene_compliance(self):
-        lucene_filter = LuceneFilter.create(
-            'regex_key_one:/.*value.*/'
-        )
+        lucene_filter = LuceneFilter.create("regex_key_one:/.*value.*/")
 
         assert lucene_filter == RegExFilterExpression(["regex_key_one"], ".*value.*")
 
@@ -485,19 +483,17 @@ class TestLueceneFilter:
             'regex_key_one:/.*value.*/ AND key_two: "/.*value.*/"',
         )
 
-        assert lucene_filter == And(RegExFilterExpression(["regex_key_one"], ".*value.*"),
-                                    StringFilterExpression(["key_two"], "/.*value.*/"))
+        assert lucene_filter == And(
+            RegExFilterExpression(["regex_key_one"], ".*value.*"),
+            StringFilterExpression(["key_two"], "/.*value.*/"),
+        )
 
     def test_new_lucene_compliance_double_escape(self):
-        lucene_filter = LuceneFilter.create(
-            'regex_key_one:/\\/.*value.*/'
-        )
+        lucene_filter = LuceneFilter.create("regex_key_one:/\\/.*value.*/")
 
         assert lucene_filter == RegExFilterExpression(["regex_key_one"], "\/.*value.*")
 
     def test_new_lucene_compliance_single_escape(self):
-        lucene_filter = LuceneFilter.create(
-            'regex_key_one:/\/.*value.*/'
-        )
+        lucene_filter = LuceneFilter.create("regex_key_one:/\/.*value.*/")
 
         assert lucene_filter == RegExFilterExpression(["regex_key_one"], "\/.*value.*")
