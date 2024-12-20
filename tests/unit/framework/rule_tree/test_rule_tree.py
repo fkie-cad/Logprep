@@ -1,17 +1,18 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+import json
 from copy import deepcopy
 from unittest import mock
 
 import pytest
 
-from logprep.factory import Factory
 from logprep.filter.expression.filter_expression import Exists, StringFilterExpression
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.pre_detector.rule import PreDetectorRule
+from logprep.util import getter
 
 
 @pytest.fixture(name="rule_dict")
@@ -33,29 +34,42 @@ def rule_dict_fixture():
 class TestRuleTree:
     def test_init_without_specifying_parameters(self):
         rule_tree = RuleTree()
-
         assert isinstance(rule_tree.root, Node)
         assert not rule_tree.rule_parser._rule_tagger._tag_map
-        assert not rule_tree.priority_dict
+        assert not rule_tree.tree_config.priority_dict
         assert rule_tree.root.expression is None
 
     def test_init_with_specifying_config(self):
-        processor = Factory.create(
-            {
-                "processor": {
-                    "type": "dissector",
-                    "rules": [],
-                    "tree_config": "tests/testdata/unit/tree_config.json",
-                }
-            }
-        )
-        rule_tree = RuleTree(processor_config=processor._config)
-
+        rule_tree = RuleTree(config="tests/testdata/unit/tree_config.json")
         assert isinstance(rule_tree.root, Node)
         assert rule_tree.rule_parser._rule_tagger._tag_map == {
             "field_name_to_check_for_in_rule": "TAG-TO-CHECK-IF-IN-EVENT"
         }
-        assert rule_tree.priority_dict == {"field_name": "priority"}
+        assert rule_tree.tree_config.priority_dict == {"field_name": "priority"}
+
+    @pytest.mark.parametrize(
+        "tree_config",
+        [
+            {
+                "priority_dict": {
+                    "winlog": 1,  # should be string
+                },
+                "tag_map": {"field_name_to_check_for_in_rule": "TAG-TO-CHECK-IF-IN-EVENT"},
+            },
+            {
+                "priority_dict": {
+                    "winlog": "1",
+                },
+                "tag_map": {"field_name_to_check_for_in_rule": 1},  # should be string
+            },
+        ],
+    )
+    def test_init_with_invalid_tree_config(self, tmp_path, tree_config):
+        tree_config_path = tmp_path / "tree_config.json"
+        tree_config_path.write_text(json.dumps(tree_config))
+        config_data = getter.GetterFactory.from_string(str(tree_config_path)).get_json()
+        with pytest.raises(TypeError, match=r"must be \<class \'str\'\>"):
+            self.tree_config = RuleTree.Config(**config_data)
 
     def test_add_rule(self, rule_dict):
         rule_tree = RuleTree()
@@ -80,21 +94,21 @@ class TestRuleTree:
             rule
         ]
 
-    def test_add_rule_fails(self, rule_dict):
+    @mock.patch("logging.Logger.warning")
+    def test_add_rule_fails(self, mock_warning, rule_dict):
         rule_tree = RuleTree()
         rule = PreDetectorRule._create_from_dict(rule_dict)
 
-        mocked_logger = mock.MagicMock()
         with mock.patch(
             "logprep.framework.rule_tree.rule_parser.RuleParser.parse_rule",
             side_effect=Exception("mocked error"),
         ):
-            rule_tree.add_rule(rule, logger=mocked_logger)
+            rule_tree.add_rule(rule)
         expected_call = mock.call.warning(
             'Error parsing rule "None.yml": Exception: mocked error. '
             "Ignore and continue with next rule."
         )
-        assert expected_call in mocked_logger.mock_calls
+        assert expected_call in mock_warning.mock_calls
 
     def test_get_rule_id(self, rule_dict):
         rule_tree = RuleTree()

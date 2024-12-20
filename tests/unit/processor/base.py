@@ -71,7 +71,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def _load_rule(self, rule: dict | Rule):
         self.object._rule_tree = RuleTree()
         rule = self.object.rule_class._create_from_dict(rule) if isinstance(rule, dict) else rule
-        self.object._rule_tree.add_rule(rule, self.logger)
+        self.object._rule_tree.add_rule(rule)
 
     def setup_method(self) -> None:
         """
@@ -224,12 +224,8 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
         processor = Factory.create({"test instance": config})
-        assert (
-            processor._rule_tree._processor_config.tree_config
-            == "http://does.not.matter.bla/tree_config.yml"
-        )
         tree_config = json.loads(tree_config)
-        assert processor._rule_tree.priority_dict == tree_config.get("priority_dict")
+        assert processor._rule_tree.tree_config.priority_dict == tree_config.get("priority_dict")
 
     @responses.activate
     def test_raises_http_error(self):

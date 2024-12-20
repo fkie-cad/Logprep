@@ -167,7 +167,7 @@ class TestClusterer(BaseProcessorTestCase):
 
         document = {"message": "test signature test"}
         rule = ClustererRule._create_from_dict(rule_definition)
-        self.object._rule_tree.add_rule(rule, None)
+        self.object._rule_tree.add_rule(rule)
         self.object._cluster(document, rule)
 
         assert document == expected
@@ -230,7 +230,7 @@ class TestClusterer(BaseProcessorTestCase):
             new_rule = ClustererRule._create_from_dict(rule)
             new_rule.file_name = str(idx)
             rules.append(new_rule)
-            clusterer._rule_tree.add_rule(new_rule, None)
+            clusterer._rule_tree.add_rule(new_rule)
 
         expected = {
             "message": "test some signature xyz-foo",
@@ -310,7 +310,7 @@ class TestClusterer(BaseProcessorTestCase):
             new_rule = ClustererRule._create_from_dict(rule)
             new_rule.file_name = str(idx)
             rules.append(new_rule)
-            clusterer._rule_tree.add_rule(new_rule, None)
+            clusterer._rule_tree.add_rule(new_rule)
 
         for rule in rules:
             clusterer._cluster(document, rule)
