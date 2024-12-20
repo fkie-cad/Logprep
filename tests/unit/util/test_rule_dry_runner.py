@@ -18,48 +18,40 @@ class TestRunLogprep:
         pipeline:
           - dissector:
               type: dissector
-              specific_rules:
-                - tests/testdata/unit/dissector/
-              generic_rules: []
+              rules:
+                - tests/testdata/unit/dissector
           - labelername:
               type: labeler
               schema: tests/testdata/unit/labeler/schemas/schema3.json
               include_parent_labels: true
-              specific_rules:
-                - tests/testdata/unit/labeler/rules/specific/
-              generic_rules:
-                - tests/testdata/unit/labeler/rules/generic/
+              rules:
+                - tests/testdata/unit/labeler/rules
           - pseudonymizer:
               type: pseudonymizer
               pubkey_analyst: tests/testdata/unit/pseudonymizer/example_analyst_pub.pem
               pubkey_depseudo: tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem
-              regex_mapping: tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml
+              regex_mapping: tests/testdata/unit/pseudonymizer/regex_mapping.yml
               hash_salt: a_secret_tasty_ingredient
               outputs:
                 - kafka_output: pseudonyms
-              specific_rules:
-                - tests/testdata/unit/pseudonymizer/rules/specific/
-              generic_rules:
-                - tests/testdata/unit/pseudonymizer/rules/generic/
+              rules:
+                - tests/testdata/unit/pseudonymizer/rules
               max_cached_pseudonyms: 1000000
           - predetectorname:
               type: pre_detector
-              specific_rules:
-                - tests/testdata/unit/pre_detector/rules/specific/
-              generic_rules:
-                - tests/testdata/unit/pre_detector/rules/generic/
+              rules:
+                - tests/testdata/unit/pre_detector/rules
               outputs:
                 - kafka_output: sre_topic
           - selective_extractor:
               type: selective_extractor
-              specific_rules:
+              rules:
                 - filter: message
                   selective_extractor:
                     source_fields: ["field1", "field2"]
                     outputs:
                         - kafka_output: topic
                   description: my reference rule
-              generic_rules: []
         input:
             kafka_output:
                 type: dummy_input

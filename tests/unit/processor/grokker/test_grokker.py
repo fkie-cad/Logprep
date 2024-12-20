@@ -416,20 +416,19 @@ failure_test_cases = [
 class TestGrokker(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "grokker",
-        "specific_rules": ["tests/testdata/unit/grokker/specific_rules"],
-        "generic_rules": ["tests/testdata/unit/grokker/generic_rules"],
+        "rules": ["tests/testdata/unit/grokker/rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.setup()
         self.object.process(event)
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.setup()
         if isinstance(error, str):
             result = self.object.process(event)
@@ -458,7 +457,7 @@ class TestGrokker(BaseProcessorTestCase):
                 "http://localhost:8000/tests/testdata/unit/grokker/patterns.zip"
             )
             self.object = Factory.create({"grokker": config})
-            self._load_specific_rule(rule)
+            self._load_rule(rule)
             self.object.setup()
         self.object.process(event)
         assert event == expected
@@ -494,7 +493,7 @@ class TestGrokker(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config["custom_patterns_dir"] = "tests/testdata/unit/grokker/patterns/"
         self.object = Factory.create({"grokker": config})
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.setup()
         self.object.process(event)
         assert event == expected

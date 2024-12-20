@@ -91,10 +91,8 @@ pipeline:
         type: labeler
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
-        specific_rules:
-            - examples/exampledata/rules/labeler/specific
-        generic_rules:
-            - examples/exampledata/rules/labeler/generic
+        rules:
+            - examples/exampledata/rules/labeler/rules
 """,
         "LOGPREP_OUTPUT": """
 output:
@@ -154,8 +152,7 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     config.pipeline.append(
         {
             "calculator2": {
-                "generic_rules": ["tests/testdata/unit/calculator/generic_rules"],
-                "specific_rules": ["tests/testdata/unit/calculator/specific_rules"],
+                "rules": ["tests/testdata/unit/calculator/rules"],
                 "type": "calculator",
             }
         }
@@ -237,12 +234,12 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     assert re.search(first_calculator, metrics), "First calculator not found"
     assert (
         len(re.findall(first_calculator, metrics)) == 2
-    ), "More or less than two rules (specific, generic) were found for first calculator"
+    ), "More or less than two rules were found for first calculator"
     second_calculator = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=\"calculator2\",type\=\"calculator\"}"
     assert re.search(second_calculator, metrics), "Second calculator not found"
     assert (
         len(re.findall(second_calculator, metrics)) == 2
-    ), "More or less than two rules (specific, generic) were found for second calculator"
+    ), "More or less than two rules were found for second calculator"
     both_calculators = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=\".+\",type\=\"calculator\"}"
     assert (
         len(re.findall(both_calculators, metrics)) == 4

@@ -49,10 +49,9 @@ This :py:class:`Config` class has to inherit from :py:class:`Processor.Config` a
 
         - newprocessorname:
             type: new_processor
-            specific_rules:
-                - tests/testdata/rules/specific/
-            generic_rules:
-                - tests/testdata/rules/generic/
+            rules:
+                - tests/testdata/rules_1/
+                - tests/testdata/rules_2/
             new_config_parameter: config_value
 
     """
@@ -170,8 +169,7 @@ the general implementation of a new processor seen in :ref:`implementing_a_new_p
             self.processor_attribute = []
             self.metrics = self.NewProcessorMetrics(
                 labels=self.metric_labels,
-                generic_rule_tree=self._generic_tree.metrics,
-                specific_rule_tree=self._specific_tree.metrics,
+                rule_tree=self._rule_tree.metrics,
             )
 
         def _apply_rules(self, event, rule):

@@ -12,10 +12,8 @@ Processor Configuration
 
     - templatereplacername:
         type: template_replacer
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
         template: /tmp/template.yml
         pattern:
             delimiter: ","

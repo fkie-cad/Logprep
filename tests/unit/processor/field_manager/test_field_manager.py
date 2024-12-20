@@ -577,19 +577,18 @@ failure_test_cases = [
 class TestFieldManager(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "field_manager",
-        "specific_rules": ["tests/testdata/unit/field_manager/specific_rules"],
-        "generic_rules": ["tests/testdata/unit/field_manager/generic_rules"],
+        "rules": ["tests/testdata/unit/field_manager/rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(error, str(result.warnings[0]))
@@ -607,7 +606,7 @@ class TestFieldManager(BaseProcessorTestCase):
                 "delete_source_fields": False,
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
         result = self.object.process(document)
         assert isinstance(result.warnings[0], FieldExistsWarning)
@@ -623,7 +622,7 @@ class TestFieldManager(BaseProcessorTestCase):
                 "target_field": "target_field",
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
         result = self.object.process(document)
         assert len(result.warnings) == 1
@@ -642,7 +641,7 @@ class TestFieldManager(BaseProcessorTestCase):
                 }
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
         expected = {
             "field": {"a": "first", "b": "second"},
@@ -670,7 +669,7 @@ class TestFieldManager(BaseProcessorTestCase):
                 "ignore_missing_fields": True,
             },
         }
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
         expected = {
             "field": {"a": "first", "b": "second"},

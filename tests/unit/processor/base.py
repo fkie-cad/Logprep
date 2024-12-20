@@ -38,23 +38,14 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     patchers: list = None
 
-    specific_rules: list
-
-    generic_rules: list
+    rules: list
 
     @property
-    def specific_rules_dirs(self):
+    def rules_dirs(self):
         """
-        gets the specific rules_dirs for the processor from CONFIG
+        gets the rules_dirs for the processor from CONFIG
         """
-        return self.CONFIG.get("specific_rules")
-
-    @property
-    def generic_rules_dirs(self):
-        """
-        gets the generic rules_dirs for the processor from CONFIG
-        """
-        return self.CONFIG.get("generic_rules")
+        return self.CONFIG.get("rules")
 
     @staticmethod
     def set_rules(rules_dirs):
@@ -77,13 +68,10 @@ class BaseProcessorTestCase(BaseComponentTestCase):
                         rules.append(rule)
         return rules
 
-    def _load_specific_rule(self, rule: dict | Rule):
-        self.object._generic_tree = RuleTree()
-        self.object._specific_tree = RuleTree()
-        specific_rule = (
-            self.object.rule_class._create_from_dict(rule) if isinstance(rule, dict) else rule
-        )
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
+    def _load_rule(self, rule: dict | Rule):
+        self.object._rule_tree = RuleTree()
+        rule = self.object.rule_class._create_from_dict(rule) if isinstance(rule, dict) else rule
+        self.object._rule_tree.add_rule(rule, self.logger)
 
     def setup_method(self) -> None:
         """
@@ -95,8 +83,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             patcher.start()
             self.patchers.append(patcher)
         super().setup_method()
-        self.specific_rules = self.set_rules(self.specific_rules_dirs)
-        self.generic_rules = self.set_rules(self.generic_rules_dirs)
+        self.rules = self.set_rules(self.rules_dirs)
         self.match_all_event = {
             "message": "event",
             "winlog": {
@@ -129,13 +116,11 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_is_a_processor_implementation(self):
         assert isinstance(self.object, Processor)
 
-    def test_generic_specific_rule_trees(self):
-        assert isinstance(self.object._generic_tree, RuleTree)
-        assert isinstance(self.object._specific_tree, RuleTree)
+    def test_rule_tree(self):
+        assert isinstance(self.object._rule_tree, RuleTree)
 
-    def test_generic_specific_rule_trees_not_empty(self):
-        assert self.object._generic_tree.get_size() > 0
-        assert self.object._specific_tree.get_size() > 0
+    def test_rule_tree_not_empty(self):
+        assert self.object._rule_tree.get_size() > 0
 
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
@@ -145,34 +130,23 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     @mock.patch("logging.Logger.debug")
     def test_load_rules_with_debug(self, mock_debug, _):
         self.object.load_rules(
-            specific_rules_targets=self.specific_rules_dirs,
-            generic_rules_targets=self.generic_rules_dirs,
+            rules_targets=self.rules_dirs,
         )
         mock_debug.assert_called()
 
     def test_load_rules(self):
-        self.object._generic_tree = RuleTree()
-        self.object._specific_tree = RuleTree()
-        generic_rules_size = self.object._generic_tree.get_size()
-        specific_rules_size = self.object._specific_tree.get_size()
-        self.object.load_rules(
-            specific_rules_targets=self.specific_rules_dirs,
-            generic_rules_targets=self.generic_rules_dirs,
-        )
-        new_generic_rules_size = self.object._generic_tree.get_size()
-        new_specific_rules_size = self.object._specific_tree.get_size()
-        assert new_generic_rules_size > generic_rules_size
-        assert new_specific_rules_size > specific_rules_size
+        self.object._rule_tree = RuleTree()
+        rules_size = self.object._rule_tree.get_size()
+        self.object.load_rules(self.rules_dirs)
+        new_rules_size = self.object._rule_tree.get_size()
+        assert new_rules_size > rules_size
 
     def test_load_rules_calls_getter_factory(self):
         with mock.patch("logprep.util.getter.GetterFactory.from_string") as getter_factory:
             with pytest.raises(
                 TypeError, match="must be str, bytes or bytearray, not .*MagicMock.*"
             ):
-                self.object.load_rules(
-                    specific_rules_targets=self.specific_rules_dirs,
-                    generic_rules_targets=self.generic_rules_dirs,
-                )
+                self.object.load_rules(rules_targets=self.rules_dirs)
             getter_factory.assert_called()
 
     @responses.activate
@@ -181,10 +155,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         responses.add(responses.GET, "http://does.not.matter", mock.MagicMock())
         myconfig = deepcopy(self.CONFIG)
         myconfig.update(
-            {"specific_rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
-        )
-        myconfig.update(
-            {"generic_rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
+            {"rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
         )
         with pytest.raises(TypeError, match="not .*MagicMock.*"):
             Factory.create({"http_rule_processor": myconfig})
@@ -195,37 +166,16 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         in the rules directories
         ensures that every rule in rule tree is unique
         """
-        self.object.load_rules(
-            specific_rules_targets=self.specific_rules_dirs,
-            generic_rules_targets=self.generic_rules_dirs,
-        )
-        generic_rules_size = self.object._generic_tree.get_size()
-        specific_rules_size = self.object._specific_tree.get_size()
-        self.object.load_rules(
-            specific_rules_targets=self.specific_rules_dirs,
-            generic_rules_targets=self.generic_rules_dirs,
-        )
-        new_generic_rules_size = self.object._generic_tree.get_size()
-        new_specific_rules_size = self.object._specific_tree.get_size()
-        assert new_generic_rules_size == generic_rules_size
-        assert new_specific_rules_size == specific_rules_size
+        self.object.load_rules(rules_targets=self.rules_dirs)
+        rules_size = self.object._rule_tree.get_size()
+        self.object.load_rules(rules_targets=self.rules_dirs)
+        new_rules_size = self.object._rule_tree.get_size()
+        assert new_rules_size == rules_size
 
-    def test_specific_rules_returns_all_specific_rules(self):
-        specific_rules = self.specific_rules
-        object_specific_rules = self.object._specific_rules
-        assert len(specific_rules) == len(object_specific_rules)
-
-    def test_generic_rules_returns_all_generic_rules(self):
-        generic_rules = self.generic_rules
-        object_generic_rules = self.object._generic_rules
-        assert len(generic_rules) == len(object_generic_rules)
-
-    def test_rules_returns_all_specific_and_generic_rules(self):
-        generic_rules = self.generic_rules
-        specific_rules = self.specific_rules
-        all_rules_count = len(generic_rules) + len(specific_rules)
-        object_rules_count = len(self.object.rules)
-        assert all_rules_count == object_rules_count
+    def test_rules_returns_all_rules(self):
+        rules = self.rules
+        object_rules = self.object.rules
+        assert len(rules) == len(object_rules)
 
     @mock.patch("logging.Logger.debug")
     def test_process_writes_debug_messages(self, mock_debug):
@@ -241,14 +191,14 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         for attr in attr_attributes:
             assert attr.kw_only
 
-    @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
+    @pytest.mark.parametrize("rule_list", ["rules"])
     def test_validation_raises_if_not_a_list(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: "i am not a list"})
         with pytest.raises(TypeError, match=r"must be <class 'list'>"):
             Factory.create({"test instance": config})
 
-    @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
+    @pytest.mark.parametrize("rule_list", ["rules"])
     def test_validation_raises_if_elements_does_not_exist(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: ["/i/do/not/exist"]})
@@ -275,11 +225,11 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
         processor = Factory.create({"test instance": config})
         assert (
-            processor._specific_tree._processor_config.tree_config
+            processor._rule_tree._processor_config.tree_config
             == "http://does.not.matter.bla/tree_config.yml"
         )
         tree_config = json.loads(tree_config)
-        assert processor._specific_tree.priority_dict == tree_config.get("priority_dict")
+        assert processor._rule_tree.priority_dict == tree_config.get("priority_dict")
 
     @responses.activate
     def test_raises_http_error(self):

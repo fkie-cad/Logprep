@@ -12,10 +12,8 @@ Processor Configuration
         type: labeler
         schema: tests/testdata/labeler_rules/labeling/schema.json
         include_parent_labels: true
-        generic_rules:
-            - tests/testdata/labeler_rules/rules/
-        specific_rules:
-            - tests/testdata/labeler_rules/rules/
+        rules:
+            - tests/testdata/labeler_rules/rules
 
 .. autoclass:: logprep.processor.labeler.processor.Labeler.Config
    :members:
@@ -66,7 +64,7 @@ class Labeler(Processor):
 
     def setup(self):
         super().setup()
-        for rule in self._generic_rules + self._specific_rules:
+        for rule in self.rules:
             if self._config.include_parent_labels:
                 rule.add_parent_labels_from_schema(self._schema)
             rule.conforms_to_schema(self._schema)

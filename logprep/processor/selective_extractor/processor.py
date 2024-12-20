@@ -15,10 +15,8 @@ Processor Configuration
 
     - selectiveextractorname:
         type: selective_extractor
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.selective_extractor.processor.SelectiveExtractor.Config
    :members:

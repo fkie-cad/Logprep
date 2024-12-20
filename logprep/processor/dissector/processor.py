@@ -14,10 +14,8 @@ Processor Configuration
 
     - dissectorname:
         type: dissector
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
 
 .. autoclass:: logprep.processor.dissector.processor.Dissector.Config
    :members:

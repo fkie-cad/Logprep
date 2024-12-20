@@ -302,8 +302,7 @@ failure_test_cases = [
 class TestTimestamper(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "timestamper",
-        "specific_rules": ["tests/testdata/unit/timestamper/specific_rules"],
-        "generic_rules": ["tests/testdata/unit/timestamper/generic_rules"],
+        "rules": ["tests/testdata/unit/timestamper/rules"],
     }
 
     def test_is_field_manager_implementation(self):
@@ -312,13 +311,13 @@ class TestTimestamper(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(event)
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(rf".*{error_message}", str(result.warnings[0]))

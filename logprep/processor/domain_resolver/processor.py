@@ -11,10 +11,8 @@ Processor Configuration
 
     - domainresolvername:
         type: domain_resolver
-        specific_rules:
-            - tests/testdata/rules/specific/
-        generic_rules:
-            - tests/testdata/rules/generic/
+        rules:
+            - tests/testdata/rules/rules
         timeout: 0.5
         max_cached_domains: 20000
         max_caching_days: 1

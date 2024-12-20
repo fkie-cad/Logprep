@@ -61,32 +61,21 @@ class TestLabeler(BaseProcessorTestCase):
     CONFIG = {
         "type": "labeler",
         "schema": "tests/testdata/unit/labeler/schemas/schema.json",
-        "specific_rules": ["tests/testdata/unit/labeler/rules/specific/"],
-        "generic_rules": ["tests/testdata/unit/labeler/rules/generic/"],
+        "rules": ["tests/testdata/unit/labeler/rules"],
     }
 
-    @property
-    def specific_rules_dirs(self):
-        """Return path to specific rule directories"""
-        return self.CONFIG["specific_rules"]
-
-    @property
-    def generic_rules_dirs(self):
-        """Return path to generic rule directories"""
-        return self.CONFIG["generic_rules"]
-
-    def _load_specific_rule(self, rule, schema=None):  # pylint: disable=arguments-differ
-        specific_rule = LabelerRule._create_from_dict(rule)
+    def _load_rule(self, rule, schema=None):  # pylint: disable=arguments-differ
+        rule = LabelerRule._create_from_dict(rule)
         if schema:
-            specific_rule.add_parent_labels_from_schema(schema)
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
+            rule.add_parent_labels_from_schema(schema)
+        self.object._rule_tree.add_rule(rule, self.logger)
 
     def test_process_adds_labels_to_event(self):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
         document = {"applyrule": "yes"}
         expected = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -101,7 +90,7 @@ class TestLabeler(BaseProcessorTestCase):
         document = {"äpplyrüle": "nö"}
         expected = {"äpplyrüle": "nö", "label": {"räpörter": ["windöws"]}}
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -114,7 +103,7 @@ class TestLabeler(BaseProcessorTestCase):
         document = {"applyrule": "yes"}
         expected = {"applyrule": "yes", "label": {"reporter": ["parentlabel", "windows"]}}
 
-        self._load_specific_rule(rule, reporter_schema_expanded)
+        self._load_rule(rule, reporter_schema_expanded)
         self.object.process(document)
 
         assert document == expected
@@ -130,7 +119,7 @@ class TestLabeler(BaseProcessorTestCase):
             "label": {"reporter": ["client", "windows"], "object": ["file"]},
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -140,7 +129,7 @@ class TestLabeler(BaseProcessorTestCase):
         document = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
         expected = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -149,7 +138,7 @@ class TestLabeler(BaseProcessorTestCase):
         event = {"applyrule": "yes"}
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
 
-        self._load_specific_rule(rule, reporter_schema_expanded)
+        self._load_rule(rule, reporter_schema_expanded)
         self.object.process(event)
 
         assert event["label"]["reporter"] == ["parentlabel", "windows"]
@@ -167,7 +156,7 @@ class TestLabeler(BaseProcessorTestCase):
             "description": "This does even match with arrays!",
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -185,7 +174,7 @@ class TestLabeler(BaseProcessorTestCase):
             "description": "This does even match with arrays!",
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -204,7 +193,7 @@ class TestLabeler(BaseProcessorTestCase):
             "description": "This does even match with arrays!",
         }
 
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
 
         assert document == expected
@@ -226,7 +215,7 @@ class TestLabeler(BaseProcessorTestCase):
             "description": "This does even match with arrays!",
         }
 
-        self._load_specific_rule(rule_dict)
+        self._load_rule(rule_dict)
 
         self.object.process(document)
 
@@ -262,6 +251,6 @@ class TestLabeler(BaseProcessorTestCase):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows", "foo"]}}}
         document = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
         expected = {"applyrule": "yes", "label": {"reporter": ["foo", "windows"]}}
-        self._load_specific_rule(rule)
+        self._load_rule(rule)
         self.object.process(document)
         assert document == expected

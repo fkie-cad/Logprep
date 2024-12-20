@@ -6,8 +6,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class TestDeleter(BaseProcessorTestCase):
     CONFIG = {
         "type": "deleter",
-        "specific_rules": ["tests/testdata/unit/deleter/rules/specific/"],
-        "generic_rules": ["tests/testdata/unit/deleter/rules/generic/"],
+        "rules": ["tests/testdata/unit/deleter/rules"],
     }
 
     @pytest.mark.parametrize(

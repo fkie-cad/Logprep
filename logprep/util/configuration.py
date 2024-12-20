@@ -54,24 +54,18 @@ Configuration File Structure
         type: labeler
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
-        specific_rules:
-            - examples/exampledata/rules/labeler/specific
-        generic_rules:
-            - examples/exampledata/rules/labeler/generic
+        rules:
+            - examples/exampledata/rules/labeler/rules
 
     - dissectorname:
         type: dissector
-        specific_rules:
-            - examples/exampledata/rules/dissector/specific/
-        generic_rules:
-            - examples/exampledata/rules/dissector/generic/
+        rules:
+            - examples/exampledata/rules/dissector/rules
 
     - dropper:
         type: dropper
-        specific_rules:
-            - examples/exampledata/rules/dropper/specific
-        generic_rules:
-            - examples/exampledata/rules/dropper/generic
+        rules:
+            - examples/exampledata/rules/dropper/rules
             - filter: "test_dropper"
             dropper:
                 drop:
@@ -80,10 +74,8 @@ Configuration File Structure
 
     - pre_detector:
         type: pre_detector
-        specific_rules:
-            - examples/exampledata/rules/pre_detector/specific
-        generic_rules:
-            - examples/exampledata/rules/pre_detector/generic
+        rules:
+            - examples/exampledata/rules/pre_detector/rules
         outputs:
             - opensearch: sre
         tree_config: examples/exampledata/rules/pre_detector/tree_config.json
@@ -91,10 +83,8 @@ Configuration File Structure
 
     - amides:
         type: amides
-        specific_rules:
-            - examples/exampledata/rules/amides/specific
-        generic_rules:
-            - examples/exampledata/rules/amides/generic
+        rules:
+            - examples/exampledata/rules/amides/rules
         models_path: examples/exampledata/models/model.zip
         num_rule_attributions: 10
         max_cache_entries: 1000000
@@ -108,20 +98,17 @@ Configuration File Structure
         hash_salt: a_secret_tasty_ingredient
         outputs:
             - opensearch: pseudonyms
-        specific_rules:
-            - examples/exampledata/rules/pseudonymizer/specific/
-        generic_rules:
-            - examples/exampledata/rules/pseudonymizer/generic/
+        rules:
+            - examples/exampledata/rules/pseudonymizer/rules
         max_cached_pseudonyms: 1000000
 
     - calculator:
         type: calculator
-        specific_rules:
+        rules:
             - filter: "test_label: execute"
             calculator:
                 target_field: "calculation"
                 calc: "1 + 1"
-        generic_rules: []
 
 
 The options under :code:`input`, :code:`output` and :code:`pipeline` are passed
@@ -174,10 +161,8 @@ The following config file will be valid by setting the given environment variabl
             type: labeler
             schema: examples/exampledata/rules/labeler/schema.json
             include_parent_labels: true
-            specific_rules:
-                - examples/exampledata/rules/labeler/specific
-            generic_rules:
-                - examples/exampledata/rules/labeler/generic"
+            rules:
+                - examples/exampledata/rules/labeler/rules"
     export LOGPREP_OUTPUT="
     output:
         kafka:
@@ -746,12 +731,11 @@ class Configuration:
         processor_definition = deepcopy(processor_definition)
         _ = Factory.create(processor_definition)
         processor_name, processor_config = processor_definition.popitem()
-        for rule_tree_name in ("specific_rules", "generic_rules"):
-            rules_targets = self._resolve_directories(processor_config.get(rule_tree_name, []))
-            rules_definitions = list(
-                chain(*[self._get_dict_list_from_target(target) for target in rules_targets])
-            )
-            processor_config[rule_tree_name] = rules_definitions
+        rules_targets = self._resolve_directories(processor_config.get("rules", []))
+        rules_definitions = list(
+            chain(*[self._get_dict_list_from_target(target) for target in rules_targets])
+        )
+        processor_config["rules"] = rules_definitions
         return {processor_name: processor_config}
 
     @staticmethod
