@@ -98,7 +98,7 @@ class Processor(Component):
         tree_config: Optional[str] = field(
             default=None, validator=[validators.optional(validators.instance_of(str))]
         )
-        """Path to a JSON file with a valid rule tree configuration.
+        """Path to a JSON file with a valid :ref:`Rule Tree Configuration`.
         For string format see :ref:`getters`."""
         apply_multiple_times: Optional[bool] = field(
             default=False, validator=[validators.optional(validators.instance_of(bool))]
@@ -123,7 +123,7 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
-        self._rule_tree = RuleTree(processor_name=self.name, processor_config=self._config)
+        self._rule_tree = RuleTree(config=self._config.tree_config)
         self.load_rules(rules_targets=self._config.rules)
         self.result = None
         self._bypass_rule_tree = False

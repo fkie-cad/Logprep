@@ -1,94 +1,154 @@
-"""This module contains the rule tree functionality."""
+"""
+.. _Rule Tree:
 
-from enum import Enum
-from logging import Logger
-from typing import TYPE_CHECKING, List, Optional, Union
+RuleTree
+========
+
+For performance reasons on startup, all rules per processor are aggregated to a rule tree.
+Instead of evaluating all rules independently for each log message, the message is checked against
+the rule tree.
+Each node in the rule tree represents a condition that has to be met,
+while the leaves represent changes that the processor should apply.
+If no condition is met, the processor will just pass the log event to the next processor.
+
+The following chart gives an example of such a rule tree:
+
+.. mermaid::
+
+    flowchart TD
+        A[root]
+        A-->B[Condition 1]
+        A-->C[Condition 2]
+        A-->D[Condition 3]
+        B-->E[Condition 4]
+        B-->H(Rule 1)
+        C-->I(Rule 2)
+        D-->J(rule 3)
+        E-->G(Rule 4)
+
+
+.. _Rule Tree Configuration:
+
+Rule Tree Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
+
+To further improve the performance, it is possible to prioritize specific nodes of the rule tree,
+such that broader conditions are higher up in the tree.
+And specific conditions can be moved further down.
+The following json gives an example of such a rule tree configuration.
+This configuration will lead to the prioritization of `category` and `message` in the rule tree.
+
+..  code-block:: json
+    :linenos:
+
+    {
+      "priority_dict": {
+        "category": "01",
+        "message": "02"
+      },
+      "tag_map": {
+        "check_field_name": "check-tag"
+      }
+    }
+
+A path to a rule tree configuration can be set in any processor configuration under the key
+:code:`tree_config`.
+"""
+
+from logging import getLogger
+from typing import TYPE_CHECKING, List, Optional
+
+from attr import validators
+from attrs import define, field
 
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.util import getter
 
 if TYPE_CHECKING:  # pragma: no cover
-    from logprep.abc.processor import Processor
     from logprep.processor.base.rule import Rule
+
+logger = getLogger("RuleTree")
 
 
 class RuleTree:
     """Represent a set of rules using a rule tree model."""
 
+    @define(kw_only=True, slots=False)
+    class Config:
+        """Configuration for the RuleTree"""
+
+        priority_dict: dict[str] = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            default=dict(),
+        )
+        """Fields used in filter expressions can be prioritized by specifying
+         them in this priority dict. The key describes the field name used in
+         the filter expression and the value describes the priority in form
+         of string number. The higher the number, the higher the priority."""
+
+        tag_map: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            default=dict(),
+        )
+        """tbd"""
+
     __slots__ = (
         "rule_parser",
-        "priority_dict",
         "_rule_mapping",
-        "_processor_config",
-        "_processor_type",
-        "_processor_name",
         "_root",
         "__dict__",
     )
 
     rule_parser: Optional[RuleParser]
-    priority_dict: dict
     _rule_mapping: dict
-    _processor_name: str
-    _processor_config: "Processor.Config"
-    _processor_type: str
     _root: Node
 
     def __init__(
         self,
         root: Node = None,
-        processor_name: str = None,
-        processor_config: "Processor.Config" = None,
+        config: str = None,
     ):
         """Rule tree initialization function.
 
         Initializes a new rule tree with a given root node and a path to the tree's optional config
         file. If no root node is specified, a new node will be created and used as root node.
-        Also starts the further setup.
 
         Parameters
         ----------
         root: Node, optional
             Node that should be used as the new rule tree's root node.
-        processor_config: Processor.Config, optional
-            Configuration of the processor that uses the rule tree.
-
+        config: str, optional
+            Path to a tree configuration.
         """
-        self.rule_parser = None
         self._rule_mapping = {}
-        self._processor_config = processor_config
-        self._processor_name = processor_name if processor_name is not None else ""
-        self._processor_type = processor_config.type if processor_name is not None else ""
-        self._setup()
+        self.tree_config = RuleTree.Config()
+        if config:
+            config_data = getter.GetterFactory.from_string(config).get_json()
+            self.tree_config = RuleTree.Config(**config_data)
+        self.rule_parser = RuleParser(self.tree_config.tag_map)
 
+        self._root = Node(None)
         if root:
             self._root = root
-        else:
-            self._root = Node(None)
 
     @property
     def number_of_rules(self) -> int:
         return len(self._rule_mapping)
 
-    def _setup(self):
-        """Basic setup of rule tree.
-
-        Initiate the rule tree's priority dict, tag map and load the configuration from file.
-
-        """
-        self.priority_dict = {}
-        tag_map = {}
-
-        if self._processor_config and self._processor_config.tree_config:
-            config_data = getter.GetterFactory.from_string(
-                self._processor_config.tree_config
-            ).get_json()
-            self.priority_dict = config_data["priority_dict"]
-            tag_map = config_data["tag_map"]
-        self.rule_parser = RuleParser(tag_map)
-
-    def add_rule(self, rule: "Rule", logger: Logger = None):
+    def add_rule(self, rule: "Rule"):
         """Add rule to rule tree.
 
         Add a new rule to the rule tree.
@@ -102,12 +162,9 @@ class RuleTree:
         ----------
         rule: Rule
             Rule to be added to the rule tree.
-        logger: Logger
-            Logger to use for logging.
-
         """
         try:
-            parsed_rule = self.rule_parser.parse_rule(rule, self.priority_dict)
+            parsed_rule = self.rule_parser.parse_rule(rule, self.tree_config.priority_dict)
         except Exception as error:  # pylint: disable=broad-except
             logger.warning(
                 f'Error parsing rule "{rule.file_name}.yml": {type(error).__name__}: {error}. '
