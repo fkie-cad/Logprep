@@ -91,45 +91,6 @@ and secondly they specify how to process the message.
 For example which fields should be deleted or to which IP-address the geolocation should be
 retrieved.
 
-For performance reasons on startup all rules per processor are aggregated to a rule tree.
-Instead of evaluating all rules independently for each log message the message is checked against
-the rule tree.
-Each node in the rule tree represents a condition that has to be meet,
-while the leafs represent changes that the processor should apply.
-If no condition is met, the processor will just pass the log event to the next processor.
-
-The following chart gives an example of such a rule tree:
-
-```mermaid
-flowchart TD
-A[root]
-A-->B[Condition 1]
-A-->C[Condition 2]
-A-->D[Condition 3]
-B-->E[Condition 4]
-B-->H(Rule 1)
-C-->I(Rule 2)
-D-->J(rule 3)
-E-->G(Rule 4)
-```
-
-To further improve the performance, it is possible to prioritize specific nodes of the rule tree,
-such that broader conditions are higher up in the tree.
-And specific conditions can be moved further down.
-Following json gives an example of such a rule tree configuration.
-This configuration will lead to the prioritization of `tags` and `message` in the rule tree.
-
-```json
-{
-  "priority_dict": {
-    "category": "01",
-    "message": "02"
-  },
-  "tag_map": {
-    "check_field_name": "check-tag"
-  }
-}
-```
 
 ### Connectors
 

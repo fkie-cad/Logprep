@@ -68,7 +68,7 @@ class TestLabeler(BaseProcessorTestCase):
         rule = LabelerRule._create_from_dict(rule)
         if schema:
             rule.add_parent_labels_from_schema(schema)
-        self.object._rule_tree.add_rule(rule, self.logger)
+        self.object._rule_tree.add_rule(rule)
 
     def test_process_adds_labels_to_event(self):
         rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
