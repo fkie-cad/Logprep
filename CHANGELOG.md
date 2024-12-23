@@ -10,6 +10,9 @@
 the list is now fixed inside the packaged logprep
 * remove SQL feature from `generic_adder`, fields can only be added from rule config or from file
 * use a single rule tree instead of a generic and a specific rule tree
+* replace the `extend_target_list` parameter with `merge_with_target` for improved naming clarity
+and functionality across `FieldManager` based processors (e.g., `FieldManager`, `Clusterer`,
+`GenericAdder`).
 
 ### Features
 
@@ -34,6 +37,7 @@ the list is now fixed inside the packaged logprep
 * fix wrong documentation for `timestamp_differ`
 * add container signatures to images build in ci pipeline
 * add sbom to images build in ci pipeline
+* `FieldManager` supports merging dictionaries
 
 ### Bugfix
 
