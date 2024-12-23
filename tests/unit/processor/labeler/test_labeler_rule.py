@@ -270,7 +270,7 @@ class TestRule:
         assert not rule.matches({"applyrule": "88888888"})
         assert not rule.matches({"applyrule": "UPlo$$7"})
 
-    def test_prefixed_label_property_is_a_dicts_with_only_list_values(self):
+    def test_prefixed_label_property_is_a_dict_with_only_list_values(self):
         rule_definition = {
             "filter": 'applyrule: "yes"',
             "labeler": {"label": {"reporter": {"windows"}}},  # label is given as set
