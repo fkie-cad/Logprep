@@ -4,6 +4,7 @@
 # pylint: disable=missing-function-docstring
 # pylint: disable=wrong-import-position
 from copy import deepcopy
+
 import pytest
 
 from logprep.filter.expression.filter_expression import StringFilterExpression
@@ -268,3 +269,13 @@ class TestRule:
         assert not rule.matches({"applyrule": "UPloXXXX"})
         assert not rule.matches({"applyrule": "88888888"})
         assert not rule.matches({"applyrule": "UPlo$$7"})
+
+    def test_prefixed_label_property_is_a_dicts_with_only_list_values(self):
+        rule_definition = {
+            "filter": 'applyrule: "yes"',
+            "labeler": {"label": {"reporter": {"windows"}}},  # label is given as set
+        }
+        rule = LabelerRule._create_from_dict(rule_definition)
+        assert all(
+            isinstance(val, list) for val in rule.prefixed_label.values()
+        ), "prefixed_labels contain non-list values"
