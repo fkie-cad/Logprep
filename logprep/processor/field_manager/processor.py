@@ -30,7 +30,6 @@ Processor Configuration
 from logprep.abc.processor import Processor
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
-    add_and_overwrite,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
@@ -88,20 +87,19 @@ class FieldManager(Processor):
         event, target_field, source_fields_values = args
         if len(source_fields_values) == 1 and not merge_with_target:
             source_fields_values = source_fields_values.pop()
-        if merge_with_target:
-            flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
-            new_value = [*flattened_source_fields]
-            if all(isinstance(elem, dict) for elem in new_value):
-                new_value = {key: value for d in new_value for key, value in d.items()}
-            if overwrite_target:
-                add_and_overwrite(event, {target_field: new_value}, rule)
-            else:
-                add_fields_to(
-                    event, {target_field: new_value}, rule, merge_with_target, overwrite_target
-                )
-        else:
+        if not merge_with_target:
             field = {target_field: source_fields_values}
             add_fields_to(event, field, rule, merge_with_target, overwrite_target)
+            return
+        new_values = self._overwrite_from_source_values(source_fields_values)
+        if all(isinstance(element, dict) for element in new_values):
+            # merge a list of dicts into one dict
+            new_values = {key: value for dict_ in new_values for key, value in dict_.items()}
+        if overwrite_target:
+            # source values are already included in new_values, add_fields_to also does not
+            # allow overwrite_target=True and marge_with_target=True at the same time
+            merge_with_target = False
+        add_fields_to(event, {target_field: new_values}, rule, merge_with_target, overwrite_target)
 
     def _overwrite_from_source_values(self, source_fields_values):
         duplicates = []
