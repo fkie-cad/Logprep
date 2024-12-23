@@ -9,19 +9,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
     (
-        "Merge source dict into existing target dict",
-        {
-            "filter": "source",
-            "field_manager": {
-                "source_fields": ["source"],
-                "target_field": "target",
-                "merge_with_target": True,
-            },
-        },
-        {"source": {"source1": "value"}, "target": {"target1": "value"}},
-        {"source": {"source1": "value"}, "target": {"source1": "value", "target1": "value"}},
-    ),
-    (
         "copies single field to non existing target field",
         {
             "filter": "message",
@@ -501,6 +488,45 @@ test_cases = [  # testcase, rule, event, expected
             "field2": "Value C",
             "field3": "Value D",
             "new_field": ["Value A", "Value B", "Value C", "Value D"],
+        },
+    ),
+    (
+        "Merge source dict into existing target dict",
+        {
+            "filter": "source",
+            "field_manager": {
+                "source_fields": ["source"],
+                "target_field": "target",
+                "merge_with_target": True,
+            },
+        },
+        {"source": {"source1": "value"}, "target": {"target1": "value"}},
+        {"source": {"source1": "value"}, "target": {"source1": "value", "target1": "value"}},
+    ),
+    (
+        "Merge multiple source dicts into existing target dict",
+        {
+            "filter": "source1",
+            "field_manager": {
+                "source_fields": ["source1", "source2", "source3"],
+                "target_field": "target",
+                "delete_source_fields": True,
+                "merge_with_target": True,
+            },
+        },
+        {
+            "source1": {"source1": "value"},
+            "source2": {"source2": "value"},
+            "source3": {"source-nested": {"foo": "bar"}},
+            "target": {"target1": "value"},
+        },
+        {
+            "target": {
+                "source1": "value",
+                "source2": "value",
+                "source-nested": {"foo": "bar"},
+                "target1": "value",
+            },
         },
     ),
 ]
