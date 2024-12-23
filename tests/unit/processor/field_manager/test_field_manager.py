@@ -9,6 +9,19 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
     (
+        "Merge source dict into existing target dict",
+        {
+            "filter": "source",
+            "field_manager": {
+                "source_fields": ["source"],
+                "target_field": "target",
+                "extend_target_list": True,
+            },
+        },
+        {"source": {"source1": "value"}, "target": {"target1": "value"}},
+        {"source": {"source1": "value"}, "target": {"source1": "value", "target1": "value"}},
+    ),
+    (
         "copies single field to non existing target field",
         {
             "filter": "message",

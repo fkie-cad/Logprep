@@ -95,17 +95,6 @@ class TestHelperAddField:
         add_fields_to(document, {"some_list": ["first", "second"]}, extends_lists=True)
         assert document.get("some_list") == ["with a value", "first", "second"]
 
-    def test_add_field_to_raises_if_list_should_be_extended_and_overwritten_at_the_same_time(self):
-        document = {"some": "field", "some_list": ["with a value"]}
-        with pytest.raises(ValueError, match=r"can't be overwritten and extended at the same time"):
-            add_fields_to(
-                document,
-                {"some_list": ["first", "second"]},
-                extends_lists=True,
-                overwrite_target_field=True,
-            )
-        assert document
-
     def test_returns_false_if_dotted_field_value_key_exists(self):
         document = {"user": "Franz"}
         with pytest.raises(FieldExistsWarning, match=r"could not be written"):
@@ -174,3 +163,29 @@ class TestHelperAddField:
             "exists_already": "original content",
             "new": "another content",
         }
+
+    def test_add_fields_to_merges_existing_dict_with_new_dict(self):
+        document = {"some": "field", "existing": {"old": "dict"}}
+        expected = {
+            "some": "field",
+            "existing": {"new": "dict", "old": "dict"},
+        }
+        add_fields_to(document, {"existing": {"new": "dict"}}, extends_lists=True)
+        assert document == expected
+
+    def test_add_fields_to_converts_element_to_list_when_extends_lists_is_true(self):
+        document = {"existing": "element"}
+        expected = {"existing": ["element", "new element"]}
+        add_fields_to(document, {"existing": "new element"}, extends_lists=True)
+        assert document == expected
+
+    def test_add_fields_to_extends_but_does_not_overwrite_target(self):
+        document = {"existing": "element"}
+        expected = {"existing": "element"}
+        add_fields_to(
+            document, {"existing": "new element"}, extends_lists=True, overwrite_target_field=False
+        )
+        assert document == expected
+
+        # merge with target (keeps existing target value)
+        # overwrite target (replaces existing target value)

@@ -86,14 +86,10 @@ def _add_field_to(
         Flag that determines whether the target_field should be overwritten
     Raises
     ------
-    ValueError
-        If both extends_lists and overwrite_target_field are set to True.
     FieldExistsWarning
         If the target_field already exists and overwrite_target_field is False, or if extends_lists is True but
         the existing field is not a list.
     """
-    if extends_lists and overwrite_target_field:
-        raise ValueError("An output field can't be overwritten and extended at the same time")
     target_field, content = field
     field_path = [event, *get_dotted_field_list(target_field)]
     target_key = field_path.pop()
@@ -110,18 +106,28 @@ def _add_field_to(
     if existing_value is None:
         target_parent[target_key] = content
         return
-    if not extends_lists or not isinstance(existing_value, list):
+    if not extends_lists:
         raise FieldExistsWarning(rule, event, [target_field])
-    if isinstance(content, list | set):
-        target_parent[target_key].extend(content)
+    if isinstance(existing_value, dict) and isinstance(content, dict):
+        existing_value.update(content)
+        target_parent[target_key] = existing_value
+    elif isinstance(existing_value, list) and isinstance(content, list):
+        existing_value.extend(content)
+        target_parent[target_key] = existing_value
+    elif isinstance(existing_value, list) and isinstance(content, (int, float, str, bool)):
+        target_parent[target_key] = existing_value + [content]
+    elif isinstance(existing_value, (int, float, str, bool)) and isinstance(content, list):
+        target_parent[target_key] = [existing_value] + content
     else:
-        target_parent[target_key].append(content)
+        if not overwrite_target_field:
+            raise FieldExistsWarning(rule, event, [target_field])
+        target_parent[target_key] = [existing_value, content]
 
 
 def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
     """
     Adds a field to an object, ignoring the FieldExistsWarning if the field already exists. Is only needed in the
-    add_batch_to map function. Without this the map would terminate early.
+    add_batch_to map function. Without this, the map would terminate early.
 
     Parameters:
         args: tuple

@@ -327,9 +327,9 @@ class TestGenericAdder(BaseProcessorTestCase):
     ):
         self._load_rule(rule)
         result = self.object.process(event)
+        assert event == expected, testcase
         assert len(result.warnings) == 1
         assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))
-        assert event == expected, testcase
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
         with pytest.raises(InvalidRuleDefinitionError, match=r"files do not exist"):
