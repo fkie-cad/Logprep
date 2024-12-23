@@ -94,7 +94,7 @@ class GenericAdderRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for GenericAdderRule"""
 
-        extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
+        merge_with_target: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the values
         of the source fields.
         """

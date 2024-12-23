@@ -139,8 +139,8 @@ class Clusterer(FieldManager):
         add_fields_to(
             event,
             fields={self._config.output_field_name: cluster_signature},
-            extends_lists=rule.extend_target_list,
-            overwrite_target_field=rule.overwrite_target,
+            merge_with_target=rule.merge_with_target,
+            overwrite_target=rule.overwrite_target,
         )
         self._last_non_extracted_signature = sig_text
 

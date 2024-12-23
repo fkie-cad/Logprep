@@ -72,8 +72,8 @@ class Requester(FieldManager):
                     event,
                     fields={rule.target_field: self._get_result(response)},
                     rule=rule,
-                    extends_lists=rule.extend_target_list,
-                    overwrite_target_field=rule.overwrite_target,
+                    merge_with_target=rule.merge_with_target,
+                    overwrite_target=rule.overwrite_target,
                 )
             except FieldExistsWarning as error:
                 conflicting_fields.extend(error.skipped_fields)
@@ -86,7 +86,7 @@ class Requester(FieldManager):
                     event,
                     dict(zip(targets, contents)),
                     rule,
-                    rule.extend_target_list,
+                    rule.merge_with_target,
                     rule.overwrite_target,
                 )
             except FieldExistsWarning as error:

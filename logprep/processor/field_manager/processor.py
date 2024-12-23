@@ -30,6 +30,7 @@ Processor Configuration
 from logprep.abc.processor import Processor
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
+    add_and_overwrite,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
@@ -46,7 +47,7 @@ class FieldManager(Processor):
             rule.source_fields,
             rule.target_field,
             rule.mapping,
-            rule.extend_target_list,
+            rule.merge_with_target,
             rule.overwrite_target,
         )
         if rule.mapping:
@@ -55,17 +56,17 @@ class FieldManager(Processor):
             self._apply_single_target_processing(event, rule, rule_args)
 
     def _apply_single_target_processing(self, event, rule, rule_args):
-        source_fields, target_field, _, extend_target_list, overwrite_target = rule_args
+        source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
         source_field_values = list(filter(lambda x: x is not None, source_field_values))
         if not source_field_values:
             return
         args = (event, target_field, source_field_values)
-        self._write_to_single_target(args, extend_target_list, overwrite_target, rule)
+        self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
     def _apply_mapping(self, event, rule, rule_args):
-        source_fields, _, mapping, extend_target_list, overwrite_target = rule_args
+        source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
@@ -76,29 +77,31 @@ class FieldManager(Processor):
             event,
             dict(zip(targets, source_field_values)),
             rule,
-            extend_target_list,
+            merge_with_target,
             overwrite_target,
         )
         if rule.delete_source_fields:
             for dotted_field in source_fields:
                 pop_dotted_field_value(event, dotted_field)
 
-    def _write_to_single_target(self, args, extend_target_list, overwrite_target, rule):
+    def _write_to_single_target(self, args, merge_with_target, overwrite_target, rule):
         event, target_field, source_fields_values = args
-        if len(source_fields_values) == 1 and not extend_target_list:
+        if len(source_fields_values) == 1 and not merge_with_target:
             source_fields_values = source_fields_values.pop()
-        if extend_target_list:
+        if merge_with_target:
             flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
             new_value = [*flattened_source_fields]
             if all(isinstance(elem, dict) for elem in new_value):
                 new_value = {key: value for d in new_value for key, value in d.items()}
-            add_fields_to(
-                event, {target_field: new_value}, rule, extend_target_list, overwrite_target
-            )
-            return
+            if overwrite_target:
+                add_and_overwrite(event, {target_field: new_value}, rule)
+            else:
+                add_fields_to(
+                    event, {target_field: new_value}, rule, merge_with_target, overwrite_target
+                )
         else:
             field = {target_field: source_fields_values}
-            add_fields_to(event, field, rule, extend_target_list, overwrite_target)
+            add_fields_to(event, field, rule, merge_with_target, overwrite_target)
 
     def _overwrite_from_source_values(self, source_fields_values):
         duplicates = []

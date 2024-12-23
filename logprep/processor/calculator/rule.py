@@ -107,7 +107,7 @@ class CalculatorRule(FieldManagerRule):
         """The calculation expression. Fields from the event can be used by
         surrounding them with :code:`${` and :code:`}`."""
         source_fields: list = field(factory=list, init=False, repr=False, eq=False)
-        extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
+        merge_with_target: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the values
         of the source fields.
         """

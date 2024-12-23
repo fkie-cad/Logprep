@@ -243,7 +243,7 @@ class Pseudonymizer(FieldManager):
             else:
                 field_value = self._pseudonymize_field(rule, dotted_field, regex, field_value)
             add_fields_to(
-                event, fields={dotted_field: field_value}, rule=rule, overwrite_target_field=True
+                event, fields={dotted_field: field_value}, rule=rule, overwrite_target=True
             )
         if "@timestamp" in event:
             for pseudonym, _ in self.result.data:

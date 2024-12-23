@@ -195,4 +195,4 @@ class DomainResolver(Processor):
                 "cache_size": len(self._domain_ip_map.keys()),
             }
         }
-        add_fields_to(event, event_dbg, overwrite_target_field=True)
+        add_fields_to(event, event_dbg, overwrite_target=True)

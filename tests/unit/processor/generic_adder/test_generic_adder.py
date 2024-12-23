@@ -193,7 +193,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             },
         ),
         (
-            "Extend list field with 'extend_target_list' enabled",
+            "Extend list field with 'merge_with_target' enabled",
             {
                 "filter": "extend_generic_test",
                 "generic_adder": {
@@ -202,7 +202,7 @@ class TestGenericAdder(BaseProcessorTestCase):
                         "another_added_field": "another_value",
                         "dotted.added.field": "yet_another_value",
                     },
-                    "extend_target_list": True,
+                    "merge_with_target": True,
                 },
             },
             {"extend_generic_test": "Test", "event_id": 123, "some_added_field": []},
@@ -215,7 +215,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             },
         ),
         (
-            "Extend list field with 'extend_target_list' enabled",
+            "Extend list field with 'merge_with_target' enabled",
             {
                 "filter": "*",
                 "generic_adder": {
@@ -259,7 +259,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             r"subfields existed and could not be extended: some_added_field",
         ),
         (
-            "Extend list field with 'extend_target_list' disabled",
+            "Extend list field with 'merge_with_target' disabled",
             {
                 "filter": "extend_generic_test",
                 "generic_adder": {
@@ -268,7 +268,7 @@ class TestGenericAdder(BaseProcessorTestCase):
                         "another_added_field": "another_value",
                         "dotted.added.field": "yet_another_value",
                     },
-                    "extend_target_list": False,
+                    "merge_with_target": False,
                 },
             },
             {"extend_generic_test": "Test", "event_id": 123, "some_added_field": []},
@@ -283,7 +283,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             r"subfields existed and could not be extended: some_added_field",
         ),
         (
-            "Extend list field with 'extend_target_list' enabled, but non-list target",
+            "Extend list field with 'merge_with_target' enabled, but non-list target",
             {
                 "filter": "extend_generic_test",
                 "generic_adder": {
@@ -292,7 +292,7 @@ class TestGenericAdder(BaseProcessorTestCase):
                         "another_added_field": "another_value",
                         "dotted.added.field": "yet_another_value",
                     },
-                    "extend_target_list": True,
+                    "merge_with_target": True,
                 },
             },
             {"extend_generic_test": "Test", "event_id": 123, "some_added_field": "not_a_list"},

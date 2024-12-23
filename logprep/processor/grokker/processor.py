@@ -86,8 +86,8 @@ class Grokker(FieldManager):
                 event,
                 result,
                 rule=rule,
-                extends_lists=rule.extend_target_list,
-                overwrite_target_field=rule.overwrite_target,
+                merge_with_target=rule.merge_with_target,
+                overwrite_target=rule.overwrite_target,
             )
         if self._handle_missing_fields(event, rule, rule.actions.keys(), source_values):
             return

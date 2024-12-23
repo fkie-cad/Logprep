@@ -15,7 +15,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["source"],
                 "target_field": "target",
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {"source": {"source1": "value"}, "target": {"target1": "value"}},
@@ -80,7 +80,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["message"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
             },
         },
@@ -94,7 +94,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
             },
         },
@@ -112,7 +112,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
                 "overwrite_target": True,
             },
@@ -132,7 +132,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
             },
         },
@@ -151,7 +151,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
             },
         },
@@ -170,7 +170,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
             },
         },
@@ -189,7 +189,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
             },
         },
@@ -208,7 +208,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
             },
         },
@@ -230,7 +230,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
             },
         },
@@ -252,7 +252,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
                 "delete_source_fields": True,
                 "overwrite_target": True,
             },
@@ -281,7 +281,7 @@ test_cases = [  # testcase, rule, event, expected
                     "client.nat.ip",
                 ],
                 "target_field": "related.ip",
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {
@@ -342,7 +342,7 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "field",
             "field_manager": {
                 "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {"field": {"one": 1, "two": 2, "three": 3}, "three": ["exists already"]},
@@ -359,7 +359,7 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "field",
             "field_manager": {
                 "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {"field": {"one": 1, "two": 2, "three": [3, 3]}, "three": ["exists already"]},
@@ -420,7 +420,7 @@ test_cases = [  # testcase, rule, event, expected
                 "source_fields": ["source.one", "source.two"],
                 "target_field": "merged",
                 "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {"field": {"one": 1, "two": 2, "three": 3}, "source": {"one": ["a"], "two": ["b"]}},
@@ -452,7 +452,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "extend_target_list preserves list ordering",
+        "merge_with_target preserves list ordering",
         {
             "filter": "(foo) OR (test)",
             "field_manager": {
@@ -461,7 +461,7 @@ test_cases = [  # testcase, rule, event, expected
                 "target_field": "existing_list",
                 "delete_source_fields": False,
                 "overwrite_target": False,
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {"existing_list": ["hello", "world"], "foo": "bar", "test": "value"},
@@ -474,7 +474,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["message"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {"message": "Value B", "new_field": "Value A"},
@@ -487,7 +487,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {

@@ -194,7 +194,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
                 "resolve_mapping_no_regex.yml",
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
 
@@ -216,7 +216,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
                 "resolve_mapping_no_regex.yml",
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
 
@@ -239,7 +239,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved", "other_to_resolve": "resolved"},
                 "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
                 "resolve_mapping_no_regex.yml",
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
 
@@ -563,7 +563,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
 
@@ -586,7 +586,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_with_parenthesis.yml",
                     "pattern": r"\d*(?P<mapping>(([a-z])+)())\d*",
                 },
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
 
@@ -609,7 +609,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
 
@@ -632,7 +632,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[123]+)\d*",
                 },
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
         self._load_rule(rule)
@@ -652,7 +652,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
 
@@ -678,7 +678,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                     "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
 

@@ -24,8 +24,8 @@ Processor Configuration
 """
 
 from functools import cached_property, lru_cache
-
 from typing import Optional
+
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
@@ -52,7 +52,7 @@ class GenericResolver(FieldManager):
             validator=validators.optional(validators.instance_of(int)), default=1
         )
         """(Optional) Cache metrics won't be updated immediately.
-        Instead updating is skipped for a number of events before it's next update. 
+        Instead updating is skipped for a number of events before it's next update.
         :code:`cache_metrics_interval` sets the number of events between updates (default: 1)."""
 
     @define(kw_only=True)
@@ -130,15 +130,15 @@ class GenericResolver(FieldManager):
             current_content = get_dotted_field_value(event, target_field)
             if isinstance(current_content, list) and content in current_content:
                 continue
-            if rule.extend_target_list and current_content is None:
+            if rule.merge_with_target and current_content is None:
                 content = [content]
             try:
                 add_fields_to(
                     event,
                     fields={target_field: content},
                     rule=rule,
-                    extends_lists=rule.extend_target_list,
-                    overwrite_target_field=rule.overwrite_target,
+                    merge_with_target=rule.merge_with_target,
+                    overwrite_target=rule.overwrite_target,
                 )
             except FieldExistsWarning as error:
                 conflicting_fields.extend(error.skipped_fields)

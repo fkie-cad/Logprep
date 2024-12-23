@@ -114,15 +114,15 @@ class HyperscanResolver(FieldManager):
                     current_content = get_dotted_field_value(event, resolve_target)
                     if isinstance(current_content, list) and dest_val in current_content:
                         continue
-                    if rule.extend_target_list and current_content is None:
+                    if rule.merge_with_target and current_content is None:
                         dest_val = [dest_val]
                     try:
                         add_fields_to(
                             event,
                             fields={resolve_target: dest_val},
                             rule=rule,
-                            extends_lists=rule.extend_target_list,
-                            overwrite_target_field=rule.overwrite_target,
+                            merge_with_target=rule.merge_with_target,
+                            overwrite_target=rule.overwrite_target,
                         )
                     except FieldExistsWarning as error:
                         conflicting_fields.extend(error.skipped_fields)

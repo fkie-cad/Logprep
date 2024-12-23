@@ -270,7 +270,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                     "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
         self._load_rule(rule)
@@ -294,7 +294,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                     "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
         self._load_rule(rule)
@@ -322,7 +322,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                     "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         }
         self._load_rule(rule)

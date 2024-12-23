@@ -116,7 +116,7 @@ class TemplateReplacer(FieldManager):
             event,
             fields={self._target_field: replacement},
             rule=rule,
-            overwrite_target_field=overwrite,
+            overwrite_target=overwrite,
         )
 
     def setup(self):

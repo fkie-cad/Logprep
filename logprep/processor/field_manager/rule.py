@@ -20,7 +20,7 @@ A speaking example:
             - server.nat.ip
             - client.nat.ip
         target_field: related.ip
-        extend_target_list: True
+        merge_with_target: True
     description: '...'
 
 ..  code-block:: json
@@ -120,7 +120,7 @@ class FieldManagerRule(Rule):
         """Whether to delete all the source fields or not. Defaults to :code:`False`"""
         overwrite_target: bool = field(validator=validators.instance_of(bool), default=False)
         """Overwrite the target field value if exists. Defaults to :code:`False`"""
-        extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
+        merge_with_target: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the values
         of the source fields. If the source field is a list, the lists will be merged.
         If the target field does not exist, a new field will be added with the
@@ -162,8 +162,8 @@ class FieldManagerRule(Rule):
         return self._config.overwrite_target
 
     @property
-    def extend_target_list(self):
-        return self._config.extend_target_list
+    def merge_with_target(self):
+        return self._config.merge_with_target
 
     @property
     def ignore_missing_fields(self):

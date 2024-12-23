@@ -55,7 +55,7 @@ It contains the path to a text file with a list of fields per line to be extract
     filter: extract_test
     selective_extractor:
         extract_from_file: /path/to/file
-        outputs: 
+        outputs:
             - opensearch: topic_to_send_to
     description: '...'
 
@@ -160,7 +160,7 @@ class SelectiveExtractorRule(FieldManagerRule):
         is not tagged with the failure tag. Defaults to :code:`True`"""
         target_field: str = field(default="", init=False, repr=False, eq=False)
         overwrite_target: bool = field(default=False, init=False, repr=False, eq=False)
-        extend_target_list: bool = field(default=False, init=False, repr=False, eq=False)
+        merge_with_target: bool = field(default=False, init=False, repr=False, eq=False)
         mapping: dict = field(default="", init=False, repr=False, eq=False)
 
         def __attrs_post_init__(self):

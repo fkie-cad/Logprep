@@ -125,7 +125,7 @@ test_cases = [  # testcase, rule, event, expected
             "calculator": {
                 "calc": "${field1} + ${field2} +${field3}",
                 "target_field": "target",
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3]},
