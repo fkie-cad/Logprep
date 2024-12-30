@@ -69,7 +69,7 @@ def get_ip_property_names(cls):
     """Returns all property names"""
     return [
         prop_name
-        for prop_name in filter(lambda x: x != "packed", dir(cls))
+        for prop_name in filter(lambda x: x not in ("packed", "ipv6_mapped"), dir(cls))
         if isinstance(getattr(cls, prop_name), property)
     ]  # we have to remove the property `packed` because it is not json serializable
 
