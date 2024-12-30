@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.10", "3.11", "3.12" ]
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
@@ -83,7 +83,7 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.7.0
         with:
-          cosign-release: 'v2.4.1'
+          cosign-release: "v2.4.1"
 
       - name: Create SBOM of container image
         uses: anchore/sbom-action@v0
@@ -110,8 +110,7 @@ jobs:
         with:
           path: cache/db
           key: trivy-cache-${{ steps.date.outputs.date }}
-          restore-keys:
-            trivy-cache-
+          restore-keys: trivy-cache-
 
       - name: Scan image using Trivy
         uses: aquasecurity/trivy-action@0.24.0

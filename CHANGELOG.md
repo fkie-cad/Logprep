@@ -3,6 +3,7 @@
 ## next release
 ### Breaking
 
+* drop support for python 3.10 and add support for python 3.13
 * `CriticalInputError` is raised when the input preprocessor values can't be set, this was so far only true
   for the hmac preprocessor, but is now also applied for all other preprocessors.
 * fix `delimiter` typo in `StringSplitterRule` configuration
