@@ -71,7 +71,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: 
 
 
 @pytest.mark.skipif(
-    all(sys.version_info[1] == 13, os.environ["CI"]), reason="This test is not working"
+    all([sys.version_info[1] == 13, os.environ["CI"]]), reason="This test is not working"
 )
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
 def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, config: Configuration):
