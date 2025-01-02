@@ -80,9 +80,11 @@ jobs:
         run: |
           python - <<EOF
           import os
-          digest = "${{ steps.build.outputs.ImageID }}"
+          imageid = "${{ steps.build.outputs.ImageID }}"
+          digest = "${{ steps.build.outputs.Digest }}"
           with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
-              file.write(f"imageid={digest.split(':')[1]}")
+              file.write(f"digest={digest.split(':')[1]}")
+              file.write(f"imageid={imageid.split(':')[1]}")
           EOF
 
       - name: Ensure logprep is available in image
@@ -110,8 +112,8 @@ jobs:
         uses: anchore/sbom-action@v0
         with:
           image: ghcr.io/fkie-cad/logprep@${{ steps.build.outputs.Digest }}
-          artifact-name: logprep@${{ steps.build.outputs.Digest }}.spdx.json
-          output-file: logprep@${{ steps.build.outputs.Digest }}.spdx.json
+          artifact-name: logprep@${{ steps.imageid.outputs.digest }}.spdx.json
+          output-file: logprep@${{ steps.imageid.outputs.digest }}.spdx.json
 
       - name: Sign image with a key and add sbom attestation
         run: |
