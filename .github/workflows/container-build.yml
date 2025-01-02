@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ "3.10", "3.11", "3.12" ]
-        platform: [ "linux/arm64" ]
+        python-version: ["3.10", "3.11", "3.12"]
+        platform: ["linux/arm64"]
 
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
               "features": {
                 "containerd-snapshotter": true
               }
-            }   
+            }
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -109,9 +109,9 @@ jobs:
       - name: Create SBOM of container image
         uses: anchore/sbom-action@v0
         with:
-          image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-          artifact-name: logprep@${{ steps.imageid.outputs.imageid }}.spdx.json
-          output-file: logprep@${{ steps.imageid.outputs.imageid }}.spdx.json
+          image: ghcr.io/fkie-cad/logprep@${{ steps.build.outputs.Digest }}
+          artifact-name: logprep@${{ steps.build.outputs.Digest }}.spdx.json
+          output-file: logprep@${{ steps.build.outputs.Digest }}.spdx.json
 
       - name: Sign image with a key and add sbom attestation
         run: |
