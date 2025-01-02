@@ -14,7 +14,7 @@ on:
 
 jobs:
   containerbuild:
-    timeout-minutes: 15
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     strategy:
       matrix:
