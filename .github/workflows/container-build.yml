@@ -87,7 +87,7 @@ jobs:
 
       - name: Ensure logprep is available in image
         run: |
-          docker run --rm ${{ steps.build.outputs.ImageID }} --version
+          docker run --rm ${{ steps.imageid.outputs.imageid }} --version
 
       - name: Push image
         uses: docker/build-push-action@v6
