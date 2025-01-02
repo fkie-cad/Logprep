@@ -44,6 +44,12 @@ jobs:
               file.write(f"tags={', '.join(full_image)}")
           EOF
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build image and export to Docker
         uses: docker/build-push-action@v6
         id: build
@@ -54,6 +60,7 @@ jobs:
             LOGPREP_VERSION=${{ inputs.build-version }}
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: ${{ steps.image-tag.outputs.tags }}
+          platforms: linux/amd64,linux/arm64
 
       - name: Extract image ID from sha256
         id: imageid
@@ -79,6 +86,7 @@ jobs:
             LOGPREP_VERSION=${{ inputs.build-version }}
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: ${{ steps.image-tag.outputs.tags }}
+          platforms: linux/amd64,linux/arm64
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.7.0
