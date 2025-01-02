@@ -1,4 +1,4 @@
-"""
+r"""
 Rule Configuration
 ^^^^^^^^^^^^^^^^^^
 
@@ -91,7 +91,7 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 from attrs import define, field, validators
 

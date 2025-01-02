@@ -1,5 +1,5 @@
 # pylint: disable=anomalous-backslash-in-string
-"""
+r"""
 Filter
 ======
 
@@ -91,13 +91,13 @@ require additional options.
     regex_fields:
     - ip_address
 """
+import logging
 import re
 from itertools import chain, zip_longest
 
 # pylint: enable=anomalous-backslash-in-string
 from typing import List, Optional, Union
 
-import logging
 import luqum
 from luqum.parser import IllegalCharacterError, ParseSyntaxError, parser
 from luqum.tree import (
@@ -107,7 +107,6 @@ from luqum.tree import (
     Not,
     OrOperation,
     Phrase,
-    Regex,
     SearchField,
     Word,
 )
