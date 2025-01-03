@@ -27,12 +27,9 @@ Processor Configuration
 .. automodule:: logprep.processor.field_manager.rule
 """
 
-from collections import namedtuple
-
 from logprep.abc.processor import Processor
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
-    add_and_overwrite,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
@@ -49,7 +46,7 @@ class FieldManager(Processor):
             rule.source_fields,
             rule.target_field,
             rule.mapping,
-            rule.extend_target_list,
+            rule.merge_with_target,
             rule.overwrite_target,
         )
         if rule.mapping:
@@ -58,17 +55,17 @@ class FieldManager(Processor):
             self._apply_single_target_processing(event, rule, rule_args)
 
     def _apply_single_target_processing(self, event, rule, rule_args):
-        source_fields, target_field, _, extend_target_list, overwrite_target = rule_args
+        source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
         source_field_values = list(filter(lambda x: x is not None, source_field_values))
         if not source_field_values:
             return
         args = (event, target_field, source_field_values)
-        self._write_to_single_target(args, extend_target_list, overwrite_target, rule)
+        self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
     def _apply_mapping(self, event, rule, rule_args):
-        source_fields, _, mapping, extend_target_list, overwrite_target = rule_args
+        source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
@@ -79,75 +76,30 @@ class FieldManager(Processor):
             event,
             dict(zip(targets, source_field_values)),
             rule,
-            extend_target_list,
+            merge_with_target,
             overwrite_target,
         )
         if rule.delete_source_fields:
             for dotted_field in source_fields:
                 pop_dotted_field_value(event, dotted_field)
 
-    def _write_to_single_target(self, args, extend_target_list, overwrite_target, rule):
+    def _write_to_single_target(self, args, merge_with_target, overwrite_target, rule):
         event, target_field, source_fields_values = args
-        target_field_value = get_dotted_field_value(event, target_field)
-        State = namedtuple(
-            "State",
-            ["overwrite", "extend", "single_source_element", "target_is_list", "target_is_none"],
-        )
-        state = State(
-            overwrite=overwrite_target,
-            extend=extend_target_list,
-            single_source_element=len(source_fields_values) == 1,
-            target_is_list=isinstance(target_field_value, list),
-            target_is_none=target_field_value is None,
-        )
-        if state.single_source_element and not state.extend:
+        if len(source_fields_values) == 1 and not merge_with_target:
             source_fields_values = source_fields_values.pop()
-
-        match state:
-            case State(
-                extend=True, overwrite=True, single_source_element=False, target_is_list=False
-            ):
-                add_and_overwrite(event, fields={target_field: source_fields_values}, rule=rule)
-                return
-
-            case State(
-                extend=True,
-                overwrite=False,
-                single_source_element=False,
-                target_is_list=False,
-                target_is_none=True,
-            ):
-                flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
-                source_fields_values = [*flattened_source_fields]
-                add_and_overwrite(event, fields={target_field: source_fields_values}, rule=rule)
-                return
-
-            case State(extend=True, overwrite=False, target_is_list=False, target_is_none=True):
-                add_and_overwrite(event, fields={target_field: source_fields_values}, rule=rule)
-                return
-
-            case State(extend=True, overwrite=False, target_is_list=False):
-                source_fields_values = [target_field_value, *source_fields_values]
-                add_and_overwrite(event, fields={target_field: source_fields_values}, rule=rule)
-                return
-
-            case State(
-                extend=True, overwrite=False, single_source_element=False, target_is_list=True
-            ):
-                flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
-                source_fields_values = [*target_field_value, *flattened_source_fields]
-                add_and_overwrite(event, fields={target_field: source_fields_values}, rule=rule)
-                return
-
-            case State(overwrite=True, extend=True):
-                flattened_source_fields = self._overwrite_from_source_values(source_fields_values)
-                source_fields_values = [*flattened_source_fields]
-                add_and_overwrite(event, fields={target_field: source_fields_values}, rule=rule)
-                return
-
-            case _:
-                field = {target_field: source_fields_values}
-                add_fields_to(event, field, rule, state.extend, state.overwrite)
+        if not merge_with_target:
+            field = {target_field: source_fields_values}
+            add_fields_to(event, field, rule, merge_with_target, overwrite_target)
+            return
+        new_values = self._overwrite_from_source_values(source_fields_values)
+        if all(isinstance(element, dict) for element in new_values):
+            # merge a list of dicts into one dict
+            new_values = {key: value for dict_ in new_values for key, value in dict_.items()}
+        if overwrite_target:
+            # source values are already included in new_values, add_fields_to also does not
+            # allow overwrite_target=True and marge_with_target=True at the same time
+            merge_with_target = False
+        add_fields_to(event, {target_field: new_values}, rule, merge_with_target, overwrite_target)
 
     def _overwrite_from_source_values(self, source_fields_values):
         duplicates = []

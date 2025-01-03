@@ -64,8 +64,8 @@ def _add_field_to(
     event: dict,
     field: tuple,
     rule: "Rule",
-    extends_lists: bool = False,
-    overwrite_target_field: bool = False,
+    merge_with_target: bool = False,
+    overwrite_target: bool = False,
 ) -> None:
     """
     Add content to the target_field in the given event. target_field can be a dotted subfield.
@@ -80,25 +80,23 @@ def _add_field_to(
         str, float, int, list, dict.
     rule: Rule
         A rule that initiated the field addition, is used for proper error handling.
-    extends_lists: bool
-        Flag that determines whether target_field lists should be extended
-    overwrite_target_field: bool
-        Flag that determines whether the target_field should be overwritten
+    merge_with_target: bool
+        Flag that determines whether the content should be merged with an existing target_field
+    overwrite_target: bool
+        Flag that determines whether the target_field should be overwritten by content
     Raises
     ------
-    ValueError
-        If both extends_lists and overwrite_target_field are set to True.
     FieldExistsWarning
         If the target_field already exists and overwrite_target_field is False, or if extends_lists is True but
         the existing field is not a list.
     """
-    if extends_lists and overwrite_target_field:
-        raise ValueError("An output field can't be overwritten and extended at the same time")
+    if merge_with_target and overwrite_target:
+        raise ValueError("Can't merge with and overwrite a target field at the same time")
     target_field, content = field
     field_path = [event, *get_dotted_field_list(target_field)]
     target_key = field_path.pop()
 
-    if overwrite_target_field:
+    if overwrite_target:
         target_parent = reduce(_add_and_overwrite_key, field_path)
         target_parent[target_key] = content
         return
@@ -110,18 +108,28 @@ def _add_field_to(
     if existing_value is None:
         target_parent[target_key] = content
         return
-    if not extends_lists or not isinstance(existing_value, list):
+    if not merge_with_target:
         raise FieldExistsWarning(rule, event, [target_field])
-    if isinstance(content, list | set):
-        target_parent[target_key].extend(content)
+    if isinstance(existing_value, dict) and isinstance(content, dict):
+        existing_value.update(content)
+        target_parent[target_key] = existing_value
+    elif isinstance(existing_value, list) and isinstance(content, list):
+        existing_value.extend(content)
+        target_parent[target_key] = existing_value
+    elif isinstance(existing_value, list) and isinstance(content, (int, float, str, bool)):
+        target_parent[target_key] = existing_value + [content]
+    elif isinstance(existing_value, (int, float, str, bool)) and isinstance(content, list):
+        target_parent[target_key] = [existing_value] + content
     else:
-        target_parent[target_key].append(content)
+        if not overwrite_target:
+            raise FieldExistsWarning(rule, event, [target_field])
+        target_parent[target_key] = [existing_value, content]
 
 
 def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
     """
     Adds a field to an object, ignoring the FieldExistsWarning if the field already exists. Is only needed in the
-    add_batch_to map function. Without this the map would terminate early.
+    add_batch_to map function. Without this, the map would terminate early.
 
     Parameters:
         args: tuple
@@ -145,8 +153,8 @@ def add_fields_to(
     event: dict,
     fields: dict,
     rule: "Rule" = None,
-    extends_lists: bool = False,
-    overwrite_target_field: bool = False,
+    merge_with_target: bool = False,
+    overwrite_target: bool = False,
 ) -> None:
     """
     Handles the batch addition operation while raising a FieldExistsWarning with all unsuccessful targets.
@@ -160,9 +168,9 @@ def add_fields_to(
             content can be of type: str, float, int, list, dict.
         rule: Rule
             A rule that initiated the field addition, is used for proper error handling.
-        extends_lists: bool
-            A boolean indicating whether to extend lists if the target field already exists.
-        overwrite_target_field: bool
+        merge_with_target: bool
+            A boolean indicating whether to merge if the target field already exists.
+        overwrite_target: bool
             A boolean indicating whether to overwrite the target field if it already exists.
 
     Raises:
@@ -173,15 +181,15 @@ def add_fields_to(
     fields = {key: value for key, value in fields.items() if value is not None}
     number_fields = len(dict(fields))
     if number_fields == 1:
-        _add_field_to(event, list(fields.items())[0], rule, extends_lists, overwrite_target_field)
+        _add_field_to(event, list(fields.items())[0], rule, merge_with_target, overwrite_target)
         return
     unsuccessful_targets = map(
         _add_field_to_silent_fail,
         itertools.repeat(event, number_fields),
         fields.items(),
         itertools.repeat(rule, number_fields),
-        itertools.repeat(extends_lists, number_fields),
-        itertools.repeat(overwrite_target_field, number_fields),
+        itertools.repeat(merge_with_target, number_fields),
+        itertools.repeat(overwrite_target, number_fields),
     )
     unsuccessful_targets = [item for item in unsuccessful_targets if item is not None]
     if unsuccessful_targets:
@@ -354,12 +362,12 @@ def snake_to_camel(snake: str) -> str:
     return camel
 
 
-append_as_list = partial(add_fields_to, extends_lists=True)
+append_as_list = partial(add_fields_to, merge_with_target=True)
 
 
 def add_and_overwrite(event, fields, rule, *_):
     """wrapper for add_field_to"""
-    add_fields_to(event, fields, rule, overwrite_target_field=True)
+    add_fields_to(event, fields, rule, overwrite_target=True)
 
 
 def append(event, field, separator, rule):

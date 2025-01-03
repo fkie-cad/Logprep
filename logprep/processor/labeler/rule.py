@@ -62,7 +62,7 @@ class LabelerRule(FieldManagerRule):
 
     @property
     def prefixed_label(self) -> dict:
-        return {f"label.{key}": value for key, value in self.label.items()}
+        return {f"label.{key}": list(value) for key, value in self.label.items()}
 
     def conforms_to_schema(self, schema: LabelingSchema) -> bool:
         """Check if labels are valid."""

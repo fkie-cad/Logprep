@@ -72,7 +72,7 @@ class ListComparison(Processor):
         comparison_result, comparison_key = self._list_comparison(rule, event)
         if comparison_result is not None:
             fields = {f"{rule.target_field}.{comparison_key}": comparison_result}
-            add_fields_to(event, fields, rule=rule, extends_lists=True)
+            add_fields_to(event, fields, rule=rule, merge_with_target=True)
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict):
         """

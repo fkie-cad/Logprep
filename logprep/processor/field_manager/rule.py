@@ -20,7 +20,7 @@ A speaking example:
             - server.nat.ip
             - client.nat.ip
         target_field: related.ip
-        extend_target_list: True
+        merge_with_target: True
     description: '...'
 
 ..  code-block:: json
@@ -120,11 +120,14 @@ class FieldManagerRule(Rule):
         """Whether to delete all the source fields or not. Defaults to :code:`False`"""
         overwrite_target: bool = field(validator=validators.instance_of(bool), default=False)
         """Overwrite the target field value if exists. Defaults to :code:`False`"""
-        extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
+        merge_with_target: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the values
-        of the source fields. If the source field is a list, the lists will be merged.
+        of the source fields. If the source field is a list, the lists will be merged by appending
+        the source fields list to the target list. If the source field is a dict, the dict will be
+        merged with the target dict. If the source keys exist in the target dict, the values will be
+        overwritten. So this is not e deep merge.
         If the target field does not exist, a new field will be added with the
-        source field value as list. Defaults to :code:`False`.
+        source field value as list or dict. Defaults to :code:`False`.
         """
         ignore_missing_fields: bool = field(validator=validators.instance_of(bool), default=False)
         """If set to :code:`True` missing fields will be ignored, no warning is logged and the event
@@ -162,8 +165,8 @@ class FieldManagerRule(Rule):
         return self._config.overwrite_target
 
     @property
-    def extend_target_list(self):
-        return self._config.extend_target_list
+    def merge_with_target(self):
+        return self._config.merge_with_target
 
     @property
     def ignore_missing_fields(self):

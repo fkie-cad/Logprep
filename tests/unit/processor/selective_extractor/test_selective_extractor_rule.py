@@ -4,10 +4,10 @@
 
 from typing import Hashable
 from unittest import mock
+
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.selective_extractor.rule import (
     SelectiveExtractorRule,
     SelectiveExtractorRuleError,
@@ -280,12 +280,12 @@ class TestSelectiveExtractorRule:
                     "selective_extractor": {
                         "source_fields": ["field1"],
                         "outputs": [{"kafka": "topic"}],
-                        "extend_target_list": True,
+                        "merge_with_target": True,
                     },
                 },
                 b"",
                 TypeError,
-                "got an unexpected keyword argument 'extend_target_list'",
+                "got an unexpected keyword argument 'merge_with_target'",
             ),
         ],
     )

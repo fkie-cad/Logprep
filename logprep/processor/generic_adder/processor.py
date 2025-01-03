@@ -37,4 +37,4 @@ class GenericAdder(Processor):
     def _apply_rules(self, event: dict, rule: GenericAdderRule):
         items_to_add = rule.add
         if items_to_add:
-            add_fields_to(event, items_to_add, rule, rule.extend_target_list, rule.overwrite_target)
+            add_fields_to(event, items_to_add, rule, rule.merge_with_target, rule.overwrite_target)

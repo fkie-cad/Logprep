@@ -105,7 +105,7 @@ class DomainLabelExtractor(FieldManager):
                 f"{rule.target_field}.top_level_domain": labels.suffix,
                 f"{rule.target_field}.subdomain": labels.subdomain,
             }
-            add_fields_to(event, fields, rule, overwrite_target_field=rule.overwrite_target)
+            add_fields_to(event, fields, rule, overwrite_target=rule.overwrite_target)
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
             add_and_overwrite(

@@ -277,6 +277,28 @@ test_cases = [
             "status": 200,
         },
     ),
+    (
+        "merge response with existing dict",
+        {
+            "filter": "data",
+            "requester": {
+                "url": "http://localhost/",
+                "method": "GET",
+                "target_field": "data",
+                "delete_source_fields": True,
+                "merge_with_target": True,
+            },
+        },
+        {"data": {"existing": "data"}},
+        {"data": {"existing": "data", "new-data": {"dict": "value"}}},
+        {
+            "method": "GET",
+            "url": "http://localhost/",
+            "json": {"new-data": {"dict": "value"}},
+            "content_type": "text/plain",
+            "status": 200,
+        },
+    ),
 ]  # testcase, rule, event, expected, response
 
 failure_test_cases = [

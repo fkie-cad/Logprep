@@ -329,8 +329,8 @@ class Processor(Component):
         add_fields_to(
             event,
             fields={rule.target_field: result},
-            extends_lists=rule.extend_target_list,
-            overwrite_target_field=rule.overwrite_target,
+            merge_with_target=rule.merge_with_target,
+            overwrite_target=rule.overwrite_target,
         )
 
     def setup(self):

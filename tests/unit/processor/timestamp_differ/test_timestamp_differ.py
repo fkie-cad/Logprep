@@ -183,7 +183,7 @@ test_cases = [  # testcase, rule, event, expected
             "timestamp_differ": {
                 "diff": "${subfield.field2} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
-                "extend_target_list": True,
+                "merge_with_target": True,
             },
         },
         {
