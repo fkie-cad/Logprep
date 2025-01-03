@@ -107,6 +107,7 @@ from luqum.tree import (
     Not,
     OrOperation,
     Phrase,
+    Regex,
     SearchField,
     Word,
 )
