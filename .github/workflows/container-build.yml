@@ -136,6 +136,7 @@ jobs:
           restore-keys: trivy-cache-
 
       - name: Scan image using Trivy
+        if: ${{ contains('amd64', matrix.platform) }}
         uses: aquasecurity/trivy-action@0.24.0
         env:
           TRIVY_CACHE_DIR: ./cache
