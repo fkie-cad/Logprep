@@ -11,22 +11,6 @@ Each node in the rule tree represents a condition that has to be met,
 while the leaves represent changes that the processor should apply.
 If no condition is met, the processor will just pass the log event to the next processor.
 
-The following chart gives an example of such a rule tree:
-
-.. mermaid::
-
-    flowchart TD
-        A[root]
-        A-->B[Condition 1]
-        A-->C[Condition 2]
-        A-->D[Condition 3]
-        B-->E[Condition 4]
-        B-->H(Rule 1)
-        C-->I(Rule 2)
-        D-->J(rule 3)
-        E-->G(Rule 4)
-
-
 .. _Rule Tree Configuration:
 
 Rule Tree Configuration
@@ -108,9 +92,12 @@ class RuleTree:
     __slots__ = (
         "rule_parser",
         "_rule_mapping",
+        "tree_config",
         "_root",
         "__dict__",
     )
+
+    tree_config: Config
 
     rule_parser: Optional[RuleParser]
     _rule_mapping: dict
@@ -167,8 +154,10 @@ class RuleTree:
             parsed_rule = self.rule_parser.parse_rule(rule, self.tree_config.priority_dict)
         except Exception as error:  # pylint: disable=broad-except
             logger.warning(
-                f'Error parsing rule "{rule.file_name}.yml": {type(error).__name__}: {error}. '
-                f"Ignore and continue with next rule."
+                'Error parsing rule "%s.yml": %s: %s. Ignore and continue with next rule.',
+                rule.file_name,
+                type(error).__name__,
+                error,
             )
             return
         for rule_segment in parsed_rule:
