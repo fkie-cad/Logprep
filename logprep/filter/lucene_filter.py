@@ -70,7 +70,7 @@ To be recognized as a regular expression, the filter field has to start with
     :linenos:
     :caption: Example
 
-    filter: 'ip_address: "/192\.168\.0\..*/"'
+    filter: 'ip_address: /192\.168\.0\..*/'
 
 
 [Deprecated, but still functional] The field with the regex pattern must be added to the optional field
@@ -107,6 +107,7 @@ from luqum.tree import (
     Not,
     OrOperation,
     Phrase,
+    Regex,
     SearchField,
     Word,
 )
@@ -323,15 +324,32 @@ class LuceneTransformer:
             value = self._strip_quote_from_string(tree.expr.value)
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression(key, value)
+        elif isinstance(tree.expr, Regex):
+            key = tree.name.replace("\\", "")
+            key = key.split(".")
+            if tree.expr.value == "null":
+                return Null(key)
+
+            value = self._strip_quote_from_string(tree.expr.value)
+            value = self._remove_lucene_escaping(value)
+            return self._get_filter_expression_regex(key, value)
+        return None
+
+    @staticmethod
+    def _check_key_and_modifier(key, value):
+        key_and_modifier = key[-1].split("|")
+        if len(key_and_modifier) == 2:
+            if key_and_modifier[-1] == "re":
+                return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
         return None
 
     def _get_filter_expression(
         self, key: List[str], value
     ) -> Union[RegExFilterExpression, StringFilterExpression]:
-        key_and_modifier = key[-1].split("|")
-        if len(key_and_modifier) == 2:
-            if key_and_modifier[-1] == "re":
-                return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
+
+        key_and_modifier_check = LuceneTransformer._check_key_and_modifier(key, value)
+        if key_and_modifier_check is not None:
+            return key_and_modifier_check
 
         dotted_field = ".".join(key)
 
@@ -346,11 +364,18 @@ class LuceneTransformer:
 
                     return self._special_fields_map[sf_key](key, value)
 
-        if value.startswith("/") and value.endswith("/"):
-            value = value.strip("/")
-            return RegExFilterExpression(key, value)
-
         return StringFilterExpression(key, value)
+
+    def _get_filter_expression_regex(
+        self, key: List[str], value
+    ) -> Union[RegExFilterExpression, StringFilterExpression]:
+
+        key_and_modifier_check = LuceneTransformer._check_key_and_modifier(key, value)
+        if key_and_modifier_check is not None:
+            return key_and_modifier_check
+
+        value = value.strip("/")
+        return RegExFilterExpression(key, value)
 
     @staticmethod
     def _create_value_expression(word: luqum.tree) -> Union[Exists, Always]:
