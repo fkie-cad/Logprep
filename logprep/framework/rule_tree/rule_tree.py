@@ -42,8 +42,7 @@ A path to a rule tree configuration can be set in any processor configuration un
 from logging import getLogger
 from typing import TYPE_CHECKING, List, Optional
 
-from attr import validators
-from attrs import define, field
+from attrs import define, field, validators
 
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser

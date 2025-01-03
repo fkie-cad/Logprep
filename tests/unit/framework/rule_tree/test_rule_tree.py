@@ -98,17 +98,18 @@ class TestRuleTree:
     def test_add_rule_fails(self, mock_warning, rule_dict):
         rule_tree = RuleTree()
         rule = PreDetectorRule._create_from_dict(rule_dict)
-
+        error = Exception("mocked error")
         with mock.patch(
             "logprep.framework.rule_tree.rule_parser.RuleParser.parse_rule",
-            side_effect=Exception("mocked error"),
+            side_effect=error,
         ):
             rule_tree.add_rule(rule)
-        expected_call = mock.call.warning(
-            'Error parsing rule "None.yml": Exception: mocked error. '
-            "Ignore and continue with next rule."
+        mock_warning.assert_called_with(
+            'Error parsing rule "%s.yml": %s: %s. Ignore and continue with next rule.',
+            None,
+            type(error).__name__,
+            error,
         )
-        assert expected_call in mock_warning.mock_calls
 
     def test_get_rule_id(self, rule_dict):
         rule_tree = RuleTree()
