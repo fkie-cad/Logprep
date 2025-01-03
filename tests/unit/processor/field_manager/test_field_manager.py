@@ -345,7 +345,11 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field",
             "field_manager": {
-                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
+                "mapping": {
+                    "field.one": "one",
+                    "field.two": "two",
+                    "field.three": "three",
+                },
                 "merge_with_target": True,
             },
         },
