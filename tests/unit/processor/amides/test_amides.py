@@ -13,6 +13,7 @@ from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
+@pytest.mark.filterwarnings("ignore:Trying to unpickle.*")
 class TestAmides(BaseProcessorTestCase):
     CONFIG = {
         "type": "amides",

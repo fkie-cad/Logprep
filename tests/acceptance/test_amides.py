@@ -50,6 +50,7 @@ def config():
     return Configuration(**config_dict)
 
 
+@pytest.mark.filterwarnings("ignore:Trying to unpickle.*")
 def test_amides(tmp_path: Path, configuration: Configuration):
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(configuration.as_yaml())

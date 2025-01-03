@@ -100,7 +100,7 @@ def test_error_output_errors_are_logged_if_error_output_has_an_error(
     proc = start_logprep(config_path)
     wait_for_output(
         proc,
-        ".*\[Error Event\] Couldn't enqueue error item due to:.*",
+        r".*\[Error Event\] Couldn't enqueue error item due to:.*",
         test_timeout=30,
         forbidden_outputs=[],
     )
