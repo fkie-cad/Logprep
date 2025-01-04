@@ -82,18 +82,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Extract image ID from sha256
-        id: imageid
-        run: |
-          python - <<EOF
-          import os
-          imageid = "${{ steps.build.outputs.ImageID }}"
-          digest = "${{ steps.build.outputs.Digest }}"
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
-              file.write(f"digest={digest.split(':')[1]}")
-              file.write(f"imageid={imageid.split(':')[1]}")
-          EOF
-
       - name: Ensure logprep is available in image
         run: |
           docker run --rm ${{ steps.build.outputs.Digest }} --version
