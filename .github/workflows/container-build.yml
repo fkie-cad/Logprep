@@ -14,7 +14,7 @@ on:
 
 jobs:
   containerbuild:
-    timeout-minutes: 30
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -112,6 +112,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Extract image ID from sha256
+        id: pushed-imageid
+        run: |
+          python - <<EOF
+          import os
+          imageid = "${{ steps.build-and-push.outputs.ImageID }}"
+          digest = "${{ steps.build-and-push.outputs.Digest }}"
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
+              file.write(f"digest={digest.split(':')[1]}")
+              file.write(f"imageid={imageid.split(':')[1]}")
+          EOF
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.7.0
         with:
@@ -120,14 +132,14 @@ jobs:
       - name: Create SBOM of container image
         uses: anchore/sbom-action@v0
         with:
-          image: ghcr.io/fkie-cad/logprep@${{ steps.build.outputs.Digest }}
-          artifact-name: logprep@${{ steps.imageid.outputs.digest }}.spdx.json
-          output-file: logprep@${{ steps.imageid.outputs.digest }}.spdx.json
+          image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.Digest }}
+          artifact-name: logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json
+          output-file: logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json
 
       - name: Sign image with a key and add sbom attestation
         run: |
           cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.imageid.outputs.digest }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
