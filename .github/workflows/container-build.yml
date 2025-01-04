@@ -58,6 +58,8 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -77,8 +79,8 @@ jobs:
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: ${{ steps.image-tag.outputs.tags }}
           platforms: "linux/arm64,linux/amd64"
-          cache-from: type=registry,ref=user/app:latest
-          cache-to: type=inline
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Extract image ID from sha256
         id: imageid
@@ -107,8 +109,8 @@ jobs:
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: ${{ steps.image-tag.outputs.tags }}
           platforms: "linux/arm64,linux/amd64"
-          cache-from: type=registry,ref=user/app:latest
-          cache-to: type=inline
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.7.0
