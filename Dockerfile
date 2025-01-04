@@ -1,17 +1,15 @@
 ARG PYTHON_VERSION=3.11
 
-FROM bitnami/python:${PYTHON_VERSION} AS build
+FROM bitnami/python:${PYTHON_VERSION} AS prebuild
 ARG LOGPREP_VERSION=latest
-ARG http_proxy
-ARG https_proxy
-ARG no_proxy
-
-ADD . /logprep
-WORKDIR /logprep
 
 # Install the Rust toolchain
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
+
+FROM prebuild AS build
+ADD . /logprep
+WORKDIR /logprep
 
 # Use a python virtual environment
 RUN python -m venv --upgrade-deps /opt/venv

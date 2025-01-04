@@ -62,6 +62,10 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            env.BUILDKIT_STEP_LOG_MAX_SIZE=-1
+            env.BUILDKIT_STEP_LOG_MAX_SPEED=-1
 
       - name: Build image and export to Docker
         uses: docker/build-push-action@v6
