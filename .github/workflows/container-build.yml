@@ -92,10 +92,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Ensure logprep is available in image
-        run: |
-          docker run --rm ${{ steps.build-and-push.outputs.Digest }} --version
-
       - name: Extract image ID from sha256
         id: pushed-imageid
         run: |
