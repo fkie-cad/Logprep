@@ -74,7 +74,7 @@ jobs:
           append: |
             - endpoint: ssh://root@162.55.59.178
               platforms: linux/arm64
-            - endpoint: ssh://root@8.47.50.131
+            - endpoint: ssh://root@78.47.50.131
               platforms: linux/arm64
 
       - name: Build image and push to registry
