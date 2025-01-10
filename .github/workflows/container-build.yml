@@ -23,11 +23,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+          
       - name: Set up SSH
         uses: MrSquaare/ssh-setup-action@v3
         with:
           host: 162.55.59.178
+          private-key: ${{ secrets.DOCKER_BUILD_SERVER_IDENTITY_FILE }}
+
+      - name: Set up SSH
+        uses: MrSquaare/ssh-setup-action@v3
+        with:
+          host: 78.47.50.131
           private-key: ${{ secrets.DOCKER_BUILD_SERVER_IDENTITY_FILE }}
 
       - name: Set up Docker
@@ -67,6 +73,8 @@ jobs:
           platforms: linux/amd64
           append: |
             - endpoint: ssh://root@162.55.59.178
+              platforms: linux/arm64
+            - endpoint: ssh://root@8.47.50.131
               platforms: linux/arm64
 
       - name: Build image and push to registry

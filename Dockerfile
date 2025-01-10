@@ -16,9 +16,9 @@ RUN python -m venv --upgrade-deps /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 
-RUN if [ "$LOGPREP_VERSION" = "dev" ]; then pip install . -vvv;\
-    elif [ "$LOGPREP_VERSION" = "latest" ]; then pip install git+https://github.com/fkie-cad/Logprep.git@latest -vvv; \
-    else pip install "logprep==$LOGPREP_VERSION" -vvv; fi; \
+RUN if [ "$LOGPREP_VERSION" = "dev" ]; then pip install . ;\
+    elif [ "$LOGPREP_VERSION" = "latest" ]; then pip install git+https://github.com/fkie-cad/Logprep.git@latest ; \
+    else pip install "logprep==$LOGPREP_VERSION" ; fi; \
     /opt/venv/bin/logprep --version
 
 # geoip2 4.8.0 lists a vulnerable setuptools version as a dependency. setuptools is unneeded at runtime, so it is uninstalled.
