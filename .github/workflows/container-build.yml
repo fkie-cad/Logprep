@@ -35,7 +35,6 @@ jobs:
         with:
           daemon-config: |
             {
-              "debug": true,
               "features": {
                 "containerd-snapshotter": true
               }
@@ -70,25 +69,7 @@ jobs:
             - endpoint: ssh://root@162.55.59.178
               platforms: linux/arm64
 
-      - name: Build image and export to Docker
-        uses: docker/build-push-action@v6
-        id: build
-        with:
-          context: .
-          load: true
-          build-args: |
-            LOGPREP_VERSION=${{ inputs.build-version }}
-            PYTHON_VERSION=${{ matrix.python-version }}
-          tags: ${{ steps.image-tag.outputs.tags }}
-          platforms: "linux/arm64,linux/amd64"
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Ensure logprep is available in image
-        run: |
-          docker run --rm ${{ steps.build.outputs.Digest }} --version
-
-      - name: Push image
+      - name: Build image and push to registry
         uses: docker/build-push-action@v6
         id: build-and-push
         with:
@@ -97,10 +78,15 @@ jobs:
           build-args: |
             LOGPREP_VERSION=${{ inputs.build-version }}
             PYTHON_VERSION=${{ matrix.python-version }}
+            tags: ${{ steps.image-tag.outputs.tags }}
+            platforms: "linux/arm64,linux/amd64"
           tags: ${{ steps.image-tag.outputs.tags }}
-          platforms: "linux/arm64,linux/amd64"
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Ensure logprep is available in image
+        run: |
+          docker run --rm ${{ steps.build-and-push.outputs.Digest }} --version
 
       - name: Extract image ID from sha256
         id: pushed-imageid
