@@ -1,10 +1,15 @@
 ARG PYTHON_VERSION=3.11
 
-FROM bitnami/python:${PYTHON_VERSION} AS prebuild
+FROM bitnami/python:${PYTHON_VERSION} AS base
 ARG LOGPREP_VERSION=latest
 
 # remove python-dev
 RUN apt-get update && apt-get purge -y python-dev && apt-get clean
+
+# upgrade apt packages
+RUN apt-get update && apt-get upgrade -y && apt-get clean
+
+FROM base AS prebuild
 
 # Install the Rust toolchain
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
@@ -29,7 +34,7 @@ RUN if [ "$LOGPREP_VERSION" = "dev" ]; then pip install . ;\
 RUN pip uninstall -y setuptools
 
 
-FROM bitnami/python:${PYTHON_VERSION} AS prod
+FROM base AS prod
 ARG http_proxy
 ARG https_proxy
 COPY --from=build /opt/venv /opt/venv
