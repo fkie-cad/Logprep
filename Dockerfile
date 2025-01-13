@@ -3,6 +3,9 @@ ARG PYTHON_VERSION=3.11
 FROM bitnami/python:${PYTHON_VERSION} AS prebuild
 ARG LOGPREP_VERSION=latest
 
+# remove python-dev
+RUN apt-get update && apt-get purge -y python-dev && apt-get clean
+
 # Install the Rust toolchain
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
