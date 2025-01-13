@@ -6,6 +6,15 @@
 ### Improvements
 ### Bugfix
 
+## 15.1.0
+### Breaking
+### Features
+
+* add multiarch container builds for AMD64 and ARM64
+
+### Improvements
+### Bugfix
+
 ## 15.0.0
 ### Breaking
 
