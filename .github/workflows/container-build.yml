@@ -27,13 +27,13 @@ jobs:
       - name: Set up SSH
         uses: MrSquaare/ssh-setup-action@v3
         with:
-          host: {{ secrets.DOCKER_BUILD_SERVER_01 }}
+          host: ${{ secrets.DOCKER_BUILD_SERVER_01 }}
           private-key: ${{ secrets.DOCKER_BUILD_SERVER_IDENTITY_FILE }}
 
       - name: Set up SSH
         uses: MrSquaare/ssh-setup-action@v3
         with:
-          host: {{ secrets.DOCKER_BUILD_SERVER_02 }}
+          host: ${{ secrets.DOCKER_BUILD_SERVER_02 }}
           private-key: ${{ secrets.DOCKER_BUILD_SERVER_IDENTITY_FILE }}
 
       - name: Set up Docker
@@ -72,9 +72,9 @@ jobs:
           driver: docker-container
           platforms: linux/amd64
           append: |
-            - endpoint: ssh://root@{{ secrets.DOCKER_BUILD_SERVER_01 }}
+            - endpoint: ssh://root@${{ secrets.DOCKER_BUILD_SERVER_01 }}
               platforms: linux/arm64
-            - endpoint: ssh://root@{{ secrets.DOCKER_BUILD_SERVER_02 }}
+            - endpoint: ssh://root@${{ secrets.DOCKER_BUILD_SERVER_02 }}
               platforms: linux/arm64
 
       - name: Build image and push to registry
