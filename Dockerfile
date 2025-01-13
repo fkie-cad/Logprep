@@ -3,11 +3,10 @@ ARG PYTHON_VERSION=3.11
 FROM bitnami/python:${PYTHON_VERSION} AS base
 ARG LOGPREP_VERSION=latest
 
-# remove python-dev
-RUN apt-get update && apt-get purge -y python-dev && apt-get clean
-
-# upgrade apt packages
-RUN apt-get update && apt-get upgrade -y && apt-get clean
+# remove python-dev and upgrade packages
+RUN apt-get update && apt-get purge -y python-dev && \
+    apt-get update && apt-get upgrade -y && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 FROM base AS prebuild
 
