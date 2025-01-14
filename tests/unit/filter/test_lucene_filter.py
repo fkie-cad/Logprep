@@ -21,6 +21,8 @@ from logprep.filter.lucene_filter import (
     LuceneTransformer,
 )
 
+from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.PublicKey import RSA
 
 def esc(count: int) -> str:
     """Returns given amount of escaping characters"""

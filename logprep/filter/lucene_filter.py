@@ -166,7 +166,7 @@ class LuceneFilter:
         escaped_string = LuceneFilter._add_lucene_escaping(query_string)
 
         try:
-            tree = parser.parse(escaped_string)
+            tree = parser.parse(escaped_string, lexer=luqum.parser.lexer)
             transformer = LuceneTransformer(tree, special_fields)
         except ParseSyntaxError as error:
             msg = f"{error} Expression: '{escaped_string}'" + " - expression not escaped correctly."
