@@ -6,8 +6,8 @@ import pytest
 from pytest import raises
 
 from logprep.filter.expression.filter_expression import (
-    And,
     Always,
+    And,
     Exists,
     Not,
     Null,
@@ -21,8 +21,6 @@ from logprep.filter.lucene_filter import (
     LuceneTransformer,
 )
 
-from Crypto.Cipher import AES, PKCS1_OAEP
-from Crypto.PublicKey import RSA
 
 def esc(count: int) -> str:
     """Returns given amount of escaping characters"""
