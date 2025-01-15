@@ -30,7 +30,7 @@ Configuration File Structure
     version: config-1.0
     process_count: 2
     restart_count: 5
-    timeout: 5
+    timeout: 5.0
     logger:
         level: INFO
     input:

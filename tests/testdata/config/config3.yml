@@ -1,0 +1,76 @@
+version: config-1.0
+process_count: 2
+restart_count: 5
+timeout: 5.0 #### changed from int to float
+logger:
+    level: INFO
+input:
+    kafka:
+        type: confluentkafka_input
+        topic: consumer
+        # offset_reset_policy: smallest  ### InvalidConfigurationError: ConfluentKafkaInput.Config.__init__() got an unexpected keyword argument 'offset_reset_policy'
+        kafka_config:
+            bootstrap.servers: localhost:9092
+            group.id: test
+output:
+    kafka:
+        type: confluentkafka_output
+        topic: producer
+        flush_timeout: 30
+        send_timeout: 2
+        kafka_config:
+            bootstrap.servers: localhost:9092
+
+pipeline:
+- labelername:
+    type: labeler
+    schema: examples/exampledata/rules/labeler/schema.json
+    include_parent_labels: true
+    rules:
+        - examples/exampledata/rules/labeler/rules
+
+
+- dissectorname:
+    type: dissector
+    rules:
+        - examples/exampledata/rules/dissector/rules
+
+# - dropper: ### Throws an error. Maybe caused by formatting? Expected block end.
+#     type: dropper
+#     rules:
+#         - examples/exampledata/rules/dropper/rules
+#         - filter: "test_dropper"
+#         # dropper:
+#         #     drop:
+#         #     - drop_me
+#         description: "..."
+
+- pre_detector:
+    type: pre_detector
+    rules:
+        - examples/exampledata/rules/pre_detector/rules
+    outputs:
+        - kafka: sre_topic ## InvalidConfigurationError: Invalid processor configuration: pre_detector: output 'opensearch' does not exist in logprep outputs ### kafka: sre_topic solves it.
+    tree_config: examples/exampledata/rules/pre_detector/tree_config.json
+    alert_ip_list_path: examples/exampledata/rules/pre_detector/alert_ips.yml
+
+- amides:
+    type: amides
+    rules:
+        - examples/exampledata/rules/amides/rules
+    models_path: examples/exampledata/models/model.zip
+    num_rule_attributions: 10
+    max_cache_entries: 1000000
+    decision_threshold: 0.32
+
+# - pseudonymizer:
+#     type: pseudonymizer
+#     pubkey_analyst: examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem
+#     pubkey_depseudo: examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
+#     regex_mapping: examples/exampledata/rules/pseudonymizer/regex_mapping.yml
+#     hash_salt: a_secret_tasty_ingredient
+#     outputs:
+#         - opensearch: pseudonyms ### InvalidConfigurationError: Invalid processor configuration: pseudonymizer: output 'opensearch' does not exist in logprep outputs
+#     rules:
+#         - examples/exampledata/rules/pseudonymizer/rules
+#     max_cached_pseudonyms: 1000000

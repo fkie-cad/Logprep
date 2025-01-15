@@ -14,7 +14,7 @@ Processor Configuration
     - predetectorname:
         type: pre_detector
         rules:
-            - tests/testdata/rules/rules
+            - tests/testdata/unit/pre_detector/rules/
         outputs:
             - kafka: sre_topic
         alert_ip_list_path: /tmp/ip_list.yml

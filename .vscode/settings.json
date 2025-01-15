@@ -11,7 +11,7 @@
     ],
     "editor.codeActionsOnSave": {
         "source.organizeImports": "explicit",
-        "source.unusedImports": "always",
+        // "source.unusedImports": "always",
         "source.convertImportFormat": "always"
     },
     "autoDocstring.docstringFormat": "numpy",
