@@ -6,8 +6,8 @@ import pytest
 from pytest import raises
 
 from logprep.filter.expression.filter_expression import (
-    And,
     Always,
+    And,
     Exists,
     Not,
     Null,

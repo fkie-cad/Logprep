@@ -5,6 +5,7 @@
 ### Features
 ### Improvements
 ### Bugfix
+* fixes a conflict between lucene filter and the Crypto module
 
 ## 15.1.0
 ### Breaking
