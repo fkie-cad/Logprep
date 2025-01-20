@@ -287,6 +287,10 @@ class LuceneTransformer:
             if self._last_search_field:
                 return self._create_field_group_expression(tree)
             return self._create_value_expression(tree)
+        if isinstance(tree, Regex):
+            if self._last_search_field:
+                return self._create_field_group_expression(tree)
+            return self._create_value_expression(tree)
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
 
     def _create_field_group_expression(self, tree: luqum.tree) -> FilterExpression:

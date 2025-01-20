@@ -497,3 +497,11 @@ class TestLueceneFilter:
         lucene_filter = LuceneFilter.create("regex_key_one:/\/.*value.*/")
 
         assert lucene_filter == RegExFilterExpression(["regex_key_one"], "\/.*value.*")
+
+    def test_new_lucene_compliance_parentheses(self):
+        lucene_filter = LuceneFilter.create('regex_key_one:(".*value.*")')  #  parse_tree -> tree:Search_Field / tree.expr:FieldGroup -> pars_tree -> Word
+        lucene_filter = LuceneFilter.create("regex_key_one:(/.*value.*/)")  #  parse_tree -> tree:Search_Field / tree.expr:FieldGroup -> pars_tree -> ?
+        lucene_filter = LuceneFilter.create('regex_key_one:".*value.*/"')   #  parse_tree -> tree:Search_Field -> _create_field -> Word
+        lucene_filter = LuceneFilter.create("regex_key_one:/.*value.*/")    #  parse_tree -> tree:Search_Field -> _create_field -> Regex
+
+        assert lucene_filter == RegExFilterExpression(["regex_key_one"], ".*value.*")
