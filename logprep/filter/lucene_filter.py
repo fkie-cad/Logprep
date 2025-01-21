@@ -312,11 +312,9 @@ class LuceneTransformer:
         value = self._remove_lucene_escaping(value)
 
         if isinstance(tree, Regex):
-            return  self._get_filter_expression_regex(key, value)
+            return self._get_filter_expression_regex(key, value)
         else:
             return self._get_filter_expression(key, value)
-
-        #return self._get_filter_expression_regex(key, value) if isinstance(tree, Regex) else self._get_filter_expression( key, value)
 
     def _collect_children(self, tree: luqum.tree) -> List[FilterExpression]:
         expressions = []
