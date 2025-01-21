@@ -310,7 +310,11 @@ class LuceneTransformer:
         key = self._last_search_field.split(".")
         value = self._strip_quote_from_string(tree.value)
         value = self._remove_lucene_escaping(value)
-        return self._get_filter_expression(key, value)
+
+        if isinstance(tree, Regex):
+            return  self._get_filter_expression_regex(key, value)
+        else:
+            return self._get_filter_expression(key, value)
 
         #return self._get_filter_expression_regex(key, value) if isinstance(tree, Regex) else self._get_filter_expression( key, value)
 
