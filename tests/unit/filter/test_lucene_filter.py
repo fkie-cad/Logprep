@@ -503,22 +503,16 @@ class TestLueceneFilter:
 
         assert lucene_filter == RegExFilterExpression(["regex_key_one"], ".*value.*")
 
-
     def test_creates_lucene_compliance_filter_parentheses_or_both_regex(self):
-        lucene_filter = LuceneFilter.create(
-            'regex_key_one: (/.*value_one.*/ OR /.*value_two.*/)'
-        )
+        lucene_filter = LuceneFilter.create("regex_key_one: (/.*value_one.*/ OR /.*value_two.*/)")
 
         assert lucene_filter == Or(
             RegExFilterExpression(["regex_key_one"], ".*value_one.*"),
             RegExFilterExpression(["regex_key_one"], ".*value_two.*"),
         )
 
-
     def test_creates_lucene_compliance_filter_parentheses_or_one_regex(self):
-        lucene_filter = LuceneFilter.create(
-            'regex_key_one: (/.*value_one.*/ OR "/.*value_two.*/")'
-        )
+        lucene_filter = LuceneFilter.create('regex_key_one: (/.*value_one.*/ OR "/.*value_two.*/")')
 
         assert lucene_filter == Or(
             RegExFilterExpression(["regex_key_one"], ".*value_one.*"),
