@@ -5,6 +5,7 @@
 ### Features
 ### Improvements
 ### Bugfix
+* fixes a bug with lucene regex and parentheses
 * fixes a conflict between lucene filter and the Crypto module
 
 ## 15.1.0
