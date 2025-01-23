@@ -63,7 +63,6 @@ dependencies = [
   "confluent-kafka>2",
   "filelock",
   "geoip2",
-  "hyperscan>=0.7.0",
   "jsonref",
   "luqum",
   "more-itertools==8.10.0",
