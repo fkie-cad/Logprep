@@ -31,7 +31,6 @@ from logprep.processor.generic_adder.processor import GenericAdder
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.geoip_enricher.processor import GeoipEnricher
 from logprep.processor.grokker.processor import Grokker
-from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 from logprep.processor.ip_informer.processor import IpInformer
 from logprep.processor.key_checker.processor import KeyChecker
 from logprep.processor.labeler.processor import Labeler
@@ -66,7 +65,6 @@ class Registry:
         "generic_resolver": GenericResolver,
         "geoip_enricher": GeoipEnricher,
         "grokker": Grokker,
-        "hyperscan_resolver": HyperscanResolver,
         "ip_informer": IpInformer,
         "key_checker": KeyChecker,
         "labeler": Labeler,
