@@ -9,6 +9,7 @@
 		"ms-python.pylint",
 		"ms-python.isort",
 		"ms-toolsai.jupyter",
+		"ms-python.mypy-type-checker",
 		"njpwerner.autodocstring",
 		"ryanluker.vscode-coverage-gutters",
 		"streetsidesoftware.code-spell-checker"
