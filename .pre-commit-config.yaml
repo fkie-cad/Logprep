@@ -33,3 +33,13 @@ repos:
     rev: v0.15.0
     hooks:
       - id: yamlfmt
+  - id: mypy
+    name: mypy
+    description: ""
+    entry: mypy
+    language: python
+    "types_or": [python, pyi]
+    require_serial: true
+    pass_filenames: false
+    additional_dependencies: []
+    minimum_pre_commit_version: "2.9.2"
