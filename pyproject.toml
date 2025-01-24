@@ -158,3 +158,6 @@ skip = "*pp* *i686-unknown-linux-musl*"
 archs = "x86_64 i686 aarch64"
 before-build = "curl -sSf https://sh.rustup.rs | sh -s -- -y"
 environment = 'PATH=$HOME/.cargo/bin:$PATH'
+
+[tool.mypy]
+exclude = ["tests"]
