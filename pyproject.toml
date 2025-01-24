@@ -109,6 +109,7 @@ dev = [
   "asgiref",
   "pytest-asyncio",
   "pre-commit",
+  "mypy",
 ]
 
 doc = [
