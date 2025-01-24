@@ -110,6 +110,7 @@ dev = [
   "pytest-asyncio",
   "pre-commit",
   "mypy",
+  "types-requests"
 ]
 
 doc = [
@@ -180,3 +181,5 @@ max-attributes=12
 defining-attr-methods="__init__,__new__,setUp"
 [tool.mypy]
 exclude = ["tests"]
+follow_imports = "skip"
+follow_imports_for_stubs = "True"

@@ -8,7 +8,7 @@ import os
 import zlib
 from abc import abstractmethod
 from copy import deepcopy
-from functools import partial, cached_property
+from functools import cached_property, partial
 from hmac import HMAC
 from typing import Optional, Tuple
 from zoneinfo import ZoneInfo
@@ -91,9 +91,9 @@ class TimeDeltaConfig:
     """TimeDelta Configurations
     Works only if the preprocessor log_arrival_time_target_field is set."""
 
-    target_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
+    target_field: field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
     """Defines the fieldname to which the time difference should be written to."""
-    reference_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
+    reference_field: field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
     """Defines a field with a timestamp that should be used for the time difference.
     The calculation will be the arrival time minus the time of this reference field."""
 

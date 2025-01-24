@@ -26,7 +26,7 @@ Processor Configuration
 
 from typing import Optional
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema
@@ -41,7 +41,7 @@ class Labeler(Processor):
     class Config(Processor.Config):
         """Labeler Configurations"""
 
-        schema: str = field(validator=[validators.instance_of(str)])
+        schema: str = field(validator=(validators.instance_of(str)))
         """Path to a labeling schema file. For string format see :ref:`getters`."""
         include_parent_labels: Optional[bool] = field(
             default=False, validator=validators.optional(validator=validators.instance_of(bool))

@@ -346,7 +346,7 @@ class LoggerConfig:
          The log level of the root logger should be set to :code:`INFO` or higher in production environments
          to avoid exposing sensitive information in the logs.
     """
-    format: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    format: str = field(default="", validator=(validators.instance_of(str)), eq=False)
     """The format of the log message as supported by the :code:`LogprepFormatter`.
     Defaults to :code:`"%(asctime)-15s %(name)-10s %(levelname)-8s: %(message)s"`.
 
@@ -354,7 +354,7 @@ class LoggerConfig:
       :no-index:
 
     """
-    datefmt: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    datefmt: str = field(default="", validator=(validators.instance_of(str)), eq=False)
     """The date format of the log message. Defaults to :code:`"%Y-%m-%d %H:%M:%S"`."""
     loggers: dict = field(validator=validators.instance_of(dict), factory=dict)
     """The loggers loglevel configuration. Defaults to:
@@ -469,7 +469,7 @@ class Configuration:
        Because of that ensure that the configuration endpoint is always available.
     """
     process_count: int = field(
-        validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
+        validator=(validators.instance_of(int), validators.ge(1)), default=1, eq=False
     )
     """Number of logprep processes to start. Defaults to :code:`1`."""
     restart_count: int = field(
@@ -478,7 +478,7 @@ class Configuration:
     """Number of restarts before logprep exits. Defaults to :code:`5`.
     If this value is set to a negative number, logprep will always restart immediately."""
     timeout: float = field(
-        validator=[validators.instance_of(float), validators.gt(0)], default=5.0, eq=False
+        validator=(validators.instance_of(float), validators.gt(0)), default=5.0, eq=False
     )
     """Logprep tries to react to signals (like sent by CTRL+C) within the given time.
     The time taken for some processing steps is not always predictable, thus it is not possible to

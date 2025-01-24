@@ -212,7 +212,7 @@ class FileInput(Input):
         format. Needs to be parsed with dissector or another processor"""
 
         start: str = field(
-            validator=[validators.instance_of(str), validators.in_(("begin", "end"))],
+            validator=(validators.instance_of(str), validators.in_(("begin", "end"))),
             default="begin",
         )
         """Defines the behaviour of the file monitor with the following options:

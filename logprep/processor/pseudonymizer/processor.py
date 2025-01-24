@@ -115,7 +115,7 @@ class Pseudonymizer(FieldManager):
         * /var/git/logprep-rules/pseudonymizer_rules/regex_mapping.json
         """
         max_cached_pseudonyms: int = field(
-            validator=[validators.instance_of(int), validators.gt(0)]
+            validator=(validators.instance_of(int), validators.gt(0))
         )
         """
         The maximum number of cached pseudonyms. One cache entry requires ~250 Byte, thus 10
@@ -127,12 +127,12 @@ class Pseudonymizer(FieldManager):
         entry is deleted. Has to be greater than 0.
         """
         max_cached_pseudonymized_urls: int = field(
-            validator=[validators.instance_of(int), validators.gt(0)], default=10000
+            validator=(validators.instance_of(int), validators.gt(0)), default=10000
         )
         """The maximum number of cached pseudonymized urls. Default is 10000.
         Behaves similarly to the max_cached_pseudonyms. Has to be greater than 0."""
         mode: str = field(
-            validator=[validators.instance_of(str), validators.in_(("GCM", "CTR"))], default="GCM"
+            validator=(validators.instance_of(str), validators.in_(("GCM", "CTR"))), default="GCM"
         )
         """Optional mode of operation for the encryption. Can be either 'GCM' or 'CTR'.
         Default is 'GCM'.

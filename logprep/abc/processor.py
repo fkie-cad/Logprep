@@ -5,7 +5,7 @@ import os
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Dict, List, Type
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
