@@ -150,7 +150,7 @@ class RequesterRule(FieldManagerRule):
         )
         """ (Optional) The http headers as dictionary."""
         auth: tuple = field(
-            validator=[validators.instance_of(tuple)],
+            validator=(validators.instance_of(tuple)),
             converter=tuple,
             factory=tuple,
         )

@@ -6,7 +6,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -96,12 +96,12 @@ class Processor(Component):
         As last option it is possible to define entire rules with all their configuration parameters as list elements.
         """
         tree_config: Optional[str] = field(
-            default=None, validator=[validators.optional(validators.instance_of(str))]
+            default=None, validator=(validators.optional(validators.instance_of(str)))
         )
         """Path to a JSON file with a valid :ref:`Rule Tree Configuration`.
         For string format see :ref:`getters`."""
         apply_multiple_times: Optional[bool] = field(
-            default=False, validator=[validators.optional(validators.instance_of(bool))]
+            default=False, validator=(validators.optional(validators.instance_of(bool)))
         )
         """Set if the processor should be applied multiple times. This enables further processing
         of an output with the same processor."""

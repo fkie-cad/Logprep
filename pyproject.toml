@@ -113,6 +113,7 @@ dev = [
   "pytest-asyncio",
   "pre-commit",
   "mypy",
+  "types-requests"
 ]
 
 doc = [
@@ -161,3 +162,5 @@ environment = 'PATH=$HOME/.cargo/bin:$PATH'
 
 [tool.mypy]
 exclude = ["tests"]
+follow_imports = "skip"
+follow_imports_for_stubs = "True"

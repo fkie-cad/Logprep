@@ -88,7 +88,7 @@ the IPs from the list is also available in the specified fields.
     ip_fields:
     - some_ip_field
 
-The pre_detector also has the option to normalize the timestamp. 
+The pre_detector also has the option to normalize the timestamp.
 To configure this the following parameters can be set in the rule configuration.
 
 ..  code-block:: yaml
@@ -110,7 +110,7 @@ To configure this the following parameters can be set in the rule configuration.
       target_timezone: <the timezone after normalization>
     description: Some malicious event.
 
-All of these new parameters are configurable and default to 
+All of these new parameters are configurable and default to
 standard values if not explicitly set.
 
 .. autoclass:: logprep.processor.pre_detector.rule.PreDetectorRule.Config
@@ -176,11 +176,11 @@ class PreDetectorRule(Rule):
         timestamp_field: str = field(validator=validators.instance_of(str), default="@timestamp")
         """the field which has the given timestamp to be normalized defaults to :code:`@timestamp`"""
         source_timezone: ZoneInfo = field(
-            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
         )
         """ timezone of source_fields defaults to :code:`UTC`"""
         target_timezone: ZoneInfo = field(
-            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
         )
         """ timezone for target_field defaults to :code:`UTC`"""
         failure_tags: list = field(

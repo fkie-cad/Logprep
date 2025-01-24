@@ -9,7 +9,7 @@ A speaking example:
     :caption: Given timestamper rule
 
     filter: "winlog.event_id: 123456789"
-    timestamper: 
+    timestamper:
         source_fields: ["winlog.event_data.some_timestamp_utc"]
         target_field: "@timestamp"
         source_format: UNIX
@@ -122,11 +122,11 @@ class TimestamperRule(FieldManagerRule):
         a tag :code:`_timestamper_failure` will be added to the event.
         """
         source_timezone: ZoneInfo = field(
-            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
         )
         """ timezone of source_fields. defaults to :code:`UTC`"""
         target_timezone: ZoneInfo = field(
-            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
         )
         """ timezone for target_field. defaults to :code:`UTC`"""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
