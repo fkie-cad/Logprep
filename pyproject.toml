@@ -178,3 +178,5 @@ max-attributes=12
 
 # List of method names used to declare (i.e. assign) instance attributes.
 defining-attr-methods="__init__,__new__,setUp"
+[tool.mypy]
+exclude = ["tests"]

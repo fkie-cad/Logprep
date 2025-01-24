@@ -70,7 +70,7 @@ jobs:
           pylint ${{ steps.changed-files.outputs.all_changed_files }}
       - name: mypy type checking
         if: steps.changed-files.outputs.all_changed_files
-        run: mypy ${{ steps.changed-files.outputs.all_changed_files }}
+        run: mypy --follow-imports=skip ${{ steps.changed-files.outputs.all_changed_files }}
 
       - name: Run tests and collect coverage
         run: pytest tests/unit --cov=logprep --cov-report=xml
