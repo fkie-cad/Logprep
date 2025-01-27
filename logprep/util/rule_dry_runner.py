@@ -49,7 +49,7 @@ from ruamel.yaml import YAML
 from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import color_print_line, color_print_title, recursive_compare
+from logprep.util.helper import color_print_line, color_print_title, recursive_compare, get_ansi_code
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -149,7 +149,9 @@ class DryRunner:
             elif item.startswith("? "):
                 color_print_line(Back.BLACK, Fore.WHITE, item)
             else:
-                color_print_line(Back.BLACK, Fore.CYAN, item)
+                color_print_line(get_ansi_code('black', 'back'),get_ansi_code('cyan', 'fore'), item)
+
+
 
     def _print_custom_outputs(self, test_output_custom):
         color_print_title(Back.MAGENTA, "CUSTOM OUTPUTS")

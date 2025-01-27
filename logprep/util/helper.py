@@ -29,7 +29,7 @@ def color_print_line(
     if fore:
         color += fore
 
-    print(color + message + Fore.RESET + Back.RESET)
+    print(color + message + get_ansi_code('reset', 'fore') + get_ansi_code('reset', 'back'))
 
 
 def color_print_title(background: Union[str, AnsiBack], message: str):
@@ -406,3 +406,33 @@ def get_versions_string(config: "Configuration" = None) -> str:
         config_version = f"no configuration found in {', '.join([DEFAULT_CONFIG_LOCATION])}"
     version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
     return version_string
+
+def get_ansi_code(color, type):
+    if type == 'fore':
+        base = 30
+    elif type == 'back':
+        base = 40
+    else:
+        base = 30
+
+    colors = {
+        'black': 0,
+        'red': 1,
+        'green': 2,
+        'yellow': 3,
+        'blue': 4,
+        'magenta': 5,
+        'cyan': 6,
+        'white': 7,
+        'reset': 9,
+        'lightblack': 60,
+        'lightred': 61,
+        'lightgreen': 62,
+        'lightyellow': 63,
+        'lightblue': 64,
+        'lightmagenta': 65,
+        'lightcyan': 66,
+        'lightwhite': 67
+    }
+
+    return f"\x1b[{str(base+colors.get(color))}m"
