@@ -59,7 +59,7 @@ from pathlib import Path
 from pprint import pprint
 from typing import TYPE_CHECKING, Union
 
-from colorama import Fore
+from logprep.util.ansi import Fore
 from more_itertools import nth
 from ruamel.yaml import YAML, YAMLError
 

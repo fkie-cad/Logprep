@@ -8,7 +8,7 @@ import sys
 import warnings
 
 import click
-from colorama import Fore
+from logprep.util.ansi import Fore
 
 from logprep.generator.http.controller import Controller
 from logprep.generator.kafka.run_load_tester import LoadTester

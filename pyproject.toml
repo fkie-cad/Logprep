@@ -59,7 +59,6 @@ dependencies = [
   "aiohttp>=3.9.2",                # CVE-2024-23334
   "attrs",
   "certifi>=2023.7.22",            # CVE-2023-37920
-  "colorama",
   "confluent-kafka>2",
   "filelock",
   "geoip2",
