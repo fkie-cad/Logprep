@@ -436,3 +436,33 @@ def get_ansi_code(color, type):
     }
 
     return f"\x1b[{str(base+colors.get(color))}m"
+
+
+class AnsiFore:
+    _colors = {
+        'RED': 31,
+        'GREEN': 32,
+        'BLUE': 34,
+        'RESET': 39
+    }
+
+    def __class_getitem__(cls, name):
+        if name in cls._colors:
+            return f'\033[{cls._colors[name]}m'
+        raise AttributeError(f"No Ansi code found: {name}")
+
+
+class AnsiBack:
+    _colors = {
+        'RED': 41,
+        'GREEN': 42,
+        'BLUE': 44,
+        'RESET': 49
+    }
+
+    def __class_getitem__(cls, name):
+        if name in cls._colors:
+            return f'\033[{cls._colors[name]}m'
+        raise AttributeError(f"No Ansi code found: {name}")
+
+

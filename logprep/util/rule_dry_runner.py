@@ -50,6 +50,7 @@ from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import color_print_line, color_print_title, recursive_compare, get_ansi_code
+from logprep.util.helper import AnsiBack, AnsiFore
 
 yaml = YAML(typ="safe", pure=True)
 
