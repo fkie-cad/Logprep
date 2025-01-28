@@ -3,7 +3,6 @@ Rule Configuration
 ^^^^^^^^^^^^^^^^^^
 
 The generic resolver requires the additional field :code:`generic_resolver`.
-It works similarly to the hyperscan resolver, which utilizes hyperscan to process resolve lists.
 Configurable fields are being checked by regex patterns and a configurable value will be added
 if a pattern matches.
 The parameters within :code:`generic_resolver` must be of the form

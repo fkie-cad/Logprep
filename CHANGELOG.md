@@ -2,6 +2,9 @@
 
 ## next release
 ### Breaking
+
+* remove `hyperscan_resolver` processor because it is not significantly faster as the `generic_resolver` with enabled cache
+
 ### Features
 ### Improvements
 ### Bugfix

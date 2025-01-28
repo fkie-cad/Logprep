@@ -19,7 +19,6 @@ Processors
 .. automodule:: logprep.processor.generic_resolver.processor
 .. automodule:: logprep.processor.geoip_enricher.processor
 .. automodule:: logprep.processor.grokker.processor
-.. automodule:: logprep.processor.hyperscan_resolver.processor
 .. automodule:: logprep.processor.ip_informer.processor
 .. automodule:: logprep.processor.key_checker.processor
 .. automodule:: logprep.processor.labeler.processor
