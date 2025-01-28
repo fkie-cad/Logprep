@@ -43,14 +43,13 @@ from difflib import ndiff
 from functools import cached_property
 from typing import Dict, List
 
-from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import color_print_line, color_print_title, recursive_compare, get_ansi_code
-from logprep.util.helper import AnsiBack, AnsiFore
+from logprep.util.helper import color_print_line, color_print_title, recursive_compare
+from logprep.util.ansi import Back, Fore
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -150,7 +149,7 @@ class DryRunner:
             elif item.startswith("? "):
                 color_print_line(Back.BLACK, Fore.WHITE, item)
             else:
-                color_print_line(get_ansi_code('black', 'back'),get_ansi_code('cyan', 'fore'), item)
+                color_print_line(Back.BLACK, Fore.CYAN, item)
 
 
 

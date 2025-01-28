@@ -8,8 +8,7 @@ from importlib.metadata import version
 from os import remove
 from typing import TYPE_CHECKING, Optional, Union
 
-from colorama import Back, Fore
-from colorama.ansi import AnsiBack, AnsiFore
+from logprep.util.ansi import Back, Fore, AnsiBack, AnsiFore
 
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
@@ -29,7 +28,7 @@ def color_print_line(
     if fore:
         color += fore
 
-    print(color + message + get_ansi_code('reset', 'fore') + get_ansi_code('reset', 'back'))
+    print(color + message + Fore.RESET + Back.RESET)
 
 
 def color_print_title(background: Union[str, AnsiBack], message: str):
@@ -406,63 +405,3 @@ def get_versions_string(config: "Configuration" = None) -> str:
         config_version = f"no configuration found in {', '.join([DEFAULT_CONFIG_LOCATION])}"
     version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
     return version_string
-
-def get_ansi_code(color, type):
-    if type == 'fore':
-        base = 30
-    elif type == 'back':
-        base = 40
-    else:
-        base = 30
-
-    colors = {
-        'black': 0,
-        'red': 1,
-        'green': 2,
-        'yellow': 3,
-        'blue': 4,
-        'magenta': 5,
-        'cyan': 6,
-        'white': 7,
-        'reset': 9,
-        'lightblack': 60,
-        'lightred': 61,
-        'lightgreen': 62,
-        'lightyellow': 63,
-        'lightblue': 64,
-        'lightmagenta': 65,
-        'lightcyan': 66,
-        'lightwhite': 67
-    }
-
-    return f"\x1b[{str(base+colors.get(color))}m"
-
-
-class AnsiFore:
-    _colors = {
-        'RED': 31,
-        'GREEN': 32,
-        'BLUE': 34,
-        'RESET': 39
-    }
-
-    def __class_getitem__(cls, name):
-        if name in cls._colors:
-            return f'\033[{cls._colors[name]}m'
-        raise AttributeError(f"No Ansi code found: {name}")
-
-
-class AnsiBack:
-    _colors = {
-        'RED': 41,
-        'GREEN': 42,
-        'BLUE': 44,
-        'RESET': 49
-    }
-
-    def __class_getitem__(cls, name):
-        if name in cls._colors:
-            return f'\033[{cls._colors[name]}m'
-        raise AttributeError(f"No Ansi code found: {name}")
-
-
