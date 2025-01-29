@@ -116,7 +116,7 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
-        resolve_list: dict = field(validator=[validators.instance_of(dict)], factory=dict)
+        resolve_list: dict = field(validator=(validators.instance_of(dict)), factory=dict)
         """lookup mapping in form of
         :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`"""
         resolve_from_file: dict = field(

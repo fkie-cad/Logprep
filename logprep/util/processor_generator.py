@@ -6,14 +6,15 @@ Processor Generator
 generates boilerplate code to implement a new processor for logprep
 """
 
-from typing import Type
 from pathlib import Path
-from attrs import field, validators, define
+from typing import Type
+
+from attrs import define, field, validators
 from jinja2 import Template
 
 from logprep.abc.processor import Processor
-from logprep.util.helper import snake_to_camel, camel_to_snake
 from logprep.registry import Registry
+from logprep.util.helper import camel_to_snake, snake_to_camel
 
 PROCESSOR_BASE_PATH = "logprep/processor"
 PROCESSOR_UNIT_TEST_BASE_PATH = "tests/unit/processor"
@@ -60,7 +61,7 @@ class ProcessorCodeGenerator:
     """
 
     name: str = field(
-        validator=[validators.instance_of(str), validators.matches_re(r"[A-Za-z_]+")],
+        validator=(validators.instance_of(str), validators.matches_re(r"[A-Za-z_]+")),
         converter=camel_to_snake,
     )
 
