@@ -9,7 +9,7 @@ A speaking example:
     :caption: Given timestamper rule
 
     filter: "winlog.event_id: 123456789"
-    timestamper: 
+    timestamper:
         source_fields: ["winlog.event_data.some_timestamp_utc"]
         target_field: "@timestamp"
         source_format: UNIX

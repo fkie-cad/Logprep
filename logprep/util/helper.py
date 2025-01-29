@@ -8,8 +8,7 @@ from importlib.metadata import version
 from os import remove
 from typing import TYPE_CHECKING, Optional, Union
 
-from colorama import Back, Fore
-from colorama.ansi import AnsiBack, AnsiFore
+from logprep.util.ansi import Back, Fore, AnsiBack, AnsiFore
 
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION

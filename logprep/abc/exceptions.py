@@ -1,4 +1,4 @@
-""" abstract module for exceptions"""
+"""abstract module for exceptions"""
 
 
 class LogprepException(Exception):

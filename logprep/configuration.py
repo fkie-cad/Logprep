@@ -1,4 +1,4 @@
-"""module for component configuration """
+"""module for component configuration"""
 
 from typing import TYPE_CHECKING, Any, Mapping
 

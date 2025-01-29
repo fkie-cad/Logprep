@@ -43,13 +43,13 @@ from difflib import ndiff
 from functools import cached_property
 from typing import Dict, List
 
-from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline, PipelineResult
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import color_print_line, color_print_title, recursive_compare
+from logprep.util.ansi import Back, Fore
 
 yaml = YAML(typ="safe", pure=True)
 

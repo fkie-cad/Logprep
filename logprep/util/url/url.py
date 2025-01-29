@@ -1,4 +1,4 @@
-""" helper functions for URL extraction and validation.
+"""helper functions for URL extraction and validation.
 Code is inspired by django url validation:
 https://docs.djangoproject.com/en/4.1/_modules/django/core/validators/
 """

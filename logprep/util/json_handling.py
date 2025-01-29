@@ -1,4 +1,4 @@
-""" module for json handling helper methods"""
+"""module for json handling helper methods"""
 
 import json
 import os
