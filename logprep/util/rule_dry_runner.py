@@ -151,8 +151,6 @@ class DryRunner:
             else:
                 color_print_line(Back.BLACK, Fore.CYAN, item)
 
-
-
     def _print_custom_outputs(self, test_output_custom):
         color_print_title(Back.MAGENTA, "CUSTOM OUTPUTS")
         for custom_output in test_output_custom:
