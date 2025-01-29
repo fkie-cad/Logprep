@@ -7,7 +7,8 @@
 
 ### Features
 ### Improvements
-* removes dependency from colorama library
+* removes `colorama` dependency
+
 ### Bugfix
 * fixes a bug with lucene regex and parentheses
 * fixes a conflict between lucene filter and the Crypto module
