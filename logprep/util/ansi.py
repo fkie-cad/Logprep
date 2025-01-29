@@ -2,6 +2,8 @@
 '''
 This module generates ANSI character codes to printing colors to terminals.
 See: http://en.wikipedia.org/wiki/ANSI_escape_code
+This module contains only a subset of the original colorama library. Additional codes can be added in this module from
+https://github.com/tartley/colorama/blob/master/colorama/ansi.py.
 '''
 
 CSI = '\033['
