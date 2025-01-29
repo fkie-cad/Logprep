@@ -39,6 +39,11 @@ class AnsiFore(AnsiCodes):
 
 
 class AnsiBack(AnsiCodes):
+    BLACK = 40
+    YELLOW = 43
+    MAGENTA = 45
+    CYAN = 46
+    WHITE = 47
     RESET = 49
 
 
