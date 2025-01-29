@@ -1,6 +1,6 @@
 """module for processor registry
-    it is used to check if a processor is known to the system.
-    you have to register new processors here by import them and add to `ProcessorRegistry.mapping`
+it is used to check if a processor is known to the system.
+you have to register new processors here by import them and add to `ProcessorRegistry.mapping`
 """
 
 from logprep.connector.confluent_kafka.input import ConfluentKafkaInput

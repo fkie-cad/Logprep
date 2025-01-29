@@ -1,4 +1,4 @@
-""" abstract module for connectors"""
+"""abstract module for connectors"""
 
 from attrs import define, field
 

@@ -10,8 +10,8 @@ To use the authentication, the given credentials file has to be
 filled with the correct values that correspond to the method you want to use.
 
 .. code-block:: yaml
-    :caption: Example for credentials file 
-    
+    :caption: Example for credentials file
+
     getter:
         "http://target.url":
             # example for token given directly via file
@@ -71,11 +71,11 @@ filled with the correct values that correspond to the method you want to use.
         /second*:
           username: <username>
           password: <password>
-   
+
 
 Options for the credentials file are:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        
+
 .. autoclass:: logprep.util.credentials.BasicAuthCredentials
    :members: username, password
    :no-index:
@@ -88,7 +88,7 @@ Options for the credentials file are:
 .. autoclass:: logprep.util.credentials.MTLSCredentials
    :members: client_key, cert, ca_cert
    :no-index:
-   
+
 Authentication Process:
 ^^^^^^^^^^^^^^^^^^^^^^^
 .. figure:: ../_images/Credentials.svg

@@ -1,4 +1,4 @@
-""" validators to use with `attrs` fields"""
+"""validators to use with `attrs` fields"""
 
 import os
 import typing

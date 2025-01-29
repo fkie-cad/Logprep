@@ -1,4 +1,4 @@
-""" This module implements functionality to add tags to filter expressions. """
+"""This module implements functionality to add tags to filter expressions."""
 
 from typing import Union, List
 

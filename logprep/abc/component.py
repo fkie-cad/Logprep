@@ -1,4 +1,4 @@
-""" abstract module for components"""
+"""abstract module for components"""
 
 import functools
 import inspect
