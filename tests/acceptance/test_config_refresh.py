@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 import tempfile
 from pathlib import Path
+import time
 
 import pytest
 from ruamel.yaml import YAML
@@ -73,3 +74,21 @@ def test_no_config_refresh_after_5_seconds(tmp_path, config):
         "Configuration version didn't change. Continue running with current version.",
         test_timeout=7,
     )
+
+
+def test_recover_after_invalid_then_valid_config(tmp_path, config):
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_json())
+    proc = start_logprep(config_path)
+    wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
+
+    config.config_refresh_interval = None
+    config.version = "invalid"
+    config_path.write_text(config.as_json())
+    time.sleep(3)
+
+    config.config_refresh_interval = 4
+    config.version = "valid_again"
+    config_path.write_text(config.as_json())
+    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=10)
+    wait_for_output(proc, "Config refresh interval is set to: 4 seconds", test_timeout=5)
