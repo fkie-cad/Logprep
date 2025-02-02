@@ -6,6 +6,9 @@
 * remove `hyperscan_resolver` processor because it is not significantly faster as the `generic_resolver` with enabled cache
 
 ### Features
+
+* add support for rule files with suffix `.yaml`
+
 ### Improvements
 * removes `colorama` dependency
 * reimplemented the rule loading mechanic
