@@ -8,6 +8,7 @@
 ### Features
 ### Improvements
 * removes `colorama` dependency
+* reimplemented the rule loading mechanic
 
 ### Bugfix
 * fixes a bug with lucene regex and parentheses
