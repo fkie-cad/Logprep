@@ -56,7 +56,7 @@ class TestFileRuleLoader:
 
     def setup_method(self):
         rules = [{"filter": "foo", "rule": {}}, {"filter": "foo", "rule": {}}]
-        self.source = tempfile.mktemp()
+        self.source = tempfile.mktemp(suffix=".yml")
         with open(self.source, "w", encoding="utf8") as file:
             yaml.dump(rules, file)
 
