@@ -127,9 +127,7 @@ This slicing is based on the native
 """
 
 import hashlib
-import json
 from functools import cached_property
-from os.path import basename, splitext
 from typing import Dict, List, Optional, Set
 
 from attrs import define, field, validators
@@ -140,7 +138,6 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import camel_to_snake
 
 yaml = YAML(typ="safe", pure=True)
@@ -317,26 +314,6 @@ class Rule:
         return self.filter.get_lucene_filter()
 
     # pylint: enable=C0111
-
-    @classmethod
-    def create_rules_from_target(cls, rule_target: str, processor_name: str = None) -> list:
-        """Create a rule from a file."""
-        if isinstance(rule_target, dict):
-            return [cls._create_from_dict(rule_target, processor_name)]
-        content = GetterFactory.from_string(rule_target).get()
-        try:
-            rule_data = json.loads(content)
-        except ValueError:
-            rule_data = yaml.load_all(content)
-        try:
-            rules = [cls._create_from_dict(rule, processor_name) for rule in rule_data]
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleDefinitionError(f"{rule_target}: {error}") from error
-        if len(rules) == 0:
-            raise InvalidRuleDefinitionError(f"no rules in file {rule_target}")
-        for rule in rules:
-            rule.file_name = splitext(basename(rule_target))[0]
-        return rules
 
     @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:

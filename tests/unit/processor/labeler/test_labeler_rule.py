@@ -11,7 +11,6 @@ from logprep.filter.expression.filter_expression import StringFilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
-from tests.testdata.FilledTempFile import JsonTempFile
 from tests.testdata.ruledata import simple_rule_dict
 
 
@@ -30,19 +29,6 @@ class MockLabelingSchema(LabelingSchema):
 
 
 class TestRule:
-    def test_create_from_file_fails_if_document_does_not_contain_filter_and_label(self):
-        with pytest.raises(InvalidRuleDefinitionError):
-            with JsonTempFile({}) as rule_path:
-                LabelerRule.create_rules_from_target(rule_path)
-
-        for missing_field in ["filter", "labeler"]:
-            invalid_rule_dict = deepcopy(simple_rule_dict)
-            del invalid_rule_dict[missing_field]
-
-            with pytest.raises(InvalidRuleDefinitionError):
-                with JsonTempFile([invalid_rule_dict]) as rule_path:
-                    LabelerRule.create_rules_from_target(rule_path)
-
     def test_create_from_dict_creates_expected_rule(self):
         rule_definition = {
             "filter": 'applyrule: "yes"',

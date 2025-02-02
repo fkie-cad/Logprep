@@ -31,7 +31,7 @@ class DirectoryRuleLoader(RuleLoader):
       Returns the list of rules loaded from the directory.
     """
 
-    def __init__(self, directory: str, rule_class: type = Rule):
+    def __init__(self, directory: str, rule_class: Rule = Rule):
         self.source = directory
         self.rule_class = rule_class
 
@@ -65,7 +65,7 @@ class FileRuleLoader(RuleLoader):
       Returns the list of rules loaded from the file.
     """
 
-    def __init__(self, file: str, rule_class: type = Rule):
+    def __init__(self, file: str, rule_class: Rule = Rule):
         self.rule_class = rule_class
         self.source = file
 
@@ -98,7 +98,7 @@ class ListRuleLoader(RuleLoader):
       Returns a list of Rule objects created from the source list of dictionaries.
     """
 
-    def __init__(self, rules: List[dict], rule_class: type = Rule):
+    def __init__(self, rules: List[dict], rule_class: Rule = Rule):
         self.rule_class = rule_class
         self.source = rules
 
