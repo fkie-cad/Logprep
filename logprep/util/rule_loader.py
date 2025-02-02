@@ -31,8 +31,9 @@ class DirectoryRuleLoader(RuleLoader):
       Returns the list of rules loaded from the directory.
     """
 
-    def __init__(self, directory: str):
+    def __init__(self, directory: str, rule_class: type = Rule):
         self.source = directory
+        self.rule_class = rule_class
 
     @property
     def rules(self) -> List[Rule]:
@@ -41,7 +42,7 @@ class DirectoryRuleLoader(RuleLoader):
             for path in Path(self.source).glob("**/*")
             if path.suffix in RULE_FILE_EXTENSIONS
         )
-        rule_lists = (FileRuleLoader(str(file)).rules for file in rule_files)
+        rule_lists = (FileRuleLoader(str(file), self.rule_class).rules for file in rule_files)
         return list(itertools.chain(*rule_lists))
 
 
@@ -64,7 +65,8 @@ class FileRuleLoader(RuleLoader):
       Returns the list of rules loaded from the file.
     """
 
-    def __init__(self, file: str):
+    def __init__(self, file: str, rule_class: type = Rule):
+        self.rule_class = rule_class
         self.source = file
 
     @property
@@ -75,8 +77,8 @@ class FileRuleLoader(RuleLoader):
         elif self.source.endswith(".json"):
             rules = GetterFactory.from_string(str(self.source)).get_json()
         if isinstance(rules, dict):
-            return DictRuleLoader(rules).rules
-        return ListRuleLoader(rules).rules
+            return DictRuleLoader(rules, self.rule_class).rules
+        return ListRuleLoader(rules, self.rule_class).rules
 
 
 class ListRuleLoader(RuleLoader):
@@ -96,12 +98,13 @@ class ListRuleLoader(RuleLoader):
       Returns a list of Rule objects created from the source list of dictionaries.
     """
 
-    def __init__(self, rules: List[dict]):
+    def __init__(self, rules: List[dict], rule_class: type = Rule):
+        self.rule_class = rule_class
         self.source = rules
 
     @property
     def rules(self) -> List[Rule]:
-        return [Rule._create_from_dict(rule) for rule in self.source]
+        return [self.rule_class._create_from_dict(rule) for rule in self.source]
 
 
 class DictRuleLoader(RuleLoader):
@@ -121,9 +124,10 @@ class DictRuleLoader(RuleLoader):
       Returns a list of rules created from the source dictionary.
     """
 
-    def __init__(self, source: dict):
+    def __init__(self, source: dict, rule_class: type = Rule):
+        self.rule_class = rule_class
         self.source: dict = source
 
     @property
     def rules(self) -> List[Rule]:
-        return [Rule._create_from_dict(self.source)]
+        return [self.rule_class._create_from_dict(self.source)]
