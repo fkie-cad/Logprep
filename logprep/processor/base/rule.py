@@ -322,7 +322,7 @@ class Rule:
         """
 
     @classmethod
-    def _create_from_dict(cls, rule: dict, processor_name: str = None) -> "Rule":
+    def create_from_dict(cls, rule: dict, processor_name: str = None) -> "Rule":
         cls.normalize_rule_dict(rule)
         filter_expression = Rule._create_filter_expression(rule)
         cls.rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
