@@ -1,21 +1,29 @@
 """module for rule loaders."""
 
+import itertools
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 from logprep.abc.rule_loader import RuleLoader
 from logprep.processor.base.rule import Rule
+from logprep.util.defaults import RULE_FILE_EXTENSIONS
 from logprep.util.getter import GetterFactory
 
 
 class DirectoryRuleLoader(RuleLoader):
 
-    def __init__(self, directory: Path):
+    def __init__(self, directory: str):
         self.source = directory
 
     @property
     def rules(self) -> List[Rule]:
-        return []
+        rule_files = (
+            path.resolve()
+            for path in Path(self.source).glob("**/*")
+            if path.suffix in RULE_FILE_EXTENSIONS
+        )
+        rule_lists = (FileRuleLoader(str(file)).rules for file in rule_files)
+        return list(itertools.chain(*rule_lists))
 
 
 class FileRuleLoader(RuleLoader):
@@ -42,7 +50,11 @@ class FileRuleLoader(RuleLoader):
 
     @property
     def rules(self) -> List[Rule]:
-        rules = GetterFactory.from_string(str(self.source)).get_yaml()
+        rules: List | Dict = []
+        if self.source.endswith(".yaml") or self.source.endswith(".yml"):
+            rules = GetterFactory.from_string(str(self.source)).get_yaml()
+        elif self.source.endswith(".json"):
+            rules = GetterFactory.from_string(str(self.source)).get_json()
         if isinstance(rules, dict):
             return DictRuleLoader(rules).rules
         return ListRuleLoader(rules).rules
