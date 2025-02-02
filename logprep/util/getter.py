@@ -92,9 +92,7 @@ class FileGetter(Getter):
     def get_raw(self) -> bytes:
         """Opens file and returns its binary content."""
         path = Path(self.target)
-        if path.exists():
-            return path.read_bytes()
-        raise FileNotFoundError(f"File '{path}' not found.")
+        return path.read_bytes()
 
 
 @define(kw_only=True)

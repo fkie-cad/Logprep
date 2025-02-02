@@ -20,7 +20,7 @@ from logprep.util.helper import camel_to_snake
 
 class BaseComponentTestCase(ABC):
     CONFIG: dict = {}
-    object: Component = None
+    object: Component | None = None
     logger = getLogger()
     expected_metrics: list = []
 
