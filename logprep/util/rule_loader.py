@@ -11,6 +11,25 @@ from logprep.util.getter import GetterFactory
 
 
 class DirectoryRuleLoader(RuleLoader):
+    """
+    DirectoryRuleLoader is responsible for loading rules from a directory recursively.
+    The directory can contain multiple rule files with supported extensions.
+    In every rule file, multiple rules can be defined.
+    Supported extensions are defined in the RULE_FILE_EXTENSIONS constant.
+
+    Parameters
+    ----------
+    directory : str
+      The path to the directory containing the rule files.
+    Attributes
+    ----------
+    source : str
+      The source directory from which the rule files are loaded.
+    Methods
+    -------
+    rules
+      Returns the list of rules loaded from the directory.
+    """
 
     def __init__(self, directory: str):
         self.source = directory
@@ -29,8 +48,8 @@ class DirectoryRuleLoader(RuleLoader):
 class FileRuleLoader(RuleLoader):
     """
     FileRuleLoader is responsible for loading rules from a file.
-    The file can be located in a filesystem or in a remote location and
-    accessible via a HTTP.
+    The file can be located in a filesystem or in a remote location accessible
+    via a HTTP.
     Parameters
     ----------
     file : str
