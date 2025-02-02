@@ -33,9 +33,9 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     logger = getLogger()
 
-    object: Processor = None
+    object: Processor | None = None
 
-    patchers: list = None
+    patchers: list | None = None
 
     rules: list
 
