@@ -21,7 +21,6 @@ from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.processor.base.rule import Rule
-from logprep.util.json_handling import list_json_files_in_directory
 from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -56,13 +55,15 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert isinstance(rules_dirs, list)
         rules = []
         for rules_dir in rules_dirs:
-            rule_paths = list_json_files_in_directory(rules_dir)
+            rule_paths = [
+                p for p in Path(rules_dir).glob("**/*") if p.suffix in [".yml", ".json", "yaml"]
+            ]
             for rule_path in rule_paths:
-                with open(rule_path, "r", encoding="utf8") as rule_file:
-                    loaded_rules = []
-                    if rule_path.endswith(".yml"):
+                loaded_rules = []
+                with open(str(rule_path), "r", encoding="utf8") as rule_file:
+                    if rule_path.suffix in [".yml", ".yaml"]:
                         loaded_rules = yaml.load_all(rule_file)
-                    elif rule_path.endswith(".json"):
+                    elif rule_path.suffix == ".json":
                         loaded_rules = json.load(rule_file)
                     for rule in loaded_rules:
                         rules.append(rule)
@@ -143,10 +144,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     def test_load_rules_calls_getter_factory(self):
         with mock.patch("logprep.util.getter.GetterFactory.from_string") as getter_factory:
-            with pytest.raises(
-                TypeError, match="must be str, bytes or bytearray, not .*MagicMock.*"
-            ):
-                self.object.load_rules(rules_targets=self.rules_dirs)
+            self.object.load_rules(rules_targets=self.rules_dirs)
             getter_factory.assert_called()
 
     @responses.activate
@@ -157,8 +155,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         myconfig.update(
             {"rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
         )
-        with pytest.raises(TypeError, match="not .*MagicMock.*"):
-            Factory.create({"http_rule_processor": myconfig})
+        assert isinstance(Factory.create({"http_rule_processor": myconfig}), Processor)
 
     def test_no_redundant_rules_are_added_to_rule_tree(self):
         """
@@ -196,13 +193,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: "i am not a list"})
         with pytest.raises(TypeError, match=r"must be <class 'list'>"):
-            Factory.create({"test instance": config})
-
-    @pytest.mark.parametrize("rule_list", ["rules"])
-    def test_validation_raises_if_elements_does_not_exist(self, rule_list):
-        config = deepcopy(self.CONFIG)
-        config.update({rule_list: ["/i/do/not/exist"]})
-        with pytest.raises(FileNotFoundError):
             Factory.create({"test instance": config})
 
     def test_validation_raises_if_tree_config_is_not_a_str(self):

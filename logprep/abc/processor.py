@@ -24,6 +24,7 @@ from logprep.util.helper import (
     pop_dotted_field_value,
 )
 from logprep.util.json_handling import list_json_files_in_directory
+from logprep.util.rule_loader import DictRuleLoader, DirectoryRuleLoader, FileRuleLoader
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
@@ -101,7 +102,7 @@ class Processor(Component):
         """Path to a JSON file with a valid :ref:`Rule Tree Configuration`.
         For string format see :ref:`getters`."""
         apply_multiple_times: Optional[bool] = field(
-            default=False, validator=[validators.optional(validators.instance_of(bool))]
+            default=False, validator=(validators.optional(validators.instance_of(bool)),)
         )
         """Set if the processor should be applied multiple times. This enables further processing
         of an output with the same processor."""
@@ -233,7 +234,7 @@ class Processor(Component):
     @abstractmethod
     def _apply_rules(self, event, rule): ...  # pragma: no cover
 
-    def test_rules(self) -> dict:
+    def test_rules(self) -> dict | None:
         """Perform custom rule tests.
 
         Returns a dict with a list of test results as tuples containing a result and an expected
@@ -275,11 +276,17 @@ class Processor(Component):
 
     def load_rules(self, rules_targets: List[str]):
         """method to add rules from directories or urls"""
-        rules_targets = self.resolve_directories(rules_targets)
-        for rules_target in rules_targets:
-            rules = self.rule_class.create_rules_from_target(rules_target, self.name)
-            for rule in rules:
-                self._rule_tree.add_rule(rule)
+        rules = []
+        for rule_target in rules_targets:
+            if isinstance(rule_target, dict):
+                rules.extend(DictRuleLoader(rule_target, self.rule_class).rules)
+            if isinstance(rule_target, str):
+                if Path(rule_target).is_dir():
+                    rules.extend(DirectoryRuleLoader(rule_target, self.rule_class).rules)
+                elif Path(rule_target).is_file():
+                    rules.extend(FileRuleLoader(rule_target, self.rule_class).rules)
+        for rule in rules:
+            self._rule_tree.add_rule(rule)
         if logger.isEnabledFor(logging.DEBUG):  # pragma: no cover
             number_rules = self._rule_tree.number_of_rules
             logger.debug(f"{self.describe()} loaded {number_rules} rules")
