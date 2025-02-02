@@ -17,3 +17,7 @@ class RuleLoader(ABC):
     @abstractmethod
     def rules(self) -> List[Rule]:
         """Return a list of rules."""
+
+    def __init__(self, source: str, rule_class: Type[Rule] = Rule):
+        self.source = source
+        self.rule_class = rule_class
