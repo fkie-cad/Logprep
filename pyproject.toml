@@ -155,3 +155,25 @@ skip = "*pp* *i686-unknown-linux-musl*"
 archs = "x86_64 i686 aarch64"
 before-build = "curl -sSf https://sh.rustup.rs | sh -s -- -y"
 environment = 'PATH=$HOME/.cargo/bin:$PATH'
+
+[tool.pylint.MAIN]
+ignore = ".venv"
+
+[tool.pylint.FORMAT]
+max-line-length=100
+
+[tool.pylint.BASIC]
+no-docstring-rgx="^test_|^.*TestCase|^_|^Test"
+
+["tool.pylint.MESAGES CONTROL"]
+disable="too-few-public-methods"
+
+[tool.pylint.DESIGN]
+min-public-methods=1
+max-public-methods=40
+max-attributes=12
+
+[tool.pylint.CLASSES]
+
+# List of method names used to declare (i.e. assign) instance attributes.
+defining-attr-methods="__init__,__new__,setUp"
