@@ -71,7 +71,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     def _load_rule(self, rule: dict | Rule):
         self.object._rule_tree = RuleTree()
-        rule = self.object.rule_class._create_from_dict(rule) if isinstance(rule, dict) else rule
+        rule = self.object.rule_class.create_from_dict(rule) if isinstance(rule, dict) else rule
         self.object._rule_tree.add_rule(rule)
 
     def setup_method(self) -> None:

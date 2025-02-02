@@ -3,6 +3,7 @@
 # pylint: disable=no-self-use
 
 import pytest
+
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 
 
@@ -68,6 +69,6 @@ class TestListComparisonRule:
         ],
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
-        rule1 = GeoipEnricherRule._create_from_dict(rule_definition)
-        rule2 = GeoipEnricherRule._create_from_dict(other_rule_definition)
+        rule1 = GeoipEnricherRule.create_from_dict(rule_definition)
+        rule2 = GeoipEnricherRule.create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase

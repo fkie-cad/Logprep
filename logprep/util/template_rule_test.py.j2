@@ -11,7 +11,7 @@ class Test{{ processor.class_name }}Rule:
             "filter": "message",
             "{{ processor.name }}": {"source_fields": ["message"], "target_field": "new_field"},
         }
-        rule_dict = {{ processor.class_name }}Rule._create_from_dict(rule)
+        rule_dict = {{ processor.class_name }}Rule.create_from_dict(rule)
         assert isinstance(rule_dict, {{ processor.class_name }}Rule)
 
     @pytest.mark.parametrize(
@@ -23,9 +23,9 @@ class Test{{ processor.class_name }}Rule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                {{ processor.class_name }}Rule._create_from_dict(rule)
+                {{ processor.class_name }}Rule.create_from_dict(rule)
         else:
-            rule_instance = {{ processor.class_name }}Rule._create_from_dict(rule)
+            rule_instance = {{ processor.class_name }}Rule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("{{ processor.name }}").items():
                 assert hasattr(rule_instance._config, key)
@@ -38,7 +38,6 @@ class Test{{ processor.class_name }}Rule:
         ],
     )
     def test_equality(self, testcase, rule1, rule2, equality):
-        rule1 = {{ processor.class_name }}Rule._create_from_dict(rule1)
-        rule2 = {{ processor.class_name }}Rule._create_from_dict(rule2)
+        rule1 = {{ processor.class_name }}Rule.create_from_dict(rule1)
+        rule2 = {{ processor.class_name }}Rule.create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase
-

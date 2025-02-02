@@ -1,17 +1,13 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import re
 from unittest import mock
 from unittest.mock import call
 
 import pytest
 
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.util.configuration import Configuration
 
 
 class TestSpecificGenericProcessing:
@@ -44,8 +40,8 @@ class TestSpecificGenericProcessing:
             "filter": "protocol",
             "dissector": {"mapping": {"protocol": "%{proto} %{col}"}},
         }
-        rule_one = DissectorRule._create_from_dict(rule_one_dict)
-        rule_two = DissectorRule._create_from_dict(rule_two_dict)
+        rule_one = DissectorRule.create_from_dict(rule_one_dict)
+        rule_two = DissectorRule.create_from_dict(rule_two_dict)
         processor._rule_tree.add_rule(rule_one)
         processor._rule_tree.add_rule(rule_two)
         event = {"message": "time [proto col] url"}
@@ -71,8 +67,8 @@ class TestSpecificGenericProcessing:
             "filter": "protocol",
             "dissector": {"mapping": {"protocol": "%{proto} %{col}"}},
         }
-        rule_one = DissectorRule._create_from_dict(rule_one_dict)
-        rule_two = DissectorRule._create_from_dict(rule_two_dict)
+        rule_one = DissectorRule.create_from_dict(rule_one_dict)
+        rule_two = DissectorRule.create_from_dict(rule_two_dict)
         processor._rule_tree.add_rule(rule_one)
         processor._rule_tree.add_rule(rule_two)
         event = {"message": "time [proto col] url"}
@@ -91,8 +87,8 @@ class TestSpecificGenericProcessing:
         processor = Factory.create({"custom_lister": config})
         rule_one_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
         rule_two_dict = {"filter": "NOT something", "generic_adder": {"add": {"something": "else"}}}
-        rule_one = GenericAdderRule._create_from_dict(rule_one_dict)
-        rule_two = GenericAdderRule._create_from_dict(rule_two_dict)
+        rule_one = GenericAdderRule.create_from_dict(rule_one_dict)
+        rule_two = GenericAdderRule.create_from_dict(rule_two_dict)
         processor._rule_tree.add_rule(rule_one)
         processor._rule_tree.add_rule(rule_two)
         event = {"val": "content"}

@@ -3,6 +3,7 @@
 # pylint: disable=no-self-use
 from typing import Hashable
 from unittest import mock
+
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
@@ -20,7 +21,7 @@ def fixture_rule_definition():
 
 class TestDropperRule:
     def test_rule_has_fields_to_drop(self, rule_definition):
-        rule = DropperRule._create_from_dict(rule_definition)
+        rule = DropperRule.create_from_dict(rule_definition)
         fields_to_drop = rule.fields_to_drop
         assert isinstance(fields_to_drop, list)
         assert "field1" in fields_to_drop
@@ -61,12 +62,12 @@ class TestDropperRule:
         ],
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
-        rule1 = DropperRule._create_from_dict(
+        rule1 = DropperRule.create_from_dict(
             rule_definition,
         )
 
         print(other_rule_definition)
-        rule2 = DropperRule._create_from_dict(
+        rule2 = DropperRule.create_from_dict(
             other_rule_definition,
         )
 
@@ -111,12 +112,12 @@ class TestDropperRule:
         with mock.patch("os.path.isfile", return_value=True):
             if raised:
                 with pytest.raises(raised, match=message):
-                    _ = DropperRule._create_from_dict(rule_definition)
+                    _ = DropperRule.create_from_dict(rule_definition)
             else:
                 with mock.patch("builtins.open", mock.mock_open(read_data="")):
-                    dropper_rule = DropperRule._create_from_dict(rule_definition)
+                    dropper_rule = DropperRule.create_from_dict(rule_definition)
                     assert isinstance(dropper_rule, DropperRule)
 
     def test_rule_is_hashable(self, rule_definition):
-        rule = DropperRule._create_from_dict(rule_definition)
+        rule = DropperRule.create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)

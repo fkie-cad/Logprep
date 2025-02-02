@@ -1,6 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import pytest
+
 from logprep.processor.ip_informer.rule import IpInformerRule
 
 
@@ -10,7 +11,7 @@ class TestIpInformerRule:
             "filter": "message",
             "ip_informer": {"source_fields": ["message"], "target_field": "new_field"},
         }
-        rule_dict = IpInformerRule._create_from_dict(rule)
+        rule_dict = IpInformerRule.create_from_dict(rule)
         assert isinstance(rule_dict, IpInformerRule)
 
     @pytest.mark.parametrize(
@@ -53,9 +54,9 @@ class TestIpInformerRule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                IpInformerRule._create_from_dict(rule)
+                IpInformerRule.create_from_dict(rule)
         else:
-            rule_instance = IpInformerRule._create_from_dict(rule)
+            rule_instance = IpInformerRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("ip_informer").items():
                 assert hasattr(rule_instance._config, key)

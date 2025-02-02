@@ -84,8 +84,8 @@ class TestGenericAdderRule:
         other_rule_definition,
         is_equal,
     ):
-        rule1 = GenericAdderRule._create_from_dict(rule_definition)
-        rule2 = GenericAdderRule._create_from_dict(other_rule_definition)
+        rule1 = GenericAdderRule.create_from_dict(rule_definition)
+        rule2 = GenericAdderRule.create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
 
     def test_rule_accepts_bool_type(self):
@@ -93,5 +93,5 @@ class TestGenericAdderRule:
             "filter": "add_generic_test",
             "generic_adder": {"add": {"added_bool_field": True}},
         }
-        rule = GenericAdderRule._create_from_dict(rule_definition)
+        rule = GenericAdderRule.create_from_dict(rule_definition)
         assert isinstance(rule.add.get("added_bool_field"), bool)

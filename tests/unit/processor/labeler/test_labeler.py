@@ -65,7 +65,7 @@ class TestLabeler(BaseProcessorTestCase):
     }
 
     def _load_rule(self, rule, schema=None):  # pylint: disable=arguments-differ
-        rule = LabelerRule._create_from_dict(rule)
+        rule = LabelerRule.create_from_dict(rule)
         if schema:
             rule.add_parent_labels_from_schema(schema)
         self.object._rule_tree.add_rule(rule)

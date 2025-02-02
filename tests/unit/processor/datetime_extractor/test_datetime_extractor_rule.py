@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
 from typing import Hashable
+
 import pytest
 
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
@@ -83,8 +84,8 @@ class TestDatetimeExtractorRule:
         ],
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
-        rule_1 = DatetimeExtractorRule._create_from_dict(rule_definition)
-        rule_2 = DatetimeExtractorRule._create_from_dict(other_rule_definition)
+        rule_1 = DatetimeExtractorRule.create_from_dict(rule_definition)
+        rule_2 = DatetimeExtractorRule.create_from_dict(other_rule_definition)
         assert (rule_1 == rule_2) == is_equal, testcase
 
     @pytest.mark.parametrize(
@@ -165,11 +166,11 @@ class TestDatetimeExtractorRule:
     def test_rule_create_from_dict(self, rule_definition, raised, message):
         if raised:
             with pytest.raises(raised, match=message):
-                _ = DatetimeExtractorRule._create_from_dict(rule_definition)
+                _ = DatetimeExtractorRule.create_from_dict(rule_definition)
         else:
-            extractor_rule = DatetimeExtractorRule._create_from_dict(rule_definition)
+            extractor_rule = DatetimeExtractorRule.create_from_dict(rule_definition)
             assert isinstance(extractor_rule, DatetimeExtractorRule)
 
     def test_rule_is_hashable(self, rule_definition):
-        rule = DatetimeExtractorRule._create_from_dict(rule_definition)
+        rule = DatetimeExtractorRule.create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)
