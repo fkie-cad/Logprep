@@ -2,7 +2,7 @@
 
 import itertools
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Type
 
 from logprep.abc.rule_loader import RuleLoader
 from logprep.processor.base.rule import Rule
@@ -31,7 +31,7 @@ class DirectoryRuleLoader(RuleLoader):
       Returns the list of rules loaded from the directory.
     """
 
-    def __init__(self, directory: str, rule_class: Rule = Rule):
+    def __init__(self, directory: str, rule_class: Type[Rule]):
         self.source = directory
         self.rule_class = rule_class
 
@@ -65,7 +65,7 @@ class FileRuleLoader(RuleLoader):
       Returns the list of rules loaded from the file.
     """
 
-    def __init__(self, file: str, rule_class: Rule = Rule):
+    def __init__(self, file: str, rule_class: Type[Rule]):
         self.rule_class = rule_class
         self.source = file
 
@@ -98,7 +98,7 @@ class ListRuleLoader(RuleLoader):
       Returns a list of Rule objects created from the source list of dictionaries.
     """
 
-    def __init__(self, rules: List[dict], rule_class: Rule = Rule):
+    def __init__(self, rules: List[dict], rule_class: Type[Rule]):
         self.rule_class = rule_class
         self.source = rules
 
@@ -124,7 +124,7 @@ class DictRuleLoader(RuleLoader):
       Returns a list of rules created from the source dictionary.
     """
 
-    def __init__(self, source: dict, rule_class: type = Rule):
+    def __init__(self, source: dict, rule_class: Type[Rule]):
         self.rule_class = rule_class
         self.source: dict = source
 
