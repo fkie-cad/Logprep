@@ -129,8 +129,8 @@ class TestConcatenatorRule:
         ],
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
-        rule_1 = ConcatenatorRule._create_from_dict(rule_definition)
-        rule_2 = ConcatenatorRule._create_from_dict(other_rule_definition)
+        rule_1 = ConcatenatorRule.create_from_dict(rule_definition)
+        rule_2 = ConcatenatorRule.create_from_dict(other_rule_definition)
         assert (rule_1 == rule_2) == is_equal, testcase
 
     @pytest.mark.parametrize(
@@ -289,11 +289,11 @@ class TestConcatenatorRule:
     def test_rule_create_from_dict(self, rule_definition, raised, message):
         if raised:
             with pytest.raises(raised, match=message):
-                _ = ConcatenatorRule._create_from_dict(rule_definition)
+                _ = ConcatenatorRule.create_from_dict(rule_definition)
         else:
-            extractor_rule = ConcatenatorRule._create_from_dict(rule_definition)
+            extractor_rule = ConcatenatorRule.create_from_dict(rule_definition)
             assert isinstance(extractor_rule, ConcatenatorRule)
 
     def test_rule_is_hashable(self, rule_definition):
-        rule = ConcatenatorRule._create_from_dict(rule_definition)
+        rule = ConcatenatorRule.create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)

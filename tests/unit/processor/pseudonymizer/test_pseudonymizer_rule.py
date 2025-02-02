@@ -52,9 +52,9 @@ class TestPseudonomyzerRule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                PseudonymizerRule._create_from_dict(rule)
+                PseudonymizerRule.create_from_dict(rule)
         else:
-            rule_instance = PseudonymizerRule._create_from_dict(rule)
+            rule_instance = PseudonymizerRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("pseudonymizer").items():
                 assert hasattr(rule_instance._config, key)
@@ -108,6 +108,6 @@ class TestPseudonomyzerRule:
         ],
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
-        rule_1 = PseudonymizerRule._create_from_dict(rule_definition)
-        rule_2 = PseudonymizerRule._create_from_dict(other_rule_definition)
+        rule_1 = PseudonymizerRule.create_from_dict(rule_definition)
+        rule_2 = PseudonymizerRule.create_from_dict(other_rule_definition)
         assert (rule_1 == rule_2) == is_equal, testcase

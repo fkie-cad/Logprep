@@ -104,7 +104,7 @@ class ListRuleLoader(RuleLoader):
 
     @property
     def rules(self) -> List[Rule]:
-        return [self.rule_class._create_from_dict(rule) for rule in self.source]
+        return [self.rule_class.create_from_dict(rule) for rule in self.source]
 
 
 class DictRuleLoader(RuleLoader):
@@ -130,4 +130,4 @@ class DictRuleLoader(RuleLoader):
 
     @property
     def rules(self) -> List[Rule]:
-        return [self.rule_class._create_from_dict(self.source)]
+        return [self.rule_class.create_from_dict(self.source)]

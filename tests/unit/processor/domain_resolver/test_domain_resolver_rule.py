@@ -80,7 +80,7 @@ def fixture_rule_definition():
     ],
 )
 def test_rules_equality(rule_definition, testcase, other_rule_definition, is_equal):
-    rule1 = DomainResolverRule._create_from_dict(rule_definition)
-    rule2 = DomainResolverRule._create_from_dict(other_rule_definition)
+    rule1 = DomainResolverRule.create_from_dict(rule_definition)
+    rule2 = DomainResolverRule.create_from_dict(other_rule_definition)
 
     assert (rule1 == rule2) == is_equal, testcase

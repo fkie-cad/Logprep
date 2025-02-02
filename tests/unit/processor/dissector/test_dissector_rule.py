@@ -17,7 +17,7 @@ class TestDissectorRule:
     rule = {"filter": "message", "dissector": {"mapping": {}}}
 
     def test_create_from_dict_returns_dissector_rule(self):
-        dissector_rule = DissectorRule._create_from_dict(self.rule)
+        dissector_rule = DissectorRule.create_from_dict(self.rule)
         assert isinstance(dissector_rule, DissectorRule)
 
     @pytest.mark.parametrize(
@@ -221,9 +221,9 @@ class TestDissectorRule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                DissectorRule._create_from_dict(rule)
+                DissectorRule.create_from_dict(rule)
         else:
-            dissector_rule = DissectorRule._create_from_dict(rule)
+            dissector_rule = DissectorRule.create_from_dict(rule)
             assert hasattr(dissector_rule, "_config")
             for key, value in rule.get("dissector").items():
                 assert hasattr(dissector_rule._config, key)
@@ -324,8 +324,8 @@ class TestDissectorRule:
         ],
     )
     def test_equality(self, testcase, rule1, rule2, equality):
-        rule1 = DissectorRule._create_from_dict(rule1)
-        rule2 = DissectorRule._create_from_dict(rule2)
+        rule1 = DissectorRule.create_from_dict(rule1)
+        rule2 = DissectorRule.create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase
 
     def test_converts_mappings_without_operator_to_add_field_to_action(self):
@@ -336,7 +336,7 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.actions
         assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
         assert rule.actions[1] == ("field1", " ", "field3", add_and_overwrite, "", None, 0)
@@ -350,7 +350,7 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.actions
         assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
         assert rule.actions[1] == ("field1", " ", "field3", append, "", None, 0)
@@ -364,7 +364,7 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.actions
         assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
         assert rule.actions[1] == ("field1", " ", "field3", append, "", None, 1)
@@ -372,7 +372,7 @@ class TestDissectorRule:
 
     def test_adds_convert_actions(self):
         rule = {"filter": "message", "dissector": {"convert_datatype": {"field1": "int"}}}
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.convert_actions
         assert rule.convert_actions[0][0] == "field1"
         assert rule.convert_actions[0][1] == int
@@ -388,7 +388,7 @@ class TestDissectorRule:
                 }
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.convert_actions
         assert rule.convert_actions[0][0] == "field1"
         assert rule.convert_actions[0][1] == int
@@ -405,7 +405,7 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.actions
         assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
         assert rule.actions[1] == ("field1", " ", "field3", append, " ", None, 1)
@@ -419,7 +419,7 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.actions
         assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
         assert rule.actions[1] == ("field1", " ", "field3", append, "separator", None, 1)
@@ -433,7 +433,7 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.actions
         assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
         assert rule.actions[1] == ("field1", " ", "field3", append, "(", None, 1)
@@ -447,7 +447,7 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.actions
         assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
         assert rule.actions[1] == ("field1", " ", "field3", append, "#", None, 1)
@@ -461,7 +461,7 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.actions
         assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
         assert rule.actions[1] == ("field1", " ", "field3", add_and_overwrite, "", None, 0)
@@ -474,7 +474,7 @@ class TestDissectorRule:
                 "mapping": {"field1": "%{field2}:%{field3|int} %{field4}"},
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule._config.convert_datatype.get("field3") == "int"
         assert len(rule._config.convert_datatype.keys()) == 1
 
@@ -492,8 +492,8 @@ class TestDissectorRule:
                 "mapping": {"field1": "%{field2}:%{field3|int} %{field4}"},
             },
         }
-        rule1 = DissectorRule._create_from_dict(rule)
-        rule2 = DissectorRule._create_from_dict(rule)
+        rule1 = DissectorRule.create_from_dict(rule)
+        rule2 = DissectorRule.create_from_dict(rule)
         assert rule1.id == rule2.id
 
     def test_id_no_hash_if_set(self):
@@ -504,5 +504,5 @@ class TestDissectorRule:
                 "mapping": {"field1": "%{field2}:%{field3|int} %{field4}"},
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
+        rule = DissectorRule.create_from_dict(rule)
         assert rule.id == "my_id"

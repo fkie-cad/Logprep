@@ -272,7 +272,7 @@ Hans
             "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
         processor = Factory.create({"custom_lister": config})
-        rule = processor.rule_class._create_from_dict(rule_dict)
+        rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         processor.setup()
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
