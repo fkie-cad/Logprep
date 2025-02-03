@@ -150,7 +150,7 @@ class Rule:
     class Config:
         """Config for Rule"""
 
-        id: str = field(
+        id: str | int | None = field(
             validator=validators.instance_of((str, int, type(None))),
             default=None,
             eq=False,
@@ -238,6 +238,8 @@ class Rule:
         "tag_on_failure",
     ]
 
+    rule_type: str = ""
+
     @cached_property
     def id(self) -> str:
         """return the rule id"""
@@ -271,7 +273,7 @@ class Rule:
         if not config.tag_on_failure:
             config.tag_on_failure = [f"_{self.rule_type}_failure"]
         self.__class__.__hash__ = Rule.__hash__
-        self._processor_name = processor_name if processor_name else ""
+        self._processor_name = processor_name
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
         self._special_fields = None
@@ -322,7 +324,24 @@ class Rule:
         """
 
     @classmethod
-    def create_from_dict(cls, rule: dict, processor_name: str = None) -> "Rule":
+    def create_from_dict(cls, rule: dict, processor_name: str | None = None) -> "Rule":
+        """Create a Rule instance from a dictionary.
+        Parameters
+        ----------
+        rule : dict
+            A dictionary containing the rule configuration.
+        processor_name : str or None, optional
+            The name of the processor to associate with this rule (default is None).
+        Returns
+        -------
+        Rule
+            An instance of the Rule class.
+        Raises
+        ------
+        InvalidRuleDefinitionError
+            If the rule configuration is invalid or missing required fields.
+        """
+
         cls.normalize_rule_dict(rule)
         filter_expression = Rule._create_filter_expression(rule)
         cls.rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
@@ -339,6 +358,7 @@ class Rule:
             if special_field_value is not None:
                 config.update({special_field: special_field_value})
         config = cls.Config(**config)
+        processor_name = processor_name if processor_name else "undefined"
         return cls(filter_expression, config, processor_name)
 
     @staticmethod

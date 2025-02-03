@@ -38,7 +38,10 @@ class DirectoryRuleLoader(RuleLoader):
             for path in Path(self.source).glob("**/*")
             if path.suffix in RULE_FILE_EXTENSIONS
         )
-        rule_lists = (FileRuleLoader(str(file), self.rule_class).rules for file in rule_files)
+        rule_lists = (
+            FileRuleLoader(str(file), self.rule_class, self.processor_name).rules
+            for file in rule_files
+        )
         return list(itertools.chain(*rule_lists))
 
 
@@ -69,8 +72,8 @@ class FileRuleLoader(RuleLoader):
         elif self.source.endswith(".json"):
             rules = GetterFactory.from_string(str(self.source)).get_json()
         if isinstance(rules, dict):
-            return DictRuleLoader(rules, self.rule_class).rules
-        return ListRuleLoader(rules, self.rule_class).rules
+            return DictRuleLoader(rules, self.rule_class, self.processor_name).rules
+        return ListRuleLoader(rules, self.rule_class, self.processor_name).rules
 
 
 class ListRuleLoader(RuleLoader):
@@ -92,7 +95,7 @@ class ListRuleLoader(RuleLoader):
 
     @property
     def rules(self) -> List[Rule]:
-        return [self.rule_class.create_from_dict(rule) for rule in self.source]
+        return [self.rule_class.create_from_dict(rule, self.processor_name) for rule in self.source]
 
 
 class DictRuleLoader(RuleLoader):
@@ -114,4 +117,4 @@ class DictRuleLoader(RuleLoader):
 
     @property
     def rules(self) -> List[Rule]:
-        return [self.rule_class.create_from_dict(self.source)]
+        return [self.rule_class.create_from_dict(self.source, self.processor_name)]

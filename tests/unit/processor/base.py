@@ -147,6 +147,13 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             self.object.load_rules(rules_targets=self.rules_dirs)
             getter_factory.assert_called()
 
+    def test_load_rules_creates_rule_with_processor_name(self):
+        with mock.patch(
+            "logprep.processor.base.rule.Rule.create_from_dict"
+        ) as mock_create_from_dict:
+            self.object.load_rules(rules_targets=self.rules_dirs)
+            mock_create_from_dict.assert_called_with(mock.ANY, self.object.name)
+
     @responses.activate
     def test_accepts_http_in_rules_config(self):
         responses.add(responses.GET, "https://this.is.not.existent/bla.yml", mock.MagicMock())

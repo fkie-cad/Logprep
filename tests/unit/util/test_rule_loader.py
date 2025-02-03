@@ -21,15 +21,18 @@ class TestDictRuleLoader:
 
     def setup_method(self):
         self.source = {"filter": "foo", "rule": {}}
+        self.name = "test instance name"
+        self.rule_class = Rule
+        self.args = (self.source, self.rule_class, self.name)
 
     def test_object_hierarchy(self):
-        assert isinstance(DictRuleLoader(self.source), RuleLoader)
+        assert isinstance(DictRuleLoader(*self.args), RuleLoader)
 
     def test_returns_list(self):
-        assert isinstance(DictRuleLoader(self.source).rules, list)
+        assert isinstance(DictRuleLoader(*self.args).rules, list)
 
     def test_returns_list_of_rules(self):
-        rules = DictRuleLoader(self.source).rules
+        rules = DictRuleLoader(*self.args).rules
         assert rules, "Expected non-empty list of rules"
         assert all(isinstance(rule, Rule) for rule in rules)
 
@@ -38,15 +41,18 @@ class TestListRuleLoader:
 
     def setup_method(self):
         self.source = [{"filter": "foo", "rule": {}}, {"filter": "foo", "rule": {}}]
+        self.name = "test instance name"
+        self.rule_class = Rule
+        self.args = (self.source, self.rule_class, self.name)
 
     def test_object_hierarchy(self):
-        assert isinstance(ListRuleLoader(self.source), RuleLoader)
+        assert isinstance(ListRuleLoader(*self.args), RuleLoader)
 
     def test_returns_list(self):
-        assert isinstance(ListRuleLoader(self.source).rules, list)
+        assert isinstance(ListRuleLoader(*self.args).rules, list)
 
     def test_returns_list_of_rules(self):
-        rules = ListRuleLoader(self.source).rules
+        rules = ListRuleLoader(*self.args).rules
         assert rules, "Expected non-empty list of rules"
         assert all(isinstance(rule, Rule) for rule in rules)
         assert len(rules) == 2
@@ -59,15 +65,18 @@ class TestFileRuleLoader:
         self.source = tempfile.mktemp(suffix=".yml")
         with open(self.source, "w", encoding="utf8") as file:
             yaml.dump(rules, file)
+        self.name = "test instance name"
+        self.rule_class = Rule
+        self.args = (self.source, self.rule_class, self.name)
 
     def test_object_hierarchy(self):
-        assert isinstance(FileRuleLoader(self.source), RuleLoader)
+        assert isinstance(FileRuleLoader(*self.args), RuleLoader)
 
     def test_returns_list(self):
-        assert isinstance(FileRuleLoader(self.source).rules, list)
+        assert isinstance(FileRuleLoader(*self.args).rules, list)
 
     def test_returns_list_of_rules(self):
-        rules = FileRuleLoader(self.source).rules
+        rules = FileRuleLoader(*self.args).rules
         assert rules, "Expected non-empty list of rules"
         assert all(isinstance(rule, Rule) for rule in rules)
         assert len(rules) == 2
@@ -87,15 +96,18 @@ class TestDirectoryRuleLoader:
         for rule_file in json_files:
             with open(rule_file, "w", encoding="utf8") as file:
                 file.write(json.dumps(rules))
+        self.name = "test instance name"
+        self.rule_class = Rule
+        self.args = (self.source, self.rule_class, self.name)
 
     def test_object_hierarchy(self):
-        assert isinstance(DirectoryRuleLoader(self.source), RuleLoader)
+        assert isinstance(DirectoryRuleLoader(*self.args), RuleLoader)
 
     def test_returns_list(self):
-        assert isinstance(DirectoryRuleLoader(self.source).rules, list)
+        assert isinstance(DirectoryRuleLoader(*self.args).rules, list)
 
     def test_returns_list_of_rules_for_json_and_yaml_files_recursively(self):
-        rules = DirectoryRuleLoader(self.source).rules
+        rules = DirectoryRuleLoader(*self.args).rules
         assert rules, "Expected non-empty list of rules"
         assert all(isinstance(rule, Rule) for rule in rules)
         assert len(rules) == 8
