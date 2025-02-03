@@ -3,7 +3,7 @@
 
 services:
   opensearch:
-    image: public.ecr.aws/opensearchproject/opensearch:2
+    image: registry-1.docker.io/opensearchproject/opensearch:2
     hostname: opensearch
     container_name: opensearch
     environment:
@@ -29,7 +29,7 @@ services:
     networks:
       - opensearch
   dashboards:
-    image: public.ecr.aws/opensearchproject/opensearch-dashboards:2
+    image: registry-1.docker.io/opensearchproject/opensearch-dashboards:2
     container_name: dashboards
     environment:
       - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
@@ -41,7 +41,7 @@ services:
     networks:
       - opensearch
   kafka:
-    image: bitnami/kafka:3.4
+    image: bitnami/kafka:3.9
     container_name: kafka
     hostname: kafka
     ports:
@@ -61,11 +61,11 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: |
-      sh -c 
-      "((sleep 15 && echo 'kafka up' && 
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic consumer && 
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic errors && 
-      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic producer)&) && 
+      sh -c
+      "((sleep 15 && echo 'kafka up' &&
+      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic consumer &&
+      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic errors &&
+      kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic producer)&) &&
       /opt/bitnami/scripts/kafka/run.sh"
     healthcheck:
       test:

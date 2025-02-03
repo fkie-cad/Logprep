@@ -103,7 +103,7 @@ class Getter(ABC):
         return parsed_events
 
     @abstractmethod
-    def get_raw(self) -> bytearray:
+    def get_raw(self) -> bytes:
         """Get the content.
 
         Returns

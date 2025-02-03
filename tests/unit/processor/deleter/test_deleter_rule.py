@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 from typing import Hashable
 from unittest import mock
+
 import pytest
 
 from logprep.processor.deleter.rule import DeleterRule
@@ -55,12 +56,12 @@ class TestDeleterRule:
         ],
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
-        rule1 = DeleterRule._create_from_dict(
+        rule1 = DeleterRule.create_from_dict(
             rule_definition,
         )
 
         print(other_rule_definition)
-        rule2 = DeleterRule._create_from_dict(
+        rule2 = DeleterRule.create_from_dict(
             other_rule_definition,
         )
 
@@ -94,12 +95,12 @@ class TestDeleterRule:
         with mock.patch("os.path.isfile", return_value=True):
             if raised:
                 with pytest.raises(raised, match=message):
-                    _ = DeleterRule._create_from_dict(rule_definition)
+                    _ = DeleterRule.create_from_dict(rule_definition)
             else:
                 with mock.patch("builtins.open", mock.mock_open(read_data="")):
-                    deleter_rule = DeleterRule._create_from_dict(rule_definition)
+                    deleter_rule = DeleterRule.create_from_dict(rule_definition)
                     assert isinstance(deleter_rule, DeleterRule)
 
     def test_rule_is_hashable(self, rule_definition):
-        rule = DeleterRule._create_from_dict(rule_definition)
+        rule = DeleterRule.create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)

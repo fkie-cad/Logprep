@@ -30,7 +30,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
 
     def test_process_returns_tuple_list_with_extraction_fields_from_rule(self):
         field_name = f"{uuid.uuid4()}"
-        rule = SelectiveExtractorRule._create_from_dict(
+        rule = SelectiveExtractorRule.create_from_dict(
             {
                 "filter": field_name,
                 "selective_extractor": {

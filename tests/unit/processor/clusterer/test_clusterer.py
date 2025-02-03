@@ -140,7 +140,7 @@ class TestClusterer(BaseProcessorTestCase):
             "tests": {"raw": "test signature test", "result": "<+>signature</+>"},
         }
 
-        rule = ClustererRule._create_from_dict(rule_definition)
+        rule = ClustererRule.create_from_dict(rule_definition)
         self.object.rules.append(rule)
 
         results = self.object.test_rules()
@@ -166,7 +166,7 @@ class TestClusterer(BaseProcessorTestCase):
         }
 
         document = {"message": "test signature test"}
-        rule = ClustererRule._create_from_dict(rule_definition)
+        rule = ClustererRule.create_from_dict(rule_definition)
         self.object._rule_tree.add_rule(rule)
         self.object._cluster(document, rule)
 
@@ -227,7 +227,7 @@ class TestClusterer(BaseProcessorTestCase):
         rules_to_add = [rule_0, rule_1, rule_2, rule_3, rule_4]
         rules = []
         for idx, rule in enumerate(rules_to_add):
-            new_rule = ClustererRule._create_from_dict(rule)
+            new_rule = ClustererRule.create_from_dict(rule)
             new_rule.file_name = str(idx)
             rules.append(new_rule)
             clusterer._rule_tree.add_rule(new_rule)
@@ -307,7 +307,7 @@ class TestClusterer(BaseProcessorTestCase):
         rules_to_add = [rule_0, rule_1, rule_2, rule_3]
         rules = []
         for idx, rule in enumerate(rules_to_add):
-            new_rule = ClustererRule._create_from_dict(rule)
+            new_rule = ClustererRule.create_from_dict(rule)
             new_rule.file_name = str(idx)
             rules.append(new_rule)
             clusterer._rule_tree.add_rule(new_rule)
