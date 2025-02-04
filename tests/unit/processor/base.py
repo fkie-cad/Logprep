@@ -144,7 +144,8 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     def test_load_rules_calls_getter_factory(self):
         with mock.patch("logprep.util.getter.GetterFactory.from_string") as getter_factory:
-            self.object.load_rules(rules_targets=self.rules_dirs)
+            with pytest.raises(TypeError):
+                self.object.load_rules(rules_targets=self.rules_dirs)
             getter_factory.assert_called()
 
     def test_load_rules_creates_rule_with_processor_name(self):
@@ -205,7 +206,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_validation_raises_if_tree_config_is_not_a_str(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": 12})
-        with pytest.raises(TypeError, match=r"must be <class 'str'>"):
+        with pytest.raises(TypeError, match=r"must be \(<class 'str'>"):
             Factory.create({"test instance": config})
 
     def test_validation_raises_if_tree_config_is_not_exist(self):
