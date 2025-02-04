@@ -3,8 +3,7 @@
 import logging
 import os
 from abc import abstractmethod
-from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, ClassVar, Dict, List, Type
 
 from attr import define, field, validators
 
@@ -22,7 +21,7 @@ from logprep.util.helper import (
     get_dotted_field_value,
     pop_dotted_field_value,
 )
-from logprep.util.rule_loader import DictRuleLoader, DirectoryRuleLoader, FileRuleLoader
+from logprep.util.rule_loader import RuleLoader
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
@@ -94,14 +93,12 @@ class Processor(Component):
         For valid URI formats see :ref:`getters`.
         As last option it is possible to define entire rules with all their configuration parameters as list elements.
         """
-        tree_config: Optional[str] = field(
-            default=None, validator=[validators.optional(validators.instance_of(str))]
+        tree_config: str | None = field(
+            default=None, validator=validators.instance_of((str, type(None)))
         )
         """Path to a JSON file with a valid :ref:`Rule Tree Configuration`.
         For string format see :ref:`getters`."""
-        apply_multiple_times: Optional[bool] = field(
-            default=False, validator=(validators.optional(validators.instance_of(bool)),)
-        )
+        apply_multiple_times: bool = field(default=False, validator=validators.instance_of(bool))
         """Set if the processor should be applied multiple times. This enables further processing
         of an output with the same processor."""
 
@@ -165,7 +162,7 @@ class Processor(Component):
 
         """
         self.result = ProcessorResult(processor_name=self.name, event=event)
-        logger.debug(f"{self.describe()} processing event {event}")
+        logger.debug("%s processing event %s", self.describe(), event)
         if self._bypass_rule_tree:
             self._process_all_rules(event)
             return self.result
@@ -242,16 +239,7 @@ class Processor(Component):
 
     def load_rules(self, rules_targets: List[str | Dict]) -> None:
         """method to add rules from directories or urls"""
-        rules = []
-        for rule_target in rules_targets:
-            args = (rule_target, self.rule_class, self.name)
-            if isinstance(rule_target, dict):
-                rules.extend(DictRuleLoader(*args).rules)
-            if isinstance(rule_target, str):
-                if Path(rule_target).is_dir():
-                    rules.extend(DirectoryRuleLoader(*args).rules)
-                elif Path(rule_target).is_file():
-                    rules.extend(FileRuleLoader(*args).rules)
+        rules = RuleLoader(rules_targets, self.name).rules
         for rule in rules:
             self._rule_tree.add_rule(rule)
         if logger.isEnabledFor(logging.DEBUG):

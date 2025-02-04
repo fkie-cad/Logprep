@@ -9,43 +9,29 @@ from logprep.util.defaults import RULE_FILE_EXTENSIONS
 from logprep.util.getter import GetterFactory
 
 
-class DirectoryRuleLoader:
-    """
-    DirectoryRuleLoader is responsible for loading rules from a directory recursively.
-    The directory can contain multiple rule files with supported extensions.
-    In every rule file, multiple rules can be defined.
-    Supported extensions are defined in the RULE_FILE_EXTENSIONS constant.
+class RuleLoader:
+    """A class to load rules from various sources such as dictionaries,
+    file paths, or lists of these.
 
-    Parameters
-    ----------
-    directory : str
-      The path to the directory containing the rule files.
+    Parameters:
+    -----------
+    source : list of dict or str or dict or str
+      A list of dictionaries, file paths, a single dictionary,
+      or a single file path containing the rules to be loaded.
+
+    processor_name : str
+      The name of the processor that the rules belong to.
+
     Attributes
     ----------
-    source : str
-      The source directory from which the rule files are loaded.
+    source : list of dict or str or dict or str
+      The source from which the rules are to be loaded.
+
     Methods
     -------
-    rules
-      Returns the list of rules loaded from the directory.
+    rules:
+      Load rules from the specified source and return a list of Rule objects.
     """
-
-    def __init__(self, source: str, processor_name: str):
-        self.source = source
-        self.processor_name = processor_name
-
-    @property
-    def rules(self) -> List[Rule]:
-        rule_files = (
-            path.resolve()
-            for path in Path(self.source).glob("**/*")
-            if path.suffix in RULE_FILE_EXTENSIONS
-        )
-        rule_lists = (FileRuleLoader(str(file), self.processor_name).rules for file in rule_files)
-        return list(itertools.chain(*rule_lists))
-
-
-class RuleLoader:
 
     def __init__(self, source: List[Dict | str] | Dict | str, processor_name: str):
         self.source = source
@@ -80,6 +66,42 @@ class RuleLoader:
                 for element in self.source:
                     rules.extend(RuleLoader(element, self.processor_name).rules)
         return rules
+
+
+class DirectoryRuleLoader:
+    """
+    DirectoryRuleLoader is responsible for loading rules from a directory recursively.
+    The directory can contain multiple rule files with supported extensions.
+    In every rule file, multiple rules can be defined.
+    Supported extensions are defined in the RULE_FILE_EXTENSIONS constant.
+
+    Parameters
+    ----------
+    directory : str
+      The path to the directory containing the rule files.
+    Attributes
+    ----------
+    source : str
+      The source directory from which the rule files are loaded.
+    Methods
+    -------
+    rules
+      Returns the list of rules loaded from the directory.
+    """
+
+    def __init__(self, source: str, processor_name: str):
+        self.source = source
+        self.processor_name = processor_name
+
+    @property
+    def rules(self) -> List[Rule]:
+        rule_files = (
+            path.resolve()
+            for path in Path(self.source).glob("**/*")
+            if path.suffix in RULE_FILE_EXTENSIONS
+        )
+        rule_lists = (FileRuleLoader(str(file), self.processor_name).rules for file in rule_files)
+        return list(itertools.chain(*rule_lists))
 
 
 class FileRuleLoader(RuleLoader):
