@@ -3,6 +3,7 @@
 import json
 import tempfile
 
+import pytest
 import responses
 import ruamel.yaml
 
@@ -32,6 +33,11 @@ class TestDictRuleLoader:
         assert rules, "Expected non-empty list of rules"
         assert all(isinstance(rule, Rule) for rule in rules)
 
+    def test_raises_type_error_if_source_is_not_dict(self):
+        self.source = "foo"
+        with pytest.raises(TypeError, match="Expected a dictionary"):
+            _ = DictRuleLoader(self.source, self.name).rules
+
 
 class TestFileRuleLoader:
 
@@ -55,6 +61,16 @@ class TestFileRuleLoader:
         assert rules, "Expected non-empty list of rules"
         assert all(isinstance(rule, Rule) for rule in rules)
         assert len(rules) == 2
+
+    def test_rules_raises_type_error_if_source_is_not_string(self):
+        self.source = {"foo": "bar"}
+        with pytest.raises(TypeError, match="Expected a string"):
+            _ = FileRuleLoader(self.source, self.name).rules
+
+    def test_rule_definitions_raises_type_error_if_source_is_not_string(self):
+        self.source = {"foo": "bar"}
+        with pytest.raises(TypeError, match="Expected a string"):
+            _ = FileRuleLoader(self.source, self.name).rule_definitions
 
 
 class TestDirectoryRuleLoader:

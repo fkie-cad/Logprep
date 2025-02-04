@@ -69,6 +69,14 @@ class RuleLoader:
 
     @property
     def rule_definitions(self) -> List[Dict]:
+        """
+        Load rule definitions from a list of directories, dicts or file paths.
+
+        Returns
+        -------
+        list of dict
+          A list of rule definitions.
+        """
         rule_definitions: List[Dict] = []
         match self.source:
             case dict():
@@ -118,12 +126,29 @@ class DirectoryRuleLoader:
 
     @property
     def rules(self) -> List[Rule]:
+        """
+        Generate and return a list of rules from the specified directory.
+
+        Returns
+        -------
+        list of Rule
+          A list of Rule objects created from the rule files in the directory recursively.
+        """
         rule_files = self.get_rule_files(self.source)
         rule_lists = (FileRuleLoader(str(file), self.processor_name).rules for file in rule_files)
         return list(itertools.chain(*rule_lists))
 
     @property
     def rule_definitions(self) -> List[Dict]:
+        """
+        Generate and return a list of dicts reflecting rule definitions from
+        the specified directory.
+
+        Returns
+        -------
+        list of dict
+          A list of rule definitions created from the rule files in the directory recursively.
+        """
         rule_files = self.get_rule_files(self.source)
         rule_definitions = (
             FileRuleLoader(str(file), self.processor_name).rule_definitions for file in rule_files
@@ -141,8 +166,34 @@ class DirectoryRuleLoader:
 
 
 class FileRuleLoader(RuleLoader):
+    """FileRuleLoader is responsible for loading rules from a file.
+    The file can contain multiple rules defined in either JSON or YAML format.
+
+    Parameters
+    ----------
+    source : str
+      The path to the file containing the rule definitions.
+    processor_name : str
+      The name of the processor that the rules belong to.
+    """
+
     @property
     def rules(self) -> List[Rule]:
+        """Retrieve a list of rules.
+        This method processes the rule definitions and returns a list of Rule objects.
+        It ensures that the source attribute is a string before proceeding.
+
+        Returns
+        -------
+        List[Rule]
+          A list of Rule objects generated from the rule definitions.
+
+        Raises
+        ------
+        TypeError
+          If the source attribute is not a string.
+        """
+
         if not isinstance(self.source, str):
             raise TypeError(f"Expected a string, got {type(self.source)}")
         return list(
@@ -169,8 +220,27 @@ class FileRuleLoader(RuleLoader):
 
 
 class DictRuleLoader(RuleLoader):
+    """DictRuleLoader is responsible for loading a rule from a dictionary.
+    The dictionary should reflect a valid rule definition.
+
+    Parameters
+    ----------
+    source : dict
+      The dictionary containing the rule definition.
+    processor_name : str
+      The name of the processor that the rules belong to.
+    """
+
     @property
     def rules(self) -> List[Rule]:
+        """Generate and return a list of rules from the specified
+        dictionary.
+
+        Returns
+        -------
+        list of Rule
+          A list with one Rule object created from the dictionary.
+        """
 
         from logprep.registry import Registry  # pylint: disable=import-outside-toplevel
 
