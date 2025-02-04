@@ -4,7 +4,7 @@ import logging
 import os
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Type
 
 from attr import define, field, validators
 
@@ -106,19 +106,18 @@ class Processor(Component):
         of an output with the same processor."""
 
     __slots__ = [
-        "rule_class",
         "_event",
         "_rule_tree",
         "result",
         "_bypass_rule_tree",
     ]
 
-    rule_class: "Type[Rule]"
+    rule_class: ClassVar["Type[Rule] | None"] = None
     _event: dict
     _rule_tree: RuleTree
     _strategy = None
     _bypass_rule_tree: bool
-    result: ProcessorResult
+    result: ProcessorResult | None
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)

@@ -10,7 +10,6 @@ from logprep.util.rule_loader import (
     DictRuleLoader,
     DirectoryRuleLoader,
     FileRuleLoader,
-    ListRuleLoader,
     RuleLoader,
 )
 
@@ -20,13 +19,9 @@ yaml = ruamel.yaml.YAML()
 class TestDictRuleLoader:
 
     def setup_method(self):
-        self.source = {"filter": "foo", "rule": {}}
+        self.source = {"filter": "foo", "calculator": {"calc": "1 + 1"}}
         self.name = "test instance name"
-        self.rule_class = Rule
-        self.args = (self.source, self.rule_class, self.name)
-
-    def test_object_hierarchy(self):
-        assert isinstance(DictRuleLoader(*self.args), RuleLoader)
+        self.args = (self.source, self.name)
 
     def test_returns_list(self):
         assert isinstance(DictRuleLoader(*self.args).rules, list)
@@ -37,40 +32,19 @@ class TestDictRuleLoader:
         assert all(isinstance(rule, Rule) for rule in rules)
 
 
-class TestListRuleLoader:
-
-    def setup_method(self):
-        self.source = [{"filter": "foo", "rule": {}}, {"filter": "foo", "rule": {}}]
-        self.name = "test instance name"
-        self.rule_class = Rule
-        self.args = (self.source, self.rule_class, self.name)
-
-    def test_object_hierarchy(self):
-        assert isinstance(ListRuleLoader(*self.args), RuleLoader)
-
-    def test_returns_list(self):
-        assert isinstance(ListRuleLoader(*self.args).rules, list)
-
-    def test_returns_list_of_rules(self):
-        rules = ListRuleLoader(*self.args).rules
-        assert rules, "Expected non-empty list of rules"
-        assert all(isinstance(rule, Rule) for rule in rules)
-        assert len(rules) == 2
-
-
 class TestFileRuleLoader:
 
     def setup_method(self):
-        rules = [{"filter": "foo", "rule": {}}, {"filter": "foo", "rule": {}}]
+        rules = [
+            {"filter": "foo", "calculator": {"calc": "1+1"}},
+            {"filter": "foo", "calculator": {"calc": "2+2"}},
+        ]
         self.source = tempfile.mktemp(suffix=".yml")
         with open(self.source, "w", encoding="utf8") as file:
             yaml.dump(rules, file)
         self.name = "test instance name"
         self.rule_class = Rule
-        self.args = (self.source, self.rule_class, self.name)
-
-    def test_object_hierarchy(self):
-        assert isinstance(FileRuleLoader(*self.args), RuleLoader)
+        self.args = (self.source, self.name)
 
     def test_returns_list(self):
         assert isinstance(FileRuleLoader(*self.args).rules, list)
@@ -85,7 +59,10 @@ class TestFileRuleLoader:
 class TestDirectoryRuleLoader:
 
     def setup_method(self):
-        rules = [{"filter": "foo", "rule": {}}, {"filter": "foo", "rule": {}}]
+        rules = [
+            {"filter": "foo", "calculator": {"calc": "6+5"}},
+            {"filter": "foo", "calculator": {"calc": "1 + 1"}},
+        ]
         self.source = tempfile.mkdtemp()
         yaml_files = [tempfile.mktemp(dir=self.source, suffix=".yml") for _ in range(2)]
         subdir = tempfile.mkdtemp(dir=self.source)
@@ -98,10 +75,7 @@ class TestDirectoryRuleLoader:
                 file.write(json.dumps(rules))
         self.name = "test instance name"
         self.rule_class = Rule
-        self.args = (self.source, self.rule_class, self.name)
-
-    def test_object_hierarchy(self):
-        assert isinstance(DirectoryRuleLoader(*self.args), RuleLoader)
+        self.args = (self.source, self.name)
 
     def test_returns_list(self):
         assert isinstance(DirectoryRuleLoader(*self.args).rules, list)
@@ -111,3 +85,94 @@ class TestDirectoryRuleLoader:
         assert rules, "Expected non-empty list of rules"
         assert all(isinstance(rule, Rule) for rule in rules)
         assert len(rules) == 8
+
+
+class TestRuleLoader:
+
+    def test_get_rules_for_given_dict(self):
+        rules_sources = {"filter": "foo", "calculator": {"calc": "1 + 1"}}
+        rules = RuleLoader(rules_sources, "test instance name").rules
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], Rule)
+
+    def test_get_rules_for_given_list_of_dicts(self):
+        rules_sources = [
+            {"filter": "foo", "calculator": {"calc": "1 + 1"}},
+            {"filter": "foo", "calculator": {"calc": "2 + 2"}},
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rules
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], Rule)
+
+    def test_get_rules_for_given_list_of_file_names(self):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            "tests/testdata/auto_tests/clusterer/rules/rule_with_custom_tests_1.yml",
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rules
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], Rule)
+
+    def test_get_rules_for_given_list_of_dirs(self):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/",
+            "tests/testdata/auto_tests/clusterer/rules/",
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rules
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], Rule)
+
+    def test_get_rules_for_given_list_of_mixed_dirs_and_files(self):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            "tests/testdata/auto_tests/clusterer/rules/",
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rules
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], Rule)
+
+    def test_get_rules_for_given_list_of_mixed_dirs_files_and_dicts(self):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            "tests/testdata/auto_tests/clusterer/rules/",
+            {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": "test2 (signature) test2",
+                    "repl": "<+>\\1</+>",
+                },
+            },
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rules
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], Rule)
+
+    def test_get_rules_for_given_list_of_mixed_dirs_files_and_dicts_for_different_processors(self):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            {
+                "filter": "field1 AND field3",
+                "calculator": {"calc": "${field1} + ${field3}", "target_field": "new_field"},
+            },
+            "tests/testdata/auto_tests/clusterer/rules/",
+            {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": "test2 (signature) test2",
+                    "repl": "<+>\\1</+>",
+                },
+            },
+            "tests/testdata/unit/labeler/rules/rule.json",
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rules
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], Rule)

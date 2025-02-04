@@ -4,13 +4,12 @@ import itertools
 from pathlib import Path
 from typing import Dict, List
 
-from logprep.abc.rule_loader import RuleLoader
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
 from logprep.util.getter import GetterFactory
 
 
-class DirectoryRuleLoader(RuleLoader):
+class DirectoryRuleLoader:
     """
     DirectoryRuleLoader is responsible for loading rules from a directory recursively.
     The directory can contain multiple rule files with supported extensions.
@@ -31,6 +30,10 @@ class DirectoryRuleLoader(RuleLoader):
       Returns the list of rules loaded from the directory.
     """
 
+    def __init__(self, source: str, processor_name: str):
+        self.source = source
+        self.processor_name = processor_name
+
     @property
     def rules(self) -> List[Rule]:
         rule_files = (
@@ -38,83 +41,72 @@ class DirectoryRuleLoader(RuleLoader):
             for path in Path(self.source).glob("**/*")
             if path.suffix in RULE_FILE_EXTENSIONS
         )
-        rule_lists = (
-            FileRuleLoader(str(file), self.rule_class, self.processor_name).rules
-            for file in rule_files
-        )
+        rule_lists = (FileRuleLoader(str(file), self.processor_name).rules for file in rule_files)
         return list(itertools.chain(*rule_lists))
 
 
+class RuleLoader:
+
+    def __init__(self, source: List[Dict | str] | Dict | str, processor_name: str):
+        self.source = source
+        self.processor_name = processor_name
+
+    @property
+    def rules(self) -> List[Rule]:
+        """
+        Load rules from a list of dictionaries, dicts or file paths.
+        Parameters
+        ----------
+        rules : list of dict or str
+          A list of dictionaries or file paths containing the rules to be loaded.
+        processor_name : str
+          The name of the processor that the rules belong to.
+        Returns
+        -------
+        list of Rule
+          A list of Rule objects created from the source list of dictionaries or files.
+        """
+        rules: List[Rule] = []
+        match self.source:
+            case dict():
+                rules.extend(DictRuleLoader(self.source, self.processor_name).rules)
+            case str():
+                path = Path(self.source)
+                if path.is_dir():
+                    rules.extend(DirectoryRuleLoader(self.source, self.processor_name).rules)
+                if path.is_file():
+                    rules.extend(FileRuleLoader(self.source, self.processor_name).rules)
+            case list():
+                for element in self.source:
+                    rules.extend(RuleLoader(element, self.processor_name).rules)
+        return rules
+
+
 class FileRuleLoader(RuleLoader):
-    """
-    FileRuleLoader is responsible for loading rules from a file.
-    The file can be located in a filesystem or in a remote location accessible
-    via a HTTP.
-    Parameters
-    ----------
-    file : str
-      The path to the file containing the rules.
-    Attributes
-    ----------
-    source : str
-      The source file from which the rules are loaded.
-    Methods
-    -------
-    rules
-      Returns the list of rules loaded from the file.
-    """
-
     @property
     def rules(self) -> List[Rule]:
-        rules: List | Dict = []
+        rule_definitions: List | Dict = []
         if self.source.endswith(".yaml") or self.source.endswith(".yml"):
-            rules = GetterFactory.from_string(str(self.source)).get_yaml()
+            rule_definitions = GetterFactory.from_string(str(self.source)).get_yaml()
         elif self.source.endswith(".json"):
-            rules = GetterFactory.from_string(str(self.source)).get_json()
-        if isinstance(rules, dict):
-            return DictRuleLoader(rules, self.rule_class, self.processor_name).rules
-        return ListRuleLoader(rules, self.rule_class, self.processor_name).rules
-
-
-class ListRuleLoader(RuleLoader):
-    """
-    ListRuleLoader is a class that loads rules from a list of dictionaries.
-    Parameters
-    ----------
-    rules : list of dict
-      A list of dictionaries where each dictionary represents a rule.
-    Attributes
-    ----------
-    source : list of dict
-      The source list of dictionaries containing the rules.
-    Methods
-    -------
-    rules
-      Returns a list of Rule objects created from the source list of dictionaries.
-    """
-
-    @property
-    def rules(self) -> List[Rule]:
-        return [self.rule_class.create_from_dict(rule, self.processor_name) for rule in self.source]
+            rule_definitions = GetterFactory.from_string(str(self.source)).get_json()
+        if not rule_definitions:
+            return []
+        if isinstance(rule_definitions, dict):
+            return DictRuleLoader(rule_definitions, self.processor_name).rules
+        if isinstance(rule_definitions, list):
+            rules = []
+            for rule in rule_definitions:
+                rules.extend(DictRuleLoader(rule, self.processor_name).rules)
+            return rules
+        return []
 
 
 class DictRuleLoader(RuleLoader):
-    """
-    A rule loader that loads rules from a dictionary source.
-    Parameters
-    ----------
-    source : dict
-      A dictionary containing the rules to be loaded.
-    Attributes
-    ----------
-    source : dict
-      The source dictionary containing the rules.
-    Methods
-    -------
-    rules
-      Returns a list of rules created from the source dictionary.
-    """
-
     @property
     def rules(self) -> List[Rule]:
-        return [self.rule_class.create_from_dict(self.source, self.processor_name)]
+
+        from logprep.registry import Registry  # pylint: disable=import-outside-toplevel
+
+        rule_class = Registry.get_rule_class_by_rule_definition(self.source)
+        return [rule_class.create_from_dict(self.source, self.processor_name)]
