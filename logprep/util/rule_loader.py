@@ -2,7 +2,7 @@
 
 import itertools
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Generator, List
 
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
@@ -67,6 +67,29 @@ class RuleLoader:
                     rules.extend(RuleLoader(element, self.processor_name).rules)
         return rules
 
+    @property
+    def rule_definitions(self) -> List[Dict]:
+        rule_definitions: List[Dict] = []
+        match self.source:
+            case dict():
+                rule_definitions.append(self.source)
+            case str():
+                path = Path(self.source)
+                if path.is_dir():
+                    rule_definitions.extend(
+                        DirectoryRuleLoader(self.source, self.processor_name).rule_definitions
+                    )
+                else:
+                    rule_definitions.extend(
+                        FileRuleLoader(self.source, self.processor_name).rule_definitions
+                    )
+            case list():
+                for element in self.source:
+                    rule_definitions.extend(
+                        RuleLoader(element, self.processor_name).rule_definitions
+                    )
+        return rule_definitions
+
 
 class DirectoryRuleLoader:
     """
@@ -95,33 +118,54 @@ class DirectoryRuleLoader:
 
     @property
     def rules(self) -> List[Rule]:
-        rule_files = (
-            path.resolve()
-            for path in Path(self.source).glob("**/*")
-            if path.suffix in RULE_FILE_EXTENSIONS
-        )
+        rule_files = self.get_rule_files(self.source)
         rule_lists = (FileRuleLoader(str(file), self.processor_name).rules for file in rule_files)
         return list(itertools.chain(*rule_lists))
+
+    @property
+    def rule_definitions(self) -> List[Dict]:
+        rule_files = self.get_rule_files(self.source)
+        rule_definitions = (
+            FileRuleLoader(str(file), self.processor_name).rule_definitions for file in rule_files
+        )
+        return list(itertools.chain(*rule_definitions))
+
+    @staticmethod
+    def get_rule_files(source: str) -> Generator[str, None, None]:
+        """return a list of rule files in the source directory."""
+        return (
+            str(path.resolve())
+            for path in Path(source).glob("**/*")
+            if path.suffix in RULE_FILE_EXTENSIONS
+        )
 
 
 class FileRuleLoader(RuleLoader):
     @property
     def rules(self) -> List[Rule]:
-        rule_definitions: List | Dict = []
+        if not isinstance(self.source, str):
+            raise TypeError(f"Expected a string, got {type(self.source)}")
+        return list(
+            itertools.chain(
+                *[
+                    DictRuleLoader(rule_definition, self.processor_name).rules
+                    for rule_definition in self.rule_definitions
+                ]
+            )
+        )
+
+    @property
+    def rule_definitions(self) -> List[Dict]:
+        rule_definitions: List[Dict] | Dict = []
+        if not isinstance(self.source, str):
+            raise TypeError(f"Expected a string, got {type(self.source)}")
         if self.source.endswith(".yaml") or self.source.endswith(".yml"):
-            rule_definitions = GetterFactory.from_string(str(self.source)).get_yaml()
+            rule_definitions = GetterFactory.from_string(self.source).get_yaml()
         elif self.source.endswith(".json"):
-            rule_definitions = GetterFactory.from_string(str(self.source)).get_json()
-        if not rule_definitions:
-            return []
-        if isinstance(rule_definitions, dict):
-            return DictRuleLoader(rule_definitions, self.processor_name).rules
-        if isinstance(rule_definitions, list):
-            rules = []
-            for rule in rule_definitions:
-                rules.extend(DictRuleLoader(rule, self.processor_name).rules)
-            return rules
-        return []
+            rule_definitions = GetterFactory.from_string(self.source).get_json()
+        if not isinstance(rule_definitions, list):
+            rule_definitions = [rule_definitions]
+        return rule_definitions
 
 
 class DictRuleLoader(RuleLoader):
@@ -130,5 +174,7 @@ class DictRuleLoader(RuleLoader):
 
         from logprep.registry import Registry  # pylint: disable=import-outside-toplevel
 
+        if not isinstance(self.source, dict):
+            raise TypeError(f"Expected a dictionary, got {type(self.source)}")
         rule_class = Registry.get_rule_class_by_rule_definition(self.source)
         return [rule_class.create_from_dict(self.source, self.processor_name)]

@@ -3,6 +3,7 @@
 import json
 import tempfile
 
+import responses
 import ruamel.yaml
 
 from logprep.processor.base.rule import Rule
@@ -176,3 +177,128 @@ class TestRuleLoader:
         assert rules
         assert isinstance(rules, list)
         assert isinstance(rules[0], Rule)
+
+    def test_rule_definitions_for_given_dict(self):
+        rules_sources = {"filter": "foo", "calculator": {"calc": "1 + 1"}}
+        rules = RuleLoader(rules_sources, "test instance name").rule_definitions
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], dict)
+
+    def test_rule_definitions_for_given_list_of_dicts(self):
+        rules_sources = [
+            {"filter": "foo", "calculator": {"calc": "1 + 1"}},
+            {"filter": "foo", "calculator": {"calc": "2 + 2"}},
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rule_definitions
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], dict)
+
+    def test_rule_definitions_for_given_list_of_file_names(self):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            "tests/testdata/auto_tests/clusterer/rules/rule_with_custom_tests_1.yml",
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rule_definitions
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], dict)
+
+    def test_rule_definitions_for_given_list_of_dirs(self):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/",
+            "tests/testdata/auto_tests/clusterer/rules/",
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rule_definitions
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], dict)
+
+    def test_rule_definitions_for_given_list_of_mixed_dirs_and_files(self):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            "tests/testdata/auto_tests/clusterer/rules/",
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rule_definitions
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], dict)
+
+    def test_rule_definitions_for_given_list_of_mixed_dirs_files_and_dicts(self):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            "tests/testdata/auto_tests/clusterer/rules/",
+            {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": "test2 (signature) test2",
+                    "repl": "<+>\\1</+>",
+                },
+            },
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rule_definitions
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], dict)
+
+    def test_rule_definitions_for_given_list_of_mixed_dirs_files_and_dicts_for_different_processors(
+        self,
+    ):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            {
+                "filter": "field1 AND field3",
+                "calculator": {"calc": "${field1} + ${field3}", "target_field": "new_field"},
+            },
+            "tests/testdata/auto_tests/clusterer/rules/",
+            {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": "test2 (signature) test2",
+                    "repl": "<+>\\1</+>",
+                },
+            },
+            "tests/testdata/unit/labeler/rules/rule.json",
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rule_definitions
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], dict)
+
+    @responses.activate
+    def test_rule_definitions_for_given_list_of_mixed_dirs_files_and_dicts_http_endpoints(
+        self,
+    ):
+        responses.get(
+            "http://example.com/rules.json",
+            json={
+                "filter": "field1 AND field3",
+                "calculator": {"calc": "1+1", "target_field": "special_field"},
+            },
+        )
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            {
+                "filter": "field1 AND field3",
+                "calculator": {"calc": "${field1} + ${field3}", "target_field": "new_field"},
+            },
+            "tests/testdata/auto_tests/clusterer/rules/",
+            {
+                "filter": "message",
+                "clusterer": {
+                    "source_fields": ["message"],
+                    "pattern": "test2 (signature) test2",
+                    "repl": "<+>\\1</+>",
+                },
+            },
+            "tests/testdata/unit/labeler/rules/rule.json",
+            "http://example.com/rules.json",
+        ]
+        rules = RuleLoader(rules_sources, "test instance name").rule_definitions
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[-1], dict)
+        assert "special_field" in rules[-1]["calculator"]["target_field"]
