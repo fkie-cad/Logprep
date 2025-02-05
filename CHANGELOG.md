@@ -12,6 +12,7 @@
 ### Improvements
 * removes `colorama` dependency
 * reimplemented the rule loading mechanic
+* removes `rstr` dependency
 
 ### Bugfix
 * fixes a bug with lucene regex and parentheses
