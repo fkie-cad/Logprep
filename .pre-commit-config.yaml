@@ -11,6 +11,14 @@ repos:
       - id: check-toml
       - id: debug-statements
       - id: no-commit-to-branch
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: pylint
+        language: system
+        types: [python]
+        require_serial: true
   - repo: https://github.com/psf/black
     rev: 25.1.0
     hooks:
