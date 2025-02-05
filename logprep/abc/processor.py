@@ -242,7 +242,7 @@ class Processor(Component):
         try:
             rules = RuleLoader(rules_targets, self.name).rules
         except ValueError as error:
-            logger.error("Loading rules from %s failed: %s -> Skipping.", rules_targets, error)
+            logger.error("Loading rules from %s failed: %s ", rules_targets, error)
             raise error
         for rule in rules:
             self._rule_tree.add_rule(rule)
