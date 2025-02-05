@@ -67,7 +67,7 @@ jobs:
       - name: lint changed and added files
         if: steps.changed-files.outputs.all_changed_files
         run: |
-          pylint --fail-under 9.5 ${{ steps.changed-files.outputs.all_changed_files }}
+          pylint ${{ steps.changed-files.outputs.all_changed_files }}
       - name: Run tests and collect coverage
         run: pytest tests/unit --cov=logprep --cov-report=xml
       - name: Upload coverage reports to Codecov with GitHub Action

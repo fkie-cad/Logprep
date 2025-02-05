@@ -157,6 +157,7 @@ environment = 'PATH=$HOME/.cargo/bin:$PATH'
 
 [tool.pylint.MAIN]
 ignore = ".venv"
+fail-under = 9.5
 
 [tool.pylint.FORMAT]
 max-line-length=100
