@@ -1,12 +1,15 @@
 """module for rule loaders."""
 
 import itertools
+from logging import getLogger
 from pathlib import Path
 from typing import Dict, Generator, List
 
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
 from logprep.util.getter import GetterFactory
+
+logger = getLogger("RuleLoader")
 
 
 class RuleLoader:
@@ -196,14 +199,18 @@ class FileRuleLoader(RuleLoader):
 
         if not isinstance(self.source, str):
             raise TypeError(f"Expected a string, got {type(self.source)}")
-        return list(
-            itertools.chain(
-                *[
-                    DictRuleLoader(rule_definition, self.processor_name).rules
-                    for rule_definition in self.rule_definitions
-                ]
+        try:
+            return list(
+                itertools.chain(
+                    *[
+                        DictRuleLoader(rule_definition, self.processor_name).rules
+                        for rule_definition in self.rule_definitions
+                    ]
+                )
             )
-        )
+        except ValueError as error:
+            logger.warning("Loading rules from %s failed: %s -> Skipping.", self.source, error)
+        return []
 
     @property
     def rule_definitions(self) -> List[Dict]:

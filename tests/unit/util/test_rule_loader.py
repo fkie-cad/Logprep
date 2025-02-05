@@ -8,6 +8,7 @@ import responses
 import ruamel.yaml
 
 from logprep.processor.base.rule import Rule
+from logprep.processor.clusterer.rule import ClustererRule
 from logprep.util.rule_loader import (
     DictRuleLoader,
     DirectoryRuleLoader,
@@ -318,3 +319,21 @@ class TestRuleLoader:
         assert isinstance(rules, list)
         assert isinstance(rules[-1], dict)
         assert "special_field" in rules[-1]["calculator"]["target_field"]
+
+    def test_rule_from_file_ignores_files_with_invalid_rules(self, caplog):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/rules.json",
+            "tests/testdata/auto_tests/labeler/schema.json",
+        ]
+        with caplog.at_level(10):
+            rules = RuleLoader(rules_sources, "test instance name").rules
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], Rule)
+        assert len(rules) == 2, "Expected 2 rules from clusterer"
+        assert all(isinstance(rule, ClustererRule) for rule in rules)
+        assert "WARNING" in caplog.text
+        assert (
+            "Loading rules from tests/testdata/auto_tests/labeler/schema.json"
+            " failed: Unknown rule type -> Skipping"
+        ) in caplog.text
