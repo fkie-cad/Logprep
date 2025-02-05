@@ -337,3 +337,20 @@ class TestRuleLoader:
             "Loading rules from tests/testdata/auto_tests/labeler/schema.json"
             " failed: Unknown rule type -> Skipping"
         ) in caplog.text
+
+    def test_rule_from_dir_ignores_files_with_invalid_rules(self, caplog):
+        rules_sources = [
+            "tests/testdata/unit/clusterer/rules/",
+            "tests/testdata/auto_tests/labeler/",
+        ]
+        with caplog.at_level(10):
+            rules = RuleLoader(rules_sources, "test instance name").rules
+        assert rules
+        assert isinstance(rules, list)
+        assert isinstance(rules[0], Rule)
+        assert len(rules) == 6, "Expected 6 rules"
+        assert "WARNING" in caplog.text
+        assert (
+            "Loading rules from tests/testdata/auto_tests/labeler/schema.json"
+            " failed: Unknown rule type -> Skipping"
+        ) in caplog.text

@@ -162,9 +162,7 @@ class DirectoryRuleLoader:
     def get_rule_files(source: str) -> Generator[str, None, None]:
         """return a list of rule files in the source directory."""
         return (
-            str(path.resolve())
-            for path in Path(source).glob("**/*")
-            if path.suffix in RULE_FILE_EXTENSIONS
+            str(path) for path in Path(source).glob("**/*") if path.suffix in RULE_FILE_EXTENSIONS
         )
 
 
