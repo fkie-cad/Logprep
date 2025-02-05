@@ -19,7 +19,10 @@ from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
-from logprep.processor.base.exceptions import ProcessingCriticalError
+from logprep.processor.base.exceptions import (
+    InvalidRuleDefinitionError,
+    ProcessingCriticalError,
+)
 from logprep.processor.base.rule import Rule
 from tests.unit.component.base import BaseComponentTestCase
 
@@ -274,3 +277,19 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_result_object_has_reference_to_event(self):
         result = self.object.process(self.match_all_event)
         assert result.event is self.match_all_event
+
+    def test_invalid_rule_raises(self, caplog):
+        rule_definition = {"filter": "test", "does_not_exist": "test"}
+        with pytest.raises(ValueError):
+            with caplog.at_level(10):
+                self.object.load_rules(rules_targets=[rule_definition])
+        assert "ERROR" in caplog.text
+        assert "Loading rules from" in caplog.text
+
+    def test_valid_rule_but_other_processor_raises(self):
+        rule_definitions = [
+            {"filter": "test", "calculator": "1+1"},
+            {"filter": "drop_me", "dropper": {"drop": ["drop_me"]}},
+        ]
+        with pytest.raises(InvalidRuleDefinitionError):
+            self.object.load_rules(rules_targets=rule_definitions)

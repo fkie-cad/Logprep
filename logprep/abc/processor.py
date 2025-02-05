@@ -239,7 +239,11 @@ class Processor(Component):
 
     def load_rules(self, rules_targets: List[str | Dict]) -> None:
         """method to add rules from directories or urls"""
-        rules = RuleLoader(rules_targets, self.name).rules
+        try:
+            rules = RuleLoader(rules_targets, self.name).rules
+        except ValueError as error:
+            logger.error("Loading rules from %s failed: %s -> Skipping.", rules_targets, error)
+            raise error
         for rule in rules:
             self._rule_tree.add_rule(rule)
         if logger.isEnabledFor(logging.DEBUG):
