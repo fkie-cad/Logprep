@@ -56,7 +56,8 @@ with the key :code:`password_file`.
 .. security-best-practice::
    :title: Http Input Connector - Authentication
 
-    When using basic auth with the http input connector the following points should be taken into account:
+    When using basic auth with the http input connector
+    the following points should be taken into account:
         - basic auth must only be used with strong passwords
         - basic auth must only be used with TLS encryption
         - avoid to reveal your plaintext secrets in public repositories
@@ -90,7 +91,6 @@ from typing import Callable, List, Mapping, Tuple, Union
 import falcon.asgi
 import msgspec
 import requests
-import rstr
 from attrs import define, field, validators
 from falcon import (  # pylint: disable=no-name-in-module
     HTTP_200,
@@ -103,7 +103,7 @@ from falcon import (  # pylint: disable=no-name-in-module
 
 from logprep.abc.input import FatalInputError, Input
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.util import http
+from logprep.util import http, rstr
 from logprep.util.credentials import CredentialsFactory
 
 logger = logging.getLogger("HTTPInput")
@@ -212,6 +212,7 @@ class HttpEndpoint(ABC):
         Includes authentication credentials, if unset auth is disabled
     """
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         messages: mp.Queue,
@@ -352,9 +353,11 @@ class HttpInput(Input):
         .. security-best-practice::
            :title: Uvicorn Webserver Configuration
            :location: uvicorn_config
-           :suggested-value: uvicorn_config.access_log: true, uvicorn_config.server_header: false, uvicorn_config.data_header: false
+           :suggested-value: uvicorn_config.access_log: true,
+            uvicorn_config.server_header: false, uvicorn_config.data_header: false
 
-           Additionally to the below it is recommended to configure `ssl on the metrics server endpoint
+           Additionally to the below it is recommended to configure
+           `ssl` on the metrics server endpoint
            <https://www.uvicorn.org/settings/#https>`_
 
            .. code-block:: yaml
@@ -497,7 +500,8 @@ class HttpInput(Input):
     def health_endpoints(self) -> List[str]:
         """Returns a list of endpoints for internal healthcheck
         the endpoints are examples to match against the configured regex enabled
-        endpoints. The endpoints are normalized to match the regex patterns and this ensures that the endpoints should not be too long
+        endpoints. The endpoints are normalized to match the regex patterns and
+        this ensures that the endpoints should not be too long
         """
         normalized_endpoints = (endpoint.replace(".*", "b") for endpoint in self._config.endpoints)
         normalized_endpoints = (endpoint.replace(".+", "b") for endpoint in normalized_endpoints)

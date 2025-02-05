@@ -19,6 +19,7 @@ repos:
         language: system
         types: [python]
         require_serial: true
+        args: ["--rcfile=./pyproject.toml"]
   - repo: https://github.com/psf/black
     rev: 25.1.0
     hooks:
