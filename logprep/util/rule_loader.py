@@ -3,7 +3,7 @@
 import itertools
 from logging import getLogger
 from pathlib import Path
-from typing import Dict, Generator, List
+from typing import Dict, Generator, Iterable, List
 
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
@@ -101,8 +101,17 @@ class RuleLoader:
                     )
         return rule_definitions
 
+    @staticmethod
+    def files_by_extensions(
+        source: str, extensions: Iterable | None = None
+    ) -> Generator[str, None, None]:
+        """return a list of rule files in the source directory."""
+        if extensions is None:
+            extensions = RULE_FILE_EXTENSIONS
+        return (str(path) for path in Path(source).glob("**/*") if path.suffix in extensions)
 
-class DirectoryRuleLoader:
+
+class DirectoryRuleLoader(RuleLoader):
     """
     DirectoryRuleLoader is responsible for loading rules from a directory recursively.
     The directory can contain multiple rule files with supported extensions.
@@ -137,7 +146,7 @@ class DirectoryRuleLoader:
         list of Rule
           A list of Rule objects created from the rule files in the directory recursively.
         """
-        rule_files = self.get_rule_files(self.source)
+        rule_files = self.files_by_extensions(self.source)
         rule_lists = (FileRuleLoader(str(file), self.processor_name).rules for file in rule_files)
         return list(itertools.chain(*rule_lists))
 
@@ -152,18 +161,11 @@ class DirectoryRuleLoader:
         list of dict
           A list of rule definitions created from the rule files in the directory recursively.
         """
-        rule_files = self.get_rule_files(self.source)
+        rule_files = self.files_by_extensions(self.source)
         rule_definitions = (
             FileRuleLoader(str(file), self.processor_name).rule_definitions for file in rule_files
         )
         return list(itertools.chain(*rule_definitions))
-
-    @staticmethod
-    def get_rule_files(source: str) -> Generator[str, None, None]:
-        """return a list of rule files in the source directory."""
-        return (
-            str(path) for path in Path(source).glob("**/*") if path.suffix in RULE_FILE_EXTENSIONS
-        )
 
 
 class FileRuleLoader(RuleLoader):
