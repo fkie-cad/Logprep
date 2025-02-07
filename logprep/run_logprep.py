@@ -8,11 +8,11 @@ import sys
 import warnings
 
 import click
-from logprep.util.ansi import Fore
 
 from logprep.generator.http.controller import Controller
 from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
+from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
@@ -191,7 +191,7 @@ def generate_kafka(config, file):
     "--target-url",
     help="Target root url where all events should be send to. The specific path of each log class "
     "will be appended to it, resulting in the complete url that should be used as an endpoint.",
-    required=True,
+    required=False,
     type=str,
 )
 @click.option("--user", help="Username for the target domain", required=False, type=str)
@@ -257,11 +257,20 @@ def generate_kafka(config, file):
     required=False,
     default=2,
 )
+@click.option(
+    "--kafka-config",
+    help="Enables http generator to use kafka output",
+    required=False,
+    type=str,
+    default=None,
+)
 def generate_http(**kwargs):
     """
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a http endpoint.
     """
+    if not kwargs.get("kafka_config") and not kwargs.get("target_url"):
+        raise click.UsageError("--target-url is required when --kafka-config is not provided.")
     generator_logger = logging.getLogger("Generator")
     generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
     generator = Controller(**kwargs)

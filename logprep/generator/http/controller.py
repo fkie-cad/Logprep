@@ -3,11 +3,13 @@ This generator will parse example events, manipulate their timestamps and send t
 a defined output
 """
 
+import json
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 
+from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.http.output import HttpOutput
 from logprep.factory import Factory
 from logprep.generator.http.input import Input
@@ -28,16 +30,27 @@ class Controller:
         self._setup_logging()
         self.thread_count: int = kwargs.get("thread_count")
         self.input: Input = Input(self.config)
-        output_config = {
-            "generator_output": {
-                "type": "http_output",
-                "user": kwargs.get("user"),
-                "password": kwargs.get("password"),
-                "target_url": kwargs.get("target_url"),
-                "timeout": kwargs.get("timeout", 2),
+        if kwargs.get("kafka_config") is None:
+            output_config = {
+                "generator_output": {
+                    "type": "http_output",
+                    "user": kwargs.get("user"),
+                    "password": kwargs.get("password"),
+                    "target_url": kwargs.get("target_url"),
+                    "timeout": kwargs.get("timeout", 2),
+                }
             }
-        }
-        self.output: HttpOutput = Factory.create(output_config)
+            self.output: HttpOutput = Factory.create(output_config)
+        else:
+            output_config = {
+                "generator_output": {
+                    "type": "confluentkafka_output",
+                    "topic": "producer",
+                    "kafka_config": json.loads(kwargs.get("kafka_config")),
+                },
+            }
+
+            self.output: ConfluentKafkaOutput = Factory.create(output_config)
 
     def _setup_logging(self):
         console_logger = logging.getLogger("console")
