@@ -314,7 +314,7 @@ class TestGeneratorCLI:
             tag="loadtest",
             loglevel="INFO",
             timeout=2,
-            kafka=None,
+            kafka_config=None,
         )
         mock_controller_instance.run.assert_called()
 
@@ -365,7 +365,7 @@ class TestGeneratorCLI:
             tag="test-tag",
             loglevel="DEBUG",
             timeout=2,
-            kafka=None,
+            kafka_config=None,
         )
         mock_controller.run.assert_called()
 
