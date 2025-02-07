@@ -119,11 +119,11 @@ class Registry:
 
     @classmethod
     def get_rule_class_by_rule_definition(cls, rule_definition: dict) -> Type[Rule]:
-        """return the processor class for a given type
+        """return the rule class for a given rule type
 
         Parameters
         ----------
-        processor_type : str
+        rule_definition : str
             the processor type
 
         Returns
