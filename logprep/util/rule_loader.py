@@ -21,19 +21,8 @@ class RuleLoader:
     source : list of dict or str or dict or str
       A list of dictionaries, file paths, a single dictionary,
       or a single file path containing the rules to be loaded.
-
     processor_name : str
       The name of the processor that the rules belong to.
-
-    Attributes
-    ----------
-    source : list of dict or str or dict or str
-      The source from which the rules are to be loaded.
-
-    Methods
-    -------
-    rules:
-      Load rules from the specified source and return a list of Rule objects.
     """
 
     def __init__(self, source: List[Dict | str] | Dict | str, processor_name: str):
@@ -44,12 +33,7 @@ class RuleLoader:
     def rules(self) -> List[Rule]:
         """
         Load rules from a list of dictionaries, dicts or file paths.
-        Parameters
-        ----------
-        rules : list of dict or str
-          A list of dictionaries or file paths containing the rules to be loaded.
-        processor_name : str
-          The name of the processor that the rules belong to.
+
         Returns
         -------
         list of Rule
@@ -120,21 +104,11 @@ class DirectoryRuleLoader(RuleLoader):
 
     Parameters
     ----------
-    directory : str
-      The path to the directory containing the rule files.
-    Attributes
-    ----------
     source : str
-      The source directory from which the rule files are loaded.
-    Methods
-    -------
-    rules
-      Returns the list of rules loaded from the directory.
+      The path to the directory containing the rule files.
+    processor_name : str
+      The name of the processor that the rules belong to.
     """
-
-    def __init__(self, source: str, processor_name: str):
-        self.source = source
-        self.processor_name = processor_name
 
     @property
     def rules(self) -> List[Rule]:
@@ -146,6 +120,8 @@ class DirectoryRuleLoader(RuleLoader):
         list of Rule
           A list of Rule objects created from the rule files in the directory recursively.
         """
+        if not isinstance(self.source, str):
+            raise TypeError(f"Expected a string, got {type(self.source)}")
         rule_files = self.files_by_extensions(self.source)
         rule_lists = (FileRuleLoader(str(file), self.processor_name).rules for file in rule_files)
         return list(itertools.chain(*rule_lists))
@@ -161,6 +137,8 @@ class DirectoryRuleLoader(RuleLoader):
         list of dict
           A list of rule definitions created from the rule files in the directory recursively.
         """
+        if not isinstance(self.source, str):
+            raise TypeError(f"Expected a string, got {type(self.source)}")
         rule_files = self.files_by_extensions(self.source)
         rule_definitions = (
             FileRuleLoader(str(file), self.processor_name).rule_definitions for file in rule_files

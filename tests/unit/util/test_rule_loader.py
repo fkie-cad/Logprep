@@ -104,6 +104,29 @@ class TestDirectoryRuleLoader:
         assert all(isinstance(rule, Rule) for rule in rules)
         assert len(rules) == 8
 
+    def test_rules_raises_type_error_if_source_is_not_string(self):
+        self.source = {"foo": "bar"}
+        with pytest.raises(TypeError, match="Expected a string"):
+            _ = DirectoryRuleLoader(self.source, self.name).rules
+
+    def test_rule_definitions_raises_type_error_if_source_is_not_string(self):
+        self.source = {"foo": "bar"}
+        with pytest.raises(TypeError, match="Expected a string"):
+            _ = DirectoryRuleLoader(self.source, self.name).rule_definitions
+
+    def test_returns_empty_list_if_no_valid_rule_files(self):
+        self.source = tempfile.mkdtemp()
+        invalid_file = tempfile.mktemp(dir=self.source, suffix=".txt")
+        with open(invalid_file, "w", encoding="utf8") as file:
+            file.write("invalid content")
+        rules = DirectoryRuleLoader(self.source, self.name).rules
+        assert rules == [], "Expected empty list of rules"
+
+    def test_returns_empty_list_if_directory_is_empty(self):
+        self.source = tempfile.mkdtemp()
+        rules = DirectoryRuleLoader(self.source, self.name).rules
+        assert rules == [], "Expected empty list of rules"
+
 
 class TestRuleLoader:
 
