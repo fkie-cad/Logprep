@@ -10,7 +10,6 @@ import warnings
 import click
 
 from logprep.generator.http.controller import Controller
-from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
 from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
@@ -162,6 +161,83 @@ def test_rules(configs: tuple[str]) -> None:
         tester.run()
 
 
+def common_generate_options(func):
+    """Decorator to add common options to multiple commands."""
+    func = click.option(
+        "--input-dir", help="Path to the root input directory", required=True, type=str
+    )(func)
+    func = click.option("--user", help="Username for the target domain", required=False, type=str)(
+        func
+    )
+    func = click.option(
+        "--password", help="Credentials for the user of the target domain", required=False, type=str
+    )(func)
+    func = click.option(
+        "--events",
+        help="Total number of events that should be send to the target.",
+        required=False,
+        default=None,
+        type=int,
+    )(func)
+    func = click.option("--user", help="Username for the target domain", required=False, type=str)(
+        func
+    )
+    func = click.option(
+        "--batch-size",
+        help="Number of events that should be loaded and send as a batch. Exact number of events "
+        "per request will differ as they are separated by log class. If a log class has more "
+        "samples than another log class, it will also have a larger request size.",
+        required=False,
+        default=500,
+        type=int,
+    )(func)
+    func = click.option(
+        "--shuffle",
+        help="Shuffle the events before sending them to the target.",
+        required=False,
+        default=False,
+        type=bool,
+    )(func)
+    func = click.option(
+        "--thread-count",
+        help="Number of threads that should be used to send events in parallel to the target. If "
+        "thread_count is set to '1' then multithreading is deactivated and the main process will "
+        "be used.",
+        required=False,
+        default=1,
+        type=int,
+    )(func)
+    func = click.option(
+        "--replace-timestamp",
+        help="Defines if timestamps should be replaced with the current timestamp.",
+        required=False,
+        default=True,
+        type=bool,
+    )(func)
+    func = click.option(
+        "--tag",
+        help="Tag that should be written into the events.",
+        required=False,
+        default="loadtest",
+        type=str,
+    )(func)
+    func = click.option(
+        "--loglevel",
+        help="Sets the log level for the logger.",
+        type=click.Choice(logging._levelToName.values()),  # pylint: disable=protected-access
+        required=False,
+        default="INFO",
+    )(func)
+    func = click.option(
+        "--timeout",
+        help="Timeout in seconds for the http requests",
+        required=False,
+        default=2,
+    )(func)
+
+    return func
+
+
 @cli.group(short_help="Generate load for a running logprep instance")
 def generate():
     """
@@ -170,108 +246,39 @@ def generate():
     """
 
 
+@common_generate_options
 @generate.command(name="kafka")
-@click.argument("config")
 @click.option(
-    "--file", help="Path to file with documents", default=None, type=click.Path(exists=True)
+    "--output-config",
+    help="Enables http generator to use kafka output",
+    required=True,
+    type=str,
 )
-def generate_kafka(config, file):
+def generate_kafka(**kwargs):
     """
-    Generate events by taking them from kafka or a jsonl file and sending them to Kafka.
-
-    CONFIG is a path to a configuration file for the event generation.
+    Generates events based on templated sample files stored inside a dataset directory.
+    The events will be sent to a kafka endpoint.
     """
-    load_tester = LoadTester(config, file)
-    load_tester.run()
+    generator_logger = logging.getLogger("Generator")
+    generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
+    generator = Controller(**kwargs)
+    generator.run()
 
 
 @generate.command(name="http")
-@click.option("--input-dir", help="Path to the root input directory", required=True, type=str)
+@common_generate_options
 @click.option(
     "--target-url",
     help="Target root url where all events should be send to. The specific path of each log class "
     "will be appended to it, resulting in the complete url that should be used as an endpoint.",
-    required=False,
+    required=True,
     type=str,
-)
-@click.option("--user", help="Username for the target domain", required=False, type=str)
-@click.option(
-    "--password", help="Credentials for the user of the target domain", required=False, type=str
-)
-@click.option(
-    "--batch-size",
-    help="Number of events that should be loaded and send as a batch. Exact number of events "
-    "per request will differ as they are separated by log class. If a log class has more "
-    "samples than another log class, it will also have a larger request size.",
-    required=False,
-    default=500,
-    type=int,
-)
-@click.option(
-    "--events",
-    help="Total number of events that should be send to the target.",
-    required=False,
-    default=None,
-    type=int,
-)
-@click.option(
-    "--shuffle",
-    help="Shuffle the events before sending them to the target.",
-    required=False,
-    default=False,
-    type=bool,
-)
-@click.option(
-    "--thread-count",
-    help="Number of threads that should be used to send events in parallel to the target. If "
-    "thread_count is set to '1' then multithreading is deactivated and the main process will "
-    "be used.",
-    required=False,
-    default=1,
-    type=int,
-)
-@click.option(
-    "--replace-timestamp",
-    help="Defines if timestamps should be replaced with the current timestamp.",
-    required=False,
-    default=True,
-    type=bool,
-)
-@click.option(
-    "--tag",
-    help="Tag that should be written into the events.",
-    required=False,
-    default="loadtest",
-    type=str,
-)
-@click.option(
-    "--loglevel",
-    help="Sets the log level for the logger.",
-    type=click.Choice(logging._levelToName.values()),  # pylint: disable=protected-access
-    required=False,
-    default="INFO",
-)
-@click.option(
-    "--timeout",
-    help="Timeout in seconds for the http requests",
-    required=False,
-    default=2,
-)
-@click.option(
-    "--kafka-config",
-    help="Enables http generator to use kafka output",
-    required=False,
-    type=str,
-    default=None,
 )
 def generate_http(**kwargs):
     """
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a http endpoint.
     """
-    if not kwargs.get("kafka_config") and not kwargs.get("target_url"):
-        logger.error("Either --target-url or --kafka-config is required.")
-        sys.exit(1)
     generator_logger = logging.getLogger("Generator")
     generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
     generator = Controller(**kwargs)
