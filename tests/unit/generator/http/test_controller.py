@@ -1,12 +1,17 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import json
 import os
 from unittest import mock
+from unittest.mock import MagicMock, patch
 
+import pytest
 import responses
 
-from logprep.generator.http.controller import Controller
+from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
+from logprep.connector.http.output import HttpOutput
+from logprep.generator.http.controller import Controller, create_output
 from tests.unit.generator.http.util import create_test_event_files
 
 
@@ -158,3 +163,26 @@ class TestController:
             expected_http_header = "application/x-ndjson; charset=utf-8"
             assert call.request.headers.get("Content-Type") == expected_http_header
             assert call.response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "kwargs, expected_class",
+    [
+        (
+            {"user": "test-user", "password": "pass", "target_url": "http://testendpoint"},
+            HttpOutput,
+        ),
+        (
+            {"kafka_config": json.dumps({"bootstrap.servers": "127.0.0.1:9092"})},
+            ConfluentKafkaOutput,
+        ),
+    ],
+)
+@patch("logprep.factory.Factory.create")
+def test_create_output(mock_factory_create, kwargs, expected_class):
+    """Tests create_output function for different configurations"""
+    mock_instance = MagicMock(spec=expected_class)
+    mock_factory_create.return_value = mock_instance
+    output = create_output(kwargs)
+    mock_factory_create.assert_called_once()
+    assert isinstance(output, expected_class)

@@ -270,7 +270,8 @@ def generate_http(**kwargs):
     The events will be sent to a http endpoint.
     """
     if not kwargs.get("kafka_config") and not kwargs.get("target_url"):
-        raise click.UsageError("--target-url is required when --kafka-config is not provided.")
+        logger.error("Either --target-url or --kafka-config is required.")
+        sys.exit(1)
     generator_logger = logging.getLogger("Generator")
     generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
     generator = Controller(**kwargs)
