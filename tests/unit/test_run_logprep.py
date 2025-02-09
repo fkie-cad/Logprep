@@ -369,6 +369,30 @@ class TestGeneratorCLI:
         )
         mock_controller.run.assert_called()
 
+    def test_http_generator_cli_runs_generator_raises_usage_error(
+        self, mock_controller_class, caplog
+    ):
+        mock_controller_instance = mock.MagicMock()
+        mock_controller_class.return_value = mock_controller_instance
+        runner = CliRunner()
+        caplog.clear()
+        with caplog.at_level(logging.ERROR):
+            result = runner.invoke(
+                cli,
+                [
+                    "generate",
+                    "http",
+                    "--input-dir",
+                    "/some-path",
+                    "--user",
+                    "user",
+                    "--password",
+                    "password",
+                ],
+            )
+            assert result.exit_code == 1
+        assert caplog.records
+
 
 class TestPseudoCLI:
 

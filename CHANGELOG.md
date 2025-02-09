@@ -14,6 +14,7 @@
 * reimplemented the rule loading mechanic
 * removes `rstr` dependency
 * use official python image again and mitigate setuptools related CVE by uninstalling it system wide
+* added the option of using a kafka output for the http generator
 
 ### Bugfix
 * fixes a bug with lucene regex and parentheses
