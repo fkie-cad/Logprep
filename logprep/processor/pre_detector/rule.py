@@ -188,7 +188,9 @@ class PreDetectorRule(Rule):
         )
         """ tags to be added if processing of the rule fails"""
 
-    def __eq__(self, other: "PreDetectorRule") -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PreDetectorRule):
+            return NotImplemented
         return all(
             [
                 super().__eq__(other),

@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from functools import cached_property
 from operator import itemgetter
 from pathlib import Path
-from typing import Generator, List
+from typing import Dict, Generator, List
 
 import msgspec
 from attrs import define, field, validators
@@ -103,7 +103,7 @@ class Input:
         self.events_sent = 0
         self.batch_size = config.get("batch_size")
         self.log = logging.getLogger("Input")
-        self.log_class_manipulator_mapping = {}
+        self.log_class_manipulator_mapping: Dict = {}
         self.number_events_of_dataset = 0
         self.event_file_counter = 0
 

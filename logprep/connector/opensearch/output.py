@@ -174,7 +174,7 @@ class OpensearchOutput(Output):
         return "https" if self._config.ca_cert else "http"
 
     @property
-    def http_auth(self) -> tuple:
+    def http_auth(self) -> tuple | None:
         """Returns the credentials
 
         Returns
