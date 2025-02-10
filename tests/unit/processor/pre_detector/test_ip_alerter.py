@@ -8,8 +8,8 @@ import pytest
 
 pytest.importorskip("logprep.processor.pre_detector")
 
-from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
+from logprep.processor.pre_detector.rule import PreDetectorRule
 
 IP_ALERTS_PATH = "tests/testdata/unit/pre_detector/alert_ips.yml"
 IP_ALERTS_PATHS_LIST = [
@@ -25,7 +25,7 @@ def fixture_ip_alerter():
 
 @pytest.fixture(name="rule_without_fields")
 def fixture_rule_without_fields():
-    return PreDetectorRule._create_from_dict(
+    return PreDetectorRule.create_from_dict(
         {
             "filter": "message",
             "pre_detector": {
@@ -41,7 +41,7 @@ def fixture_rule_without_fields():
 
 @pytest.fixture(name="rule_with_fields")
 def fixture_rule_with_fields():
-    return PreDetectorRule._create_from_dict(
+    return PreDetectorRule.create_from_dict(
         {
             "filter": "message",
             "pre_detector": {

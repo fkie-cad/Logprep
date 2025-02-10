@@ -31,6 +31,9 @@
         "**/.profile": true
     },
     "python.analysis.typeCheckingMode": "off",
+    "python.experiments.optInto": [
+        "pythonTestAdapter"
+    ],
     "python.terminal.activateEnvInCurrentTerminal": true,
     "python.analysis.enablePytestSupport": true,
     "python.testing.pytestArgs": [
@@ -40,4 +43,7 @@
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true
     },
+    "cSpell.words": [
+        "concatenator"
+    ],
 }

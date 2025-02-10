@@ -4,7 +4,11 @@
 # pylint: disable=too-many-statements
 import pytest
 
-from logprep.filter.expression.filter_expression import StringFilterExpression, Not, Exists
+from logprep.filter.expression.filter_expression import (
+    Exists,
+    Not,
+    StringFilterExpression,
+)
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
@@ -22,7 +26,7 @@ class TestRuleParser:
         "rule, priority_dict, tag_map, expected_expressions",
         [
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "foo: bar",
                         "pre_detector": {
@@ -39,7 +43,7 @@ class TestRuleParser:
                 [[Exists(["foo"]), StringFilterExpression(["foo"], "bar")]],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "foo: bar AND bar: foo",
                         "pre_detector": {
@@ -63,7 +67,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "foo: bar OR bar: foo",
                         "pre_detector": {
@@ -83,7 +87,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "winlog: 123 AND test: (Good OR Okay OR Bad) OR foo: bar",
                         "pre_detector": {
@@ -120,7 +124,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "(EventID: 1 AND ABC AND foo: bar)",
                         "pre_detector": {
@@ -145,7 +149,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "(EventID: 17 AND PipeName: \\PSHost*) AND NOT (Image: *\\powershell.exe)",
                         "pre_detector": {
@@ -170,7 +174,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "EventID: (17 OR 18) AND PipeName: (atctl OR userpipe OR iehelper)",
                         "pre_detector": {
@@ -224,7 +228,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "EventID: 8 AND "
                         "SourceImage: (*System32cscript.exe OR *System32wscript.exe OR *System32mshta.exe) AND "
@@ -271,7 +275,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "bar: foo AND NOT foo: bar",
                         "pre_detector": {
@@ -294,7 +298,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "winlog.event_id: 7036 AND NOT Something",
                         "pre_detector": {
@@ -317,7 +321,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "NOT (foo: bar AND (test: ok OR msg: (123 OR 456)))",
                         "pre_detector": {
@@ -341,7 +345,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "process.parent: (foo OR bar) AND process.executable: cmd.exe AND process.command_line: (perl OR python)",
                         "pre_detector": {
@@ -391,7 +395,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "EventID: 15 AND NOT (Imphash: 000 OR NOT AImphash)",
                         "pre_detector": {
@@ -415,7 +419,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "(A1 OR A2) AND (B1 OR B2) AND (C1 OR C2) AND (D1 OR D2)",
                         "pre_detector": {
@@ -449,7 +453,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "(A1 OR A2) AND (B1 OR (C1 AND C2))",
                         "pre_detector": {
@@ -471,7 +475,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "((A1 OR A2) AND (B1 OR B2)) AND C1",
                         "pre_detector": {
@@ -493,7 +497,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "winlog.channel: Security AND "
                         "winlog.event_id: 4625 AND "
@@ -517,7 +521,7 @@ class TestRuleParser:
                 None,
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "(EventID: 12 AND TargetObject: *cmmgr32.exe*) "
                         "OR (EventID: 13 AND TargetObject: *cmmgr32.exe*) "
@@ -558,7 +562,7 @@ class TestRuleParser:
                 ],
             ),
             (
-                PreDetectorRule._create_from_dict(
+                PreDetectorRule.create_from_dict(
                     {
                         "filter": "NOT bar",
                         "pre_detector": {

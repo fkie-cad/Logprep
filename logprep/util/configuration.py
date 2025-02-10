@@ -203,7 +203,7 @@ from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util import getter, http
+from logprep.util import http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
 from logprep.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
@@ -213,7 +213,7 @@ from logprep.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
 )
 from logprep.util.getter import GetterFactory, GetterNotFoundError
-from logprep.util.json_handling import list_json_files_in_directory
+from logprep.util.rule_loader import RuleLoader
 
 
 class MyYAML(YAML):
@@ -731,57 +731,10 @@ class Configuration:
         processor_definition = deepcopy(processor_definition)
         _ = Factory.create(processor_definition)
         processor_name, processor_config = processor_definition.popitem()
-        rules_targets = self._resolve_directories(processor_config.get("rules", []))
-        rules_definitions = list(
-            chain(*[self._get_dict_list_from_target(target) for target in rules_targets])
-        )
+        rule_sources = processor_config.get("rules", [])
+        rules_definitions = RuleLoader(rule_sources, processor_name).rule_definitions
         processor_config["rules"] = rules_definitions
         return {processor_name: processor_config}
-
-    @staticmethod
-    def _get_dict_list_from_target(rule_target: str | dict) -> list[dict]:
-        """Create a rule from a file."""
-        if isinstance(rule_target, dict):
-            return [rule_target]
-        content = GetterFactory.from_string(rule_target).get()
-        try:
-            rule_data = json.loads(content)
-        except ValueError:
-            rule_data = yaml.load_all(content)
-        if isinstance(rule_data, dict):
-            return [rule_data]  # pragma: no cover
-        return list(rule_data)
-
-    @staticmethod
-    def _resolve_directories(rule_sources: list) -> list:
-        """resolves directories to a list of files or rule definitions
-
-        Parameters
-        ----------
-        rule_sources : list
-            a list of files, directories or rule definitions
-
-        Returns
-        -------
-        list
-            a list of files and rule definitions
-        """
-        resolved_sources = []
-        for rule_source in rule_sources:
-            if isinstance(rule_source, dict):
-                resolved_sources.append(rule_source)
-                continue
-            getter_instance = getter.GetterFactory.from_string(rule_source)
-            if getter_instance.protocol == "file":
-                if Path(getter_instance.target).is_dir():
-                    paths = list_json_files_in_directory(getter_instance.target)
-                    for file_path in paths:
-                        resolved_sources.append(file_path)
-                else:
-                    resolved_sources.append(rule_source)
-            else:
-                resolved_sources.append(rule_source)
-        return resolved_sources
 
     @staticmethod
     def _get_last_non_default_value(configs: list["Configuration"], attribute: str) -> Any:

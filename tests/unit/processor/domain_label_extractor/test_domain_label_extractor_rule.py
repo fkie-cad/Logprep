@@ -2,7 +2,9 @@
 # pylint: disable=protected-access
 
 from typing import Hashable
+
 import pytest
+
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 
 
@@ -85,8 +87,8 @@ class TestDomainLabelExtractorRule:
         ],
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
-        rule_1 = DomainLabelExtractorRule._create_from_dict(rule_definition)
-        rule_2 = DomainLabelExtractorRule._create_from_dict(other_rule_definition)
+        rule_1 = DomainLabelExtractorRule.create_from_dict(rule_definition)
+        rule_2 = DomainLabelExtractorRule.create_from_dict(other_rule_definition)
         assert (rule_1 == rule_2) == is_equal, testcase
 
     @pytest.mark.parametrize(
@@ -167,11 +169,11 @@ class TestDomainLabelExtractorRule:
     def test_rule_create_from_dict(self, rule_definition, raised, message):
         if raised:
             with pytest.raises(raised, match=message):
-                _ = DomainLabelExtractorRule._create_from_dict(rule_definition)
+                _ = DomainLabelExtractorRule.create_from_dict(rule_definition)
         else:
-            extractor_rule = DomainLabelExtractorRule._create_from_dict(rule_definition)
+            extractor_rule = DomainLabelExtractorRule.create_from_dict(rule_definition)
             assert isinstance(extractor_rule, DomainLabelExtractorRule)
 
     def test_rule_is_hashable(self, rule_definition):
-        rule = DomainLabelExtractorRule._create_from_dict(rule_definition)
+        rule = DomainLabelExtractorRule.create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)

@@ -1,23 +1,18 @@
 """This module contains a factory to create connectors and processors."""
 
-import copy
-from typing import TYPE_CHECKING
-
+from logprep.abc.component import Component
 from logprep.configuration import Configuration
 from logprep.factory_error import (
     InvalidConfigSpecificationError,
     InvalidConfigurationError,
 )
 
-if TYPE_CHECKING:  # pragma: no cover
-    from logprep.abc.component import Component
-
 
 class Factory:
     """Create components for logprep."""
 
     @classmethod
-    def create(cls, configuration: dict) -> "Component":
+    def create(cls, configuration: dict) -> Component | None:
         """Create component."""
         if configuration == {} or configuration is None:
             raise InvalidConfigurationError("The component definition is empty.")
@@ -40,3 +35,4 @@ class Factory:
                 component_name, component_configuration_dict
             )
             return component(component_name, component_configuration)
+        return None

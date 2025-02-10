@@ -18,12 +18,14 @@ from copy import deepcopy
 from importlib import import_module
 from logging import DEBUG, basicConfig, getLogger
 from os import makedirs, path
+from pathlib import Path
 
 from logprep.abc.processor import Processor
 from logprep.registry import Registry
 from logprep.runner import Runner
 from logprep.util.configuration import Configuration
 from logprep.util.decorators import timeout
+from logprep.util.defaults import RULE_FILE_EXTENSIONS
 from logprep.util.helper import recursive_compare, remove_file_if_exists
 from logprep.util.json_handling import parse_jsonl
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -327,7 +329,7 @@ def get_full_pipeline(exclude=None):
     return [{processor_name: config} for processor_name, config in processor_configs if config]
 
 
-def convert_to_http_config(config: Configuration, endpoint) -> dict:
+def convert_to_http_config(config: Configuration, endpoint) -> Configuration:
     config = deepcopy(config)
     http_fields = [
         "regex_mapping",
@@ -341,7 +343,20 @@ def convert_to_http_config(config: Configuration, endpoint) -> dict:
     ]
     for processor_config in config.pipeline:
         name, value = processor_config.popitem()
-        rules = Processor.resolve_directories(value.get("rules"))
+        rules = []
+        for rule in value["rules"]:
+            match rule:
+                case str():
+                    path = Path(rule)
+                    if path.is_file():
+                        rules.append(str(path))
+                    if path.is_dir():
+                        files = (
+                            str(p)
+                            for p in Path(path).glob("**/*")
+                            if p.suffix in RULE_FILE_EXTENSIONS
+                        )
+                        rules.extend(files)
         value["rules"] = [f"{endpoint}/{rule}" for rule in rules]
         for config_key, config_value in value.items():
             if config_key in http_fields:

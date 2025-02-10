@@ -154,8 +154,8 @@ class TestGenericResolverRule:
         ],
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
-        rule1 = GenericResolverRule._create_from_dict(rule_definition)
-        rule2 = GenericResolverRule._create_from_dict(other_rule_definition)
+        rule1 = GenericResolverRule.create_from_dict(rule_definition)
+        rule2 = GenericResolverRule.create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
 
     @pytest.mark.parametrize(
@@ -195,9 +195,9 @@ class TestGenericResolverRule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                GenericResolverRule._create_from_dict(rule)
+                GenericResolverRule.create_from_dict(rule)
         else:
-            rule_instance = GenericResolverRule._create_from_dict(rule)
+            rule_instance = GenericResolverRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("generic_resolver").items():
                 assert hasattr(rule_instance._config, key)

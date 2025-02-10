@@ -20,7 +20,7 @@ class ExceptionBaseTest:
     """name of the metric attribute as defined in instance class"""
 
     def setup_method(self):
-        self.object = Rule._create_from_dict({"filter": "message", "rule": {}})
+        self.object = Rule.create_from_dict({"filter": "message", "rule": {}})
         self.event = {"message": "test_event"}
         self.exception_args = ("the error message", self.object, self.event)
 

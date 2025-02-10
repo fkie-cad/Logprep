@@ -12,7 +12,7 @@ class TestFieldManagerRule:
             "filter": "message",
             "field_manager": {"source_fields": ["message"], "target_field": "new_field"},
         }
-        rule_dict = FieldManagerRule._create_from_dict(rule)
+        rule_dict = FieldManagerRule.create_from_dict(rule)
         assert isinstance(rule_dict, FieldManagerRule)
 
     @pytest.mark.parametrize(
@@ -89,9 +89,9 @@ class TestFieldManagerRule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                FieldManagerRule._create_from_dict(rule)
+                FieldManagerRule.create_from_dict(rule)
         else:
-            rule_instance = FieldManagerRule._create_from_dict(rule)
+            rule_instance = FieldManagerRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("field_manager").items():
                 assert hasattr(rule_instance._config, key)
@@ -115,6 +115,6 @@ class TestFieldManagerRule:
         ],
     )
     def test_equality(self, testcase, rule1, rule2, equality):
-        rule1 = FieldManagerRule._create_from_dict(rule1)
-        rule2 = FieldManagerRule._create_from_dict(rule2)
+        rule1 = FieldManagerRule.create_from_dict(rule1)
+        rule2 = FieldManagerRule.create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase

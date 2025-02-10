@@ -3,8 +3,7 @@
 import logging
 import os
 from abc import abstractmethod
-from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, ClassVar, Dict, List, Type
 
 from attr import define, field, validators
 
@@ -16,14 +15,13 @@ from logprep.processor.base.exceptions import (
     ProcessingError,
     ProcessingWarning,
 )
-from logprep.util import getter
 from logprep.util.helper import (
     add_and_overwrite,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
 )
-from logprep.util.json_handling import list_json_files_in_directory
+from logprep.util.rule_loader import RuleLoader
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
@@ -95,31 +93,28 @@ class Processor(Component):
         For valid URI formats see :ref:`getters`.
         As last option it is possible to define entire rules with all their configuration parameters as list elements.
         """
-        tree_config: Optional[str] = field(
-            default=None, validator=[validators.optional(validators.instance_of(str))]
+        tree_config: str | None = field(
+            default=None, validator=validators.instance_of((str, type(None)))
         )
         """Path to a JSON file with a valid :ref:`Rule Tree Configuration`.
         For string format see :ref:`getters`."""
-        apply_multiple_times: Optional[bool] = field(
-            default=False, validator=[validators.optional(validators.instance_of(bool))]
-        )
+        apply_multiple_times: bool = field(default=False, validator=validators.instance_of(bool))
         """Set if the processor should be applied multiple times. This enables further processing
         of an output with the same processor."""
 
     __slots__ = [
-        "rule_class",
         "_event",
         "_rule_tree",
         "result",
         "_bypass_rule_tree",
     ]
 
-    rule_class: "Rule"
+    rule_class: ClassVar["Type[Rule] | None"] = None
     _event: dict
     _rule_tree: RuleTree
     _strategy = None
     _bypass_rule_tree: bool
-    result: ProcessorResult
+    result: ProcessorResult | None
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
@@ -167,7 +162,7 @@ class Processor(Component):
 
         """
         self.result = ProcessorResult(processor_name=self.name, event=event)
-        logger.debug(f"{self.describe()} processing event {event}")
+        logger.debug("%s processing event %s", self.describe(), event)
         if self._bypass_rule_tree:
             self._process_all_rules(event)
             return self.result
@@ -233,7 +228,7 @@ class Processor(Component):
     @abstractmethod
     def _apply_rules(self, event, rule): ...  # pragma: no cover
 
-    def test_rules(self) -> dict:
+    def test_rules(self) -> dict | None:
         """Perform custom rule tests.
 
         Returns a dict with a list of test results as tuples containing a result and an expected
@@ -242,47 +237,18 @@ class Processor(Component):
 
         """
 
-    @staticmethod
-    def resolve_directories(rule_sources: list) -> list:
-        """resolves directories to a list of files or rule definitions
-
-        Parameters
-        ----------
-        rule_sources : list
-            a list of files, directories or rule definitions
-
-        Returns
-        -------
-        list
-            a list of files and rule definitions
-        """
-        resolved_sources = []
-        for rule_source in rule_sources:
-            if isinstance(rule_source, dict):
-                resolved_sources.append(rule_source)
-                continue
-            getter_instance = getter.GetterFactory.from_string(rule_source)
-            if getter_instance.protocol == "file":
-                if Path(getter_instance.target).is_dir():
-                    paths = list_json_files_in_directory(getter_instance.target)
-                    for file_path in paths:
-                        resolved_sources.append(file_path)
-                else:
-                    resolved_sources.append(rule_source)
-            else:
-                resolved_sources.append(rule_source)
-        return resolved_sources
-
-    def load_rules(self, rules_targets: List[str]):
+    def load_rules(self, rules_targets: List[str | Dict]) -> None:
         """method to add rules from directories or urls"""
-        rules_targets = self.resolve_directories(rules_targets)
-        for rules_target in rules_targets:
-            rules = self.rule_class.create_rules_from_target(rules_target, self.name)
-            for rule in rules:
-                self._rule_tree.add_rule(rule)
-        if logger.isEnabledFor(logging.DEBUG):  # pragma: no cover
+        try:
+            rules = RuleLoader(rules_targets, self.name).rules
+        except ValueError as error:
+            logger.error("Loading rules from %s failed: %s ", rules_targets, error)
+            raise error
+        for rule in rules:
+            self._rule_tree.add_rule(rule)
+        if logger.isEnabledFor(logging.DEBUG):
             number_rules = self._rule_tree.number_of_rules
-            logger.debug(f"{self.describe()} loaded {number_rules} rules")
+            logger.debug("%s loaded %s rules", self.describe(), number_rules)
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:

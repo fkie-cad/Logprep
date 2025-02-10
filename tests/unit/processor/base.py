@@ -19,9 +19,11 @@ from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
-from logprep.processor.base.exceptions import ProcessingCriticalError
+from logprep.processor.base.exceptions import (
+    InvalidRuleDefinitionError,
+    ProcessingCriticalError,
+)
 from logprep.processor.base.rule import Rule
-from logprep.util.json_handling import list_json_files_in_directory
 from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -34,9 +36,9 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     logger = getLogger()
 
-    object: Processor = None
+    object: Processor | None = None
 
-    patchers: list = None
+    patchers: list | None = None
 
     rules: list
 
@@ -56,13 +58,15 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert isinstance(rules_dirs, list)
         rules = []
         for rules_dir in rules_dirs:
-            rule_paths = list_json_files_in_directory(rules_dir)
+            rule_paths = [
+                p for p in Path(rules_dir).glob("**/*") if p.suffix in [".yml", ".json", "yaml"]
+            ]
             for rule_path in rule_paths:
-                with open(rule_path, "r", encoding="utf8") as rule_file:
-                    loaded_rules = []
-                    if rule_path.endswith(".yml"):
+                loaded_rules = []
+                with open(str(rule_path), "r", encoding="utf8") as rule_file:
+                    if rule_path.suffix in [".yml", ".yaml"]:
                         loaded_rules = yaml.load_all(rule_file)
-                    elif rule_path.endswith(".json"):
+                    elif rule_path.suffix == ".json":
                         loaded_rules = json.load(rule_file)
                     for rule in loaded_rules:
                         rules.append(rule)
@@ -70,7 +74,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     def _load_rule(self, rule: dict | Rule):
         self.object._rule_tree = RuleTree()
-        rule = self.object.rule_class._create_from_dict(rule) if isinstance(rule, dict) else rule
+        rule = self.object.rule_class.create_from_dict(rule) if isinstance(rule, dict) else rule
         self.object._rule_tree.add_rule(rule)
 
     def setup_method(self) -> None:
@@ -143,11 +147,16 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     def test_load_rules_calls_getter_factory(self):
         with mock.patch("logprep.util.getter.GetterFactory.from_string") as getter_factory:
-            with pytest.raises(
-                TypeError, match="must be str, bytes or bytearray, not .*MagicMock.*"
-            ):
+            with pytest.raises(TypeError):
                 self.object.load_rules(rules_targets=self.rules_dirs)
             getter_factory.assert_called()
+
+    def test_load_rules_creates_rule_with_processor_name(self):
+        with mock.patch(
+            "logprep.processor.base.rule.Rule.create_from_dict"
+        ) as mock_create_from_dict:
+            self.object.load_rules(rules_targets=self.rules_dirs)
+            mock_create_from_dict.assert_called_with(mock.ANY, self.object.name)
 
     @responses.activate
     def test_accepts_http_in_rules_config(self):
@@ -157,8 +166,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         myconfig.update(
             {"rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
         )
-        with pytest.raises(TypeError, match="not .*MagicMock.*"):
-            Factory.create({"http_rule_processor": myconfig})
+        assert isinstance(Factory.create({"http_rule_processor": myconfig}), Processor)
 
     def test_no_redundant_rules_are_added_to_rule_tree(self):
         """
@@ -198,17 +206,10 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         with pytest.raises(TypeError, match=r"must be <class 'list'>"):
             Factory.create({"test instance": config})
 
-    @pytest.mark.parametrize("rule_list", ["rules"])
-    def test_validation_raises_if_elements_does_not_exist(self, rule_list):
-        config = deepcopy(self.CONFIG)
-        config.update({rule_list: ["/i/do/not/exist"]})
-        with pytest.raises(FileNotFoundError):
-            Factory.create({"test instance": config})
-
     def test_validation_raises_if_tree_config_is_not_a_str(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": 12})
-        with pytest.raises(TypeError, match=r"must be <class 'str'>"):
+        with pytest.raises(TypeError, match=r"must be \(<class 'str'>"):
             Factory.create({"test instance": config})
 
     def test_validation_raises_if_tree_config_is_not_exist(self):
@@ -276,3 +277,19 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_result_object_has_reference_to_event(self):
         result = self.object.process(self.match_all_event)
         assert result.event is self.match_all_event
+
+    def test_invalid_rule_raises(self, caplog):
+        rule_definition = {"filter": "test", "does_not_exist": "test"}
+        with pytest.raises(ValueError):
+            with caplog.at_level(10):
+                self.object.load_rules(rules_targets=[rule_definition])
+        assert "ERROR" in caplog.text
+        assert "Loading rules from" in caplog.text
+
+    def test_valid_rule_but_other_processor_raises(self):
+        rule_definitions = [
+            {"filter": "test", "calculator": "1+1"},
+            {"filter": "drop_me", "dropper": {"drop": ["drop_me"]}},
+        ]
+        with pytest.raises(InvalidRuleDefinitionError):
+            self.object.load_rules(rules_targets=rule_definitions)

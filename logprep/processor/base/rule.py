@@ -127,9 +127,7 @@ This slicing is based on the native
 """
 
 import hashlib
-import json
 from functools import cached_property
-from os.path import basename, splitext
 from typing import Dict, List, Optional, Set
 
 from attrs import define, field, validators
@@ -140,7 +138,6 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util.getter import GetterFactory
 from logprep.util.helper import camel_to_snake
 
 yaml = YAML(typ="safe", pure=True)
@@ -153,7 +150,7 @@ class Rule:
     class Config:
         """Config for Rule"""
 
-        id: str = field(
+        id: str | int | None = field(
             validator=validators.instance_of((str, int, type(None))),
             default=None,
             eq=False,
@@ -241,6 +238,8 @@ class Rule:
         "tag_on_failure",
     ]
 
+    rule_type: str = ""
+
     @cached_property
     def id(self) -> str:
         """return the rule id"""
@@ -274,7 +273,7 @@ class Rule:
         if not config.tag_on_failure:
             config.tag_on_failure = [f"_{self.rule_type}_failure"]
         self.__class__.__hash__ = Rule.__hash__
-        self._processor_name = processor_name if processor_name else ""
+        self._processor_name = processor_name
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
         self._special_fields = None
@@ -319,33 +318,30 @@ class Rule:
     # pylint: enable=C0111
 
     @classmethod
-    def create_rules_from_target(cls, rule_target: str, processor_name: str = None) -> list:
-        """Create a rule from a file."""
-        if isinstance(rule_target, dict):
-            return [cls._create_from_dict(rule_target, processor_name)]
-        content = GetterFactory.from_string(rule_target).get()
-        try:
-            rule_data = json.loads(content)
-        except ValueError:
-            rule_data = yaml.load_all(content)
-        try:
-            rules = [cls._create_from_dict(rule, processor_name) for rule in rule_data]
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleDefinitionError(f"{rule_target}: {error}") from error
-        if len(rules) == 0:
-            raise InvalidRuleDefinitionError(f"no rules in file {rule_target}")
-        for rule in rules:
-            rule.file_name = splitext(basename(rule_target))[0]
-        return rules
-
-    @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:
         """normalizes rule dict before create rule config object
         can be used for deprecating rule language.
         """
 
     @classmethod
-    def _create_from_dict(cls, rule: dict, processor_name: str = None) -> "Rule":
+    def create_from_dict(cls, rule: dict, processor_name: str | None = None) -> "Rule":
+        """Create a Rule instance from a dictionary.
+        Parameters
+        ----------
+        rule : dict
+            A dictionary containing the rule configuration.
+        processor_name : str or None, optional
+            The name of the processor to associate with this rule (default is None).
+        Returns
+        -------
+        Rule
+            An instance of the Rule class.
+        Raises
+        ------
+        InvalidRuleDefinitionError
+            If the rule configuration is invalid or missing required fields.
+        """
+
         cls.normalize_rule_dict(rule)
         filter_expression = Rule._create_filter_expression(rule)
         cls.rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
@@ -362,6 +358,7 @@ class Rule:
             if special_field_value is not None:
                 config.update({special_field: special_field_value})
         config = cls.Config(**config)
+        processor_name = processor_name if processor_name else "undefined"
         return cls(filter_expression, config, processor_name)
 
     @staticmethod

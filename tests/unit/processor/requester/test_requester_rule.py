@@ -11,7 +11,7 @@ class TestRequesterRule:
             "filter": "message",
             "requester": {"method": "GET", "url": "http://fancyapi"},
         }
-        rule_dict = RequesterRule._create_from_dict(rule)
+        rule_dict = RequesterRule.create_from_dict(rule)
         assert isinstance(rule_dict, RequesterRule)
 
     @pytest.mark.parametrize(
@@ -148,9 +148,9 @@ class TestRequesterRule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                RequesterRule._create_from_dict(rule)
+                RequesterRule.create_from_dict(rule)
         else:
-            rule_instance = RequesterRule._create_from_dict(rule)
+            rule_instance = RequesterRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("requester").items():
                 assert hasattr(rule_instance._config, key)
@@ -225,7 +225,7 @@ class TestRequesterRule:
         ],
     )
     def test_sets_source_fields(self, rule, expected_source_fields):
-        rule_instance = RequesterRule._create_from_dict(rule)
+        rule_instance = RequesterRule.create_from_dict(rule)
         assert expected_source_fields == rule_instance.source_fields
 
     @pytest.mark.parametrize(
@@ -257,5 +257,5 @@ class TestRequesterRule:
         ],
     )
     def test_kwargs_returns_requests_kwargs(self, rule, expected_keys):
-        rule_instance = RequesterRule._create_from_dict(rule)
+        rule_instance = RequesterRule.create_from_dict(rule)
         assert sorted(expected_keys) == sorted(list(rule_instance.kwargs.keys()))

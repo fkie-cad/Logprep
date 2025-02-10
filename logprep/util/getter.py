@@ -73,6 +73,8 @@ class GetterFactory:
     def _dissect(getter_string: str) -> Tuple[str, str]:
         regexp = r"^((?P<protocol>[^\s]+)://)?(?P<target>.+)"
         matches = re.match(regexp, getter_string)
+        if matches is None:
+            raise GetterNotFoundError(f"Could not parse '{getter_string}'")
         return matches.group("protocol"), matches.group("target")
 
 
@@ -87,9 +89,10 @@ class FileGetter(Getter):
 
     """
 
-    def get_raw(self) -> bytearray:
+    def get_raw(self) -> bytes:
         """Opens file and returns its binary content."""
-        return Path(self.target).read_bytes()
+        path = Path(self.target)
+        return path.read_bytes()
 
 
 @define(kw_only=True)
@@ -149,14 +152,15 @@ class HttpGetter(Getter):
             creds = CredentialsFactory.from_target(self.url)
         return creds if creds else Credentials()
 
-    def get_raw(self) -> bytearray:
+    def get_raw(self) -> bytes:
         """gets the content from a http server via uri"""
         domain = urlparse(self.url).netloc
         scheme = urlparse(self.url).scheme
         domain_uri = f"{scheme}://{domain}"
         if domain_uri not in self._credentials_registry:
             self._credentials_registry.update({domain_uri: self.credentials})
-        session = self._credentials_registry.get(domain_uri).get_session()
+        creds = self._credentials_registry.get(domain_uri)
+        session = creds.get_session() if creds else requests.Session()
         resp = session.get(url=self.url, timeout=5, allow_redirects=True, headers=self._headers)
         try:
             resp.raise_for_status()

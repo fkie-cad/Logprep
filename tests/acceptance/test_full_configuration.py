@@ -218,7 +218,10 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
         r"logprep_number_of_config_refreshes.+0",
     ]
     for expeced_metric in expected_metrics:
-        assert re.search(expeced_metric, metrics), f"Metric {expeced_metric} not found in metrics"
+        assert re.search(
+            expeced_metric, metrics
+        ), f"Metric '{expeced_metric}' not found in expected metrics"
+
     forbidden_metrics = [
         r"component=\"None\"",
         r"type=\"None\"",

@@ -38,7 +38,7 @@ class TestSelectiveExtractorRule:
         }
         read_lines = b"test1\r\ntest2"
         with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
-            rule = SelectiveExtractorRule._create_from_dict(rule_definition)
+            rule = SelectiveExtractorRule.create_from_dict(rule_definition)
             extracted_field_list = rule.extracted_field_list
             assert rule._config.extract_from_file == "my/file"
             assert "test1" in extracted_field_list
@@ -54,7 +54,7 @@ class TestSelectiveExtractorRule:
             },
         }
         with pytest.raises(SelectiveExtractorRuleError):
-            _ = SelectiveExtractorRule._create_from_dict(rule_definition)
+            _ = SelectiveExtractorRule.create_from_dict(rule_definition)
 
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
@@ -180,8 +180,8 @@ class TestSelectiveExtractorRule:
                 read_lines = read_lines.encode("utf8")
 
             with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
-                rule1 = SelectiveExtractorRule._create_from_dict(rule_definition)
-                rule2 = SelectiveExtractorRule._create_from_dict(other_rule_definition)
+                rule1 = SelectiveExtractorRule.create_from_dict(rule_definition)
+                rule2 = SelectiveExtractorRule.create_from_dict(other_rule_definition)
                 assert (rule1 == rule2) == is_equal, testcase
 
     @pytest.mark.parametrize(
@@ -294,11 +294,11 @@ class TestSelectiveExtractorRule:
             with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
                 if raised:
                     with pytest.raises(raised, match=message):
-                        _ = SelectiveExtractorRule._create_from_dict(rule_definition)
+                        _ = SelectiveExtractorRule.create_from_dict(rule_definition)
                 else:
-                    extractor_rule = SelectiveExtractorRule._create_from_dict(rule_definition)
+                    extractor_rule = SelectiveExtractorRule.create_from_dict(rule_definition)
                     assert isinstance(extractor_rule, SelectiveExtractorRule)
 
     def test_rule_is_hashable(self, rule_definition):
-        rule = SelectiveExtractorRule._create_from_dict(rule_definition)
+        rule = SelectiveExtractorRule.create_from_dict(rule_definition)
         assert isinstance(rule, Hashable)
