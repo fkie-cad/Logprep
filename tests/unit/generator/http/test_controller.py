@@ -4,22 +4,67 @@
 import json
 import os
 from unittest import mock
-from unittest.mock import MagicMock, patch
 
-import pytest
 import responses
 
-from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
-from logprep.connector.http.output import HttpOutput
-from logprep.generator.http.controller import Controller, create_output
+from logprep.generator.http.controller import (  # , create_output
+    HTTPController,
+    KafkaController,
+)
 from tests.unit.generator.http.util import create_test_event_files
+
+
+@mock.patch("logprep.generator.http.controller.Factory.create")
+def test_http_controller_create_output(mock_factory_create):
+
+    kwargs = {
+        "user": "test_user",
+        "password": "test_password",
+        "target_url": "http://example.com",
+        "timeout": 5,
+    }
+
+    expected_output_config = {
+        "generator_output": {
+            "type": "http_output",
+            "user": "test_user",
+            "password": "test_password",
+            "target_url": "http://example.com",
+            "timeout": 5,
+        }
+    }
+    controller = HTTPController(**kwargs)
+    mock_factory_create.assert_called_once_with(expected_output_config)
+
+    assert controller.output == mock_factory_create.return_value
+
+
+@mock.patch("logprep.generator.http.controller.Factory.create")
+def test_kafka_controller_create_output(mock_factory_create):
+
+    kwargs = {
+        "input_dir": "/some-path",
+        "output_config": '{"bootstrap.servers": "localhost:9092"}',
+    }
+
+    expected_output_config = {
+        "generator_output": {
+            "type": "confluentkafka_output",
+            "topic": "producer",
+            "kafka_config": json.loads(kwargs.get("output_config")),
+        },
+    }
+    controller = KafkaController(**kwargs)
+    mock_factory_create.assert_called_once_with(expected_output_config)
+
+    assert controller.output == mock_factory_create.return_value
 
 
 class TestController:
     def setup_method(self):
         self.target_url = "http://testendpoint"
         self.batch_size = 10
-        self.controller = Controller(
+        self.controller = HTTPController(
             input_dir="",
             batch_size=self.batch_size,
             replace_timestamp=True,
@@ -29,10 +74,20 @@ class TestController:
             user="test-user",
             password="pass",
             thread_count=1,
-            kafka_output=None,
         )
 
-        self.controller_kafka = Controller(kafka_output='{"bootstrap.servers": "127.0.0.1:9092"}')
+        self.controller_kafka = KafkaController(
+            input_dir="",
+            output_config='{"bootstrap.servers": "localhost:9092"}',
+            batch_size=self.batch_size,
+            replace_timestamp=True,
+            tag="testdata",
+            report=True,
+            user="test-user",
+            password="pass",
+            thread_count=1,
+            kafka_output=None,
+        )
 
     # @pytest.mark.skip(reason="This test blocks and has to be fixed")  # TODO: Fix this test
     @responses.activate
@@ -85,7 +140,7 @@ class TestController:
 
     @mock.patch("logprep.generator.http.controller.ThreadPoolExecutor")
     def test_run_with_multiple_threads(self, mock_executor_class, tmp_path):
-        self.controller = Controller(
+        self.controller = HTTPController(
             input_dir="",
             batch_size=self.batch_size,
             replace_timestamp=True,
@@ -163,26 +218,3 @@ class TestController:
             expected_http_header = "application/x-ndjson; charset=utf-8"
             assert call.request.headers.get("Content-Type") == expected_http_header
             assert call.response.status_code == 200
-
-
-@pytest.mark.parametrize(
-    "kwargs, expected_class",
-    [
-        (
-            {"user": "test-user", "password": "pass", "target_url": "http://testendpoint"},
-            HttpOutput,
-        ),
-        (
-            {"kafka_config": json.dumps({"bootstrap.servers": "127.0.0.1:9092"})},
-            ConfluentKafkaOutput,
-        ),
-    ],
-)
-@patch("logprep.factory.Factory.create")
-def test_create_output(mock_factory_create, kwargs, expected_class):
-    """Tests create_output function for different configurations"""
-    mock_instance = MagicMock(spec=expected_class)
-    mock_factory_create.return_value = mock_instance
-    output = create_output(kwargs)
-    mock_factory_create.assert_called_once()
-    assert isinstance(output, expected_class)

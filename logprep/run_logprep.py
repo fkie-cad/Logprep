@@ -9,7 +9,8 @@ import warnings
 
 import click
 
-from logprep.generator.http.controller import Controller
+from logprep.generator.http.controller import HTTPController, KafkaController
+from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
 from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
@@ -246,22 +247,37 @@ def generate():
     """
 
 
-@common_generate_options
 @generate.command(name="kafka")
+@click.argument("config")
+@click.option(
+    "--file", help="Path to file with documents", default=None, type=click.Path(exists=True)
+)
+def generate_kafka(config, file):
+    """
+    Generate events by taking them from kafka or a jsonl file and sending them to Kafka.
+
+    CONFIG is a path to a configuration file for the event generation.
+    """
+    load_tester = LoadTester(config, file)
+    load_tester.run()
+
+
+@common_generate_options
+@generate.command(name="kafka2")
 @click.option(
     "--output-config",
     help="Enables http generator to use kafka output",
     required=True,
     type=str,
 )
-def generate_kafka(**kwargs):
+def generate_kafka2(**kwargs):
     """
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a kafka endpoint.
     """
     generator_logger = logging.getLogger("Generator")
     generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
-    generator = Controller(**kwargs)
+    generator = KafkaController(**kwargs)
     generator.run()
 
 
@@ -281,7 +297,7 @@ def generate_http(**kwargs):
     """
     generator_logger = logging.getLogger("Generator")
     generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
-    generator = Controller(**kwargs)
+    generator = HTTPController(**kwargs)
     generator.run()
 
 
