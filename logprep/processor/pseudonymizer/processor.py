@@ -139,7 +139,7 @@ class Pseudonymizer(FieldManager):
         """
 
     @define(kw_only=True)
-    class Metrics(Processor.Metrics):
+    class Metrics(Processor.Metrics):  # type: ignore
         """Tracks statistics about the Pseudonymizer"""
 
         pseudonymized_urls: CounterMetric = field(

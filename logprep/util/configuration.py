@@ -572,7 +572,7 @@ class Configuration:
         eq=False,
     )
 
-    _configs: Tuple["Configuration"] = field(
+    _configs: Tuple["Configuration", ...] = field(
         validator=validators.instance_of(tuple), factory=tuple, repr=False, eq=False
     )
 

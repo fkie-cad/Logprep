@@ -283,7 +283,7 @@ class Input(Connector):
         """
         event, raw_event = self._get_event(timeout)
         if event is None:
-            return
+            return None
         self.metrics.number_of_processed_events += 1
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)

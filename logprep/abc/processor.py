@@ -69,10 +69,10 @@ class ProcessorResult:
         factory=list,
     )
     """ The warnings that occurred during processing """
-    processor_name: str = field(validator=validators.instance_of(str))
-    """ The name of the processor """
     event: dict | None = field(validator=validators.instance_of((dict, type(None))), default=None)
     """ A reference to the event that was processed """
+    processor_name: str = field(validator=validators.instance_of(str))
+    """ The name of the processor """
 
 
 class Processor(Component):
@@ -161,7 +161,7 @@ class Processor(Component):
             extra data and a list of target outputs.
 
         """
-        self.result = ProcessorResult(processor_name=self.name, event=event)
+        self.result = ProcessorResult(processor_name=self.name, event=event)  # type: ignore
         logger.debug("%s processing event %s", self.describe(), event)
         if self._bypass_rule_tree:
             self._process_all_rules(event)
