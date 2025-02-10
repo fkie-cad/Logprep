@@ -9,7 +9,8 @@ import warnings
 
 import click
 
-from logprep.generator.http.controller import HTTPController, KafkaController
+from logprep.generator.confluent_kafka.controller import KafkaController
+from logprep.generator.http.controller import HTTPController
 from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
 from logprep.util.ansi import Fore
