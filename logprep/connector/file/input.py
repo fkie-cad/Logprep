@@ -132,7 +132,7 @@ class FileWatcherUtil:
     """
 
     def __init__(self, file_name: str = ""):
-        self.dict = {}
+        self.dict: dict = {}
         if file_name:
             self.add_file(file_name)
 
@@ -200,7 +200,7 @@ class FileInput(Input):
     """FileInput Connector"""
 
     _messages: queue.Queue = queue.Queue()
-    _fileinfo_util: object = FileWatcherUtil()
+    _fileinfo_util: FileWatcherUtil = FileWatcherUtil()
     rthread: threading.Event = None
 
     @define(kw_only=True)
@@ -232,7 +232,9 @@ class FileInput(Input):
         super().__init__(name, configuration)
         self.stop_flag = threading.Event()
 
-    def _calc_file_fingerprint(self, file_pointer: TextIO, fingerprint_length: int = None) -> tuple:
+    def _calc_file_fingerprint(
+        self, file_pointer: TextIO, fingerprint_length: int | None = None
+    ) -> tuple:
         """This function creates a crc32 fingerprint of the first 256 bytes of a given file
         If the existing log file is less than 256 bytes, it will take what is there
         and return also the size"""
@@ -293,7 +295,7 @@ class FileInput(Input):
         """Put log_line as a dict to threadsafe message queue from given input file.
         Depending on configuration it will continuously monitor a given file for new
         appending log lines. Depending on configuration it will start to process the
-        given file from the beginning or the end. Will create and continously check
+        given file from the beginning or the end. Will create and continuously check
         the file fingerprints to detect file changes that typically occur on log rotation."""
         with open(file_name, encoding="utf-8") as file:
             if not self._fileinfo_util.get_fingerprint(file_name):
@@ -306,21 +308,21 @@ class FileInput(Input):
     def _line_to_dict(self, input_line: str) -> dict:
         """Takes an input string and turns it into a dict without any parsing or formatting.
         Only thing it does additionally is stripping the new lines away."""
-        input_line: str = input_line.rstrip("\n")
+        input_line = input_line.rstrip("\n")
         if len(input_line) > 0:
             return {"message": input_line}
-        return ""
+        return {}
 
     def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the threadsafe queue"""
         try:
             message: dict = self._messages.get(timeout=timeout)
-            raw_message: str = str(message).encode("utf8")
+            raw_message: bytes = str(message).encode("utf8")
             return message, raw_message
         except queue.Empty:
             return None, None
 
-    def setup(self):
+    def setup(self) -> None:
         """Creates and starts the Thread that continuously monitors the given logfile.
         Right now this input connector is only started in the first process.
         It needs the class attribute pipeline_index before running setup in Pipeline
