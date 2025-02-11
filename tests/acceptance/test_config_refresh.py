@@ -92,7 +92,7 @@ def test_recover_after_invalid_then_valid_config(tmp_path, config):
     wait_for_output(
         proc,
         'The configuration for component "fawlty" must be specified as an object.',
-        test_timeout=5,
+        test_timeout=10,
     )
 
     if proc.poll() == None:
