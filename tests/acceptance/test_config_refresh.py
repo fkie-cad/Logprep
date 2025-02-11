@@ -78,15 +78,17 @@ def test_no_config_refresh_after_5_seconds(tmp_path, config):
 
 def test_recover_after_invalid_then_valid_config(tmp_path, config):
     config_path = tmp_path / "generated_config.yml"
+    config.config_refresh_interval = 8
     config_path.write_text(config.as_json())
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
+    wait_for_output(proc, "Config refresh interval is set to: 8 seconds", test_timeout=5)
 
     input_backup = config.input
 
-    config.input = {"falwty": "config dic"}
+    config.input = {"fawlty": "config dic"}
     config.version = 5
     config_path.write_text(config.as_json())
+
     time.sleep(3)
 
     if proc.poll() == None:
@@ -100,5 +102,3 @@ def test_recover_after_invalid_then_valid_config(tmp_path, config):
     config_path.write_text(config.as_json())
     wait_for_output(proc, "Successfully reloaded configuration", test_timeout=10)
     wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=10)
-
-    # Todo: New Bug? It is possible to set interval to 4
