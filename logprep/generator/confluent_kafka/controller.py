@@ -20,7 +20,7 @@ class KafkaController(Controller):
     Controller for the HTTP Generator using Kafka output
     """
 
-    def _create_output(self, kwargs):
+    def create_output(self, kwargs):
         output_config = {
             "generator_output": {
                 "type": "confluentkafka_output",

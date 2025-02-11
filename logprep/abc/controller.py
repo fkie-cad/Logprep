@@ -3,6 +3,7 @@ This general controller class, combining the input and output class
 """
 
 import logging
+from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 
@@ -18,17 +19,17 @@ class Controller:
     and sending them to outputs
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         self.config = kwargs
         self.loghandler = None
         self._setup_logging()
-        self.thread_count: int = kwargs.get("thread_count")
+        self.thread_count: int = kwargs.get("thread_count", 1)
         self.input: Input = Input(self.config)
-        self.output = self._create_output(kwargs)
+        self.output = self.create_output(kwargs)
 
-    def _create_output(self, kwargs):
+    @abstractmethod
+    def create_output(self, kwargs):
         """To be implemented by subclasses."""
-        raise NotImplementedError("Subclasses must implement `_create_output`")
 
     def _setup_logging(self):
         console_logger = logging.getLogger("console")
@@ -39,8 +40,8 @@ class Controller:
             self.loghandler = LogprepMPQueueListener(logqueue, console_handler)
             self.loghandler.start()
 
-    def run(self):
-        raise NotImplementedError("Subclasses must implement `run`")
+    @abstractmethod
+    def run(self): ...
 
     def _generate_load(self):
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
