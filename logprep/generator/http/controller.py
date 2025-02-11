@@ -8,8 +8,6 @@ import time
 from logging import Logger
 
 from logprep.abc.controller import Controller
-from logprep.connector.http.output import HttpOutput
-from logprep.factory import Factory
 
 logger: Logger = logging.getLogger("Generator")
 
@@ -18,19 +16,6 @@ class HTTPController(Controller):
     """
     Controller for the HTTP Generator
     """
-
-    def create_output(self, kwargs):
-        output_config = {
-            "generator_output": {
-                "type": "http_output",
-                "user": kwargs.get("user"),
-                "password": kwargs.get("password"),
-                "target_url": kwargs.get("target_url"),
-                "timeout": kwargs.get("timeout", 2),
-            }
-        }
-        self.output: HttpOutput = Factory.create(output_config)
-        return self.output
 
     def run(self) -> str:
         """
