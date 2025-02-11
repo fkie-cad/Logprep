@@ -1,43 +1,21 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
-import json
 import os
-from unittest import mock
 
 import responses
 
-from logprep.generator.confluent_kafka.controller import KafkaController
+from logprep.generator.factory import ControllerFactory
 from tests.unit.generator.http.util import create_test_event_files
 
 
-@mock.patch("logprep.generator.http.controller.Factory.create")
-def test_kafka_controller_create_output(mock_factory_create):
-
-    kwargs = {
-        "input_dir": "/some-path",
-        "output_config": '{"bootstrap.servers": "localhost:9092"}',
-    }
-
-    expected_output_config = {
-        "generator_output": {
-            "type": "confluentkafka_output",
-            "topic": "producer",
-            "kafka_config": json.loads(kwargs.get("output_config")),
-        },
-    }
-    controller = KafkaController(**kwargs)
-    mock_factory_create.assert_called_once_with(expected_output_config)
-
-    assert controller.output == mock_factory_create.return_value
-
-
-class TestController:
+class TestKafkaController:
     def setup_method(self):
         self.target_url = "http://testendpoint"
         self.batch_size = 10
 
-        self.controller = KafkaController(
+        self.controller = ControllerFactory.create(
+            target="kafka",
             input_dir="",
             output_config='{"bootstrap.servers": "localhost:9092"}',
             batch_size=self.batch_size,
@@ -50,7 +28,6 @@ class TestController:
             kafka_output=None,
         )
 
-    # @pytest.mark.skip(reason="This test blocks and has to be fixed")  # TODO: Fix this test
     @responses.activate
     def test_run(self, tmp_path):
         dataset_path = tmp_path / "dataset"

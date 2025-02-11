@@ -1,5 +1,4 @@
-"""
-This generator will parse example events, manipulate their timestamps and send them to
+"""This generator will parse example events, manipulate their timestamps and send them to
 a defined output
 """
 
@@ -13,14 +12,11 @@ logger: Logger = logging.getLogger("Generator")
 
 
 class HTTPController(Controller):
-    """
-    Controller for the HTTP Generator
-    """
+    """Controller for the HTTP Generator"""
 
     def run(self) -> str:
-        """
-        Iterate over all event classes, trigger their processing and count the return statistics
-        """
+        """Iterate over all event classes, trigger their processing and
+        count the return statistics"""
         logger.info("Started Data Processing")
         self.input.reformat_dataset()
         run_time_start = time.perf_counter()

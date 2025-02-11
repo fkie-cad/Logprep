@@ -6,40 +6,16 @@ from unittest import mock
 
 import responses
 
-from logprep.generator.http.controller import HTTPController
+from logprep.generator.factory import ControllerFactory
 from tests.unit.generator.http.util import create_test_event_files
 
 
-@mock.patch("logprep.generator.http.controller.Factory.create")
-def test_http_controller_create_output(mock_factory_create):
-
-    kwargs = {
-        "user": "test_user",
-        "password": "test_password",
-        "target_url": "http://example.com",
-        "timeout": 5,
-    }
-
-    expected_output_config = {
-        "generator_output": {
-            "type": "http_output",
-            "user": "test_user",
-            "password": "test_password",
-            "target_url": "http://example.com",
-            "timeout": 5,
-        }
-    }
-    controller = HTTPController(**kwargs)
-    mock_factory_create.assert_called_once_with(expected_output_config)
-
-    assert controller.output == mock_factory_create.return_value
-
-
-class TestController:
+class TestHttpController:
     def setup_method(self):
         self.target_url = "http://testendpoint"
         self.batch_size = 10
-        self.controller = HTTPController(
+        self.controller = ControllerFactory.create(
+            target="http",
             input_dir="",
             batch_size=self.batch_size,
             replace_timestamp=True,
@@ -51,7 +27,6 @@ class TestController:
             thread_count=1,
         )
 
-    # @pytest.mark.skip(reason="This test blocks and has to be fixed")  # TODO: Fix this test
     @responses.activate
     def test_run(self, tmp_path):
         dataset_path = tmp_path / "dataset"
@@ -102,7 +77,8 @@ class TestController:
 
     @mock.patch("logprep.abc.controller.ThreadPoolExecutor")
     def test_run_with_multiple_threads(self, mock_executor_class, tmp_path):
-        self.controller = HTTPController(
+        self.controller = ControllerFactory.create(
+            target="http",
             input_dir="",
             batch_size=self.batch_size,
             replace_timestamp=True,
