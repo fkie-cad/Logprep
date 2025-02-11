@@ -19,7 +19,7 @@ class HTTPController(Controller):
     Controller for the HTTP Generator
     """
 
-    def _create_output(self, kwargs):
+    def create_output(self, kwargs):
         output_config = {
             "generator_output": {
                 "type": "http_output",
