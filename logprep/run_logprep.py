@@ -9,8 +9,7 @@ import warnings
 
 import click
 
-from logprep.generator.confluent_kafka.controller import KafkaController
-from logprep.generator.http.controller import HTTPController
+from logprep.generator.factory import ControllerFactory
 from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
 from logprep.util.ansi import Fore
@@ -278,7 +277,7 @@ def generate_kafka2(**kwargs):
     """
     generator_logger = logging.getLogger("Generator")
     generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
-    generator = KafkaController(**kwargs)
+    generator = ControllerFactory.create(target="kafka", **kwargs)
     generator.run()
 
 
@@ -298,7 +297,7 @@ def generate_http(**kwargs):
     """
     generator_logger = logging.getLogger("Generator")
     generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
-    generator = HTTPController(**kwargs)
+    generator = ControllerFactory.create(target="http", **kwargs)
     generator.run()
 
 

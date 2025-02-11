@@ -3,14 +3,11 @@ This generator will parse example events, manipulate their timestamps and send t
 a defined output
 """
 
-import json
 import logging
 import time
 from logging import Logger
 
 from logprep.abc.controller import Controller
-from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
-from logprep.factory import Factory
 
 logger: Logger = logging.getLogger("Generator")
 
@@ -19,17 +16,6 @@ class KafkaController(Controller):
     """
     Controller for the HTTP Generator using Kafka output
     """
-
-    def create_output(self, kwargs):
-        output_config = {
-            "generator_output": {
-                "type": "confluentkafka_output",
-                "topic": "producer",
-                "kafka_config": json.loads(kwargs.get("output_config")),
-            },
-        }
-        self.output: ConfluentKafkaOutput = Factory.create(output_config)
-        return self.output
 
     def run(self) -> str:
         """
