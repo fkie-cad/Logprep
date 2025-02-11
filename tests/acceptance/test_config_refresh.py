@@ -89,8 +89,11 @@ def test_recover_after_invalid_then_valid_config(tmp_path, config):
     config.version = 5
     config_path.write_text(config.as_json())
 
-    wait_for_output(proc,
-        'The configuration for component "fawlty" must be specified as an object.', test_timeout=5)
+    wait_for_output(
+        proc,
+        'The configuration for component "fawlty" must be specified as an object.',
+        test_timeout=5,
+    )
 
     if proc.poll() == None:
         pass
