@@ -22,10 +22,7 @@ class HttpController(Controller):
         logger.info("Started Data Processing")
         self.input.reformat_dataset()
         run_time_start = time.perf_counter()
-        try:
-            self._generate_load()
-        except KeyboardInterrupt:
-            logger.info("Gracefully shutting down...")
+        self._generate_load()
         self.input.clean_up_tempdir()
         run_duration = time.perf_counter() - run_time_start
         stats = self.output.statistics
