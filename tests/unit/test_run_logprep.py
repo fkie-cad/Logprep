@@ -284,7 +284,7 @@ class TestGeneratorCLI:
         "controller_path, command_args, expected_kwargs",
         [
             (
-                "logprep.run_logprep.HTTPController",
+                "logprep.run_logprep.HttpController",
                 [
                     "generate",
                     "http",
@@ -361,7 +361,7 @@ class TestGeneratorCLI:
         "controller_path, command_args, expected_kwargs",
         [
             (
-                "logprep.run_logprep.HTTPController",
+                "logprep.generator.http.controller.HttpController",
                 [
                     "generate",
                     "http",
@@ -404,7 +404,7 @@ class TestGeneratorCLI:
                 },
             ),
             (
-                "logprep.run_logprep.KafkaController",
+                "logprep.generator.confluent_kafka.controller.KafkaController",
                 [
                     "generate",
                     "kafka2",

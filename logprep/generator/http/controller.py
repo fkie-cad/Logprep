@@ -11,12 +11,14 @@ from logprep.abc.controller import Controller
 logger: Logger = logging.getLogger("Generator")
 
 
-class HTTPController(Controller):
+class HttpController(Controller):
     """Controller for the HTTP Generator"""
 
     def run(self) -> str:
         """Iterate over all event classes, trigger their processing and
         count the return statistics"""
+        if self.loghandler is not None:
+            self.loghandler.start()
         logger.info("Started Data Processing")
         self.input.reformat_dataset()
         run_time_start = time.perf_counter()

@@ -7,10 +7,11 @@ import json
 import logging
 
 from logprep.abc.controller import Controller
-from logprep.abc.output import Output
+from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
+from logprep.connector.http.output import HttpOutput
 from logprep.factory import Factory
 from logprep.generator.confluent_kafka.controller import KafkaController
-from logprep.generator.http.controller import HTTPController
+from logprep.generator.http.controller import HttpController
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Generator")
@@ -36,10 +37,10 @@ class ControllerFactory:
                         "timeout": kwargs.get("timeout", 2),
                     }
                 }
-                output = Factory.create(output_config)
-                if not isinstance(output, Output):
+                output: HttpOutput = Factory.create(output_config)
+                if not isinstance(output, HttpOutput):
                     raise ValueError("Output is not a valid output type")
-                return HTTPController(output, loghandler, **kwargs)
+                return HttpController(output, loghandler, **kwargs)
             case "kafka":
                 default_config = '{"bootstrap.servers": "localhost:9092"}'
                 kafka_config = json.loads(kwargs.get("kafka_config", default_config))
@@ -50,20 +51,27 @@ class ControllerFactory:
                         "kafka_config": kafka_config,
                     },
                 }
-                output = Factory.create(output_config)
-                if not isinstance(output, Output):
+                output: ConfluentKafkaOutput = Factory.create(output_config)
+                if not isinstance(output, ConfluentKafkaOutput):
                     raise ValueError("Output is not a valid output type")
                 return KafkaController(output, loghandler, **kwargs)
             case _:
                 return None
 
-    def get_loghandler(self, level: str) -> LogprepMPQueueListener:
+    @staticmethod
+    def get_loghandler(level: str) -> LogprepMPQueueListener:
         """Returns a log handler for the controller"""
+
         console_handler = None
+        console_logger = logging.getLogger("console")
         if level:
             logger.setLevel(level)
-        if logger.handlers:
-            console_handler = logger.handlers.pop()  # last handler is console
+        if console_logger.handlers:
+            console_handler = console_logger.handlers.pop()  # last handler is console
+        else:
+            console_handler = (
+                logging.StreamHandler()
+            )  # not familiar with logging right now, we maybe want another solution
         if console_handler is None:
             raise ValueError("No console handler found")
         return LogprepMPQueueListener(logqueue, console_handler)

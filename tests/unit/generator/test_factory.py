@@ -4,9 +4,11 @@ from unittest import mock
 
 import pytest
 
+from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
+from logprep.connector.http.output import HttpOutput
 from logprep.generator.confluent_kafka.controller import KafkaController
 from logprep.generator.factory import ControllerFactory
-from logprep.generator.http.controller import HTTPController
+from logprep.generator.http.controller import HttpController
 
 
 class TestFactory:
@@ -21,7 +23,7 @@ class TestFactory:
     @pytest.mark.parametrize(
         "target, expected_class",
         [
-            ("http", HTTPController),
+            ("http", HttpController),
             ("kafka", KafkaController),
         ],
     )
@@ -49,6 +51,9 @@ class TestFactory:
                 "timeout": 5,
             }
         }
+        mock_http_output = mock.create_autospec(HttpOutput, instance=True)
+        mock_factory_create.return_value = mock_http_output
+
         controller = ControllerFactory.create("http", **kwargs)
         mock_factory_create.assert_called_once_with(expected_output_config)
 
@@ -69,10 +74,38 @@ class TestFactory:
                 "kafka_config": json.loads(kwargs.get("output_config")),
             },
         }
+
+        mock_http_output = mock.create_autospec(ConfluentKafkaOutput, instance=True)
+        mock_factory_create.return_value = mock_http_output
+
         controller = ControllerFactory.create(target="kafka", **kwargs)
         mock_factory_create.assert_called_once_with(expected_output_config)
 
         assert controller.output == mock_factory_create.return_value
 
-    def test_create_instantiates_loghandler(self):
-        assert False
+    @mock.patch("logprep.factory.Factory.create")
+    @mock.patch("logprep.generator.factory.ControllerFactory.get_loghandler")
+    def test_create_instantiates_loghandler(self, mock_factory_create, mock_factory_get_loghandler):
+        kwargs = {
+            "user": "test_user",
+            "password": "test_password",
+            "target_url": "http://example.com",
+            "timeout": 5,
+        }
+
+        expected_output_config = {
+            "generator_output": {
+                "type": "http_output",
+                "user": "test_user",
+                "password": "test_password",
+                "target_url": "http://example.com",
+                "timeout": 5,
+            }
+        }
+        mock_http_output = mock.create_autospec(HttpOutput, instance=True)
+        mock_factory_create.return_value = mock_http_output
+
+        controller = ControllerFactory.create("http", **kwargs)
+
+        mock_factory_get_loghandler.assert_called()
+        assert controller.output == mock_factory_create.return_value
