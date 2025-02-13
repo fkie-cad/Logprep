@@ -9,6 +9,7 @@ from logprep.connector.http.output import HttpOutput
 from logprep.generator.confluent_kafka.controller import KafkaController
 from logprep.generator.factory import ControllerFactory
 from logprep.generator.http.controller import HttpController
+from logprep.util.logging import LogprepMPQueueListener
 
 
 class TestFactory:
@@ -100,3 +101,25 @@ class TestFactory:
         with mock.patch.object(ControllerFactory, "get_loghandler") as mock_get_loghandler:
             _ = ControllerFactory.create("http", **kwargs)
         mock_get_loghandler.assert_called_once_with("INFO")
+
+    def test_get_loghandler_returns_loghandler(self):
+        with mock.patch("logprep.generator.factory.logger"):
+            loghandler = ControllerFactory.get_loghandler("INFO")
+        assert loghandler
+        assert isinstance(loghandler, LogprepMPQueueListener)
+
+    def test_get_loghandler_raises_on_invalid_level(self):
+        with pytest.raises(ValueError, match="Unknown level"):
+            _ = ControllerFactory.get_loghandler("INVALID")
+
+    def test_level_passed_to_set_level(self):
+        with mock.patch("logprep.generator.factory.logger") as mock_logger:
+            _ = ControllerFactory.get_loghandler("DEBUG")
+        mock_logger.setLevel.assert_called_once_with("DEBUG")
+
+    def test_get_loghandler_raises_if_no_handler(self):
+        with mock.patch("logprep.generator.factory.logger") as mock_logger:
+            mock_logger.handlers = []
+            with pytest.raises(ValueError, match="No console handler found"):
+                _ = ControllerFactory.get_loghandler("DEBUG")
+        mock_logger.setLevel.assert_called_once_with("DEBUG")

@@ -7,25 +7,40 @@ from unittest import mock
 import responses
 
 from logprep.generator.factory import ControllerFactory
+from logprep.generator.http.controller import HttpController
 from tests.unit.generator.http.util import create_test_event_files
 
 
+@mock.patch.object(ControllerFactory, "get_loghandler", new=mock.MagicMock())
 class TestHttpController:
     def setup_method(self):
         self.target_url = "http://testendpoint"
         self.batch_size = 10
-        self.controller = ControllerFactory.create(
-            target="http",
-            input_dir="",
-            batch_size=self.batch_size,
-            replace_timestamp=True,
-            tag="testdata",
-            report=True,
-            target_url=self.target_url,
-            user="test-user",
-            password="pass",
-            thread_count=1,
-        )
+        input_connector = mock.MagicMock()
+        output_connector = mock.MagicMock()
+        loghandler = mock.MagicMock()
+        self.controller = HttpController(input_connector, output_connector, loghandler)
+
+    def test_run_calls_generate_load(self):
+        with mock.patch.object(self.controller, "_generate_load") as mock_generate_load:
+            self.controller.run()
+            mock_generate_load.assert_called_once()
+
+    @mock.patch.object(HttpController, "_generate_load")
+    @mock.patch("time.perf_counter")
+    def test_run_measures_time(self, mock_perf_counter, mock_generate_load):
+        self.controller.run()
+        mock_perf_counter.assert_called()
+        assert mock_perf_counter.call_count == 2
+        mock_generate_load.assert_called()
+        assert mock_generate_load.call_count == 1
+
+    @mock.patch("logprep.generator.http.controller.logger")
+    def test_run_duration_is_positive(self, mock_logger):
+        self.controller.run()
+        mock_logger.info.assert_called()
+        run_duration = mock_logger.info.call_args_list[-1].args[1]
+        assert run_duration > 0
 
     @responses.activate
     def test_run(self, tmp_path):
