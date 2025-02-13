@@ -275,10 +275,7 @@ def generate_kafka2(**kwargs):
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a kafka endpoint.
     """
-    generator_logger = logging.getLogger("Generator")
-    generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
-    generator = ControllerFactory.create(target="kafka", **kwargs)
-    generator.run()
+    ControllerFactory.create(target="kafka", **kwargs).run()
 
 
 @generate.command(name="http")
@@ -295,10 +292,7 @@ def generate_http(**kwargs):
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a http endpoint.
     """
-    generator_logger = logging.getLogger("Generator")
-    generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
-    generator = ControllerFactory.create(target="http", **kwargs)
-    generator.run()
+    ControllerFactory.create(target="kafka", **kwargs).run()
 
 
 @cli.command(short_help="Print a complete configuration file [Not Yet Implemented]", name="print")

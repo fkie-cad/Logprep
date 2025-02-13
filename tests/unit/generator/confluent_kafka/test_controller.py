@@ -10,6 +10,7 @@ from tests.unit.generator.http.util import create_test_event_files
 
 
 class TestKafkaController:
+
     def setup_method(self):
         self.target_url = "http://testendpoint"
         self.batch_size = 10
@@ -28,7 +29,6 @@ class TestKafkaController:
             kafka_output=None,
         )
 
-    @responses.activate
     def test_run(self, tmp_path):
         dataset_path = tmp_path / "dataset"
         class_one_number_events = 100
@@ -58,9 +58,6 @@ class TestKafkaController:
         self.controller.input.input_root_path = dataset_path
         self.controller.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
         os.makedirs(self.controller.input._temp_dir, exist_ok=True)
-        expected_status_code = 200
-        responses.add(responses.POST, f"{self.target_url}/target-one", status=expected_status_code)
-        responses.add(responses.POST, f"{self.target_url}/target-two", status=expected_status_code)
         self.controller.run()
 
         for call_id, call in enumerate(responses.calls):

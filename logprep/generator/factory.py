@@ -62,7 +62,7 @@ class ControllerFactory:
                 return None
 
     @staticmethod
-    def get_loghandler(level: str) -> LogprepMPQueueListener:
+    def get_loghandler(level: str | int) -> LogprepMPQueueListener:
         """Returns a log handler for the controller"""
         console_handler = None
         if level:
