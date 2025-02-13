@@ -21,6 +21,8 @@ class KafkaController(Controller):
         """
         Iterate over all event classes, trigger their processing and count the return statistics
         """
+        if self.loghandler is not None:
+            self.loghandler.start()
         logger.info("Started Data Processing")
         self.input.reformat_dataset()
         run_time_start = time.perf_counter()
