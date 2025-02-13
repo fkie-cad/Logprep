@@ -17,12 +17,18 @@ class Controller(ABC):
     and sending them to outputs
     """
 
-    def __init__(self, output: Output, loghandler: LogprepMPQueueListener, **kwargs) -> None:
+    def __init__(
+        self,
+        input_connector: Input,
+        output_connector: Output,
+        loghandler: LogprepMPQueueListener,
+        **kwargs,
+    ) -> None:
         self.config = kwargs
         self.loghandler = loghandler
         self.thread_count: int = kwargs.get("thread_count", 1)
-        self.input: Input = Input(self.config)
-        self.output = output
+        self.input = input_connector
+        self.output = output_connector
 
     @abstractmethod
     def run(self):
