@@ -27,13 +27,14 @@ class TestFactory:
             ("kafka", KafkaController),
         ],
     )
-    def test_controller_get_http(self, target, expected_class):
-        controller = ControllerFactory.create(target)
-        assert controller
-        assert isinstance(controller, expected_class)
+    def test_create_returns(self, target, expected_class):
+        with mock.patch.object(ControllerFactory, "get_loghandler"):
+            controller = ControllerFactory.create(target)
+            assert controller
+            assert isinstance(controller, expected_class)
 
     @mock.patch("logprep.factory.Factory.create")
-    def test_http_controller_create_output(self, mock_factory_create):
+    def test_create_creates_http_output(self, mock_factory_create):
 
         kwargs = {
             "user": "test_user",
@@ -53,14 +54,14 @@ class TestFactory:
         }
         mock_http_output = mock.create_autospec(HttpOutput, instance=True)
         mock_factory_create.return_value = mock_http_output
-
-        controller = ControllerFactory.create("http", **kwargs)
+        with mock.patch.object(ControllerFactory, "get_loghandler"):
+            controller = ControllerFactory.create("http", **kwargs)
         mock_factory_create.assert_called_once_with(expected_output_config)
 
         assert controller.output == mock_factory_create.return_value
 
     @mock.patch("logprep.factory.Factory.create")
-    def test_kafka_controller_create_output(self, mock_factory_create):
+    def test_create_creates_kafka_output(self, mock_factory_create):
 
         kwargs = {
             "input_dir": "/some-path",
@@ -78,14 +79,14 @@ class TestFactory:
         mock_http_output = mock.create_autospec(ConfluentKafkaOutput, instance=True)
         mock_factory_create.return_value = mock_http_output
 
-        controller = ControllerFactory.create(target="kafka", **kwargs)
+        with mock.patch.object(ControllerFactory, "get_loghandler"):
+            controller = ControllerFactory.create(target="kafka", **kwargs)
         mock_factory_create.assert_called_once_with(expected_output_config)
 
         assert controller.output == mock_factory_create.return_value
 
     @mock.patch("logprep.factory.Factory.create")
-    @mock.patch("logprep.generator.factory.ControllerFactory.get_loghandler")
-    def test_create_instantiates_loghandler(self, mock_factory_create, mock_factory_get_loghandler):
+    def test_create_calls_get_loghandler(self, mock_factory_create):
         kwargs = {
             "user": "test_user",
             "password": "test_password",
@@ -93,19 +94,9 @@ class TestFactory:
             "timeout": 5,
         }
 
-        expected_output_config = {
-            "generator_output": {
-                "type": "http_output",
-                "user": "test_user",
-                "password": "test_password",
-                "target_url": "http://example.com",
-                "timeout": 5,
-            }
-        }
         mock_http_output = mock.create_autospec(HttpOutput, instance=True)
         mock_factory_create.return_value = mock_http_output
 
-        controller = ControllerFactory.create("http", **kwargs)
-
-        mock_factory_get_loghandler.assert_called()
-        assert controller.output == mock_factory_create.return_value
+        with mock.patch.object(ControllerFactory, "get_loghandler") as mock_get_loghandler:
+            _ = ControllerFactory.create("http", **kwargs)
+        mock_get_loghandler.assert_called_once_with("INFO")

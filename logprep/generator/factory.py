@@ -12,6 +12,7 @@ from logprep.connector.http.output import HttpOutput
 from logprep.factory import Factory
 from logprep.generator.confluent_kafka.controller import KafkaController
 from logprep.generator.http.controller import HttpController
+from logprep.generator.http.input import Input
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Generator")
@@ -26,6 +27,8 @@ class ControllerFactory:
         if target not in ["http", "kafka"]:
             raise ValueError(f"Controller type {target} not supported")
         loghandler = cls.get_loghandler(kwargs.get("level", "INFO"))
+        input_connector = Input(kwargs)
+        output_connector = None
         match target:
             case "http":
                 output_config = {
@@ -37,10 +40,10 @@ class ControllerFactory:
                         "timeout": kwargs.get("timeout", 2),
                     }
                 }
-                output: HttpOutput = Factory.create(output_config)
-                if not isinstance(output, HttpOutput):
+                output_connector = Factory.create(output_config)
+                if not isinstance(output_connector, HttpOutput):
                     raise ValueError("Output is not a valid output type")
-                return HttpController(output, loghandler, **kwargs)
+                return HttpController(input_connector, output_connector, loghandler, **kwargs)
             case "kafka":
                 default_config = '{"bootstrap.servers": "localhost:9092"}'
                 kafka_config = json.loads(kwargs.get("kafka_config", default_config))
@@ -51,27 +54,21 @@ class ControllerFactory:
                         "kafka_config": kafka_config,
                     },
                 }
-                output: ConfluentKafkaOutput = Factory.create(output_config)
-                if not isinstance(output, ConfluentKafkaOutput):
+                output_connector = Factory.create(output_config)
+                if not isinstance(output_connector, ConfluentKafkaOutput):
                     raise ValueError("Output is not a valid output type")
-                return KafkaController(output, loghandler, **kwargs)
+                return KafkaController(input_connector, output_connector, loghandler, **kwargs)
             case _:
                 return None
 
     @staticmethod
     def get_loghandler(level: str) -> LogprepMPQueueListener:
         """Returns a log handler for the controller"""
-
         console_handler = None
-        console_logger = logging.getLogger("console")
         if level:
             logger.setLevel(level)
-        if console_logger.handlers:
-            console_handler = console_logger.handlers.pop()  # last handler is console
-        else:
-            console_handler = (
-                logging.StreamHandler()
-            )  # not familiar with logging right now, we maybe want another solution
+        if logger.handlers:
+            console_handler = logger.handlers.pop()  # last handler is console
         if console_handler is None:
             raise ValueError("No console handler found")
         return LogprepMPQueueListener(logqueue, console_handler)
