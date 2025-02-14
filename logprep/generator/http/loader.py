@@ -1,4 +1,6 @@
 import itertools
+import logging
+import multiprocessing
 import os
 import random
 import shutil
@@ -6,9 +8,66 @@ import tempfile
 from functools import cached_property
 from operator import itemgetter
 from pathlib import Path
+from threading import Thread
 from typing import Any, Generator, List, Tuple
 
 import msgspec
+
+from logprep.framework.pipeline_manager import ThrottlingQueue
+from logprep.util.defaults import DEFAULT_MESSAGE_BACKLOG_SIZE
+
+logger = logging.getLogger("Loader")
+
+
+class EventBuffer:
+    """Handles the read and write operation into the buffer"""
+
+    _message_backlog: ThrottlingQueue
+
+    _sentinel = object()
+
+    write_thread: Thread
+
+    def __init__(
+        self, file_loader: "FileLoader", message_backlog_size: int = DEFAULT_MESSAGE_BACKLOG_SIZE
+    ) -> None:
+        self.file_loader = file_loader
+        ctx = multiprocessing.get_context()
+        self._message_backlog = ThrottlingQueue(ctx, maxsize=message_backlog_size)
+
+    def write(self) -> None:
+        """Reads lines from the file loader and puts them into the message backlog queue.
+        This method blocks if queue is full.
+        """
+
+        for line in self.file_loader.read_lines():
+            if self._message_backlog.full():
+                logger.warning("Message backlog queue is full. Blocking until space is available.")
+            self._message_backlog.put(line)
+
+    def read(self) -> Generator[str, None, None]:
+        """Reads lines from the message backlog queue.
+
+        Yields:
+        -------
+        str:
+            A line from the message backlog queue.
+        """
+        while True:
+            event = self._message_backlog.get()
+            if (
+                event is self._sentinel
+            ):  # Todo: Returned sentinel object is not equal to the class sentinel
+                break
+            yield event
+
+    def run(self) -> None:
+        self.write_thread = Thread(target=self.write)
+        self.write_thread.start()
+        self.write_thread.join()
+
+    def stop(self) -> None:
+        self._message_backlog.put(self._sentinel)
 
 
 class FileLoader:
