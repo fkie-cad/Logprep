@@ -101,9 +101,7 @@ class CalculatorRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for Calculator"""
 
-        calc: str = field(
-            validator=[validators.instance_of(str), validators.min_len(3)],
-        )
+        calc: str = field(validator=(validators.instance_of(str), validators.min_len(3)))
         """The calculation expression. Fields from the event can be used by
         surrounding them with :code:`${` and :code:`}`."""
         source_fields: list = field(factory=list, init=False, repr=False, eq=False)

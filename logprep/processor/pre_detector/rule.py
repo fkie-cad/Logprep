@@ -176,11 +176,11 @@ class PreDetectorRule(Rule):
         timestamp_field: str = field(validator=validators.instance_of(str), default="@timestamp")
         """the field which has the given timestamp to be normalized defaults to :code:`@timestamp`"""
         source_timezone: ZoneInfo = field(
-            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
         )
         """ timezone of source_fields defaults to :code:`UTC`"""
         target_timezone: ZoneInfo = field(
-            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
         )
         """ timezone for target_field defaults to :code:`UTC`"""
         failure_tags: list = field(
@@ -188,7 +188,9 @@ class PreDetectorRule(Rule):
         )
         """ tags to be added if processing of the rule fails"""
 
-    def __eq__(self, other: "PreDetectorRule") -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PreDetectorRule):
+            return NotImplemented
         return all(
             [
                 super().__eq__(other),

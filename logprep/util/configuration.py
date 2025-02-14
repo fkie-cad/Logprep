@@ -190,9 +190,9 @@ from copy import deepcopy
 from itertools import chain
 from logging.config import dictConfig
 from pathlib import Path
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
-from attrs import asdict, define, field, validators
+from attrs import asdict, define, field, fields, validators
 from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
@@ -346,7 +346,7 @@ class LoggerConfig:
          The log level of the root logger should be set to :code:`INFO` or higher in production environments
          to avoid exposing sensitive information in the logs.
     """
-    format: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    format: str = field(default="", validator=(validators.instance_of(str)), eq=False)
     """The format of the log message as supported by the :code:`LogprepFormatter`.
     Defaults to :code:`"%(asctime)-15s %(name)-10s %(levelname)-8s: %(message)s"`.
 
@@ -354,7 +354,7 @@ class LoggerConfig:
       :no-index:
 
     """
-    datefmt: str = field(default="", validator=[validators.instance_of(str)], eq=False)
+    datefmt: str = field(default="", validator=(validators.instance_of(str)), eq=False)
     """The date format of the log message. Defaults to :code:`"%Y-%m-%d %H:%M:%S"`."""
     loggers: dict = field(validator=validators.instance_of(dict), factory=dict)
     """The loggers loglevel configuration. Defaults to:
@@ -469,7 +469,7 @@ class Configuration:
        Because of that ensure that the configuration endpoint is always available.
     """
     process_count: int = field(
-        validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
+        validator=(validators.instance_of(int), validators.ge(1)), default=1, eq=False
     )
     """Number of logprep processes to start. Defaults to :code:`1`."""
     restart_count: int = field(
@@ -478,7 +478,7 @@ class Configuration:
     """Number of restarts before logprep exits. Defaults to :code:`5`.
     If this value is set to a negative number, logprep will always restart immediately."""
     timeout: float = field(
-        validator=[validators.instance_of(float), validators.gt(0)], default=5.0, eq=False
+        validator=(validators.instance_of(float), validators.gt(0)), default=5.0, eq=False
     )
     """Logprep tries to react to signals (like sent by CTRL+C) within the given time.
     The time taken for some processing steps is not always predictable, thus it is not possible to
@@ -572,7 +572,7 @@ class Configuration:
         eq=False,
     )
 
-    _configs: tuple["Configuration"] = field(
+    _configs: Tuple["Configuration", ...] = field(
         validator=validators.instance_of(tuple), factory=tuple, repr=False, eq=False
     )
 
@@ -609,7 +609,7 @@ class Configuration:
                 config_dict = config_getter.get_json()
             except (json.JSONDecodeError, ValueError):
                 config_dict = config_getter.get_yaml()
-            config = Configuration(**config_dict, getter=config_getter)
+            config = Configuration(**(config_dict | {"getter": config_getter}))
         except TypeError as error:
             raise InvalidConfigurationError(
                 f"Invalid configuration file: {config_path} {error.args[0]}"
@@ -622,7 +622,7 @@ class Configuration:
         return config
 
     @classmethod
-    def from_sources(cls, config_paths: Iterable[str] = None) -> "Configuration":
+    def from_sources(cls, config_paths: Iterable[str] | None = None) -> "Configuration":
         """Creates configuration from a list of configuration sources.
 
         Parameters
@@ -639,7 +639,7 @@ class Configuration:
         if not config_paths:
             config_paths = [DEFAULT_CONFIG_LOCATION]
         errors = []
-        configs = []
+        configs: List[Configuration] = []
         for config_path in config_paths:
             try:
                 config = Configuration.from_source(config_path)
@@ -689,7 +689,7 @@ class Configuration:
 
     def reload(self) -> None:
         """Reload the configuration."""
-        errors = []
+        errors: List[Exception] = []
         try:
             new_config = Configuration.from_sources(self.config_paths)
             if new_config == self:
@@ -703,7 +703,7 @@ class Configuration:
             raise InvalidConfigurationErrors(errors)
 
     def _set_attributes_from_configs(self) -> None:
-        for attribute in filter(lambda x: x.repr, self.__attrs_attrs__):
+        for attribute in filter(lambda x: x.repr, fields(self.__class__)):
             setattr(
                 self,
                 attribute.name,
@@ -737,10 +737,12 @@ class Configuration:
         return {processor_name: processor_config}
 
     @staticmethod
-    def _get_last_non_default_value(configs: list["Configuration"], attribute: str) -> Any:
+    def _get_last_non_default_value(configs: Sequence["Configuration"], attribute: str) -> Any:
         if configs:
             config = configs[0]
-            attrs_attribute = [attr for attr in config.__attrs_attrs__ if attr.name == attribute][0]
+            attrs_attribute = [attr for attr in fields(config.__class__) if attr.name == attribute][
+                0
+            ]
             default_for_attribute = (
                 attrs_attribute.default.factory()
                 if hasattr(attrs_attribute.default, "factory")

@@ -8,7 +8,7 @@ import os
 import zlib
 from abc import abstractmethod
 from copy import deepcopy
-from functools import partial, cached_property
+from functools import cached_property, partial
 from hmac import HMAC
 from typing import Optional, Tuple
 from zoneinfo import ZoneInfo
@@ -91,9 +91,9 @@ class TimeDeltaConfig:
     """TimeDelta Configurations
     Works only if the preprocessor log_arrival_time_target_field is set."""
 
-    target_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
+    target_field: str = field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
     """Defines the fieldname to which the time difference should be written to."""
-    reference_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
+    reference_field: str = field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
     """Defines a field with a timestamp that should be used for the time difference.
     The calculation will be the arrival time minus the time of this reference field."""
 
@@ -233,7 +233,7 @@ class Input(Connector):
         """Check and return if the env enrichment should be added to the event."""
         return bool(self._config.preprocessing.get("enrich_by_env_variables"))
 
-    def _get_raw_event(self, timeout: float) -> bytearray:  # pylint: disable=unused-argument
+    def _get_raw_event(self, timeout: float) -> bytes | None:  # pylint: disable=unused-argument
         """Implements the details how to get the raw event
 
         Parameters
@@ -283,7 +283,7 @@ class Input(Connector):
         """
         event, raw_event = self._get_event(timeout)
         if event is None:
-            return
+            return None
         self.metrics.number_of_processed_events += 1
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)

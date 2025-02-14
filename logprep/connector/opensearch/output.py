@@ -109,23 +109,23 @@ class OpensearchOutput(Output):
         """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
         thread_count: int = field(
-            default=4, validator=[validators.instance_of(int), validators.gt(1)]
+            default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Number of threads to use for bulk requests."""
         queue_size: int = field(
-            default=4, validator=[validators.instance_of(int), validators.gt(1)]
+            default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Number of queue size to use for bulk requests."""
         chunk_size: int = field(
-            default=500, validator=[validators.instance_of(int), validators.gt(1)]
+            default=500, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Chunk size to use for bulk requests."""
         max_chunk_bytes: int = field(
-            default=100 * 1024 * 1024, validator=[validators.instance_of(int), validators.gt(1)]
+            default=100 * 1024 * 1024, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Max chunk size to use for bulk requests. The default is 100MB."""
         max_retries: int = field(
-            default=3, validator=[validators.instance_of(int), validators.gt(0)]
+            default=3, validator=(validators.instance_of(int), validators.gt(0))
         )
         """Max retries for all requests. Default is 3."""
         desired_cluster_status: list = field(
@@ -134,7 +134,7 @@ class OpensearchOutput(Output):
         """Desired cluster status for health check as list of strings. Default is ["green"]"""
         default_op_type: str = field(
             default="index",
-            validator=[validators.instance_of(str), validators.in_(["create", "index"])],
+            validator=(validators.instance_of(str), validators.in_(["create", "index"])),
         )
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
@@ -174,7 +174,7 @@ class OpensearchOutput(Output):
         return "https" if self._config.ca_cert else "http"
 
     @property
-    def http_auth(self) -> tuple:
+    def http_auth(self) -> tuple | None:
         """Returns the credentials
 
         Returns

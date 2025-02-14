@@ -3,9 +3,9 @@
 import logging
 import os
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Dict, List, Type
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Type
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -69,10 +69,10 @@ class ProcessorResult:
         factory=list,
     )
     """ The warnings that occurred during processing """
+    event: dict | None = field(validator=validators.instance_of((dict, type(None))), default=None)
+    """ A reference to the event that was processed """
     processor_name: str = field(validator=validators.instance_of(str))
     """ The name of the processor """
-    event: dict = field(validator=validators.optional(validators.instance_of(dict)), default=None)
-    """ A reference to the event that was processed """
 
 
 class Processor(Component):
@@ -161,7 +161,7 @@ class Processor(Component):
             extra data and a list of target outputs.
 
         """
-        self.result = ProcessorResult(processor_name=self.name, event=event)
+        self.result = ProcessorResult(processor_name=self.name, event=event)  # type: ignore
         logger.debug("%s processing event %s", self.describe(), event)
         if self._bypass_rule_tree:
             self._process_all_rules(event)
@@ -214,9 +214,13 @@ class Processor(Component):
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
+            if self.result is None:
+                raise error
             self.result.errors.append(error)  # is needed to prevent wrapping it in itself
             event.clear()
         except Exception as error:  # pylint: disable=broad-except
+            if self.result is None:
+                raise error
             self.result.errors.append(ProcessingCriticalError(str(error), rule))
             event.clear()
         if not hasattr(rule, "delete_source_fields"):
@@ -291,7 +295,7 @@ class Processor(Component):
             return True
         return False
 
-    def _write_target_field(self, event: dict, rule: "Rule", result: any) -> None:
+    def _write_target_field(self, event: dict, rule: "Rule", result: Any) -> None:
         add_fields_to(
             event,
             fields={rule.target_field: result},

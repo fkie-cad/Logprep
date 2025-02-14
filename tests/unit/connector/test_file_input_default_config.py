@@ -144,7 +144,7 @@ class TestFileInput(BaseInputTestCase):
 
     def test_input_line_function_returns_empty_string(self):
         wait_for_interval(CHECK_INTERVAL)
-        assert self.object._line_to_dict("") == ""
+        assert not self.object._line_to_dict("")
 
     def test_log_from_file_with_get_next(self):
         wait_for_interval(CHECK_INTERVAL)

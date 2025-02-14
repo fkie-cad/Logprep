@@ -11,24 +11,26 @@ from datetime import datetime, timedelta
 from functools import cached_property
 from operator import itemgetter
 from pathlib import Path
-from typing import Generator, List
+from typing import Dict, Generator, List
 
 import msgspec
-import yaml
-from attr import define, field, validators
+from attrs import define, field, validators
+from ruamel.yaml import YAML
 
 from logprep.generator.http.manipulator import Manipulator
+
+yaml = YAML(typ="safe")
 
 
 @define(kw_only=True)
 class TimestampReplacementConfig:
     """Configuration Class fot TimestampReplacement"""
 
-    key: str = field(validator=[validators.instance_of(str)])
+    key: str = field(validator=(validators.instance_of(str)))
     format: str = field(validator=validators.instance_of(str))
     time_shift: str = field(
         default="+0000",
-        validator=[validators.instance_of(str), validators.matches_re(r"[+-]\d{4}")],
+        validator=(validators.instance_of(str), validators.matches_re(r"[+-]\d{4}")),
     )
     time_delta: timedelta = field(
         default=None, validator=validators.optional(validators.instance_of(timedelta))
@@ -101,7 +103,7 @@ class Input:
         self.events_sent = 0
         self.batch_size = config.get("batch_size")
         self.log = logging.getLogger("Input")
-        self.log_class_manipulator_mapping = {}
+        self.log_class_manipulator_mapping: Dict = {}
         self.number_events_of_dataset = 0
         self.event_file_counter = 0
 
@@ -148,7 +150,7 @@ class Input:
         """Load the event class specific configuration"""
         config_path = os.path.join(event_class_dir_path, "config.yaml")
         with open(config_path, "r", encoding="utf8") as file:
-            event_class_config = yaml.safe_load(file)
+            event_class_config = yaml.load(file)
         self.log.debug("Following class config was loaded: %s", event_class_config)
         event_class_config = EventClassConfig(**event_class_config)
         if "," in event_class_config.target_path:
