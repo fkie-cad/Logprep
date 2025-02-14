@@ -10,6 +10,7 @@ import pytest
 import yaml
 
 from logprep.generator.http.input import EventClassConfig, Input
+from logprep.generator.http.loader import EventLoader
 from tests.unit.generator.http.util import create_test_event_files
 
 
@@ -24,6 +25,7 @@ class TestInput:
             "tag": "loadtest",
         }
         self.input = Input(config=config)
+        self.event_loader = EventLoader(config)
 
     def test_load_parses_same_amount_of_events_as_the_batch_size(self, tmp_path):
         example_event = {"some": "event"}
@@ -34,6 +36,17 @@ class TestInput:
         self.input.batch_size = batch_size
         self.input.reformat_dataset()
         loader = self.input.load()
+        _, events = next(loader)
+
+        ### temporary fixes for quick tests
+        self.event_loader._temp_dir = self.input._temp_dir
+        self.event_loader.event_processor.log_class_manipulator_mapping = (
+            self.input.log_class_manipulator_mapping
+        )
+
+        # self.event_loader.input_root_path = tmp_path
+        self.event_loader.batch_size = batch_size
+        loader = self.event_loader.load()
         _, events = next(loader)
         assert len(events) == number_of_events
         with pytest.raises(StopIteration):
