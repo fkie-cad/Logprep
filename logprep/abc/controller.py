@@ -7,7 +7,6 @@ from logging import Logger
 
 from logprep.abc.output import Output
 from logprep.generator.http.input import Input
-from logprep.generator.http.loader import EventLoader
 from logprep.util.logging import LogprepMPQueueListener
 
 logger: Logger = logging.getLogger("Generator")
@@ -30,7 +29,6 @@ class Controller(ABC):
         self.thread_count: int = kwargs.get("thread_count", 1)
         self.input = input_connector
         self.output = output_connector
-        self.event_loader = EventLoader(kwargs)
 
     @abstractmethod
     def run(self):
@@ -39,5 +37,4 @@ class Controller(ABC):
     def _generate_load(self):
 
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
-            executor.map(self.output.store, self.event_loader.load())
             executor.map(self.output.store, self.input.load())

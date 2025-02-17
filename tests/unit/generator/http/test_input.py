@@ -10,7 +10,6 @@ import pytest
 import yaml
 
 from logprep.generator.http.input import EventClassConfig, Input
-from logprep.generator.http.loader import EventLoader
 from tests.unit.generator.http.util import create_test_event_files
 
 
@@ -25,7 +24,6 @@ class TestInput:
             "tag": "loadtest",
         }
         self.input = Input(config=config)
-        self.event_loader = EventLoader(config)
 
     def test_load_parses_same_amount_of_events_as_the_batch_size(self, tmp_path):
         example_event = {"some": "event"}
