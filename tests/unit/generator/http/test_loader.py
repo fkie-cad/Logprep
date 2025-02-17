@@ -25,12 +25,12 @@ class TestEventBuffer:
 
     def test_init_sets_message_backlog_default(self):
         event_buffer = EventBuffer(self.file_loader)
-        assert event_buffer._message_backlog.capacity == DEFAULT_MESSAGE_BACKLOG_SIZE
+        assert event_buffer._message_backlog.maxsize == DEFAULT_MESSAGE_BACKLOG_SIZE
 
     def test_init_sets_message_backlog_custom(self):
         random_size = random.randint(1, 100000)
         event_buffer = EventBuffer(self.file_loader, message_backlog_size=random_size)
-        assert event_buffer._message_backlog.capacity == random_size
+        assert event_buffer._message_backlog.maxsize == random_size
 
     def test_write(self):
         self.file_loader.read_lines.return_value = ["line1", "line2"]
@@ -52,37 +52,48 @@ class TestEventBuffer:
         event_buffer = EventBuffer(self.file_loader)
         self.file_loader.read_lines.return_value = ["line1", "line2"]
         event_buffer.write()
-        reader = event_buffer.read()
+        reader = event_buffer.read_lines()
         assert next(reader) == "line1"
         assert next(reader) == "line2"
 
     def test_read_raises_stop_iteration(self):
         event_buffer = EventBuffer(self.file_loader)
         sentinel = event_buffer._sentinel
-        self.file_loader.read_lines.return_value = [sentinel]
-        event_buffer.write()
-        reader = event_buffer.read()
-        with pytest.raises(StopIteration):
-            next(reader)
+        event_buffer._message_backlog.put(sentinel)
 
-    def test_run_starts_and_joins_thread(self):
+        with pytest.raises(StopIteration):
+            next(event_buffer.read_lines())
+
+    def test_start_starts_thread(self):
         event_buffer = EventBuffer(self.file_loader)
 
-        with (
-            mock.patch.object(Thread, "start") as mock_start,
-            mock.patch.object(Thread, "join") as mock_join,
-        ):
-            event_buffer.run()
+        with mock.patch.object(Thread, "start") as mock_start:
+            event_buffer.start()
 
-            mock_start.assert_called_once()
-            mock_join.assert_called_once()
+        mock_start.assert_called_once()
 
     def test_stop_places_sentinel_in_queue(self):
         event_buffer = EventBuffer(self.file_loader)
+        event_buffer._thread = mock.MagicMock()
 
         with mock.patch.object(event_buffer, "_message_backlog") as mock_queue:
             event_buffer.stop()
             mock_queue.put.assert_called_once_with(event_buffer._sentinel)
+
+    def test_stop_stops_thread(self):
+        event_buffer = EventBuffer(self.file_loader)
+        event_buffer._thread = mock.MagicMock()
+        event_buffer.stop()
+        event_buffer._thread.join.assert_called_once()
+
+    def test_context_manager_start_and_stops_thread(self):
+        event_buffer = EventBuffer(self.file_loader)
+        event_buffer._thread = mock.MagicMock()
+        with event_buffer:
+            assert True
+
+        event_buffer._thread.start.assert_called_once()
+        event_buffer._thread.join.assert_called_once()
 
 
 class TestFileLoader:
@@ -153,7 +164,7 @@ class TestFileLoader:
             loader = FileLoader("mock_dir")
             input_files = loader.files
 
-            gen = loader.infinite_read_lines(input_files)
+            gen = loader.read_lines(input_files)
             output = [next(gen) for _ in range(6)]
 
             assert output == ["Line1\n", "Line2\n", "Line1\n", "Line2\n", "Line1\n", "Line2\n"]
@@ -167,3 +178,18 @@ class TestFileLoader:
             loader.clean_up()
 
             mock_rmtree.assert_called_once()
+
+    def test_without_mock(self, tmp_path):
+        lines = """first line
+second line
+third line
+"""
+        first_file = tmp_path / "file1.txt"
+        second_file = tmp_path / "file2.txt"
+        first_file.write_text(lines)
+        second_file.write_text(lines)
+        self.file_loader = FileLoader(tmp_path)
+        lines = list(self.file_loader.read_lines())
+        assert lines
+        assert len(lines) == 6
+        assert lines[0] == "first line\n"
