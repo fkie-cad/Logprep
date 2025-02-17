@@ -1,6 +1,4 @@
-import itertools
 import logging
-import random
 import shutil
 from pathlib import Path
 from queue import Queue
@@ -74,10 +72,9 @@ class FileLoader:
         message_backlog_size = kwargs.get("message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE)
         self._buffer = EventBuffer(self, message_backlog_size)
         self.directory = Path(directory)
-        self.shuffle = kwargs.get("shuffle", False)
-        self.files = self._get_files()
 
-    def _get_files(self) -> List[str]:
+    @property
+    def files(self) -> List[str]:
         """Gets a list of valid files from the given directory."""
         if not self.directory.exists() or not self.directory.is_dir():
             raise FileNotFoundError(
@@ -87,20 +84,12 @@ class FileLoader:
         files = self.directory.glob("*")
         if not files:
             raise FileNotFoundError(f"No files found in '{self.directory}'.")
-
-        if self.shuffle:
-            random.shuffle(files)
         return files
 
     def read_lines(self) -> Generator[str, None, None]:
         """Endless loop over files."""
-        if self._buffer:
-            with self._buffer as buffer:
-                yield from buffer.read_lines()
-        else:
-            for event_file in itertools.cycle(self.files):
-                with open(event_file, "r", encoding="utf8") as file:
-                    yield from file
+        with self._buffer as buffer:
+            yield from buffer.read_lines()
 
     def clean_up(self) -> None:
         """Deletes the temporary directory."""
