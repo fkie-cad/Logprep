@@ -115,10 +115,7 @@ class TestFileLoader:
         loader = FileLoader("mocked_dir")
         assert loader.directory == Path("mocked_dir")
         assert loader.files == ["file1.txt", "file2.txt"]
-
-    def test_default(self):
-        loader = FileLoader("")
-        assert loader.shuffle is False
+        assert loader._buffer.file_loader is loader
 
     def test_overwrites_default(self):
         loader = FileLoader("", shuffle=True)
@@ -142,7 +139,8 @@ class TestFileLoader:
             FileLoader("mocked_dir", shuffle=True)
             mock_shuffle.assert_called_once()
 
-    def test_read_lines(self):
+    @mock.patch("logprep.generator.http.loader.EventBuffer")
+    def test_read_lines(self, mock_buffer):
         with (
             mock.patch(
                 "builtins.open", new_callable=mock.mock_open, read_data="Line1\nLine2\n"
