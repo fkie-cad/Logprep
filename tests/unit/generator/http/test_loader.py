@@ -84,104 +84,87 @@ class TestEventBuffer:
             mock_queue.put.assert_called_once_with(event_buffer._sentinel)
 
 
-def test_file_loader_initialization():
-    """Test if FileLoader initializes correctly with mocked directory."""
-    with (
-        mock.patch("os.listdir", return_value=["file1.txt", "file2.txt"]),
-        mock.patch("os.path.isdir", return_value=True),
-        mock.patch("os.path.exists", return_value=True),
-    ):
+class TestFileLoader:
+    """Test suite for the FileLoader class."""
 
+    def setup_method(self):
+        self.mock_listdir = mock.patch("os.listdir", return_value=["file1.txt", "file2.txt"])
+        self.mock_isdir = mock.patch("os.path.isdir", return_value=True)
+        self.mock_exists = mock.patch("os.path.exists", return_value=True)
+
+        self.mock_listdir.start()
+        self.mock_isdir.start()
+        self.mock_exists.start()
+
+    def teardown_method(self):
+        mock.patch.stopall()
+
+    def test_init(self):
         loader = FileLoader("mocked_dir")
-
         assert loader.directory == Path("mocked_dir")
         assert loader.files == ["mocked_dir/file1.txt", "mocked_dir/file2.txt"]
 
+    def test_default(self):
+        loader = FileLoader("")
+        assert loader.shuffle is False
 
-def test_file_loader_default():
-    loader = FileLoader("")
-    assert loader.shuffle is False
+    def test_overwrites_default(self):
+        loader = FileLoader("", shuffle=True)
+        assert loader.shuffle is True
 
+    def test_initialization_non_existent_directory(self):
+        with (
+            mock.patch("os.path.exists", return_value=False),
+            mock.patch("os.path.isdir", return_value=False),
+        ):
+            with pytest.raises(FileNotFoundError):
+                FileLoader("non_existent_dir")
 
-def test_file_loader_overwrites_default():
-    loader = FileLoader("", shuffle=True)
-    assert loader.shuffle is True
+    def test_initialization_empty_directory(self):
+        with mock.patch("os.listdir", return_value=[]):
+            with pytest.raises(ValueError, match="No files found"):
+                FileLoader("mocked_empty_dir")
 
+    def test_file_shuffling(self):
+        with (mock.patch("random.shuffle") as mock_shuffle,):
+            FileLoader("mocked_dir", shuffle=True)
+            mock_shuffle.assert_called_once()
 
-def test_file_loader_initialization_non_existent_directory():
-    with pytest.raises(FileNotFoundError):
-        FileLoader("non_existent_dir")
+    def test_read_lines(self):
+        with (
+            mock.patch(
+                "builtins.open", new_callable=mock.mock_open, read_data="Line1\nLine2\n"
+            ) as mock_file,
+        ):
+            loader = FileLoader("mock_dir")
+            input_files = loader.files
 
+            result = list(loader.read_lines(input_files))
+            assert result == ["Line1\n", "Line2\n", "Line1\n", "Line2\n"]
+            mock_file.assert_any_call("mock_dir/file1.txt", "r", encoding="utf8")
+            mock_file.assert_any_call("mock_dir/file2.txt", "r", encoding="utf8")
 
-def test_file_loader_initialization_empty_directory():
-    with (
-        mock.patch("os.listdir", return_value=[]),
-        mock.patch("os.path.isdir", return_value=True),
-        mock.patch("os.path.exists", return_value=True),
-    ):
-        with pytest.raises(ValueError, match="No files found"):
-            FileLoader("mocked_empty_dir")
+    def test_infinite_read_lines(self):
+        """Test if infinite_read_lines loops over files endlessly."""
+        with (
+            mock.patch(
+                "builtins.open", new_callable=mock.mock_open, read_data="Line1\nLine2\n"
+            ) as mock_file,
+        ):
+            loader = FileLoader("mock_dir")
+            input_files = loader.files
 
+            gen = loader.infinite_read_lines(input_files)
+            output = [next(gen) for _ in range(6)]
 
-def test_file_loader_file_shuffling():
-    with (
-        mock.patch("os.listdir", return_value=["file1.txt", "file2.txt"]),
-        mock.patch("os.path.isdir", return_value=True),
-        mock.patch("os.path.exists", return_value=True),
-        mock.patch("random.shuffle") as mock_shuffle,
-    ):
-        FileLoader("mocked_dir", shuffle=True)
-        mock_shuffle.assert_called_once()
+            assert output == ["Line1\n", "Line2\n", "Line1\n", "Line2\n", "Line1\n", "Line2\n"]
 
+            mock_file.assert_any_call("mock_dir/file1.txt", "r", encoding="utf8")
+            mock_file.assert_any_call("mock_dir/file2.txt", "r", encoding="utf8")
 
-def test_file_loader_read_lines():
-    with (
-        mock.patch("os.listdir", return_value=["file1.txt", "file2.txt"]),
-        mock.patch("os.path.isdir", return_value=True),
-        mock.patch("os.path.exists", return_value=True),
-        mock.patch(
-            "builtins.open", new_callable=mock.mock_open, read_data="Line1\nLine2\n"
-        ) as mock_file,
-    ):
-        loader = FileLoader("mock_dir")
-        input_files = loader.files
+    def test_clean_up(self):
+        with (mock.patch("shutil.rmtree") as mock_rmtree,):
+            loader = FileLoader("mock_dir")
+            loader.clean_up()
 
-        result = list(loader.read_lines(input_files))
-        assert result == ["Line1\n", "Line2\n", "Line1\n", "Line2\n"]
-        mock_file.assert_any_call("mock_dir/file1.txt", "r", encoding="utf8")
-        mock_file.assert_any_call("mock_dir/file2.txt", "r", encoding="utf8")
-
-
-def test_file_loader_infinite_read_lines():
-    """Test if infinite_read_lines loops over files endlessly."""
-    with (
-        mock.patch("os.listdir", return_value=["file1.txt", "file2.txt"]),
-        mock.patch("os.path.isdir", return_value=True),
-        mock.patch("os.path.exists", return_value=True),
-        mock.patch(
-            "builtins.open", new_callable=mock.mock_open, read_data="Line1\nLine2\n"
-        ) as mock_file,
-    ):
-        loader = FileLoader("mock_dir")
-        input_files = loader.files
-
-        gen = loader.infinite_read_lines(input_files)
-        output = [next(gen) for _ in range(6)]
-
-        assert output == ["Line1\n", "Line2\n", "Line1\n", "Line2\n", "Line1\n", "Line2\n"]
-
-        mock_file.assert_any_call("mock_dir/file1.txt", "r", encoding="utf8")
-        mock_file.assert_any_call("mock_dir/file2.txt", "r", encoding="utf8")
-
-
-def test_file_loader_clean_up():
-    with (
-        mock.patch("os.listdir", return_value=["file1.txt", "file2.txt"]),
-        mock.patch("os.path.isdir", return_value=True),
-        mock.patch("os.path.exists", return_value=True),
-        mock.patch("shutil.rmtree") as mock_rmtree,
-    ):
-        loader = FileLoader("mock_dir")
-        loader.clean_up()
-
-        mock_rmtree.assert_called_once()
+            mock_rmtree.assert_called_once()
