@@ -73,8 +73,25 @@ class EventBuffer:
 class FileLoader:
     """Handles file operations like reading files, shuffling, and cycling through them."""
 
-    def __init__(self, directory: str):
-        self.directory = directory
+    def __init__(self, directory: str, **kwargs) -> None:
+        self.directory = Path(directory)
+        self.shuffle = kwargs.get("shuffle", False)
+        self.files = self._get_files()
+
+    def _get_files(self) -> List[str]:
+        """Gets a list of valid files from the given directory."""
+        if not os.path.exists(self.directory) or not os.path.isdir(self.directory):
+            raise FileNotFoundError(
+                f"Directory '{self.directory}' does not exist or is not a directory."
+            )
+
+        files = [os.path.join(self.directory, file) for file in os.listdir(self.directory)]
+        if not files:
+            raise ValueError(f"No files found in '{self.directory}'.")
+
+        if self.shuffle:
+            random.shuffle(files)
+        return files
 
     def read_lines(self, input_files) -> Generator[str, None, None]:
         """Reads files line by line, either once or infinitely."""
