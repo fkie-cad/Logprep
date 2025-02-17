@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=attribute-defined-outside-init
 import logging
 import random
 from pathlib import Path
@@ -88,9 +89,9 @@ class TestFileLoader:
     """Test suite for the FileLoader class."""
 
     def setup_method(self):
-        self.mock_listdir = mock.patch("os.listdir", return_value=["file1.txt", "file2.txt"])
-        self.mock_isdir = mock.patch("os.path.isdir", return_value=True)
-        self.mock_exists = mock.patch("os.path.exists", return_value=True)
+        self.mock_listdir = mock.patch("pathlib.Path.glob", return_value=["file1.txt", "file2.txt"])
+        self.mock_isdir = mock.patch("pathlib.Path.is_dir", return_value=True)
+        self.mock_exists = mock.patch("pathlib.Path.exists", return_value=True)
 
         self.mock_listdir.start()
         self.mock_isdir.start()
@@ -102,7 +103,7 @@ class TestFileLoader:
     def test_init(self):
         loader = FileLoader("mocked_dir")
         assert loader.directory == Path("mocked_dir")
-        assert loader.files == ["mocked_dir/file1.txt", "mocked_dir/file2.txt"]
+        assert loader.files == ["file1.txt", "file2.txt"]
 
     def test_default(self):
         loader = FileLoader("")
@@ -114,15 +115,15 @@ class TestFileLoader:
 
     def test_initialization_non_existent_directory(self):
         with (
-            mock.patch("os.path.exists", return_value=False),
-            mock.patch("os.path.isdir", return_value=False),
+            mock.patch("pathlib.Path.exists", return_value=False),
+            mock.patch("pathlib.Path.is_dir", return_value=False),
         ):
             with pytest.raises(FileNotFoundError):
                 FileLoader("non_existent_dir")
 
     def test_initialization_empty_directory(self):
-        with mock.patch("os.listdir", return_value=[]):
-            with pytest.raises(ValueError, match="No files found"):
+        with mock.patch("pathlib.Path.glob", return_value=[]):
+            with pytest.raises(FileNotFoundError, match="No files found"):
                 FileLoader("mocked_empty_dir")
 
     def test_file_shuffling(self):
@@ -137,12 +138,10 @@ class TestFileLoader:
             ) as mock_file,
         ):
             loader = FileLoader("mock_dir")
-            input_files = loader.files
-
-            result = list(loader.read_lines(input_files))
+            result = list(loader.read_lines())
             assert result == ["Line1\n", "Line2\n", "Line1\n", "Line2\n"]
-            mock_file.assert_any_call("mock_dir/file1.txt", "r", encoding="utf8")
-            mock_file.assert_any_call("mock_dir/file2.txt", "r", encoding="utf8")
+            mock_file.assert_any_call("file1.txt", "r", encoding="utf8")
+            mock_file.assert_any_call("file2.txt", "r", encoding="utf8")
 
     def test_infinite_read_lines(self):
         """Test if infinite_read_lines loops over files endlessly."""
@@ -159,8 +158,8 @@ class TestFileLoader:
 
             assert output == ["Line1\n", "Line2\n", "Line1\n", "Line2\n", "Line1\n", "Line2\n"]
 
-            mock_file.assert_any_call("mock_dir/file1.txt", "r", encoding="utf8")
-            mock_file.assert_any_call("mock_dir/file2.txt", "r", encoding="utf8")
+            mock_file.assert_any_call("file1.txt", "r", encoding="utf8")
+            mock_file.assert_any_call("file2.txt", "r", encoding="utf8")
 
     def test_clean_up(self):
         with (mock.patch("shutil.rmtree") as mock_rmtree,):
