@@ -80,22 +80,22 @@ class FileLoader:
 
     def _get_files(self) -> List[str]:
         """Gets a list of valid files from the given directory."""
-        if not os.path.exists(self.directory) or not os.path.isdir(self.directory):
+        if not self.directory.exists() or not self.directory.is_dir():
             raise FileNotFoundError(
                 f"Directory '{self.directory}' does not exist or is not a directory."
             )
 
-        files = [os.path.join(self.directory, file) for file in os.listdir(self.directory)]
+        files = self.directory.glob("*")
         if not files:
-            raise ValueError(f"No files found in '{self.directory}'.")
+            raise FileNotFoundError(f"No files found in '{self.directory}'.")
 
         if self.shuffle:
             random.shuffle(files)
         return files
 
-    def read_lines(self, input_files) -> Generator[str, None, None]:
+    def read_lines(self) -> Generator[str, None, None]:
         """Reads files line by line, either once or infinitely."""
-        for event_files in input_files:
+        for event_files in self.files:
             with open(event_files, "r", encoding="utf8") as file:
                 yield from file
 
@@ -105,9 +105,9 @@ class FileLoader:
             with open(event_files, "r", encoding="utf8") as file:
                 yield from file
 
-    def clean_up(self):
+    def clean_up(self) -> None:
         """Deletes the temporary directory."""
-        if os.path.exists(self.directory) and os.path.isdir(self.directory):
+        if self.directory.exists():
             shutil.rmtree(self.directory)
 
 
