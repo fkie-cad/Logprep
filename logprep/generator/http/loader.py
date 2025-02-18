@@ -38,7 +38,11 @@ class EventBuffer:
         This method blocks if queue is full.
         """
 
-        for line in self.file_loader.read_lines():
+        for (
+            line
+        ) in (
+            self.file_loader.read_lines()
+        ):  # Todo: The fileloader contains the Eventbuffer, so the eventbuffer shouldn't depend on the FileLoader.
             if self._message_backlog.full():
                 logger.warning("Message backlog queue is full. Blocking until space is available.")
             self._message_backlog.put(line)
