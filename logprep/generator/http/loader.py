@@ -19,10 +19,7 @@ class EventBuffer:
 
     _thread: Thread
 
-    def __init__(
-        self, file_loader: "FileLoader", message_backlog_size: int = DEFAULT_MESSAGE_BACKLOG_SIZE
-    ) -> None:
-        self.file_loader = file_loader
+    def __init__(self, message_backlog_size: int = DEFAULT_MESSAGE_BACKLOG_SIZE) -> None:
         self._message_backlog = Queue(maxsize=message_backlog_size)
         self._thread = Thread(target=self.write)
 
@@ -33,19 +30,13 @@ class EventBuffer:
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.stop()
 
-    def write(self) -> None:
+    def write(self, line) -> None:
         """Reads lines from the file loader and puts them into the message backlog queue.
         This method blocks if queue is full.
         """
-
-        for (
-            line
-        ) in (
-            self.file_loader.read_lines()
-        ):  # Todo: The fileloader contains the Eventbuffer, so the eventbuffer shouldn't depend on the FileLoader.
-            if self._message_backlog.full():
-                logger.warning("Message backlog queue is full. Blocking until space is available.")
-            self._message_backlog.put(line)
+        if self._message_backlog.full():
+            logger.warning("Message backlog queue is full. Blocking until space is available.")
+        self._message_backlog.put(line)
 
     def read_lines(self) -> Generator[str, None, None]:
         """Reads lines from the message backlog queue.
@@ -74,7 +65,7 @@ class FileLoader:
 
     def __init__(self, directory: str | Path, **kwargs) -> None:
         message_backlog_size = kwargs.get("message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE)
-        self._buffer = EventBuffer(self, message_backlog_size)
+        self._buffer = EventBuffer(message_backlog_size)
         self.directory = Path(directory)
 
     @property
@@ -89,6 +80,11 @@ class FileLoader:
         if not files:
             raise FileNotFoundError(f"No files found in '{self.directory}'.")
         return files
+
+    def write_backlog(self):
+        """Reads lines and puts them into the message backlog queue."""
+        for line in self.read_lines():
+            self._buffer.write(line)
 
     def read_lines(self) -> Generator[str, None, None]:
         """Endless loop over files."""
