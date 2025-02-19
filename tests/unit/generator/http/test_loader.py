@@ -19,47 +19,44 @@ class TestEventBuffer:
         self.file_loader = mock.MagicMock()
 
     def test_init(self):
-        event_buffer = EventBuffer()
+        event_buffer = EventBuffer(self.file_loader)
         assert event_buffer
 
     def test_init_sets_message_backlog_default(self):
-        event_buffer = EventBuffer()
+        event_buffer = EventBuffer(self.file_loader)
         assert event_buffer._message_backlog.maxsize == DEFAULT_MESSAGE_BACKLOG_SIZE
 
     def test_init_sets_message_backlog_custom(self):
         random_size = random.randint(1, 100000)
-        event_buffer = EventBuffer(message_backlog_size=random_size)
+        event_buffer = EventBuffer(self.file_loader, message_backlog_size=random_size)
         assert event_buffer._message_backlog.maxsize == random_size
 
     def test_write(self):
-        test_lines = ["line1", "line2"]
-        event_buffer = EventBuffer()
+        self.file_loader.read_lines.return_value = ["line1", "line2"]
+        event_buffer = EventBuffer(self.file_loader)
         old_size = event_buffer._message_backlog.qsize()
-        event_buffer.write(test_lines[0])
-        event_buffer.write(test_lines[1])
+        event_buffer.write()
         assert event_buffer._message_backlog.qsize() == old_size + 2
 
     def test_write_warns_if_queue_full(self, caplog):
         caplog.set_level(logging.WARNING)
-        test_lines = ["line1", "line2"]
-        event_buffer = EventBuffer(message_backlog_size=1)
+        self.file_loader.read_lines.return_value = ["line1", "line2"]
+        event_buffer = EventBuffer(self.file_loader, message_backlog_size=1)
         with mock.patch.object(event_buffer, "_message_backlog") as mock_queue:
             mock_queue.full = mock.MagicMock(return_value=True)
-            event_buffer.write(test_lines[0])
-            event_buffer.write(test_lines[1])
+            event_buffer.write()
         assert "Message backlog queue is full" in caplog.text
 
     def test_read_yields_correct_events(self):
-        event_buffer = EventBuffer()
-        test_lines = ["line1", "line2"]
-        event_buffer.write(test_lines[0])
-        event_buffer.write(test_lines[1])
+        event_buffer = EventBuffer(self.file_loader)
+        self.file_loader.read_lines.return_value = ["line1", "line2"]
+        event_buffer.write()
         reader = event_buffer.read_lines()
         assert next(reader) == "line1"
         assert next(reader) == "line2"
 
     def test_read_raises_stop_iteration(self):
-        event_buffer = EventBuffer()
+        event_buffer = EventBuffer(self.file_loader)
         sentinel = event_buffer._sentinel
         event_buffer._message_backlog.put(sentinel)
 
@@ -67,7 +64,7 @@ class TestEventBuffer:
             next(event_buffer.read_lines())
 
     def test_start_starts_thread(self):
-        event_buffer = EventBuffer()
+        event_buffer = EventBuffer(self.file_loader)
 
         with mock.patch.object(Thread, "start") as mock_start:
             event_buffer.start()
@@ -75,7 +72,7 @@ class TestEventBuffer:
         mock_start.assert_called_once()
 
     def test_stop_places_sentinel_in_queue(self):
-        event_buffer = EventBuffer()
+        event_buffer = EventBuffer(self.file_loader)
         event_buffer._thread = mock.MagicMock()
 
         with mock.patch.object(event_buffer, "_message_backlog") as mock_queue:
@@ -83,13 +80,13 @@ class TestEventBuffer:
             mock_queue.put.assert_called_once_with(event_buffer._sentinel)
 
     def test_stop_stops_thread(self):
-        event_buffer = EventBuffer()
+        event_buffer = EventBuffer(self.file_loader)
         event_buffer._thread = mock.MagicMock()
         event_buffer.stop()
         event_buffer._thread.join.assert_called_once()
 
     def test_context_manager_start_and_stops_thread(self):
-        event_buffer = EventBuffer()
+        event_buffer = EventBuffer(self.file_loader)
         event_buffer._thread = mock.MagicMock()
         with event_buffer:
             assert True
