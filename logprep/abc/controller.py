@@ -2,8 +2,9 @@
 
 import logging
 import signal
+import threading
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger
 
 from logprep.abc.output import Output
@@ -42,6 +43,7 @@ class Controller(ABC):
         # directory = manipulator.template()
         self.loghandler.start()
         self.file_loader.start()
+        print(f"Start thread Fileloader active threads: {threading.active_count()}")
         batcher = Batcher(self.file_loader.read_lines(), **self.config)
         self.sender = Sender(batcher, self.output, **self.config)
         signal.signal(signal.SIGTERM, self.stop)
@@ -53,12 +55,15 @@ class Controller(ABC):
 
     def _generate_load(self):
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
-            while True:
-                future = executor.submit(self.sender.send_batch)
-                result = future.result()
-                if not result:
-                    break
-                logger.info("Finished processing all events")
+            futures = {executor.submit(self.sender.send_batch) for _ in range(self.thread_count)}
+
+            for future in as_completed(futures):
+                result = future.result()  # Wait for a completed task
+                print(f"During generate load active threads: {threading.active_count()}")
+                print(f"{result=}")
+                logger.info("Finished processing a batch")
+
+        print(f"After generate load active threads: {threading.active_count()}")
 
     def stop(self, signum, frame):
         self.file_loader.close()
