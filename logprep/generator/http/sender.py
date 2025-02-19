@@ -16,5 +16,5 @@ class Sender:
 
     def send_batch(self):
         """Loads a batch from the message backlog and sends to the endpoint"""
-        batch = self.batcher.process_batches()
+        batch = self.batcher.batches()
         self.output.store(batch)
