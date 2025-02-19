@@ -3,6 +3,7 @@ a defined output
 """
 
 import logging
+import signal
 import time
 from logging import Logger
 
@@ -19,16 +20,19 @@ class HttpController(Controller):
         count the return statistics"""
         if self.loghandler is not None:
             self.loghandler.start()
+        self.setup()
         logger.info("Started Data Processing")
 
-        self.input.reformat_dataset()
+        # self.input.reformat_dataset()
         run_time_start = time.perf_counter()
         self._generate_load()
-        self.input.clean_up_tempdir()
+        print("after generate load")
+        # self.input.clean_up_tempdir()
         run_duration = time.perf_counter() - run_time_start
-        stats = self.output.statistics
-        logger.info("Completed with following statistics: %s", stats)
+        # stats = self.output.statistics
+        # logger.info("Completed with following statistics: %s", stats)
         logger.info("Execution time: %f seconds", run_duration)
+        self.stop(signal.SIGTERM, None)
         if self.loghandler is not None:
             self.loghandler.stop()
-        return stats
+        return None

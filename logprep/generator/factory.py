@@ -43,7 +43,7 @@ class ControllerFactory:
                 output_connector = Factory.create(output_config)
                 if not isinstance(output_connector, HttpOutput):
                     raise ValueError("Output is not a valid output type")
-                return HttpController(input_connector, output_connector, loghandler, **kwargs)
+                return HttpController(output_connector, loghandler, **kwargs)
             case "kafka":
                 default_config = '{"bootstrap.servers": "localhost:9092"}'
                 kafka_config = json.loads(kwargs.get("kafka_config", default_config))
@@ -67,8 +67,8 @@ class ControllerFactory:
         console_handler = None
         if level:
             logger.setLevel(level)
-        if logger.handlers:
-            console_handler = logger.handlers.pop()  # last handler is console
+        if logger.parent.handlers:
+            console_handler = logger.parent.handlers.pop()  # last handler is console
         if console_handler is None:
             raise ValueError("No console handler found")
         return LogprepMPQueueListener(logqueue, console_handler)

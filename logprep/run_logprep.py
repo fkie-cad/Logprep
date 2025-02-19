@@ -292,7 +292,7 @@ def generate_http(**kwargs):
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a http endpoint.
     """
-    ControllerFactory.create(target="kafka", **kwargs).run()
+    ControllerFactory.create(target="http", **kwargs).run()
 
 
 @cli.command(short_help="Print a complete configuration file [Not Yet Implemented]", name="print")

@@ -26,21 +26,18 @@ class EventBuffer:
         self._message_backlog = Queue(maxsize=message_backlog_size)
         self._thread = Thread(target=self.write)
 
-    def __enter__(self) -> "EventBuffer":
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
-        self.stop()
-
     def write(self) -> None:
         """Reads lines from the file loader and puts them into the message backlog queue.
         This method blocks if queue is full.
         """
-        for line in self.file_loader.read_lines():
-            if self._message_backlog.full():
-                logger.warning("Message backlog queue is full. Blocking until space is available.")
-            self._message_backlog.put(line)
+        for file in self.file_loader.files:
+            lines = file.read_text("utf8").splitlines()
+            for line in lines:
+                if self._message_backlog.full():
+                    logger.warning(
+                        "Message backlog queue is full. Blocking until space is available."
+                    )
+                self._message_backlog.put(line)
 
     def read_lines(self) -> Generator[str, None, None]:
         """Reads lines from the message backlog queue.
@@ -52,14 +49,20 @@ class EventBuffer:
         """
         while True:
             event = self._message_backlog.get()
+            print(f"{event=}")
             if event is self._sentinel:
                 break
             yield event
 
     def start(self) -> None:
+        """Starts the thread."""
+        if self._thread.is_alive():
+            return
         self._thread.start()
 
     def stop(self) -> None:
+        """Stops the thread."""
+        print("Stopping the event buffer")
         self._message_backlog.put(self._sentinel)
         self._thread.join()
 
@@ -69,11 +72,11 @@ class FileLoader:
 
     def __init__(self, directory: str | Path, **config) -> None:
         message_backlog_size = config.get("message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE)
-        self._buffer = EventBuffer(message_backlog_size)
+        self._buffer = EventBuffer(self, message_backlog_size)
         self.directory = Path(directory)
 
     @property
-    def files(self) -> List[str]:
+    def files(self) -> List[Path]:
         """Gets a list of valid files from the given directory."""
         if not self.directory.exists() or not self.directory.is_dir():
             raise FileNotFoundError(
@@ -81,21 +84,26 @@ class FileLoader:
             )
 
         files = self.directory.glob("*")
+        print(f"{files=}")
         if not files:
             raise FileNotFoundError(f"No files found in '{self.directory}'.")
         return files
 
-    def write_backlog(self):
-        """Reads lines and puts them into the message backlog queue."""
-        for line in self.read_lines():
-            self._buffer.write(line)
-
     def read_lines(self) -> Generator[str, None, None]:
         """Endless loop over files."""
-        with self._buffer as buffer:
-            yield from buffer.read_lines()
+        yield from self._buffer.read_lines()
 
     def clean_up(self) -> None:
         """Deletes the temporary directory."""
         if self.directory.exists():
             shutil.rmtree(self.directory)
+
+    def start(self) -> None:
+        """Starts the thread."""
+        self._buffer.start()
+
+    def close(self) -> None:
+        """Stops the thread."""
+        print("Closing the file loader")
+        self._buffer.stop()
+        # self.clean_up()
