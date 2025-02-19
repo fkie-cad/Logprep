@@ -21,5 +21,8 @@ class Batcher:
         if self.batch_size < 1:
             raise ValueError("'batch_size' must be at least one")
         it = iter(self.events)
+        print(f"{self.batch_size=}")
+        print(it)
         while batch := tuple(islice(it, self.batch_size)):
+            print(f"Batch: {batch}")
             yield batch

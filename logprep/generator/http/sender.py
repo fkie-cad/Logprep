@@ -10,7 +10,8 @@ class Sender:
         self.batcher = batcher
         self.output = output
 
-    def send_batch(self):
+    def send_batch(self) -> None:
         """Loads a batch from the message backlog and sends to the endpoint"""
         for event in self.batcher.get_batch():
-            self.output.store(event)
+            # self.output.store(event)
+            print(event)
