@@ -10,9 +10,9 @@ logger = logging.getLogger("Batcher")
 class Batcher:
     """Batches messages from an EventBuffer and forwards them in controlled batches."""
 
-    def __init__(self, batches: Iterable, batch_size: int = DEFAULT_BATCH_SIZE):
+    def __init__(self, batches: Iterable, **config) -> None:
+        self.batch_size: int = config.get("batch_size", DEFAULT_BATCH_SIZE)
         self.events = batches
-        self.batch_size = batch_size
         self._batch: List[str] = []
 
     def get_batch(self) -> Generator[Tuple[str], None, None]:

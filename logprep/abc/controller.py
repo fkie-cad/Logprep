@@ -5,8 +5,9 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 
-from logprep.abc.output import Output
-from logprep.generator.http.input import Input
+from logprep.generator.http.batcher import Batcher
+from logprep.generator.http.loader import FileLoader
+from logprep.generator.http.sender import Sender
 from logprep.util.logging import LogprepMPQueueListener
 
 logger: Logger = logging.getLogger("Generator")
@@ -17,24 +18,24 @@ class Controller(ABC):
     and sending them to outputs
     """
 
-    def __init__(
-        self,
-        input_connector: Input,
-        output_connector: Output,
-        loghandler: LogprepMPQueueListener,
-        **kwargs,
-    ) -> None:
-        self.config = kwargs
+    def __init__(self, loghandler: LogprepMPQueueListener, **config) -> None:
+        self.config = config
         self.loghandler = loghandler
-        self.thread_count: int = kwargs.get("thread_count", 1)
-        self.input = input_connector
-        self.output = output_connector
+        self.thread_count: int = config.get("thread_count", 1)
+
+    def setup(self):
+        manipulator = Manipulator(**self.config)
+        directory = manipulator.template()
+        file_loader = FileLoader(directory, **self.config)
+        batcher = Batcher(file_loader.read_lines(), **self.config)
+        self.sender = Sender(batcher, **self.config)
 
     @abstractmethod
     def run(self):
         """Run the generator"""
 
     def _generate_load(self):
-
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
-            executor.map(self.output.store, self.input.load())
+            future = executor.submit(self.sender.send_batch)
+            future.result()
+            logger.info("Finished processing all events")

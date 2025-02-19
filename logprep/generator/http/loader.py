@@ -19,7 +19,10 @@ class EventBuffer:
 
     _thread: Thread
 
-    def __init__(self, message_backlog_size: int = DEFAULT_MESSAGE_BACKLOG_SIZE) -> None:
+    def __init__(
+        self, file_loader: "FileLoader", message_backlog_size: int = DEFAULT_MESSAGE_BACKLOG_SIZE
+    ) -> None:
+        self.file_loader = file_loader
         self._message_backlog = Queue(maxsize=message_backlog_size)
         self._thread = Thread(target=self.write)
 
@@ -30,13 +33,14 @@ class EventBuffer:
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.stop()
 
-    def write(self, line) -> None:
+    def write(self) -> None:
         """Reads lines from the file loader and puts them into the message backlog queue.
         This method blocks if queue is full.
         """
-        if self._message_backlog.full():
-            logger.warning("Message backlog queue is full. Blocking until space is available.")
-        self._message_backlog.put(line)
+        for line in self.file_loader.read_lines():
+            if self._message_backlog.full():
+                logger.warning("Message backlog queue is full. Blocking until space is available.")
+            self._message_backlog.put(line)
 
     def read_lines(self) -> Generator[str, None, None]:
         """Reads lines from the message backlog queue.
@@ -63,8 +67,8 @@ class EventBuffer:
 class FileLoader:
     """Handles file operations like reading files, shuffling, and cycling through them."""
 
-    def __init__(self, directory: str | Path, **kwargs) -> None:
-        message_backlog_size = kwargs.get("message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE)
+    def __init__(self, directory: str | Path, **config) -> None:
+        message_backlog_size = config.get("message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE)
         self._buffer = EventBuffer(message_backlog_size)
         self.directory = Path(directory)
 
