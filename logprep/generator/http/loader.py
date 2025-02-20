@@ -38,6 +38,7 @@ class EventBuffer:
                         "Message backlog queue is full. Blocking until space is available."
                     )
                 self._message_backlog.put(line)
+        self._message_backlog.put(self._sentinel)
 
     def read_lines(self) -> Generator[str, None, None]:
         """Reads lines from the message backlog queue.
