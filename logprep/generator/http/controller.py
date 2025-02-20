@@ -15,13 +15,13 @@ logger: Logger = logging.getLogger("Generator")
 class HttpController(Controller):
     """Controller for the HTTP Generator"""
 
-    def run(self) -> str:
+    def run(self) -> None:
         """Iterate over all event classes, trigger their processing and
         count the return statistics"""
-        self.setup()
         logger.info("Started Data Processing")
 
-        # self.input.reformat_dataset()
+        self.input.reformat_dataset()
+        self.setup()
         run_time_start = time.perf_counter()
         self._generate_load()
         # self.input.clean_up_tempdir()
@@ -30,4 +30,3 @@ class HttpController(Controller):
         # logger.info("Completed with following statistics: %s", stats)
         logger.info("Execution time: %f seconds", run_duration)
         self.stop(signal.SIGTERM, None)
-        return None
