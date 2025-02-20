@@ -32,7 +32,9 @@ class TestEventBuffer:
         assert event_buffer._message_backlog.maxsize == random_size
 
     def test_write(self):
-        self.file_loader.read_lines.return_value = ["line1", "line2"]
+        mock_file = mock.MagicMock()
+        mock_file.read_text.return_value = "line1\nline2"
+        self.file_loader.files = [mock_file]
         event_buffer = EventBuffer(self.file_loader)
         old_size = event_buffer._message_backlog.qsize()
         event_buffer.write()
@@ -40,7 +42,9 @@ class TestEventBuffer:
 
     def test_write_warns_if_queue_full(self, caplog):
         caplog.set_level(logging.WARNING)
-        self.file_loader.read_lines.return_value = ["line1", "line2"]
+        mock_file = mock.MagicMock()
+        mock_file.read_text.return_value = "line1\nline2"
+        self.file_loader.files = [mock_file]
         event_buffer = EventBuffer(self.file_loader, message_backlog_size=1)
         with mock.patch.object(event_buffer, "_message_backlog") as mock_queue:
             mock_queue.full = mock.MagicMock(return_value=True)
@@ -48,8 +52,10 @@ class TestEventBuffer:
         assert "Message backlog queue is full" in caplog.text
 
     def test_read_yields_correct_events(self):
+        mock_file = mock.MagicMock()
+        mock_file.read_text.return_value = "line1\nline2"
+        self.file_loader.files = [mock_file]
         event_buffer = EventBuffer(self.file_loader)
-        self.file_loader.read_lines.return_value = ["line1", "line2"]
         event_buffer.write()
         reader = event_buffer.read_lines()
         assert next(reader) == "line1"
@@ -85,14 +91,19 @@ class TestEventBuffer:
         event_buffer.stop()
         event_buffer._thread.join.assert_called_once()
 
-    def test_context_manager_start_and_stops_thread(self):
+    def test_start_thread(self):
         event_buffer = EventBuffer(self.file_loader)
         event_buffer._thread = mock.MagicMock()
-        with event_buffer:
-            assert True
-
+        event_buffer._thread.is_alive.return_value = False
+        event_buffer.start()
         event_buffer._thread.start.assert_called_once()
-        event_buffer._thread.join.assert_called_once()
+
+    def test_start_do_nothing_when_thread_is_alive(self):
+        event_buffer = EventBuffer(self.file_loader)
+        event_buffer._thread = mock.MagicMock()
+        event_buffer._thread.is_alive.return_value = True
+        event_buffer.start()
+        assert event_buffer._thread.start.called is False
 
 
 class TestFileLoader:
