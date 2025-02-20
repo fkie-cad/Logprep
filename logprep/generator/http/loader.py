@@ -1,3 +1,4 @@
+import itertools
 import logging
 import shutil
 from pathlib import Path
@@ -20,7 +21,9 @@ class EventBuffer:
     _thread: Thread
 
     def __init__(
-        self, file_loader: "FileLoader", message_backlog_size: int = DEFAULT_MESSAGE_BACKLOG_SIZE
+        self,
+        file_loader: "FileLoader",
+        message_backlog_size: int = DEFAULT_MESSAGE_BACKLOG_SIZE,
     ) -> None:
         self.file_loader = file_loader
         self._message_backlog = Queue(maxsize=message_backlog_size)
@@ -30,14 +33,19 @@ class EventBuffer:
         """Reads lines from the file loader and puts them into the message backlog queue.
         This method blocks if queue is full.
         """
-        for file in self.file_loader.files:
-            lines = file.read_text("utf8").splitlines()
-            for line in lines:
-                if self._message_backlog.full():
-                    logger.warning(
-                        "Message backlog queue is full. Blocking until space is available."
-                    )
-                self._message_backlog.put(line)
+        for file in itertools.cycle(self.file_loader.files):
+            with open(file, "r", encoding="utf8") as current_file:
+                while line := current_file.readline():
+                    if self.file_loader.event_count == 0:
+                        break
+                    if self._message_backlog.full():
+                        logger.warning(
+                            "Message backlog queue is full. Blocking until space is available."
+                        )
+                    self._message_backlog.put(line)
+                    self.file_loader.event_count -= 1
+                if self.file_loader.event_count == 0:
+                    break
         self._message_backlog.put(self._sentinel)
 
     def read_lines(self) -> Generator[str, None, None]:
@@ -73,6 +81,7 @@ class FileLoader:
         message_backlog_size = config.get("message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE)
         self._buffer = EventBuffer(self, message_backlog_size)
         self.directory = Path(directory)
+        self.event_count = config.get("events", 1)
 
     @property
     def files(self) -> List[Path]:
