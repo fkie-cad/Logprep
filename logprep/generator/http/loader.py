@@ -49,7 +49,6 @@ class EventBuffer:
         """
         while True:
             event = self._message_backlog.get()
-            print(f"{event=}")
             if event is self._sentinel:
                 break
             yield event
@@ -62,7 +61,6 @@ class EventBuffer:
 
     def stop(self) -> None:
         """Stops the thread."""
-        print("Stopping the event buffer")
         self._message_backlog.put(self._sentinel)
         self._thread.join()
 
@@ -84,7 +82,6 @@ class FileLoader:
             )
 
         files = self.directory.glob("*")
-        print(f"{files=}")
         if not files:
             raise FileNotFoundError(f"No files found in '{self.directory}'.")
         return files
@@ -104,6 +101,5 @@ class FileLoader:
 
     def close(self) -> None:
         """Stops the thread."""
-        print("Closing the file loader")
         self._buffer.stop()
         # self.clean_up()
