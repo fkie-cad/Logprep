@@ -57,7 +57,7 @@ class TestKafkaController:
         )
         self.controller.input.input_root_path = dataset_path
         self.controller.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.controller.input._temp_dir, exist_ok=True)
+        os.makedirs(self.controller.input.temp_dir, exist_ok=True)
         self.controller.run()
 
         for call_id, call in enumerate(responses.calls):
