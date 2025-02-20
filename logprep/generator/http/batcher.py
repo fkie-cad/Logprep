@@ -17,7 +17,8 @@ class Batcher:
         self._batch: List[str] = []
         self.lock = threading.Lock()
 
-    def get_batch(self) -> Generator[Tuple[str], None, None]:
+    @property
+    def batches(self) -> Generator[Tuple[str], None, None]:
         "Batch data into tuples of length n. The last batch may be shorter."
         # TODO: Refactor this method to itertools.batched if support for 3.11 is dropped
         if self.batch_size < 1:

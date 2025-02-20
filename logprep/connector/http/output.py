@@ -161,13 +161,9 @@ class HttpOutput(Output):
                 stats[key] = int(sample.value)
         return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
-    def store(self, document: tuple[str, dict | list[dict]] | dict) -> None:
-        if isinstance(document, tuple):
-            target, document = document
-            target = f"{self._config.target_url}{target}"
-        else:
-            target = self._config.target_url
-        self.store_custom(document, target)
+    def store(self, document: str) -> None:
+        target, _, payload = document.partition(",")
+        self.store_custom(payload, target)
 
     def store_custom(self, document: dict | tuple | list, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
@@ -176,6 +172,9 @@ class HttpOutput(Output):
             document_count = len(document)
         elif isinstance(document, dict):
             request_data = self._encoder.encode(document)
+            document_count = 1
+        elif isinstance(document, str):
+            request_data = document
             document_count = 1
         else:
             error = TypeError(f"Document type {type(document)} is not supported")
