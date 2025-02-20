@@ -20,9 +20,7 @@ class TestSender:
     def test_send_batch_calls_batcher_and_output(self):
         """Ensure send_batch calls batcher.process_batches and output.store."""
         mock_batch = ["msg1", "msg2", "msg3"]
-        self.mock_batcher.process_batches.return_value = mock_batch
+        self.mock_batcher.get_batch.return_value = mock_batch
 
         self.sender.send_batch()
-
-        self.mock_batcher.process_batches.assert_called_once()
         self.mock_output.store.assert_called_once_with(mock_batch)

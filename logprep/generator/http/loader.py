@@ -33,6 +33,7 @@ class EventBuffer:
         for file in self.file_loader.files:
             lines = file.read_text("utf8").splitlines()
             for line in lines:
+                print(self._message_backlog.qsize())
                 if self._message_backlog.full():
                     logger.warning(
                         "Message backlog queue is full. Blocking until space is available."
