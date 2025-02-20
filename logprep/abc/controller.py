@@ -40,6 +40,7 @@ class Controller(ABC):
     def setup(self):
         # manipulator = Manipulator(**self.config)
         # directory = manipulator.template()
+        self.loghandler.start()
         self.file_loader.start()
         batcher = Batcher(self.file_loader.read_lines(), **self.config)
         self.sender = Sender(batcher, self.output, **self.config)
@@ -55,7 +56,6 @@ class Controller(ABC):
             while True:
                 future = executor.submit(self.sender.send_batch)
                 result = future.result()
-                print(f"{result=}")
                 if not result:
                     break
                 logger.info("Finished processing all events")
@@ -63,4 +63,5 @@ class Controller(ABC):
     def stop(self, signum, frame):
         self.file_loader.close()
         logger.info("Stopped Data Processing on signal %s", signum)
+        self.loghandler.stop()
         return None

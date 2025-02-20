@@ -18,21 +18,16 @@ class HttpController(Controller):
     def run(self) -> str:
         """Iterate over all event classes, trigger their processing and
         count the return statistics"""
-        if self.loghandler is not None:
-            self.loghandler.start()
         self.setup()
         logger.info("Started Data Processing")
 
         # self.input.reformat_dataset()
         run_time_start = time.perf_counter()
         self._generate_load()
-        print("after generate load")
         # self.input.clean_up_tempdir()
         run_duration = time.perf_counter() - run_time_start
         # stats = self.output.statistics
         # logger.info("Completed with following statistics: %s", stats)
         logger.info("Execution time: %f seconds", run_duration)
         self.stop(signal.SIGTERM, None)
-        if self.loghandler is not None:
-            self.loghandler.stop()
         return None
