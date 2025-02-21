@@ -71,7 +71,7 @@ class TestHttpController:
         )
         self.controller.input.input_root_path = dataset_path
         self.controller.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.controller.input._temp_dir, exist_ok=True)
+        os.makedirs(self.controller.input.temp_dir, exist_ok=True)
         expected_status_code = 200
         responses.add(responses.POST, f"{self.target_url}/target-one", status=expected_status_code)
         responses.add(responses.POST, f"{self.target_url}/target-two", status=expected_status_code)

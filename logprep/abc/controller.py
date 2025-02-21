@@ -2,12 +2,14 @@
 
 import logging
 import signal
+import threading
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger
 
 from logprep.abc.output import Output
 from logprep.generator.http.batcher import Batcher
+from logprep.generator.http.input import Input
 from logprep.generator.http.loader import FileLoader
 from logprep.generator.http.sender import Sender
 from logprep.util.logging import LogprepMPQueueListener
@@ -20,27 +22,24 @@ class Controller(ABC):
     and sending them to outputs
     """
 
-    def __init__(self, output: Output, loghandler: LogprepMPQueueListener, **config) -> None:
+    def __init__(
+        self, output: Output, input: Input, loghandler: LogprepMPQueueListener, **config
+    ) -> None:
         self.output = output
+        self.input = input
         self.loghandler = loghandler
         self.config = config
         self.sender = None
         self.thread_count: int = config.get("thread_count", 1)
-        directory = "/tmp/generator"
-        self.file_loader = FileLoader(directory, **self.config)
+        self.file_loader = FileLoader(self.input.temp_dir, **self.config)
         # TODO:
-        # threadpoolexecutor nachlesen und fixen https://docs.python.org/3.11/library/concurrent.futures.html
-        # threads sollen sich beenden
-        #
-        # ekneg54:
-        # logging zum laufen bringen
-        # manipulator muss refactored werden
+        # manipulator muss angebunden werden
         # testen mit wirklichem output
 
-    def setup(self):
-        # manipulator = Manipulator(**self.config)
-        # directory = manipulator.template()
+    def setup(self) -> None:
+        self.loghandler.start()
         self.file_loader.start()
+        logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
         batcher = Batcher(self.file_loader.read_lines(), **self.config)
         self.sender = Sender(batcher, self.output, **self.config)
         signal.signal(signal.SIGTERM, self.stop)
@@ -52,15 +51,18 @@ class Controller(ABC):
 
     def _generate_load(self):
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
-            while True:
-                future = executor.submit(self.sender.send_batch)
-                result = future.result()
-                print(f"{result=}")
-                if not result:
-                    break
-                logger.info("Finished processing all events")
+            futures = {executor.submit(self.sender.send_batch) for _ in range(self.thread_count)}
+
+            for future in as_completed(futures):
+                result = future.result()  # Wait for a completed task
+                logger.info("During generate load active threads: %s", threading.active_count())
+                logger.debug("Result: %s", result)
+                logger.info("Finished processing a batch")
+
+        logger.debug("After generate load active threads: %s", threading.active_count())
 
     def stop(self, signum, frame):
         self.file_loader.close()
         logger.info("Stopped Data Processing on signal %s", signum)
+        self.loghandler.stop()
         return None
