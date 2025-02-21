@@ -272,12 +272,14 @@ class Processor(Component):
         if tags is None:
             new_field = {"tags": sorted(list({*failure_tags}))}
         else:
-            new_field = {"tags": sorted(list({*tags, *failure_tags}))}
+            tags_list = tags if isinstance(tags, list) else [tags]
+            new_field = {"tags": sorted(list({*tags_list, *failure_tags}))}
         add_and_overwrite(event, new_field, rule)
         if isinstance(error, ProcessingWarning):
             if error.tags:
-                tags = tags if tags else []
-                new_field = {"tags": sorted(list({*error.tags, *tags, *failure_tags}))}
+                tags = tags if tags is not None else []
+                tags_list = tags if isinstance(tags, list) else [tags]
+                new_field = {"tags": sorted(list({*error.tags, *tags_list, *failure_tags}))}
                 add_and_overwrite(event, new_field, rule)
             self.result.warnings.append(error)
         else:

@@ -6,6 +6,7 @@ from unittest.mock import call
 import pytest
 
 from logprep.factory import Factory
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.generic_adder.rule import GenericAdderRule
 
@@ -96,3 +97,46 @@ class TestSpecificGenericProcessing:
             expected_call_order = [call(event, rule_one), call(event, rule_two)]
             processor.process(event=event)
             mock_callback.assert_has_calls(expected_call_order, any_order=False)
+
+    @pytest.mark.parametrize(
+        "event, expected",
+        [
+            ({"tags": ["foo"]}, {"tags": ["_generic_adder_failure", "foo"]}),
+            ({"tags": "foo"}, {"tags": ["_generic_adder_failure", "foo"]}),
+            ({"tags": []}, {"tags": ["_generic_adder_failure"]}),
+            ({}, {"tags": ["_generic_adder_failure"]}),
+            ({"tags": None}, {"tags": ["_generic_adder_failure"]}),
+            ({"tags": ""}, {"tags": ["", "_generic_adder_failure"]}),
+        ],
+    )
+    def test_handle_warning_error_that_is_not_processing_error(self, event, expected):
+        config = {"type": "generic_adder", "rules": []}
+        processor = Factory.create({"custom_lister": config})
+        processor.result = mock.MagicMock()
+        rule_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
+        rule = GenericAdderRule.create_from_dict(rule_dict)
+
+        processor._handle_warning_error(event, rule, BaseException(), failure_tags=None)
+        assert event == expected
+
+    @pytest.mark.parametrize(
+        "event, expected",
+        [
+            ({"tags": ["foo"]}, {"tags": ["_error_tag", "_generic_adder_failure", "foo"]}),
+            ({"tags": "foo"}, {"tags": ["_error_tag", "_generic_adder_failure", "foo"]}),
+            ({"tags": []}, {"tags": ["_error_tag", "_generic_adder_failure"]}),
+            ({}, {"tags": ["_error_tag", "_generic_adder_failure"]}),
+            ({"tags": None}, {"tags": ["_error_tag", "_generic_adder_failure"]}),
+            ({"tags": ""}, {"tags": ["", "_error_tag", "_generic_adder_failure"]}),
+        ],
+    )
+    def test_handle_warning_error_that_is_processing_error(self, event, expected):
+        config = {"type": "generic_adder", "rules": []}
+        processor = Factory.create({"custom_lister": config})
+        processor.result = mock.MagicMock()
+        rule_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
+        rule = GenericAdderRule.create_from_dict(rule_dict)
+        processing_error = ProcessingWarning("message", rule, event, ["_error_tag"])
+
+        processor._handle_warning_error(event, rule, processing_error, failure_tags=None)
+        assert event == expected
