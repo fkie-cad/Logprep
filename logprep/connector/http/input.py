@@ -58,7 +58,7 @@ with the key :code:`password_file`.
 
    When using basic auth with the http input connector
    the following points should be taken into account:
-   
+
        - basic auth must only be used with strong passwords
        - basic auth must only be used with TLS encryption
        - avoid to reveal your plaintext secrets in public repositories
