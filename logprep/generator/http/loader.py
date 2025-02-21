@@ -42,7 +42,7 @@ class EventBuffer:
                         logger.warning(
                             "Message backlog queue is full. Blocking until space is available."
                         )
-                    self._message_backlog.put(line)
+                    self._message_backlog.put(line.strip())
                     self.file_loader.event_count -= 1
                 if self.file_loader.event_count == 0:
                     break
