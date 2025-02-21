@@ -25,7 +25,7 @@ class TestBatcher:
 
     def test_init_overwrites_defaults(self):
         random_size = random.randint(1, 100000)
-        batcher = Batcher(self.batches, random_size)
+        batcher = Batcher(self.batches, **{"batch_size": random_size})
         assert batcher.batch_size is random_size
 
     def test_get_yields_batches(self):
