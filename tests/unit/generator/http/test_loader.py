@@ -32,31 +32,45 @@ class TestEventBuffer:
         assert event_buffer._message_backlog.maxsize == random_size
 
     def test_write(self):
-        mock_file = mock.MagicMock()
-        mock_file.read_text.return_value = "line1\nline2"
-        self.file_loader.files = [mock_file]
+        self.file_loader.files = ["test_file.txt"]
+        self.file_loader.event_count = 2
+
         event_buffer = EventBuffer(self.file_loader)
+        mock_open = mock.mock_open(read_data="line1\nline2\n")
+
         old_size = event_buffer._message_backlog.qsize()
-        event_buffer.write()
-        assert event_buffer._message_backlog.qsize() == old_size + 2
+        with mock.patch("builtins.open", mock_open):
+            event_buffer.write()
+        assert event_buffer._message_backlog.qsize() == old_size + 3
+        assert event_buffer._message_backlog.get() == "line1"
+        assert event_buffer._message_backlog.get() == "line2"
+        assert event_buffer._message_backlog.get() == event_buffer._sentinel
 
     def test_write_warns_if_queue_full(self, caplog):
         caplog.set_level(logging.WARNING)
-        mock_file = mock.MagicMock()
-        mock_file.read_text.return_value = "line1\nline2"
-        self.file_loader.files = [mock_file]
+        self.file_loader.files = ["test_file.txt"]
+        self.file_loader.event_count = 2
         event_buffer = EventBuffer(self.file_loader, message_backlog_size=1)
-        with mock.patch.object(event_buffer, "_message_backlog") as mock_queue:
+        mock_open = mock.mock_open(read_data="line1\nline2\n")
+
+        with (
+            mock.patch("builtins.open", mock_open),
+            mock.patch.object(event_buffer, "_message_backlog") as mock_queue,
+        ):
             mock_queue.full = mock.MagicMock(return_value=True)
             event_buffer.write()
+
         assert "Message backlog queue is full" in caplog.text
 
     def test_read_yields_correct_events(self):
-        mock_file = mock.MagicMock()
-        mock_file.read_text.return_value = "line1\nline2"
-        self.file_loader.files = [mock_file]
+        self.file_loader.files = ["test_file.txt"]
+        self.file_loader.event_count = 2
+
         event_buffer = EventBuffer(self.file_loader)
-        event_buffer.write()
+        mock_open = mock.mock_open(read_data="line1\nline2\n")
+
+        with mock.patch("builtins.open", mock_open):
+            event_buffer.write()
         reader = event_buffer.read_lines()
         assert next(reader) == "line1"
         assert next(reader) == "line2"

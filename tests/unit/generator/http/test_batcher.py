@@ -31,24 +31,21 @@ class TestBatcher:
     def test_get_yields_batches(self):
         batcher = Batcher(self.batches, batch_size=10)
 
-        batch = next(batcher.batches())
+        batch = next(batcher.batches)
 
         assert batch == ("msg1", "msg2", "msg3")
 
     def test_get_yields_batches_by_size(self):
         batcher = Batcher(self.batches, batch_size=2)
-
-        batch_generator = batcher.batches()
-        batch = next(batch_generator)
-        assert batch == ("msg1", "msg2")
-        assert next(batcher.batches()) == ("msg3",)
+        assert next(batcher.batches) == ("msg1", "msg2")
+        assert next(batcher.batches) == ("msg3",)
 
     def test_raises_value_error_on_negative_batch_size(self):
         batcher = Batcher(self.batches, batch_size=-2)
         with pytest.raises(ValueError):
-            next(batcher.batches())
+            next(batcher.batches)
 
     def test_raises_value_error_on_zero_batch_size(self):
         batcher = Batcher(self.batches, batch_size=0)
         with pytest.raises(ValueError):
-            next(batcher.batches())
+            next(batcher.batches)
