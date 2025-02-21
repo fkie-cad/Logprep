@@ -8,7 +8,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging import Logger
 
 from logprep.abc.output import Output
-from logprep.generator.http.batcher import Batcher
 from logprep.generator.http.input import Input
 from logprep.generator.http.loader import FileLoader
 from logprep.generator.http.sender import Sender
@@ -40,8 +39,7 @@ class Controller(ABC):
         self.loghandler.start()
         self.file_loader.start()
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
-        batcher = Batcher(self.file_loader.read_lines(), **self.config)
-        self.sender = Sender(batcher, self.output, **self.config)
+        self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)
 
