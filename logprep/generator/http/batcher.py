@@ -12,6 +12,7 @@ class Batcher:
 
     def __init__(self, input_events: Iterable[str], **config) -> None:
         self.batch_size: int = config.get("batch_size", DEFAULT_BATCH_SIZE)
+        self.event_count = config.get("events", 1)
         self.input_events = iter(input_events)
         self.lock = threading.Lock()
         self._batches: Dict[str, str] = {}
