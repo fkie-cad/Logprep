@@ -28,19 +28,52 @@ class TestBatcher:
         batcher = Batcher(self.batches, **{"batch_size": random_size})
         assert batcher.batch_size is random_size
 
-    def test_get_yields_batches(self):
-        batcher = Batcher(self.batches, batch_size=2)
-        batch = next(batcher.batches)
-        assert batch == "/path/to,msg1;msg2\n"
+    def test_get_yields_batches_batch_size_even_event_count(self):
+        batcher = Batcher(self.batches, batch_size=2, events=2)
+        assert next(batcher.batches) == "/path/to,msg1;msg2\n"
+
+    def test_get_yields_batches_batch_size_greater_event_count(self):
+        batcher = Batcher(self.batches, batch_size=4, events=2)
+        assert next(batcher.batches) == "/path/to,msg1;msg2\n"
+        with pytest.raises(StopIteration):
+            next(batcher.batches)
+
+    def test_get_yields_batches_batch_size_smaller_events(self):
+        batcher = Batcher(self.batches, batch_size=1, events=2)
+        assert next(batcher.batches) == "/path/to,msg1\n"
+        assert next(batcher.batches) == "/path/to,msg2\n"
+        with pytest.raises(StopIteration):
+            next(batcher.batches)
+
+    def test_get_yields_batches_not_enough_examples(self):
+        batcher = Batcher(self.batches, batch_size=1, events=4)
+        assert next(batcher.batches) == "/path/to,msg1\n"
+        assert next(batcher.batches) == "/path/to,msg2\n"
+        assert next(batcher.batches) == "/path/to,msg3\n"
+        assert next(batcher.batches) == "/path/to,msg1\n"
+        with pytest.raises(StopIteration):
+            next(batcher.batches)
+
+    def test_get_yields_batches_not_enough_examples_bigger_batch_size(self):
+        batcher = Batcher(self.batches, batch_size=5, events=4)
+        assert next(batcher.batches) == "/path/to,msg1;msg2;msg3;msg1\n"
+        with pytest.raises(StopIteration):
+            next(batcher.batches)
 
     def test_get_yields_batches_by_size(self):
-        batcher = Batcher(self.batches, batch_size=2)
+        batcher = Batcher(self.batches, batch_size=2, events=7)
         assert next(batcher.batches) == "/path/to,msg1;msg2\n"
-        assert next(batcher.batches) == "/path/to,msg3;msg3\n"
+        assert next(batcher.batches) == "/path/to,msg3;msg1\n"
+        assert next(batcher.batches) == "/path/to,msg2;msg3\n"
+        assert next(batcher.batches) == "/path/to,msg1;msg2\n"
+        with pytest.raises(StopIteration):
+            next(batcher.batches)
 
     def test_get_yields_batches_by_size1(self):
-        batcher = Batcher(self.batches, batch_size=4)
-        assert next(batcher.batches) == "/path/to,msg1;msg2;msg3;msg3\n"
+        batcher = Batcher(self.batches, batch_size=4, events=4)
+        assert next(batcher.batches) == "/path/to,msg1;msg2;msg3;msg1\n"
+        with pytest.raises(StopIteration):
+            next(batcher.batches)
 
     def test_raises_value_error_on_negative_batch_size(self):
         batcher = Batcher(self.batches, batch_size=-2)

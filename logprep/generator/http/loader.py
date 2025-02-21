@@ -1,4 +1,3 @@
-import itertools
 import logging
 import shutil
 from pathlib import Path
@@ -33,19 +32,14 @@ class EventBuffer:
         """Reads lines from the file loader and puts them into the message backlog queue.
         This method blocks if queue is full.
         """
-        for file in itertools.cycle(self.file_loader.files):
+        for file in self.file_loader.files:
             with open(file, "r", encoding="utf8") as current_file:
                 while line := current_file.readline():
-                    if self.file_loader.event_count == 0:
-                        break
                     if self._message_backlog.full():
                         logger.warning(
                             "Message backlog queue is full. Blocking until space is available."
                         )
                     self._message_backlog.put(line.strip())
-                    self.file_loader.event_count -= 1
-                if self.file_loader.event_count == 0:
-                    break
         self._message_backlog.put(self._sentinel)
 
     def read_lines(self) -> Generator[str, None, None]:
