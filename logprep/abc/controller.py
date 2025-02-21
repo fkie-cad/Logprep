@@ -32,8 +32,7 @@ class Controller(ABC):
         self.thread_count: int = config.get("thread_count", 1)
         self.file_loader = FileLoader(self.input.temp_dir, **self.config)
         # TODO:
-        # manipulator muss angebunden werden
-        # testen mit wirklichem output
+        # wrote tests for batcher -> implement it
 
     def setup(self) -> None:
         self.loghandler.start()
