@@ -39,6 +39,7 @@ class Controller(ABC):
         # implement shuffle
         # revise loglevel
         # refactor input class with focus on Single Responsibility Principle
+        # how to handle big amount of example events? they are loaded in memory
         # interrupt with high event count
         # test with big files
         # compute message backlog size instead of defaults
