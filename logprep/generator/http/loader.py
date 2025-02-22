@@ -20,9 +20,7 @@ class EventBuffer:
     _thread: threading.Thread
 
     def __init__(
-        self,
-        file_loader: "FileLoader",
-        message_backlog_size: int = DEFAULT_MESSAGE_BACKLOG_SIZE,
+        self, file_loader: "FileLoader", message_backlog_size: int = DEFAULT_MESSAGE_BACKLOG_SIZE
     ) -> None:
         self.file_loader = file_loader
         self._message_backlog = Queue(maxsize=message_backlog_size)

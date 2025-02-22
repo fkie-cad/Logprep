@@ -23,4 +23,4 @@ class Sender:
             with self._lock:
                 batch = next(self.input_events)
             # line starts with the target path of the target url
-            self.output.store(f"{target_url}{batch}")
+            # self.output.store(f"{target_url}{batch}")
