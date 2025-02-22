@@ -22,10 +22,14 @@ class Controller(ABC):
     """
 
     def __init__(
-        self, output: Output, input: Input, loghandler: LogprepMPQueueListener, **config
+        self,
+        output_connector: Output,
+        input_connector: Input,
+        loghandler: LogprepMPQueueListener,
+        **config,
     ) -> None:
-        self.output = output
-        self.input = input
+        self.output = output_connector
+        self.input = input_connector
         self.loghandler = loghandler
         self.config = config
         self.sender = None

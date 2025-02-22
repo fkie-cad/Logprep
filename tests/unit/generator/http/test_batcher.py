@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import itertools
 import random
 
 import pytest
@@ -17,7 +18,7 @@ class TestBatcher:
     def test_init(self):
         batcher = Batcher(self.batches)
         assert batcher
-        assert batcher.input_events is self.batches
+        assert isinstance(batcher.event_generator, itertools.cycle)
 
     def test_init_defaults(self):
         batcher = Batcher(self.batches)
@@ -60,12 +61,19 @@ class TestBatcher:
         with pytest.raises(StopIteration):
             next(batcher.batches)
 
-    def test_get_yields_batches_by_size(self):
+    def test_get_yields_batches_even_batch_size_odd_events(self):
         batcher = Batcher(self.batches, batch_size=2, events=7)
         assert next(batcher.batches) == "/path/to,msg1;msg2\n"
         assert next(batcher.batches) == "/path/to,msg3;msg1\n"
         assert next(batcher.batches) == "/path/to,msg2;msg3\n"
-        assert next(batcher.batches) == "/path/to,msg1;msg2\n"
+        assert next(batcher.batches) == "/path/to,msg1\n"
+        with pytest.raises(StopIteration):
+            next(batcher.batches)
+
+    def test_get_yields_batches_even_batch_size_even_events(self):
+        batcher = Batcher(self.batches, batch_size=4, events=8)
+        assert next(batcher.batches) == "/path/to,msg1;msg2;msg3;msg1\n"
+        assert next(batcher.batches) == "/path/to,msg2;msg3;msg1;msg2\n"
         with pytest.raises(StopIteration):
             next(batcher.batches)
 
