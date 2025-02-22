@@ -14,12 +14,9 @@ Usage example:
 """
 
 import itertools
-import logging
 from typing import Dict, Generator, Iterable
 
 from logprep.util.defaults import DEFAULT_BATCH_SIZE
-
-logger = logging.getLogger("Batcher")
 
 
 class Batcher:

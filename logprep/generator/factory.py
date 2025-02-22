@@ -26,7 +26,7 @@ class ControllerFactory:
         """Factory method to create a controller"""
         if target not in ["http", "kafka"]:
             raise ValueError(f"Controller type {target} not supported")
-        loghandler = cls.get_loghandler(kwargs.get("level", "INFO"))
+        loghandler = cls.get_loghandler(kwargs.get("loglevel", "INFO"))
         input_connector = Input(kwargs)
         output_connector = None
         match target:
@@ -66,7 +66,7 @@ class ControllerFactory:
         """Returns a log handler for the controller"""
         console_handler = None
         if level:
-            logger.setLevel(level)
+            logger.root.setLevel(level)
         console_logger = logging.getLogger("console")
         if console_logger.handlers:
             console_handler = console_logger.handlers.pop()  # last handler is console
