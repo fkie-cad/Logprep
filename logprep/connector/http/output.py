@@ -174,8 +174,8 @@ class HttpOutput(Output):
             request_data = self._encoder.encode(document)
             document_count = 1
         elif isinstance(document, str):
+            document_count = document.count(";") + 1
             request_data = document.replace(";", "\n")
-            document_count = 1
         else:
             error = TypeError(f"Document type {type(document)} is not supported")
             self.metrics.number_of_failed_events += 1

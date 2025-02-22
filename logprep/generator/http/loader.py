@@ -1,8 +1,8 @@
 import logging
 import shutil
+import threading
 from pathlib import Path
 from queue import Queue
-from threading import Thread
 from typing import Generator, List
 
 from logprep.util.defaults import DEFAULT_MESSAGE_BACKLOG_SIZE
@@ -17,7 +17,7 @@ class EventBuffer:
 
     _sentinel = object()
 
-    _thread: Thread
+    _thread: threading.Thread
 
     def __init__(
         self,
@@ -26,7 +26,7 @@ class EventBuffer:
     ) -> None:
         self.file_loader = file_loader
         self._message_backlog = Queue(maxsize=message_backlog_size)
-        self._thread = Thread(target=self.write)
+        self._thread = threading.Thread(target=self.write)
 
     def write(self) -> None:
         """Reads lines from the file loader and puts them into the message backlog queue.
@@ -106,4 +106,4 @@ class FileLoader:
     def close(self) -> None:
         """Stops the thread."""
         self._buffer.stop()
-        # self.clean_up()
+        self.clean_up()

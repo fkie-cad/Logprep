@@ -55,10 +55,14 @@ class Controller(ABC):
             futures = {executor.submit(self.sender.send_batch) for _ in range(self.thread_count)}
 
             for future in as_completed(futures):
-                result = future.result()  # Wait for a completed task
-                logger.info("During generate load active threads: %s", threading.active_count())
-                logger.debug("Result: %s", result)
-                logger.info("Finished processing a batch")
+                try:
+                    result = future.result()  # Wait for a completed task
+                    logger.debug("Result: %s", result)
+                    logger.info("During generate load active threads: %s", threading.active_count())
+                    logger.info("Finished processing a batch")
+                except StopIteration:
+                    logger.info("Stopped Data Processing")
+                    break
 
         logger.debug("After generate load active threads: %s", threading.active_count())
 
