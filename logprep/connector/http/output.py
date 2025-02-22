@@ -13,7 +13,7 @@ An example config file would look like:
     :linenos:
 
     output:
-      myhttpoutput:
+      my_http_output:
         type: http_output
         target_url: http://the.target.url:8080
         username: user

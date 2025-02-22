@@ -21,7 +21,7 @@ class TestInput:
             "input_root_path": "",
             "batch_size": 50,
             "replace_timestamp": True,
-            "tag": "loadtest",
+            "tag": "load_test",
         }
         self.input = Input(config=config)
 
@@ -152,7 +152,7 @@ class TestInput:
         with pytest.raises(StopIteration):
             _ = next(loader)
 
-    def test_load_raises_parsing_error_on_invalid_jsons(self, tmp_path):
+    def test_load_raises_parsing_error_on_invalid_json_files(self, tmp_path):
         event_class_dir = tmp_path / "test_class"
         os.makedirs(event_class_dir, exist_ok=True)
         events_file_path = event_class_dir / "events.jsonl"
@@ -387,7 +387,7 @@ class TestInput:
             "input_root_path": "",
             "batch_size": 77,  # take an odd number so the batchsize will exceed the event limit
             "replace_timestamp": True,
-            "tag": "loadtest",
+            "tag": "load_test",
             "events": 1_000,
         }
         self.input = Input(config=config)
