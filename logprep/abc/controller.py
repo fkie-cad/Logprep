@@ -36,7 +36,12 @@ class Controller(ABC):
         self.thread_count: int = config.get("thread_count", 1)
         self.file_loader = FileLoader(self.input.temp_dir, **self.config)
         # TODO:
-        # wrote tests for batcher -> implement it
+        # implement shuffle
+        # revise loglevel
+        # refactor input class with focus on Single Responsibility Principle
+        # interrupt with high event count
+        # test with big files
+        # compute message backlog size instead of defaults
 
     def setup(self) -> None:
         self.loghandler.start()
