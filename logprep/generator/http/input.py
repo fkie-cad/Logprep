@@ -183,7 +183,7 @@ class Input:
         file_name = f"{self._temp_filename_prefix}_{self.event_file_counter:0>4}.txt"
         temp_file_path = self.temp_dir / file_name
         batcher = Batcher(events, batch_size=self.batch_size)
-        events = list(batcher.batches)
+        events = list(batcher._batches)
         with open(temp_file_path, "w", encoding="utf8") as event_file:
             event_file.writelines(events)
         self.event_file_counter += 1
