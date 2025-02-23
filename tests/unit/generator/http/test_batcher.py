@@ -106,7 +106,25 @@ class TestBatcher:
         batches = iter(["/path/to,msg1", "/path/too,msg2", "/path/to,msg3"])
         batcher = Batcher(batches, batch_size=3, events=6)
         assert next(batcher) == "/path/to,msg1;msg3;msg1\n"
-        assert next(batcher) == "/path/too,msg2;msg2;msg2\n"
+        assert next(batcher) == "/path/to,msg2;msg2;msg2\n"
+        with pytest.raises(StopIteration):
+            next(batcher)
+
+    def test_batcher_handles_different_paths_more_events(self):
+        batches = iter(["/path/to,msg1", "/path/too,msg2", "/path/to,msg3"])
+        batcher = Batcher(batches, batch_size=3, events=9)
+        assert next(batcher) == "/path/to,msg1;msg3;msg1\n"
+        assert next(batcher) == "/path/to,msg2;msg2;msg2\n"
+        assert next(batcher) == "/path/to,msg3;msg1;msg3\n"
+        with pytest.raises(StopIteration):
+            next(batcher)
+
+    def test_batcher_handles_different_paths_more_events_odd_result(self):
+        batches = iter(["/path/to,msg1", "/path/too,msg2", "/path/to,msg3"])
+        batcher = Batcher(batches, batch_size=3, events=8)
+        assert next(batcher) == "/path/to,msg1;msg3;msg1\n"
+        assert next(batcher) == "/path/to,msg2;msg2;msg2\n"
+        assert next(batcher) == "/path/to,msg3;msg1\n"
         with pytest.raises(StopIteration):
             next(batcher)
 
