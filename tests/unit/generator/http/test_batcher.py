@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import copy
 import itertools
 import random
 
@@ -92,3 +93,11 @@ class TestBatcher:
         batcher = Batcher(self.batches, batch_size=0)
         with pytest.raises(ValueError):
             next(batcher)
+
+    def test_batcher_shuffles_events(self):
+        saved_batches = copy.deepcopy(self.batches)
+        batcher = Batcher(self.batches, batch_size=1, events=5, shuffle=True)
+        shuffled_batcher = Batcher(saved_batches, batch_size=3, events=5, shuffle=True)
+        events = [next(batcher) for _ in range(2)]
+        shuffled_events = [next(shuffled_batcher) for _ in range(2)]
+        assert events != shuffled_events
