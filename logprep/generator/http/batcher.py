@@ -14,6 +14,7 @@ Usage example:
 """
 
 import itertools
+import random
 from typing import Dict, Generator, Iterable
 
 from logprep.util.defaults import DEFAULT_BATCH_SIZE
@@ -27,6 +28,10 @@ class Batcher:
     def __init__(self, input_events: Iterable[str], **config) -> None:
         self.batch_size: int = config.get("batch_size", DEFAULT_BATCH_SIZE)
         self.event_count = config.get("events", 1)
+        shuffle = config.get("shuffle", False)
+        if shuffle:
+            input_events = list(input_events)
+            random.shuffle(input_events)
         self.event_generator = itertools.cycle(input_events)
         self._batch_mapping: Dict[str, str] = {}
 
