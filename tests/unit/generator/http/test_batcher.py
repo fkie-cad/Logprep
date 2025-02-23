@@ -101,3 +101,20 @@ class TestBatcher:
         events = [next(batcher) for _ in range(2)]
         shuffled_events = [next(shuffled_batcher) for _ in range(2)]
         assert events != shuffled_events
+
+    def test_batcher_handles_different_paths(self):
+        batches = iter(["/path/to,msg1", "/path/too,msg2", "/path/to,msg3"])
+        batcher = Batcher(batches, batch_size=3, events=6)
+        assert next(batcher) == "/path/to,msg1;msg3;msg1\n"
+        assert next(batcher) == "/path/too,msg2;msg2;msg2\n"
+        with pytest.raises(StopIteration):
+            next(batcher)
+
+    def test_batcher_handles_different_paths_with_shuffle(self):
+        batches = iter(["/path/to,msg1", "/path/too,msg2", "/path/to,msg3"])
+        saved_batches = copy.deepcopy(batches)
+        batcher = Batcher(batches, batch_size=3, events=6)
+        shuffled_batcher = Batcher(saved_batches, batch_size=3, events=6, shuffle=True)
+        events = [next(batcher) for _ in range(2)]
+        shuffled_events = [next(shuffled_batcher) for _ in range(2)]
+        assert events != shuffled_events
