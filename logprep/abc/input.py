@@ -309,7 +309,7 @@ class Input(Connector):
             if self._add_env_enrichment:
                 self._add_env_enrichment_to_event(event)
             if self._onboarding_mode:
-                self._onboarding_mode_to_event(event, raw_event)
+                self._onboarding_mode_target_field_to_event(event, raw_event)
         except FieldExistsWarning as error:
             raise CriticalInputError(self, error.args[0], event) from error
         return event
@@ -345,7 +345,7 @@ class Input(Connector):
             add_fields_to(event, {f"{target}.@original": target_value})
             assert True
 
-    def _onboarding_mode_to_event(self, event_dict: dict, raw_event: bytearray):
+    def _onboarding_mode_target_field_to_event(self, event_dict: dict, raw_event: bytearray):
         target = self._config.preprocessing.get("onboarding_mode")
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
