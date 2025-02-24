@@ -22,7 +22,7 @@ class HttpController(Controller):
         self.input.reformat_dataset()
         self.setup()
         run_time_start = time.perf_counter()
-        self._generate_load()
+        self.sender.send_batches()
         self.input.clean_up_tempdir()
         run_duration = time.perf_counter() - run_time_start
         stats = self.output.statistics

@@ -31,6 +31,6 @@ class TestSender:
             mock.call("http://example.com/file2.txt"),
             mock.call("http://example.com/file3.txt"),
         ]
-        self.sender.send_batch()
+        self.sender.send_batches()
         self.mock_output.store.assert_has_calls(expected_calls, any_order=False)
         assert self.mock_output.store.call_count == 3

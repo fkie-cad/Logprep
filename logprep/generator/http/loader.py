@@ -1,3 +1,4 @@
+import io
 import logging
 import shutil
 from pathlib import Path
@@ -30,7 +31,7 @@ class FileLoader:
     def read_lines(self) -> Generator[str, None, None]:
         """Endless loop over files."""
         for file in self.files:
-            with open(file, "r", encoding="utf8") as current_file:
+            with open(file, "r", encoding="utf8", buffering=io.DEFAULT_BUFFER_SIZE) as current_file:
                 while line := current_file.readline():
                     yield line
                     if self.exit_requested:
