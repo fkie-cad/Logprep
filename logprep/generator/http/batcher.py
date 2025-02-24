@@ -1,4 +1,4 @@
-""""
+""" "
 This module provides a `Batcher` class that batches input events into specified
 sizes for a specified number of events.
 
@@ -29,9 +29,25 @@ class Batcher:
         self.batch_size: int = config.get("batch_size", DEFAULT_BATCH_SIZE)
         self.event_count = config.get("events", 1)
         shuffle = config.get("shuffle", False)
+        rng_seed = config.get("rng", None)
+        self.rng = random.Random(rng_seed)
         if shuffle:
             input_events = list(input_events)
-            random.shuffle(input_events)
+            # # self.rng.shuffle(input_events)
+
+            seen_paths = set()
+            ordered_paths = [
+                path
+                for event in input_events
+                if (path := event.partition(",")[0]) not in seen_paths and not seen_paths.add(path)
+            ]
+
+            self.rng.shuffle(ordered_paths)
+
+            # Sort input events by shuffled path order
+            path_index = {path: i for i, path in enumerate(ordered_paths)}
+            input_events.sort(key=lambda e: path_index[e.partition(",")[0]])
+
         self.event_generator = itertools.cycle(input_events)
         self._batch_mapping: Dict[str, str] = {}
 
@@ -67,7 +83,11 @@ class Batcher:
             raise ValueError("'batch_size' must be at least one")
         for event in self.event_generator:
             if self.event_count == 0:
+                for path in self._batch_mapping:
+                    message = self._batch_mapping.pop(path)
+                    yield f"{message}\n"
                 break
+
             self.event_count -= 1
             if self.batch_size == 1:
                 yield f"{event}\n"
@@ -76,7 +96,7 @@ class Batcher:
                 self._batch_mapping[path] = event
             else:
                 self._batch_mapping[path] += f";{message}"
-            if self._batch_size_reached(path) or self.event_count == 0:
+            if self._batch_size_reached(path):
                 message = self._batch_mapping.pop(path)
                 yield f"{message}\n"
 
