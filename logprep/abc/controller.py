@@ -48,9 +48,7 @@ class Controller(ABC):
         # compute message backlog size instead of defaults?
 
     def setup(self) -> None:
-        logger = logging.getLogger("Generator")
         self.loghandler.start()
-        self.file_loader.start()
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
         self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         signal.signal(signal.SIGTERM, self.stop)
@@ -63,22 +61,19 @@ class Controller(ABC):
     def _generate_load(self):
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
             futures = {executor.submit(self.sender.send_batch) for _ in range(self.thread_count)}
-            while not self.exit_requested:
-                future = next(as_completed(futures))
-                try:
-                    result = future.result()  # Wait for a completed task
-                    logger.debug("Result: %s", result)
-                    logger.info("During generate load active threads: %s", threading.active_count())
-                    logger.info("Finished processing a batch")
-                except StopIteration:
-                    logger.info("Stopped Data Processing")
+            for future in as_completed(futures):
+                if self.exit_requested:
+                    logger.debug("--------------- Exit requested ---------------")
                     break
+                future.result()
+                logger.debug("During generate load active threads: %s", threading.active_count())
+                logger.debug("Finished processing a batch")
 
         logger.debug("After generate load active threads: %s", threading.active_count())
 
     def stop(self, signum, frame):
         self.exit_requested = True
+        self.sender.stop()
         self.file_loader.close()
         logger.info("Stopped Data Processing on signal %s", signum)
-        self.loghandler.stop()
         return None
