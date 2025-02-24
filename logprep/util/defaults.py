@@ -24,6 +24,8 @@ DEFAULT_CONFIG_LOCATION = "file:///etc/logprep/pipeline.yml"
 DEFAULT_LOG_FORMAT = "%(asctime)-15s %(process)-6s %(name)-10s %(levelname)-8s: %(message)s"
 DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_AES_KEY_LENGTH = 32
+DEFAULT_BATCH_SIZE = 1
+DEFAULT_BATCH_TIME = 1.0
 
 
 # dictconfig as described in
