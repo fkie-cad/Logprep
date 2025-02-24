@@ -183,7 +183,6 @@ class HttpOutput(Output):
             return
         try:
             try:
-                logger.debug(request_data)
                 response = requests.post(
                     url=target,
                     headers=self._headers,
@@ -192,7 +191,7 @@ class HttpOutput(Output):
                     timeout=(self.timeout, self.timeout),
                     data=request_data,
                 )
-                logger.debug("Servers response code is: %i", response.status_code)
+                # logger.debug("Servers response code is: %i", response.status_code)
                 self.metrics.status_codes.add_with_labels(
                     1,
                     {
