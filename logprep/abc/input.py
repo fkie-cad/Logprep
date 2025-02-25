@@ -116,7 +116,7 @@ class Input(Connector):
                         "log_arrival_time_target_field": Optional[str],
                         "log_arrival_timedelta": Optional[TimeDeltaConfig],
                         "enrich_by_env_variables": Optional[dict],
-                        "onboarding_mode": Optional[str],
+                        "add_full_event_to_target_field": Optional[str],
                     },
                 ),
             ],
@@ -177,9 +177,9 @@ class Input(Connector):
         - `enrich_by_env_variables` - If required it is possible to automatically enrich incoming
           events by environment variables. To activate this preprocessor the fields value has to be
           a mapping from the target field name (key) to the environment variable name (value).
-        - `onboarding_mode` - If required it is possible to automatically write all fields in an event
+        - `add_full_event_to_target_field` - If required it is possible to automatically write all fields in an event
           to one singular field or subfield. The exact fields in the event do not have to be known
-           to activate the onboarding mode. To activate this preprocessor the fields value has to 
+           to use this preprocessor. To activate this preprocessor the fields value has to 
           represent the target field where the fields of the event should be written to.
         """
 
@@ -239,9 +239,9 @@ class Input(Connector):
         return bool(self._config.preprocessing.get("enrich_by_env_variables"))
 
     @property
-    def _onboarding_mode(self):
-        """Check and return if the env enrichment should be added to the event."""
-        return bool(self._config.preprocessing.get("onboarding_mode"))
+    def _add_full_event_to_target_field(self):
+        """Check and return if the event should be written into one singular field."""
+        return bool(self._config.preprocessing.get("add_full_event_to_target_field"))
 
     def _get_raw_event(self, timeout: float) -> bytes | None:  # pylint: disable=unused-argument
         """Implements the details how to get the raw event
@@ -308,8 +308,8 @@ class Input(Connector):
                 self._add_arrival_timedelta_information_to_event(event)
             if self._add_env_enrichment:
                 self._add_env_enrichment_to_event(event)
-            if self._onboarding_mode:
-                self._onboarding_mode_target_field_to_event(event, raw_event)
+            if self._add_full_event_to_target_field:
+                self._write_full_event_to_target_field(event, raw_event)
         except FieldExistsWarning as error:
             raise CriticalInputError(self, error.args[0], event) from error
         return event
@@ -345,8 +345,8 @@ class Input(Connector):
             add_fields_to(event, {f"{target}.@original": target_value})
             assert True
 
-    def _onboarding_mode_target_field_to_event(self, event_dict: dict, raw_event: bytearray):
-        target = self._config.preprocessing.get("onboarding_mode")
+    def _write_full_event_to_target_field(self, event_dict: dict, raw_event: bytearray):
+        target = self._config.preprocessing.get("add_full_event_to_target_field")
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
         complete_event = raw_event.decode("utf-8")

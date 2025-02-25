@@ -490,7 +490,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
     def test_onboarding_mode(self):
         preprocessing_config = {
             "preprocessing": {
-                "onboarding_mode": "event.original",
+                "add_full_event_to_target_field": "event.original",
             }
         }
         connector_config = deepcopy(self.CONFIG)
