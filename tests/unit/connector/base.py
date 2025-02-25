@@ -487,7 +487,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         assert "arrival_time" in result
 
-    def test_onboarding_mode(self):
+    def test_add_full_event_to_target_field(self):
         preprocessing_config = {
             "preprocessing": {
                 "add_full_event_to_target_field": "event.original",
