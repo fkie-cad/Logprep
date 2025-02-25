@@ -22,10 +22,12 @@ class HttpController(Controller):
         self.input.reformat_dataset()
         self.setup()
         run_time_start = time.perf_counter()
-        self._generate_load()
-        # self.input.clean_up_tempdir()
+        self.sender.send_batches()
+        self.input.clean_up_tempdir()
         run_duration = time.perf_counter() - run_time_start
         stats = self.output.statistics
         logger.info("Completed with following statistics: %s", stats)
         logger.info("Execution time: %f seconds", run_duration)
-        self.stop(signal.SIGTERM, None)
+        if not self.exit_requested:
+            self.stop(signal.SIGTERM, None)
+        self.loghandler.stop()
