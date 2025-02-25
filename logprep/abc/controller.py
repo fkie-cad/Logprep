@@ -43,6 +43,7 @@ class Controller(ABC):
         # add kafka output option
         ## reduce to a single sender class (maybe?)
         ## improve the kafka health output (metric output about successfull events, see http example)
+        ## make sure kafka and http a writing the smae documents
         ## look into kafka shutdown, was still running after logprep run shutdown was closed, compare to http.
         ## Update tests
 

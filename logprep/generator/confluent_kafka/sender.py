@@ -1,6 +1,3 @@
-"""The Sender class, which loads the messages from input and forwards them
-to output, to be send to the end point"""
-
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -12,7 +9,7 @@ from logprep.abc.output import Output
 logger = logging.getLogger("Sender")
 
 
-class Sender:
+class KafkaSender:
     """Manages the Batcher and Output classes"""
 
     def __init__(self, input_events: Iterable, output: Output, **config):
@@ -22,9 +19,6 @@ class Sender:
         self.input_events = iter(input_events)
         self._lock = threading.Lock()
         self.exit_requested = False
-        self.target_url = config.get("target_url")
-        if not self.target_url:
-            raise ValueError("No target_url specified")
 
     def send_batches(self) -> None:
         """Loads a batch from the message backlog and sends to the endpoint"""
