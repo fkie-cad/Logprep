@@ -10,6 +10,7 @@ from logprep.abc.controller import Controller
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.http.output import HttpOutput
 from logprep.factory import Factory
+from logprep.generator.confluent_kafka.controller import KafkaController
 from logprep.generator.http.input import Input
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
