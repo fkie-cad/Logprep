@@ -500,7 +500,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result = connector.get_next(0.01)
         expected = {"event": {"original": '{"any":"content"}'}}
-        assert result == expected, f"{expected} stimmt nicht mit {result} überein"
+        assert result == expected, f"{expected} is not the same as {result}"
 
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_log_arrival_timestamp_not(
         self,
