@@ -33,20 +33,7 @@ class Batcher:
         self.rng = random.Random(rng_seed)
         if shuffle:
             input_events = list(input_events)
-            # # self.rng.shuffle(input_events)
-
-            seen_paths = set()
-            ordered_paths = [
-                path
-                for event in input_events
-                if (path := event.partition(",")[0]) not in seen_paths and not seen_paths.add(path)
-            ]
-
-            self.rng.shuffle(ordered_paths)
-
-            # Sort input events by shuffled path order
-            path_index = {path: i for i, path in enumerate(ordered_paths)}
-            input_events.sort(key=lambda e: path_index[e.partition(",")[0]])
+            self.rng.shuffle(input_events)
 
         self.event_generator = itertools.cycle(input_events)
         self._batch_mapping: Dict[str, str] = {}
