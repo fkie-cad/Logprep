@@ -35,9 +35,10 @@ class Controller(ABC):
         self.file_loader = FileLoader(self.input.temp_dir, **self.config)
         self.exit_requested = False
         # TODO:
-        # implement shuffle in batcher
-        # implement handling in batcher for different paths
-        #
+
+        # resolve Controller Inheritance to one controller class
+        # add kafka output option
+
         # refactor input class with focus on Single Responsibility Principle
         # how to handle big amount of example events? they are loaded in memory
         # test with big files
