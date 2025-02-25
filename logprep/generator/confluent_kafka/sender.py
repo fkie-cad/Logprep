@@ -9,7 +9,7 @@ from logprep.abc.output import Output
 logger = logging.getLogger("Sender")
 
 
-class Sender:
+class KafkaSender:
     """Manages the Batcher and Output classes"""
 
     def __init__(self, input_events: Iterable, output: Output, **config):
@@ -19,17 +19,12 @@ class Sender:
         self.input_events = iter(input_events)
         self._lock = threading.Lock()
         self.exit_requested = False
-        self.target_url = config.get("target_url")
-        if not self.target_url:
-            raise ValueError("No target_url specified")
 
     def send_batches(self) -> None:
         """Loads a batch from the message backlog and sends to the endpoint"""
-        target_url = self.target_url
-        event_generator = (f"{target_url}{batch}" for batch in self.input_events)
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
             while not self.exit_requested:
-                chunk = tuple(islice(event_generator, self.thread_count))
+                chunk = tuple(islice(self.input_events, self.thread_count))
                 if not chunk:
                     break
                 for _ in executor.map(self.output.store, chunk):

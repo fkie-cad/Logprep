@@ -10,7 +10,6 @@ from logprep.abc.controller import Controller
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.http.output import HttpOutput
 from logprep.factory import Factory
-from logprep.generator.confluent_kafka.controller import KafkaController
 from logprep.generator.http.input import Input
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
@@ -56,7 +55,7 @@ class ControllerFactory:
                 output_connector = Factory.create(output_config)
                 if not isinstance(output_connector, ConfluentKafkaOutput):
                     raise ValueError("Output is not a valid output type")
-                return KafkaController(input_connector, output_connector, loghandler, **kwargs)
+                return Controller(output_connector, input_connector, loghandler, **kwargs)
             case _:
                 return None
 
