@@ -6,36 +6,42 @@ from unittest import mock
 
 import responses
 
+from logprep.abc.controller import Controller
 from logprep.generator.factory import ControllerFactory
-from logprep.generator.http.controller import HttpController
 from tests.unit.generator.http.util import create_test_event_files
 
 
 @mock.patch.object(ControllerFactory, "get_loghandler", new=mock.MagicMock())
-class TestHttpController:
+class TestController:
     def setup_method(self):
         self.target_url = "http://testendpoint"
         self.batch_size = 10
         input_connector = mock.MagicMock()
         output_connector = mock.MagicMock()
         loghandler = mock.MagicMock()
-        self.controller = HttpController(input_connector, output_connector, loghandler)
 
-    def test_run_calls_generate_load(self):
-        with mock.patch.object(self.controller, "_generate_load") as mock_generate_load:
-            self.controller.run()
-            mock_generate_load.assert_called_once()
+        self.sender = mock.MagicMock()
 
-    @mock.patch.object(HttpController, "_generate_load")
+        config = {
+            "target_url": "https://testdomain.de",
+        }
+        self.controller = Controller(output_connector, input_connector, loghandler, **config)
+        self.controller.sender = self.sender
+        self.controller.setup = mock.Mock()
+
+    def test_run_calls_setup(self):
+        self.controller.run()
+        self.controller.setup.assert_called_once()
+        self.controller.sender.send_batches.assert_called_once()
+        self.controller.input.clean_up_tempdir.assert_called_once()
+
     @mock.patch("time.perf_counter")
-    def test_run_measures_time(self, mock_perf_counter, mock_generate_load):
+    def test_run_measures_time(self, mock_perf_counter):
         self.controller.run()
         mock_perf_counter.assert_called()
         assert mock_perf_counter.call_count == 2
-        mock_generate_load.assert_called()
-        assert mock_generate_load.call_count == 1
 
-    @mock.patch("logprep.generator.http.controller.logger")
+    @mock.patch("logprep.abc.controller.logger")
     def test_run_duration_is_positive(self, mock_logger):
         self.controller.run()
         mock_logger.info.assert_called()

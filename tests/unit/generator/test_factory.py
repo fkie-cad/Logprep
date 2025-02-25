@@ -4,11 +4,11 @@ from unittest import mock
 
 import pytest
 
+from logprep.abc.controller import Controller
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.http.output import HttpOutput
 from logprep.generator.confluent_kafka.controller import KafkaController
 from logprep.generator.factory import ControllerFactory
-from logprep.generator.http.controller import HttpController
 from logprep.util.logging import LogprepMPQueueListener
 
 
@@ -24,7 +24,7 @@ class TestFactory:
     @pytest.mark.parametrize(
         "target, expected_class",
         [
-            ("http", HttpController),
+            ("http", Controller),
             ("kafka", KafkaController),
         ],
     )

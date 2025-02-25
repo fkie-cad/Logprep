@@ -3,7 +3,8 @@
 import logging
 import signal
 import threading
-from abc import ABC, abstractmethod
+import time
+from abc import ABC
 
 from logprep.abc.output import Output
 from logprep.generator.http.input import Input
@@ -52,9 +53,22 @@ class Controller(ABC):
         signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)
 
-    @abstractmethod
-    def run(self):
-        """Run the generator"""
+    def run(self) -> None:
+        """Iterate over all event classes, trigger their processing and
+        count the return statistics"""
+        logger.info("Started Data Processing")
+        self.input.reformat_dataset()
+        self.setup()
+        run_time_start = time.perf_counter()
+        self.sender.send_batches()
+        self.input.clean_up_tempdir()
+        run_duration = time.perf_counter() - run_time_start
+        stats = self.output.statistics
+        logger.info("Completed with following statistics: %s", stats)
+        logger.info("Execution time: %f seconds", run_duration)
+        if not self.exit_requested:
+            self.stop(signal.SIGTERM, None)
+        self.loghandler.stop()
 
     def stop(self, signum, frame):
         """Stop the generator"""
