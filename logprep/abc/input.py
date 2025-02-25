@@ -349,7 +349,7 @@ class Input(Connector):
         target = self._config.preprocessing.get("onboarding_mode")
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
-        complete_event = self._decoder.decode(raw_event.decode("utf-8"))
+        complete_event = raw_event.decode("utf-8")
         event_dict.clear()
         add_fields_to(event_dict, fields={target: complete_event}, overwrite_target=True)
 
