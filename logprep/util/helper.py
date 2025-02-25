@@ -8,9 +8,8 @@ from importlib.metadata import version
 from os import remove
 from typing import TYPE_CHECKING, Optional, Union
 
-from logprep.util.ansi import Back, Fore, AnsiBack, AnsiFore
-
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.util.ansi import AnsiBack, AnsiFore, Back, Fore
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -146,6 +145,7 @@ def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
         _add_field_to(*args, **kwargs)
     except FieldExistsWarning as error:
         return error.skipped_fields[0]
+    return None
 
 
 def add_fields_to(
@@ -190,9 +190,9 @@ def add_fields_to(
         itertools.repeat(merge_with_target, number_fields),
         itertools.repeat(overwrite_target, number_fields),
     )
-    unsuccessful_targets = [item for item in unsuccessful_targets if item is not None]
-    if unsuccessful_targets:
-        raise FieldExistsWarning(rule, event, unsuccessful_targets)
+    unsuccessful_targets_resolved = [item for item in unsuccessful_targets if item is not None]
+    if unsuccessful_targets_resolved:
+        raise FieldExistsWarning(rule, event, unsuccessful_targets_resolved)
 
 
 def _get_slice_arg(slice_item):
