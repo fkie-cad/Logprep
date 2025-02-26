@@ -38,9 +38,8 @@ class Controller:
 
         # resolve Controller Inheritance to one controller class
         # add kafka output option
-        ## improve kafka statistics (fix counting)
         ## Update tests
-        ## Change input config from target_url -> target (url and topic)
+        ## Does topic have to be a necessary field in the kafka-output?
 
         # refactor input class with focus on Single Responsibility Principle
         # how to handle big amount of example events? they are loaded in memory
