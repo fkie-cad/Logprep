@@ -1,3 +1,6 @@
+"""The Sender class, which loads the messages from input and forwards them
+to output, to be send to the end point"""
+
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -17,19 +20,14 @@ class Sender:
         self.output = output
         self.thread_count = config.get("thread_count", 1)
         self.input_events = iter(input_events)
-        self.target_url = config.get("target_url")
         self._lock = threading.Lock()
         self.exit_requested = False
-        if not self.target_url:
-            raise ValueError("No target_url specified")
 
     def send_batches(self) -> None:
         """Loads a batch from the message backlog and sends to the endpoint"""
-        target_url = self.target_url
-        event_generator = (f"{target_url}{batch}" for batch in self.input_events)
         with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
             while not self.exit_requested:
-                chunk = tuple(islice(event_generator, self.thread_count))
+                chunk = tuple(islice(self.input_events, self.thread_count))
                 if not chunk:
                     break
                 for _ in executor.map(self.output.store, chunk):

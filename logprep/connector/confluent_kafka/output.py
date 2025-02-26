@@ -202,6 +202,16 @@ class ConfluentKafkaOutput(Output):
         DEFAULTS.update({"client.id": getfqdn()})
         return DEFAULTS | self._config.kafka_config | injected_config
 
+    @property
+    def statistics(self) -> str:
+        """Return the statistics of this connector as a formatted string."""
+        if self.health() == True:
+            return "passed"
+        elif self.health() == False:
+            return "failed"
+        else:
+            return "shitty"
+
     @cached_property
     def _admin(self) -> AdminClient:
         """configures and returns the admin client
@@ -274,7 +284,7 @@ class ConfluentKafkaOutput(Output):
             f"{self._config.kafka_config.get('bootstrap.servers')}"
         )
 
-    def store(self, document: dict) -> Optional[bool]:
+    def store(self, document: str) -> None:
         """Store a document in the producer topic.
 
         Parameters
@@ -287,7 +297,8 @@ class ConfluentKafkaOutput(Output):
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
-        self.store_custom(document, self._config.topic)
+        _, _, payload = document.partition(",")
+        self.store_custom(payload, self._config.topic)
 
     @Metric.measure_time()
     def store_custom(self, document: dict, target: str) -> None:
