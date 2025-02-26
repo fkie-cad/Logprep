@@ -8,7 +8,6 @@ from abc import ABC
 
 from logprep.abc.output import Output
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
-from logprep.generator.confluent_kafka.sender import KafkaSender
 from logprep.generator.http.input import Input
 from logprep.generator.http.loader import FileLoader
 from logprep.generator.sender import Sender
@@ -57,7 +56,7 @@ class Controller(ABC):
         self.loghandler.start()
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
         if isinstance(self.output, ConfluentKafkaOutput):
-            self.sender = KafkaSender(self.file_loader.read_lines(), self.output, **self.config)
+            self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         else:
             self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         signal.signal(signal.SIGTERM, self.stop)
