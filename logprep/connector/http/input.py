@@ -19,7 +19,7 @@ An example config file would look like:
         message_backlog_size: 15000
         collect_meta: False
         metafield_name: "@metadata"
-        event_origin_field: "event.origin"
+        original_event_field: "event.original"
         uvicorn_config:
           host: 0.0.0.0
           port: 9000
@@ -219,14 +219,14 @@ class HttpEndpoint(ABC):
     def __init__(
         self,
         messages: mp.Queue,
-        event_origin_field: str,
+        original_event_field: str,
         collect_meta: bool,
         metafield_name: str,
         credentials: Credentials,
         metrics: "HttpInput.Metrics",
     ) -> None:
         self.messages = messages
-        self.event_origin_field = event_origin_field
+        self.original_event_field = original_event_field
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
         self.credentials = credentials
@@ -279,10 +279,9 @@ class JSONHttpEndpoint(HttpEndpoint):
         data = await self.get_data(req)
         if data:
             event = self._decoder.decode(data)
-            if self.event_origin_field is not None:
-                origin_event = event
+            if self.original_event_field is not None:
                 event = {}
-                add_fields_to(event, {self.event_origin_field: data.decode("utf8")})
+                add_fields_to(event, {self.original_event_field: data.decode("utf8")})
             self.messages.put(event | kwargs["metadata"], block=False)
 
 
@@ -300,10 +299,9 @@ class JSONLHttpEndpoint(HttpEndpoint):
         data = await self.get_data(req)
         events = self._decoder.decode_lines(data)
         for event in events:
-            if self.event_origin_field is not None:
-                origin_event = event
+            if self.original_event_field is not None:
                 event = {}
-                add_fields_to(event, self.event_origin_field, origin_event)
+                add_fields_to(event, {self.original_event_field: data.decode("utf8")})
             self.messages.put(event | kwargs["metadata"], block=False, batch_size=len(events))
 
 
@@ -319,10 +317,9 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         self.collect_metrics()
         data = await self.get_data(req)
         event = {"message": data.decode("utf8")}
-        if self.event_origin_field is not None:
-            origin_event = event
+        if self.original_event_field is not None:
             event = {}
-            add_fields_to(event, self.event_origin_field, origin_event)
+            add_fields_to(event, {self.original_event_field: data.decode("utf8")})
         self.messages.put(event | kwargs["metadata"], block=False)
 
 
@@ -431,7 +428,7 @@ class HttpInput(Input):
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
         """Defines the name of the key for the collected metadata fields"""
 
-        event_origin_field: str = field(
+        original_event_field: str = field(
             validator=validators.instance_of((str, type(None))), default=None
         )
 
@@ -473,7 +470,7 @@ class HttpInput(Input):
         endpoints_config = {}
         collect_meta = self._config.collect_meta
         metafield_name = self._config.metafield_name
-        event_origin_field = self._config.event_origin_field
+        original_event_field = self._config.original_event_field
         cred_factory = CredentialsFactory()
         # preparing dict with endpoint paths and initialized endpoints objects
         # and add authentication if credentials are existing for path
@@ -482,7 +479,7 @@ class HttpInput(Input):
             credentials = cred_factory.from_endpoint(endpoint_path)
             endpoints_config[endpoint_path] = endpoint_class(
                 self.messages,
-                event_origin_field,
+                original_event_field,
                 collect_meta,
                 metafield_name,
                 credentials,

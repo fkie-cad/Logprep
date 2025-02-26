@@ -268,9 +268,9 @@ class TestHttpConnector(BaseInputTestCase):
         assert re.search(r"\d+\.\d+\.\d+\.\d+", message["custom"]["remote_addr"])
         assert isinstance(message["custom"]["user_agent"], str)
 
-    def test_event_original(self):
+    def test_original_event_field(self):
         message = {"message": "my message"}
-        updated_config = {"event_origin_field": "event.original"}
+        updated_config = {"original_event_field": "event.original"}
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(updated_config)
         connector = Factory.create({"test connector": connector_config})
@@ -280,7 +280,7 @@ class TestHttpConnector(BaseInputTestCase):
         resp = client.post("/json", json=message)
         assert resp.status_code == 200
         message = connector.messages.get(timeout=0.5)
-        expected = {"event": {"original": {"message": "my message"}}}
+        expected = {"event": {"original": '{"message": "my message"}'}}
         assert message == expected, f"{expected} does not equal {message}"
 
     def test_server_multiple_config_changes(self):
