@@ -7,7 +7,7 @@ import logging
 import time
 from logging import Logger
 
-from logprep.abc.controller import Controller
+from logprep.generator.controller import Controller
 
 logger: Logger = logging.getLogger("Generator")
 

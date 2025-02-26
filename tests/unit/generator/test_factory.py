@@ -4,10 +4,10 @@ from unittest import mock
 
 import pytest
 
-from logprep.abc.controller import Controller
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.http.output import HttpOutput
 from logprep.generator.confluent_kafka.controller import KafkaController
+from logprep.generator.controller import Controller
 from logprep.generator.factory import ControllerFactory
 from logprep.util.logging import LogprepMPQueueListener
 

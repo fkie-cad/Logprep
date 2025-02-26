@@ -210,8 +210,6 @@ class ConfluentKafkaOutput(Output):
         stats: dict = {}
         metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
         for metric in metrics:
-            # print("----------------")
-            # print(metric.name, getattr(self.metrics, metric.name).tracker.collect()[0])
             samples = filter(
                 lambda x: x.name.endswith("_total")
                 and "number_of_warnings" not in x.name  # blocklisted metric
@@ -317,7 +315,7 @@ class ConfluentKafkaOutput(Output):
         self.store_custom(payload, self._config.topic)
 
     @Metric.measure_time()
-    def store_custom(self, document: dict, target: str) -> None:
+    def store_custom(self, document: str, target: str) -> None:
         """Write document to Kafka into target topic.
 
         Parameters
@@ -336,7 +334,7 @@ class ConfluentKafkaOutput(Output):
             self._producer.produce(target, value=self._encoder.encode(document))
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
-            self.metrics.number_of_processed_events += 1
+            self.metrics.number_of_processed_events += document.count(";") + 1
         except BufferError:
             # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self._config.flush_timeout)
