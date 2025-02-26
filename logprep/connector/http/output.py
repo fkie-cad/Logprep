@@ -163,7 +163,7 @@ class HttpOutput(Output):
 
     def store(self, document: str) -> None:
         target, _, payload = document.partition(",")
-        self.store_custom(payload, target)
+        self.store_custom(payload, self._config.target_url + target)
 
     def store_custom(self, document: dict | tuple | list, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
