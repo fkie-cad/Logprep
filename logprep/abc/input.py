@@ -4,6 +4,7 @@ New input endpoint types are created by implementing it.
 
 import base64
 import hashlib
+import json
 import os
 import zlib
 from abc import abstractmethod
@@ -348,8 +349,8 @@ class Input(Connector):
     def _write_full_event_to_target_field(self, event_dict: dict, raw_event: bytearray):
         target = self._config.preprocessing.get("add_full_event_to_target_field")
         if raw_event is None:
-            raw_event = self._encoder.encode(event_dict)
-        complete_event = raw_event.decode("utf-8")
+            raw_event = json.dumps(event_dict)
+        complete_event = json.dumps(raw_event)
         event_dict.clear()
         add_fields_to(event_dict, fields={target: complete_event}, overwrite_target=True)
 
