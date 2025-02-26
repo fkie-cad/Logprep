@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from logprep.generator.http.sender import Sender  # Adjust import as needed
+from logprep.generator.sender import Sender  # Adjust import as needed
 
 
 class TestSender:

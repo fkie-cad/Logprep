@@ -1,3 +1,6 @@
+"""The Sender class, which loads the messages from input and forwards them
+to output, to be send to the end point"""
+
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -9,7 +12,7 @@ from logprep.abc.output import Output
 logger = logging.getLogger("Sender")
 
 
-class KafkaSender:
+class Sender:
     """Manages the Batcher and Output classes"""
 
     def __init__(self, input_events: Iterable, output: Output, **config):
