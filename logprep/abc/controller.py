@@ -7,6 +7,7 @@ import time
 from abc import ABC
 
 from logprep.abc.output import Output
+from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.generator.http.input import Input
 from logprep.generator.http.loader import FileLoader
 from logprep.generator.sender import Sender
@@ -51,7 +52,10 @@ class Controller(ABC):
         """Setup the generator"""
         self.loghandler.start()
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
-        self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
+        if isinstance(self.output, ConfluentKafkaOutput):
+            self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
+        else:
+            self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)
 
