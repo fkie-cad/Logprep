@@ -25,14 +25,15 @@ Example
 
 import json
 import logging
+import time
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
 from typing import Optional
 
 from attrs import define, field, validators
-from confluent_kafka import KafkaException, Producer
-from confluent_kafka.admin import AdminClient
+from confluent_kafka import KafkaException, Producer  # type: ignore
+from confluent_kafka.admin import AdminClient  # type: ignore
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.metrics.metrics import GaugeMetric, Metric
@@ -148,7 +149,7 @@ class ConfluentKafkaOutput(Output):
         topic: str = field(validator=validators.instance_of(str))
         """The topic into which the processed events should be written to."""
         flush_timeout: float = field(
-            validator=validators.instance_of(float), converter=float, default=0
+            validator=validators.instance_of(float), converter=float, default=0.0
         )
         """The maximum time in seconds to wait for the producer to flush the messages
         to kafka broker. If the buffer is full, the producer will block until the buffer
@@ -157,7 +158,7 @@ class ConfluentKafkaOutput(Output):
         before the buffer is empty. Default is :code:`0`.
         """
         send_timeout: float = field(
-            validator=validators.instance_of(float), converter=float, default=0
+            validator=validators.instance_of(float), converter=float, default=0.0
         )
         """The maximum time in seconds to wait for an answer from the broker on polling.
         Default is :code:`0`."""
@@ -208,12 +209,13 @@ class ConfluentKafkaOutput(Output):
         """Return the statistics of this connector as a formatted string."""
         stats: dict = {}
         metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
+        # self._stats_callback(self._config)
         for metric in metrics:
             samples = filter(
                 lambda x: x.name.endswith("_total")
                 and "number_of_warnings" not in x.name  # blocklisted metric
                 and "number_of_errors" not in x.name  # blocklisted metric
-                or "txmsgs" in x.name,  # whitelsited metric
+                or "librdkafka" in x.name,  # whitelsited metric
                 getattr(self.metrics, metric.name).tracker.collect()[0].samples,
             )
             for sample in samples:
@@ -223,6 +225,7 @@ class ConfluentKafkaOutput(Output):
                     else sample.labels.get("description")
                 )
                 stats[key] = int(sample.value)
+        stats["Is the producer healthy"] = self.health()
         return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
     @cached_property
@@ -242,7 +245,7 @@ class ConfluentKafkaOutput(Output):
 
     @cached_property
     def _producer(self) -> Producer:
-        return Producer(self._kafka_config)
+        return Producer({**self._kafka_config, "stats_cb": self._stats_callback})
 
     def _error_callback(self, error: KafkaException):
         """Callback for generic/global error events, these errors are typically
@@ -257,18 +260,20 @@ class ConfluentKafkaOutput(Output):
         self.metrics.number_of_errors += 1
         logger.error(f"{self.describe()}: {error}")  # pylint: disable=logging-fstring-interpolation
 
-    def _stats_callback(self, stats: str) -> None:
+    def _stats_callback(self, stats: dict) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
         Parameters
         ----------
-        stats : str
+        stats : dict
             statistics from the underlying librdkafka library
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
-
+        logger.debug("Stats callback triggered")
+        print("STATS CALLBACK TRIGGERED")
+        print("-------------------------------------")
         stats = self._decoder.decode(stats)
         self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
         self.metrics.librdkafka_msg_cnt += stats.get("msg_cnt", DEFAULT_RETURN)
@@ -333,6 +338,7 @@ class ConfluentKafkaOutput(Output):
             self._producer.produce(target, value=self._encoder.encode(document))
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
+            time.sleep(0.1)
             self.metrics.number_of_processed_events += document.count(";") + 1
         except BufferError:
             # block program until buffer is empty or timeout is reached
