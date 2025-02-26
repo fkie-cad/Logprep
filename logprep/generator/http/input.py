@@ -66,7 +66,7 @@ class TimestampReplacementConfig:
 class EventClassConfig:
     """Configuration for an event class"""
 
-    target_path: str = field(validator=validators.instance_of(str))
+    target: str = field(validator=validators.instance_of(str))
     timestamps: List[TimestampReplacementConfig] = field(
         default=[],
         converter=TimestampReplacementConfig.convert_list_of_dicts_to_objects,
@@ -140,7 +140,7 @@ class Input:
         manipulator = Manipulator(
             log_class_config, self.config.get("replace_timestamp"), self.config.get("tag")
         )
-        self.log_class_manipulator_mapping.update({log_class_config.target_path: manipulator})
+        self.log_class_manipulator_mapping.update({log_class_config.target: manipulator})
         file_paths = [
             os.path.join(dir_path, file_path)
             for file_path in os.listdir(dir_path)
@@ -155,22 +155,22 @@ class Input:
             event_class_config = yaml.load(file)
         logger.debug("Following class config was loaded: %s", event_class_config)
         event_class_config = EventClassConfig(**event_class_config)
-        if "," in event_class_config.target_path:
+        if "," in event_class_config.target:
             raise ValueError(
-                f"InvalidConfiguration: No ',' allowed in target_path, {event_class_config}"
+                f"InvalidConfiguration: No ',' allowed in target, {event_class_config}"
             )
         return event_class_config
 
     def _populate_events_list(self, events, file_paths, log_class_config):
         """
         Collect the events from the dataset inside the events list. Each element will look like
-        '<TARGET_PATH>,<JSONL-EVENT>\n', such that these lines can later be written to a file.
+        '<TARGET>,<JSONL-EVENT>\n', such that these lines can later be written to a file.
         """
         for file in file_paths:
             with open(file, "r", encoding="utf8") as event_file:
                 for event in event_file.readlines():
                     self.number_events_of_dataset += 1
-                    events.append(f"{log_class_config.target_path},{event.strip()}")
+                    events.append(f"{log_class_config.target},{event.strip()}")
                     if len(events) == self.MAX_EVENTS_PER_FILE:
                         self._write_events_file(events)
 
@@ -221,8 +221,8 @@ class Input:
         if self.config.get("shuffle"):
             event_batch = sorted(event_batch, key=lambda x: x[0])
         log_classes = itertools.groupby(event_batch, key=lambda x: x[0])
-        for target_path, events in log_classes:
-            yield target_path, list(map(itemgetter(1), events))
+        for target, events in log_classes:
+            yield target, list(map(itemgetter(1), events))
 
     def _process_event_line(self, line):
         """

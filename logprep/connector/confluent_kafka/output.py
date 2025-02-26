@@ -200,7 +200,6 @@ class ConfluentKafkaOutput(Output):
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
-        print("-----------------------------------------")
         DEFAULTS.update({"client.id": getfqdn()})
         return DEFAULTS | self._config.kafka_config | injected_config
 
@@ -311,8 +310,8 @@ class ConfluentKafkaOutput(Output):
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
-        _, _, payload = document.partition(",")
-        self.store_custom(payload, self._config.topic)
+        topic, _, payload = document.partition(",")
+        self.store_custom(payload, topic)
 
     @Metric.measure_time()
     def store_custom(self, document: str, target: str) -> None:

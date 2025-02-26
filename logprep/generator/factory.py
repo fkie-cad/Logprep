@@ -6,6 +6,8 @@ instances of different types of controllers based on the specified target.
 import json
 import logging
 
+from ruamel.yaml import YAML
+
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.http.output import HttpOutput
 from logprep.factory import Factory
@@ -14,6 +16,8 @@ from logprep.generator.http.input import Input
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Generator")
+
+yaml = YAML(typ="safe")
 
 
 class ControllerFactory:
