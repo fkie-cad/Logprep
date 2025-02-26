@@ -31,7 +31,8 @@ An example config file would look like:
 The endpoint config supports regex and wildcard patterns:
   * :code:`/second*`: matches everything after asterisk
   * :code:`/(third|fourth)/endpoint` matches either third or forth in the first part
-
+The connector configuration includes an optional parameter called original_event_field.
+When set, the full event is stored as a string in the specified field defined by its value.
 
 Endpoint Credentials Config Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -279,7 +280,7 @@ class JSONHttpEndpoint(HttpEndpoint):
         data = await self.get_data(req)
         if data:
             event = self._decoder.decode(data)
-            if self.original_event_field is not None:
+            if self.original_event_field:
                 event = {}
                 add_fields_to(event, {self.original_event_field: data.decode("utf8")})
             self.messages.put(event | kwargs["metadata"], block=False)
@@ -299,7 +300,7 @@ class JSONLHttpEndpoint(HttpEndpoint):
         data = await self.get_data(req)
         events = self._decoder.decode_lines(data)
         for event in events:
-            if self.original_event_field is not None:
+            if self.original_event_field:
                 event = {}
                 add_fields_to(event, {self.original_event_field: data.decode("utf8")})
             self.messages.put(event | kwargs["metadata"], block=False, batch_size=len(events))
@@ -317,7 +318,7 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         self.collect_metrics()
         data = await self.get_data(req)
         event = {"message": data.decode("utf8")}
-        if self.original_event_field is not None:
+        if self.original_event_field:
             event = {}
             add_fields_to(event, {self.original_event_field: data.decode("utf8")})
         self.messages.put(event | kwargs["metadata"], block=False)
