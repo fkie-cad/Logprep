@@ -4,10 +4,8 @@ import logging
 import signal
 import threading
 import time
-from abc import ABC
 
 from logprep.abc.output import Output
-from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.generator.http.input import Input
 from logprep.generator.http.loader import FileLoader
 from logprep.generator.sender import Sender
@@ -16,7 +14,7 @@ from logprep.util.logging import LogprepMPQueueListener
 logger = logging.getLogger("Generator")
 
 
-class Controller(ABC):
+class Controller:
     """Generally Controls the workflow of the generator by reading inputs, manipulating events
     and sending them to outputs
     """
@@ -40,11 +38,9 @@ class Controller(ABC):
 
         # resolve Controller Inheritance to one controller class
         # add kafka output option
-        ## reduce to a single sender class (maybe?)
-        ## improve the kafka health output (metric output about successfull events, see http example)
-        ## look into kafka shutdown, was still running after logprep run shutdown was closed, compare to http.
-        ## improve the kafka health output (metric output about successfull events, see http example)
+        ## improve kafka statistics (fix counting)
         ## Update tests
+        ## Change input config from target_url -> target (url and topic)
 
         # refactor input class with focus on Single Responsibility Principle
         # how to handle big amount of example events? they are loaded in memory
@@ -55,10 +51,7 @@ class Controller(ABC):
         """Setup the generator"""
         self.loghandler.start()
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
-        if isinstance(self.output, ConfluentKafkaOutput):
-            self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
-        else:
-            self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
+        self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)
 
