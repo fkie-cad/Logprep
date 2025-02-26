@@ -179,7 +179,7 @@ class Input(Connector):
           events by environment variables. To activate this preprocessor the fields value has to be
           a mapping from the target field name (key) to the environment variable name (value).
         - `add_full_event_to_target_field` - If required it is possible to automatically write all fields in an event
-          to one singular field or subfield. The exact fields in the event do not have to be known
+          to one singular field or subfield as a string. The exact fields in the event do not have to be known
            to use this preprocessor. To activate this preprocessor the fields value has to 
           represent the target field where the fields of the event should be written to. The event is
           automatically escaped so this can be used to identify mapping errors thrown by opensearch 
