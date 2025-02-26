@@ -162,7 +162,7 @@ def add_fields_to(
         event: dict
             The event object to which fields are to be added.
         fields: dict
-            A dicht with key value pairs describing the fields that should be added. The key is the dotted subfield
+            A dict with key value pairs describing the fields that should be added. The key is the dotted subfield
             string indicating the target. The value is the content that should be added to the named target. The
             content can be of type: str, float, int, list, dict.
         rule: Rule

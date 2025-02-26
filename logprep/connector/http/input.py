@@ -280,7 +280,9 @@ class JSONHttpEndpoint(HttpEndpoint):
         if data:
             event = self._decoder.decode(data)
             if self.event_origin_field is not None:
-                event = {self.event_origin_field: event}
+                origin_event = event
+                event = {}
+                add_fields_to(event, {self.event_origin_field: data.decode("utf8")})
             self.messages.put(event | kwargs["metadata"], block=False)
 
 
