@@ -23,6 +23,7 @@ Example
             queue.buffering.max.ms: 0.5
 """
 
+import json
 import logging
 from functools import cached_property, partial
 from socket import getfqdn
@@ -199,18 +200,33 @@ class ConfluentKafkaOutput(Output):
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
+        print("-----------------------------------------")
         DEFAULTS.update({"client.id": getfqdn()})
         return DEFAULTS | self._config.kafka_config | injected_config
 
     @property
     def statistics(self) -> str:
         """Return the statistics of this connector as a formatted string."""
-        if self.health() == True:
-            return "passed"
-        elif self.health() == False:
-            return "failed"
-        else:
-            return "shitty"
+        stats: dict = {}
+        metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
+        for metric in metrics:
+            # print("----------------")
+            # print(metric.name, getattr(self.metrics, metric.name).tracker.collect()[0])
+            samples = filter(
+                lambda x: x.name.endswith("_total")
+                and "number_of_warnings" not in x.name  # blocklisted metric
+                and "number_of_errors" not in x.name  # blocklisted metric
+                or "txmsgs" in x.name,  # whitelsited metric
+                getattr(self.metrics, metric.name).tracker.collect()[0].samples,
+            )
+            for sample in samples:
+                key = (
+                    getattr(self.metrics, metric.name).description
+                    if metric.name != "status_codes"
+                    else sample.labels.get("description")
+                )
+                stats[key] = int(sample.value)
+        return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
     @cached_property
     def _admin(self) -> AdminClient:

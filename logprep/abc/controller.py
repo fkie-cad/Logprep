@@ -11,7 +11,7 @@ from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.generator.confluent_kafka.sender import KafkaSender
 from logprep.generator.http.input import Input
 from logprep.generator.http.loader import FileLoader
-from logprep.generator.http.sender import Sender
+from logprep.generator.sender import Sender
 from logprep.util.logging import LogprepMPQueueListener
 
 logger = logging.getLogger("Generator")
@@ -44,6 +44,7 @@ class Controller(ABC):
         ## reduce to a single sender class (maybe?)
         ## improve the kafka health output (metric output about successfull events, see http example)
         ## look into kafka shutdown, was still running after logprep run shutdown was closed, compare to http.
+        ## improve the kafka health output (metric output about successfull events, see http example)
         ## Update tests
 
         # refactor input class with focus on Single Responsibility Principle
