@@ -22,9 +22,6 @@ class Sender:
         self.input_events = iter(input_events)
         self._lock = threading.Lock()
         self.exit_requested = False
-        self.target_url = config.get("target_url")
-        if not self.target_url:
-            raise ValueError("No target_url specified")
 
     def send_batches(self) -> None:
         """Loads a batch from the message backlog and sends to the endpoint"""
