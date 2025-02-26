@@ -297,9 +297,8 @@ class ConfluentKafkaOutput(Output):
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
-        # _, _, payload = document.partition(",")
-        # self.store_custom(payload, self._config.topic)
-        self.store_custom(document, self._config.topic)
+        _, _, payload = document.partition(",")
+        self.store_custom(payload, self._config.topic)
 
     @Metric.measure_time()
     def store_custom(self, document: dict, target: str) -> None:
