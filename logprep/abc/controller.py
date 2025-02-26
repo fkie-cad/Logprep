@@ -7,11 +7,9 @@ import time
 from abc import ABC
 
 from logprep.abc.output import Output
-from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
-from logprep.generator.confluent_kafka.sender import KafkaSender
 from logprep.generator.http.input import Input
 from logprep.generator.http.loader import FileLoader
-from logprep.generator.http.sender import Sender
+from logprep.generator.sender import Sender
 from logprep.util.logging import LogprepMPQueueListener
 
 logger = logging.getLogger("Generator")
@@ -41,9 +39,7 @@ class Controller(ABC):
 
         # resolve Controller Inheritance to one controller class
         # add kafka output option
-        ## reduce to a single sender class (maybe?)
         ## improve the kafka health output (metric output about successfull events, see http example)
-        ## look into kafka shutdown, was still running after logprep run shutdown was closed, compare to http.
         ## Update tests
 
         # refactor input class with focus on Single Responsibility Principle
@@ -55,10 +51,7 @@ class Controller(ABC):
         """Setup the generator"""
         self.loghandler.start()
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
-        if isinstance(self.output, ConfluentKafkaOutput):
-            self.sender = KafkaSender(self.file_loader.read_lines(), self.output, **self.config)
-        else:
-            self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
+        self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)
 
