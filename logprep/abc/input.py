@@ -214,7 +214,7 @@ class Input(Connector):
         )
 
     @property
-    def _add_hmac(self):
+    def _add_hmac(self) -> bool:
         """Check and return if a hmac should be added or not."""
         hmac_options = self._config.preprocessing.get("hmac")
         if not hmac_options:
@@ -222,22 +222,22 @@ class Input(Connector):
         return all(bool(hmac_options[option_key]) for option_key in hmac_options)
 
     @property
-    def _add_version_info(self):
+    def _add_version_info(self) -> bool:
         """Check and return if the version info should be added to the event."""
         return bool(self._config.preprocessing.get("version_info_target_field"))
 
     @cached_property
-    def _log_arrival_timestamp_timezone(self):
+    def _log_arrival_timestamp_timezone(self) -> ZoneInfo:
         """Returns the timezone for log arrival timestamps"""
         return ZoneInfo("UTC")
 
     @property
-    def _add_log_arrival_time_information(self):
+    def _add_log_arrival_time_information(self) -> bool:
         """Check and return if the log arrival time info should be added to the event."""
         return bool(self._config.preprocessing.get("log_arrival_time_target_field"))
 
     @property
-    def _add_log_arrival_timedelta_information(self):
+    def _add_log_arrival_timedelta_information(self) -> bool:
         """Check and return if the log arrival timedelta info should be added to the event."""
         log_arrival_timedelta_present = self._add_log_arrival_time_information
         log_arrival_time_target_field_present = bool(
@@ -256,7 +256,7 @@ class Input(Connector):
         }
 
     @property
-    def _add_env_enrichment(self):
+    def _add_env_enrichment(self) -> bool:
         """Check and return if the env enrichment should be added to the event."""
         return bool(self._config.preprocessing.get("enrich_by_env_variables"))
 
@@ -336,10 +336,10 @@ class Input(Connector):
             raise CriticalInputError(self, error.args[0], event) from error
         return event
 
-    def batch_finished_callback(self):
+    def batch_finished_callback(self) -> None:
         """Can be called by output connectors after processing a batch of one or more records."""
 
-    def _add_env_enrichment_to_event(self, event: dict):
+    def _add_env_enrichment_to_event(self, event: dict) -> None:
         """Add the env enrichment information to the event"""
         enrichments = self._config.preprocessing.get("enrich_by_env_variables")
         if not enrichments:
@@ -350,7 +350,7 @@ class Input(Connector):
         }
         add_fields_to(event, fields)
 
-    def _add_arrival_time_information_to_event(self, event: dict):
+    def _add_arrival_time_information_to_event(self, event: dict) -> None:
         target = self._config.preprocessing.get("log_arrival_time_target_field")
         time = TimeParser.now(self._log_arrival_timestamp_timezone).isoformat()
         try:
@@ -381,7 +381,7 @@ class Input(Connector):
             event_dict, fields={target["target_field"]: complete_event}, overwrite_target=True
         )
 
-    def _add_arrival_timedelta_information_to_event(self, event: dict):
+    def _add_arrival_timedelta_information_to_event(self, event: dict) -> None:
         log_arrival_timedelta_config = self._config.preprocessing.get("log_arrival_timedelta")
         log_arrival_time_target_field = self._config.preprocessing.get(
             "log_arrival_time_target_field"
@@ -397,7 +397,7 @@ class Input(Connector):
             ).total_seconds()
             add_fields_to(event, fields={target_field: delta_time_sec})
 
-    def _add_version_information_to_event(self, event: dict):
+    def _add_version_information_to_event(self, event: dict) -> None:
         """Add the version information to the event"""
         target_field = self._config.preprocessing.get("version_info_target_field")
         # pylint: disable=protected-access
