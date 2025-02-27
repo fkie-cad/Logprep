@@ -457,9 +457,9 @@ class HttpInput(Input):
             default=None,
         )
         """Optional config parameter that writes the full event to one single target field. The
-        format can be specified with the parameter `format`. Possible are `str` and `dict` where 
+        format can be specified with the parameter :code:`format`. Possible are :code:`str` and :code:`dict` where 
         dict is the default format. The target field can be specified with the parameter 
-        `target_field`."""
+        :code:`target_field`."""
 
     __slots__: List[str] = ["target", "app", "http_server"]
 
