@@ -19,7 +19,7 @@ An example config file would look like:
         message_backlog_size: 15000
         collect_meta: False
         metafield_name: "@metadata"
-        original_event_field: 
+        original_event_field:
             "target_field": "event.original"
             "format": "dict"
         uvicorn_config:
