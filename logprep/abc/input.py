@@ -102,7 +102,7 @@ class TimeDeltaConfig:
 @define(kw_only=True)
 class FullEventConfig:
     """Full Event Configurations
-    Works only if the preprocessor add_full_event_to_target_field is set."""
+    Works only if the preprocessor :code:`add_full_event_to_target_field` is set."""
 
     format: str = field(validator=validators.in_(["dict", "str"]), default="str")
     """Defines the Format in hich the event should be written to the new field
