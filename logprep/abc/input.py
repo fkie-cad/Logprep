@@ -260,7 +260,7 @@ class Input(Connector):
         return bool(self._config.preprocessing.get("enrich_by_env_variables"))
 
     @property
-    def _add_full_event_to_target_field(self):
+    def _add_full_event_to_target_field(self) -> bool:
         """Check and return if the event should be written into one singular field."""
         return bool(self._config.preprocessing.get("add_full_event_to_target_field"))
 
