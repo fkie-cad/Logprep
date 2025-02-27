@@ -238,8 +238,7 @@ class ConfluentKafkaOutput(Output):
                 lambda x: x.name.endswith("_total")
                 and "number_of_warnings" not in x.name  # blocklisted metric
                 and "number_of_errors" not in x.name  # blocklisted metric
-                or "txmsgs" in x.name  # whitelisted metric
-                or "batches" in x.name,  # whitelsited metric
+                or "txmsgs" in x.name,  # whitelisted metric
                 getattr(self.metrics, metric.name).tracker.collect()[0].samples,
             )
             for sample in samples:
