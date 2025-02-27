@@ -105,8 +105,8 @@ class FullEventConfig:
     Works only if the preprocessor :code:`add_full_event_to_target_field` is set."""
 
     format: str = field(validator=validators.in_(["dict", "str"]), default="str")
-    """Defines the Format in hich the event should be written to the new field
-    the default ist str. With the string format the event string is automatically escaped"""
+    """Defines the Format in which the event should be written to the new field.
+    The default ist :code:`str`, which results in escaped json string"""
     target_field: str = field(validator=validators.instance_of(str), default="event.original")
     """Defines the fieldname which the event should be written to"""
 
