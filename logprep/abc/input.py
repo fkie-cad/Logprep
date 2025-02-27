@@ -354,7 +354,7 @@ class Input(Connector):
         time = TimeParser.now(self._log_arrival_timestamp_timezone).isoformat()
         add_fields_to(event, {target: time})
 
-    def _write_full_event_to_target_field(self, event_dict: dict, raw_event: bytearray):
+    def _write_full_event_to_target_field(self, event_dict: dict, raw_event: bytearray) -> None:
         target = self._config.preprocessing.get("add_full_event_to_target_field")
         complete_event = {}
         if raw_event is None:
