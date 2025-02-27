@@ -36,7 +36,7 @@ from confluent_kafka import KafkaException, Producer  # type: ignore
 from confluent_kafka.admin import AdminClient  # type: ignore
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
-from logprep.metrics.metrics import GaugeMetric, Metric
+from logprep.metrics.metrics import CounterMetric, GaugeMetric, Metric
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -146,6 +146,14 @@ class ConfluentKafkaOutput(Output):
         """Total number of message bytes (including framing, such as per-Message framing and
         MessageSet/batch framing) transmitted to Kafka brokers"""
 
+        processed_batches: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of processed batches",
+                name="processed_batches",
+            ),
+        )
+        """Total number of batches send to brokers"""
+
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
         """Confluent Kafka Output Config"""
@@ -230,7 +238,8 @@ class ConfluentKafkaOutput(Output):
                 lambda x: x.name.endswith("_total")
                 and "number_of_warnings" not in x.name  # blocklisted metric
                 and "number_of_errors" not in x.name  # blocklisted metric
-                or "txmsgs" in x.name,  # whitelsited metric
+                or "txmsgs" in x.name  # whitelisted metric
+                or "batches" in x.name,  # whitelsited metric
                 getattr(self.metrics, metric.name).tracker.collect()[0].samples,
             )
             for sample in samples:
@@ -354,6 +363,7 @@ class ConfluentKafkaOutput(Output):
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
             self.metrics.number_of_processed_events += document.count(";") + 1
+            self.metrics.processed_batches += 1
         except BufferError:
             # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self._config.flush_timeout)
