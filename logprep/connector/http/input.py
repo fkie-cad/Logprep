@@ -19,7 +19,9 @@ An example config file would look like:
         message_backlog_size: 15000
         collect_meta: False
         metafield_name: "@metadata"
-        original_event_field: "event.original"
+        original_event_field: 
+            "target_field": "event.original"
+            "format": "dict"
         uvicorn_config:
           host: 0.0.0.0
           port: 9000
@@ -32,7 +34,9 @@ The endpoint config supports regex and wildcard patterns:
   * :code:`/second*`: matches everything after asterisk
   * :code:`/(third|fourth)/endpoint` matches either third or forth in the first part
 The connector configuration includes an optional parameter called original_event_field.
-When set, the full event is stored as a string in the specified field defined by its value.
+When set, the full event is stored as a string or dictionary in a specified field. The 
+target field for this operation is set via the parameter `target_field` and the format
+(string or dictionary) ist specified with the `format` parameter.
 
 Endpoint Credentials Config Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -281,8 +285,12 @@ class JSONHttpEndpoint(HttpEndpoint):
         if data:
             event = self._decoder.decode(data)
             if self.original_event_field:
+                target_field = self.original_event_field["target_field"]
+                event_value = (
+                    data.decode("utf8") if self.original_event_field["format"] == "str" else event
+                )
                 event = {}
-                add_fields_to(event, {self.original_event_field: data.decode("utf8")})
+                add_fields_to(event, {target_field: event_value})
             self.messages.put(event | kwargs["metadata"], block=False)
 
 
@@ -301,8 +309,12 @@ class JSONLHttpEndpoint(HttpEndpoint):
         events = self._decoder.decode_lines(data)
         for event in events:
             if self.original_event_field:
+                target_field = self.original_event_field["target_field"]
+                event_value = (
+                    data.decode("utf8") if self.original_event_field["format"] == "str" else event
+                )
                 event = {}
-                add_fields_to(event, {self.original_event_field: data.decode("utf8")})
+                add_fields_to(event, {target_field: event_value})
             self.messages.put(event | kwargs["metadata"], block=False, batch_size=len(events))
 
 
@@ -319,8 +331,12 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         data = await self.get_data(req)
         event = {"message": data.decode("utf8")}
         if self.original_event_field:
+            target_field = self.original_event_field["target_field"]
+            event_value = (
+                data.decode("utf8") if self.original_event_field["format"] == "str" else event
+            )
             event = {}
-            add_fields_to(event, {self.original_event_field: data.decode("utf8")})
+            add_fields_to(event, {target_field: event_value})
         self.messages.put(event | kwargs["metadata"], block=False)
 
 
@@ -429,9 +445,21 @@ class HttpInput(Input):
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
         """Defines the name of the key for the collected metadata fields"""
 
-        original_event_field: str = field(
-            validator=validators.instance_of((str, type(None))), default=None
+        original_event_field: dict = field(
+            validator=[
+                validators.optional(
+                    validators.deep_mapping(
+                        key_validator=validators.in_(["format", "target_field"]),
+                        value_validator=validators.instance_of(str),
+                    )
+                ),
+            ],
+            default=None,
         )
+        """Optional config parameter that writes the full event to one single target field. The
+        format can be specified with the parameter `format`. Possible are `str` and `dict` where 
+        dict is the default format. The target field can be specified with the parameter 
+        `target_field`."""
 
     __slots__: List[str] = ["target", "app", "http_server"]
 
