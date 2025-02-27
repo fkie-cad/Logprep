@@ -99,6 +99,19 @@ class TimeDeltaConfig:
     The calculation will be the arrival time minus the time of this reference field."""
 
 
+@define(kw_only=True)
+class FullEventConfig:
+    """Full Event Configurations
+    Works only if the preprocessor add_full_event_to_target_field is set."""
+
+    format: str = field(validator=validators.instance_of(str), default="str")
+    """Defines the Format in hich the event should be written to the new field
+    the default ist str. With the string format the event string is automatically escaped"""
+    target_field: str = field(validator=validators.instance_of(str), default="event.original")
+    """Defines the fieldname which the event should be written to. The default target field 
+    is event.original"""
+
+
 class Input(Connector):
     """Connect to a source for log data."""
 
@@ -117,7 +130,7 @@ class Input(Connector):
                         "log_arrival_time_target_field": Optional[str],
                         "log_arrival_timedelta": Optional[TimeDeltaConfig],
                         "enrich_by_env_variables": Optional[dict],
-                        "add_full_event_to_target_field": Optional[dict],
+                        "add_full_event_to_target_field": Optional[FullEventConfig],
                     },
                 ),
             ],
