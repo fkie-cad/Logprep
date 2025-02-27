@@ -36,11 +36,8 @@ class Controller:
         self.exit_requested = False
         # TODO:
 
-        # resolve Controller Inheritance to one controller class
-        # add kafka output option
-        ## Update tests
-        ## Does topic have to be a necessary field in the kafka-output?
-
+        # Update tests
+        # Check kafka message format, compatible with kafka consumer?
         # refactor input class with focus on Single Responsibility Principle
         # how to handle big amount of example events? they are loaded in memory
         # test with big files

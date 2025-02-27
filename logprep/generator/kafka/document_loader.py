@@ -38,7 +38,11 @@ class DocumentLoader:
             if doc is None:
                 cnt_invalid += 1
                 continue
-            documents.append(doc)
+            json_objects = doc.split(";")  # Split at semicolon
+            parsed_objects = [json.loads(obj) for obj in json_objects]  # Convert to dicts
+            for obj in parsed_objects:
+                documents.append(obj)
+            # documents.append(doc)
         if cnt_invalid > 0:
             self._logger.warning(
                 f"Fetched only {self._source_count - cnt_invalid} valid documents from "
@@ -62,6 +66,7 @@ class DocumentLoader:
     @staticmethod
     def _prepare_json_docs(docs: list, index_name="load-tester"):
         for doc in docs:
+            print(doc)
             doc["_index"] = index_name
             doc["tags"] = ["load-tester"]
             doc["@timestamp"] = f"{datetime.utcnow().isoformat()}Z"
