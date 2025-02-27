@@ -104,7 +104,7 @@ class FullEventConfig:
     """Full Event Configurations
     Works only if the preprocessor add_full_event_to_target_field is set."""
 
-    format: str = field(validator=validators.instance_of(str), default="str")
+    format: str = field(validator=validators.in_(["dict", "str"]), default="str")
     """Defines the Format in hich the event should be written to the new field
     the default ist str. With the string format the event string is automatically escaped"""
     target_field: str = field(validator=validators.instance_of(str), default="event.original")
