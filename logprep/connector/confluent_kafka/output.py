@@ -25,7 +25,7 @@ Example
 
 import json
 import logging
-import time
+import threading
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
@@ -55,6 +55,10 @@ logger = logging.getLogger("KafkaOutput")
 
 class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
+
+    def __init__(self, name: str, configuration: Output) -> None:
+        super().__init__(name, configuration)
+        self.stats_event = threading.Event()
 
     @define(kw_only=True, slots=False)
     class Metrics(Output.Metrics):
@@ -209,13 +213,24 @@ class ConfluentKafkaOutput(Output):
         """Return the statistics of this connector as a formatted string."""
         stats: dict = {}
         metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
-        # self._stats_callback(self._config)
+
+        self.stats_event.clear()
+        self._producer.flush()
+        self._producer.poll(self._config.send_timeout)
+        if not self.stats_event.wait(timeout=self._config.send_timeout):
+            logger.warning(
+                "Warning: No stats callback triggered within %s!", self._config.send_timeout
+            )
+        else:
+            logger.info("Stats received, continuing...")
+        self._producer.flush()
+
         for metric in metrics:
             samples = filter(
                 lambda x: x.name.endswith("_total")
                 and "number_of_warnings" not in x.name  # blocklisted metric
                 and "number_of_errors" not in x.name  # blocklisted metric
-                or "librdkafka" in x.name,  # whitelsited metric
+                or "txmsgs" in x.name,  # whitelsited metric
                 getattr(self.metrics, metric.name).tracker.collect()[0].samples,
             )
             for sample in samples:
@@ -272,8 +287,6 @@ class ConfluentKafkaOutput(Output):
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
         logger.debug("Stats callback triggered")
-        print("STATS CALLBACK TRIGGERED")
-        print("-------------------------------------")
         stats = self._decoder.decode(stats)
         self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
         self.metrics.librdkafka_msg_cnt += stats.get("msg_cnt", DEFAULT_RETURN)
@@ -286,6 +299,8 @@ class ConfluentKafkaOutput(Output):
         self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
         self.metrics.librdkafka_txmsgs += stats.get("txmsgs", DEFAULT_RETURN)
         self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", DEFAULT_RETURN)
+
+        self.stats_event.set()
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
@@ -338,7 +353,6 @@ class ConfluentKafkaOutput(Output):
             self._producer.produce(target, value=self._encoder.encode(document))
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
-            time.sleep(0.1)
             self.metrics.number_of_processed_events += document.count(";") + 1
         except BufferError:
             # block program until buffer is empty or timeout is reached
