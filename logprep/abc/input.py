@@ -117,7 +117,7 @@ class Input(Connector):
                         "log_arrival_time_target_field": Optional[str],
                         "log_arrival_timedelta": Optional[TimeDeltaConfig],
                         "enrich_by_env_variables": Optional[dict],
-                        "add_full_event_to_target_field": Optional[str],
+                        "add_full_event_to_target_field": Optional[dict],
                     },
                 ),
             ],
@@ -350,11 +350,17 @@ class Input(Connector):
 
     def _write_full_event_to_target_field(self, event_dict: dict, raw_event: bytearray):
         target = self._config.preprocessing.get("add_full_event_to_target_field")
+        complete_event = {}
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
-        complete_event = json.dumps(raw_event.decode("utf-8"))
+        if target["format"] is "dict":
+            complete_event = self._decoder.decode(raw_event.decode("utf-8"))
+        else:
+            complete_event = json.dumps(raw_event.decode("utf-8"))
         event_dict.clear()
-        add_fields_to(event_dict, fields={target: complete_event}, overwrite_target=True)
+        add_fields_to(
+            event_dict, fields={target["target_field"]: complete_event}, overwrite_target=True
+        )
 
     def _add_arrival_timedelta_information_to_event(self, event: dict):
         log_arrival_timedelta_config = self._config.preprocessing.get("log_arrival_timedelta")
