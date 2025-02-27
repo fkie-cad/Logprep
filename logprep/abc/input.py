@@ -191,17 +191,17 @@ class Input(Connector):
           events by environment variables. To activate this preprocessor the fields value has to be
           a mapping from the target field name (key) to the environment variable name (value).
         - `add_full_event_to_target_field` - If required it is possible to automatically write 
-        all fields in an event to one singular field or subfield as a string. The exact fields 
+        all event fields to one singular field or subfield. If needed as an escaped string. The exact fields 
         in the event do not have to be known to use this preprocessor. To use this preprocessor 
-        the fields `format` and `target_field` have to bet set. When the format `str` ist set 
-        the event is automatically escaped so this can be used to identify mapping errors thrown by 
-        opensearch that are present in the raw event.
+        the fields :code:`format` and :code:`target_field` have to bet set. When the format :code:`str` ist set 
+        the event is automatically escaped. This can be used to identify and resolve mapping errors thrown by 
+        opensearch.
 
-            - `format` - specifies the format which the event is written in. The default format ist 
-            string with automatic escaping of the given event. Also possible is the value `dict`
-            which writes teh event as dict to the specified `target_field`.
-            - `target_field` - specifies the field to which the event should be written to.
-            the default is event.original
+            - :code:`format` - specifies the format which the event is written in. The default format ist 
+            :code:`str` which leads to automatic json escaping of the given event. Also possible is the value :code:`dict`
+            which writes the event as mapping to the specified :code:`target_field`.
+            - :code:`target_field` - specifies the field to which the event should be written to.
+            the default is :code:`event.original`
         """
 
         _version_information: dict = field(
