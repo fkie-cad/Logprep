@@ -191,15 +191,16 @@ class Input(Connector):
           events by environment variables. To activate this preprocessor the fields value has to be
           a mapping from the target field name (key) to the environment variable name (value).
         - `add_full_event_to_target_field` - If required it is possible to automatically write 
-        all event fields to one singular field or subfield. If needed as an escaped string. The exact fields 
-        in the event do not have to be known to use this preprocessor. To use this preprocessor 
-        the fields :code:`format` and :code:`target_field` have to bet set. When the format :code:`str` ist set 
-        the event is automatically escaped. This can be used to identify and resolve mapping errors thrown by 
-        opensearch.
+        all event fields to one singular field or subfield. If needed as an escaped string. 
+        The exact fields in the event do not have to be known to use this preprocessor. To use this
+        preprocessor the fields :code:`format` and :code:`target_field` have to bet set. When the 
+        format :code:`str` ist set the event is automatically escaped. This can be used to identify
+        and resolve mapping errors thrown by opensearch.
 
-            - :code:`format` - specifies the format which the event is written in. The default format ist 
-            :code:`str` which leads to automatic json escaping of the given event. Also possible is the value :code:`dict`
-            which writes the event as mapping to the specified :code:`target_field`.
+            - :code:`format` - specifies the format which the event is written in. The default 
+            format ist :code:`str` which leads to automatic json escaping of the given event. Also 
+            possible is the value :code:`dict` which writes the event as mapping to the specified 
+            :code:`target_field`.
             - :code:`target_field` - specifies the field to which the event should be written to.
             the default is :code:`event.original`
         """
@@ -319,6 +320,8 @@ class Input(Connector):
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
         try:
+            if self._add_full_event_to_target_field:
+                self._write_full_event_to_target_field(event, raw_event)
             if self._add_hmac:
                 event = self._add_hmac_to(event, raw_event)
             if self._add_version_info:
@@ -329,8 +332,6 @@ class Input(Connector):
                 self._add_arrival_timedelta_information_to_event(event)
             if self._add_env_enrichment:
                 self._add_env_enrichment_to_event(event)
-            if self._add_full_event_to_target_field:
-                self._write_full_event_to_target_field(event, raw_event)
         except FieldExistsWarning as error:
             raise CriticalInputError(self, error.args[0], event) from error
         return event

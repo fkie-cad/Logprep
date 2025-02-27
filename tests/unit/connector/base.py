@@ -540,8 +540,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result = connector.get_next(0.01)
         expected = {
-            "any": {"content": '"{\\"any\\":\\"content\\"}"'}
-        }  # TODO: define expected and adapt
+            "any": {"content": '"{\\"any\\":\\"content\\"}"'},
+            "version_info": {"logprep": "", "configuration": ""},
+        }
         assert result == expected, f"{expected} is not the same as {result}"
 
     def test_add_full_event_to_target_field_with_dict_format(self):
