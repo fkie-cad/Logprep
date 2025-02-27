@@ -108,8 +108,7 @@ class FullEventConfig:
     """Defines the Format in hich the event should be written to the new field
     the default ist str. With the string format the event string is automatically escaped"""
     target_field: str = field(validator=validators.instance_of(str), default="event.original")
-    """Defines the fieldname which the event should be written to. The default target field 
-    is event.original"""
+    """Defines the fieldname which the event should be written to"""
 
 
 class Input(Connector):
@@ -191,12 +190,18 @@ class Input(Connector):
         - `enrich_by_env_variables` - If required it is possible to automatically enrich incoming
           events by environment variables. To activate this preprocessor the fields value has to be
           a mapping from the target field name (key) to the environment variable name (value).
-        - `add_full_event_to_target_field` - If required it is possible to automatically write all fields in an event
-          to one singular field or subfield as a string. The exact fields in the event do not have to be known
-           to use this preprocessor. To activate this preprocessor the fields value has to 
-          represent the target field where the fields of the event should be written to. The event is
-          automatically escaped so this can be used to identify mapping errors thrown by opensearch 
-          that are present in the raw event.
+        - `add_full_event_to_target_field` - If required it is possible to automatically write 
+        all fields in an event to one singular field or subfield as a string. The exact fields 
+        in the event do not have to be known to use this preprocessor. To use this preprocessor 
+        the fields `format` and `target_field` have to bet set. When the format `str` ist set 
+        the event is automatically escaped so this can be used to identify mapping errors thrown by 
+        opensearch that are present in the raw event.
+
+            - `format` - specifies the format which the event is written in. The default format ist 
+            string with automatic escaping of the given event. Also possible is the value `dict`
+            which writes teh event as dict to the specified `target_field`.
+            - `target_field` - specifies the field to which the event should be written to.
+            the default is event.original
         """
 
         _version_information: dict = field(
