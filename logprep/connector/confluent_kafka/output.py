@@ -358,10 +358,11 @@ class ConfluentKafkaOutput(Output):
 
         """
         try:
-            self._producer.produce(target, value=self._encoder.encode(document))
+            self.metrics.number_of_processed_events += document.count(";") + 1
+            for item in document.split(";"):
+                self._producer.produce(target, value=self._encoder.encode(json.loads(item)))
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
-            self.metrics.number_of_processed_events += document.count(";") + 1
             self.metrics.processed_batches += 1
         except BufferError:
             # block program until buffer is empty or timeout is reached

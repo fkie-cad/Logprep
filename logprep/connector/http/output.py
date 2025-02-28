@@ -165,7 +165,7 @@ class HttpOutput(Output):
         target, _, payload = document.partition(",")
         self.store_custom(payload, self._config.target_url + target)
 
-    def store_custom(self, document: dict | tuple | list, target: str) -> None:
+    def store_custom(self, document: dict | tuple | list | str, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
         if isinstance(document, (tuple, list)):
             request_data = self._encoder.encode_lines(document)
