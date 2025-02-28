@@ -41,7 +41,7 @@ class TestController:
         mock_perf_counter.assert_called()
         assert mock_perf_counter.call_count == 2
 
-    @mock.patch("logprep.abc.controller.logger")
+    @mock.patch("logprep.generator.controller.logger")
     def test_run_duration_is_positive(self, mock_logger):
         self.controller.run()
         mock_logger.info.assert_called()
@@ -96,7 +96,6 @@ class TestController:
             assert call.request.headers.get("Content-Type") == expected_http_header
             assert call.response.status_code == 200
 
-    @mock.patch("logprep.abc.controller.ThreadPoolExecutor")
     def test_run_with_multiple_threads(self, mock_executor_class, tmp_path):
         self.controller = ControllerFactory.create(
             target="http",
