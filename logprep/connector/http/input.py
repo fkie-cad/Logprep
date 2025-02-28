@@ -19,6 +19,9 @@ An example config file would look like:
         message_backlog_size: 15000
         collect_meta: False
         metafield_name: "@metadata"
+        original_event_field:
+            "target_field": "event.original"
+            "format": "dict"
         uvicorn_config:
           host: 0.0.0.0
           port: 9000
@@ -30,7 +33,10 @@ An example config file would look like:
 The endpoint config supports regex and wildcard patterns:
   * :code:`/second*`: matches everything after asterisk
   * :code:`/(third|fourth)/endpoint` matches either third or forth in the first part
-
+The connector configuration includes an optional parameter called original_event_field.
+When set, the full event is stored as a string or dictionary in a specified field. The
+target field for this operation is set via the parameter `target_field` and the format
+(string or dictionary) ist specified with the `format` parameter.
 
 Endpoint Credentials Config Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -106,6 +112,7 @@ from logprep.abc.input import FatalInputError, Input
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util import http, rstr
 from logprep.util.credentials import Credentials, CredentialsFactory
+from logprep.util.helper import add_fields_to
 
 logger = logging.getLogger("HTTPInput")
 
@@ -217,12 +224,14 @@ class HttpEndpoint(ABC):
     def __init__(
         self,
         messages: mp.Queue,
+        original_event_field: str,
         collect_meta: bool,
         metafield_name: str,
         credentials: Credentials,
         metrics: "HttpInput.Metrics",
     ) -> None:
         self.messages = messages
+        self.original_event_field = original_event_field
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
         self.credentials = credentials
@@ -275,6 +284,13 @@ class JSONHttpEndpoint(HttpEndpoint):
         data = await self.get_data(req)
         if data:
             event = self._decoder.decode(data)
+            if self.original_event_field:
+                target_field = self.original_event_field["target_field"]
+                event_value = (
+                    data.decode("utf8") if self.original_event_field["format"] == "str" else event
+                )
+                event = {}
+                add_fields_to(event, {target_field: event_value})
             self.messages.put(event | kwargs["metadata"], block=False)
 
 
@@ -292,6 +308,13 @@ class JSONLHttpEndpoint(HttpEndpoint):
         data = await self.get_data(req)
         events = self._decoder.decode_lines(data)
         for event in events:
+            if self.original_event_field:
+                target_field = self.original_event_field["target_field"]
+                event_value = (
+                    data.decode("utf8") if self.original_event_field["format"] == "str" else event
+                )
+                event = {}
+                add_fields_to(event, {target_field: event_value})
             self.messages.put(event | kwargs["metadata"], block=False, batch_size=len(events))
 
 
@@ -307,6 +330,13 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         self.collect_metrics()
         data = await self.get_data(req)
         event = {"message": data.decode("utf8")}
+        if self.original_event_field:
+            target_field = self.original_event_field["target_field"]
+            event_value = (
+                data.decode("utf8") if self.original_event_field["format"] == "str" else event
+            )
+            event = {}
+            add_fields_to(event, {target_field: event_value})
         self.messages.put(event | kwargs["metadata"], block=False)
 
 
@@ -415,6 +445,22 @@ class HttpInput(Input):
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
         """Defines the name of the key for the collected metadata fields"""
 
+        original_event_field: dict = field(
+            validator=[
+                validators.optional(
+                    validators.deep_mapping(
+                        key_validator=validators.in_(["format", "target_field"]),
+                        value_validator=validators.instance_of(str),
+                    )
+                ),
+            ],
+            default=None,
+        )
+        """Optional config parameter that writes the full event to one single target field. The
+        format can be specified with the parameter :code:`format`. Possible are :code:`str` and :code:`dict` where 
+        dict is the default format. The target field can be specified with the parameter 
+        :code:`target_field`."""
+
     __slots__: List[str] = ["target", "app", "http_server"]
 
     messages: mp.Queue = None
@@ -453,6 +499,7 @@ class HttpInput(Input):
         endpoints_config = {}
         collect_meta = self._config.collect_meta
         metafield_name = self._config.metafield_name
+        original_event_field = self._config.original_event_field
         cred_factory = CredentialsFactory()
         # preparing dict with endpoint paths and initialized endpoints objects
         # and add authentication if credentials are existing for path
@@ -461,6 +508,7 @@ class HttpInput(Input):
             credentials = cred_factory.from_endpoint(endpoint_path)
             endpoints_config[endpoint_path] = endpoint_class(
                 self.messages,
+                original_event_field,
                 collect_meta,
                 metafield_name,
                 credentials,
