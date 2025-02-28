@@ -281,10 +281,10 @@ class TestRunLogprepCli:
 
 class TestGeneratorCLI:
     @pytest.mark.parametrize(
-        "controller_path, command_args, expected_kwargs",
+        "create_path, command_args, expected_kwargs",
         [
             (
-                "logprep.run_logprep.HttpController",
+                "logprep.generator.factory.ControllerFactory.create",
                 [
                     "generate",
                     "http",
@@ -298,6 +298,7 @@ class TestGeneratorCLI:
                     "password",
                 ],
                 {
+                    "target": "http",
                     "input_dir": "/some-path",
                     "target_url": "some-domain",
                     "user": "user",
@@ -313,7 +314,7 @@ class TestGeneratorCLI:
                 },
             ),
             (
-                "logprep.run_logprep.KafkaController",
+                "logprep.generator.factory.ControllerFactory.create",
                 [
                     "generate",
                     "kafka2",
@@ -327,6 +328,7 @@ class TestGeneratorCLI:
                     "password",
                 ],
                 {
+                    "target": "kafka",
                     "input_dir": "/some-path",
                     "output_config": '{"bootstrap.servers": "localhost:9092"}',
                     "user": "user",
@@ -344,24 +346,24 @@ class TestGeneratorCLI:
         ],
     )
     def test_generator_cli_runs_generator_with_default_values(
-        self, controller_path, command_args, expected_kwargs
+        self, create_path, command_args, expected_kwargs
     ):
-        with mock.patch(controller_path) as mock_controller_class:
-            mock_controller_instance = mock.MagicMock()
-            mock_controller_class.return_value = mock_controller_instance
 
-            runner = CliRunner()
+        runner = CliRunner()
+        with mock.patch(create_path) as mock_create:
+            mock_controller_instance = mock.Mock()
+            mock_create.return_value = mock_controller_instance
+
             result = runner.invoke(cli, command_args)
-
+            mock_create.assert_called_once_with(**expected_kwargs)
+            mock_controller_instance.run.assert_called_once()
             assert result.exit_code == 0
-            mock_controller_class.assert_called_with(**expected_kwargs)
-            mock_controller_instance.run.assert_called()
 
     @pytest.mark.parametrize(
-        "controller_path, command_args, expected_kwargs",
+        "create_path, command_args, expected_kwargs",
         [
             (
-                "logprep.generator.http.controller.HttpController",
+                "logprep.generator.factory.ControllerFactory.create",
                 [
                     "generate",
                     "http",
@@ -389,6 +391,7 @@ class TestGeneratorCLI:
                     "DEBUG",
                 ],
                 {
+                    "target": "http",
                     "input_dir": "/some-path",
                     "target_url": "some-domain",
                     "user": "user",
@@ -404,7 +407,7 @@ class TestGeneratorCLI:
                 },
             ),
             (
-                "logprep.generator.confluent_kafka.controller.KafkaController",
+                "logprep.generator.factory.ControllerFactory.create",
                 [
                     "generate",
                     "kafka2",
@@ -432,6 +435,7 @@ class TestGeneratorCLI:
                     "DEBUG",
                 ],
                 {
+                    "target": "kafka",
                     "input_dir": "/some-path",
                     "output_config": '{"bootstrap.servers": "localhost:9092"}',
                     "user": "user",
@@ -449,17 +453,17 @@ class TestGeneratorCLI:
         ],
     )
     def test_generator_cli_overwrites_default_values(
-        self, controller_path, command_args, expected_kwargs
+        self, create_path, command_args, expected_kwargs
     ):
-        with mock.patch(controller_path) as mock_controller_class:
-            mock_controller_instance = mock.MagicMock()
-            mock_controller_class.return_value = mock_controller_instance
-            runner = CliRunner()
-            result = runner.invoke(cli, command_args)
+        runner = CliRunner()
+        with mock.patch(create_path) as mock_create:
+            mock_controller_instance = mock.Mock()
+            mock_create.return_value = mock_controller_instance
 
-            assert result.exit_code == 0, result.stdout
-            mock_controller_class.assert_called_with(**expected_kwargs)
-            mock_controller_instance.run.assert_called()
+            result = runner.invoke(cli, command_args)
+            mock_create.assert_called_once_with(**expected_kwargs)
+            mock_controller_instance.run.assert_called_once()
+            assert result.exit_code == 0
 
 
 class TestPseudoCLI:
