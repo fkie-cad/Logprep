@@ -328,7 +328,7 @@ class TestHttpConnector(BaseInputTestCase):
         resp = client.post("/json", json=message)
         assert resp.status_code == 200
         message = connector.messages.get(timeout=0.5)
-        expected = {"event": {"original": {"message": "my message"}}}
+        expected = {"event": {"original": '{"message": "my message"}'}}
         assert message == expected, f"{expected} does not equal {message}"
 
     def test_original_event_field_with_event_as_string(self):
