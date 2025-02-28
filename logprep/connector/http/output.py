@@ -42,7 +42,7 @@ import json
 import logging
 from functools import cached_property
 
-import requests
+import requests  # pylint ignore
 from attrs import define, field, validators
 
 from logprep.abc.output import Output
