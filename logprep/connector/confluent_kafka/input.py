@@ -37,7 +37,7 @@ from typing import Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
-from confluent_kafka import (
+from confluent_kafka import (  # type: ignore
     OFFSET_BEGINNING,
     OFFSET_END,
     OFFSET_INVALID,
@@ -47,7 +47,7 @@ from confluent_kafka import (
     Message,
     TopicPartition,
 )
-from confluent_kafka.admin import AdminClient
+from confluent_kafka.admin import AdminClient  # type: ignore
 
 from logprep.abc.connector import Connector
 from logprep.abc.input import (
@@ -318,7 +318,7 @@ class ConfluentKafkaInput(Input):
         self.metrics.number_of_errors += 1
         logger.error(f"{self.describe()}: {error}")
 
-    def _stats_callback(self, stats: str) -> None:
+    def _stats_callback(self, stats: dict) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 

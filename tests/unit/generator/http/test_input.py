@@ -21,7 +21,7 @@ class TestInput:
             "input_root_path": "",
             "batch_size": 50,
             "replace_timestamp": True,
-            "tag": "loadtest",
+            "tag": "load_test",
         }
         self.input = Input(config=config)
 
@@ -34,6 +34,17 @@ class TestInput:
         self.input.batch_size = batch_size
         self.input.reformat_dataset()
         loader = self.input.load()
+        _, events = next(loader)
+
+        ### temporary fixes for quick tests
+        self.event_loader._temp_dir = self.input.temp_dir
+        self.event_loader.event_processor.log_class_manipulator_mapping = (
+            self.input.log_class_manipulator_mapping
+        )
+
+        # self.event_loader.input_root_path = tmp_path
+        self.event_loader.batch_size = batch_size
+        loader = self.event_loader.load()
         _, events = next(loader)
         assert len(events) == number_of_events
         with pytest.raises(StopIteration):
@@ -141,7 +152,7 @@ class TestInput:
         with pytest.raises(StopIteration):
             _ = next(loader)
 
-    def test_load_raises_parsing_error_on_invalid_jsons(self, tmp_path):
+    def test_load_raises_parsing_error_on_invalid_json_files(self, tmp_path):
         event_class_dir = tmp_path / "test_class"
         os.makedirs(event_class_dir, exist_ok=True)
         events_file_path = event_class_dir / "events.jsonl"
@@ -283,8 +294,8 @@ class TestInput:
         batch_size = 100
         self.input.input_root_path = dataset_path
         self.input.batch_size = batch_size
-        self.input._temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.input._temp_dir, exist_ok=True)
+        self.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
+        os.makedirs(self.input.temp_dir, exist_ok=True)
         self.input.reformat_dataset()
         event_id = 0
         previous_event_id = -1  # count through event id's and check if they always increase
@@ -321,8 +332,8 @@ class TestInput:
         self.input.input_root_path = dataset_path
         self.input.batch_size = batch_size
         self.input.config.update({"shuffle": True})
-        self.input._temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.input._temp_dir, exist_ok=True)
+        self.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
+        os.makedirs(self.input.temp_dir, exist_ok=True)
         self.input.reformat_dataset()
         target_event_ids = defaultdict(list)
         for target, events in self.input.load():
@@ -357,13 +368,13 @@ class TestInput:
                 class_name=f"class-{i}",
             )
         self.input.input_root_path = dataset_path
-        self.input._temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.input._temp_dir, exist_ok=True)
+        self.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
+        os.makedirs(self.input.temp_dir, exist_ok=True)
         self.input.reformat_dataset()
-        created_temp_files = [file for file in os.listdir(self.input._temp_dir)]
+        created_temp_files = [file for file in os.listdir(self.input.temp_dir)]
         assert len(created_temp_files) > 1
         for filename in created_temp_files:
-            path = self.input._temp_dir / filename
+            path = self.input.temp_dir / filename
             with open(path, "r", encoding="utf8") as file:
                 lines = len(file.readlines())
                 assert lines <= event_limit_per_file, path
@@ -376,7 +387,7 @@ class TestInput:
             "input_root_path": "",
             "batch_size": 77,  # take an odd number so the batchsize will exceed the event limit
             "replace_timestamp": True,
-            "tag": "loadtest",
+            "tag": "load_test",
             "events": 1_000,
         }
         self.input = Input(config=config)
@@ -389,8 +400,8 @@ class TestInput:
             class_name=f"class-one",
         )
         self.input.input_root_path = dataset_path
-        self.input._temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.input._temp_dir, exist_ok=True)
+        self.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
+        os.makedirs(self.input.temp_dir, exist_ok=True)
         self.input.reformat_dataset()
         event_counter = 0
         for target, events in self.input.load():

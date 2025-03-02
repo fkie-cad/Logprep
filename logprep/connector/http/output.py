@@ -13,7 +13,7 @@ An example config file would look like:
     :linenos:
 
     output:
-      myhttpoutput:
+      my_http_output:
         type: http_output
         target_url: http://the.target.url:8080
         username: user
@@ -42,7 +42,7 @@ import json
 import logging
 from functools import cached_property
 
-import requests
+import requests  # pylint ignore
 from attrs import define, field, validators
 
 from logprep.abc.output import Output
@@ -161,15 +161,11 @@ class HttpOutput(Output):
                 stats[key] = int(sample.value)
         return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
-    def store(self, document: tuple[str, dict | list[dict]] | dict) -> None:
-        if isinstance(document, tuple):
-            target, document = document
-            target = f"{self._config.target_url}{target}"
-        else:
-            target = self._config.target_url
-        self.store_custom(document, target)
+    def store(self, document: str) -> None:
+        target, _, payload = document.partition(",")
+        self.store_custom(payload, self._config.target_url + target)
 
-    def store_custom(self, document: dict | tuple | list, target: str) -> None:
+    def store_custom(self, document: dict | tuple | list | str, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
         if isinstance(document, (tuple, list)):
             request_data = self._encoder.encode_lines(document)
@@ -177,6 +173,9 @@ class HttpOutput(Output):
         elif isinstance(document, dict):
             request_data = self._encoder.encode(document)
             document_count = 1
+        elif isinstance(document, str):
+            document_count = document.count(";") + 1
+            request_data = document.replace(";", "\n")
         else:
             error = TypeError(f"Document type {type(document)} is not supported")
             self.metrics.number_of_failed_events += 1
@@ -184,7 +183,6 @@ class HttpOutput(Output):
             return
         try:
             try:
-                logger.debug(request_data)
                 response = requests.post(
                     url=target,
                     headers=self._headers,
@@ -193,7 +191,7 @@ class HttpOutput(Output):
                     timeout=(self.timeout, self.timeout),
                     data=request_data,
                 )
-                logger.debug("Servers response code is: %i", response.status_code)
+                # logger.debug("Servers response code is: %i", response.status_code)
                 self.metrics.status_codes.add_with_labels(
                     1,
                     {
