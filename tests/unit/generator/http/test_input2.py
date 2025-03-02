@@ -7,7 +7,90 @@ from unittest import mock
 
 import pytest
 
-from logprep.generator.http.input2 import FileLoader
+from logprep.generator.http.input2 import FileLoader, FileWriter, Input
+
+
+class TestInput:
+
+    def setup_method(self):
+        self.config = {"events": 10, "input_dir": "test_dir"}
+        self.event_class_dir = Path("test_event_dir/")
+        self.input = Input(self.config)
+        self.mock_isdir = mock.patch("pathlib.Path.is_dir", return_value=True)
+        self.mock_exists = mock.patch("pathlib.Path.exists", return_value=True)
+        self.mock_iterdir = mock.patch("pathlib.Path.iterdir", return_value=[Path("test_dir")])
+
+        self.mock_isdir.start()
+        self.mock_exists.start()
+
+    def teardown_method(self):
+        mock.patch.stopall()
+
+    def test_init(self):
+        assert self.input.input_root_path == Path(self.config["input_dir"])
+        assert isinstance(self.input.file_loader, FileLoader)
+        assert isinstance(self.input.file_writer, FileWriter)
+        assert self.input.config == self.config
+        assert self.input.number_events_of_dataset == 0
+
+    @mock.patch("logprep.generator.http.input2.Path.iterdir", return_value=[Path("test_dir")])
+    @mock.patch(
+        "logprep.generator.http.input2.FileLoader.retrieve_log_files",
+        return_value=(mock.MagicMock, mock.MagicMock),
+    )
+    @mock.patch("logprep.generator.http.input2.Input._set_manipulator")
+    @mock.patch("logprep.generator.http.input2.Input._populate_events_list")
+    def test_reformat_dataset(
+        self, mock_iterdir, mock_retrieve_log_files, mock_set_manipulator, mock_populate_events_list
+    ):
+        self.input.reformat_dataset()
+        mock_retrieve_log_files.assert_called()
+        mock_retrieve_log_files.mock_set_manipulator()
+        mock_retrieve_log_files.mock_populate_event_list()
+
+    @mock.patch("logprep.generator.http.input2.logger")
+    @mock.patch("logprep.generator.http.input2.Path.iterdir", return_value=[])
+    def test_reformat_dataset_returns_positive_time(self, mock_iterdir, mock_logger):
+        self.input.reformat_dataset()
+        mock_logger.info.assert_called()
+        run_duration = mock_logger.info.call_args_list[-1].args[1]
+        assert run_duration > 0
+
+    @mock.patch("logprep.generator.http.input2.FileWriter.write_events_file")
+    def test_populate_events_list(self, mock_write_events_file):
+        file_paths = [Path("test1.jsonl"), Path("test2.jsonl")]
+        log_class_config = mock.MagicMock(target="test_target")
+
+        with mock.patch("builtins.open", mock.mock_open(read_data='{"event": "data"}\n')):
+            self.input._populate_events_list(file_paths, log_class_config)
+
+        mock_write_events_file.assert_called()
+        assert self.input.number_events_of_dataset > 0
+
+    @mock.patch("logprep.generator.http.input2.FileWriter.write_events_file")
+    def test_populate_events_list_full(self, mock_write_events_file):
+        file_paths = [Path("test1.jsonl"), Path("test2.jsonl")]
+        log_class_config = mock.MagicMock(target="test_target")
+        self.input.MAX_EVENTS_PER_FILE = 2
+        with mock.patch("builtins.open", mock.mock_open(read_data='{"event": "data"}\n')):
+            self.input._populate_events_list(file_paths, log_class_config)
+
+        mock_write_events_file.assert_called()
+        assert self.input.number_events_of_dataset > 0
+
+    @mock.patch("shutil.rmtree")
+    def test_clean_up_tempdir(self, mock_rmtree, caplog):
+        with (
+            mock.patch.object(Path, "exists", return_value=True),
+            mock.patch.object(Path, "is_dir", return_value=True),
+        ):
+            with caplog.at_level("INFO"):
+                self.input.clean_up_tempdir()
+        mock_rmtree.assert_called_with(self.input.temp_dir)
+        assert "Cleaned up temp dir:" in caplog.text
+
+
+#####
 
 
 class TestFileLoader:
