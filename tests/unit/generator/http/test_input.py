@@ -1,409 +1,180 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
-import os
-import re
-from collections import defaultdict
+import logging
+from pathlib import Path
+from unittest import mock
 
-import msgspec
 import pytest
-import yaml
 
-from logprep.generator.http.input import EventClassConfig, Input
-from tests.unit.generator.http.util import create_test_event_files
+from logprep.generator.http.input import FileLoader, FileWriter, Input
 
 
 class TestInput:
+
     def setup_method(self):
-        self.test_url = "https://testdomain.de"
-        config = {
-            "target_url": self.test_url,
-            "input_root_path": "",
-            "batch_size": 50,
-            "replace_timestamp": True,
-            "tag": "load_test",
-        }
-        self.input = Input(config=config)
+        self.config = {"events": 10, "input_dir": "test_dir"}
+        self.event_class_dir = Path("test_event_dir/")
+        self.input = Input(self.config)
+        self.mock_isdir = mock.patch("pathlib.Path.is_dir", return_value=True)
+        self.mock_exists = mock.patch("pathlib.Path.exists", return_value=True)
+        self.mock_iterdir = mock.patch("pathlib.Path.iterdir", return_value=[Path("test_dir")])
 
-    def test_load_parses_same_amount_of_events_as_the_batch_size(self, tmp_path):
-        example_event = {"some": "event"}
-        number_of_events = 100
-        batch_size = 100
-        create_test_event_files(tmp_path, example_event, number_of_events)
-        self.input.input_root_path = tmp_path
-        self.input.batch_size = batch_size
+        self.mock_isdir.start()
+        self.mock_exists.start()
+
+    def teardown_method(self):
+        mock.patch.stopall()
+
+    def test_init(self):
+        assert self.input.input_root_path == Path(self.config["input_dir"])
+        assert isinstance(self.input.file_loader, FileLoader)
+        assert isinstance(self.input.file_writer, FileWriter)
+        assert self.input.config == self.config
+        assert self.input.number_events_of_dataset == 0
+
+    @mock.patch("logprep.generator.http.input.Path.iterdir", return_value=[Path("test_dir")])
+    @mock.patch(
+        "logprep.generator.http.input.FileLoader.retrieve_log_files",
+        return_value=(mock.MagicMock, mock.MagicMock),
+    )
+    @mock.patch("logprep.generator.http.input.Input._set_manipulator")
+    @mock.patch("logprep.generator.http.input.Input._populate_events_list")
+    def test_reformat_dataset(
+        self, mock_iterdir, mock_retrieve_log_files, mock_set_manipulator, mock_populate_events_list
+    ):
         self.input.reformat_dataset()
-        loader = self.input.load()
-        _, events = next(loader)
+        mock_retrieve_log_files.assert_called()
+        mock_retrieve_log_files.mock_set_manipulator()
+        mock_retrieve_log_files.mock_populate_event_list()
 
-        ### temporary fixes for quick tests
-        self.event_loader._temp_dir = self.input.temp_dir
-        self.event_loader.event_processor.log_class_manipulator_mapping = (
-            self.input.log_class_manipulator_mapping
+    @mock.patch("logprep.generator.http.input.logger")
+    @mock.patch("logprep.generator.http.input.Path.iterdir", return_value=[])
+    def test_reformat_dataset_returns_positive_time(self, mock_iterdir, mock_logger):
+        self.input.reformat_dataset()
+        mock_logger.info.assert_called()
+        run_duration = mock_logger.info.call_args_list[-1].args[1]
+        assert run_duration > 0
+
+    @mock.patch("logprep.generator.http.input.FileWriter.write_events_file")
+    def test_populate_events_list(self, mock_write_events_file):
+        file_paths = [Path("test1.jsonl"), Path("test2.jsonl")]
+        log_class_config = mock.MagicMock(target="test_target")
+
+        with mock.patch("builtins.open", mock.mock_open(read_data='{"event": "data"}\n')):
+            self.input._populate_events_list(file_paths, log_class_config)
+
+        mock_write_events_file.assert_called()
+        assert self.input.number_events_of_dataset > 0
+
+    @mock.patch("logprep.generator.http.input.FileWriter.write_events_file")
+    def test_populate_events_list_full(self, mock_write_events_file):
+        file_paths = [Path("test1.jsonl"), Path("test2.jsonl")]
+        log_class_config = mock.MagicMock(target="test_target")
+        self.input.MAX_EVENTS_PER_FILE = 2
+        with mock.patch("builtins.open", mock.mock_open(read_data='{"event": "data"}\n')):
+            self.input._populate_events_list(file_paths, log_class_config)
+
+        mock_write_events_file.assert_called()
+        assert self.input.number_events_of_dataset > 0
+
+    @mock.patch("shutil.rmtree")
+    def test_clean_up_tempdir(self, mock_rmtree, caplog):
+        with (
+            mock.patch.object(Path, "exists", return_value=True),
+            mock.patch.object(Path, "is_dir", return_value=True),
+        ):
+            with caplog.at_level("INFO"):
+                self.input.clean_up_tempdir()
+        mock_rmtree.assert_called_with(self.input.temp_dir)
+        assert "Cleaned up temp dir:" in caplog.text
+
+
+class TestFileLoader:
+    def setup_method(self):
+        self.input_root_path = Path("test_dir/")
+        self.config = {"events": 10}
+        self.event_class_dir = Path("test_event_dir/")
+        self.mock_iterdir = mock.patch(
+            "logprep.generator.http.input.Path.iterdir", return_value=[Path("test_dir")]
         )
 
-        # self.event_loader.input_root_path = tmp_path
-        self.event_loader.batch_size = batch_size
-        loader = self.event_loader.load()
-        _, events = next(loader)
-        assert len(events) == number_of_events
-        with pytest.raises(StopIteration):
-            _ = next(loader)
-
-    def test_load_parses_less_events_as_batch_size(self, tmp_path):
-        example_event = {"some": "event"}
-        number_of_events = 3
-        batch_size = 100
-        create_test_event_files(tmp_path, example_event, number_of_events)
-        self.input.input_root_path = tmp_path
-        self.input.batch_size = batch_size
-        self.input.reformat_dataset()
-        loader = self.input.load()
-        _, events = next(loader)
-        assert len(events) == number_of_events
-        with pytest.raises(StopIteration):
-            _ = next(loader)
-
-    def test_load_parses_more_events_as_batch_size(self, tmp_path):
-        example_event = {"some": "event"}
-        number_of_events = 150
-        batch_size = 100
-        create_test_event_files(tmp_path, example_event, number_of_events)
-        self.input.input_root_path = tmp_path
-        self.input.batch_size = batch_size
-        self.input.reformat_dataset()
-        loader = self.input.load()
-        _, first_batch_events = next(loader)
-        assert len(first_batch_events) == 100
-        _, second_batch_events = next(loader)
-        assert len(second_batch_events) == 50
-        with pytest.raises(StopIteration):
-            _ = next(loader)
-
-    def test_load_parses_more_events_as_batch_size_over_multiple_files(self, tmp_path):
-        example_event = {"some": "event"}
-        number_of_events = 150
-        batch_size = 100
-        create_test_event_files(tmp_path, example_event, number_of_events, file_name="events.jsonl")
-        create_test_event_files(
-            tmp_path, example_event, number_of_events, file_name="events2.jsonl"
+        self.mock_listdir = mock.patch(
+            "pathlib.Path.glob", return_value=["file1.jsonl", "file2.jsonl"]
         )
-        self.input.input_root_path = tmp_path
-        self.input.batch_size = batch_size
-        self.input.reformat_dataset()
-        loader = self.input.load()
-        _, first_batch = next(loader)
-        assert len(first_batch) == 100
-        _, second_batch = next(loader)
-        assert len(second_batch) == 100
-        _, third_batch = next(loader)
-        assert len(third_batch) == 100
-        with pytest.raises(StopIteration):
-            _ = next(loader)
+        self.mock_isdir = mock.patch("pathlib.Path.is_dir", return_value=True)
+        self.mock_exists = mock.patch("pathlib.Path.exists", return_value=True)
 
-    def test_load_returns_smaller_than_configured_batch_at_end_of_event_class(self, tmp_path):
-        example_event = {"some": "event"}
-        number_of_events_class_one = 50
-        number_of_events_class_two = 150
-        batch_size = 100
-        create_test_event_files(
-            tmp_path,
-            example_event,
-            number_of_events_class_one,
-            file_name="events.jsonl",
-            class_name="class_one",
-        )
-        create_test_event_files(
-            tmp_path,
-            example_event,
-            number_of_events_class_two,
-            file_name="events2.jsonl",
-            class_name="class_two",
-        )
-        self.input.input_root_path = tmp_path
-        self.input.batch_size = batch_size
-        self.input.reformat_dataset()
-        sum_of_all_events = 0
-        loader = self.input.load()
-        _, first_batch = next(loader)
-        assert len(first_batch) == 50
-        sum_of_all_events += len(first_batch)
-        _, second_batch = next(loader)
-        assert len(second_batch) == 50
-        sum_of_all_events += len(second_batch)
-        _, third_batch = next(loader)
-        assert len(third_batch) == 100
-        sum_of_all_events += len(third_batch)
-        with pytest.raises(StopIteration):
-            _ = next(loader)
-        assert sum_of_all_events == number_of_events_class_one + number_of_events_class_two
+        self.mock_listdir.start()
+        self.mock_isdir.start()
+        self.mock_exists.start()
 
-    def test_load_parses_nothing_on_empty_dir(self, tmp_path):
-        self.input.input_root_path = tmp_path
-        loader = self.input.load()
-        with pytest.raises(StopIteration):
-            _ = next(loader)
+    def teardown_method(self):
+        mock.patch.stopall()
 
-    def test_load_parses_only_jsonl_files(self, tmp_path):
-        create_test_event_files(tmp_path, {"some": "event"}, 150, file_name="event.json")
-        self.input.input_root_path = tmp_path
-        self.input.reformat_dataset()
-        loader = self.input.load()
-        with pytest.raises(StopIteration):
-            _ = next(loader)
+    def test_init_set_values(self):
+        file_loader = FileLoader(self.input_root_path, **self.config)
+        assert file_loader.input_root_path is self.input_root_path
+        assert file_loader.number_events_of_dataset == self.config["events"]
 
-    def test_load_raises_parsing_error_on_invalid_json_files(self, tmp_path):
-        event_class_dir = tmp_path / "test_class"
-        os.makedirs(event_class_dir, exist_ok=True)
-        events_file_path = event_class_dir / "events.jsonl"
-        events = ['{"event":"one"}', '{"broken event"}', '{"event":"three"}']
-        events_file_path.write_text("\n".join(events))
-        event_class_config = {"target_path": "/target"}
-        config_file_path = event_class_dir / "config.yaml"
-        config_file_path.write_text(yaml.dump(event_class_config))
-        self.input.input_root_path = tmp_path
-        self.input.reformat_dataset()
-        loader = self.input.load()
-        with pytest.raises(msgspec.DecodeError, match="JSON is malformed: expected ':'"):
-            _ = next(loader)
-
-    def test_target_changes_between_event_classes(self, tmp_path):
-        class_one_config = {"target_path": "/target-one"}
-        class_two_config = {"target_path": "/target-two"}
-        create_test_event_files(
-            tmp_path, {"some": "event"}, 50, class_name="test_class_one", config=class_one_config
-        )
-        create_test_event_files(
-            tmp_path, {"some": "event"}, 50, class_name="test_class_two", config=class_two_config
-        )
-        self.input.input_root_path = tmp_path
-        self.input.reformat_dataset()
-        loader = self.input.load()
-        target, events = next(loader)
-        assert len(events) == 50
-        assert target == "/target-one"
-        target, events = next(loader)
-        assert len(events) == 50
-        assert target == "/target-two"
-
-    @pytest.mark.parametrize(
-        "config, expected_error, error_message",
-        [
-            (
-                {"target_path": "/system/", "timestamps": [{"key": "foo", "format": "%Y%m%d"}]},
-                None,
-                None,
-            ),
-            (
-                {"target": "/system/", "timestamps": [{"key": "foo", "format": "%Y%m%d"}]},
-                TypeError,
-                "got an unexpected keyword argument 'target'",
-            ),
-            (
-                {"target_path": 3, "timestamps": [{"key": "foo", "format": "%Y%m%d"}]},
-                TypeError,
-                "must be <class 'str'>",
-            ),
-            (
-                {"target_path": "/foo", "timestamp": [{"key": "foo", "format": "%Y%m%d"}]},
-                TypeError,
-                "got an unexpected keyword argument 'timestamp'",
-            ),
-            (
-                {"target_path": "/foo", "timestamps": [{"format": "%Y%m%d"}]},
-                TypeError,
-                "missing 1 required keyword-only argument: 'key'",
-            ),
-            (
-                {"target_path": "/foo", "timestamps": [{"key": "foo", "something": "%Y%m%d"}]},
-                TypeError,
-                "got an unexpected keyword argument 'something'",
-            ),
-            (
-                {"target_path": "/foo", "timestamps": [{"key": "foo"}]},
-                TypeError,
-                "missing 1 required keyword-only argument: 'format'",
-            ),
-            (
-                {
-                    "target_path": "/foo",
-                    "timestamps": [{"key": "foo", "format": "%Y%m%d", "time_shift": 12}],
-                },
-                TypeError,
-                "must be <class 'str'>",
-            ),
-            (
-                {
-                    "target_path": "/foo",
-                    "timestamps": [{"key": "foo", "format": "%Y%m%d", "time_shift": "12"}],
-                },
-                ValueError,
-                "'time_shift' must match regex",
-            ),
-            (
-                {
-                    "target_path": "/foo",
-                    "timestamps": [{"key": "foo", "format": "%Y%m%d", "time_shift": "a0200"}],
-                },
-                ValueError,
-                "'time_shift' must match regex",
-            ),
-            (
-                {
-                    "target_path": "/foo",
-                    "timestamps": [{"key": "foo", "format": "%Y%m%d", "time_shift": "+0200"}],
-                },
-                None,
-                None,
-            ),
-            (
-                {
-                    "target_path": "/foo",
-                    "timestamps": [{"key": "foo", "format": "%Y%m%d", "time_shift": "-0200"}],
-                },
-                None,
-                None,
-            ),
+    @mock.patch(
+        "logprep.generator.http.input.Path.iterdir",
+        return_value=[
+            Path("test_dir/test_event_dir/file1.jsonl"),
+            Path("test_dir/test_event_dir/file2.jsonl"),
         ],
     )
-    def test_event_class_config_validation(self, config, expected_error, error_message):
-        if expected_error:
-            with pytest.raises(expected_error, match=re.escape(error_message)):
-                _ = EventClassConfig(**config)
-        else:
-            EventClassConfig(**config)
+    def test_retrieve_log_files(self, mock_iter_dir):
+        file_loader = FileLoader(self.input_root_path, **self.config)
 
-    def test_load_returns_events_in_sorted_order(self, tmp_path):
-        example_event = {"some": "event"}
-        number_of_events = 150
-        dataset_path = tmp_path / "dataset"
-        create_test_event_files(
-            dataset_path,
-            example_event,
-            number_of_events,
-            file_name="events.jsonl",
-            class_name="class-one",
-        )
-        create_test_event_files(
-            dataset_path,
-            example_event,
-            number_of_events,
-            file_name="events2.jsonl",
-            class_name="class-two",
-        )
-        batch_size = 100
-        self.input.input_root_path = dataset_path
-        self.input.batch_size = batch_size
-        self.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.input.temp_dir, exist_ok=True)
-        self.input.reformat_dataset()
-        event_id = 0
-        previous_event_id = -1  # count through event id's and check if they always increase
-        expected_target = "/target-class-one"
-        for target, events in self.input.load():
-            assert target == expected_target
-            for event in events:
-                event_id = event.get("id")
-                assert event_id > previous_event_id
-                previous_event_id = event_id
-            if event_id == 149:  # end of first log class reached (resetting for second class)
-                previous_event_id = -1
-                expected_target = "/target-class-two"
+        mock_log_class = mock.MagicMock()
+        with (
+            mock.patch(
+                "logprep.generator.http.input.FileLoader._load_event_class_config",
+                return_value=mock_log_class,
+            ),
+        ):
+            test_file_paths, _ = file_loader.retrieve_log_files(self.event_class_dir)
+            # assert file_loader._load_event_class_config.called_once()
+            assert test_file_paths == [
+                Path("test_dir/test_event_dir/file1.jsonl"),
+                Path("test_dir/test_event_dir/file2.jsonl"),
+            ]
 
-    def test_load_returns_event_in_shuffled_order(self, tmp_path):
-        example_event = {"some": "event"}
-        number_of_events = 150
-        dataset_path = tmp_path / "dataset"
-        create_test_event_files(
-            dataset_path,
-            example_event,
-            number_of_events,
-            file_name="events.jsonl",
-            class_name="class-one",
+    @mock.patch("builtins.open", new_callable=mock.mock_open, read_data="target: mock_target")
+    @mock.patch("logprep.generator.http.input.yaml.load", return_value={"target": "mock_target"})
+    def test_load_event_class_config(self, mock_yaml_load, mock_open, caplog):
+        caplog.set_level(logging.DEBUG)
+        file_loader = FileLoader(self.input_root_path, **self.config)
+        config = file_loader._load_event_class_config(Path("/mock/root/event_class"))
+        assert config.target == "mock_target"
+        mock_open.assert_called_once_with(
+            Path("/mock/root/event_class/config.yaml"), "r", encoding="utf8"
         )
-        create_test_event_files(
-            dataset_path,
-            example_event,
-            number_of_events,
-            file_name="events2.jsonl",
-            class_name="class-two",
-        )
-        batch_size = 100
-        self.input.input_root_path = dataset_path
-        self.input.batch_size = batch_size
-        self.input.config.update({"shuffle": True})
-        self.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.input.temp_dir, exist_ok=True)
-        self.input.reformat_dataset()
-        target_event_ids = defaultdict(list)
-        for target, events in self.input.load():
-            for event in events:
-                target_event_ids[target].append(event.get("id"))
-        for target, event_ids in target_event_ids.items():
-            is_sorted = all(a <= b for a, b in zip(event_ids, event_ids[1:]))
-            assert not is_sorted, f"Target {target} is sorted"
+        mock_yaml_load.assert_called_once()
+        assert "Following class config was loaded" in caplog.text
 
-    def test_raise_value_error_on_comma_in_target_path(self, tmp_path):
-        dataset_path = tmp_path / "dataset"
-        create_test_event_files(
-            dataset_path,
-            sample_event={"some": "event"},
-            number_of_events=150,
-            file_name="events.jsonl",
-            class_name="class,one",
-        )
-        self.input.input_root_path = dataset_path
-        with pytest.raises(ValueError, match="No ',' allowed in target_path"):
-            self.input.reformat_dataset()
+    @mock.patch("builtins.open", new_callable=mock.mock_open, read_data="target: mock_target")
+    @mock.patch("logprep.generator.http.input.yaml.load", return_value={"target": "test_target,"})
+    def test_load_event_class_raises_value_error(self, _mock_yaml_load, _mock_open):
+        file_loader = FileLoader(self.input_root_path, **self.config)
+        with pytest.raises(ValueError):
+            file_loader._load_event_class_config(Path("test_dir"))
 
-    def test_created_temp_files_are_split_when_max_events_per_file_limit_is_reached(self, tmp_path):
-        event_limit_per_file = self.input.MAX_EVENTS_PER_FILE
-        dataset_path = tmp_path / "dataset"
-        for i in range(4):  # create four log classes with one third of the event_limit_per_file
-            create_test_event_files(
-                dataset_path,
-                sample_event={"some": "event"},
-                number_of_events=int(event_limit_per_file / 3),
-                file_name=f"events-{i}.jsonl",
-                class_name=f"class-{i}",
-            )
-        self.input.input_root_path = dataset_path
-        self.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.input.temp_dir, exist_ok=True)
-        self.input.reformat_dataset()
-        created_temp_files = [file for file in os.listdir(self.input.temp_dir)]
-        assert len(created_temp_files) > 1
-        for filename in created_temp_files:
-            path = self.input.temp_dir / filename
-            with open(path, "r", encoding="utf8") as file:
-                lines = len(file.readlines())
-                assert lines <= event_limit_per_file, path
 
-    def test_configuring_an_events_limit_will_iterate_over_the_dataset_until_this_limit_is_reached(
-        self, tmp_path
-    ):
-        config = {
-            "target_url": self.test_url,
-            "input_root_path": "",
-            "batch_size": 77,  # take an odd number so the batchsize will exceed the event limit
-            "replace_timestamp": True,
-            "tag": "load_test",
-            "events": 1_000,
-        }
-        self.input = Input(config=config)
-        dataset_path = tmp_path / "dataset"
-        create_test_event_files(
-            dataset_path,
-            sample_event={"some": "event"},
-            number_of_events=100,
-            file_name=f"events.jsonl",
-            class_name=f"class-one",
+def test_write_events_file_no_shuffle():
+    test_events = ["event1", "event2", "event3"]
+    test_dir = Path("test_dir")
+    config = {"shuffle": False}
+    file_writer = FileWriter()
+
+    with mock.patch("builtins.open", new_callable=mock.MagicMock) as mock_open:
+        file_writer.write_events_file(test_events, test_dir, config)
+
+        mock_open.assert_called_once_with(
+            test_dir / "logprep_input_data_0000.txt", "a", encoding="utf8"
         )
-        self.input.input_root_path = dataset_path
-        self.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
-        os.makedirs(self.input.temp_dir, exist_ok=True)
-        self.input.reformat_dataset()
-        event_counter = 0
-        for target, events in self.input.load():
-            event_counter += len(events)
-        assert event_counter == config.get("events")
+        mock_open.return_value.__enter__.return_value.writelines.assert_called_once()
+
+    assert test_events == []
+    assert file_writer.event_file_counter == 1

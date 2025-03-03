@@ -1,17 +1,14 @@
 """Input module that loads the jsonl files batch-wise"""
 
-import itertools
 import logging
-import os
 import random
 import shutil
 import tempfile
 import time
 from datetime import datetime, timedelta
 from functools import cached_property
-from operator import itemgetter
 from pathlib import Path
-from typing import Dict, Generator, List
+from typing import Dict, List
 
 import msgspec
 from attrs import define, field, validators
@@ -85,6 +82,7 @@ class Input:
 
     @cached_property
     def temp_dir(self):
+        """Create temporary directory and return path"""
         return Path(tempfile.mkdtemp(prefix="logprep_"))
 
     @cached_property
@@ -99,15 +97,13 @@ class Input:
     def _temp_filename_prefix(self):
         return "logprep_input_data"
 
-    def __init__(self, config: dict):
-        self.config = config
-        self.input_root_path = config.get("input_dir")
-        self.number_of_events = config.get("events")
-        self.events_sent = 0
-        self.batch_size = config.get("batch_size")
+    def __init__(self, config: dict) -> None:
+        self.input_root_path = Path(config.get("input_dir"))
+        self.file_loader = FileLoader(self.input_root_path)
+        self.file_writer = FileWriter()
         self.log_class_manipulator_mapping: Dict = {}
         self.number_events_of_dataset = 0
-        self.event_file_counter = 0
+        self.config = config
 
     def reformat_dataset(self) -> None:
         """
@@ -116,144 +112,94 @@ class Input:
         the events and the target for the events.
         """
         logger.info(
-            "Reading input dataset and creating temporary event collections in: '%s'",
-            self.temp_dir,
+            "Reading input dataset and creating temporary event collections in: '%s'", self.temp_dir
         )
         start_time = time.perf_counter()
-        events = []
-        event_classes = os.listdir(self.input_root_path)
-        event_classes = sorted(event_classes)
-        for event_class_dir in event_classes:
-            file_paths, log_class_config = self._retrieve_log_files(event_class_dir)
-            self._populate_events_list(events, file_paths, log_class_config)
-        if events:
-            self._write_events_file(events)
-        logger.info(f"Preparing data took: {time.perf_counter() - start_time:0.4f} seconds")
+        for event_class_dir in sorted(f.name for f in Path(self.input_root_path).iterdir()):
+            file_paths, log_class_config = self.file_loader.retrieve_log_files(event_class_dir)
+            self._set_manipulator(log_class_config)
+            self._populate_events_list(file_paths, log_class_config)
+        logger.info("Preparing data took: %s seconds", time.perf_counter() - start_time)
 
-    def _retrieve_log_files(self, event_class_dir):
-        """
-        Retrieve the file paths of all sample events of one log class, the log class configuration
-        and initialize the log class manipulator.
-        """
-        dir_path = os.path.join(self.input_root_path, event_class_dir)
-        log_class_config = self._load_event_class_config(dir_path)
-        manipulator = Manipulator(
-            log_class_config, self.config.get("replace_timestamp"), self.config.get("tag")
-        )
-        self.log_class_manipulator_mapping.update({log_class_config.target: manipulator})
-        file_paths = [
-            os.path.join(dir_path, file_path)
-            for file_path in os.listdir(dir_path)
-            if file_path.endswith(".jsonl")
-        ]
-        return file_paths, log_class_config
-
-    def _load_event_class_config(self, event_class_dir_path: str) -> EventClassConfig:
-        """Load the event class specific configuration"""
-        config_path = os.path.join(event_class_dir_path, "config.yaml")
-        with open(config_path, "r", encoding="utf8") as file:
-            event_class_config = yaml.load(file)
-        logger.debug("Following class config was loaded: %s", event_class_config)
-        event_class_config = EventClassConfig(**event_class_config)
-        if "," in event_class_config.target:
-            raise ValueError(
-                f"InvalidConfiguration: No ',' allowed in target, {event_class_config}"
-            )
-        return event_class_config
-
-    def _populate_events_list(self, events, file_paths, log_class_config):
+    ### Test done
+    def _populate_events_list(
+        self, file_paths: list[Path], log_class_config: EventClassConfig
+    ) -> None:
         """
         Collect the events from the dataset inside the events list. Each element will look like
-        '<TARGET>,<JSONL-EVENT>\n', such that these lines can later be written to a file.
+        '<TARGET_PATH>,<JSONL-EVENT>\n', such that these lines can later be written to a file.
         """
+        events = []
         for file in file_paths:
             with open(file, "r", encoding="utf8") as event_file:
                 for event in event_file.readlines():
                     self.number_events_of_dataset += 1
                     events.append(f"{log_class_config.target},{event.strip()}")
                     if len(events) == self.MAX_EVENTS_PER_FILE:
-                        self._write_events_file(events)
+                        self.file_writer.write_events_file(events, self.temp_dir, self.config)
+                if events:
+                    self.file_writer.write_events_file(events, self.temp_dir, self.config)
 
-    def _write_events_file(self, documents) -> None:
+    def _set_manipulator(self, log_class_config: EventClassConfig) -> None:
+        manipulator = Manipulator(
+            log_class_config, self.config.get("replace_timestamp"), self.config.get("tag")
+        )
+        self.log_class_manipulator_mapping[log_class_config.target] = manipulator
+
+    ### Test done
+    def clean_up_tempdir(self) -> None:
+        """Delete temporary directory which contains the reformatted dataset"""
+        if Path(self.temp_dir).exists() and Path(self.temp_dir).is_dir():
+            shutil.rmtree(self.temp_dir)
+        logger.info("Cleaned up temp dir: '%s'", self.temp_dir)
+
+
+class FileLoader:
+    """Read sample log events"""
+
+    def __init__(self, input_root_path: Path, **config) -> None:
+        self.input_root_path = input_root_path
+        self.number_events_of_dataset = config.get("events")
+
+    def retrieve_log_files(self, event_class_dir: Path) -> tuple[list[Path], EventClassConfig]:
+        """Retrieve the file paths of all sample events of one log class,
+        the log class configuration"""
+        dir_path = self.input_root_path / event_class_dir
+        log_class_config = self._load_event_class_config(dir_path)
+        file_paths = [f for f in Path(dir_path).iterdir() if f.suffix == ".jsonl"]
+        return file_paths, log_class_config
+
+    def _load_event_class_config(self, event_class_dir_path: Path) -> EventClassConfig:
+        """Load the event class specific configuration"""
+        config_path = event_class_dir_path / "config.yaml"
+        with open(config_path, "r", encoding="utf8") as file:
+            event_class_config = yaml.load(file)
+        logger.debug("Following class config was loaded: %s", event_class_config)
+        event_class_config = EventClassConfig(**event_class_config)
+        if "," in event_class_config.target:
+            raise ValueError(
+                f"InvalidConfiguration: No ',' allowed in target_path, {event_class_config}"
+            )
+        return event_class_config
+
+
+class FileWriter:
+    """Handles event file writing and shuffling."""
+
+    def __init__(self):
+        self.event_file_counter = 0
+
+    def write_events_file(self, events: list[str], temp_dir: Path, config: Dict):
         """
         Take a list of target and event strings and write them to a file. If configured the events
         will be shuffled first.
-        """
-        if self.config.get("shuffle"):
-            random.shuffle(documents)
-        file_name = f"{self._temp_filename_prefix}_{self.event_file_counter:0>4}.txt"
-        temp_file_path = self.temp_dir / file_name
-        batcher_config = {"batch_size": self.batch_size, "events": self.number_of_events}
-        logger.debug("Batcher config: %s", batcher_config)
-        batcher = Batcher(documents, **batcher_config)
+        #"""
+        # if config.get("shuffle"):
+        #     random.shuffle(events)
+        file_name = f"logprep_input_data_{self.event_file_counter:0>4}.txt"
+        temp_file_path = temp_dir / file_name
+        batcher = Batcher(events, **config)
         with open(temp_file_path, "a", encoding="utf8") as event_file:
             event_file.writelines(batcher)
+        events.clear()
         self.event_file_counter += 1
-        documents.clear()
-
-    def load(self) -> Generator[List, None, None]:
-        """
-        Generator that parses the next batch of events, manipulates them according to their
-        respective configuration and returns them with their target.
-        """
-        input_files = [self.temp_dir / file for file in os.listdir(self.temp_dir)]
-        if self.config.get("shuffle"):
-            random.shuffle(input_files)
-        if self.number_of_events is None:
-            yield from self._load_all_once(input_files)
-        else:
-            yield from self._infinite_load(input_files)
-
-    def _load_all_once(self, input_files):
-        """Will iterate over all events once, if end is reached this generator stops."""
-        events = []
-        for event_file in input_files:
-            with open(event_file, "r", encoding="utf8") as file:
-                for line in file:
-                    events.append(self._process_event_line(line))
-                    if len(events) == self.batch_size:
-                        yield from self._create_request_data(events)
-                        events.clear()
-        yield from self._create_request_data(events)
-
-    def _create_request_data(self, event_batch):
-        """Reformat a batch of events to a html payload string"""
-        if self.config.get("shuffle"):
-            event_batch = sorted(event_batch, key=lambda x: x[0])
-        log_classes = itertools.groupby(event_batch, key=lambda x: x[0])
-        for target, events in log_classes:
-            yield target, list(map(itemgetter(1), events))
-
-    def _process_event_line(self, line):
-        """
-        Parse an event line from file, apply manipulator and return the event and the corresponding
-        target.
-        """
-        class_target, event = line.split(",", maxsplit=1)
-        parsed_event = self._decoder.decode(event)
-        manipulator = self.log_class_manipulator_mapping.get(class_target)
-        manipulated_event = manipulator.manipulate([parsed_event])[0]
-        return class_target, manipulated_event
-
-    def _infinite_load(self, input_files):
-        events = []
-        for event_file in itertools.cycle(input_files):
-            with open(event_file, "r", encoding="utf8") as file:
-                for line in file:
-                    if self.events_sent == self.number_of_events:
-                        return
-                    events.append(self._process_event_line(line))
-                    if len(events) < self.batch_size:
-                        continue
-                    if self.events_sent + len(events) > self.number_of_events:
-                        diff = self.number_of_events - self.events_sent
-                        events = events[:diff]
-                    self.events_sent += len(events)
-                    yield from self._create_request_data(events)
-                    events.clear()
-
-    def clean_up_tempdir(self):
-        """Delete temporary directory which contains the reformatted dataset"""
-        if os.path.exists(self.temp_dir) and os.path.isdir(self.temp_dir):
-            shutil.rmtree(self.temp_dir)
-        logger.info("Cleaned up temp dir: '%s'", self.temp_dir)
