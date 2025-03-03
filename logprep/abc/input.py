@@ -375,7 +375,7 @@ class Input(Connector):
         complete_event = {}
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
-        if target["format"] is "dict":
+        if target["format"] == "dict":
             complete_event = self._decoder.decode(raw_event.decode("utf-8"))
         else:
             complete_event = json.dumps(raw_event.decode("utf-8"))
