@@ -20,6 +20,8 @@ from logging import DEBUG, basicConfig, getLogger
 from os import makedirs, path
 from pathlib import Path
 
+import docker
+
 from logprep.abc.processor import Processor
 from logprep.registry import Registry
 from logprep.runner import Runner
@@ -248,19 +250,24 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
     return Configuration(**config_yml)
 
 
-def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
+def start_logprep(config_path: str, env: dict | None = None) -> subprocess.Popen:
+    client = docker.from_env()
     if env is None:
         env = {}
-    env.update({"PYTHONPATH": "."})
-    return subprocess.Popen(  # nosemgrep
-        f"{sys.executable} logprep/run_logprep.py run {config_path}",
-        shell=True,
-        env=env,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        close_fds=True,
+    env.update({"PYTHONPATH": ".", "PROMETHEUS_MULTIPROC_DIR": "/tmp/logprep"})
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+    container = client.containers.run(
+        f"python:{python_version}",
+        "mkdir -p $PROMETHEUS_MULTIPROC_DIR && cd /logprep && logprep run /logprep/test_config.yml",
+        detach=True,
+        environment=env,
+        volumes={
+            path.abspath("."): {"bind": "/logprep", "mode": "rw"},
+            "/logprep/test_config.yml": {"bind": str(config_path), "mode": "ro"},
+        },
+        ports={"9000/tcp": 9000},
     )
+    return container
 
 
 def wait_for_output(proc, expected_output, test_timeout=10, forbidden_outputs=None):
@@ -273,13 +280,13 @@ def wait_for_output(proc, expected_output, test_timeout=10, forbidden_outputs=No
         expected_output,
         forbidden_outputs,
     ):
-        output = proc.stdout.readline()
+        output = proc.logs()
         while 1:
             if re.search(expected_output, output.decode("utf8")):
                 break
             for forbidden_output in forbidden_outputs:
                 assert not re.search(forbidden_output, output.decode("utf8")), output
-            output = proc.stdout.readline()
+            output = proc.logs()
 
     wait_for_output_inner(proc, expected_output, forbidden_outputs)
     time.sleep(0.1)
