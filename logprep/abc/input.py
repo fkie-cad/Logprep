@@ -114,6 +114,9 @@ class FullEventConfig:
 class Input(Connector):
     """Connect to a source for log data."""
 
+    class Metrics(Connector.Metrics):
+        """Input Metrics"""
+
     @define(kw_only=True, slots=False)
     class Config(Connector.Config):
         """Input Configurations"""
@@ -190,16 +193,16 @@ class Input(Connector):
         - `enrich_by_env_variables` - If required it is possible to automatically enrich incoming
           events by environment variables. To activate this preprocessor the fields value has to be
           a mapping from the target field name (key) to the environment variable name (value).
-        - `add_full_event_to_target_field` - If required it is possible to automatically write 
-        all event fields to one singular field or subfield. If needed as an escaped string. 
+        - `add_full_event_to_target_field` - If required it is possible to automatically write
+        all event fields to one singular field or subfield. If needed as an escaped string.
         The exact fields in the event do not have to be known to use this preprocessor. To use this
-        preprocessor the fields :code:`format` and :code:`target_field` have to bet set. When the 
+        preprocessor the fields :code:`format` and :code:`target_field` have to bet set. When the
         format :code:`str` ist set the event is automatically escaped. This can be used to identify
         and resolve mapping errors thrown by opensearch.
 
-            - :code:`format` - specifies the format which the event is written in. The default 
-            format ist :code:`str` which leads to automatic json escaping of the given event. Also 
-            possible is the value :code:`dict` which writes the event as mapping to the specified 
+            - :code:`format` - specifies the format which the event is written in. The default
+            format ist :code:`str` which leads to automatic json escaping of the given event. Also
+            possible is the value :code:`dict` which writes the event as mapping to the specified
             :code:`target_field`.
             - :code:`target_field` - specifies the field to which the event should be written to.
             the default is :code:`event.original`
