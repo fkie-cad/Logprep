@@ -19,6 +19,7 @@ from requests.auth import _basic_auth_str
 from logprep.abc.input import FatalInputError
 from logprep.connector.http.input import HttpInput
 from logprep.factory import Factory
+from logprep.factory_error import InvalidConfigurationError
 from logprep.framework.pipeline_manager import ThrottlingQueue
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from tests.unit.connector.base import BaseInputTestCase
@@ -285,31 +286,7 @@ class TestHttpConnector(BaseInputTestCase):
         expected = {"event": {"original": {"message": "my message"}}}
         assert message == expected, f"{expected} does not equal {message}"
 
-    def test_original_event_field_with_preprocessor_active(self):
-        message = {"message": "my message"}
-        updated_config = {
-            "original_event_field": {"target_field": "event.original", "format": "dict"},
-            "preprocessing": {
-                "add_full_event_to_target_field": {
-                    "target_field": "also.original",
-                    "format": "str",
-                }
-            },
-        }
-        connector_config = deepcopy(self.CONFIG)
-        connector_config.update(updated_config)
-        connector = Factory.create({"test connector": connector_config})
-        connector.pipeline_index = 1
-        connector.setup()
-        client = testing.TestClient(connector.app)
-        resp = client.post("/json", json=message)
-        assert resp.status_code == 200
-        message = connector.messages.get(timeout=0.5)
-        expected = {"event": {"original": {"message": "my message"}}}
-        assert message == expected, f"{expected} does not equal {message}"
-
-    def test_original_event_field_with_preprocessor_active_and_writing_to_the_same_field(self):
-        message = {"message": "my message"}
+    def test_original_event_field_with_preprocessor_active_raises_invalid_configuration_error(self):
         updated_config = {
             "original_event_field": {"target_field": "event.original", "format": "dict"},
             "preprocessing": {
@@ -321,15 +298,8 @@ class TestHttpConnector(BaseInputTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(updated_config)
-        connector = Factory.create({"test connector": connector_config})
-        connector.pipeline_index = 1
-        connector.setup()
-        client = testing.TestClient(connector.app)
-        resp = client.post("/json", json=message)
-        assert resp.status_code == 200
-        message = connector.messages.get(timeout=0.5)
-        expected = {"event": {"original": '{"message": "my message"}'}}
-        assert message == expected, f"{expected} does not equal {message}"
+        with pytest.raises(InvalidConfigurationError):
+            _ = Factory.create({"test connector": connector_config})
 
     def test_original_event_field_with_event_as_string(self):
         message = {"message": "my message"}
