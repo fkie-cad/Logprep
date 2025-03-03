@@ -109,6 +109,7 @@ from falcon import (  # pylint: disable=no-name-in-module
 )
 
 from logprep.abc.input import FatalInputError, Input
+from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util import http, rstr
 from logprep.util.credentials import Credentials, CredentialsFactory
@@ -457,9 +458,15 @@ class HttpInput(Input):
             default=None,
         )
         """Optional config parameter that writes the full event to one single target field. The
-        format can be specified with the parameter :code:`format`. Possible are :code:`str` and :code:`dict` where 
-        dict is the default format. The target field can be specified with the parameter 
+        format can be specified with the parameter :code:`format`. Possible are :code:`str` and :code:`dict` where
+        dict is the default format. The target field can be specified with the parameter
         :code:`target_field`."""
+
+        def __attrs_post_init__(self):
+            if "add_full_event_to_target_field" in self.preprocessing and self.original_event_field:
+                raise InvalidConfigurationError(
+                    "Cannot configure both add_full_event_to_target_field and original_event_field."
+                )
 
     __slots__: List[str] = ["target", "app", "http_server"]
 
