@@ -311,6 +311,7 @@ class TestGeneratorCLI:
                     "tag": "loadtest",
                     "loglevel": "INFO",
                     "timeout": 2,
+                    "verify": True,
                 },
             ),
             (
@@ -389,6 +390,8 @@ class TestGeneratorCLI:
                     "test-tag",
                     "--loglevel",
                     "DEBUG",
+                    "--verify",
+                    "/test/path",
                 ],
                 {
                     "target": "http",
@@ -404,6 +407,7 @@ class TestGeneratorCLI:
                     "tag": "test-tag",
                     "loglevel": "DEBUG",
                     "timeout": 2,
+                    "verify": "/test/path",
                 },
             ),
             (

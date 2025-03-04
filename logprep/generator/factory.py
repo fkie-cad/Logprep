@@ -40,6 +40,7 @@ class ControllerFactory:
                         "password": kwargs.get("password"),
                         "target_url": kwargs.get("target_url"),
                         "timeout": kwargs.get("timeout", 2),
+                        "verify": kwargs.get("verify"),
                     }
                 }
                 output_connector = Factory.create(output_config)
