@@ -13,7 +13,6 @@ from logprep.util.configuration import Configuration
 from tests.acceptance.util import (
     get_default_logprep_config,
     start_logprep,
-    stop_logprep,
     wait_for_output,
 )
 
@@ -48,26 +47,24 @@ def config_fixture():
     return config
 
 
-# def setup_function():
-#    start_logprep()
-
-
-def teardown_function():
-    stop_logprep()
-
-
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
-def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: Configuration):
+def test_http_input_accepts_message_for_single_pipeline(
+    tmp_path: Path, config: Configuration, logprep_container
+):
     output_path = tmp_path / "output.jsonl"
     config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
-
-    requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
+    container = logprep_container(f"run {str(config_path)}")
+    assert container
+    while "Uvicorn running on https://127.0.0.1:9000" not in container.logs().decode():
+        time.sleep(0.5)
+    command = 'import requests; requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)'
+    container.exec_run(f"python -c '{command}'")
     time.sleep(0.5)
-    assert "my message" in output_path.read_text()
+    assert '"POST /plaintext HTTP/1.1" 200' in container.logs().decode()
+    container.stop()
+    container.remove()
 
 
 @pytest.mark.skipif(

@@ -8,10 +8,7 @@ import inspect
 import json
 import os
 import re
-import signal
 import socketserver
-import subprocess
-import sys
 import threading
 import time
 from copy import deepcopy
@@ -21,6 +18,8 @@ from os import makedirs, path
 from pathlib import Path
 
 import docker
+import docker.models
+import docker.models.containers
 
 from logprep.abc.processor import Processor
 from logprep.registry import Registry
@@ -250,24 +249,10 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
     return Configuration(**config_yml)
 
 
-def start_logprep(config_path: str, env: dict | None = None) -> subprocess.Popen:
-    client = docker.from_env()
-    if env is None:
-        env = {}
-    env.update({"PYTHONPATH": ".", "PROMETHEUS_MULTIPROC_DIR": "/tmp/logprep"})
-    python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-    container = client.containers.run(
-        f"python:{python_version}",
-        "mkdir -p $PROMETHEUS_MULTIPROC_DIR && cd /logprep && logprep run /logprep/test_config.yml",
-        detach=True,
-        environment=env,
-        volumes={
-            path.abspath("."): {"bind": "/logprep", "mode": "rw"},
-            "/logprep/test_config.yml": {"bind": str(config_path), "mode": "ro"},
-        },
-        ports={"9000/tcp": 9000},
-    )
-    return container
+def start_logprep(
+    logprep_container: docker.models.containers.Container, config_path: str, env: dict | None = None
+) -> docker.models.containers.ExecResult:
+    return logprep_container.exec_run(f"logprep run {config_path}", environment=env)
 
 
 def wait_for_output(proc, expected_output, test_timeout=10, forbidden_outputs=None):
@@ -293,22 +278,12 @@ def wait_for_output(proc, expected_output, test_timeout=10, forbidden_outputs=No
 
 
 def stop_logprep(proc=None):
-    if proc:
-        proc.send_signal(signal.SIGINT)
-        try:
-            wait_for_output(proc, "Shutdown complete", test_timeout=10)
-        except TimeoutError:
-            proc.kill()
-
-    output = subprocess.check_output("ps -x | grep run_logprep", shell=True)  # nosemgrep
-    for line in output.decode("utf8").splitlines():
-        process_id = re.match(r"^(\s+)?(\d+)\s.+", line)
-        process_id = process_id.group(2) if process_id else None
-        try:
-            if process_id is not None:
-                os.kill(int(process_id), signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+    current_test = os.environ.get("PYTEST_CURRENT_TEST").split(":")[-1].split(" ")[0]
+    container_name = f"logprep-{current_test}"
+    client = docker.from_env()
+    container = client.containers.get(container_name)
+    # container.stop()
+    # container.remove()
 
 
 def get_full_pipeline(exclude=None):
