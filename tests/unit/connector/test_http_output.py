@@ -17,6 +17,7 @@ class TestOutput(BaseOutputTestCase):
         "target_url": TARGET_URL,
         "user": "user",
         "password": "password",
+        "verify": "false",
     }
 
     expected_metrics = [

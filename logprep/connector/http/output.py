@@ -120,6 +120,8 @@ class HttpOutput(Output):
         """URL of the endpoint that receives the events"""
         timeout: int = field(validator=validators.instance_of(int), default=2)
         """Timeout in seconds for the http request"""
+        verify: bool | str
+        """Switch to disable ssl verification or path to ceertficate"""
 
     @property
     def user(self):
@@ -139,6 +141,11 @@ class HttpOutput(Output):
     @cached_property
     def _headers(self):
         return {"Content-Type": "application/x-ndjson; charset=utf-8"}
+
+    @property
+    def verify(self):
+        """Return the verify status that is used for the http request"""
+        return self._config.verify
 
     @property
     def statistics(self) -> str:
@@ -186,7 +193,7 @@ class HttpOutput(Output):
                 response = requests.post(
                     url=target,
                     headers=self._headers,
-                    verify=False,
+                    verify=self.verify,
                     auth=(self.user, self.password),
                     timeout=(self.timeout, self.timeout),
                     data=request_data,
