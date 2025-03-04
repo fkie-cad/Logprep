@@ -38,7 +38,6 @@ class Controller:
 
         # Update tests
         # Check kafka message format, compatible with kafka consumer?
-        # refactor input class with focus on Single Responsibility Principle
         # how to handle big amount of example events? they are loaded in memory
         # test with big files
         # compute message backlog size instead of defaults?

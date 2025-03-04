@@ -1,14 +1,15 @@
 # pylint: disable=missing-docstring
 import json
+import logging
 from unittest import mock
 
 import pytest
 
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.http.output import HttpOutput
-from logprep.generator.confluent_kafka.controller import KafkaController
 from logprep.generator.controller import Controller
 from logprep.generator.factory import ControllerFactory
+from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.logging import LogprepMPQueueListener
 
 
@@ -25,12 +26,19 @@ class TestFactory:
         "target, expected_class",
         [
             ("http", Controller),
-            ("kafka", KafkaController),
+            ("kafka", Controller),
         ],
     )
     def test_create_returns(self, target, expected_class):
-        with mock.patch.object(ControllerFactory, "get_loghandler"):
-            controller = ControllerFactory.create(target)
+        kwargs = {
+            "user": "test_user",
+            "input_dir": "test_dir/",
+            "password": "test_password",
+            "target_url": "http://example.com",
+            "timeout": 5,
+        }
+        with (mock.patch.object(ControllerFactory, "get_loghandler"),):
+            controller = ControllerFactory.create(target, **kwargs)
             assert controller
             assert isinstance(controller, expected_class)
 
@@ -39,6 +47,7 @@ class TestFactory:
 
         kwargs = {
             "user": "test_user",
+            "input_dir": "test_dir/",
             "password": "test_password",
             "target_url": "http://example.com",
             "timeout": 5,
@@ -91,6 +100,7 @@ class TestFactory:
     def test_create_calls_get_loghandler(self, mock_factory_create):
         kwargs = {
             "user": "test_user",
+            "input_dir": "test_dir/",
             "password": "test_password",
             "target_url": "http://example.com",
             "timeout": 5,
@@ -104,6 +114,7 @@ class TestFactory:
         mock_get_loghandler.assert_called_once_with("INFO")
 
     def test_get_loghandler_returns_loghandler(self):
+        logging.config.dictConfig(DEFAULT_LOG_CONFIG)
         with mock.patch("logprep.generator.factory.logger"):
             loghandler = ControllerFactory.get_loghandler("INFO")
         assert loghandler
@@ -114,13 +125,16 @@ class TestFactory:
             _ = ControllerFactory.get_loghandler("INVALID")
 
     def test_level_passed_to_set_level(self):
+        logging.config.dictConfig(DEFAULT_LOG_CONFIG)
         with mock.patch("logprep.generator.factory.logger") as mock_logger:
             _ = ControllerFactory.get_loghandler("DEBUG")
-        mock_logger.setLevel.assert_called_once_with("DEBUG")
+        mock_logger.root.setLevel.assert_called_once_with("DEBUG")
 
     def test_get_loghandler_raises_if_no_handler(self):
-        with mock.patch("logprep.generator.factory.logger") as mock_logger:
-            mock_logger.handlers = []
+        logging.config.dictConfig(DEFAULT_LOG_CONFIG)
+        with mock.patch("logging.getLogger") as mock_get_logger:
+            mock_console_logger = mock.MagicMock()
+            mock_get_logger.return_value = mock_console_logger
+            mock_console_logger.handlers = []
             with pytest.raises(ValueError, match="No console handler found"):
                 _ = ControllerFactory.get_loghandler("DEBUG")
-        mock_logger.setLevel.assert_called_once_with("DEBUG")
