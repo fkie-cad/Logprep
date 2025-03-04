@@ -1,5 +1,5 @@
-# target: /lab/123/ABC/auditlog # http
-target: auditlog # kafka
+target: /lab/123/ABC/auditlog # http
+# target: auditlog # kafka
 timestamps:
   - key: TIMESTAMP_FIELD_1
     format: "%Y%m%d"
