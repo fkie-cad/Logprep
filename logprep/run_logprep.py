@@ -280,9 +280,6 @@ def generate_kafka2(**kwargs):
     ControllerFactory.create(target="kafka", **kwargs).run()
 
 
-print(type(True))
-
-
 @generate.command(name="http")
 @common_generate_options
 @click.option(

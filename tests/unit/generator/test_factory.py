@@ -5,10 +5,10 @@ from unittest import mock
 
 import pytest
 
-from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
-from logprep.connector.http.output import HttpOutput
+from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutput
 from logprep.generator.controller import Controller
 from logprep.generator.factory import ControllerFactory
+from logprep.generator.http.output import HttpGeneratorOutput
 from logprep.util.defaults import DEFAULT_LOG_CONFIG
 from logprep.util.logging import LogprepMPQueueListener
 
@@ -51,18 +51,20 @@ class TestFactory:
             "password": "test_password",
             "target_url": "http://example.com",
             "timeout": 5,
+            "verify": False,
         }
 
         expected_output_config = {
             "generator_output": {
-                "type": "http_output",
+                "type": "http_generator_output",
                 "user": "test_user",
                 "password": "test_password",
                 "target_url": "http://example.com",
                 "timeout": 5,
+                "verify": False,
             }
         }
-        mock_http_output = mock.create_autospec(HttpOutput, instance=True)
+        mock_http_output = mock.create_autospec(HttpGeneratorOutput, instance=True)
         mock_factory_create.return_value = mock_http_output
         with mock.patch.object(ControllerFactory, "get_loghandler"):
             controller = ControllerFactory.create("http", **kwargs)
@@ -80,14 +82,14 @@ class TestFactory:
 
         expected_output_config = {
             "generator_output": {
-                "type": "confluentkafka_output",
+                "type": "confluentkafka_generator_output",
                 "topic": "producer",
                 "send_timeout": 1,
                 "kafka_config": json.loads(kwargs.get("output_config")),
             },
         }
 
-        mock_http_output = mock.create_autospec(ConfluentKafkaOutput, instance=True)
+        mock_http_output = mock.create_autospec(ConfluentKafkaGeneratorOutput, instance=True)
         mock_factory_create.return_value = mock_http_output
 
         with mock.patch.object(ControllerFactory, "get_loghandler"):
@@ -106,7 +108,7 @@ class TestFactory:
             "timeout": 5,
         }
 
-        mock_http_output = mock.create_autospec(HttpOutput, instance=True)
+        mock_http_output = mock.create_autospec(HttpGeneratorOutput, instance=True)
         mock_factory_create.return_value = mock_http_output
 
         with mock.patch.object(ControllerFactory, "get_loghandler") as mock_get_loghandler:

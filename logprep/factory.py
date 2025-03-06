@@ -30,6 +30,9 @@ class Factory:
                 )
             if not isinstance(component_configuration_dict, dict):
                 raise InvalidConfigSpecificationError(component_name)
+            print("--------------------------------")
+            print(component_name)
+            print(component_configuration_dict)
             component = Configuration.get_class(component_name, component_configuration_dict)
             component_configuration = Configuration.create(
                 component_name, component_configuration_dict
