@@ -332,11 +332,6 @@ class ConfluentKafkaOutput(Output):
         ----------
         document : dict
            Document to store.
-
-        Returns
-        -------
-        Returns True to inform the pipeline to call the batch_finished_callback method in the
-        configured input
         """
         topic, _, payload = document.partition(",")
         self.store_custom(payload, topic)

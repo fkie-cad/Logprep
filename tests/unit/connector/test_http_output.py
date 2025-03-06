@@ -17,7 +17,7 @@ class TestOutput(BaseOutputTestCase):
         "target_url": TARGET_URL,
         "user": "user",
         "password": "password",
-        "verify": "false",
+        "verify": "False",
     }
 
     expected_metrics = [
@@ -33,10 +33,10 @@ class TestOutput(BaseOutputTestCase):
     def test_one_repeat(self):
         self.object.metrics.number_of_processed_events = 0
         responses.add(responses.POST, f"{TARGET_URL}/123", status=200)
-        events = '{"event1_key": "event1_value", "event2_key": "event2_value"}'
-        batch = f"/123," + events
+        events = [{"event1_key": "event1_value"}, {"event2_key": "event2_value"}]
+        batch = ("/123", events)
         self.object.store(batch)
-        assert self.object.metrics.number_of_processed_events == 1
+        assert self.object.metrics.number_of_processed_events == 2
 
     @responses.activate
     def test_404_status_code(self):
@@ -58,8 +58,8 @@ class TestOutput(BaseOutputTestCase):
             ("dict to target", ("/abc", {"message": "my event message"}), 1, 1),
             (
                 "list to target",
-                ("/abc", '{"message": "my event message"}; {"message": "my event message"}'),
-                2,
+                ("/abc", [{"message": "my event message"}, {"message": "my event message"}]),
+                1,
                 2,
             ),
             (
@@ -76,19 +76,19 @@ class TestOutput(BaseOutputTestCase):
     ):
         if isinstance(input_data, tuple):
             target_url = input_data[0]
-            target_url = f"{TARGET_URL}" + target_url
+            target_url = f"{TARGET_URL}{target_url}"
         else:
             target_url = TARGET_URL
         responses.add(responses.POST, f"{target_url}", status=200)
         self.object.metrics.number_of_processed_events = 0
         self.object.metrics.number_of_http_requests = 0
         self.object.metrics.number_of_failed_events = 0
-        self.object.store(input_data[0] + "," + input_data[1])
+        self.object.store(input_data)
         assert (
             self.object.metrics.number_of_failed_events == 0
         ), f"no failed events for input {testcase}"
         assert self.object.metrics.number_of_processed_events == number_of_expeted_events
-        # assert self.object.metrics.number_of_http_requests == number_of_expected_requests
+        assert self.object.metrics.number_of_http_requests == number_of_expected_requests
 
     @pytest.mark.parametrize(
         "testcase, input_data",

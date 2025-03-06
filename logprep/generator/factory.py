@@ -8,11 +8,11 @@ import logging
 
 from ruamel.yaml import YAML
 
-from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
-from logprep.connector.http.output import HttpOutput
 from logprep.factory import Factory
+from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutput
 from logprep.generator.controller import Controller
 from logprep.generator.http.input import Input
+from logprep.generator.http.output import HttpGeneratorOutput
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Generator")
@@ -35,7 +35,7 @@ class ControllerFactory:
             case "http":
                 output_config = {
                     "generator_output": {
-                        "type": "http_output",
+                        "type": "http_generator_output",
                         "user": kwargs.get("user"),
                         "password": kwargs.get("password"),
                         "target_url": kwargs.get("target_url"),
@@ -44,7 +44,7 @@ class ControllerFactory:
                     }
                 }
                 output_connector = Factory.create(output_config)
-                if not isinstance(output_connector, HttpOutput):
+                if not isinstance(output_connector, HttpGeneratorOutput):
                     raise ValueError("Output is not a valid output type")
                 return Controller(output_connector, input_connector, loghandler, **kwargs)
             case "kafka":
@@ -52,14 +52,14 @@ class ControllerFactory:
                 kafka_config = json.loads(kwargs.get("kafka_config", default_config))
                 output_config = {
                     "generator_output": {
-                        "type": "confluentkafka_output",
+                        "type": "confluentkafka_generator_output",
                         "topic": "producer",
                         "kafka_config": kafka_config,
                         "send_timeout": 1,
                     },
                 }
                 output_connector = Factory.create(output_config)
-                if not isinstance(output_connector, ConfluentKafkaOutput):
+                if not isinstance(output_connector, ConfluentKafkaGeneratorOutput):
                     raise ValueError("Output is not a valid output type")
                 return Controller(output_connector, input_connector, loghandler, **kwargs)
             case _:
