@@ -12,13 +12,9 @@ from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
     """Output class inheriting from the connector output class"""
 
-    def store(self, document: str) -> None:
-        """Store a document in the producer topic.
-
-        Parameters
-        ----------
-        document : str
-        Document to store.
-        """
-        topic, _, payload = document.partition(",")
-        self.store_custom(payload, topic)
+    def store(self, document: dict | str) -> None:
+        if isinstance(document, str):
+            topic, _, payload = document.partition(",")
+            self.store_custom(payload, topic)
+        else:
+            super().store(document)

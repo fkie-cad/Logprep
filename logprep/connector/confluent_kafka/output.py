@@ -325,16 +325,20 @@ class ConfluentKafkaOutput(Output):
             f"{self._config.kafka_config.get('bootstrap.servers')}"
         )
 
-    def store(self, document: str) -> None:
+    def store(self, document: dict) -> None:
         """Store a document in the producer topic.
 
         Parameters
         ----------
         document : dict
            Document to store.
+
+        Returns
+        -------
+        Returns True to inform the pipeline to call the batch_finished_callback method in the
+        configured input
         """
-        topic, _, payload = document.partition(",")
-        self.store_custom(payload, topic)
+        self.store_custom(document, self._config.topic)
 
     @Metric.measure_time()
     def store_custom(self, document: str, target: str) -> None:
