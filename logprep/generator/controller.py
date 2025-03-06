@@ -30,9 +30,9 @@ class Controller:
         self.input = input_connector
         self.loghandler = loghandler
         self.config = config
-        self.sender: Sender = None
         self.thread_count: int = config.get("thread_count", 1)
         self.file_loader = FileLoader(self.input.temp_dir, **self.config)
+        self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         self.exit_requested = False
         # TODO:
         # cli interface does not run conditionally http and kafka output
@@ -43,7 +43,6 @@ class Controller:
         """Setup the generator"""
         self.loghandler.start()
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
-        self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)
 
