@@ -34,7 +34,7 @@ def _print_version(config: "Configuration") -> None:
     sys.exit(EXITCODES.SUCCESS.value)
 
 
-def _get_configuration(config_paths: list[str]) -> Configuration:
+def _get_configuration(config_paths: tuple[str]) -> Configuration:
     try:
         config = Configuration.from_sources(config_paths)
         config.logger.setup_logging()
@@ -66,7 +66,7 @@ def cli() -> None:
     default=False,
     help="Print version and exit (includes also congfig version)",
 )
-def run(configs: list[str], version=None) -> None:
+def run(configs: tuple[str], version=None) -> None:
     """
     Run Logprep with the given configuration.
 
