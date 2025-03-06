@@ -30,23 +30,14 @@ class Controller:
         self.input = input_connector
         self.loghandler = loghandler
         self.config = config
-        self.sender = None
+        self.sender: Sender = None
         self.thread_count: int = config.get("thread_count", 1)
         self.file_loader = FileLoader(self.input.temp_dir, **self.config)
         self.exit_requested = False
         # TODO:
-        # Update tests
         # cli interface does not run conditionally http and kafka output
         # (see: explorative test output)
-        # Check kafka message format, compatible with kafka consumer?
-        #    * write a own kafka and http Output for the generator by inheriting from the existing
-        #      Output classes
-        #    * write own tests for own classes in the generator unit tests
         # Add advanced documentation with examples
-        # ssl verify as default for http output - can be disabled by cli config
-        #    * add option to cli to disable ssl verification
-        #    * add option to cli to inject ca cert by path:
-        #       https://docs.python-requests.org/en/latest/user/advanced/#ssl-cert-verification
 
     def setup(self) -> None:
         """Setup the generator"""

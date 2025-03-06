@@ -66,7 +66,7 @@ def cli() -> None:
     default=False,
     help="Print version and exit (includes also congfig version)",
 )
-def run(configs: tuple[str], version=None) -> None:
+def run(configs: list[str], version=None) -> None:
     """
     Run Logprep with the given configuration.
 
