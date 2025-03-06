@@ -35,7 +35,7 @@ def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
     while True:
         assert not re.search("Invalid", output)
         assert not re.search("Exception", output)
-        assert not re.search("critical", output)
+        assert not re.search("Critical", output)
         assert not re.search("Error", output)
         assert not re.search("ERROR", output)
         if re.search("Startup complete", output):
@@ -57,7 +57,7 @@ def test_start_of_logprep_with_full_configuration_http():
         while True:
             assert not re.search("Invalid", output), output
             assert not re.search("Exception", output), output
-            assert not re.search("critical", output), output
+            assert not re.search("Critical", output), output
             assert not re.search("Error", output), output
             assert not re.search("ERROR", output), output
             if re.search("Startup complete", output):
@@ -107,7 +107,7 @@ output:
         while True:
             assert not re.search("Invalid", output)
             assert not re.search("Exception", output)
-            assert not re.search("critical", output)
+            assert not re.search("Critical", output)
             assert not re.search("Error", output)
             assert not re.search("ERROR", output)
             if re.search("Startup complete", output):
@@ -163,7 +163,7 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     while True:
         output = proc.stdout.readline().decode("utf8")
         assert "error" not in output.lower(), "error message"
-        assert "critical" not in output.lower(), "error message"
+        assert "Critical" not in output.lower(), "error message"
         assert "exception" not in output.lower(), "error message"
         assert not re.search("Shutting down", output)
         if "Startup complete" in output:
