@@ -84,7 +84,7 @@ class TestFactory:
             "generator_output": {
                 "type": "confluentkafka_generator_output",
                 "topic": "producer",
-                "send_timeout": 1,
+                "send_timeout": 0,
                 "kafka_config": json.loads(kwargs.get("output_config")),
             },
         }

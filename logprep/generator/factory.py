@@ -30,6 +30,7 @@ class ControllerFactory:
             raise ValueError(f"Controller type {target} not supported")
         loghandler = cls.get_loghandler(kwargs.get("loglevel", "INFO"))
         input_connector = Input(kwargs)
+        print(input_connector.log_class_manipulator_mapping)
         output_connector = None
         match target:
             case "http":
@@ -53,7 +54,7 @@ class ControllerFactory:
                 output_config = {
                     "generator_output": {
                         "type": "confluentkafka_generator_output",
-                        "topic": "producer",
+                        "topic": "testy3/2",
                         "kafka_config": kafka_config,
                         "send_timeout": 1,
                     },

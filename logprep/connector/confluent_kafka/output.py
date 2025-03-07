@@ -221,9 +221,9 @@ class ConfluentKafkaOutput(Output):
         """Return the statistics of this connector as a formatted string."""
         stats: dict = {}
         metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
-
-        self.stats_event.clear()
-        self._producer.flush()
+        if self._config.send_timeout > 0:
+            self.stats_event.clear()
+            self._producer.flush()
         self._producer.poll(self._config.send_timeout)
         if not self.stats_event.wait(timeout=self._config.send_timeout):
             logger.warning(
@@ -237,8 +237,7 @@ class ConfluentKafkaOutput(Output):
             samples = filter(
                 lambda x: x.name.endswith("_total")
                 and "number_of_warnings" not in x.name  # blocklisted metric
-                and "number_of_errors" not in x.name  # blocklisted metric
-                or "txmsgs" in x.name,  # whitelisted metric
+                and "number_of_errors" not in x.name,  # blocklisted metric
                 getattr(self.metrics, metric.name).tracker.collect()[0].samples,
             )
             for sample in samples:
