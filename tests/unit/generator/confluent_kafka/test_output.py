@@ -14,12 +14,20 @@ class TestConfluentKafkaGeneratorOutput:
         config = MagicMock()
         self.mock_parent = MagicMock(spec=ConfluentKafkaOutput)
         self.output = ConfluentKafkaGeneratorOutput("test", config)
+        self.output.metrics = MagicMock()
+        self.output.metrics.processed_batches = 0
         self.output.__dict__.update(self.mock_parent.__dict__)
         self.output.store_custom = MagicMock()
 
     def test_store_calls_store_custom(self):
         self.output.store("test_topic,test_payload")
         self.output.store_custom.assert_called_once_with("test_payload", "test_topic")
+
+    def test_store_counting_batches(self):
+        self.output.store("test_topic,test_payload")
+        assert self.output.metrics.processed_batches == 1
+        self.output.store("test_topic,test_payload")
+        assert self.output.metrics.processed_batches == 2
 
     def test_store_handles_empty_payload(self):
         self.output.store("test_topic,")
