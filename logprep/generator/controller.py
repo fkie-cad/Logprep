@@ -35,8 +35,8 @@ class Controller:
         self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         self.exit_requested = False
         # TODO:
-        # cli interface does not run conditionally http and kafka output
-        # (see: explorative test output)
+        # Set kafka topic in one place.
+        # Kafka topic has a legitimate name
         # Add advanced documentation with examples
 
     def setup(self) -> None:
