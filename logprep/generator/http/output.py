@@ -15,6 +15,8 @@ class HttpGeneratorOutput(HttpOutput):
     def store(self, document: tuple[str, dict | list[dict]] | dict | str) -> None:
         if isinstance(document, str):
             target, _, payload = document.partition(",")
-            self.store_custom(payload, self._config.target_url + "/" + target)
+            self.store_custom(
+                payload, self._config.target_url.rstrip("/") + "/" + target.lstrip("/")
+            )
         else:
             super().store(document)
