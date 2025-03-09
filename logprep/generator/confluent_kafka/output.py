@@ -9,6 +9,7 @@ Sends the documents writen by the generator to a topic endpoint.
 import re
 from venv import logger
 
+from attr import evolve
 from confluent_kafka import KafkaException
 
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
@@ -17,14 +18,12 @@ from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
     """Output class inheriting from the connector output class"""
 
-    def __init__(self, name, configuration):
-        super().__init__(name, configuration)
-        self.target = "test"
-
     def store(self, document: dict | str) -> None:
         if isinstance(document, str):
+
             self.metrics.processed_batches += 1
             topic, _, payload = document.partition(",")
+            self._config = evolve(self._config, topic=topic)
             if self.is_valid_kafka_topic(topic):
                 self._producer.produce(topic, value=self._encoder.encode(document))
                 self.target = topic
