@@ -2,26 +2,44 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
 
+import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
-from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutput
+from logprep.factory import Factory
 
 
 class TestConfluentKafkaGeneratorOutput:
 
     def setup_method(self):
-        config = MagicMock()
-        self.mock_parent = MagicMock(spec=ConfluentKafkaOutput)
-        self.output = ConfluentKafkaGeneratorOutput("test", config)
+
+        default_config = '{"bootstrap.servers": "localhost:9092"}'
+        kafka_config = json.loads(default_config)
+        output_config = {
+            "generator_output": {
+                "type": "confluentkafka_generator_output",
+                "topic": kafka_config.get("topic", "producer"),
+                "kafka_config": kafka_config,
+                "send_timeout": 0,
+            },
+        }
+
+        self.output = Factory.create(output_config)
+
         self.output.metrics = MagicMock()
         self.output.metrics.processed_batches = 0
-        self.output.__dict__.update(self.mock_parent.__dict__)
         self.output.store_custom = MagicMock()
 
     def test_store_calls_store_custom(self):
         self.output.store("test_topic,test_payload")
         self.output.store_custom.assert_called_once_with("test_payload", "test_topic")
+
+    def test_store_updates_topic(self):
+        assert self.output._config.topic == "producer"
+        self.output.store("test_topic,test_payload")
+        assert self.output._config.topic == "test_topic"
 
     def test_store_counting_batches(self):
         self.output.store("test_topic,test_payload")
@@ -41,3 +59,25 @@ class TestConfluentKafkaGeneratorOutput:
         with patch.object(ConfluentKafkaOutput, "store", MagicMock()) as mock_store:
             self.output.store({"test_field": "test_value"})
             mock_store.assert_called_once_with({"test_field": "test_value"})
+
+    @pytest.mark.parametrize(
+        "topic, expected",
+        [
+            ("valid_topic", True),
+            ("valid-topic-123", True),
+            ("valid.topic_123", True),
+            ("", False),
+            ("..", False),
+            (".", False),
+            (
+                "this_is_a_very_long_topic_name_that_exceeds_the_maximum_length_limit_of_249_characters_"
+                + "a" * 200,
+                False,
+            ),
+            ("invalid topic", False),
+            ("invalid#topic", False),
+            ("invalid@topic", False),
+        ],
+    )
+    def test_is_valid_kafka_topic(self, topic, expected):
+        assert self.output.is_valid_kafka_topic(topic) == expected
