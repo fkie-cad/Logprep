@@ -4,6 +4,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from logprep.connector.http.output import HttpOutput
 from logprep.generator.http.output import HttpGeneratorOutput
 
@@ -34,3 +36,19 @@ class TestConfluentKafkaGeneratorOutput:
     def test_store_handles_missing_comma(self):
         self.output.store("test_path")
         self.output.store_custom.assert_called_once_with("", "test_url.com/test_path")
+
+    @pytest.mark.parametrize(
+        "target_url, target, expected_url",
+        [
+            ("http://example.com/api", "resource", "http://example.com/api/resource"),
+            ("http://example.com/api/", "resource", "http://example.com/api/resource"),
+            ("http://example.com/api", "/resource", "http://example.com/api/resource"),
+            ("http://example.com/api/", "/resource", "http://example.com/api/resource"),
+            ("http://example.com", "api/resource", "http://example.com/api/resource"),
+            ("http://example.com/", "/api/resource", "http://example.com/api/resource"),
+        ],
+    )
+    def test_store_constructs_correct_url(self, target_url, target, expected_url):
+        self.output._config.target_url = target_url
+        self.output.store(f"{target},payload_data")
+        self.output.store_custom.assert_called_once_with("payload_data", expected_url)
