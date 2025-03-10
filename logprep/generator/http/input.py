@@ -1,7 +1,6 @@
 """Input module that loads the jsonl files batch-wise"""
 
 import logging
-import random
 import shutil
 import tempfile
 import time
@@ -104,6 +103,7 @@ class Input:
         self.log_class_manipulator_mapping: Dict = {}
         self.number_events_of_dataset = 0
         self.config = config
+        self.target_sets: set = set()
 
     def reformat_dataset(self) -> None:
         """
@@ -121,7 +121,6 @@ class Input:
             self._populate_events_list(file_paths, log_class_config)
         logger.info("Preparing data took: %s seconds", time.perf_counter() - start_time)
 
-    ### Test done
     def _populate_events_list(
         self, file_paths: list[Path], log_class_config: EventClassConfig
     ) -> None:
@@ -134,6 +133,7 @@ class Input:
             with open(file, "r", encoding="utf8") as event_file:
                 for event in event_file.readlines():
                     self.number_events_of_dataset += 1
+                    self.target_sets.add(log_class_config.target)
                     events.append(f"{log_class_config.target},{event.strip()}")
                     if len(events) == self.MAX_EVENTS_PER_FILE:
                         self.file_writer.write_events_file(events, self.temp_dir, self.config)
@@ -146,7 +146,6 @@ class Input:
         )
         self.log_class_manipulator_mapping[log_class_config.target] = manipulator
 
-    ### Test done
     def clean_up_tempdir(self) -> None:
         """Delete temporary directory which contains the reformatted dataset"""
         if Path(self.temp_dir).exists() and Path(self.temp_dir).is_dir():

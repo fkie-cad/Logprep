@@ -38,17 +38,18 @@ class TestConfluentKafkaGeneratorOutput:
         self.output.store_custom.assert_called_once_with("", "test_url.com/test_path")
 
     @pytest.mark.parametrize(
-        "target_url, target, expected_url",
+        "targets, should_raise, expected_faulty",
         [
-            ("http://example.com/api", "resource", "http://example.com/api/resource"),
-            ("http://example.com/api/", "resource", "http://example.com/api/resource"),
-            ("http://example.com/api", "/resource", "http://example.com/api/resource"),
-            ("http://example.com/api/", "/resource", "http://example.com/api/resource"),
-            ("http://example.com", "api/resource", "http://example.com/api/resource"),
-            ("http://example.com/", "/api/resource", "http://example.com/api/resource"),
+            (["/valid", "/another_valid"], False, []),
+            (["invalid", "/valid"], True, ["invalid"]),
+            (["invalid1", "invalid2"], True, ["invalid1", "invalid2"]),
+            ([], False, []),
         ],
     )
-    def test_store_constructs_correct_url(self, target_url, target, expected_url):
-        self.output._config.target_url = target_url
-        self.output.store(f"{target},payload_data")
-        self.output.store_custom.assert_called_once_with("payload_data", expected_url)
+    def test_validate(self, targets, should_raise, expected_faulty):
+        if should_raise:
+            with pytest.raises(ValueError) as exc_info:
+                self.output.validate(targets)
+            assert str(exc_info.value) == f"Invalid target missing /: {expected_faulty}"
+        else:
+            self.output.validate(targets)
