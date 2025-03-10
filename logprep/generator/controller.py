@@ -36,7 +36,6 @@ class Controller:
         self.exit_requested = False
         # TODO:
         # Set kafka topic in one place.
-        # Kafka topic has a legitimate name
         # Add advanced documentation with examples
 
     def setup(self) -> None:
