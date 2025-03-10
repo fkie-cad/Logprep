@@ -42,6 +42,7 @@ class Controller:
     def setup(self) -> None:
         """Setup the generator"""
         self.loghandler.start()
+        self.output.validate(self.input.target_sets)
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
         signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)
@@ -51,6 +52,7 @@ class Controller:
         count the return statistics"""
         logger.info("Started Data Processing")
         self.input.reformat_dataset()
+        print(self.input.target_sets)
         self.setup()
         run_time_start = time.perf_counter()
         self.sender.send_batches()

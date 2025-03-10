@@ -80,4 +80,20 @@ class TestConfluentKafkaGeneratorOutput:
         ],
     )
     def test_is_valid_kafka_topic(self, topic, expected):
-        assert self.output.is_valid_kafka_topic(topic) == expected
+        assert self.output._is_valid_kafka_topic(topic) == expected
+
+    @pytest.mark.parametrize(
+        "targets, should_raise, expected_faulty",
+        [
+            (["valid", "another_valid"], False, []),
+            (["/invalid", "valid"], True, ["/invalid"]),
+            (["/invalid", "invalid#"], True, ["/invalid", "invalid#"]),
+        ],
+    )
+    def test_validate(self, targets, should_raise, expected_faulty):
+        if should_raise:
+            with pytest.raises(ValueError) as exc_info:
+                self.output.validate(targets)
+            assert str(exc_info.value) == f"Invalid Kafka topic names: {expected_faulty}"
+        else:
+            self.output.validate(targets)

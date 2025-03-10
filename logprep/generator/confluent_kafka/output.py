@@ -18,20 +18,25 @@ from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
     """Output class inheriting from the connector output class"""
 
+    def validate(self, topics):
+        """validates the given topics"""
+        faulty_topics = [topic for topic in topics if not self._is_valid_kafka_topic(topic)]
+
+        if faulty_topics:
+            raise ValueError(f"Invalid Kafka topic names: {faulty_topics}")
+
     def store(self, document: dict | str) -> None:
         if isinstance(document, str):
 
             self.metrics.processed_batches += 1
             topic, _, payload = document.partition(",")
             self._config = evolve(self._config, topic=topic)
-            if self.is_valid_kafka_topic(topic):
-                self._producer.produce(topic, value=self._encoder.encode(document))
-                self.target = topic
-                documents = list(payload.split(";"))
-                for item in documents:
-                    self.store_custom(item, topic)
-            else:
-                raise ValueError(f"Invalid Kafka topic name: {topic}")
+            self._producer.produce(topic, value=self._encoder.encode(document))
+            self.target = topic
+            documents = list(payload.split(";"))
+            for item in documents:
+                self.store_custom(item, topic)
+
         else:
             super().store(document)
 
@@ -47,7 +52,7 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
             return False
         return True
 
-    def is_valid_kafka_topic(self, topic: str) -> bool:
+    def _is_valid_kafka_topic(self, topic: str) -> bool:
         """Checks if the given Kafka topic name is valid according to Kafka's rules."""
         if not isinstance(topic, str) or not topic:
             return False
