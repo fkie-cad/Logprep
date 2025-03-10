@@ -48,7 +48,6 @@ To find out more about the usage of the kafka load-tester execute:
 
     logprep generate kafka --help
 
-
 Configuration
 """""""""""""
 
@@ -88,6 +87,62 @@ It must have the following format:
 
 Unused parameters must be removed or commented.
 
+
+Kafka2
+^^^^^^
+
+Kafka2 is a load tester for generating events based on templated sample files
+stored in a dataset directory. These events are then sent to specified Kafka topics.
+The event generation process is identical to the :ref:`http_generator` generator.
+
+The dataset directory containing the sample files must follow this structure:
+
+.. code-block:: bash
+
+    | - Test-Logs-Directory
+    | | - Test-Logs-Class-1-Directory
+    | | | - config.yaml
+    | | | - Test-Logs-1.jsonl
+    | | | - Test-Logs-2.jsonl
+    | | - Test-Logs-Class-2-Directory
+    | | | - config.yaml
+    | | | - Test-Logs-A.jsonl
+    | | | - Test-Logs-B.jsonl
+
+While the jsonl event files can have arbitrary names, the `config.yaml` needs to be called exactly
+that. It also needs to follow the following schema:
+
+.. code-block:: yaml
+    :caption: Example configuration file for the http event generator
+
+    target: example_topic
+    timestamps:
+    - key: TIMESTAMP_FIELD_1
+        format: "%Y%m%d"
+    - key: TIMESTAMP_FIELD_1
+        format: "%H%M%S"
+        time_shift: "+0200"  # Optional, sets time shift in hours and minutes, if needed ([+-]HHMM)
+
+Example Execution
+"""""""""""""""""
+
+Before running Kafka event generation, ensure that the required
+environment is started as described in :doc:`../examples/compose`.
+
+.. code-block:: bash
+
+    logprep generate kafka2 --input-dir ./examples/exampledata/input_logdata_kafka/  --batch-size 5 --events 10 --output-config '{"bootstrap.servers": "127.0.0.1:9092"}'
+
+To learn more about the Kafka event generator, run:
+
+.. code-block:: bash
+
+    logprep generate kafka2 --help
+
+
+
+.. _http_generator:
+
 Http
 ^^^^
 
@@ -114,7 +169,7 @@ that. It also needs to follow the following schema:
 .. code-block:: yaml
     :caption: Example configuration file for the http event generator
 
-    target_path: /endpoint/logsource/path
+    target: /endpoint/logsource/path
     timestamps:
     - key: TIMESTAMP_FIELD_1
         format: "%Y%m%d"
@@ -137,7 +192,7 @@ and debugging purposes. But this can also be used to depseudonymize values pseud
 Logprep :code:`Pseudonymizer` Processor.
 
 These tools can be used to pseudonymize given strings using the same method as used in Logprep
-and provides functionality to depseudonymize values using a pair of keys. 
+and provides functionality to depseudonymize values using a pair of keys.
 
 generate keys
 ^^^^^^^^^^^^^
@@ -169,8 +224,8 @@ depseudonymize
 
     logprep pseudo depseudonymize analyst depseudo <output from above>
 
-This will depseudonymize the provided string using the analyst and depseudo keys.  
-  
+This will depseudonymize the provided string using the analyst and depseudo keys.
+
 * get help with :code:`logprep pseudo depseudonymize --help`
 
 Restart Behavior
@@ -215,4 +270,3 @@ You can configure the healthcheck timeout on component level with the parameter 
 The default value is 1 second.
 
 Healthchecks are used in the provided helm charts as default for readiness probes.
-
