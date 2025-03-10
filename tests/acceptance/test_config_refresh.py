@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 import tempfile
-from pathlib import Path
 
 import pytest
 from ruamel.yaml import YAML
@@ -42,11 +41,6 @@ def get_config():
     return Configuration(**config_dict)
 
 
-def teardown_function():
-    Path("generated_config.yml").unlink(missing_ok=True)
-    stop_logprep()
-
-
 def test_two_times_config_refresh_after_5_seconds(tmp_path, config):
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_json())
@@ -59,6 +53,7 @@ def test_two_times_config_refresh_after_5_seconds(tmp_path, config):
     config.version = "other version"
     config_path.write_text(config.as_json())
     wait_for_output(proc, "Successfully reloaded configuration", test_timeout=20)
+    stop_logprep(proc)
 
 
 def test_no_config_refresh_after_5_seconds(tmp_path, config):
@@ -73,3 +68,4 @@ def test_no_config_refresh_after_5_seconds(tmp_path, config):
         "Configuration version didn't change. Continue running with current version.",
         test_timeout=7,
     )
+    stop_logprep(proc)

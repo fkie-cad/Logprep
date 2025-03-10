@@ -87,14 +87,6 @@ def get_config():
     return Configuration(**config)
 
 
-def setup_function():
-    stop_logprep()
-
-
-def teardown_function():
-    stop_logprep()
-
-
 def test_full_pipeline_run_with_two_outputs(tmp_path: Path, config: Configuration):
     output_path1 = Path(config.output["jsonl"]["output_file"])
     output_path_custom1 = Path(config.output["jsonl"]["output_file_custom"])
@@ -115,3 +107,4 @@ def test_full_pipeline_run_with_two_outputs(tmp_path: Path, config: Configuratio
         "utf8"
     ), "stored custom output not in output with name 'second_output'"
     assert not output_path_error.read_text("utf8"), "no errors in processing"
+    stop_logprep(proc)
