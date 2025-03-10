@@ -110,7 +110,8 @@ dev = [
   "pytest-asyncio",
   "pre-commit",
   "mypy",
-  "types-requests"
+  "types-requests",
+  "psutil"
 ]
 
 doc = [

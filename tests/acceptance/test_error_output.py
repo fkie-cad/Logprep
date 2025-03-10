@@ -56,7 +56,6 @@ def get_config():
 
 def teardown_function():
     Path("generated_config.yml").unlink(missing_ok=True)
-    stop_logprep()
 
 
 def test_error_output_for_critical_input_error_with_missing_hmac_target_field(
@@ -84,6 +83,7 @@ def test_error_output_for_critical_input_error_with_missing_hmac_target_field(
             assert False, "Timeout reached"
     error_content = error_output_path.read_text(encoding="utf8")
     assert content in error_content
+    stop_logprep(proc)
 
 
 def test_error_output_errors_are_logged_if_error_output_has_an_error(
@@ -104,3 +104,4 @@ def test_error_output_errors_are_logged_if_error_output_has_an_error(
         test_timeout=30,
         forbidden_outputs=[],
     )
+    stop_logprep(proc)

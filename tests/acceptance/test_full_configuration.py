@@ -21,7 +21,6 @@ from tests.acceptance.util import (
 
 def teardown_function():
     Path("generated_config.yml").unlink(missing_ok=True)
-    stop_logprep()
 
 
 def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
@@ -41,6 +40,7 @@ def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
         if re.search("Startup complete", output):
             break
         output = proc.stdout.readline().decode("utf8")
+    stop_logprep(proc)
 
 
 def test_start_of_logprep_with_full_configuration_http():
@@ -63,6 +63,7 @@ def test_start_of_logprep_with_full_configuration_http():
             if re.search("Startup complete", output):
                 break
             output = proc.stdout.readline().decode("utf8")
+    stop_logprep(proc)
 
 
 def test_start_of_logprep_from_http_with_templated_url_and_config():
@@ -113,6 +114,7 @@ output:
             if re.search("Startup complete", output):
                 break
             output = proc.stdout.readline().decode("utf8")
+        stop_logprep(proc)
 
 
 def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
@@ -253,4 +255,4 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     response.raise_for_status()
     assert "OK" == response.text
 
-    proc.kill()
+    stop_logprep(proc)

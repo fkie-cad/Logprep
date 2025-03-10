@@ -65,14 +65,6 @@ def config_fixture():
     return config
 
 
-def setup_function():
-    stop_logprep()
-
-
-def teardown_function():
-    stop_logprep()
-
-
 def test_file_input_accepts_message_for_single_pipeline(tmp_path, config: Configuration):
     output_path = tmp_path / "output.jsonl"
     input_path = tmp_path / "input.log"
@@ -85,6 +77,7 @@ def test_file_input_accepts_message_for_single_pipeline(tmp_path, config: Config
     wait_for_output(proc, "Runner     INFO    : Startup complete")
     wait_for_interval(4 * CHECK_INTERVAL)
     assert test_initial_log_data[0] in output_path.read_text()
+    stop_logprep(proc)
 
 
 def test_file_input_accepts_message_for_two_pipelines(tmp_path, config: Configuration):
@@ -100,3 +93,4 @@ def test_file_input_accepts_message_for_two_pipelines(tmp_path, config: Configur
     wait_for_output(proc, "Runner     INFO    : Startup complete")
     wait_for_interval(4 * CHECK_INTERVAL)
     assert test_initial_log_data[0] in output_path.read_text()
+    stop_logprep(proc)

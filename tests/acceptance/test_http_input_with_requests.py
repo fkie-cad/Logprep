@@ -1,7 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
-import os
-import sys
 import time
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
@@ -48,14 +46,6 @@ def config_fixture():
     return config
 
 
-# def setup_function():
-#    start_logprep()
-
-
-def teardown_function():
-    stop_logprep()
-
-
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
 def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: Configuration):
     output_path = tmp_path / "output.jsonl"
@@ -68,12 +58,9 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: 
     requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
     time.sleep(0.5)
     assert "my message" in output_path.read_text()
+    stop_logprep(proc)
 
 
-@pytest.mark.skipif(
-    all([sys.version_info[1] == 13, os.environ.get("CI", False)]),
-    reason="This test complains for already used ports on python 3.13 in CI",
-)
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
 def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, config: Configuration):
     config.process_count = 4
@@ -87,3 +74,4 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, confi
     requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
     time.sleep(0.5)
     assert "my message" in output_path.read_text()
+    stop_logprep(proc)

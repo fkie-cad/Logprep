@@ -67,7 +67,6 @@ def get_config():
 
 def teardown_function():
     Path("generated_config.yml").unlink(missing_ok=True)
-    stop_logprep()
 
 
 def test_events_pseudonymized_correctly(tmp_path, config: Configuration):
@@ -101,3 +100,4 @@ def test_events_pseudonymized_correctly(tmp_path, config: Configuration):
     assert (
         result["difference"][0] == result["difference"][1]
     ), f"Missmatch in event at line {result['event_line_no']}!"
+    stop_logprep(proc)
