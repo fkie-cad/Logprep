@@ -123,18 +123,7 @@ that. It also needs to follow the following schema:
         format: "%H%M%S"
         time_shift: "+0200"  # Optional, sets time shift in hours and minutes, if needed ([+-]HHMM)
 
-Example Execution
-"""""""""""""""""
-
-Before running Kafka event generation, ensure that the required
-environment is started as described in :doc:`../examples/compose`.
-
-.. code-block:: bash
-
-    logprep generate kafka2 --input-dir ./examples/exampledata/input_logdata_kafka/  --batch-size 5 --events 10 --output-config '{"bootstrap.servers": "127.0.0.1:9092"}'
-
 To learn more about the Kafka event generator, run:
-
 .. code-block:: bash
 
     logprep generate kafka2 --help
@@ -270,3 +259,83 @@ You can configure the healthcheck timeout on component level with the parameter 
 The default value is 1 second.
 
 Healthchecks are used in the provided helm charts as default for readiness probes.
+
+Event Generation Guide
+----------------------
+
+Prerequisites
+^^^^^^^^^^^^^
+
+Before running either the HTTP or Kafka event generation process, ensure that
+the required environment is set up as described in :doc:`../examples/compose`.
+
+Start the necessary environment using the following command:
+
+.. code-block:: bash
+
+    source PROMETHEUS_MULTIPROC_DIR="/tmp/logprep"
+    docker compose -f examples/compose/docker-compose.yml up -d
+
+HTTP Event Generation
+^^^^^^^^^^^^^^^^^^^^^
+
+To start an example pipeline for HTTP event generation, execute the following steps:
+
+1. Create the required directory:
+
+.. code-block:: bash
+
+    mkdir -p /tmp/logprep/
+
+2. Run the pipeline
+
+.. code-block:: bash
+
+    logprep run ./examples/exampledata/config/http_pipeline.yml
+
+Generate and send events to the HTTP endpoint:
+
+.. code-block:: bash
+
+    logprep generate http --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
+
+After execution, the console should display an output similar to:
+
+.. code-block:: bash
+
+    "Number of failed events": 0,
+    "Number of successful events": 10000,
+    "Requests Connection Errors": 0,
+    "Requests Timeouts": 0,
+    "Requests http status 200": 20,
+    "Requests total": 20
+
+The HTTP 200 status indicates that the generated data was successfully transferred.
+Since no batch size was specified, the default batch size was used, resulting in 20 batches being sent.
+
+Kafka Event Generation
+^^^^^^^^^^^^^^^^^^^^^^
+
+To generate events and send them to Kafka, follow these steps:
+
+1. Run the pipeline:
+
+.. code-block:: bash
+
+    logprep run ./examples/exampledata/config/http_pipeline.yml
+
+2. Generate and send events to Kafka:
+
+.. code-block:: bash
+
+    logprep generate kafka2 --input-dir ./examples/exampledata/input_logdata_kafka/  --batch-size 1000 --events 10000 --output-config '{"bootstrap.servers": "127.0.0.1:9092"}'
+
+After execution, the console should display an output similar to:
+
+.. code-block:: bash
+
+    "Is the producer healthy": true,
+    "Number of processed batches": 10,
+    "Number of successful events": 10000
+
+This confirms that the Kafka producer is healthy, and all events have been successfully processed.
