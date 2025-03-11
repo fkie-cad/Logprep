@@ -3,7 +3,7 @@
 import os
 import shutil
 from logging import getLogger
-from typing import Callable, Iterable
+from typing import Any, Awaitable, Callable, Iterable
 
 from prometheus_client import REGISTRY, make_asgi_app, multiprocess
 
@@ -44,15 +44,15 @@ class PrometheusExporter:
     @property
     def is_running(self) -> bool:
         """Returns whether the exporter is running"""
-        return self.server and self.server.thread and self.server.thread.is_alive()
+        return bool(self.server and self.server.thread and self.server.thread.is_alive())
 
     def __init__(self, configuration: MetricsConfig):
         logger.debug("Initializing Prometheus Exporter")
         self.configuration = configuration
         self.server = None
-        self.healthcheck_functions = None
+        self.healthcheck_functions: Iterable[Callable] | None = None
         self._multiprocessing_prepared = False
-        self.app = None
+        self.app: Callable[[Any, Any, Any], Awaitable] | None = None
 
     def prepare_multiprocessing(self):
         """
