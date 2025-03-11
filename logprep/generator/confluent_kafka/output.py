@@ -11,6 +11,7 @@ from venv import logger
 
 from attr import evolve
 from confluent_kafka import KafkaException
+from isort import Config
 
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 
@@ -18,7 +19,13 @@ from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
     """Output class inheriting from the connector output class"""
 
-    def validate(self, topics):
+    _config: Config
+
+    def __init__(self, name, configuration) -> None:
+        super().__init__(name, configuration)
+        self.target: None | str = None
+
+    def validate(self, topics) -> None:
         """validates the given topics"""
         faulty_topics = [topic for topic in topics if not self._is_valid_kafka_topic(topic)]
 
