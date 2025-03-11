@@ -1,9 +1,9 @@
 """Default values for logprep."""
 
-from enum import Enum
+from enum import IntEnum
 
 
-class EXITCODES(Enum):
+class EXITCODES(IntEnum):
     """Exit codes for logprep."""
 
     SUCCESS = 0
