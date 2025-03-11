@@ -31,7 +31,7 @@ BOOL_OR_STR = BoolOrStr()
 
 def _print_version(config: "Configuration") -> None:
     print(get_versions_string(config))
-    sys.exit(EXITCODES.SUCCESS.value)  # type: ignore
+    sys.exit(EXITCODES.SUCCESS)
 
 
 def _get_configuration(config_paths: tuple[str]) -> Configuration:
@@ -43,7 +43,7 @@ def _get_configuration(config_paths: tuple[str]) -> Configuration:
         return config
     except InvalidConfigurationError as error:
         print(f"InvalidConfigurationError: {error}", file=sys.stderr)
-        sys.exit(EXITCODES.CONFIGURATION_ERROR.value)  # type: ignore
+        sys.exit(EXITCODES.CONFIGURATION_ERROR)
 
 
 @click.group(name="logprep")
@@ -95,7 +95,7 @@ def run(configs: tuple[str], version=None) -> None:
             logger.critical(f"A critical error occurred: {error}")
         if runner:
             runner.stop()
-        sys.exit(EXITCODES.ERROR.value)  # type: ignore
+        sys.exit(EXITCODES.ERROR)
     # pylint: enable=broad-except
 
 

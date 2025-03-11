@@ -11,15 +11,15 @@ from venv import logger
 
 from attr import evolve
 from confluent_kafka import KafkaException  # type: ignore
-from isort import Config
 
+from logprep.abc.output import Output
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 
 
 class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
     """Output class inheriting from the connector output class"""
 
-    _config: Config
+    _config: Output.Config
 
     def __init__(self, name, configuration) -> None:
         super().__init__(name, configuration)
