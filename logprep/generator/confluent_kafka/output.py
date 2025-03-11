@@ -10,7 +10,7 @@ import re
 from venv import logger
 
 from attr import evolve
-from confluent_kafka import KafkaException
+from confluent_kafka import KafkaException  # type: ignore
 from isort import Config
 
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
