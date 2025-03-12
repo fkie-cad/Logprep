@@ -39,7 +39,7 @@ class Replacer(FieldManager):
             if template is None:
                 continue
 
-            value_to_replace = event.get(source_field)
+            value_to_replace = str(event.get(source_field))
             if not value_to_replace.startswith(template.prefix):
                 continue
 
