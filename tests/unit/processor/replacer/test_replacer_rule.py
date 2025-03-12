@@ -2,8 +2,7 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.replacer.rule import ReplacerRule
+from logprep.processor.replacer.rule import ReplacerRule, ReplacementTemplate, Replacement
 
 
 class TestReplacerRule:
@@ -14,7 +13,7 @@ class TestReplacerRule:
                 "mapping": {"test": "this is %{replace this}"},
             },
         }
-        rule_dict = ReplacerRule._create_from_dict(rule)
+        rule_dict = ReplacerRule.create_from_dict(rule)
         assert isinstance(rule_dict, ReplacerRule)
 
     @pytest.mark.parametrize(
@@ -87,9 +86,9 @@ class TestReplacerRule:
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                ReplacerRule._create_from_dict(rule)
+                ReplacerRule.create_from_dict(rule)
         else:
-            rule_instance = ReplacerRule._create_from_dict(rule)
+            rule_instance = ReplacerRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("replacer").items():
                 assert hasattr(rule_instance._config, key)
@@ -152,6 +151,87 @@ class TestReplacerRule:
         ],
     )
     def test_equality(self, testcase, rule1, rule2, equality):
-        rule1 = ReplacerRule._create_from_dict(rule1)
-        rule2 = ReplacerRule._create_from_dict(rule2)
+        rule1 = ReplacerRule.create_from_dict(rule1)
+        rule2 = ReplacerRule.create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase
+
+    @pytest.mark.parametrize(
+        ["testcase", "template", "expected"],
+        [
+            (
+                "Do not replace",
+                "do {not replace this}!",
+                ("do {not replace this}!", []),
+            ),
+            (
+                "Replace once within string",
+                "do %{replace this}!",
+                ("do ", [["replace this", "!"]]),
+            ),
+            (
+                "Replace once at beginning of string",
+                "%{replace this}!",
+                ("", [["replace this", "!"]]),
+            ),
+            (
+                "Replace once at end of string",
+                "do %{replace this}",
+                ("do ", [["replace this", ""]]),
+            ),
+            (
+                "Replace once whole string",
+                "%{replace this}",
+                ("", [["replace this", ""]]),
+            ),
+            (
+                "Replace twice within string",
+                "do %{replace} - %{this}!",
+                ("do ", [["replace", " - "], ["this", "!"]]),
+            ),
+            (
+                "Replace twice at beginning of string",
+                "%{replace} - %{this}!",
+                ("", [["replace", " - "], ["this", "!"]]),
+            ),
+            (
+                "Replace twice at end of string",
+                "do %{replace} - %{this}",
+                ("do ", [["replace", " - "], ["this", ""]]),
+            ),
+            (
+                "Replace twice whole string",
+                "%{replace} - %{this}",
+                ("", [["replace", " - "], ["this", ""]]),
+            ),
+            (
+                "Replace nested takes first closing braces",
+                "%{%{replace}}",
+                ("", [["%{replace", "}"]]),
+            ),
+            (
+                "Replace string with empty end",
+                "String with variable ending%{}",
+                ("String with variable ending", [["", ""]]),
+            ),
+            (
+                "Replace string with wildcard at end",
+                "String with variable ending%{*}",
+                ("String with variable ending", [["*", "", True]]),
+            ),
+            (
+                "Replace string with star at end",
+                "String with variable ending%{\\*}",
+                ("String with variable ending", [["*", "", False]]),
+            ),
+        ],
+    )
+    def test_get_template(self, testcase, template, expected):
+        result = ReplacerRule._get_replacement_strings(template)
+        replacements = []
+        for replacement in expected[1]:
+            if len(replacement) == 2:
+                replacement.append(False)
+            replacements.append(Replacement(*replacement))
+        expected = ReplacementTemplate(expected[0], replacements)
+
+        assert expected == result, testcase
