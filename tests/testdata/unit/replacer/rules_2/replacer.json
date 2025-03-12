@@ -1,0 +1,10 @@
+[
+    {
+        "filter": "message",
+        "replacer": {
+            "mapping": {
+                "field": "message with %{replace this}"
+            }
+        }
+    }
+]
