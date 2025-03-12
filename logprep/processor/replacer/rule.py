@@ -70,6 +70,7 @@ Examples for replacer:
 """
 
 from collections import namedtuple
+from typing import NamedTuple, List
 
 from attrs import define, field, validators
 
@@ -83,8 +84,15 @@ START = "%{"
 END = "}"
 
 
-Replacement = namedtuple("Replacement", "value next is_wildcard")
-ReplacementTemplate = namedtuple("ReplacementTemplate", "prefix replacements")
+class Replacement(NamedTuple):
+    value: str
+    next: str
+    is_wildcard: bool
+
+
+class ReplacementTemplate(NamedTuple):
+    prefix: str
+    replacements: List[Replacement]
 
 
 class ReplacerRule(FieldManagerRule):
