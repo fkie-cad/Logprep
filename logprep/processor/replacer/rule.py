@@ -69,7 +69,6 @@ Examples for replacer:
 
 """
 
-from collections import namedtuple
 from typing import NamedTuple, List
 
 from attrs import define, field, validators
