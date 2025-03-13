@@ -613,7 +613,9 @@ class OAuth2ClientFlowCredentials(Credentials):
     timeout: int = field(validator=validators.instance_of(int), default=1)
     """The timeout for the token request. Defaults to 1 second."""
     _token: AccessToken = field(
-        validator=validators.instance_of((AccessToken, type(None))), init=False, repr=False
+        validator=validators.instance_of((AccessToken, type(None))),
+        init=False,
+        repr=False,
     )
 
     def get_session(self) -> Session:
@@ -632,15 +634,9 @@ class OAuth2ClientFlowCredentials(Credentials):
 
         """
         session = super().get_session()
-        payload = None
         if self._no_authorization_header(session):
-            payload = {
-                "grant_type": "client_credentials",
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
-            }
+            payload = {"grant_type": "client_credentials"}
             session.headers["Authorization"] = f"Bearer {self._get_token(payload)}"
-
         if self._token.is_expired and self._token.refresh_token is not None:
             session = Session()
             payload = {
@@ -674,8 +670,11 @@ class OAuth2ClientFlowCredentials(Credentials):
         self._handle_bad_requests_errors(response)
         token_response = response.json()
         access_token = token_response.get("access_token")
+        refresh_token = token_response.get("refresh_token")
         expires_in = token_response.get("expires_in")
-        self._token = AccessToken(token=access_token, expires_in=expires_in)
+        self._token = AccessToken(
+            token=access_token, refresh_token=refresh_token, expires_in=expires_in
+        )
         return self._token
 
 
