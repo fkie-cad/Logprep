@@ -632,13 +632,26 @@ class OAuth2ClientFlowCredentials(Credentials):
 
         """
         session = super().get_session()
-        if "Authorization" in session.headers and self._token.is_expired:
-            session = Session()
+        payload = None
         if self._no_authorization_header(session):
-            session.headers["Authorization"] = f"Bearer {self._get_token()}"
+            payload = {
+                "grant_type": "client_credentials",
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+            }
+            session.headers["Authorization"] = f"Bearer {self._get_token(payload)}"
+
+        if self._token.is_expired and self._token.refresh_token is not None:
+            session = Session()
+            payload = {
+                "grant_type": "refresh_token",
+                "refresh_token": self._token.refresh_token,
+            }
+            session.headers["Authorization"] = f"Bearer {self._get_token(payload)}"
+        self._session = session
         return session
 
-    def _get_token(self) -> AccessToken:
+    def _get_token(self, payload: dict[str, str]) -> AccessToken:
         """send post request to token endpoint
          to retrieve access token using the client credentials grant.
          If received status code is 400 a Bad Request Error is raised.
@@ -648,9 +661,6 @@ class OAuth2ClientFlowCredentials(Credentials):
         _token: AccessToken
             AccessToken object containing the token, the refresh token and the expiry time
         """
-        payload = {
-            "grant_type": "client_credentials",
-        }
         client_secrets = b64encode(f"{self.client_id}:{self.client_secret}".encode("utf-8")).decode(
             "utf-8"
         )
