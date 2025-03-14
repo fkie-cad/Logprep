@@ -155,7 +155,7 @@ class CredentialsFactory:
         credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
         domain = urlparse(target_url).netloc
         scheme = urlparse(target_url).scheme
-        credential_mapping = credentials_file.getter.get(f"{scheme}://{domain}")
+        credential_mapping: dict = credentials_file.getter.get(f"{scheme}://{domain}")
         credentials = cls.from_dict(credential_mapping)
         return credentials
 
@@ -182,12 +182,12 @@ class CredentialsFactory:
             return None
         credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
         endpoint_credentials = credentials_file.input.get("endpoints")
-        credential_mapping = endpoint_credentials.get(target_endpoint)
+        credential_mapping: dict = endpoint_credentials.get(target_endpoint)
         credentials = cls.from_dict(credential_mapping)
         return credentials
 
     @staticmethod
-    def get_content(file_path: Path) -> dict:
+    def get_content(file_path: Path) -> " CredentialsFileSchema":
         """gets content from credentials file
         file can be either json or yaml
 
@@ -633,9 +633,11 @@ class OAuth2ClientFlowCredentials(Credentials):
         """
         session = super().get_session()
         if "Authorization" in session.headers and self._token.is_expired:
+            session.close()
             session = Session()
         if self._no_authorization_header(session):
             session.headers["Authorization"] = f"Bearer {self._get_token()}"
+        self._session = session
         return session
 
     def _get_token(self) -> AccessToken:

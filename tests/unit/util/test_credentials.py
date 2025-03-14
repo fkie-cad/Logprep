@@ -588,6 +588,7 @@ class TestOAuth2ClientFlowCredentials:
         test._token.expiry_time = mock_expiry_time  # expire the token
         # end prepare mock
         session = test.get_session()
+        assert test._session is session
         assert session.headers.get("Authorization") == "Bearer new toooken", "new should be used"
         # next refresh with new refresh token
         responses.add(
@@ -614,6 +615,7 @@ class TestOAuth2ClientFlowCredentials:
         test._token.expiry_time = mock_expiry_time  # expire the token
         new_session = test.get_session()
         assert new_session is not session, "new session should be returned for every refresh"
+        assert test._session is new_session, "new session should be used here"
 
     @pytest.mark.parametrize(
         "error_reason",
