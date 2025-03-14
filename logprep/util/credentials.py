@@ -160,7 +160,7 @@ class CredentialsFactory:
         return credentials
 
     @classmethod
-    def from_endpoint(cls, target_endpoint: str) -> "Credentials":
+    def from_endpoint(cls, target_endpoint: str) -> "Credentials" | None:
         """Factory method to create a credentials object based on the credentials stored in the
         environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
         Based on these credentials the expected authentication method is chosen and represented
