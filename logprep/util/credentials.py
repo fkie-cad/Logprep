@@ -132,7 +132,7 @@ class CredentialsFactory:
     _logger = logging.getLogger("Credentials")
 
     @classmethod
-    def from_target(cls, target_url: str) -> "Credentials" | None:
+    def from_target(cls, target_url: str) -> "Credentials":
         """Factory method to create a credentials object based on the credentials stored in the
         environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
         Based on these credentials the expected authentication method is chosen and represented
@@ -160,7 +160,7 @@ class CredentialsFactory:
         return credentials
 
     @classmethod
-    def from_endpoint(cls, target_endpoint: str) -> "Credentials" | None:
+    def from_endpoint(cls, target_endpoint: str) -> "Credentials":
         """Factory method to create a credentials object based on the credentials stored in the
         environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
         Based on these credentials the expected authentication method is chosen and represented
