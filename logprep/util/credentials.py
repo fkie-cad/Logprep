@@ -637,6 +637,7 @@ class OAuth2ClientFlowCredentials(Credentials):
             session = Session()
         if self._no_authorization_header(session):
             session.headers["Authorization"] = f"Bearer {self._get_token()}"
+        self._session = session
         return session
 
     def _get_token(self) -> AccessToken:
