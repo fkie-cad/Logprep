@@ -31,9 +31,9 @@
         "**/.profile": true
     },
     "python.analysis.typeCheckingMode": "off",
-    // "python.experiments.optInto": [
-    //     "pythonTestAdapter"
-    // ],
+    "python.experiments.optInto": [
+        "pythonTestAdapter"
+    ],
     "python.terminal.activateEnvInCurrentTerminal": true,
     "python.analysis.enablePytestSupport": true,
     "python.testing.pytestArgs": [
