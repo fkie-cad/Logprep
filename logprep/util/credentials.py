@@ -132,7 +132,7 @@ class CredentialsFactory:
     _logger = logging.getLogger("Credentials")
 
     @classmethod
-    def from_target(cls, target_url: str) -> "Credentials":
+    def from_target(cls, target_url: str) -> "Credentials" | None:
         """Factory method to create a credentials object based on the credentials stored in the
         environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
         Based on these credentials the expected authentication method is chosen and represented
@@ -155,7 +155,7 @@ class CredentialsFactory:
         credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
         domain = urlparse(target_url).netloc
         scheme = urlparse(target_url).scheme
-        credential_mapping = credentials_file.getter.get(f"{scheme}://{domain}")
+        credential_mapping: dict = credentials_file.getter.get(f"{scheme}://{domain}")
         credentials = cls.from_dict(credential_mapping)
         return credentials
 
@@ -182,12 +182,12 @@ class CredentialsFactory:
             return None
         credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
         endpoint_credentials = credentials_file.input.get("endpoints")
-        credential_mapping = endpoint_credentials.get(target_endpoint)
+        credential_mapping: dict = endpoint_credentials.get(target_endpoint)
         credentials = cls.from_dict(credential_mapping)
         return credentials
 
     @staticmethod
-    def get_content(file_path: Path) -> dict:
+    def get_content(file_path: Path) -> " CredentialsFileSchema":
         """gets content from credentials file
         file can be either json or yaml
 
