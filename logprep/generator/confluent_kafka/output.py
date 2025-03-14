@@ -26,7 +26,7 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         self.target: None | str = None
 
     def validate(self, topics) -> None:
-        """validates the given topics"""
+        """Validates the given Kafka topics and raises an error for invalid ones."""
         faulty_topics = [topic for topic in topics if not self._is_valid_kafka_topic(topic)]
 
         if faulty_topics:

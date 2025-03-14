@@ -34,9 +34,6 @@ class Controller:
         self.file_loader = FileLoader(self.input.temp_dir, **self.config)
         self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         self.exit_requested = False
-        # TODO:
-        # Set kafka topic in one place.
-        # Add advanced documentation with examples
 
     def setup(self) -> None:
         """Setup the generator"""

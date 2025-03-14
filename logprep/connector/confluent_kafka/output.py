@@ -224,14 +224,14 @@ class ConfluentKafkaOutput(Output):
         if self._config.send_timeout > 0:
             self.stats_event.clear()
             self._producer.flush()
-        self._producer.poll(self._config.send_timeout)
-        if not self.stats_event.wait(timeout=self._config.send_timeout):
-            logger.warning(
-                "Warning: No stats callback triggered within %s!", self._config.send_timeout
-            )
-        else:
-            logger.info("Stats received, continuing...")
-        self._producer.flush()
+            self._producer.poll(self._config.send_timeout)
+            if not self.stats_event.wait(timeout=self._config.send_timeout):
+                logger.warning(
+                    "Warning: No stats callback triggered within %s!", self._config.send_timeout
+                )
+            else:
+                logger.info("Stats received, continuing...")
+            self._producer.flush()
 
         for metric in metrics:
             samples = filter(
