@@ -37,7 +37,7 @@ from typing import Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
-from confluent_kafka import (
+from confluent_kafka import (  # type: ignore
     OFFSET_BEGINNING,
     OFFSET_END,
     OFFSET_INVALID,
@@ -47,7 +47,7 @@ from confluent_kafka import (
     Message,
     TopicPartition,
 )
-from confluent_kafka.admin import AdminClient
+from confluent_kafka.admin import AdminClient  # type: ignore
 
 from logprep.abc.connector import Connector
 from logprep.abc.input import (
@@ -318,7 +318,7 @@ class ConfluentKafkaInput(Input):
         self.metrics.number_of_errors += 1
         logger.error(f"{self.describe()}: {error}")
 
-    def _stats_callback(self, stats: str) -> None:
+    def _stats_callback(self, stats: dict) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
@@ -395,7 +395,7 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self._config.kafka_config['bootstrap.servers']}"
 
-    def _get_raw_event(self, timeout: float) -> bytearray:
+    def _get_raw_event(self, timeout: float) -> bytearray | None:
         """Get next raw Message from Kafka.
 
         Parameters
@@ -429,7 +429,7 @@ class ConfluentKafkaInput(Input):
         self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
         return message.value()
 
-    def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
+    def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, bytearray]]:
         """Parse the raw document from Kafka into a json.
 
         Parameters

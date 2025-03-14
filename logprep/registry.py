@@ -20,6 +20,8 @@ from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.jsonl.output import JsonlOutput
 from logprep.connector.opensearch.output import OpensearchOutput
 from logprep.connector.s3.output import S3Output
+from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutput
+from logprep.generator.http.output import HttpGeneratorOutput
 from logprep.processor.amides.processor import Amides
 from logprep.processor.base.rule import Rule
 from logprep.processor.calculator.processor import Calculator
@@ -95,6 +97,8 @@ class Registry:
         "opensearch_output": OpensearchOutput,
         "http_input": HttpInput,
         "http_output": HttpOutput,
+        "http_generator_output": HttpGeneratorOutput,
+        "confluentkafka_generator_output": ConfluentKafkaGeneratorOutput,
         "s3_output": S3Output,
     }
 

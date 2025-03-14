@@ -23,6 +23,10 @@ KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 
 class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):
+
+    # def setup_method(self):
+    #     self.encoder = msgspec.json.Encoder()
+
     CONFIG = {
         "type": "confluentkafka_output",
         "topic": "test_input_raw",
@@ -46,6 +50,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "logprep_confluent_kafka_output_librdkafka_txmsg_bytes",
         "logprep_processing_time_per_event",
         "logprep_number_of_processed_events",
+        "logprep_processed_batches",
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
     ]
@@ -79,7 +84,8 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
     def test_store_custom_calls_producer_flush_on_buffererror(self, _):
         kafka_producer = self.object._producer
         kafka_producer.produce.side_effect = BufferError
-        self.object.store_custom({"message": "does not matter"}, "doesnotcare")
+        event = '{"message": "does not matter"}'
+        self.object.store_custom(event, "doesnotcare")
         kafka_producer.flush.assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
@@ -99,12 +105,12 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             CriticalOutputError,
             match=r"bad things happened",
         ):
-            self.object.store({"message": "test message"})
+            self.object.store('topic,{"message": "test message"}')
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
         self.object.metrics.number_of_processed_events = 0
-        self.object.store({"message": "my event message"})
+        self.object.store('topic,{"message": "my event message"}')
         assert self.object.metrics.number_of_processed_events == 1
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
