@@ -223,7 +223,7 @@ class ConfluentKafkaOutput(Output):
         metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
         if self._config.send_timeout > 0:
             self.stats_event.clear()
-            self._producer.flush()
+            self._producer.flush(self._config.send_timeout)
             self._producer.poll(self._config.send_timeout)
             if not self.stats_event.wait(timeout=self._config.send_timeout):
                 logger.warning(
@@ -231,7 +231,6 @@ class ConfluentKafkaOutput(Output):
                 )
             else:
                 logger.info("Stats received, continuing...")
-            self._producer.flush()
 
         for metric in metrics:
             samples = filter(
