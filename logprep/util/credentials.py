@@ -321,7 +321,8 @@ class CredentialsFactory:
             }:
                 if extra_params:
                     cls._logger.warning(
-                        "Other parameters were given: %s but OAuth password authorization for confidential clients was chosen",
+                        "Other parameters were given: %s but"
+                        "OAuth password authorization for confidential clients was chosen",
                         extra_params.keys(),
                     )
                 kwargs = {
@@ -357,7 +358,8 @@ class CredentialsFactory:
             }:
                 if extra_params:
                     cls._logger.warning(
-                        "Other parameters were given: %s but OAuth password authorization was chosen",
+                        "Other parameters were given: %s but"
+                        "OAuth password authorization was chosen",
                         extra_params.keys(),
                     )
                 kwargs = {
@@ -446,7 +448,7 @@ class Credentials:
         Parameters
         ----------
         response : Response
-            signifies the respone from the post request sent while retrieving the token
+            signifies the response from the post request sent while retrieving the token
 
         Raises
         ------
@@ -458,7 +460,8 @@ class Credentials:
         except HTTPError as error:
             if response.status_code == 400:
                 raise CredentialsBadRequestError(
-                    f"Authentication failed with status code 400 Bad Request: {response.json().get('error')}"
+                    "Authentication failed with status"
+                    f" code 400 Bad Request: {response.json().get('error')}"
                 ) from error
             raise
 
@@ -582,7 +585,7 @@ class OAuth2PasswordFlowCredentials(Credentials):
     def _get_token(self, payload: dict[str, str]) -> AccessToken:
         """sends a post request containing the payload to the token endpoint to retrieve
         the token.
-        If status code 400 is recieved a Bad Request Error is raised.
+        If status code 400 is received a Bad Request Error is raised.
 
         Parameters
         ----------
@@ -700,12 +703,12 @@ class OAuth2ClientFlowCredentials(Credentials):
 
 @define(kw_only=True)
 class MTLSCredentials(Credentials):
-    """class for mTLS authentification"""
+    """class for mTLS authentication"""
 
     client_key: str = field(validator=validators.instance_of(str))
     """path to the client key"""
     cert: str = field(validator=validators.instance_of(str))
-    """path to the client cretificate"""
+    """path to the client certificate"""
     ca_cert: str = field(validator=validators.instance_of((str, type(None))), default=None)
     """path to a certification authority certificate"""
 
