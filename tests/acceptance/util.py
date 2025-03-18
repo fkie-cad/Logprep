@@ -288,10 +288,28 @@ def wait_for_output(
 
 
 def stop_logprep(proc: subprocess.Popen) -> None:
-    process = psutil.Process(proc.pid)
-    for p in process.children(recursive=True):
-        p.kill()
-    process.kill()
+    if proc is None or not psutil.pid_exists(proc.pid):
+        return
+
+    try:
+        process = psutil.Process(proc.pid)
+        for p in process.children(recursive=True):
+            if p.is_running():
+                p.terminate()
+
+        process.wait(timeout=5)
+        process.terminate()
+        for p in process.children(recursive=True):
+            if p.is_running():
+                p.kill()
+
+        if process.is_running():
+            process.kill()
+
+    except (psutil.NoSuchProcess, psutil.ZombieProcess):
+        pass
+    except psutil.TimeoutExpired:
+        process.kill()
 
 
 def get_full_pipeline(exclude=None):
