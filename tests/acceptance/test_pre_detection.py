@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
-# pylint: disable=too-many-locals
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=unused-argument
 import json
