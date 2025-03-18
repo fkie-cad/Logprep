@@ -30,19 +30,22 @@ filled with the correct values that correspond to the method you want to use.
             client_id: <id>
             client_secret: <secret>
         "http://target.url":
-            # example for OAuth2 Resource Owner Password Credentials Grant with authentication for a confidential client
+            # example for OAuth2 Resource Owner Password Credentials Grant with
+            # authentication for a confidential client
             endpoint: <endpoint>
             username: <username>
             password_file: <path/to/password/file>
             client_id: <client_id> # optional if required
             client_secret_file: <path/to/secret/file> # optional if require
         "http://target.url":
-            # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client
+            # example for OAuth2 Resource Owner Password Credentials Grant for a
+            # public not confidential client
             endpoint: <endpoint>
             username: <username>
             password_file: <path/to/password/file>
         "http://target.url":
-            # example for OAuth2 Resource Owner Password Credentials Grant for a public unconfidential client with inline password
+            # example for OAuth2 Resource Owner Password Credentials Grant for a
+            # public not confidential client with inline password
             endpoint: <endpoint>
             username: <username>
             password: <password>
@@ -132,7 +135,7 @@ class CredentialsFactory:
     _logger = logging.getLogger("Credentials")
 
     @classmethod
-    def from_target(cls, target_url: str) -> "Credentials":
+    def from_target(cls, target_url: str) -> "Credentials | None":
         """Factory method to create a credentials object based on the credentials stored in the
         environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
         Based on these credentials the expected authentication method is chosen and represented
@@ -160,7 +163,7 @@ class CredentialsFactory:
         return credentials
 
     @classmethod
-    def from_endpoint(cls, target_endpoint: str) -> "Credentials":
+    def from_endpoint(cls, target_endpoint: str) -> "Credentials | None":
         """Factory method to create a credentials object based on the credentials stored in the
         environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
         Based on these credentials the expected authentication method is chosen and represented
@@ -182,12 +185,14 @@ class CredentialsFactory:
             return None
         credentials_file: CredentialsFileSchema = cls.get_content(Path(credentials_file_path))
         endpoint_credentials = credentials_file.input.get("endpoints")
-        credential_mapping = endpoint_credentials.get(target_endpoint)
+        if endpoint_credentials is None:
+            return None
+        credential_mapping: dict | None = endpoint_credentials.get(target_endpoint)
         credentials = cls.from_dict(credential_mapping)
         return credentials
 
     @staticmethod
-    def get_content(file_path: Path) -> dict:
+    def get_content(file_path: Path) -> " CredentialsFileSchema":
         """gets content from credentials file
         file can be either json or yaml
 
@@ -246,7 +251,7 @@ class CredentialsFactory:
         credential_mapping.update(secret_content)
 
     @classmethod
-    def from_dict(cls, credential_mapping: dict) -> "Credentials":
+    def from_dict(cls, credential_mapping: dict | None) -> "Credentials | None":
         """matches the given credentials of the credentials mapping
         with the expected credential object"""
         if credential_mapping:
@@ -259,7 +264,7 @@ class CredentialsFactory:
             ) from error
 
     @classmethod
-    def _match_credentials(cls, credential_mapping: dict) -> "Credentials":
+    def _match_credentials(cls, credential_mapping: dict | None) -> "Credentials | None":
         """matches the given credentials of a given mapping to the expected credential object
 
         Parameters
@@ -272,6 +277,7 @@ class CredentialsFactory:
         Credentials
            expected credentials object representing the correct authentication method
         """
+        credentials: "Credentials | None" = None
         match credential_mapping:
             case {"token": token, **extra_params}:
                 if extra_params:
@@ -279,7 +285,7 @@ class CredentialsFactory:
                         "Other parameters were given: %s but OAuth token authorization was chosen",
                         extra_params.keys(),
                     )
-                return OAuth2TokenCredentials(token=token)
+                credentials = OAuth2TokenCredentials(**{"token": token})
             case {
                 "client_key": client_key,
                 "cert": cert,
@@ -291,7 +297,8 @@ class CredentialsFactory:
                         "Other parameters were given: %s but mTLS authorization was chosen",
                         extra_params.keys(),
                     )
-                return MTLSCredentials(client_key=client_key, cert=cert, ca_cert=ca_cert)
+                kwargs = {"client_key": client_key, "cert": cert, "ca_cert": ca_cert}
+                credentials = MTLSCredentials(**kwargs)
             case {
                 "client_key": client_key,
                 "cert": cert,
@@ -302,7 +309,8 @@ class CredentialsFactory:
                         "Other parameters were given: %s but mTLS authorization was chosen",
                         extra_params.keys(),
                     )
-                return MTLSCredentials(client_key=client_key, cert=cert)
+                kwargs = {"client_key": client_key, "cert": cert}
+                credentials = MTLSCredentials(**kwargs)
             case {
                 "endpoint": endpoint,
                 "client_id": client_id,
@@ -313,16 +321,18 @@ class CredentialsFactory:
             }:
                 if extra_params:
                     cls._logger.warning(
-                        "Other parameters were given: %s but OAuth password authorization for confidential clients was chosen",
+                        "Other parameters were given: %s but"
+                        "OAuth password authorization for confidential clients was chosen",
                         extra_params.keys(),
                     )
-                return OAuth2PasswordFlowCredentials(
-                    endpoint=endpoint,
-                    client_id=client_id,
-                    client_secret=client_secret,
-                    username=username,
-                    password=password,
-                )
+                kwargs = {
+                    "endpoint": endpoint,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "username": username,
+                    "password": password,
+                }
+                credentials = OAuth2PasswordFlowCredentials(**kwargs)
             case {
                 "endpoint": endpoint,
                 "client_id": client_id,
@@ -334,9 +344,12 @@ class CredentialsFactory:
                         "Other parameters were given: %s but OAuth client authorization was chosen",
                         extra_params.keys(),
                     )
-                return OAuth2ClientFlowCredentials(
-                    endpoint=endpoint, client_id=client_id, client_secret=client_secret
-                )
+                kwargs = {
+                    "endpoint": endpoint,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                }
+                credentials = OAuth2ClientFlowCredentials(**kwargs)
             case {
                 "endpoint": endpoint,
                 "username": username,
@@ -345,22 +358,31 @@ class CredentialsFactory:
             }:
                 if extra_params:
                     cls._logger.warning(
-                        "Other parameters were given: %s but OAuth password authorization was chosen",
+                        "Other parameters were given: %s but"
+                        "OAuth password authorization was chosen",
                         extra_params.keys(),
                     )
-                return OAuth2PasswordFlowCredentials(
-                    endpoint=endpoint, username=username, password=password
-                )
+                kwargs = {
+                    "endpoint": endpoint,
+                    "username": username,
+                    "password": password,
+                }
+                credentials = OAuth2PasswordFlowCredentials(**kwargs)
             case {"username": username, "password": password, **extra_params}:
                 if extra_params:
                     cls._logger.warning(
                         "Other parameters were given but Basic authentication was chosen: %s",
                         extra_params.keys(),
                     )
-                return BasicAuthCredentials(username=username, password=password)
+                kwargs = {
+                    "username": username,
+                    "password": password,
+                }
+                credentials = BasicAuthCredentials(**kwargs)
             case _:
                 cls._logger.warning("No matching credentials authentication could be found.")
-                return None
+                credentials = None
+        return credentials
 
 
 @define(kw_only=True)
@@ -368,7 +390,11 @@ class AccessToken:
     """A simple dataclass to hold the token and its expiry time."""
 
     token: str = field(validator=validators.instance_of(str), repr=False)
-    """token used for athentication against the target"""
+    """token used for authentication against the target"""
+    expiry_time: datetime = field(
+        validator=validators.instance_of((datetime, type(None))), init=False
+    )
+    """time when token is expired"""
     refresh_token: str = field(
         validator=validators.instance_of((str, type(None))), default=None, repr=False
     )
@@ -379,10 +405,6 @@ class AccessToken:
         converter=lambda x: 0 if x is None else int(x),
     )
     """time the token stays valid"""
-    expiry_time: datetime = field(
-        validator=validators.instance_of((datetime, type(None))), init=False
-    )
-    """time when token is expired"""
 
     def __attrs_post_init__(self):
         self.expiry_time = datetime.now() + timedelta(seconds=self.expires_in)
@@ -426,7 +448,7 @@ class Credentials:
         Parameters
         ----------
         response : Response
-            signifies the respone from the post request sent while retrieving the token
+            signifies the response from the post request sent while retrieving the token
 
         Raises
         ------
@@ -438,7 +460,8 @@ class Credentials:
         except HTTPError as error:
             if response.status_code == 400:
                 raise CredentialsBadRequestError(
-                    f"Authentication failed with status code 400 Bad Request: {response.json().get('error')}"
+                    "Authentication failed with status"
+                    f" code 400 Bad Request: {response.json().get('error')}"
                 ) from error
             raise
 
@@ -496,7 +519,7 @@ class OAuth2TokenCredentials(Credentials):
 
     token: AccessToken = field(
         validator=validators.instance_of(AccessToken),
-        converter=lambda token: AccessToken(token=token),
+        converter=lambda token: AccessToken(**{"token": token}),
         repr=False,
     )
     """The OAuth2 Bearer Token. This is used to authenticate."""
@@ -530,7 +553,7 @@ class OAuth2PasswordFlowCredentials(Credentials):
     client_secret: str = field(
         validator=validators.instance_of((str, type(None))), default=None, repr=False
     )
-    """The client secret for the token request. 
+    """The client secret for the token request.
     This is used to authenticate the client. (Optional)"""
     _token: AccessToken = field(
         validator=validators.instance_of((AccessToken, type(None))),
@@ -562,7 +585,7 @@ class OAuth2PasswordFlowCredentials(Credentials):
     def _get_token(self, payload: dict[str, str]) -> AccessToken:
         """sends a post request containing the payload to the token endpoint to retrieve
         the token.
-        If status code 400 is recieved a Bad Request Error is raised.
+        If status code 400 is received a Bad Request Error is raised.
 
         Parameters
         ----------
@@ -575,7 +598,7 @@ class OAuth2PasswordFlowCredentials(Credentials):
            returns access token to be used, refresh token to be used when
             token is expired and the expiry time of the given access token
         """
-        headers = {}
+        headers: dict[str, str] = {}
         if self.client_id and self.client_secret:
             client_secrets = b64encode(
                 f"{self.client_id}:{self.client_secret}".encode("utf-8")
@@ -592,9 +615,12 @@ class OAuth2PasswordFlowCredentials(Credentials):
         access_token = token_response.get("access_token")
         refresh_token = token_response.get("refresh_token")
         expires_in = token_response.get("expires_in")
-        self._token = AccessToken(
-            token=access_token, refresh_token=refresh_token, expires_in=expires_in
-        )
+        kwargs = {
+            "token": access_token,
+            "refresh_token": refresh_token,
+            "expires_in": expires_in,
+        }
+        self._token = AccessToken(**kwargs)
         return self._token
 
 
@@ -633,9 +659,11 @@ class OAuth2ClientFlowCredentials(Credentials):
         """
         session = super().get_session()
         if "Authorization" in session.headers and self._token.is_expired:
+            session.close()
             session = Session()
         if self._no_authorization_header(session):
             session.headers["Authorization"] = f"Bearer {self._get_token()}"
+        self._session = session
         return session
 
     def _get_token(self) -> AccessToken:
@@ -665,18 +693,22 @@ class OAuth2ClientFlowCredentials(Credentials):
         token_response = response.json()
         access_token = token_response.get("access_token")
         expires_in = token_response.get("expires_in")
-        self._token = AccessToken(token=access_token, expires_in=expires_in)
+        kwargs = {
+            "token": access_token,
+            "expires_in": expires_in,
+        }
+        self._token = AccessToken(**kwargs)
         return self._token
 
 
 @define(kw_only=True)
 class MTLSCredentials(Credentials):
-    """class for mTLS authentification"""
+    """class for mTLS authentication"""
 
     client_key: str = field(validator=validators.instance_of(str))
     """path to the client key"""
     cert: str = field(validator=validators.instance_of(str))
-    """path to the client cretificate"""
+    """path to the client certificate"""
     ca_cert: str = field(validator=validators.instance_of((str, type(None))), default=None)
     """path to a certification authority certificate"""
 
