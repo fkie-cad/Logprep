@@ -14,11 +14,12 @@
 * reimplemented the rule loading mechanic
 * removes `rstr` dependency
 * use official python image again and mitigate setuptools related CVE by uninstalling it system wide
+* rewrote pre-detection tests
 
 ### Bugfix
 * fixes a bug with lucene regex and parentheses
 * fixes a conflict between lucene filter and the Crypto module
-* fixes error in `_handle_warning_error` that broke up tags into characters if the original tag was not a list 
+* fixes error in `_handle_warning_error` that broke up tags into characters if the original tag was not a list
 
 ## 15.1.0
 ### Breaking
