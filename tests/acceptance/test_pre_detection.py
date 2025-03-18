@@ -9,10 +9,28 @@ from pathlib import Path
 import pytest
 from deepdiff import DeepDiff
 
-from tests.acceptance.util import get_default_logprep_config, get_test_output
+from tests.acceptance.util import (
+    get_default_logprep_config,
+    get_test_output,
+    start_logprep,
+    stop_logprep,
+    wait_for_output,
+)
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
+
+
+def teardown_function():
+    Path("generated_config.yml").unlink(missing_ok=True)
+
+    jsonl_file = Path("tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out")
+    if jsonl_file.exists():
+        jsonl_file.write_text("", encoding="utf-8")
+
+    jsonl_file = Path("tests/testdata/acceptance/test_kafka_data_processing_acceptance.out")
+    if jsonl_file.exists():
+        jsonl_file.write_text("", encoding="utf-8")
 
 
 pipeline = [
@@ -25,6 +43,207 @@ pipeline = [
         }
     },
 ]
+
+
+def test_events_pre_detected_runs_without_error(tmp_path: Path):
+    config = get_default_logprep_config(pipeline, with_hmac=False)
+
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
+    proc = start_logprep(config_path)
+    output = proc.stdout.readline().decode("utf8")
+
+    while True:
+        assert not re.search("Invalid", output)
+        assert not re.search("Exception", output)
+        assert not re.search("critical", output)
+        assert not re.search("Error", output)
+        assert not re.search("ERROR", output)
+        if re.search("Startup complete", output):
+            break
+        output = proc.stdout.readline().decode("utf8")
+    stop_logprep(proc)
+
+
+def test_events_pre_detected_correctly2(tmp_path: Path):
+    config = get_default_logprep_config(pipeline, with_hmac=False)
+    # config.output.update({"output_file": tempfile.mkstemp(suffix="output1.jsonl")[1]})
+    output_path = Path(config.output["jsonl"]["output_file"])
+    input_path = Path(config.input["jsonl"]["documents_path"])
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
+    proc = start_logprep(config_path)
+
+    wait_for_output(proc, "no documents left")
+    stop_logprep(proc)
+    assert output_path.read_text("utf8"), "output is not empty"
+    with output_path.open("r", encoding="utf8") as f:
+        output_data = [json.loads(line) for line in f]
+    with input_path.open("r", encoding="utf8") as f:
+        input_data = [json.loads(line) for line in f]
+    assert len(input_data) * 2 == len(output_data)  ### Remove later
+    for index, input_d in enumerate(input_data):
+        diff = DeepDiff(
+            output_data[index],
+            input_d,
+            exclude_paths="root['pre_detection_id']",
+            ignore_order=True,  # Ignore order when comparing lists
+        )
+        assert not diff, f"The expected output event and the logprep output differ: {diff}"
+
+
+@pytest.mark.parametrize(
+    "expected_extra_output",
+    [
+        (None),
+        (
+            [
+                {
+                    "pre_detector_topic": {
+                        "description": "",
+                        "id": "886a07aa-4c72-4fcb-a74a-b494443b3efd",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["mitre1", "mitre2"],
+                        "case_condition": "directly",
+                        "rule_filter": 'winlog.provider_name:"Service Control Manager"',
+                        "pre_detection_id": "1cf39644-a632-4c42-a7b4-2896c4efffb5",
+                        "host": {"name": "CLIENT1"},
+                        "@timestamp": "2019-07-30T14:38:16.352000Z",
+                        "creation_timestamp": "2019-07-30T14:58:16.352Z",
+                    }
+                }
+            ]
+        ),
+        (
+            [
+                {
+                    "pre_detector_topic": {
+                        "description": "",
+                        "id": "886a07aa-4c72-4fcb-a74a-b494443b3efd",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["mitre1", "mitre2"],
+                        "case_condition": "directly",
+                        "rule_filter": 'winlog.provider_name:"Service Control Manager"',
+                        "pre_detection_id": "08d1aa6f-f508-464e-a13d-0b5da46b5bcc",
+                        "host": {"name": "CLIENT1"},
+                        "@timestamp": "2019-08-02T09:46:41.906000Z",
+                        "creation_timestamp": "2019-07-30T14:58:16.352Z",
+                    }
+                }
+            ]
+        ),
+        (
+            [
+                {
+                    "pre_detector_topic": {
+                        "description": "",
+                        "id": "886a07aa-4c72-4fcb-a74a-b494443b3efd",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["mitre1", "mitre2"],
+                        "case_condition": "directly",
+                        "rule_filter": 'winlog.provider_name:"Service Control Manager"',
+                        "pre_detection_id": "06d12743-01f0-4793-8a31-3815cfa31fc3",
+                        "host": {"name": "CLIENT1"},
+                        "@timestamp": "2019-08-02T09:46:54.583000Z",
+                        "creation_timestamp": "2019-07-30T14:58:16.352Z",
+                    }
+                }
+            ]
+        ),
+        (
+            [
+                {
+                    "pre_detector_topic": {
+                        "description": "",
+                        "id": "c46b8c22-41f5-4c45-b1a0-3fbe3a5c186d",
+                        "title": "RULE_TWO",
+                        "severity": "critical",
+                        "mitre": ["mitre2", "mitre3"],
+                        "case_condition": "directly",
+                        "rule_filter": 'winlog.event_id:"123"',
+                        "pre_detection_id": "638cc0b3-b912-4220-8551-defea8ea139d",
+                        "host": {"name": "CLIENT1"},
+                        "@timestamp": "2019-08-02T09:54:57.125000Z",
+                        "creation_timestamp": "2019-07-30T14:58:16.352Z",
+                    }
+                }
+            ]
+        ),
+        (
+            [
+                {
+                    "pre_detector_topic": {
+                        "description": "",
+                        "id": "886a07aa-4c72-4fcb-a74a-b494443b3efd",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["mitre1", "mitre2"],
+                        "case_condition": "directly",
+                        "rule_filter": 'winlog.provider_name:"Service Control Manager"',
+                        "pre_detection_id": "638cc0b3-b912-4220-8551-defea8ea139d",
+                        "host": {"name": "CLIENT1"},
+                        "@timestamp": "2019-08-02T09:54:57.125000Z",
+                    }
+                },
+                {
+                    "pre_detector_topic": {
+                        "description": "",
+                        "id": "c46b8c22-41f5-4c45-b1a0-3fbe3a5c186d",
+                        "title": "RULE_TWO",
+                        "severity": "critical",
+                        "mitre": ["mitre2", "mitre3"],
+                        "case_condition": "directly",
+                        "rule_filter": 'winlog.event_id:"123"',
+                        "pre_detection_id": "638cc0b3-b912-4220-8551-defea8ea139d",
+                        "host": {"name": "CLIENT1"},
+                        "@timestamp": "2019-08-02T09:54:57.125000Z",
+                        "creation_timestamp": "2019-07-30T14:58:16.352Z",
+                    }
+                },
+            ]
+        ),
+    ],
+)
+def test_events_pre_detected_correctly_extra_output(tmp_path: Path, expected_extra_output):
+    config = get_default_logprep_config(pipeline, with_hmac=False)
+    # config.output.update({"output_file": tempfile.mkstemp(suffix="output1.jsonl")[1]})
+    output_extra_path = Path(config.output["jsonl"]["output_file_custom"])
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
+    proc = start_logprep(config_path)
+
+    wait_for_output(proc, "no documents left")
+    stop_logprep(proc)
+    assert output_extra_path.read_text("utf8"), "output is not empty"
+    with output_extra_path.open("r", encoding="utf8") as f:
+        output_extra_data = [json.loads(line) for line in f]
+
+    exclude_paths = {
+        "root['pre_detector_topic']['pre_detection_id']",
+        "root['pre_detector_topic']['creation_timestamp']",
+    }
+    has_matching_output = False
+    for output_extra in output_extra_data:
+        diff = DeepDiff(
+            expected_extra_output[0],
+            output_extra,
+            exclude_paths=exclude_paths,
+            ignore_order=True,
+        )
+
+        if not diff:
+            has_matching_output = True
+
+    assert has_matching_output, (
+        f"The expected extra output doesn't have a matching logprep extra output\n"
+        f"Expected extra output: {expected_extra_output}"
+    )
+
+
+#### Old test
 
 
 # fmt: off
