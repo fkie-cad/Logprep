@@ -4,6 +4,7 @@
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 from deepdiff import DeepDiff
 
@@ -29,6 +30,11 @@ pipeline = [
         }
     },
 ]
+
+
+def load_test_data():
+    yaml_path = Path("tests/testdata/input_logdata/kafka_test.yml")  # Adjust path as needed
+    return yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
 
 
 def test_events_pre_detected_runs_without_error(tmp_path: Path):
@@ -88,37 +94,32 @@ def test_events_pre_detected_return_no_extra_output(tmp_path: Path):
     assert not output_extra_path.read_text("utf8").strip()
 
 
-def test_events_pre_detected_return_extra_output(tmp_path: Path):
+@pytest.mark.parametrize("data", load_test_data())
+def test_events_pre_detected_return_extra_output(data, tmp_path: Path):
+    input_value = data["input_line"]
+    expected_extra_output = data["expected_output"]
+
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config_path = tmp_path / "generated_config.yml"
 
-    input_file_path = Path(config.input["jsonl"]["documents_path"])
-    input_data = [json.loads(line) for line in input_file_path.read_text("utf8").splitlines()]
     input_tmp_path = tmp_path / "input.json"
     config.input["jsonl"]["documents_path"] = str(input_tmp_path)
     config_path.write_text(config.as_yaml())
+    input_tmp_path.write_text(input_value)
 
-    yaml_path = Path("tests/testdata/out/kafka_raw_event_for_pre_detector_extra_output.yml")
-    test_cases = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+    proc = start_logprep(config_path)
+    wait_for_output(proc, "no documents left")
+    stop_logprep(proc)
 
-    for test_case in test_cases:
-        expected_extra_output = test_case["test_case"]["expected_output"]
-        input_line = test_case["test_case"]["input_line"]
-        input_tmp_path.write_text(json.dumps(input_data[input_line]))
+    output_extra_path = Path(config.output["jsonl"]["output_file_custom"])
+    output_extra_data = map(json.loads, output_extra_path.read_text("utf8").splitlines())
+    exclude_paths = {
+        "root['pre_detector_topic']['pre_detection_id']",
+        "root['pre_detector_topic']['creation_timestamp']",
+    }
 
-        proc = start_logprep(config_path)
-        wait_for_output(proc, "no documents left")
-        stop_logprep(proc)
-
-        output_extra_path = Path(config.output["jsonl"]["output_file_custom"])
-        output_extra_data = map(json.loads, output_extra_path.read_text("utf8").splitlines())
-        exclude_paths = {
-            "root['pre_detector_topic']['pre_detection_id']",
-            "root['pre_detector_topic']['creation_timestamp']",
-        }
-
-        assert any(
-            not DeepDiff(expected, output, exclude_paths=exclude_paths)
-            for output in output_extra_data
-            for expected in expected_extra_output
-        ), f"No matching logprep extra output found.\nMismatch for input line {input_line}. \nExpected: {expected_extra_output}"
+    assert any(
+        not DeepDiff(expected, output, exclude_paths=exclude_paths, ignore_order=True)
+        for output in output_extra_data
+        for expected in expected_extra_output
+    ), f"No matching logprep extra output found. \nExpected: {expected_extra_output}"
