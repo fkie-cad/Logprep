@@ -79,10 +79,8 @@ def test_events_pre_detected_correctly(tmp_path: Path):
 
     assert output_path.read_text("utf8"), "output is not empty"
 
-    with output_path.open("r", encoding="utf8") as f:
-        output_data = [json.loads(line) for line in f]
-    with input_file_path.open("r", encoding="utf8") as f:
-        input_data = [json.loads(line) for line in f]
+    output_data = map(json.loads, output_path.read_text("utf8").splitlines())
+    input_data = map(json.loads, input_file_path.read_text("utf8").splitlines())
 
     for out, inp in zip(output_data, input_data):
         diff = DeepDiff(
