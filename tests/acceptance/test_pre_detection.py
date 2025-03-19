@@ -4,7 +4,7 @@
 import json
 from pathlib import Path
 
-import pytest
+import yaml
 from deepdiff import DeepDiff
 
 from tests.acceptance.util import (
@@ -88,53 +88,37 @@ def test_events_pre_detected_return_no_extra_output(tmp_path: Path):
     assert not output_extra_path.read_text("utf8").strip()
 
 
-# fmt: off
-@pytest.mark.parametrize(
-    "input_line, expected_extra_output",
-    [
-        (
-            1, [{"pre_detector_topic": {"description": "", "id": "886a07aa-4c72-4fcb-a74a-b494443b3efd", "title": "RULE_ONE", "severity": "critical", "mitre": ["mitre1", "mitre2"], "case_condition": "directly", "rule_filter": 'winlog.provider_name:"Service Control Manager"', "pre_detection_id": "1cf39644-a632-4c42-a7b4-2896c4efffb5", "host": {"name": "CLIENT1"}, "@timestamp": "2019-07-30T14:38:16.352000Z", "creation_timestamp": "2019-07-30T14:58:16.352Z"}}]
-        ),
-        (
-            2, [{"pre_detector_topic": {"description": "", "id": "886a07aa-4c72-4fcb-a74a-b494443b3efd", "title": "RULE_ONE", "severity": "critical", "mitre": ["mitre1", "mitre2"], "case_condition": "directly", "rule_filter": 'winlog.provider_name:"Service Control Manager"', "pre_detection_id": "08d1aa6f-f508-464e-a13d-0b5da46b5bcc", "host": {"name": "CLIENT1"}, "@timestamp": "2019-08-02T09:46:41.906000Z", "creation_timestamp": "2019-07-30T14:58:16.352Z"}}]
-        ),
-        (
-            3, [{"pre_detector_topic": {"description": "", "id": "886a07aa-4c72-4fcb-a74a-b494443b3efd", "title": "RULE_ONE", "severity": "critical", "mitre": ["mitre1", "mitre2"], "case_condition": "directly", "rule_filter": 'winlog.provider_name:"Service Control Manager"', "pre_detection_id": "06d12743-01f0-4793-8a31-3815cfa31fc3", "host": {"name": "CLIENT1"}, "@timestamp": "2019-08-02T09:46:54.583000Z", "creation_timestamp": "2019-07-30T14:58:16.352Z"}}]
-        ),
-        (
-            4, [{"pre_detector_topic": {"description": "", "id": "c46b8c22-41f5-4c45-b1a0-3fbe3a5c186d", "title": "RULE_TWO", "severity": "critical", "mitre": ["mitre2", "mitre3"], "case_condition": "directly", "rule_filter": 'winlog.event_id:"123"', "pre_detection_id": "638cc0b3-b912-4220-8551-defea8ea139d", "host": {"name": "CLIENT1"}, "@timestamp": "2019-08-02T09:54:57.125000Z", "creation_timestamp": "2019-07-30T14:58:16.352Z"}}]
-        ),
-        (
-            5, [{"pre_detector_topic": {"description": "", "id": "886a07aa-4c72-4fcb-a74a-b494443b3efd", "title": "RULE_ONE", "severity": "critical", "mitre": ["mitre1", "mitre2"], "case_condition": "directly", "rule_filter": 'winlog.provider_name:"Service Control Manager"', "pre_detection_id": "638cc0b3-b912-4220-8551-defea8ea139d", "host": {"name": "CLIENT1"}, "@timestamp": "2019-08-02T09:54:57.125000Z"}},
-             {"pre_detector_topic": {"description": "", "id": "c46b8c22-41f5-4c45-b1a0-3fbe3a5c186d", "title": "RULE_TWO", "severity": "critical", "mitre": ["mitre2", "mitre3"], "case_condition": "directly", "rule_filter": 'winlog.event_id:"123"', "pre_detection_id": "638cc0b3-b912-4220-8551-defea8ea139d", "host": {"name": "CLIENT1"}, "@timestamp": "2019-08-02T09:54:57.125000Z", "creation_timestamp": "2019-07-30T14:58:16.352Z"}}]
-        ),
-    ],
-)
-# fmt: on
-def test_events_pre_detected_return_extra_output(input_line, expected_extra_output, tmp_path: Path):
+def test_events_pre_detected_return_extra_output(tmp_path: Path):
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config_path = tmp_path / "generated_config.yml"
 
     input_file_path = Path(config.input["jsonl"]["documents_path"])
-    input_data = map(json.loads, input_file_path.read_text("utf8").splitlines())
+    input_data = [json.loads(line) for line in input_file_path.read_text("utf8").splitlines()]
     input_tmp_path = tmp_path / "input.json"
     config.input["jsonl"]["documents_path"] = str(input_tmp_path)
     config_path.write_text(config.as_yaml())
-    input_tmp_path.write_text(json.dumps(list(input_data)[input_line]))
 
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "no documents left")
-    stop_logprep(proc)
+    yaml_path = Path("tests/testdata/out/kafka_raw_event_for_pre_detector_extra_output.yml")
+    test_cases = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
 
-    output_extra_path = Path(config.output["jsonl"]["output_file_custom"])
-    output_extra_data = map(json.loads, output_extra_path.read_text("utf8").splitlines())
-    exclude_paths = {
-        "root['pre_detector_topic']['pre_detection_id']",
-        "root['pre_detector_topic']['creation_timestamp']",
-    }
+    for test_case in test_cases:
+        expected_extra_output = test_case["test_case"]["expected_output"]
+        input_line = test_case["test_case"]["input_line"]
+        input_tmp_path.write_text(json.dumps(input_data[input_line]))
 
-    assert any(
-        not DeepDiff(expected, output, exclude_paths=exclude_paths, ignore_order=True)
-        for output in output_extra_data
-        for expected in expected_extra_output
-    ), f"No matching logprep extra output found.\nExpected: {expected_extra_output}"
+        proc = start_logprep(config_path)
+        wait_for_output(proc, "no documents left")
+        stop_logprep(proc)
+
+        output_extra_path = Path(config.output["jsonl"]["output_file_custom"])
+        output_extra_data = map(json.loads, output_extra_path.read_text("utf8").splitlines())
+        exclude_paths = {
+            "root['pre_detector_topic']['pre_detection_id']",
+            "root['pre_detector_topic']['creation_timestamp']",
+        }
+
+        assert any(
+            not DeepDiff(expected, output, exclude_paths=exclude_paths)
+            for output in output_extra_data
+            for expected in expected_extra_output
+        ), f"No matching logprep extra output found.\nMismatch for input line {input_line}. \nExpected: {expected_extra_output}"

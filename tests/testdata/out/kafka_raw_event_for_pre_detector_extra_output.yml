@@ -1,0 +1,104 @@
+- test_case:
+    input_line: 1
+    expected_output:
+      - pre_detector_topic:
+          description: ""
+          id: "886a07aa-4c72-4fcb-a74a-b494443b3efd"
+          title: "RULE_ONE"
+          severity: "critical"
+          mitre:
+            - "mitre1"
+            - "mitre2"
+          case_condition: "directly"
+          rule_filter: 'winlog.provider_name:"Service Control Manager"'
+          pre_detection_id: "1cf39644-a632-4c42-a7b4-2896c4efffb5"
+          host:
+            name: "CLIENT1"
+          "@timestamp": "2019-07-30T14:38:16.352000Z"
+          creation_timestamp: "2019-07-30T14:58:16.352Z"
+- test_case:
+    input_line: 2
+    expected_output:
+      - pre_detector_topic:
+          description: ""
+          id: "886a07aa-4c72-4fcb-a74a-b494443b3efd"
+          title: "RULE_ONE"
+          severity: "critical"
+          mitre:
+            - "mitre1"
+            - "mitre2"
+          case_condition: "directly"
+          rule_filter: 'winlog.provider_name:"Service Control Manager"'
+          pre_detection_id: "1cf39644-a632-4c42-a7b4-2896c4efffb5"
+          host:
+            name: "CLIENT1"
+          "@timestamp": "2019-07-30T14:38:16.352000Z"
+          creation_timestamp: "2019-07-30T14:58:16.352Z"
+- test_case:
+    input_line: 3
+    expected_output:
+      - pre_detector_topic:
+          description: ""
+          id: "886a07aa-4c72-4fcb-a74a-b494443b3efd"
+          title: "RULE_ONE"
+          severity: "critical"
+          mitre:
+            - "mitre1"
+            - "mitre2"
+          case_condition: "directly"
+          rule_filter: 'winlog.provider_name:"Service Control Manager"'
+          pre_detection_id: "1cf39644-a632-4c42-a7b4-2896c4efffb5"
+          host:
+            name: "CLIENT1"
+          "@timestamp": "2019-07-30T14:38:16.352000Z"
+          creation_timestamp: "2019-07-30T14:58:16.352Z"
+- test_case:
+    input_line: 4
+    expected_output:
+      - pre_detector_topic:
+          description: ""
+          id: "c46b8c22-41f5-4c45-b1a0-3fbe3a5c186d"
+          title: "RULE_TWO"
+          severity: "critical"
+          mitre:
+            - "mitre2"
+            - "mitre3"
+          case_condition: "directly"
+          rule_filter: 'winlog.event_id:"123"'
+          pre_detection_id: "638cc0b3-b912-4220-8551-defea8ea139d"
+          host:
+            name: "CLIENT1"
+          "@timestamp": "2019-08-02T09:54:57.125000Z"
+          creation_timestamp: "2019-07-30T14:58:16.352Z"
+- test_case:
+    input_line: 5
+    expected_output:
+      - pre_detector_topic:
+          description: ""
+          id: "886a07aa-4c72-4fcb-a74a-b494443b3efd"
+          title: "RULE_ONE"
+          severity: "critical"
+          mitre:
+            - "mitre1"
+            - "mitre2"
+          case_condition: "directly"
+          rule_filter: 'winlog.provider_name:"Service Control Manager"'
+          pre_detection_id: "638cc0b3-b912-4220-8551-defea8ea139d"
+          host:
+            name: "CLIENT1"
+          "@timestamp": "2019-08-02T09:54:57.125000Z"
+      - pre_detector_topic:
+          description: ""
+          id: "c46b8c22-41f5-4c45-b1a0-3fbe3a5c186d"
+          title: "RULE_TWO"
+          severity: "critical"
+          mitre:
+            - "mitre2"
+            - "mitre3"
+          case_condition: "directly"
+          rule_filter: 'winlog.event_id:"123"'
+          pre_detection_id: "638cc0b3-b912-4220-8551-defea8ea139d"
+          host:
+            name: "CLIENT1"
+          "@timestamp": "2019-08-02T09:54:57.125000Z"
+          creation_timestamp: "2019-07-30T14:58:16.352Z"
