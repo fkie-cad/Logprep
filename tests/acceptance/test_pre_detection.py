@@ -33,7 +33,9 @@ pipeline = [
 
 
 def load_test_data():
-    yaml_path = Path("tests/testdata/input_logdata/kafka_test.yml")  # Adjust path as needed
+    yaml_path = Path(
+        "tests/testdata/input_logdata/kafka_raw_event_for_pre_detector_extra_output.yml"
+    )
     return yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
 
 
