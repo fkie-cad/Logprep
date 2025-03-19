@@ -2,8 +2,6 @@
 # pylint: disable=line-too-long
 # pylint: disable=attribute-defined-outside-init
 import json
-import re
-from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
 
 import pytest
@@ -20,17 +18,6 @@ from tests.acceptance.util import (
 def teardown_function():
     Path("generated_config.yml").unlink(missing_ok=True)
 
-    for file_path in [
-        "tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out",
-        "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
-    ]:
-        jsonl_file = Path(file_path)
-        if jsonl_file.exists():
-            jsonl_file.write_text("", encoding="utf-8")
-
-
-basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
-logger = getLogger("Logprep-Test")
 
 pipeline = [
     {
@@ -51,17 +38,7 @@ def test_events_pre_detected_runs_without_error(tmp_path: Path):
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
     proc = start_logprep(config_path)
-    output = proc.stdout.readline().decode("utf8")
-
-    while True:
-        assert not re.search("Invalid", output)
-        assert not re.search("Exception", output)
-        assert not re.search("critical", output)
-        assert not re.search("Error", output)
-        assert not re.search("ERROR", output)
-        if re.search("Startup complete", output):
-            break
-        output = proc.stdout.readline().decode("utf8")
+    wait_for_output(proc, "Startup complete")
     stop_logprep(proc)
 
 
@@ -88,7 +65,7 @@ def test_events_pre_detected_correctly(tmp_path: Path):
             inp,
             exclude_paths="root['pre_detection_id']",
         )
-    assert not diff, f"The expected output event and the logprep output differ: {diff}"
+        assert not diff, f"The expected output event and the logprep output differ: {diff}"
 
 
 def test_events_pre_detected_return_no_extra_output(tmp_path: Path):
@@ -96,13 +73,12 @@ def test_events_pre_detected_return_no_extra_output(tmp_path: Path):
     config_path = tmp_path / "generated_config.yml"
 
     input_file_path = Path(config.input["jsonl"]["documents_path"])
-    with input_file_path.open("r", encoding="utf8") as f:
-        input_data = [json.loads(line) for line in f]
+    input_data = map(json.loads, input_file_path.read_text("utf8").splitlines())
 
     input_tmp_path = tmp_path / "input.json"
     config.input["jsonl"]["documents_path"] = str(input_tmp_path)
     config_path.write_text(config.as_yaml())
-    input_tmp_path.write_text(json.dumps(input_data[0]))
+    input_tmp_path.write_text(json.dumps(list(input_data)[0]))
 
     proc = start_logprep(config_path)
     wait_for_output(proc, "no documents left")
@@ -140,21 +116,18 @@ def test_events_pre_detected_return_extra_output(input_line, expected_extra_outp
     config_path = tmp_path / "generated_config.yml"
 
     input_file_path = Path(config.input["jsonl"]["documents_path"])
-    with input_file_path.open("r", encoding="utf8") as f:
-        input_data = [json.loads(line) for line in f]
+    input_data = map(json.loads, input_file_path.read_text("utf8").splitlines())
     input_tmp_path = tmp_path / "input.json"
     config.input["jsonl"]["documents_path"] = str(input_tmp_path)
     config_path.write_text(config.as_yaml())
-    input_tmp_path.write_text(json.dumps(input_data[input_line]))
+    input_tmp_path.write_text(json.dumps(list(input_data)[input_line]))
 
     proc = start_logprep(config_path)
     wait_for_output(proc, "no documents left")
     stop_logprep(proc)
 
     output_extra_path = Path(config.output["jsonl"]["output_file_custom"])
-    with output_extra_path.open("r", encoding="utf8") as f:
-        output_extra_data = [json.loads(line) for line in f]
-
+    output_extra_data = map(json.loads, output_extra_path.read_text("utf8").splitlines())
     exclude_paths = {
         "root['pre_detector_topic']['pre_detection_id']",
         "root['pre_detector_topic']['creation_timestamp']",

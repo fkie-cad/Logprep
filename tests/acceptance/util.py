@@ -10,6 +10,7 @@ import re
 import socketserver
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from copy import deepcopy
@@ -229,8 +230,8 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
         "output": {
             "jsonl": {
                 "type": "jsonl_output",
-                "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
-                "output_file_custom": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out",
+                "output_file": tempfile.mkstemp(suffix="output.jsonl")[1],
+                "output_file_custom": tempfile.mkstemp(suffix="custom.jsonl")[1],
             }
         },
     }
