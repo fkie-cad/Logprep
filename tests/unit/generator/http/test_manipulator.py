@@ -11,7 +11,7 @@ from logprep.generator.http.manipulator import Manipulator
 @pytest.fixture(name="manipulator_with_timestamps")
 def get_manipulator_with_timestamps():
     event_class_config = {
-        "target_path": "/some/path",
+        "target": "/some/path",
         "timestamps": [
             {"key": "timestamp1", "format": "%Y%m%d"},
             {"key": "timestamp2", "format": "%Y%m%d-%H%M%S"},
@@ -27,7 +27,7 @@ def get_manipulator_with_timestamps():
 
 @pytest.fixture(name="manipulator_without_timestamps")
 def get_manipulator_without_timestamps():
-    event_class_config = {"target_path": "/some/path"}
+    event_class_config = {"target": "/some/path"}
     config = EventClassConfig(**event_class_config)
     return Manipulator(
         config=config,
@@ -112,7 +112,7 @@ class TestManipulator:
     )
     def test_run_manipulate_with_time_shift(self, time_shift_str, expected_time_delta_obj):
         event_class_config = {
-            "target_path": "/some/path",
+            "target": "/some/path",
             "timestamps": [
                 {"key": "timestamp", "format": "%Y%m%d-%H%M%S", "time_shift": time_shift_str},
             ],

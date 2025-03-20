@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 import json
-from unittest import mock
 
 import pytest
 import requests
@@ -18,6 +17,7 @@ class TestOutput(BaseOutputTestCase):
         "target_url": TARGET_URL,
         "user": "user",
         "password": "password",
+        "verify": "False",
     }
 
     expected_metrics = [
@@ -34,7 +34,7 @@ class TestOutput(BaseOutputTestCase):
         self.object.metrics.number_of_processed_events = 0
         responses.add(responses.POST, f"{TARGET_URL}/123", status=200)
         events = [{"event1_key": "event1_value"}, {"event2_key": "event2_value"}]
-        batch = ("/123", events)
+        batch = ("123", events)
         self.object.store(batch)
         assert self.object.metrics.number_of_processed_events == 2
 
@@ -44,10 +44,10 @@ class TestOutput(BaseOutputTestCase):
         self.object.metrics.number_of_processed_events = 0
         self.object.metrics.number_of_http_requests = 0
         responses.add(responses.POST, f"{TARGET_URL}/123", status=404)
-        events = [{"event1_key": "event1_value"}, {"event2_key": "event2_value"}]
-        batch = ("/123", events)
+        events = '{"event1_key": "event1_value", "event2_key": "event2_value"}'
+        batch = f"/123," + events
         self.object.store(batch)
-        assert self.object.metrics.number_of_failed_events == 2
+        assert self.object.metrics.number_of_failed_events == 1
         assert self.object.metrics.number_of_processed_events == 0
         assert self.object.metrics.number_of_http_requests == 1
 
@@ -76,7 +76,7 @@ class TestOutput(BaseOutputTestCase):
     ):
         if isinstance(input_data, tuple):
             target_url = input_data[0]
-            target_url = f"{TARGET_URL}{target_url}"
+            target_url = f"{TARGET_URL}/{target_url}"
         else:
             target_url = TARGET_URL
         responses.add(responses.POST, f"{target_url}", status=200)
@@ -141,7 +141,7 @@ class TestOutput(BaseOutputTestCase):
     def test_store_counts_processed_events(self):
         responses.add(responses.POST, f"{TARGET_URL}/")
         self.object.metrics.number_of_processed_events = 0
-        self.object.store({"message": "my event message"})
+        self.object.store("," + '"message": "my event message"')
         assert self.object.metrics.number_of_processed_events == 1
 
     @pytest.mark.skip(reason="not implemented")
