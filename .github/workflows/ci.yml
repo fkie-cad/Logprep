@@ -31,18 +31,19 @@ jobs:
           sphinx-apidoc -fT -o source/module_reference ../logprep
           make clean html
   code-quality:
+    uses: ./.github/workflows/code-quality.yml
+    with:
+      path: "logprep/**/*.py"
+    secrets: inherit
+  helm-lint:
     runs-on: ubuntu-24.04
     steps:
-      - uses: ./.github/workflows/code-quality.yml
-        with:
-          path: "logprep/**/*.py"
+      - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4.2.0
         with:
           version: "latest"
-        id: install
-      - name: lint helm charts
-        run: |
-          helm lint --strict ./charts/logprep
+      - name: Lint Helm Charts
+        run: helm lint --strict ./charts/logprep
   containerbuild:
     uses: ./.github/workflows/container-build.yml
     secrets: inherit
