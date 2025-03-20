@@ -16,6 +16,7 @@ from tests.acceptance.util import (
     get_full_pipeline,
     start_logprep,
     stop_logprep,
+    wait_for_output,
 )
 
 
@@ -104,16 +105,7 @@ output:
     }
     with HTTPServerForTesting.run_in_thread():
         proc = start_logprep("${LOGPREP_API_ENDPOINT}/generated_config.yml", env=env)
-        output = proc.stdout.readline().decode("utf8")
-        while True:
-            assert not re.search("Invalid", output)
-            assert not re.search("Exception", output)
-            assert not re.search("critical", output)
-            assert not re.search("Error", output)
-            assert not re.search("ERROR", output)
-            if re.search("Startup complete", output):
-                break
-            output = proc.stdout.readline().decode("utf8")
+        wait_for_output(proc, "Startup complete")
         stop_logprep(proc)
 
 
