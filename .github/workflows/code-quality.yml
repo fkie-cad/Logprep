@@ -1,0 +1,96 @@
+name: Code Quality
+on:
+  workflow_call:
+jobs: ### Taken from ci
+  code-quality:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          #   - uses: actions/checkout@v4 ##should be redundant
+          #   - uses: azure/setup-helm@v4.2.0 ##install helnm needed if helm lint is called
+          #     with:
+          #       version: "latest"
+          #     id: install
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+      - name: Get changed python files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            **/*.py
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip wheel
+          pip install .[dev]
+      - name: check black formatting
+        run: |
+          black --check --diff --config ./pyproject.toml .
+        #   - name: lint helm charts # not in main.yml #adds helm charts to linted files, shouldnt be necessary if linted over **/* all files
+        #     run: |
+        #       helm lint --strict ./charts/logprep
+      - name: lint changed and added files
+        if: steps.changed-files.outputs.all_changed_files
+        run: |
+          pylint ${{ steps.changed-files.outputs.all_changed_files }}
+      - name: mypy type checking
+        if: steps.changed-files.outputs.all_changed_files
+        run: mypy --follow-imports=skip ${{ steps.changed-files.outputs.all_changed_files }}
+      - name: Run tests and collect coverage
+        run: pytest tests/unit --cov=logprep --cov-report=xml
+      - name: Upload coverage reports to Codecov with GitHub Action
+        uses: codecov/codecov-action@v2
+
+# code-quality:
+#     runs-on: ubuntu-24.04
+
+#     strategy:
+#         matrix:
+#         python-version: ["3.11"]
+
+#     steps:
+#         - uses: actions/checkout@v4
+#         with:
+#             fetch-depth: 0
+
+#         - uses: actions/checkout@v4
+#         - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#             python-version: ${{ matrix.python-version }}
+#             cache: "pip"
+
+#         - name: Get changed python files
+#         id: changed-files
+#         uses: tj-actions/changed-files@v41
+#         with:
+#             files: |
+#             **/*.py
+
+#         - name: Install dependencies
+#         run: |
+#             pip install --upgrade pip wheel
+#             pip install .[dev]
+
+#         - name: check black formating
+#         run: |
+#             black --check --diff --config ./pyproject.toml .
+
+#         - name: lint changed and added files
+#         if: steps.changed-files.outputs.all_changed_files
+#         run: |
+#             pylint ${{ steps.changed-files.outputs.all_changed_files }}
+
+#         - name: Run tests and collect coverage
+#         run: pytest tests/unit --cov=logprep --cov-report=xml
+
+#         - name: Upload coverage reports to Codecov with GitHub Action
+#         uses: codecov/codecov-action@v2
