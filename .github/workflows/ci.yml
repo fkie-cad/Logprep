@@ -34,15 +34,6 @@ jobs:
     uses: ./.github/workflows/code-quality.yml
     with:
       path: "logprep/**/*.py"
-  helm-lint:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4.2.0
-        with:
-          version: "latest"
-      - name: Lint Helm Charts
-        run: helm lint --strict ./charts/logprep
   containerbuild:
     uses: ./.github/workflows/container-build.yml
     secrets: inherit

@@ -45,3 +45,8 @@ jobs:
         run: pytest tests/unit --cov=logprep --cov-report=xml
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v2
+      - uses: azure/setup-helm@v4.2.0
+        with:
+          version: "latest"
+      - name: Lint Helm Charts
+        run: helm lint --strict ./charts/logprep
