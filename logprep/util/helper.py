@@ -6,11 +6,10 @@ import sys
 from functools import lru_cache, partial, reduce
 from importlib.metadata import version
 from os import remove
-from typing import TYPE_CHECKING, Optional, Union
-
-from logprep.util.ansi import Back, Fore, AnsiBack, AnsiFore
+from typing import TYPE_CHECKING, Iterable, Optional, Union
 
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.util.ansi import AnsiBack, AnsiFore, Back, Fore
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -102,7 +101,8 @@ def _add_field_to(
     try:
         target_parent = reduce(_add_and_not_overwrite_key, field_path)
     except KeyError as error:
-        raise FieldExistsWarning(rule, event, [target_field]) from error
+        if not merge_with_target:
+            raise FieldExistsWarning(rule, event, [target_field]) from error
     existing_value = target_parent.get(target_key)
     if existing_value is None:
         target_parent[target_key] = content
@@ -127,8 +127,9 @@ def _add_field_to(
 
 def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
     """
-    Adds a field to an object, ignoring the FieldExistsWarning if the field already exists. Is only needed in the
-    add_batch_to map function. Without this, the map would terminate early.
+    Adds a field to an object, ignoring the FieldExistsWarning if the field already
+    exists. Is only needed in the add_batch_to map function. Without this,
+    the map would terminate early.
 
     Parameters:
         args: tuple
@@ -146,6 +147,7 @@ def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
         _add_field_to(*args, **kwargs)
     except FieldExistsWarning as error:
         return error.skipped_fields[0]
+    return None
 
 
 def add_fields_to(
@@ -156,15 +158,17 @@ def add_fields_to(
     overwrite_target: bool = False,
 ) -> None:
     """
-    Handles the batch addition operation while raising a FieldExistsWarning with all unsuccessful targets.
+    Handles the batch addition operation while raising a FieldExistsWarning with
+    all unsuccessful targets.
 
     Parameters:
         event: dict
             The event object to which fields are to be added.
         fields: dict
-            A dicht with key value pairs describing the fields that should be added. The key is the dotted subfield
-            string indicating the target. The value is the content that should be added to the named target. The
-            content can be of type: str, float, int, list, dict.
+            A dict with key value pairs describing the fields that should be added.
+            The key is the dotted subfield
+            string indicating the target. The value is the content that should be
+            added to the named target. The content can be of type: str, float, int, list, dict.
         rule: Rule
             A rule that initiated the field addition, is used for proper error handling.
         merge_with_target: bool
@@ -173,8 +177,8 @@ def add_fields_to(
             A boolean indicating whether to overwrite the target field if it already exists.
 
     Raises:
-        FieldExistsWarning: If there are targets to which the content could not be added due to field
-        existence restrictions.
+        FieldExistsWarning: If there are targets to which the content could not
+        be added due to field existence restrictions.
     """
     # filter out None values
     fields = {key: value for key, value in fields.items() if value is not None}
@@ -182,7 +186,7 @@ def add_fields_to(
     if number_fields == 1:
         _add_field_to(event, list(fields.items())[0], rule, merge_with_target, overwrite_target)
         return
-    unsuccessful_targets = map(
+    unsuccessful_targets: Iterable = map(
         _add_field_to_silent_fail,
         itertools.repeat(event, number_fields),
         fields.items(),
