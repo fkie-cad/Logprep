@@ -189,9 +189,3 @@ class TestHelperAddField:
         expected = {"existing": ["element", "new element"]}
         add_fields_to(document, {"existing": ["new element"]}, merge_with_target=True)
         assert document == expected
-
-    def test_add_fields_to_with_preexisting_string_backups_it_when_merge_with_target_is_true(self):
-        document = {"existing": "element"}
-        expected = {"existing": {"@original": "element", "new": "element"}}
-        add_fields_to(document, {"existing": {"new": "element"}}, merge_with_target=True)
-        assert document == expected

@@ -319,7 +319,19 @@ class Input(Connector):
     def _add_arrival_time_information_to_event(self, event: dict):
         target = self._config.preprocessing.get("log_arrival_time_target_field")
         time = TimeParser.now(self._log_arrival_timestamp_timezone).isoformat()
-        add_fields_to(event, {target: time})
+        try:
+            add_fields_to(event, {target: time})
+        except FieldExistsWarning as error:
+            if len(target.split(".")) == 1:
+                raise error
+            original_target = target
+            target_value = get_dotted_field_value(event, target)
+            while target_value is None:
+                target, _, _ = target.rpartition(".")
+                target_value = get_dotted_field_value(event, target)
+            add_fields_to(event, {original_target: time}, overwrite_target=True)
+            add_fields_to(event, {f"{target}.@original": target_value})
+            assert True
 
     def _add_arrival_timedelta_information_to_event(self, event: dict):
         log_arrival_timedelta_config = self._config.preprocessing.get("log_arrival_timedelta")

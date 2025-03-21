@@ -425,7 +425,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
             r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|([+-]\d{2}:\d{2})$)"
         )
         assert re.search(iso8601_regex, time_value)
-        original_event = get_dotted_field_value(event, "event.original")
+        original_event = get_dotted_field_value(event, "event.@original")
         assert original_event == "does not matter"
 
     def test_pipeline_preprocessing_adds_timestamp_delta_if_configured(self):
