@@ -41,7 +41,6 @@ def _get_configuration(config_paths: list[str]) -> Configuration:
         return config
     except InvalidConfigurationError as error:
         print(f"InvalidConfigurationError: {error}", file=sys.stderr)
-        print("trying to provoke")
         sys.exit(EXITCODES.CONFIGURATION_ERROR.value)
 
 

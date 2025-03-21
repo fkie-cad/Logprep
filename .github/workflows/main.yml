@@ -1,10 +1,8 @@
 name: CI
 # ensures that main has our basic test and code quality
 on:
-  pull_request:
-    types: [opened, synchronize]
-    # push:
-    #   branches: [main]
+  push:
+    branches: [main]
 jobs:
   test:
     uses: ./.github/workflows/testing.yml
