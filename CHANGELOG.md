@@ -15,6 +15,8 @@
 * removes `rstr` dependency
 * use official python image again and mitigate setuptools related CVE by uninstalling it system wide
 * refactored code quality pipeline to apply DRY
+* rewrote pre-detection tests
+
 
 ### Bugfix
 * fixes a bug with lucene regex and parentheses

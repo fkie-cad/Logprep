@@ -1179,7 +1179,6 @@ endpoints:
             ):
                 _ = Configuration.from_sources([str(config_path)])
 
-    @pytest.mark.skipif(in_ci, reason="breaks on broken ci runner")
     def test_no_config_parameter_is_overwritten_with_a_default(self, tmp_path):
         prometheus_multiproc_dir: Path = tmp_path / "prometheus_multiproc_dir"
         prometheus_multiproc_dir.mkdir()
@@ -1197,7 +1196,7 @@ metrics:
 input:
   stdin:
     type: file_input
-    logfile_path: /proc/1/fdinfo/0
+    logfile_path: tests/testdata/input_logdata/kafka_raw_event.jsonl
     start: end
     watch_file: true
     interval: 1
