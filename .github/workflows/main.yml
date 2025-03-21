@@ -9,11 +9,9 @@ jobs:
   test:
     uses: ./.github/workflows/testing.yml
   code-quality:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: ./.github/workflows/code-quality.yml
-        with:
-          path: "**/*.py"
+    uses: ./.github/workflows/code-quality.yml
+    with:
+      path: "**/*.py"
   helm-charts:
     # you have to update the `charts/logprep/Chart.yaml` versions to trigger a new release
     runs-on: ubuntu-latest
