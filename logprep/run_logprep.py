@@ -8,11 +8,11 @@ import sys
 import warnings
 
 import click
+from logprep.util.ansi import Fore
 
 from logprep.generator.http.controller import Controller
 from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
-from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
