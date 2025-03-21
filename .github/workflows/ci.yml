@@ -3,10 +3,8 @@ name: CI
 # open -> open the pull request
 # synchronize -> push to branch of pull request
 on:
-  push:
-    branches: [main]
-    # pull_request:
-    #   types: [opened, synchronize]
+  pull_request:
+    types: [opened, synchronize]
 jobs:
   test:
     uses: ./.github/workflows/testing.yml
