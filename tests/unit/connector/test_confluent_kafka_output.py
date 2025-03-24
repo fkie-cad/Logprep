@@ -24,7 +24,6 @@ KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):
 
-
     CONFIG = {
         "type": "confluentkafka_output",
         "topic": "test_input_raw",

@@ -20,7 +20,6 @@ class Sender:
         self.output = output
         self.thread_count = config.get("thread_count", 1)
         self.input_events = iter(input_events)
-   
         self.exit_requested = False
 
     def send_batches(self) -> None:
