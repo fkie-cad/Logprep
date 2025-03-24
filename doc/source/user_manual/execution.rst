@@ -124,6 +124,7 @@ that. It also needs to follow the following schema:
         time_shift: "+0200"  # Optional, sets time shift in hours and minutes, if needed ([+-]HHMM)
 
 To learn more about the Kafka event generator, run:
+
 .. code-block:: bash
 
     logprep generate kafka2 --help
