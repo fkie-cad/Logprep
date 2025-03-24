@@ -53,5 +53,4 @@ class TestSender:
         mock_output.store.side_effect = mock_store
         sender = Sender(input_events, mock_output, thread_count=thread_count)
         sender.send_batches()
-        print(active_threads)
         assert len(active_threads) == thread_count

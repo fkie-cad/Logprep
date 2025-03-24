@@ -4,6 +4,7 @@ import logging
 import signal
 import threading
 import time
+from types import FrameType
 
 from logprep.abc.output import Output
 from logprep.generator.http.input import Input
@@ -48,7 +49,6 @@ class Controller:
         count the return statistics"""
         logger.info("Started Data Processing")
         self.input.reformat_dataset()
-        print(self.input.target_sets)
         self.setup()
         run_time_start = time.perf_counter()
         self.sender.send_batches()
@@ -61,8 +61,8 @@ class Controller:
             self.stop(signal.SIGTERM, None)
         self.loghandler.stop()
 
-    def stop(self, signum, _frame):
     def stop(self, signum: int, _frame: FrameType | None) -> None:
+        """Stops the generator"""
         self.exit_requested = True
         self.sender.stop()
         self.file_loader.close()

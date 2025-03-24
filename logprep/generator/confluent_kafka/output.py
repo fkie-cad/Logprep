@@ -5,7 +5,9 @@ KafkaConfluentGeneratorOutput
 The logprep confluent kafka generator inheriting from the confluent kafka connector output.
 Sends the documents writen by the generator to a topic endpoint.
 Sends the documents written by the generator to a topic endpoint.
+"""
 
+import logging
 import re
 
 from attr import evolve
@@ -13,6 +15,8 @@ from confluent_kafka import KafkaException  # type: ignore
 
 from logprep.abc.output import Output
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
+
+logger = logging.getLogger("KafkaOutput")
 
 
 class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
