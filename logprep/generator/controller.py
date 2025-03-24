@@ -62,9 +62,8 @@ class Controller:
         self.loghandler.stop()
 
     def stop(self, signum, _frame):
-        """Stop the generator"""
+    def stop(self, signum: int, _frame: FrameType | None) -> None:
         self.exit_requested = True
         self.sender.stop()
         self.file_loader.close()
         logger.info("Stopped Data Processing on signal %s", signum)
-        return None

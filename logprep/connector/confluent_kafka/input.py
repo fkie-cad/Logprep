@@ -395,7 +395,7 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self._config.kafka_config['bootstrap.servers']}"
 
-    def _get_raw_event(self, timeout: float) -> bytearray | None:
+    def _get_raw_event(self, timeout: float) -> bytes | None:
         """Get next raw Message from Kafka.
 
         Parameters
@@ -429,7 +429,7 @@ class ConfluentKafkaInput(Input):
         self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
         return message.value()
 
-    def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, bytearray]]:
+    def _get_event(self, timeout: float) -> Tuple[None, None] | Tuple[dict, bytes]:
         """Parse the raw document from Kafka into a json.
 
         Parameters
