@@ -193,8 +193,6 @@ class FileWriter:
         Take a list of target and event strings and write them to a file. If configured the events
         will be shuffled first.
         #"""
-        # if config.get("shuffle"):
-        #     random.shuffle(events)
         file_name = f"logprep_input_data_{self.event_file_counter:0>4}.txt"
         temp_file_path = temp_dir / file_name
         batcher = Batcher(events, **config)

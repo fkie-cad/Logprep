@@ -42,7 +42,7 @@ import json
 import logging
 from functools import cached_property
 
-import requests  # pylint ignore
+import requests 
 from attrs import define, field, validators
 
 from logprep.abc.output import Output
@@ -121,7 +121,7 @@ class HttpOutput(Output):
         timeout: int = field(validator=validators.instance_of(int), default=2)
         """Timeout in seconds for the http request"""
         verify: bool | str
-        """Switch to disable ssl verification or path to ceertficate"""
+        """Switch to disable ssl verification or path to certificate"""
 
     @property
     def user(self):
@@ -144,7 +144,7 @@ class HttpOutput(Output):
 
     @property
     def verify(self):
-        """Return the verify status that is used for the http request"""
+        """Return the ssl verify status that is used for the http request"""
         return self._config.verify
 
     @property

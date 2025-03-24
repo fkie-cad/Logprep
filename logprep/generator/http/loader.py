@@ -1,3 +1,7 @@
+"""
+This module provides functionalities to load and handle files from a
+specified directory for processing in logprep pipelines.
+"""
 import io
 import logging
 import shutil

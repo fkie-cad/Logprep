@@ -30,7 +30,7 @@ class ControllerFactory:
             raise ValueError(f"Controller type {target} not supported")
         loghandler = cls.get_loghandler(kwargs.get("loglevel", "INFO"))
         input_connector = Input(kwargs)
-        print(input_connector.log_class_manipulator_mapping)
+        logger.debug("input logclass manipulator mapping: %s", input_connector.log_class_manipulator_mapping)
         output_connector = None
         match target:
             case "http":
@@ -45,9 +45,6 @@ class ControllerFactory:
                     }
                 }
                 output_connector = Factory.create(output_config)
-                if not isinstance(output_connector, HttpGeneratorOutput):
-                    raise ValueError("Output is not a valid output type")
-                return Controller(output_connector, input_connector, loghandler, **kwargs)
             case "kafka":
                 default_config = '{"bootstrap.servers": "localhost:9092"}'
                 kafka_config = json.loads(kwargs.get("kafka_config", default_config))
@@ -60,12 +57,9 @@ class ControllerFactory:
                     },
                 }
                 output_connector = Factory.create(output_config)
-                if not isinstance(output_connector, ConfluentKafkaGeneratorOutput):
-                    raise ValueError("Output is not a valid output type")
-                return Controller(output_connector, input_connector, loghandler, **kwargs)
-            case _:
-                return None
-
+        if not isinstance(output_connector, (HttpGeneratorOutput, ConfluentKafkaGeneratorOutput)):
+            raise ValueError("Output is not a valid output type")
+        return Controller(output_connector, input_connector, loghandler, **kwargs)
     @staticmethod
     def get_loghandler(level: str | int) -> LogprepMPQueueListener:
         """Returns a log handler for the controller"""

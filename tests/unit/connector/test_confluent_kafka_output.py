@@ -24,8 +24,6 @@ KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):
 
-    # def setup_method(self):
-    #     self.encoder = msgspec.json.Encoder()
 
     CONFIG = {
         "type": "confluentkafka_output",
