@@ -56,11 +56,12 @@ with the key :code:`password_file`.
 .. security-best-practice::
    :title: Http Input Connector - Authentication
 
-    When using basic auth with the http input connector
-    the following points should be taken into account:
-        - basic auth must only be used with strong passwords
-        - basic auth must only be used with TLS encryption
-        - avoid to reveal your plaintext secrets in public repositories
+   When using basic auth with the http input connector
+   the following points should be taken into account:
+
+       - basic auth must only be used with strong passwords
+       - basic auth must only be used with TLS encryption
+       - avoid to reveal your plaintext secrets in public repositories
 
 Behaviour of HTTP Requests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -86,7 +87,7 @@ import zlib
 from abc import ABC
 from base64 import b64encode
 from functools import cached_property
-from typing import Callable, List, Mapping, Tuple, Union
+from typing import Callable, List, Mapping, Tuple, Type, Union
 
 import falcon.asgi
 import msgspec
@@ -104,7 +105,7 @@ from falcon import (  # pylint: disable=no-name-in-module
 from logprep.abc.input import FatalInputError, Input
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util import http, rstr
-from logprep.util.credentials import CredentialsFactory
+from logprep.util.credentials import Credentials, CredentialsFactory
 
 logger = logging.getLogger("HTTPInput")
 
@@ -212,13 +213,13 @@ class HttpEndpoint(ABC):
         Includes authentication credentials, if unset auth is disabled
     """
 
-    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         messages: mp.Queue,
         collect_meta: bool,
         metafield_name: str,
-        credentials: dict,
+        credentials: Credentials,
         metrics: "HttpInput.Metrics",
     ) -> None:
         self.messages = messages
@@ -414,11 +415,11 @@ class HttpInput(Input):
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
         """Defines the name of the key for the collected metadata fields"""
 
-    __slots__ = []
+    __slots__: List[str] = ["target", "app", "http_server"]
 
     messages: mp.Queue = None
 
-    _endpoint_registry: Mapping[str, HttpEndpoint] = {
+    _endpoint_registry: Mapping[str, Type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
         "plaintext": PlaintextHttpEndpoint,
         "jsonl": JSONLHttpEndpoint,

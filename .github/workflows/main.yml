@@ -1,60 +1,15 @@
 name: CI
-
 # ensures that main has our basic test and code quality
 on:
   push:
     branches: [main]
-
 jobs:
   test:
     uses: ./.github/workflows/testing.yml
-
   code-quality:
-    runs-on: ubuntu-24.04
-
-    strategy:
-      matrix:
-        python-version: ["3.11"]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
-      - name: Get changed python files
-        id: changed-files
-        uses: tj-actions/changed-files@v41
-        with:
-          files: |
-            **/*.py
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip wheel
-          pip install .[dev]
-
-      - name: check black formating
-        run: |
-          black --check --diff --config ./pyproject.toml .
-
-      - name: lint changed and added files
-        if: steps.changed-files.outputs.all_changed_files
-        run: |
-          pylint ${{ steps.changed-files.outputs.all_changed_files }}
-
-      - name: Run tests and collect coverage
-        run: pytest tests/unit --cov=logprep --cov-report=xml
-
-      - name: Upload coverage reports to Codecov with GitHub Action
-        uses: codecov/codecov-action@v2
-
+    uses: ./.github/workflows/code-quality.yml
+    with:
+      path: "**/*.py"
   helm-charts:
     # you have to update the `charts/logprep/Chart.yaml` versions to trigger a new release
     runs-on: ubuntu-latest
@@ -64,17 +19,14 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
-
       - name: Configure Git
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
       - name: Install Helm
         uses: azure/setup-helm@v4
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
         env:

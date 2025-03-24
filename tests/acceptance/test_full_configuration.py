@@ -16,12 +16,12 @@ from tests.acceptance.util import (
     get_full_pipeline,
     start_logprep,
     stop_logprep,
+    wait_for_output,
 )
 
 
 def teardown_function():
     Path("generated_config.yml").unlink(missing_ok=True)
-    stop_logprep()
 
 
 def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
@@ -41,6 +41,7 @@ def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
         if re.search("Startup complete", output):
             break
         output = proc.stdout.readline().decode("utf8")
+    stop_logprep(proc)
 
 
 def test_start_of_logprep_with_full_configuration_http():
@@ -63,6 +64,7 @@ def test_start_of_logprep_with_full_configuration_http():
             if re.search("Startup complete", output):
                 break
             output = proc.stdout.readline().decode("utf8")
+    stop_logprep(proc)
 
 
 def test_start_of_logprep_from_http_with_templated_url_and_config():
@@ -103,17 +105,8 @@ output:
     }
     with HTTPServerForTesting.run_in_thread():
         proc = start_logprep("${LOGPREP_API_ENDPOINT}/generated_config.yml", env=env)
-        output = proc.stdout.readline().decode("utf8")
-        while True:
-            assert not re.search("Invalid", output)
-            assert not re.search("Exception", output)
-            assert not re.search("Critical", output)
-            assert not re.search("Error", output)
-            assert not re.search("ERROR", output)
-            if re.search("Startup complete", output):
-                break
-            output = proc.stdout.readline().decode("utf8")
-
+        wait_for_output(proc, "Startup complete")
+        stop_logprep(proc)
 
 def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     temp_dir = tempfile.gettempdir()
@@ -253,4 +246,4 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     response.raise_for_status()
     assert "OK" == response.text
 
-    proc.kill()
+    stop_logprep(proc)

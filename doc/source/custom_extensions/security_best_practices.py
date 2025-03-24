@@ -181,7 +181,9 @@ def create_xls_checklist(app, env):
         )
     dataframe = pd.DataFrame(description)
     download_file_name = "security-best-practices-check-list"
-    download_file_obj = [env.dlfiles[key] for key in env.dlfiles if download_file_name in key][0]
+    download_file_obj = [env.dlfiles[key] for key in env.dlfiles if download_file_name in str(key)][
+        0
+    ]
     download_file_path = download_file_obj[1]
     full_file_path = f"{app.outdir}/_downloads/{download_file_path}"
     writer = pd.ExcelWriter(full_file_path, engine="openpyxl")

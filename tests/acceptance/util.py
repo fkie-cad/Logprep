@@ -6,12 +6,11 @@ import contextlib
 import http.server
 import inspect
 import json
-import os
 import re
-import signal
 import socketserver
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from copy import deepcopy
@@ -19,6 +18,8 @@ from importlib import import_module
 from logging import DEBUG, basicConfig, getLogger
 from os import makedirs, path
 from pathlib import Path
+
+import psutil
 
 from logprep.abc.processor import Processor
 from logprep.registry import Registry
@@ -229,8 +230,8 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
         "output": {
             "jsonl": {
                 "type": "jsonl_output",
-                "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
-                "output_file_custom": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out",
+                "output_file": tempfile.mkstemp(suffix="output.jsonl")[1],
+                "output_file_custom": tempfile.mkstemp(suffix="custom.jsonl")[1],
             }
         },
     }
@@ -252,7 +253,7 @@ def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
     if env is None:
         env = {}
     env.update({"PYTHONPATH": "."})
-    return subprocess.Popen(  # nosemgrep
+    return subprocess.Popen(
         f"{sys.executable} logprep/run_logprep.py run {config_path}",
         shell=True,
         env=env,
@@ -263,7 +264,9 @@ def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
     )
 
 
-def wait_for_output(proc, expected_output, test_timeout=10, forbidden_outputs=None):
+def wait_for_output(
+    proc: subprocess.Popen, expected_output, test_timeout=10, forbidden_outputs=None
+) -> None:
     if forbidden_outputs is None:
         forbidden_outputs = ["Invalid", "Exception", "Critical", "Error", "ERROR"]
 
@@ -285,23 +288,29 @@ def wait_for_output(proc, expected_output, test_timeout=10, forbidden_outputs=No
     time.sleep(0.1)
 
 
-def stop_logprep(proc=None):
-    if proc:
-        proc.send_signal(signal.SIGINT)
-        try:
-            wait_for_output(proc, "Shutdown complete", test_timeout=10)
-        except TimeoutError:
-            proc.kill()
+def stop_logprep(proc: subprocess.Popen) -> None:
+    if proc is None or not psutil.pid_exists(proc.pid):
+        return
 
-    output = subprocess.check_output("ps -x | grep run_logprep", shell=True)  # nosemgrep
-    for line in output.decode("utf8").splitlines():
-        process_id = re.match(r"^(\s+)?(\d+)\s.+", line)
-        process_id = process_id.group(2) if process_id else None
-        try:
-            if process_id is not None:
-                os.kill(int(process_id), signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+    try:
+        process = psutil.Process(proc.pid)
+        for p in process.children(recursive=True):
+            if p.is_running():
+                p.terminate()
+
+        process.wait(timeout=5)
+        process.terminate()
+        for p in process.children(recursive=True):
+            if p.is_running():
+                p.kill()
+
+        if process.is_running():
+            process.kill()
+
+    except (psutil.NoSuchProcess, psutil.ZombieProcess):
+        pass
+    except psutil.TimeoutExpired:
+        process.kill()
 
 
 def get_full_pipeline(exclude=None):

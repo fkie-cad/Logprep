@@ -110,11 +110,12 @@ dev = [
   "pytest-asyncio",
   "pre-commit",
   "mypy",
-  "types-requests"
+  "types-requests",
+  "psutil"
 ]
 
 doc = [
-  "sphinx",
+  "sphinx<8.2.0",
   "sphinx_rtd_theme",
   "sphinxcontrib.datatemplates",
   "sphinxcontrib-mermaid",
