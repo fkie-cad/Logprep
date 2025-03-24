@@ -20,8 +20,8 @@ class TestConfluentKafkaGeneratorOutput:
         self.output.__dict__.update(self.mock_parent.__dict__)
         self.output.store_custom = MagicMock()  # Mock the store_custom method
 
-    def test_store_calles_super_store(self):
     def test_store_calls_super_store(self):
+        with patch.object(HttpOutput, "store", MagicMock()) as mock_store:
             self.output.store({"test_field": "test_value"})
             mock_store.assert_called_once_with({"test_field": "test_value"})
 
