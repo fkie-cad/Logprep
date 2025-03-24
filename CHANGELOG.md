@@ -2,6 +2,12 @@
 
 ## next release
 ### Breaking
+### Features
+### Improvements
+### Bugfix
+
+## 16.0.0
+### Breaking
 
 * remove `hyperscan_resolver` processor because it is not significantly faster as the `generic_resolver` with enabled cache
 
