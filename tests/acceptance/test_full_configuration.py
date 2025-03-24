@@ -117,6 +117,7 @@ output:
             output = proc.stdout.readline().decode("utf8")
 
 
+
 def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     temp_dir = tempfile.gettempdir()
     input_file_path = Path(os.path.join(temp_dir, "input.txt"))
