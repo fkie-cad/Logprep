@@ -54,3 +54,8 @@ class TestSender:
         sender = Sender(input_events, mock_output, thread_count=thread_count)
         sender.send_batches()
         assert len(active_threads) == thread_count
+
+    def test_sender_stop(self):
+        assert self.sender.exit_requested is False
+        self.sender.stop()
+        assert self.sender.exit_requested is True
