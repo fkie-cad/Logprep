@@ -15,6 +15,7 @@ from logprep.util.logging import LogprepMPQueueListener
 
 class TestFactory:
     def test_controller_get_raises_if_no_type(self):
+        # pylint: disable=no-value-for-parameter
         with pytest.raises(TypeError, match="missing 1 required positional argument: 'target'"):
             _ = ControllerFactory.create()
 
@@ -140,3 +141,16 @@ class TestFactory:
             mock_console_logger.handlers = []
             with pytest.raises(ValueError, match="No console handler found"):
                 _ = ControllerFactory.get_loghandler("DEBUG")
+
+    def test_invalid_output_type(self):
+        kwargs = {
+            "user": "test_user",
+            "input_dir": "test_dir/",
+            "password": "test_password",
+            "target_url": "http://example.com",
+            "timeout": 5,
+        }
+        with mock.patch("logprep.factory.Factory.create", return_value=mock.MagicMock()):
+            with pytest.raises(ValueError, match="Output is not a valid output type"):
+                with mock.patch.object(ControllerFactory, "get_loghandler"):
+                    ControllerFactory.create("http", **kwargs)

@@ -9,6 +9,7 @@ import msgspec
 import pytest
 
 from logprep.generator.http.input import FileLoader, FileWriter, Input
+from logprep.generator.http.manipulator import Manipulator
 
 
 class TestInput:
@@ -74,6 +75,14 @@ class TestInput:
 
         mock_write_events_file.assert_called()
         assert self.input.number_events_of_dataset > 0
+
+    def test_set_manipulator(self):
+        mock_log_class_config = mock.MagicMock()
+        mock_log_class_config.target = "test_target"
+        self.input._set_manipulator(mock_log_class_config)
+
+        assert "test_target" in self.input.log_class_manipulator_mapping
+        assert isinstance(self.input.log_class_manipulator_mapping["test_target"], Manipulator)
 
     @mock.patch("logprep.generator.http.input.FileWriter.write_events_file")
     def test_populate_events_list_full(self, mock_write_events_file):
