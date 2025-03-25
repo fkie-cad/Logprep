@@ -81,8 +81,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
     def test_store_custom_calls_producer_flush_on_buffererror(self, _):
         kafka_producer = self.object._producer
         kafka_producer.produce.side_effect = BufferError
-        event = '{"message": "does not matter"}'
-        self.object.store_custom(event, "doesnotcare")
+        self.object.store_custom({"message": "does not matter"}, "doesnotcare")
         kafka_producer.flush.assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
@@ -102,12 +101,12 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             CriticalOutputError,
             match=r"bad things happened",
         ):
-            self.object.store('topic,{"message": "test message"}')
+            self.object.store({"message": "test message"})
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
         self.object.metrics.number_of_processed_events = 0
-        self.object.store('topic,{"message": "my event message"}')
+        self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
