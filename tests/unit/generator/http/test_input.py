@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 from unittest import mock
 
+import msgspec
 import pytest
 
 from logprep.generator.http.input import FileLoader, FileWriter, Input
@@ -32,6 +33,13 @@ class TestInput:
         assert isinstance(self.input.file_writer, FileWriter)
         assert self.input.config == self.config
         assert self.input.number_events_of_dataset == 0
+
+    def test_decoder_encoder_property(self):
+        assert isinstance(self.input._encoder, msgspec.json.Encoder)
+        assert isinstance(self.input._decoder, msgspec.json.Decoder)
+
+    def test_temp_filename_prefix_property(self):
+        assert self.input._temp_filename_prefix == "logprep_input_data"
 
     @mock.patch("logprep.generator.http.input.Path.iterdir", return_value=[Path("test_dir")])
     @mock.patch(
