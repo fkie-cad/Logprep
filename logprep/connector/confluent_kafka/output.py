@@ -23,7 +23,6 @@ Example
             queue.buffering.max.ms: 0.5
 """
 
-import json
 import logging
 import threading
 from functools import cached_property, partial
@@ -216,39 +215,6 @@ class ConfluentKafkaOutput(Output):
         DEFAULTS.update({"client.id": getfqdn()})
         return DEFAULTS | self._config.kafka_config | injected_config
 
-    @property
-    def statistics(self) -> str:
-        """Return the statistics of this connector as a formatted string."""
-        stats: dict = {}
-        metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
-        if self._config.send_timeout > 0:
-            self.stats_event.clear()
-            self._producer.flush(self._config.send_timeout)
-            self._producer.poll(self._config.send_timeout)
-            if not self.stats_event.wait(timeout=self._config.send_timeout):
-                logger.warning(
-                    "Warning: No stats callback triggered within %s!", self._config.send_timeout
-                )
-            else:
-                logger.info("Stats received, continuing...")
-
-        for metric in metrics:
-            samples = filter(
-                lambda x: x.name.endswith("_total")
-                and "number_of_warnings" not in x.name  # blocklisted metric
-                and "number_of_errors" not in x.name,  # blocklisted metric
-                getattr(self.metrics, metric.name).tracker.collect()[0].samples,
-            )
-            for sample in samples:
-                key = (
-                    getattr(self.metrics, metric.name).description
-                    if metric.name != "status_codes"
-                    else sample.labels.get("description")
-                )
-                stats[key] = int(sample.value)
-        stats["Is the producer healthy"] = self.health()
-        return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
-
     @cached_property
     def _admin(self) -> AdminClient:
         """configures and returns the admin client
@@ -266,7 +232,7 @@ class ConfluentKafkaOutput(Output):
 
     @cached_property
     def _producer(self) -> Producer:
-        return Producer({**self._kafka_config, "stats_cb": self._stats_callback})
+        return Producer({**self._kafka_config})
 
     def _error_callback(self, error: KafkaException):
         """Callback for generic/global error events, these errors are typically
@@ -339,7 +305,7 @@ class ConfluentKafkaOutput(Output):
         self.store_custom(document, self._config.topic)
 
     @Metric.measure_time()
-    def store_custom(self, document: str, target: str) -> None:
+    def store_custom(self, document: dict, target: str) -> None:
         """Write document to Kafka into target topic.
 
         Parameters

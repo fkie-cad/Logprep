@@ -178,7 +178,7 @@ def common_generate_options(func):
     func = click.option(
         "--events",
         help="Total number of events that should be send to the target.",
-        required=False,
+        required=True,
         default=None,
         type=int,
     )(func)

@@ -168,7 +168,7 @@ class HttpOutput(Output):
                 stats[key] = int(sample.value)
         return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
-    def store(self, document: tuple[str, dict | list[dict]] | dict | str) -> None:
+    def store(self, document: tuple[str, dict | list[dict]] | dict) -> None:
         if isinstance(document, tuple):
             target, payload = document
             target = f"{self._config.target_url}/{target}"
