@@ -1,7 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import logging
 import os
+import signal
 from unittest import mock
 
 import responses
@@ -27,13 +29,42 @@ class TestController:
         }
         self.controller = Controller(output_connector, input_connector, loghandler, **config)
         self.controller.sender = self.sender
-        self.controller.setup = mock.Mock()
 
     def test_run_calls_setup(self):
+        self.controller.setup = mock.Mock()
         self.controller.run()
         self.controller.setup.assert_called_once()
         self.controller.sender.send_batches.assert_called_once()
         self.controller.input.clean_up_tempdir.assert_called_once()
+
+    @mock.patch("threading.active_count", return_value=5)
+    @mock.patch("signal.signal")
+    def test_setup_calls_function(self, mock_signal, mock_active_count):
+
+        self.controller.loghandler = mock.MagicMock()
+        self.controller.output = mock.MagicMock()
+        self.controller.input = mock.MagicMock()
+        self.controller.input.target_sets = "some_target_sets"
+
+        self.controller.setup()
+        self.controller.loghandler.start.assert_called_once()
+        self.controller.output.validate.assert_called_once_with("some_target_sets")
+        mock_signal.assert_any_call(signal.SIGTERM, self.controller.stop)
+        mock_signal.assert_any_call(signal.SIGINT, self.controller.stop)
+        mock_active_count.assert_called_once()
+
+    @mock.patch("threading.active_count", return_value=5)
+    def test_setup_debug_output(self, mock_active_count, caplog):
+        caplog.set_level(logging.DEBUG)
+
+        self.controller.loghandler = mock.MagicMock()
+        self.controller.output = mock.MagicMock()
+        self.controller.input = mock.MagicMock()
+        self.controller.input.target_sets = "some_target_sets"
+
+        self.controller.setup()
+        assert "Start thread Fileloader active threads" in caplog.text
+        assert int(caplog.messages[0][-1]) == mock_active_count.return_value
 
     @mock.patch("time.perf_counter")
     def test_run_measures_time(self, mock_perf_counter):

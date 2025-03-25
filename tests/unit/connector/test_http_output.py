@@ -1,9 +1,11 @@
 # pylint: disable=missing-docstring
 import json
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 import responses
+from requests.exceptions import SSLError
 
 from tests.unit.connector.base import BaseOutputTestCase
 
@@ -147,3 +149,29 @@ class TestOutput(BaseOutputTestCase):
     @pytest.mark.skip(reason="not implemented")
     def test_setup_calls_wait_for_health(self):
         pass
+
+    @responses.activate
+    def test_respone_verify_unverified_host(self):
+        with patch("requests.post", side_effect=SSLError("SSL certificate verify failed")):
+            with patch.object(self.object.__class__, "verify", new=True):
+                try:
+                    self.object.store("," + '"message": "my event message"')
+                except SSLError as e:
+                    assert "SSL certificate verify failed" in str(e)
+
+    @responses.activate
+    def test_response_verify_verified_host(self):
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "Success"
+
+        with patch("requests.post", return_value=mock_response) as mock_post:
+            with patch.object(self.object.__class__, "verify", new=True):
+                self.object.store("," + '"message": "my event message"')
+
+                mock_post.assert_called_once()
+                assert mock_post.call_args.kwargs["verify"] is True
+
+                assert mock_response.status_code == 200
+                assert mock_response.text == "Success"

@@ -34,6 +34,13 @@ class TestBatcher:
         assert batcher.batch_size is random_size
         assert batcher.rng.random() == random.Random(random_seed).random()
 
+    def test_batcher_iter(self):
+        input_events = ["path1,event1", "path2,event2", "path1,event3"]
+        batcher = Batcher(input_events, batch_size=2, events=3)
+        assert iter(batcher) is batcher
+        batches = list(itertools.islice(batcher, 3))
+        assert all(isinstance(batch, str) and batch.strip() for batch in batches)
+
     def test_get_yields_batches_batch_size_even_event_count(self):
         batcher = Batcher(self.batches, batch_size=2, events=2)
         assert next(batcher) == "/path/to,msg1;msg2\n"
