@@ -7,8 +7,8 @@ import time
 from types import FrameType
 
 from logprep.abc.output import Output
-from logprep.generator.http.input import Input
-from logprep.generator.http.loader import FileLoader
+from logprep.generator.input import Input
+from logprep.generator.loader import FileLoader
 from logprep.generator.sender import Sender
 from logprep.util.logging import LogprepMPQueueListener
 
@@ -39,7 +39,6 @@ class Controller:
     def setup(self) -> None:
         """Setup the generator"""
         self.loghandler.start()
-        self.output.validate(self.input.target_sets)
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())
         signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)

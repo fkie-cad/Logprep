@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from logprep.generator.http.loader import FileLoader
+from logprep.generator.loader import FileLoader
 
 
 class TestFileLoader:

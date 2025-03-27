@@ -61,18 +61,12 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         stats["Is the producer healthy"] = self.health()
         return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
-    def validate(self, topics) -> None:
-        """Validates the given Kafka topics and raises an error for invalid ones."""
-        faulty_topics = [topic for topic in topics if not self._is_valid_kafka_topic(topic)]
-
-        if faulty_topics:
-            raise ValueError(f"Invalid Kafka topic names: {faulty_topics}")
-
     def store(self, document: dict | str) -> None:
         if isinstance(document, str):
 
             self.metrics.processed_batches += 1
             topic, _, payload = document.partition(",")
+            _, _, topic = topic.rpartition("/")
             self._config = evolve(self._config, topic=topic)
             self._producer.produce(topic, value=self._encoder.encode(document))
             self.target = topic
