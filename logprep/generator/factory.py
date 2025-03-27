@@ -11,8 +11,8 @@ from ruamel.yaml import YAML
 from logprep.factory import Factory
 from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutput
 from logprep.generator.controller import Controller
-from logprep.generator.http.input import Input
 from logprep.generator.http.output import HttpGeneratorOutput
+from logprep.generator.input import Input
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Generator")

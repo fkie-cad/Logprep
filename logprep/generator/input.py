@@ -4,17 +4,18 @@ import logging
 import shutil
 import tempfile
 import time
+import warnings
 from datetime import datetime, timedelta
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import msgspec
 from attrs import define, field, validators
 from ruamel.yaml import YAML
 
-from logprep.generator.http.batcher import Batcher
-from logprep.generator.http.manipulator import Manipulator
+from logprep.generator.batcher import Batcher
+from logprep.generator.manipulator import Manipulator
 
 yaml = YAML(typ="safe")
 
@@ -62,7 +63,13 @@ class TimestampReplacementConfig:
 class EventClassConfig:
     """Configuration for an event class"""
 
-    target: str = field(validator=validators.instance_of(str))
+    target: Optional[str] = field(
+        default=None, validator=validators.optional(validators.instance_of(str))
+    )
+    target_path: Optional[str] = field(
+        default=None, validator=validators.optional(validators.instance_of(str))
+    )
+
     timestamps: List[TimestampReplacementConfig] = field(
         default=[],
         converter=TimestampReplacementConfig.convert_list_of_dicts_to_objects,
@@ -72,6 +79,18 @@ class EventClassConfig:
             )
         ),
     )
+
+    def __attrs_post_init__(self):
+        if self.target is None and self.target_path is None:
+            raise ValueError("Either 'target' or 'target_path' must be provided.")
+
+        if self.target_path is not None:
+            warnings.warn(
+                "'target_path' is deprecated and will be removed in the future. Use 'target' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self.target = self.target_path
 
 
 class Input:

@@ -8,8 +8,8 @@ from unittest import mock
 import msgspec
 import pytest
 
-from logprep.generator.http.input import FileLoader, FileWriter, Input
-from logprep.generator.http.manipulator import Manipulator
+from logprep.generator.input import FileLoader, FileWriter, Input
+from logprep.generator.manipulator import Manipulator
 
 
 class TestInput:

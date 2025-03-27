@@ -15,7 +15,6 @@ from logprep.runner import Runner
 from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.custom_types import BoolOrStr
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
@@ -26,7 +25,6 @@ logging.captureWarnings(True)
 logging.config.dictConfig(DEFAULT_LOG_CONFIG)
 logger = logging.getLogger("logprep")
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
-BOOL_OR_STR = BoolOrStr()
 
 
 def _print_version(config: "Configuration") -> None:
@@ -295,7 +293,6 @@ def generate_kafka2(**kwargs):
     "will be appended to it, resulting in the complete url that should be used as an endpoint.",
     required=False,
     default=True,
-    type=BOOL_OR_STR,
 )
 def generate_http(**kwargs):
     """

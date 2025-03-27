@@ -7,7 +7,7 @@ import random
 
 import pytest
 
-from logprep.generator.http.batcher import Batcher
+from logprep.generator.batcher import Batcher
 from logprep.util.defaults import DEFAULT_BATCH_SIZE
 
 
