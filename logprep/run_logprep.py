@@ -293,6 +293,7 @@ def generate_kafka2(**kwargs):
     "will be appended to it, resulting in the complete url that should be used as an endpoint.",
     required=False,
     default=True,
+    type=str,
 )
 def generate_http(**kwargs):
     """

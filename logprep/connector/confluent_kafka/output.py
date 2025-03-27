@@ -24,7 +24,6 @@ Example
 """
 
 import logging
-import threading
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
@@ -35,7 +34,7 @@ from confluent_kafka import KafkaException, Producer  # type: ignore
 from confluent_kafka.admin import AdminClient  # type: ignore
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
-from logprep.metrics.metrics import CounterMetric, GaugeMetric, Metric
+from logprep.metrics.metrics import GaugeMetric, Metric
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -54,10 +53,6 @@ logger = logging.getLogger("KafkaOutput")
 
 class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
-
-    def __init__(self, name: str, configuration: Output) -> None:
-        super().__init__(name, configuration)
-        self.stats_event = threading.Event()
 
     @define(kw_only=True, slots=False)
     class Metrics(Output.Metrics):
@@ -145,14 +140,6 @@ class ConfluentKafkaOutput(Output):
         """Total number of message bytes (including framing, such as per-Message framing and
         MessageSet/batch framing) transmitted to Kafka brokers"""
 
-        processed_batches: CounterMetric = field(
-            factory=lambda: CounterMetric(
-                description="Number of processed batches",
-                name="processed_batches",
-            ),
-        )
-        """Total number of batches send to brokers"""
-
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
         """Confluent Kafka Output Config"""
@@ -232,7 +219,7 @@ class ConfluentKafkaOutput(Output):
 
     @cached_property
     def _producer(self) -> Producer:
-        return Producer({**self._kafka_config})
+        return Producer(self._kafka_config)
 
     def _error_callback(self, error: KafkaException):
         """Callback for generic/global error events, these errors are typically
@@ -247,7 +234,7 @@ class ConfluentKafkaOutput(Output):
         self.metrics.number_of_errors += 1
         logger.error(f"{self.describe()}: {error}")  # pylint: disable=logging-fstring-interpolation
 
-    def _stats_callback(self, stats: dict) -> None:
+    def _stats_callback(self, stats: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
@@ -258,8 +245,8 @@ class ConfluentKafkaOutput(Output):
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
-        logger.debug("Stats callback triggered")
         stats = self._decoder.decode(stats)
+        assert isinstance(stats, dict)
         self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
         self.metrics.librdkafka_msg_cnt += stats.get("msg_cnt", DEFAULT_RETURN)
         self.metrics.librdkafka_msg_size += stats.get("msg_size", DEFAULT_RETURN)
@@ -271,8 +258,6 @@ class ConfluentKafkaOutput(Output):
         self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
         self.metrics.librdkafka_txmsgs += stats.get("txmsgs", DEFAULT_RETURN)
         self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", DEFAULT_RETURN)
-
-        self.stats_event.set()
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.

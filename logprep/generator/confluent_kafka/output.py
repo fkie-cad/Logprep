@@ -8,19 +8,31 @@ Sends the documents written by the generator to a topic endpoint.
 
 import json
 import logging
-import re
 
-from attr import evolve
-from confluent_kafka import KafkaException  # type: ignore
+from attr import evolve, field
+from attrs import define
 
 from logprep.abc.output import Output
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
+from logprep.metrics.metrics import CounterMetric
 
 logger = logging.getLogger("KafkaOutput")
 
 
 class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
     """Output class inheriting from the connector output class"""
+
+    @define(kw_only=True, slots=False)
+    class Metrics(ConfluentKafkaOutput.Metrics):
+        """Metrics for ConfluentKafkaOutput"""
+
+        processed_batches: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of processed batches",
+                name="processed_batches",
+            ),
+        )
+        """Total number of batches send to brokers"""
 
     _config: Output.Config
 
@@ -34,15 +46,15 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         stats: dict = {}
         metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
         if self._config.send_timeout > 0:
-            self.stats_event.clear()
+            # self.stats_event.clear()
             self._producer.flush(self._config.send_timeout)
             self._producer.poll(self._config.send_timeout)
-            if not self.stats_event.wait(timeout=self._config.send_timeout):
-                logger.warning(
-                    "Warning: No stats callback triggered within %s!", self._config.send_timeout
-                )
-            else:
-                logger.info("Stats received, continuing...")
+            # if not self.stats_event.wait(timeout=self._config.send_timeout):
+            #     logger.warning(
+            #         "Warning: No stats callback triggered within %s!", self._config.send_timeout
+            #     )
+            # else:
+            #     logger.info("Stats received, continuing...")
 
         for metric in metrics:
             samples = filter(
@@ -61,42 +73,13 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         stats["Is the producer healthy"] = self.health()
         return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
-    def store(self, document: dict | str) -> None:
-        if isinstance(document, str):
+    def store(self, document: str) -> None:
 
-            self.metrics.processed_batches += 1
-            topic, _, payload = document.partition(",")
-            _, _, topic = topic.rpartition("/")
-            self._config = evolve(self._config, topic=topic)
-            self._producer.produce(topic, value=self._encoder.encode(document))
-            self.target = topic
-            documents = list(payload.split(";"))
-            for item in documents:
-                self.store_custom(item, topic)
-
-        else:
-            super().store(document)
-
-    def health(self) -> bool:
-        try:
-            metadata = self._admin.list_topics(timeout=self._config.health_timeout)
-            if not self.target in metadata.topics:
-                logger.error("Topic  '%s' does not exit", self.target)
-                return False
-        except KafkaException as error:
-            logger.error("Health check failed: %s", error)
-            self.metrics.number_of_errors += 1
-            return False
-        return True
-
-    def _is_valid_kafka_topic(self, topic: str) -> bool:
-        """Checks if the given Kafka topic name is valid according to Kafka's rules."""
-        if not isinstance(topic, str) or not topic:
-            return False
-        if len(topic) > 249:
-            return False
-        if topic in {".", ".."}:
-            return False
-        if not re.match(r"^[a-zA-Z0-9._-]+$", topic):
-            return False
-        return True
+        self.metrics.processed_batches += 1
+        topic, _, payload = document.partition(",")
+        _, _, topic = topic.rpartition("/")
+        self._config = evolve(self._config, topic=topic)
+        # self._producer.produce(topic, value=self._encoder.encode(document))
+        documents = list(payload.split(";"))
+        for item in documents:
+            self.store_custom(item, topic)
