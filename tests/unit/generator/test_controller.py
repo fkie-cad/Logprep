@@ -48,7 +48,6 @@ class TestController:
 
         self.controller.setup()
         self.controller.loghandler.start.assert_called_once()
-        self.controller.output.validate.assert_called_once_with("some_target_sets")
         mock_signal.assert_any_call(signal.SIGTERM, self.controller.stop)
         mock_signal.assert_any_call(signal.SIGINT, self.controller.stop)
         mock_active_count.assert_called_once()

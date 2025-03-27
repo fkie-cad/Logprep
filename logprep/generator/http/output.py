@@ -12,9 +12,6 @@ from logprep.connector.http.output import HttpOutput
 class HttpGeneratorOutput(HttpOutput):
     """Output class inheriting from the connector output class"""
 
-    def store(self, document: tuple[str, dict | list[dict]] | dict | str) -> None:
-        if isinstance(document, str):
-            target, _, payload = document.partition(",")
-            self.store_custom(payload, self._config.target_url + target)
-        else:
-            super().store(document)
+    def store(self, document: str) -> None:
+        target, _, payload = document.partition(",")
+        self.store_custom(payload, self._config.target_url + target)

@@ -42,13 +42,13 @@ class TestInput:
     def test_temp_filename_prefix_property(self):
         assert self.input._temp_filename_prefix == "logprep_input_data"
 
-    @mock.patch("logprep.generator.http.input.Path.iterdir", return_value=[Path("test_dir")])
+    @mock.patch("logprep.generator.input.Path.iterdir", return_value=[Path("test_dir")])
     @mock.patch(
-        "logprep.generator.http.input.FileLoader.retrieve_log_files",
+        "logprep.generator.input.FileLoader.retrieve_log_files",
         return_value=(mock.MagicMock, mock.MagicMock),
     )
-    @mock.patch("logprep.generator.http.input.Input._set_manipulator")
-    @mock.patch("logprep.generator.http.input.Input._populate_events_list")
+    @mock.patch("logprep.generator.input.Input._set_manipulator")
+    @mock.patch("logprep.generator.input.Input._populate_events_list")
     def test_reformat_dataset(
         self, mock_iterdir, mock_retrieve_log_files, mock_set_manipulator, mock_populate_events_list
     ):
@@ -57,15 +57,15 @@ class TestInput:
         mock_retrieve_log_files.mock_set_manipulator()
         mock_retrieve_log_files.mock_populate_event_list()
 
-    @mock.patch("logprep.generator.http.input.logger")
-    @mock.patch("logprep.generator.http.input.Path.iterdir", return_value=[])
+    @mock.patch("logprep.generator.input.logger")
+    @mock.patch("logprep.generator.input.Path.iterdir", return_value=[])
     def test_reformat_dataset_returns_positive_time(self, mock_iterdir, mock_logger):
         self.input.reformat_dataset()
         mock_logger.info.assert_called()
         run_duration = mock_logger.info.call_args_list[-1].args[1]
         assert run_duration > 0
 
-    @mock.patch("logprep.generator.http.input.FileWriter.write_events_file")
+    @mock.patch("logprep.generator.input.FileWriter.write_events_file")
     def test_populate_events_list(self, mock_write_events_file):
         file_paths = [Path("test1.jsonl"), Path("test2.jsonl")]
         log_class_config = mock.MagicMock(target="test_target")
@@ -84,7 +84,7 @@ class TestInput:
         assert "test_target" in self.input.log_class_manipulator_mapping
         assert isinstance(self.input.log_class_manipulator_mapping["test_target"], Manipulator)
 
-    @mock.patch("logprep.generator.http.input.FileWriter.write_events_file")
+    @mock.patch("logprep.generator.input.FileWriter.write_events_file")
     def test_populate_events_list_full(self, mock_write_events_file):
         file_paths = [Path("test1.jsonl"), Path("test2.jsonl")]
         log_class_config = mock.MagicMock(target="test_target")
@@ -113,7 +113,7 @@ class TestFileLoader:
         self.config = {"events": 10}
         self.event_class_dir = Path("test_event_dir/")
         self.mock_iterdir = mock.patch(
-            "logprep.generator.http.input.Path.iterdir", return_value=[Path("test_dir")]
+            "logprep.generator.input.Path.iterdir", return_value=[Path("test_dir")]
         )
 
         self.mock_listdir = mock.patch(
@@ -135,7 +135,7 @@ class TestFileLoader:
         assert file_loader.number_events_of_dataset == self.config["events"]
 
     @mock.patch(
-        "logprep.generator.http.input.Path.iterdir",
+        "logprep.generator.input.Path.iterdir",
         return_value=[
             Path("test_dir/test_event_dir/file1.jsonl"),
             Path("test_dir/test_event_dir/file2.jsonl"),
@@ -147,7 +147,7 @@ class TestFileLoader:
         mock_log_class = mock.MagicMock()
         with (
             mock.patch(
-                "logprep.generator.http.input.FileLoader._load_event_class_config",
+                "logprep.generator.input.FileLoader._load_event_class_config",
                 return_value=mock_log_class,
             ),
         ):
@@ -159,7 +159,7 @@ class TestFileLoader:
             ]
 
     @mock.patch("builtins.open", new_callable=mock.mock_open, read_data="target: mock_target")
-    @mock.patch("logprep.generator.http.input.yaml.load", return_value={"target": "mock_target"})
+    @mock.patch("logprep.generator.input.yaml.load", return_value={"target": "mock_target"})
     def test_load_event_class_config(self, mock_yaml_load, mock_open, caplog):
         caplog.set_level(logging.DEBUG)
         file_loader = FileLoader(self.input_root_path, **self.config)
@@ -172,7 +172,7 @@ class TestFileLoader:
         assert "Following class config was loaded" in caplog.text
 
     @mock.patch("builtins.open", new_callable=mock.mock_open, read_data="target: mock_target")
-    @mock.patch("logprep.generator.http.input.yaml.load", return_value={"target": "test_target,"})
+    @mock.patch("logprep.generator.input.yaml.load", return_value={"target": "test_target,"})
     def test_load_event_class_raises_value_error(self, _mock_yaml_load, _mock_open):
         file_loader = FileLoader(self.input_root_path, **self.config)
         with pytest.raises(ValueError):

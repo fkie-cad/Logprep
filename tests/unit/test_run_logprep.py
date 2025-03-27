@@ -313,7 +313,7 @@ class TestGeneratorCLI:
                     "tag": "loadtest",
                     "loglevel": "INFO",
                     "timeout": 2,
-                    "verify": True,
+                    "verify": "True",
                 },
             ),
             (
