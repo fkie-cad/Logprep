@@ -6,6 +6,8 @@
 ### Improvements
 ### Bugfix
 
+* prevent restart timeout for pipelines to rise infinitely
+
 ## 16.0.0
 ### Breaking
 
