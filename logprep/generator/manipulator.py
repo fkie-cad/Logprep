@@ -10,7 +10,7 @@ from functools import reduce
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from logprep.generator.http.input import EventClassConfig
+    from logprep.generator.input import EventClassConfig
 
 
 class Manipulator:

@@ -29,9 +29,9 @@
 * removes `rstr` dependency
 * add mypy to ci
 * use official python image again and mitigate setuptools related CVE by uninstalling it system wide
+* added the option of using a kafka output for the http generator
 * refactored code quality pipeline to apply DRY
 * rewrote pre-detection tests
-
 
 ### Bugfix
 
