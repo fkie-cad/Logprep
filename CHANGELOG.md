@@ -3,6 +3,10 @@
 ## next release
 ### Breaking
 ### Features
+
+* adds new config parameter `event_original_field` to http input which can be used to write the original event in a designated target field
+* adds a new preprocessor `add_full_event_to_target_field` which adds the full event as an escaped string to a designated target field
+
 ### Improvements
 ### Bugfix
 

@@ -487,6 +487,82 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         assert "arrival_time" in result
 
+    def test_add_full_event_to_target_field_with_string_format(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "str",
+                    "target_field": "event.original",
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result = connector.get_next(0.01)
+        expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
+        assert result == expected, f"{expected} is not the same as {result}"
+
+    def test_add_full_event_to_targetfield_with_same_name(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "str",
+                    "target_field": "any.content",
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result = connector.get_next(0.01)
+        expected = {"any": {"content": '"{\\"any\\":\\"content\\"}"'}}
+        assert result == expected, f"{expected} is not the same as {result}"
+
+    def test_add_full_event_to_targetfield_vs_version_info_target(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "str",
+                    "target_field": "any.content",
+                },
+                "version_info_target_field": "version_info",
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result = connector.get_next(0.01)
+        expected = {
+            "any": {"content": '"{\\"any\\":\\"content\\"}"'},
+            "version_info": {"logprep": "", "configuration": ""},
+        }
+        assert result == expected, f"{expected} is not the same as {result}"
+
+    def test_add_full_event_to_target_field_with_dict_format(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "dict",
+                    "target_field": "event.original",
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result = connector.get_next(0.01)
+        expected = {"event": {"original": {"any": "content"}}}
+        assert result == expected, f"{expected} is not the same as {result}"
+
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_log_arrival_timestamp_not(
         self,
     ):
