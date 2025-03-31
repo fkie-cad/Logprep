@@ -20,30 +20,11 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
         "type": "confluentkafka_generator_output",
         "topic": "default",
         "flush_timeout": 0.1,
-        "send_timeout": 0,
+        "send_timeout": 1,
         "kafka_config": {
             "bootstrap.servers": "localhost:9092",
         },
     }
-
-    # expected_metrics = [
-    #     "logprep_confluent_kafka_generator_output_librdkafka_age",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_msg_cnt",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_msg_size",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_msg_max",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_msg_size_max",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_tx",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_tx_bytes",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_rx",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_rx_bytes",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_txmsgs",
-    #     "logprep_confluent_kafka_generator_output_librdkafka_txmsg_bytes",
-    #     "logprep_processing_time_per_event",
-    #     "logprep_number_of_processed_events",
-    #     "logprep_processed_batches",
-    #     "logprep_number_of_warnings",
-    #     "logprep_number_of_errors",
-    # ]
 
     expected_metrics = [
         "logprep_confluent_kafka_output_librdkafka_age",
@@ -114,74 +95,28 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
             possibile_tracker_types = (Counter, Gauge, Histogram)
             assert isinstance(metric_attribute.tracker, possibile_tracker_types)
 
-    # self.output = Factory.create(output_config)
+    def test_store_updates_topic(self):
+        assert self.object._config.topic == "default"
+        self.object.store("test_topic,test_payload")
+        assert self.object._config.topic == "test_topic"
 
-    # self.output.metrics = MagicMock()
-    # self.output.metrics.processed_batches = 0
-    # self.output.store_custom = MagicMock()
+    def test_store_counting_batches(self):
+        self.object.store("test_topic,test_payload")
+        assert self.object.metrics.processed_batches.tracker.collect()[0].samples[0].value == 1
+        self.object.store("test_topic,test_payload")
+        assert self.object.metrics.processed_batches.tracker.collect()[0].samples[0].value == 2
 
-    # def test_store_calls_store_custom(self):
-    #     self.output.store("test_topic,test_payload")
-    #     self.output.store_custom.assert_called_once_with("test_payload", "test_topic")
+    def test_store_handles_empty_payload(self):
+        with mock.patch(
+            "logprep.connector.confluent_kafka.output.ConfluentKafkaOutput.store_custom"
+        ) as mock_store_custom:
+            self.object.store("test_topic,")
+            mock_store_custom.assert_called_once_with("", "test_topic")
 
-    # def test_store_updates_topic(self):
-    #     assert self.output._config.topic == "producer"
-    #     self.output.store("test_topic,test_payload")
-    #     assert self.output._config.topic == "test_topic"
-
-    # def test_store_counting_batches(self):
-    #     self.output.store("test_topic,test_payload")
-    #     assert self.output.metrics.processed_batches == 1
-    #     self.output.store("test_topic,test_payload")
-    #     assert self.output.metrics.processed_batches == 2
-
-    # def test_store_handles_empty_payload(self):
-    #     self.output.store("test_topic,")
-    #     self.output.store_custom.assert_called_once_with("", "test_topic")
-
-    # def test_store_handles_missing_comma(self):
-    #     self.output.store("test_topic_only")
-    #     self.output.store_custom.assert_called_once_with("", "test_topic_only")
-
-    # def test_store_calles_super_store(self):
-    #     with patch.object(ConfluentKafkaOutput, "store", MagicMock()) as mock_store:
-    #         self.output.store({"test_field": "test_value"})
-    #         mock_store.assert_called_once_with({"test_field": "test_value"})
-
-    # @pytest.mark.parametrize(
-    #     "topic, expected",
-    #     [
-    #         ("valid_topic", True),
-    #         ("valid-topic-123", True),
-    #         ("valid.topic_123", True),
-    #         ("", False),
-    #         ("..", False),
-    #         (".", False),
-    #         (
-    #             "this_is_a_very_long_topic_name_that_exceeds_the_maximum_length_limit_of_249_characters_"
-    #             + "a" * 200,
-    #             False,
-    #         ),
-    #         ("invalid topic", False),
-    #         ("invalid#topic", False),
-    #         ("invalid@topic", False),
-    #     ],
-    # )
-    # def test_is_valid_kafka_topic(self, topic, expected):
-    #     assert self.output._is_valid_kafka_topic(topic) == expected
-
-    # @pytest.mark.parametrize(
-    #     "targets, should_raise, expected_faulty",
-    #     [
-    #         (["valid", "another_valid"], False, []),
-    #         (["/invalid", "valid"], True, ["/invalid"]),
-    #         (["/invalid", "invalid#"], True, ["/invalid", "invalid#"]),
-    #     ],
-    # )
-    # def test_validate(self, targets, should_raise, expected_faulty):
-    #     if should_raise:
-    #         with pytest.raises(ValueError) as exc_info:
-    #             self.output.validate(targets)
-    #         assert str(exc_info.value) == f"Invalid Kafka topic names: {expected_faulty}"
-    #     else:
-    #         self.output.validate(targets)
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_statistic_calls_functions(self, _):
+        self.object._producer.flush = mock.MagicMock()
+        self.object._producer.poll = mock.MagicMock()
+        _ = self.object.statistics
+        self.object._producer.flush.assert_called_once_with(self.object._config.send_timeout)
+        self.object._producer.poll.assert_called_once_with(self.object._config.send_timeout)
