@@ -8,7 +8,7 @@ import warnings
 from datetime import datetime, timedelta
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import msgspec
 from attrs import define, field, validators
@@ -115,7 +115,7 @@ class Input:
     def _temp_filename_prefix(self):
         return "logprep_input_data"
 
-    def __init__(self, config: dict[str, Any]) -> None:
+    def __init__(self, config: dict) -> None:
         self.input_root_path = Path(config.get("input_dir"))
         self.file_loader = FileLoader(self.input_root_path)
         self.file_writer = FileWriter()
@@ -161,7 +161,9 @@ class Input:
 
     def _set_manipulator(self, log_class_config: EventClassConfig) -> None:
         manipulator = Manipulator(
-            log_class_config, self.config.get("replace_timestamp"), self.config.get("tag")
+            log_class_config,
+            self.config.get("replace_timestamp", True),
+            self.config.get("tag", "loadtest"),
         )
         self.log_class_manipulator_mapping[log_class_config.target] = manipulator
 
