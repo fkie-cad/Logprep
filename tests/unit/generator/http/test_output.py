@@ -8,7 +8,7 @@ from logprep.connector.http.output import HttpOutput
 from logprep.generator.http.output import HttpGeneratorOutput
 
 
-class TestConfluentKafkaGeneratorOutput:
+class TestHttpGeneratorOutput:
 
     def setup_method(self):
         mock_config = MagicMock()

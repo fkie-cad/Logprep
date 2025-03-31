@@ -121,9 +121,21 @@ class HttpOutput(Output):
         timeout: int = field(validator=validators.instance_of(int), default=2)
         """Timeout in seconds for the http request"""
         verify: bool | str = field(
+            default=False,
+            converter=lambda x: (
+                False
+                if x is None
+                else (
+                    True
+                    if isinstance(x, str) and x.lower() in {"true", "1", "yes", "on"}
+                    else (
+                        False
+                        if isinstance(x, str) and x.lower() in {"false", "0", "no", "off"}
+                        else x
+                    )
+                )
+            ),
             validator=validators.instance_of(str | bool),
-            default=True,
-            converter=lambda x: "" if x is None else x,
         )
         """Switch to disable ssl verification or path to certificate"""
 
