@@ -2,6 +2,18 @@
 
 ## next release
 ### Breaking
+### Features
+
+* adds new config parameter `event_original_field` to http input which can be used to write the original event in a designated target field
+* adds a new preprocessor `add_full_event_to_target_field` which adds the full event as an escaped string to a designated target field
+
+### Improvements
+### Bugfix
+
+* prevent restart timeout for pipelines to rise infinitely
+
+## 16.0.0
+### Breaking
 
 * remove `hyperscan_resolver` processor because it is not significantly faster as the `generic_resolver` with enabled cache
 * the generator input config now uses target instead of the deprecated target_path.
@@ -10,11 +22,15 @@
 * add support for rule files with suffix `.yaml`
 * added a new confluent kafka generator, can be invoked with the kafka2 command
 * added --verify option to the generate http command to activate ssl verification and possible set a certificate path
+* add a feature to the preprocessor `log_arrival_time_target_field` to backup the original content on a preexisting target parent field in case of errors during preprocessing
+
 
 ### Improvements
+
 * removes `colorama` dependency
 * reimplemented the rule loading mechanic
 * removes `rstr` dependency
+* add mypy to ci
 * use official python image again and mitigate setuptools related CVE by uninstalling it system wide
 * refactored code quality pipeline to apply DRY
 * rewrote pre-detection tests
@@ -23,10 +39,12 @@
 * reworked the generator http controller into a general generator controller
 
 ### Bugfix
+
 * fixes a bug with lucene regex and parentheses
 * fixes a conflict between lucene filter and the Crypto module
 * fixes error in `_handle_warning_error` that broke up tags into characters if the original tag was not a list
 * fixes bug in `OAuthClientCredentialsFlow` where the first request session was not closed and overwritten
+
 
 ## 15.1.0
 ### Breaking

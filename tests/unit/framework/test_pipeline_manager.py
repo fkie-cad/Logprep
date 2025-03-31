@@ -259,6 +259,22 @@ class TestPipelineManager:
         assert pipeline_manager.restart_count == 0
 
     @mock.patch("time.sleep")
+    def test_restart_failed_pipeline_resets_restart_timeout_if_pipelines_recovers(self, _):
+        pipeline_manager = PipelineManager(self.config)
+        pipeline_manager._pipelines = [mock.MagicMock()]
+        restart_timeout = pipeline_manager.restart_timeout_ms
+        for _ in range(0, 3):
+            pipeline_manager._pipelines[0].is_alive.return_value = False
+            pipeline_manager.restart_failed_pipeline()
+            restart_timeout *= 2
+            assert pipeline_manager.restart_timeout_ms == restart_timeout
+
+        pipeline_manager._pipelines[0].is_alive.return_value = True
+        pipeline_manager.restart_failed_pipeline()
+        assert pipeline_manager.restart_timeout_ms <= 1000
+        assert pipeline_manager.restart_timeout_ms < restart_timeout
+
+    @mock.patch("time.sleep")
     def test_restart_failed_pipeline_restarts_immediately_on_negative_restart_count_parameter(
         self, mock_time_sleep
     ):
