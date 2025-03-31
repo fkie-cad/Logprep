@@ -289,8 +289,7 @@ def generate_kafka2(**kwargs):
 )
 @click.option(
     "--verify",
-    help="Target root url where all events should be send to. The specific path of each log class "
-    "will be appended to it, resulting in the complete url that should be used as an endpoint.",
+    help="Allows the activation for ssl verification or setting a path to a certificate",
     required=False,
     default=True,
     type=str,

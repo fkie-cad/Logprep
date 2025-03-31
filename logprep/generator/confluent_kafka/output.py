@@ -66,7 +66,7 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         stats["Is the producer healthy"] = self.health()
         return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
-    def store(self, document: str) -> None:
+    def store(self, document: str) -> None:  # type: ignore
 
         self.metrics.processed_batches += 1
         topic, _, payload = document.partition(",")
