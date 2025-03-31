@@ -7,7 +7,7 @@ import datetime
 import logging
 from datetime import datetime
 from functools import reduce
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, cast
 
 if TYPE_CHECKING:
     from logprep.generator.input import EventClassConfig
@@ -70,4 +70,4 @@ class Manipulator:
         if isinstance(current_value, dict):
             return current_value
         sub_dict.update({key: {}})
-        return sub_dict.get(key)
+        return cast(dict, sub_dict.get(key))
