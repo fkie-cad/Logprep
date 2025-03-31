@@ -8,7 +8,7 @@ import warnings
 from datetime import datetime, timedelta
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import msgspec
 from attrs import define, field, validators
@@ -115,7 +115,7 @@ class Input:
     def _temp_filename_prefix(self):
         return "logprep_input_data"
 
-    def __init__(self, config: dict) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         self.input_root_path = Path(config.get("input_dir"))
         self.file_loader = FileLoader(self.input_root_path)
         self.file_writer = FileWriter()
