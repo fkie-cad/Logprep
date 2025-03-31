@@ -4,19 +4,23 @@
 ### Breaking
 
 * remove `hyperscan_resolver` processor because it is not significantly faster as the `generic_resolver` with enabled cache
-
+* the generator input config now uses target instead of the deprecated target_path.
 ### Features
 
 * add support for rule files with suffix `.yaml`
+* added a new confluent kafka generator, can be invoked with the kafka2 command
+* added --verify option to the generate http command to activate ssl verification and possible set a certificate path
 
 ### Improvements
 * removes `colorama` dependency
 * reimplemented the rule loading mechanic
 * removes `rstr` dependency
 * use official python image again and mitigate setuptools related CVE by uninstalling it system wide
-* added the option of using a kafka output for the http generator
 * refactored code quality pipeline to apply DRY
 * rewrote pre-detection tests
+* reworked the http generator input class to general input class for http and confluent_kafka
+* rewrote the input class into seperate classes including batcher, sender, fileloader, input
+* reworked the generator http controller into a general generator controller
 
 ### Bugfix
 * fixes a bug with lucene regex and parentheses
