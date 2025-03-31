@@ -8,7 +8,7 @@ from unittest import mock
 import msgspec
 import pytest
 
-from logprep.generator.input import FileLoader, FileWriter, Input
+from logprep.generator.input import EventClassConfig, FileLoader, FileWriter, Input
 from logprep.generator.manipulator import Manipulator
 
 
@@ -195,3 +195,19 @@ def test_write_events_file_no_shuffle():
 
     assert test_events == []
     assert file_writer.event_file_counter == 1
+
+
+def test_target_and_target_path_none():
+    """Test that ValueError is raised when both 'target' and 'target_path' are None."""
+    with pytest.raises(ValueError, match="Either 'target' or 'target_path' must be provided."):
+        EventClassConfig()
+
+
+def test_target_path_deprecation_warning():
+    with pytest.warns(
+        DeprecationWarning,
+        match="'target_path' is deprecated and will be removed in the future. Use 'target' instead.",
+    ):
+        config = EventClassConfig(target_path="old_path")
+
+    assert config.target == "old_path", "Expected 'target' to be set from 'target_path'"

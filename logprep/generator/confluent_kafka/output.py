@@ -46,15 +46,8 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         stats: dict = {}
         metrics = filter(lambda x: not x.name.startswith("_"), self.metrics.__attrs_attrs__)
         if self._config.send_timeout > 0:
-            # self.stats_event.clear()
-            self._producer.flush(self._config.send_timeout)
-            self._producer.poll(self._config.send_timeout)
-            # if not self.stats_event.wait(timeout=self._config.send_timeout):
-            #     logger.warning(
-            #         "Warning: No stats callback triggered within %s!", self._config.send_timeout
-            #     )
-            # else:
-            #     logger.info("Stats received, continuing...")
+            self._producer.flush(self._config.send_timeout)  ##Need test
+            self._producer.poll(self._config.send_timeout)  ##Need test
 
         for metric in metrics:
             samples = filter(
@@ -79,7 +72,6 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         topic, _, payload = document.partition(",")
         _, _, topic = topic.rpartition("/")
         self._config = evolve(self._config, topic=topic)
-        # self._producer.produce(topic, value=self._encoder.encode(document))
         documents = list(payload.split(";"))
         for item in documents:
             self.store_custom(item, topic)
