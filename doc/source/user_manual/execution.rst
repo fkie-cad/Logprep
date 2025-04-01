@@ -314,6 +314,55 @@ After execution, the console should display an output similar to:
 The HTTP 200 status indicates that the generated data was successfully transferred.
 Since no batch size was specified, the default batch size was used, resulting in 20 batches being sent.
 
+.. _additional_http:
+
+Additional Examples of Invoking the HTTP Generator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Below are examples demonstrating how to invoke the HTTP generator with different options.
+
+.. code-block:: bash
+
+    logprep generate http --verify False --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
+
+The :code:`--verify` option enables or disables SSL verification for the HTTP request. It also allows specifying a path to a certificate for verification.
+
+.. code-block:: bash
+
+    logprep generate http --shuffle True --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
+
+The :code:`--shuffle` option enables shuffling of events before batching, ensuring a randomized event order.
+
+.. code-block:: bash
+
+    logprep generate http --thread-count 2 --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
+
+The :code:`--thread-count` option specifies the number of threads to use for parallel event generation, improving performance.
+
+.. code-block:: bash
+
+    logprep generate http --replace_timestamp True --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
+
+The :code:`--replace-timestamp` option determines whether the timestamps of example events should be replaced during generation.
+
+.. code-block:: bash
+
+    logprep generate http --tags loglevel --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
+
+The :code:`--tags` option allows setting a tag for the generated events, which can be useful for categorization or filtering.
+
+.. code-block:: bash
+
+    logprep generate http --timeout 2 --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
+
+The :code:`--timeout` option specifies the HTTP request timeout duration (in seconds), controlling how long the generator waits for a response.
+
+.. code-block:: bash
+
+    logprep generate http --loglevel DEBUG --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
+
+The :code:`--loglevel` option sets the logging level for displayed logs.
+
 Kafka Event Generation
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -340,3 +389,22 @@ After execution, the console should display an output similar to:
     "Number of successful events": 10000
 
 This confirms that the Kafka producer is healthy, and all events have been successfully processed.
+
+Additional Examples of Invoking the ConfluentKafka Generator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The options :code:`--shuffle`, :code:`--thread-count`, :code:`--replace-timestamp`, :code:`--tags`, :code:`--loglevel` , can be used in the same way as for the http generator as shown in :ref:`additional_http`.
+
+Here is an example of a more extensive output configuration for the ConfluentKafka generator.
+
+.. code-block:: bash
+
+    logprep generate kafka2 --output-config '{"bootstrap.servers": "127.0.0.1:9092", "enable.ssl.certificate.verification" : "true"}' --input-dir ./examples/exampledata/input_logdata_kafka/ --batch-size 1000 --events 10000
+
+For a full list of available options, refer to the  `ConfluentKafka documentation <https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html>`
+
+.. code-block:: bash
+
+    logprep generate kafka2 --send-timeout 2 --input-dir ./examples/exampledata/input_logdata_kafka/ --output-config '{"bootstrap.servers": "127.0.0.1:9092"}' --batch-size 1000 --events 10000
+
+The :code:`--send_timeout` option determines the maximum wait time for an answer from the broker on polling.
