@@ -240,7 +240,7 @@ class ConfluentKafkaOutput(Output):
 
         Parameters
         ----------
-        stats : dict
+        stats : str
             statistics from the underlying librdkafka library
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md

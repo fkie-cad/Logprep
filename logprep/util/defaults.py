@@ -1,36 +1,21 @@
 """Default values for logprep."""
 
 from enum import IntEnum
-from typing import Literal
 
 
 class EXITCODES(IntEnum):
-    """Exit codes for logprep.
-
-    Attributes:
-        SUCCESS (int): Successful execution.
-        ERROR (int): General unspecified error.
-        CONFIGURATION_ERROR (int): An error in the configuration.
-        PIPELINE_ERROR (int): An error during pipeline processing.
-        ERROR_OUTPUT_NOT_REACHABLE (int): The configured error output is not reachable.
-    """
+    """Exit codes for logprep."""
 
     SUCCESS = 0
+    """Successful execution."""
     ERROR = 1
+    """General unspecified error."""
     CONFIGURATION_ERROR = 2
+    """An error in the configuration."""
     PIPELINE_ERROR = 3
+    """An error during pipeline processing."""
     ERROR_OUTPUT_NOT_REACHABLE = 4
-
-    def to_bytes(
-        self, length: int, byteorder: Literal["big", "little"] = "big", signed: bool = False
-    ) -> bytes:
-        return int(self).to_bytes(length, byteorder, signed=signed)
-
-    @classmethod
-    def from_bytes(
-        cls, bytes_obj: bytes, byteorder: Literal["big", "little"] = "big", signed: bool = False
-    ) -> "EXITCODES":
-        return cls(int.from_bytes(bytes_obj, byteorder, signed=signed))
+    """The configured error output is not reachable."""
 
 
 DEFAULT_MESSAGE_BACKLOG_SIZE = 15000
