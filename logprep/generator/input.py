@@ -1,4 +1,10 @@
-"""Input module that loads the jsonl files batch-wise"""
+"""
+GeneratorInput
+==============
+
+This class generates events based on example events from jsonl files and
+writes batches of them to a temporary directory for later loading.
+"""
 
 import logging
 import shutil

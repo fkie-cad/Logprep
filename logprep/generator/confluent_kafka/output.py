@@ -1,20 +1,21 @@
 """
-KafkaConfluentGeneratorOutput
-==========
+ConfluentKafkaGeneratorOutput
+=============================
 
-The logprep confluent kafka generator inheriting from the confluent kafka connector output.
-Sends the documents written by the generator to a topic endpoint.
+The logprep ConfluentKafka generator inherits from the ConfluentKafka connector output.
+Sends the documents written by the generator to a Kafka topic.
 """
 
 import json
 import logging
+from typing import overload
 
 from attr import evolve, field
 from attrs import define
 
-from logprep.abc.output import Output
+from logprep.abc.output import CriticalOutputError, Output
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
-from logprep.metrics.metrics import CounterMetric
+from logprep.metrics.metrics import CounterMetric, Metric
 
 logger = logging.getLogger("KafkaOutput")
 
@@ -35,10 +36,6 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         """Total number of batches send to brokers"""
 
     _config: Output.Config
-
-    def __init__(self, name, configuration) -> None:
-        super().__init__(name, configuration)
-        self.target: None | str = None
 
     @property
     def statistics(self) -> str:
@@ -66,7 +63,13 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         stats["Is the producer healthy"] = self.health()
         return json.dumps(stats, sort_keys=True, indent=4, separators=(",", ": "))
 
-    def store(self, document: str) -> None:  # type: ignore
+    @overload
+    def store(self, document: str) -> None: ...
+
+    @overload
+    def store(self, document: dict) -> None: ...
+
+    def store(self, document) -> None:
 
         self.metrics.processed_batches += 1
         topic, _, payload = document.partition(",")
@@ -75,3 +78,30 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
         documents = list(payload.split(";"))
         for item in documents:
             self.store_custom(item, topic)
+
+    @Metric.measure_time()
+    def store_custom(self, document: str, target: str) -> None:
+        """Write document to Kafka into target topic.
+
+        Parameters
+        ----------
+        document : str
+            Document to be stored in target topic.
+        target : str
+            Topic to store document in.
+        Raises
+        ------
+        CriticalOutputError
+            Raises if any error except a BufferError occurs while writing into Kafka.
+
+        """
+        try:
+            self._producer.produce(target, value=document)
+            logger.debug("Produced message %s to topic %s", str(document), target)
+            self._producer.poll(self._config.send_timeout)
+            self.metrics.number_of_processed_events += 1
+        except BufferError:
+            self._producer.flush(timeout=self._config.flush_timeout)
+            logger.debug("Buffer full, flushing")
+        except Exception as error:
+            raise CriticalOutputError(self, str(error), document) from error

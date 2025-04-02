@@ -3,7 +3,6 @@
 # pylint: disable=protected-access
 
 
-import json
 from unittest import mock
 
 import pytest
@@ -52,10 +51,18 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
     def test_store_sends_event_to_expected_topic(self, _):
         kafka_producer = self.object._producer
         document = "default,test_payload"
-        topic, _, payload = document.partition(",")
-        event_raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-        expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw)
+        _, _, payload = document.partition(",")
+        expected_call = mock.call(self.CONFIG.get("topic"), value=payload)
         self.object.store(document)
+        kafka_producer.produce.assert_called()
+        assert expected_call in kafka_producer.produce.mock_calls
+
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_store_custom_sends_event_to_expected_topic(self, _):
+        kafka_producer = self.object._producer
+        event = "{'field': 'content'}"
+        expected_call = mock.call(self.CONFIG.get("topic"), value=event)
+        self.object.store_custom(event, self.CONFIG.get("topic"))
         kafka_producer.produce.assert_called()
         assert expected_call in kafka_producer.produce.mock_calls
 
@@ -108,7 +115,7 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
 
     def test_store_handles_empty_payload(self):
         with mock.patch(
-            "logprep.connector.confluent_kafka.output.ConfluentKafkaOutput.store_custom"
+            "logprep.generator.confluent_kafka.output.ConfluentKafkaGeneratorOutput.store_custom"
         ) as mock_store_custom:
             self.object.store("test_topic,")
             mock_store_custom.assert_called_once_with("", "test_topic")
