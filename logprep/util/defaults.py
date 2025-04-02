@@ -1,21 +1,56 @@
 """Default values for logprep."""
 
 from enum import IntEnum
+from typing import Literal
 
 
 class EXITCODES(IntEnum):
-    """Exit codes for logprep."""
+    """Exit codes for logprep.
+
+    Attributes:
+        SUCCESS (int): Successful execution.
+        ERROR (int): General unspecified error.
+        CONFIGURATION_ERROR (int): An error in the configuration.
+        PIPELINE_ERROR (int): An error during pipeline processing.
+        ERROR_OUTPUT_NOT_REACHABLE (int): The configured error output is not reachable.
+    """
 
     SUCCESS = 0
-    """Successful execution."""
     ERROR = 1
-    """General unspecified error."""
     CONFIGURATION_ERROR = 2
-    """An error in the configuration."""
     PIPELINE_ERROR = 3
-    """An error during pipeline processing."""
     ERROR_OUTPUT_NOT_REACHABLE = 4
-    """The configured error output is not reachable."""
+
+    def to_bytes(
+        self, length: int, byteorder: Literal["big", "little"] = "big", signed: bool = False
+    ) -> bytes:
+        """Return the integer as a bytes object.
+
+        Args:
+            length (int): Length of the resulting bytes object.
+            byteorder (Literal["big", "little"]): Byte order.
+            signed (bool): Whether the number is signed.
+
+        Returns:
+            bytes: The integer represented as a byte sequence.
+        """
+        return int(self).to_bytes(length, byteorder, signed=signed)
+
+    @classmethod
+    def from_bytes(
+        cls, bytes_obj: bytes, byteorder: Literal["big", "little"] = "big", signed: bool = False
+    ) -> "EXITCODES":
+        """Convert a bytes object back to an EXITCODES enum value.
+
+        Args:
+            bytes_obj (bytes): The bytes object representing an integer.
+            byteorder (Literal["big", "little"]): Byte order.
+            signed (bool): Whether the number is signed.
+
+        Returns:
+            EXITCODES: The corresponding enum value.
+        """
+        return cls(int.from_bytes(bytes_obj, byteorder, signed=signed))
 
 
 DEFAULT_MESSAGE_BACKLOG_SIZE = 15000
