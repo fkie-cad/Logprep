@@ -24,32 +24,12 @@ class EXITCODES(IntEnum):
     def to_bytes(
         self, length: int, byteorder: Literal["big", "little"] = "big", signed: bool = False
     ) -> bytes:
-        """Return the integer as a bytes object.
-
-        Args:
-            length (int): Length of the resulting bytes object.
-            byteorder (Literal["big", "little"]): Byte order.
-            signed (bool): Whether the number is signed.
-
-        Returns:
-            bytes: The integer represented as a byte sequence.
-        """
         return int(self).to_bytes(length, byteorder, signed=signed)
 
     @classmethod
     def from_bytes(
         cls, bytes_obj: bytes, byteorder: Literal["big", "little"] = "big", signed: bool = False
     ) -> "EXITCODES":
-        """Convert a bytes object back to an EXITCODES enum value.
-
-        Args:
-            bytes_obj (bytes): The bytes object representing an integer.
-            byteorder (Literal["big", "little"]): Byte order.
-            signed (bool): Whether the number is signed.
-
-        Returns:
-            EXITCODES: The corresponding enum value.
-        """
         return cls(int.from_bytes(bytes_obj, byteorder, signed=signed))
 
 
