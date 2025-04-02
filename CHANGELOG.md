@@ -21,7 +21,6 @@
 ### Bugfix
 
 * prevent restart timeout for pipelines to rise infinitely
-* fixed warning caused by EXITCODES, when building documentation
 
 ## 16.0.0
 ### Breaking
