@@ -180,9 +180,6 @@ def common_generate_options(func):
         default=None,
         type=int,
     )(func)
-    func = click.option("--user", help="Username for the target domain", required=False, type=str)(
-        func
-    )
     func = click.option(
         "--batch-size",
         help="Number of events that should be loaded and send as a batch. Exact number of events "
@@ -228,12 +225,6 @@ def common_generate_options(func):
         type=click.Choice(logging._levelToName.values()),  # pylint: disable=protected-access
         required=False,
         default="INFO",
-    )(func)
-    func = click.option(
-        "--timeout",
-        help="Timeout in seconds for the http requests",
-        required=False,
-        default=2,
     )(func)
 
     return func
@@ -291,8 +282,14 @@ def generate_kafka2(**kwargs):
     "--verify",
     help="Allows the activation for ssl verification or setting a path to a certificate",
     required=False,
-    default=False,
+    default=True,
     type=str,
+)
+@click.option(
+    "--timeout",
+    help="Timeout in seconds for the http requests",
+    required=False,
+    default=2,
 )
 def generate_http(**kwargs):
     """
