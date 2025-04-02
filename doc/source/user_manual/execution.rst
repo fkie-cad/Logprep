@@ -270,7 +270,7 @@ Prerequisites
 Before running either the HTTP or Kafka event generation process, ensure that
 the required environment is set up as described in :doc:`../examples/compose`.
 
-Start the necessary environment using the following command:
+Start the required environment with the following command:
 
 .. code-block:: bash
 
@@ -294,13 +294,13 @@ To start an example pipeline for HTTP event generation, execute the following st
 
     logprep run ./examples/exampledata/config/http_pipeline.yml
 
-Generate and send events to the HTTP endpoint:
+3. Generate and send events to the HTTP endpoint:
 
 .. code-block:: bash
 
     logprep generate http --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
 
-After execution, the console should display an output similar to:
+When executed, the console should display output similar to the following:
 
 .. code-block:: bash
 
@@ -319,13 +319,13 @@ Since no batch size was specified, the default batch size was used, resulting in
 Additional Examples of Invoking the HTTP Generator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Below are examples demonstrating how to invoke the HTTP generator with different options.
+Below are examples of how to invoke the HTTP generator with different options.
 
 .. code-block:: bash
 
     logprep generate http --verify False --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
 
-The :code:`--verify` option enables or disables SSL verification for the HTTP request. It also allows specifying a path to a certificate for verification.
+The :code:`--verify` option enables or disables SSL verification for the HTTP request. It also allows you to specify a path to a certificate for verification.
 
 .. code-block:: bash
 
@@ -337,7 +337,7 @@ The :code:`--shuffle` option enables shuffling of events before batching, ensuri
 
     logprep generate http --thread-count 2 --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata_http --events 10000
 
-The :code:`--thread-count` option specifies the number of threads to use for parallel event generation, improving performance.
+The :code:`--thread-count` option specifies the number of threads to use for parallel event generation.
 
 .. code-block:: bash
 
@@ -380,7 +380,7 @@ To generate events and send them to Kafka, follow these steps:
 
     logprep generate kafka2 --input-dir ./examples/exampledata/input_logdata_kafka/  --batch-size 1000 --events 10000 --output-config '{"bootstrap.servers": "127.0.0.1:9092"}'
 
-After execution, the console should display an output similar to:
+3. When executed, the console should display output similar to the following
 
 .. code-block:: bash
 
@@ -388,7 +388,7 @@ After execution, the console should display an output similar to:
     "Number of processed batches": 10,
     "Number of successful events": 10000
 
-This confirms that the Kafka producer is healthy, and all events have been successfully processed.
+This confirms that the Kafka producer is healthy and that all events have been successfully processed.
 
 Additional Examples of Invoking the ConfluentKafka Generator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
