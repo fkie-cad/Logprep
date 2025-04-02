@@ -186,11 +186,12 @@ class HttpOutput(Output):
 
     def store(self, document: tuple[str, dict | list[dict]] | dict) -> None:
         if isinstance(document, tuple):
-            target, document = document
+            target, payload = document
             target = f"{self._config.target_url}{target}"
+            self.store_custom(payload, target)
         else:
             target = self._config.target_url
-        self.store_custom(document, target)
+            self.store_custom(document, target)
 
     def store_custom(self, document: dict | tuple | list | str, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
