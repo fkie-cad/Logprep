@@ -282,7 +282,7 @@ def generate_kafka2(**kwargs):
     "--verify",
     help="Allows the activation for ssl verification or setting a path to a certificate",
     required=False,
-    default=True,
+    default=False,
     type=str,
 )
 @click.option(
