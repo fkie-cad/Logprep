@@ -12,7 +12,6 @@ tests/testdata/external/
 *.prof
 *.pyc
 .venv
-*.lock
 coverage.xml
 cov.xml
 -
