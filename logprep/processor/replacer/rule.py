@@ -153,7 +153,7 @@ class ReplacerRule(FieldManagerRule):
             self.templates[source] = self._get_replacement_strings(template)
 
     @staticmethod
-    def _get_replacement_strings(template):
+    def _get_replacement_strings(template: str):
         prefix, replacements = ReplacerRule._get_replacements(template)
         ReplacerRule._parse_colon_notation(replacements)
         ReplacerRule._get_greedy_state(replacements)
@@ -163,10 +163,10 @@ class ReplacerRule(FieldManagerRule):
         return ReplacementTemplate(prefix, replacements)
 
     @staticmethod
-    def _get_replacements(template: ReplacementTemplate) -> tuple[str, list]:
+    def _get_replacements(template: str) -> tuple[str, list]:
         prefix = ""
         end = ""
-        replacements = []
+        replacements: list[dict] = []
         idx = 0
         while template:
             replacement = {}
