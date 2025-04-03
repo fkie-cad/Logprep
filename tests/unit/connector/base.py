@@ -5,6 +5,7 @@
 import base64
 import json
 import os
+import re
 import zlib
 from copy import deepcopy
 from logging import getLogger
@@ -16,6 +17,7 @@ from logprep.abc.connector import Connector
 from logprep.abc.input import CriticalInputError, Input
 from logprep.abc.output import Output
 from logprep.factory import Factory
+from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase
 
@@ -382,6 +384,50 @@ class BaseInputTestCase(BaseConnectorTestCase):
             _ = connector.get_next(0.01)
         assert error.value.raw_input == {"any": "content", "arrival_time": "does not matter"}
 
+    def test_pipeline_preprocessing_add_log_arrival_time_if_target_parent_field_exists_already_and_is_dict(
+        self,
+    ):
+        preprocessing_config = {
+            "preprocessing": {
+                "log_arrival_time_target_field": "event.created",
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content", "event": {"does not": "matter"}}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        event = connector.get_next(0.01)
+        time_value = get_dotted_field_value(event, "event.created")
+        assert time_value
+        iso8601_regex = (
+            r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|([+-]\d{2}:\d{2})$)"
+        )
+        assert re.search(iso8601_regex, time_value)
+
+    def test_pipeline_preprocessing_add_log_arrival_time_if_target_parent_field_exists_already_and_not_dict(
+        self,
+    ):
+        preprocessing_config = {
+            "preprocessing": {
+                "log_arrival_time_target_field": "event.created",
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content", "event": "does not matter"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        event = connector.get_next(0.01)
+        time_value = get_dotted_field_value(event, "event.created")
+        assert time_value
+        iso8601_regex = (
+            r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|([+-]\d{2}:\d{2})$)"
+        )
+        assert re.search(iso8601_regex, time_value)
+        original_event = get_dotted_field_value(event, "event.@original")
+        assert original_event == "does not matter"
+
     def test_pipeline_preprocessing_adds_timestamp_delta_if_configured(self):
         preprocessing_config = {
             "preprocessing": {
@@ -440,6 +486,82 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result = connector.get_next(0.01)
         assert "arrival_time" in result
+
+    def test_add_full_event_to_target_field_with_string_format(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "str",
+                    "target_field": "event.original",
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result = connector.get_next(0.01)
+        expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
+        assert result == expected, f"{expected} is not the same as {result}"
+
+    def test_add_full_event_to_targetfield_with_same_name(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "str",
+                    "target_field": "any.content",
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result = connector.get_next(0.01)
+        expected = {"any": {"content": '"{\\"any\\":\\"content\\"}"'}}
+        assert result == expected, f"{expected} is not the same as {result}"
+
+    def test_add_full_event_to_targetfield_vs_version_info_target(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "str",
+                    "target_field": "any.content",
+                },
+                "version_info_target_field": "version_info",
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result = connector.get_next(0.01)
+        expected = {
+            "any": {"content": '"{\\"any\\":\\"content\\"}"'},
+            "version_info": {"logprep": "", "configuration": ""},
+        }
+        assert result == expected, f"{expected} is not the same as {result}"
+
+    def test_add_full_event_to_target_field_with_dict_format(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "dict",
+                    "target_field": "event.original",
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result = connector.get_next(0.01)
+        expected = {"event": {"original": {"any": "content"}}}
+        assert result == expected, f"{expected} is not the same as {result}"
 
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_log_arrival_timestamp_not(
         self,

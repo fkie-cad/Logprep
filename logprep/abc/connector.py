@@ -10,6 +10,10 @@ class Connector(Component):
     """Abstract Connector Class to define the Interface"""
 
     @define(kw_only=True)
+    class Config(Component.Config):
+        """Configuration for the connector"""
+
+    @define(kw_only=True)
     class Metrics(Component.Metrics):
         """Tracks statistics about this connector"""
 

@@ -288,6 +288,7 @@ class PipelineManager:
 
         if not failed_pipelines:
             self.restart_count = 0
+            self.restart_timeout_ms: int = random.randint(100, 1000)
             return
 
         for index, failed_pipeline in failed_pipelines:

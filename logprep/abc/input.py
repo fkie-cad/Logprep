@@ -4,6 +4,7 @@ New input endpoint types are created by implementing it.
 
 import base64
 import hashlib
+import json
 import os
 import zlib
 from abc import abstractmethod
@@ -98,8 +99,23 @@ class TimeDeltaConfig:
     The calculation will be the arrival time minus the time of this reference field."""
 
 
+@define(kw_only=True)
+class FullEventConfig:
+    """Full Event Configurations
+    Works only if the preprocessor :code:`add_full_event_to_target_field` is set."""
+
+    format: str = field(validator=validators.in_(["dict", "str"]), default="str")
+    """Defines the Format in which the event should be written to the new field.
+    The default ist :code:`str`, which results in escaped json string"""
+    target_field: str = field(validator=validators.instance_of(str), default="event.original")
+    """Defines the fieldname which the event should be written to"""
+
+
 class Input(Connector):
     """Connect to a source for log data."""
+
+    class Metrics(Connector.Metrics):
+        """Input Metrics"""
 
     @define(kw_only=True, slots=False)
     class Config(Connector.Config):
@@ -116,6 +132,7 @@ class Input(Connector):
                         "log_arrival_time_target_field": Optional[str],
                         "log_arrival_timedelta": Optional[TimeDeltaConfig],
                         "enrich_by_env_variables": Optional[dict],
+                        "add_full_event_to_target_field": Optional[FullEventConfig],
                     },
                 ),
             ],
@@ -176,6 +193,21 @@ class Input(Connector):
         - `enrich_by_env_variables` - If required it is possible to automatically enrich incoming
           events by environment variables. To activate this preprocessor the fields value has to be
           a mapping from the target field name (key) to the environment variable name (value).
+        - `add_full_event_to_target_field` - If required it is possible to automatically copy
+        all event fields to one singular field or subfield. If needed as an escaped string.
+        The exact fields in the event do not have to be known to use this preprocessor. To use this
+        preprocessor the fields :code:`format` and :code:`target_field` have to bet set. When the
+        format :code:`str` ist set the event is automatically escaped. This can be used to identify
+        and resolve mapping errors thrown by opensearch.
+
+            - :code:`format` - specifies the format which the event is written in. The default
+            format ist :code:`str` which leads to automatic json escaping of the given event. Also
+            possible is the value :code:`dict` which copies the event as mapping to the specified
+            :code:`target_field`. If the format :code:`str` is set it is necessary to have a 
+            timestamp set in the event for opensearch to receive the event in the string format. 
+            This can be achived by using the :code:`log_arrival_time_target_field` preprocessor.
+            - :code:`target_field` - specifies the field to which the event should be written to.
+            the default is :code:`event.original`
         """
 
         _version_information: dict = field(
@@ -187,7 +219,7 @@ class Input(Connector):
         )
 
     @property
-    def _add_hmac(self):
+    def _add_hmac(self) -> bool:
         """Check and return if a hmac should be added or not."""
         hmac_options = self._config.preprocessing.get("hmac")
         if not hmac_options:
@@ -195,22 +227,22 @@ class Input(Connector):
         return all(bool(hmac_options[option_key]) for option_key in hmac_options)
 
     @property
-    def _add_version_info(self):
+    def _add_version_info(self) -> bool:
         """Check and return if the version info should be added to the event."""
         return bool(self._config.preprocessing.get("version_info_target_field"))
 
     @cached_property
-    def _log_arrival_timestamp_timezone(self):
+    def _log_arrival_timestamp_timezone(self) -> ZoneInfo:
         """Returns the timezone for log arrival timestamps"""
         return ZoneInfo("UTC")
 
     @property
-    def _add_log_arrival_time_information(self):
+    def _add_log_arrival_time_information(self) -> bool:
         """Check and return if the log arrival time info should be added to the event."""
         return bool(self._config.preprocessing.get("log_arrival_time_target_field"))
 
     @property
-    def _add_log_arrival_timedelta_information(self):
+    def _add_log_arrival_timedelta_information(self) -> bool:
         """Check and return if the log arrival timedelta info should be added to the event."""
         log_arrival_timedelta_present = self._add_log_arrival_time_information
         log_arrival_time_target_field_present = bool(
@@ -229,9 +261,14 @@ class Input(Connector):
         }
 
     @property
-    def _add_env_enrichment(self):
+    def _add_env_enrichment(self) -> bool:
         """Check and return if the env enrichment should be added to the event."""
         return bool(self._config.preprocessing.get("enrich_by_env_variables"))
+
+    @property
+    def _add_full_event_to_target_field(self) -> bool:
+        """Check and return if the event should be written into one singular field."""
+        return bool(self._config.preprocessing.get("add_full_event_to_target_field"))
 
     def _get_raw_event(self, timeout: float) -> bytes | None:  # pylint: disable=unused-argument
         """Implements the details how to get the raw event
@@ -288,6 +325,8 @@ class Input(Connector):
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
         try:
+            if self._add_full_event_to_target_field:
+                self._write_full_event_to_target_field(event, raw_event)
             if self._add_hmac:
                 event = self._add_hmac_to(event, raw_event)
             if self._add_version_info:
@@ -302,10 +341,10 @@ class Input(Connector):
             raise CriticalInputError(self, error.args[0], event) from error
         return event
 
-    def batch_finished_callback(self):
+    def batch_finished_callback(self) -> None:
         """Can be called by output connectors after processing a batch of one or more records."""
 
-    def _add_env_enrichment_to_event(self, event: dict):
+    def _add_env_enrichment_to_event(self, event: dict) -> None:
         """Add the env enrichment information to the event"""
         enrichments = self._config.preprocessing.get("enrich_by_env_variables")
         if not enrichments:
@@ -316,12 +355,38 @@ class Input(Connector):
         }
         add_fields_to(event, fields)
 
-    def _add_arrival_time_information_to_event(self, event: dict):
+    def _add_arrival_time_information_to_event(self, event: dict) -> None:
         target = self._config.preprocessing.get("log_arrival_time_target_field")
         time = TimeParser.now(self._log_arrival_timestamp_timezone).isoformat()
-        add_fields_to(event, {target: time})
+        try:
+            add_fields_to(event, {target: time})
+        except FieldExistsWarning as error:
+            if len(target.split(".")) == 1:
+                raise error
+            original_target = target
+            target_value = get_dotted_field_value(event, target)
+            while target_value is None:
+                target, _, _ = target.rpartition(".")
+                target_value = get_dotted_field_value(event, target)
+            add_fields_to(event, {original_target: time}, overwrite_target=True)
+            add_fields_to(event, {f"{target}.@original": target_value})
+            assert True
 
-    def _add_arrival_timedelta_information_to_event(self, event: dict):
+    def _write_full_event_to_target_field(self, event_dict: dict, raw_event: bytearray) -> None:
+        target = self._config.preprocessing.get("add_full_event_to_target_field")
+        complete_event = {}
+        if raw_event is None:
+            raw_event = self._encoder.encode(event_dict)
+        if target["format"] == "dict":
+            complete_event = self._decoder.decode(raw_event.decode("utf-8"))
+        else:
+            complete_event = json.dumps(raw_event.decode("utf-8"))
+        event_dict.clear()
+        add_fields_to(
+            event_dict, fields={target["target_field"]: complete_event}, overwrite_target=True
+        )
+
+    def _add_arrival_timedelta_information_to_event(self, event: dict) -> None:
         log_arrival_timedelta_config = self._config.preprocessing.get("log_arrival_timedelta")
         log_arrival_time_target_field = self._config.preprocessing.get(
             "log_arrival_time_target_field"
@@ -337,7 +402,7 @@ class Input(Connector):
             ).total_seconds()
             add_fields_to(event, fields={target_field: delta_time_sec})
 
-    def _add_version_information_to_event(self, event: dict):
+    def _add_version_information_to_event(self, event: dict) -> None:
         """Add the version information to the event"""
         target_field = self._config.preprocessing.get("version_info_target_field")
         # pylint: disable=protected-access
