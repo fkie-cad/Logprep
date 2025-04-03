@@ -23,7 +23,6 @@
         "**/.DS_Store": true,
         "**/Thumbs.db": true,
         "**/.coverage*": true,
-        "**/*.lock": true,
         "**/sql_db_table.json": true,
         "**/.pytest_cache": true,
         "**/__pycache__": true,
