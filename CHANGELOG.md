@@ -6,6 +6,7 @@
 
 * adds new config parameter `event_original_field` to http input which can be used to write the original event in a designated target field
 * adds a new preprocessor `add_full_event_to_target_field` which adds the full event as an escaped string to a designated target field
+* add `replacer` processor to replace substrings in fields using a syntax similar to the `dissector`
 
 ### Improvements
 ### Bugfix
@@ -124,6 +125,7 @@ and functionality across `FieldManager` based processors (e.g., `FieldManager`, 
 * adds option `max_chunk_bytes` to `opensearch_output` connector to set the maximum size of the request in bytes (default: 100MB)
 * adds option `error_backlog_size` to logprep configuration to configure the queue size of the error queue
 * the opensearch default index is now only used for processed events, errors will be written to the error output, if configured
+
 
 ### Improvements
 

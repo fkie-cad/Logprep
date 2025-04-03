@@ -25,6 +25,7 @@ Processors
 .. automodule:: logprep.processor.list_comparison.processor
 .. automodule:: logprep.processor.pre_detector.processor
 .. automodule:: logprep.processor.pseudonymizer.processor
+.. automodule:: logprep.processor.replacer.processor
 .. automodule:: logprep.processor.requester.processor
 .. automodule:: logprep.processor.selective_extractor.processor
 .. automodule:: logprep.processor.string_splitter.processor
