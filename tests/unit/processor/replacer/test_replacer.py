@@ -16,6 +16,172 @@ test_cases = [  # testcase, rule, event, expected
         {"field": "X login attempts."},
     ),
     (
+        "replace with a different target field",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{X} login attempts."},
+                "target_field": "new_target",
+            },
+        },
+        {"field": "123 login attempts."},
+        {"field": "123 login attempts.", "new_target": "X login attempts."},
+    ),
+    (
+        "replace with dotted field",
+        {
+            "filter": "some.field",
+            "replacer": {
+                "mapping": {"some.field": "%{X} login attempts."},
+            },
+        },
+        {"some": {"field": "123 login attempts."}},
+        {"some": {"field": "X login attempts."}},
+    ),
+    (
+        "replace with colon notation",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{*:X} login attempts."},
+            },
+        },
+        {"field": "123 login attempts."},
+        {"field": "X login attempts."},
+    ),
+    (
+        "replace wildcard with colon notation",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{*:*} login attempts."},
+            },
+        },
+        {"field": "123 login attempts."},
+        {"field": "123 login attempts."},
+    ),
+    (
+        "replace specific with colon notation matches",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{123:X} login attempts."},
+            },
+        },
+        {"field": "123 login attempts."},
+        {"field": "X login attempts."},
+    ),
+    (
+        "replace specific with colon notation at beginning does not match",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{123:X} login attempts by %{USER_ID}."},
+            },
+        },
+        {"field": "456 login attempts by 789."},
+        {"field": "456 login attempts by 789."},
+    ),
+    (
+        "replace specific with colon notation at beginning matchs",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{123:X} login attempts by %{USER_ID}."},
+            },
+        },
+        {"field": "123 login attempts by 789."},
+        {"field": "X login attempts by USER_ID."},
+    ),
+    (
+        "replace specific with colon notation at middle does not match",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "User %{USER_ID} performed %{789:X} login attempts."},
+            },
+        },
+        {"field": "User 123 performed 456 login attempts."},
+        {"field": "User 123 performed 456 login attempts."},
+    ),
+    (
+        "replace specific with colon notation at middle matches",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "User %{USER_ID} performed %{456:X} login attempts."},
+            },
+        },
+        {"field": "User 123 performed 456 login attempts."},
+        {"field": "User USER_ID performed X login attempts."},
+    ),
+    (
+        "replace specific with colon notation at end does not match",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "User %{USER_ID} login count: %{789:X}"},
+            },
+        },
+        {"field": "User 123 login count: 456"},
+        {"field": "User 123 login count: 456"},
+    ),
+    (
+        "replace specific with colon notation at end matches",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "User %{USER_ID} login count: %{456:X}"},
+            },
+        },
+        {"field": "User 123 login count: 456"},
+        {"field": "User USER_ID login count: X"},
+    ),
+    (
+        "replace specific with colon notation matches combined without colon notation",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{123:X} login attempts within %{Y} minutes."},
+            },
+        },
+        {"field": "123 login attempts within 456 minutes."},
+        {"field": "X login attempts within Y minutes."},
+    ),
+    (
+        "replace specific with colon notation matches combined without colon notation",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "/%{*}/foo/%{_:}%{ID}/%{*}"},
+            },
+        },
+        {"field": "/some/path/foo/_123/bar"},
+        {"field": "/some/path/foo/ID/bar"},
+    ),
+    (
+        "replace specific with colon notation starting with wildcard",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{*}/%{_:}%{ID}/%{*}"},
+            },
+        },
+        {"field": "/some/path/foo/_123/bar"},
+        {"field": "/some/path/foo/ID/bar"},
+    ),
+    (
+        "replace specific with colon notation without wildcard",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "/some/path/%{_:}%{ID}"},
+            },
+        },
+        {"field": "/some/path/_123"},
+        {"field": "/some/path/ID"},
+    ),
+    (
         "replace the middle",
         {
             "filter": "field",
@@ -97,7 +263,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field",
             "replacer": {
-                "mapping": {"field": "Connected to %{IP}."},
+                "mapping": {"field": "Connected to %{IP|g}."},
             },
         },
         {"field": "Connected to 1.2.3.4."},
@@ -108,7 +274,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field",
             "replacer": {
-                "mapping": {"field": "Disconnected from %{IP}. Connected to %{IP}."},
+                "mapping": {"field": "Disconnected from %{IP|g}. Connected to %{IP|g}."},
             },
         },
         {"field": "Disconnected from 1.2.3.4. Connected to 1.2.3.4."},

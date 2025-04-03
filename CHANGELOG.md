@@ -8,7 +8,7 @@
 ### Features
 
 * add support for rule files with suffix `.yaml`
-* add `replacer` processor to replace substrings in fields
+* add `replacer` processor to replace substrings in fields using a syntax similar to the `dissector`
 
 ### Improvements
 * removes `colorama` dependency

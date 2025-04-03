@@ -25,7 +25,7 @@ Processor Configuration
 
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.replacer.rule import ReplacerRule, ReplacementTemplate, Replacement
-from logprep.util.helper import add_fields_to
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
 class Replacer(FieldManager):
@@ -39,37 +39,53 @@ class Replacer(FieldManager):
             if template is None:
                 continue
 
-            value_to_replace = str(event.get(source_field))
+            value_to_replace = get_dotted_field_value(event, source_field)
+            if value_to_replace is None and not rule.ignore_missing_fields:
+                error = BaseException(f"replacer: mapping field '{source_field}' does not exist")
+                self._handle_warning_error(event, rule, error)
+            value_to_replace = str(value_to_replace)
+
             if not value_to_replace.startswith(template.prefix):
                 continue
 
             result = self.replace_by_templates(template, value_to_replace)
 
             if result is not None:
-                add_fields_to(event, {source_field: result}, rule, overwrite_target=True)
+                target = rule.target_field if rule.target_field else source_field
+                add_fields_to(event, {target: result}, rule, overwrite_target=rule.overwrite_target)
 
     @staticmethod
     def replace_by_templates(template: ReplacementTemplate, to_replace: str):
         """Replace parts of `to_replace` by strings defined in `template`."""
-        result = ""
-        if template.prefix and not template.replacements[0].is_wildcard:
-            result = template.prefix
+        first_replacement = template.replacements[0]
+        result = "" if first_replacement.keep_original else template.prefix
+        if first_replacement.match:
+            if not to_replace.startswith(template.prefix + first_replacement.match):
+                return None
+            result += first_replacement.match
 
         for idx, replacement in enumerate(template.replacements):
             replacement = Replacer._handle_wildcard(replacement, to_replace)
             if replacement is None:
                 return None
 
-            if replacement.next == "":
-                return result + replacement.value
+            if replacement.match:
+                pre, match, post = result.rpartition(replacement.match)
+                if not match:
+                    return None
+                result = pre + replacement.value + replacement.next
+                continue
 
-            _, delimiter, to_replace = to_replace.partition(replacement.next)
-            if delimiter == "":
+            if not replacement.next:
+                result += replacement.value
+                break
+
+            _, seperator, to_replace = to_replace.partition(replacement.next)
+            if not seperator:
                 return None
 
-            # Ensure to replace as much as possible if next is contained in string to replace
-            while to_replace != replacement.next and replacement.next in to_replace:
-                _, delimiter, to_replace = to_replace.partition(replacement.next)
+            if replacement.greedy:
+                to_replace = Replacer._partition_greedily(replacement, to_replace)
 
             if idx == len(template.replacements) - 1 and not replacement.next.endswith(to_replace):
                 return None
@@ -79,6 +95,13 @@ class Replacer(FieldManager):
         return result
 
     @staticmethod
+    def _partition_greedily(replacement: Replacement, to_replace: str) -> str:
+        """Ensure to replace as much as possible if next is contained in string to replace"""
+        while to_replace != replacement.next and replacement.next in to_replace:
+            _, _, to_replace = to_replace.partition(replacement.next)
+        return to_replace
+
+    @staticmethod
     def _handle_wildcard(replacement: Replacement, to_replace: str):
         """Do not replace anything if replacement value is `*`.
 
@@ -86,10 +109,16 @@ class Replacer(FieldManager):
         A pattern consisting of a single `*` can be escaped with a backslash to replace with `*`.
         Other patterns require no escaping of `*`.
         """
-        if replacement.is_wildcard:
+        if replacement.keep_original:
             match_idx = to_replace.find(replacement.next)
             if match_idx < 0:
                 return None
             original = to_replace[:match_idx] if match_idx else to_replace
-            return Replacement(original, replacement.next, replacement.is_wildcard)
+            return Replacement(
+                original,
+                replacement.next,
+                replacement.match,
+                replacement.keep_original,
+                replacement.greedy,
+            )
         return replacement
