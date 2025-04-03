@@ -10,4 +10,4 @@ path = "rust/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.22.0"
+pyo3 = "0.24.1"
