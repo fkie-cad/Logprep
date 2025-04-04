@@ -318,20 +318,19 @@ class ConfluentKafkaInput(Input):
         self.metrics.number_of_errors += 1
         logger.error(f"{self.describe()}: {error}")
 
-    def _stats_callback(self, stats: str) -> None:
+    def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
         Parameters
         ----------
-        stats : str
+        stats_raw : str
             statistics from the underlying librdkafka library
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
 
-        stats = self._decoder.decode(stats)
-        assert isinstance(stats, dict)
+        stats = self._decoder.decode(stats_raw)
         self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
         self.metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
         self.metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
