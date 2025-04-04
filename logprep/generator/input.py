@@ -32,7 +32,7 @@ logger = logging.getLogger("Input")
 class TimestampReplacementConfig:
     """Configuration Class fot TimestampReplacement"""
 
-    key: str = field(validator=(validators.instance_of(str)))
+    key: str = field(validator=validators.instance_of(str))
     format: str = field(validator=validators.instance_of(str))
     time_shift: str = field(
         default="+0000",
@@ -92,7 +92,8 @@ class EventClassConfig:
 
         if self.target_path is not None:
             warnings.warn(
-                "'target_path' is deprecated and will be removed in the future. Use 'target' instead.",
+                "'target_path' is deprecated and will be removed in the future."
+                "Use 'target' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
