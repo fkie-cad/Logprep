@@ -59,7 +59,7 @@ class TestHttpGeneratorOutput(TestOutput):
         self.object.store_custom.assert_called_once_with("", "https://www.test.de/test_path")
 
     @pytest.mark.parametrize(
-        "testcase, input_data, number_of_expected_requests, number_of_expeted_events",
+        "testcase, input_data, number_of_expected_requests, number_of_expected_events",
         [
             ("/test", '{"message": "my event message"}', 1, 1),
             ("/test", '{"message": "my event message"};{"message": "my event message"}', 1, 2),
@@ -67,7 +67,7 @@ class TestHttpGeneratorOutput(TestOutput):
     )
     @responses.activate
     def test_store_counts_number_of_requests_and_events(
-        self, testcase, input_data, number_of_expected_requests, number_of_expeted_events
+        self, testcase, input_data, number_of_expected_requests, number_of_expected_events
     ):
 
         target_url = TARGET_URL
@@ -79,5 +79,5 @@ class TestHttpGeneratorOutput(TestOutput):
         assert (
             self.object.metrics.number_of_failed_events == 0
         ), f"no failed events for input {input_data}"
-        assert self.object.metrics.number_of_processed_events == number_of_expeted_events
+        assert self.object.metrics.number_of_processed_events == number_of_expected_events
         assert self.object.metrics.number_of_http_requests == number_of_expected_requests

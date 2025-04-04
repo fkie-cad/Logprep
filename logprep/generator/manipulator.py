@@ -7,7 +7,7 @@ import datetime
 import logging
 from datetime import datetime
 from functools import reduce
-from typing import TYPE_CHECKING, List, cast
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from logprep.generator.input import EventClassConfig
@@ -70,4 +70,7 @@ class Manipulator:
         if isinstance(current_value, dict):
             return current_value
         sub_dict.update({key: {}})
-        return cast(dict, sub_dict.get(key))
+        result = sub_dict.get(key)
+        if result is None:
+            raise KeyError("Key not found in dictionary")
+        return result
