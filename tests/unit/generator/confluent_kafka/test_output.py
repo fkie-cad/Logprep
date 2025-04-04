@@ -99,8 +99,8 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
             metric_name = metric_name.replace("logprep_", "")
             metric_attribute = getattr(self.object.metrics, metric_name)
             assert metric_attribute.tracker is not None
-            possibile_tracker_types = (Counter, Gauge, Histogram)
-            assert isinstance(metric_attribute.tracker, possibile_tracker_types)
+            possible_tracker_types = (Counter, Gauge, Histogram)
+            assert isinstance(metric_attribute.tracker, possible_tracker_types)
 
     def test_store_updates_topic(self):
         assert self.object._config.topic == "default"

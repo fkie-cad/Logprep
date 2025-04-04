@@ -34,14 +34,14 @@ class TestFileLoader:
             mock.patch("pathlib.Path.is_dir", return_value=False),
         ):
             loader = FileLoader("non_existent_dir")
-            with pytest.raises(FileNotFoundError):
-                loader.files
+            with pytest.raises(FileNotFoundError) as error:
+                assert loader.files == error
 
     def test_initialization_empty_directory(self):
         with mock.patch("pathlib.Path.glob", return_value=[]):
             loader = FileLoader("mocked_empty_dir")
-            with pytest.raises(FileNotFoundError, match="No files found"):
-                loader.files
+            with pytest.raises(FileNotFoundError, match="No files found") as error:
+                assert loader.files == error
 
     @mock.patch("builtins.open", new_callable=mock.mock_open, read_data="line1\nline2\n")
     def test_read_lines(self, mock_file):
