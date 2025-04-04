@@ -2,12 +2,23 @@
 
 ## next release
 ### Breaking
+
+* the generator input config now uses target instead of the deprecated target_path.
+
 ### Features
 
 * adds new config parameter `event_original_field` to http input which can be used to write the original event in a designated target field
 * adds a new preprocessor `add_full_event_to_target_field` which adds the full event as an escaped string to a designated target field
+* added a new confluent kafka generator, can be invoked with the kafka2 command
+* added --verify option to the generate http command to activate ssl verification and possible set a certificate path
 
 ### Improvements
+
+* reworked the http generator input class to general input class for http and confluent_kafka
+* rewrote the input class into seperate classes including batcher, sender, fileloader, input
+* reworked the generator http controller into a general generator controller
+* updated documentation for the new generator
+
 ### Bugfix
 
 * prevent restart timeout for pipelines to rise infinitely
@@ -16,11 +27,11 @@
 ### Breaking
 
 * remove `hyperscan_resolver` processor because it is not significantly faster as the `generic_resolver` with enabled cache
-
 ### Features
 
 * add support for rule files with suffix `.yaml`
 * add a feature to the preprocessor `log_arrival_time_target_field` to backup the original content on a preexisting target parent field in case of errors during preprocessing
+
 
 ### Improvements
 
@@ -31,7 +42,6 @@
 * use official python image again and mitigate setuptools related CVE by uninstalling it system wide
 * refactored code quality pipeline to apply DRY
 * rewrote pre-detection tests
-
 
 ### Bugfix
 

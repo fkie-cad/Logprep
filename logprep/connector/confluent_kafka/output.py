@@ -30,8 +30,8 @@ from types import MappingProxyType
 from typing import Optional
 
 from attrs import define, field, validators
-from confluent_kafka import KafkaException, Producer
-from confluent_kafka.admin import AdminClient
+from confluent_kafka import KafkaException, Producer  # type: ignore
+from confluent_kafka.admin import AdminClient  # type: ignore
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.metrics.metrics import GaugeMetric, Metric
@@ -147,7 +147,7 @@ class ConfluentKafkaOutput(Output):
         topic: str = field(validator=validators.instance_of(str))
         """The topic into which the processed events should be written to."""
         flush_timeout: float = field(
-            validator=validators.instance_of(float), converter=float, default=0
+            validator=validators.instance_of(float), converter=float, default=0.0
         )
         """The maximum time in seconds to wait for the producer to flush the messages
         to kafka broker. If the buffer is full, the producer will block until the buffer
@@ -156,7 +156,7 @@ class ConfluentKafkaOutput(Output):
         before the buffer is empty. Default is :code:`0`.
         """
         send_timeout: float = field(
-            validator=validators.instance_of(float), converter=float, default=0
+            validator=validators.instance_of(float), converter=float, default=0.0
         )
         """The maximum time in seconds to wait for an answer from the broker on polling.
         Default is :code:`0`."""
@@ -234,19 +234,18 @@ class ConfluentKafkaOutput(Output):
         self.metrics.number_of_errors += 1
         logger.error(f"{self.describe()}: {error}")  # pylint: disable=logging-fstring-interpolation
 
-    def _stats_callback(self, stats: str) -> None:
+    def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
         Parameters
         ----------
-        stats : str
+        stats_raw : str
             statistics from the underlying librdkafka library
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
-
-        stats = self._decoder.decode(stats)
+        stats = self._decoder.decode(stats_raw)
         self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
         self.metrics.librdkafka_msg_cnt += stats.get("msg_cnt", DEFAULT_RETURN)
         self.metrics.librdkafka_msg_size += stats.get("msg_size", DEFAULT_RETURN)
@@ -274,7 +273,7 @@ class ConfluentKafkaOutput(Output):
             f"{self._config.kafka_config.get('bootstrap.servers')}"
         )
 
-    def store(self, document: dict) -> Optional[bool]:
+    def store(self, document: dict) -> None:
         """Store a document in the producer topic.
 
         Parameters

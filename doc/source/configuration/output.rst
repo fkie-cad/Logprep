@@ -29,6 +29,13 @@ logprep only guaranties that one output has received data by calling the
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.generator.confluent_kafka.output
+.. autoclass:: logprep.generator.confluent_kafka.output.ConfluentKafkaGeneratorOutput.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.connector.console.output
 .. autoclass:: logprep.connector.console.output.ConsoleOutput.Config
    :members:
@@ -59,6 +66,13 @@ logprep only guaranties that one output has received data by calling the
 
 .. automodule:: logprep.connector.http.output
 .. autoclass:: logprep.connector.http.output.HttpOutput.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.generator.http.output
+.. autoclass:: logprep.generator.http.output.HttpGeneratorOutput.Config
    :members:
    :undoc-members:
    :inherited-members:

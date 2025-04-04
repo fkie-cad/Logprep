@@ -8,11 +8,11 @@ import sys
 import warnings
 
 import click
-from logprep.util.ansi import Fore
 
-from logprep.generator.http.controller import Controller
+from logprep.generator.factory import ControllerFactory
 from logprep.generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
+from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
@@ -29,10 +29,10 @@ EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 
 def _print_version(config: "Configuration") -> None:
     print(get_versions_string(config))
-    sys.exit(EXITCODES.SUCCESS.value)
+    sys.exit(EXITCODES.SUCCESS)
 
 
-def _get_configuration(config_paths: list[str]) -> Configuration:
+def _get_configuration(config_paths: tuple[str]) -> Configuration:
     try:
         config = Configuration.from_sources(config_paths)
         config.logger.setup_logging()
@@ -41,7 +41,7 @@ def _get_configuration(config_paths: list[str]) -> Configuration:
         return config
     except InvalidConfigurationError as error:
         print(f"InvalidConfigurationError: {error}", file=sys.stderr)
-        sys.exit(EXITCODES.CONFIGURATION_ERROR.value)
+        sys.exit(EXITCODES.CONFIGURATION_ERROR)
 
 
 @click.group(name="logprep")
@@ -93,7 +93,7 @@ def run(configs: tuple[str], version=None) -> None:
             logger.critical(f"A critical error occurred: {error}")
         if runner:
             runner.stop()
-        sys.exit(EXITCODES.ERROR.value)
+        sys.exit(EXITCODES.ERROR)
     # pylint: enable=broad-except
 
 
@@ -162,6 +162,74 @@ def test_rules(configs: tuple[str]) -> None:
         tester.run()
 
 
+def common_generate_options(func):
+    """Decorator to add common options to multiple commands."""
+    func = click.option(
+        "--input-dir", help="Path to the root input directory", required=True, type=str
+    )(func)
+    func = click.option("--user", help="Username for the target domain", required=False, type=str)(
+        func
+    )
+    func = click.option(
+        "--password", help="Credentials for the user of the target domain", required=False, type=str
+    )(func)
+    func = click.option(
+        "--events",
+        help="Total number of events that should be send to the target.",
+        required=True,
+        default=None,
+        type=int,
+    )(func)
+    func = click.option(
+        "--batch-size",
+        help="Number of events that should be loaded and send as a batch. Exact number of events "
+        "per request will differ as they are separated by log class. If a log class has more "
+        "samples than another log class, it will also have a larger request size.",
+        required=False,
+        default=500,
+        type=int,
+    )(func)
+    func = click.option(
+        "--shuffle",
+        help="Shuffle the events before sending them to the target.",
+        required=False,
+        default=False,
+        type=bool,
+    )(func)
+    func = click.option(
+        "--thread-count",
+        help="Number of threads that should be used to send events in parallel to the target. If "
+        "thread_count is set to '1' then multithreading is deactivated and the main process will "
+        "be used.",
+        required=False,
+        default=1,
+        type=int,
+    )(func)
+    func = click.option(
+        "--replace-timestamp",
+        help="Defines if timestamps should be replaced with the current timestamp.",
+        required=False,
+        default=True,
+        type=bool,
+    )(func)
+    func = click.option(
+        "--tag",
+        help="Tag that should be written into the events.",
+        required=False,
+        default="loadtest",
+        type=str,
+    )(func)
+    func = click.option(
+        "--loglevel",
+        help="Sets the log level for the logger.",
+        type=click.Choice(logging._levelToName.values()),  # pylint: disable=protected-access
+        required=False,
+        default="INFO",
+    )(func)
+
+    return func
+
+
 @cli.group(short_help="Generate load for a running logprep instance")
 def generate():
     """
@@ -185,8 +253,31 @@ def generate_kafka(config, file):
     load_tester.run()
 
 
+@common_generate_options
+@generate.command(name="kafka2")
+@click.option(
+    "--output-config",
+    help="Enables http generator to use kafka output",
+    required=True,
+    type=str,
+)
+@click.option(
+    "--send-timeout",
+    help="Sets the maximum wait time for an answer from the broker on polling",
+    required=False,
+    default=0,
+    type=int,
+)
+def generate_kafka2(**kwargs):
+    """
+    Generates events based on templated sample files stored inside a dataset directory.
+    The events will be sent to a kafka endpoint.
+    """
+    ControllerFactory.create(target="kafka", **kwargs).run()
+
+
 @generate.command(name="http")
-@click.option("--input-dir", help="Path to the root input directory", required=True, type=str)
+@common_generate_options
 @click.option(
     "--target-url",
     help="Target root url where all events should be send to. The specific path of each log class "
@@ -194,62 +285,12 @@ def generate_kafka(config, file):
     required=True,
     type=str,
 )
-@click.option("--user", help="Username for the target domain", required=False, type=str)
 @click.option(
-    "--password", help="Credentials for the user of the target domain", required=False, type=str
-)
-@click.option(
-    "--batch-size",
-    help="Number of events that should be loaded and send as a batch. Exact number of events "
-    "per request will differ as they are separated by log class. If a log class has more "
-    "samples than another log class, it will also have a larger request size.",
-    required=False,
-    default=500,
-    type=int,
-)
-@click.option(
-    "--events",
-    help="Total number of events that should be send to the target.",
-    required=False,
-    default=None,
-    type=int,
-)
-@click.option(
-    "--shuffle",
-    help="Shuffle the events before sending them to the target.",
+    "--verify",
+    help="Allows the activation for ssl verification or setting a path to a certificate",
     required=False,
     default=False,
-    type=bool,
-)
-@click.option(
-    "--thread-count",
-    help="Number of threads that should be used to send events in parallel to the target. If "
-    "thread_count is set to '1' then multithreading is deactivated and the main process will "
-    "be used.",
-    required=False,
-    default=1,
-    type=int,
-)
-@click.option(
-    "--replace-timestamp",
-    help="Defines if timestamps should be replaced with the current timestamp.",
-    required=False,
-    default=True,
-    type=bool,
-)
-@click.option(
-    "--tag",
-    help="Tag that should be written into the events.",
-    required=False,
-    default="loadtest",
     type=str,
-)
-@click.option(
-    "--loglevel",
-    help="Sets the log level for the logger.",
-    type=click.Choice(logging._levelToName.values()),  # pylint: disable=protected-access
-    required=False,
-    default="INFO",
 )
 @click.option(
     "--timeout",
@@ -262,10 +303,7 @@ def generate_http(**kwargs):
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a http endpoint.
     """
-    generator_logger = logging.getLogger("Generator")
-    generator_logger.info(f"Log level set to '{logging.getLevelName(generator_logger.level)}'")
-    generator = Controller(**kwargs)
-    generator.run()
+    ControllerFactory.create(target="http", **kwargs).run()
 
 
 @cli.command(short_help="Print a complete configuration file [Not Yet Implemented]", name="print")

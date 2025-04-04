@@ -120,6 +120,24 @@ class HttpOutput(Output):
         """URL of the endpoint that receives the events"""
         timeout: int = field(validator=validators.instance_of(int), default=2)
         """Timeout in seconds for the http request"""
+        verify: bool | str = field(
+            default=True,
+            converter=lambda x: (
+                False
+                if x is None
+                else (
+                    True
+                    if isinstance(x, str) and x.lower() in {"true", "1", "yes", "on"}
+                    else (
+                        False
+                        if isinstance(x, str) and x.lower() in {"false", "0", "no", "off"}
+                        else x
+                    )
+                )
+            ),
+            validator=validators.instance_of(str | bool),
+        )
+        """Switch to disable ssl verification or path to certificate"""
 
     @property
     def user(self):
@@ -139,6 +157,11 @@ class HttpOutput(Output):
     @cached_property
     def _headers(self):
         return {"Content-Type": "application/x-ndjson; charset=utf-8"}
+
+    @property
+    def verify(self):
+        """Return the ssl verify status that is used for the http request"""
+        return self._config.verify
 
     @property
     def statistics(self) -> str:
@@ -163,13 +186,14 @@ class HttpOutput(Output):
 
     def store(self, document: tuple[str, dict | list[dict]] | dict) -> None:
         if isinstance(document, tuple):
-            target, document = document
+            target, payload = document
             target = f"{self._config.target_url}{target}"
+            self.store_custom(payload, target)
         else:
             target = self._config.target_url
-        self.store_custom(document, target)
+            self.store_custom(document, target)
 
-    def store_custom(self, document: dict | tuple | list, target: str) -> None:
+    def store_custom(self, document: dict | tuple | list | str, target: str) -> None:
         """Send a post request with given data to the specified endpoint"""
         if isinstance(document, (tuple, list)):
             request_data = self._encoder.encode_lines(document)
@@ -177,6 +201,9 @@ class HttpOutput(Output):
         elif isinstance(document, dict):
             request_data = self._encoder.encode(document)
             document_count = 1
+        elif isinstance(document, str):
+            document_count = document.count(";") + 1
+            request_data = document.replace(";", "\n")
         else:
             error = TypeError(f"Document type {type(document)} is not supported")
             self.metrics.number_of_failed_events += 1
@@ -184,11 +211,10 @@ class HttpOutput(Output):
             return
         try:
             try:
-                logger.debug(request_data)
                 response = requests.post(
                     url=target,
                     headers=self._headers,
-                    verify=False,
+                    verify=self.verify,
                     auth=(self.user, self.password),
                     timeout=(self.timeout, self.timeout),
                     data=request_data,
