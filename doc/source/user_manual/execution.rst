@@ -274,7 +274,8 @@ Start the required environment with the following command:
 
 .. code-block:: bash
 
-    source PROMETHEUS_MULTIPROC_DIR="/tmp/logprep"
+    export PROMETHEUS_MULTIPROC_DIR="/tmp/logprep"
+    mkdir -p $PROMETHEUS_MULTIPROC_DIR
     docker compose -f examples/compose/docker-compose.yml up -d
 
 HTTP Event Generation
@@ -282,19 +283,13 @@ HTTP Event Generation
 
 To start an example pipeline for HTTP event generation, execute the following steps:
 
-1. Create the required directory:
-
-.. code-block:: bash
-
-    mkdir -p /tmp/logprep/
-
-2. Run the pipeline
+1. Run the pipeline
 
 .. code-block:: bash
 
     logprep run ./examples/exampledata/config/http_pipeline.yml
 
-3. Generate and send events to the HTTP endpoint:
+2. Generate and send events to the HTTP endpoint:
 
 .. code-block:: bash
 
