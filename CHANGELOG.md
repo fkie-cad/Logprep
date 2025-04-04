@@ -9,6 +9,7 @@
 
 * adds new config parameter `event_original_field` to http input which can be used to write the original event in a designated target field
 * adds a new preprocessor `add_full_event_to_target_field` which adds the full event as an escaped string to a designated target field
+* added a new confluent kafka generator, can be invoked with the kafka2 command
 * added --verify option to the generate http command to activate ssl verification and possible set a certificate path
 
 ### Improvements
@@ -29,7 +30,6 @@
 ### Features
 
 * add support for rule files with suffix `.yaml`
-* added a new confluent kafka generator, can be invoked with the kafka2 command
 * add a feature to the preprocessor `log_arrival_time_target_field` to backup the original content on a preexisting target parent field in case of errors during preprocessing
 
 
