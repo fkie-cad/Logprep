@@ -261,6 +261,13 @@ def generate_kafka(config, file):
     required=True,
     type=str,
 )
+@click.option(
+    "--send-timeout",
+    help="Sets the maximum wait time for an answer from the broker on polling",
+    required=False,
+    default=0,
+    type=int,
+)
 def generate_kafka2(**kwargs):
     """
     Generates events based on templated sample files stored inside a dataset directory.

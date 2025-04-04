@@ -55,7 +55,7 @@ class ControllerFactory:
                         "type": "confluentkafka_generator_output",
                         "topic": kafka_config.get("topic", "producer"),
                         "kafka_config": kafka_config,
-                        "send_timeout": kwargs.get("send_timeout", 0),
+                        "send_timeout": kwargs.get("send_timeout"),
                     },
                 }
                 output_connector = Factory.create(output_config)
