@@ -33,6 +33,7 @@ An example config file would look like:
 The endpoint config supports regex and wildcard patterns:
   * :code:`/second*`: matches everything after asterisk
   * :code:`/(third|fourth)/endpoint` matches either third or forth in the first part
+
 The connector configuration includes an optional parameter called original_event_field.
 When set, the full event is stored as a string or dictionary in a specified field. The
 target field for this operation is set via the parameter `target_field` and the format
