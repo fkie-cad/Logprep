@@ -405,8 +405,9 @@ Here is an example of a more extensive output configuration for the ConfluentKaf
 
 For a full list of available options, refer to the  `ConfluentKafka documentation <https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html>`
 
+The :code:`--send_timeout` option determines the maximum wait time for an answer from the broker on polling.
+
 .. code-block:: bash
 
     logprep generate kafka2 --send-timeout 2 --input-dir ./examples/exampledata/input_logdata/ --output-config '{"bootstrap.servers": "127.0.0.1:9092"}' --batch-size 1000 --events 10000
 
-The :code:`--send_timeout` option determines the maximum wait time for an answer from the broker on polling.
