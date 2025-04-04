@@ -121,7 +121,7 @@ class HttpOutput(Output):
         timeout: int = field(validator=validators.instance_of(int), default=2)
         """Timeout in seconds for the http request"""
         verify: bool | str = field(
-            default=False,
+            default=True,
             converter=lambda x: (
                 False
                 if x is None
