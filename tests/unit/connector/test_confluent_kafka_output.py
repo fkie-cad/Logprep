@@ -9,7 +9,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
-from confluent_kafka.error import KafkaException
+from confluent_kafka.error import KafkaException  # type: ignore
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
