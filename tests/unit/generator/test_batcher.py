@@ -133,7 +133,7 @@ class TestBatcher:
             next(batcher)
 
     def test_batcher_returns_batches_in_order(self):
-        batches = iter(["/path/to,msg1", "/path/too,msg2", "/path/tooo,msg3"])
+    def test_batcher_returns_batches_in_order(self):
         batcher = Batcher(batches, batch_size=2, events=6, shuffle=False)
         assert next(batcher) == "/path/to,msg1;msg1\n"
         assert next(batcher) == "/path/too,msg2;msg2\n"
