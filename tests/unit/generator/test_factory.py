@@ -78,6 +78,7 @@ class TestFactory:
 
         kwargs = {
             "input_dir": "/some-path",
+            "send_timeout": 0,
             "output_config": '{"bootstrap.servers": "localhost:9092"}',
         }
 
