@@ -92,7 +92,7 @@ class EventClassConfig:
 
         if self.target_path is not None:
             warnings.warn(
-                "'target_path' is deprecated and will be removed in the future."
+                "'target_path' is deprecated and will be removed in the future. "
                 "Use 'target' instead.",
                 DeprecationWarning,
                 stacklevel=2,

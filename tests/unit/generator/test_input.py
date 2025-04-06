@@ -206,7 +206,8 @@ def test_target_and_target_path_none():
 def test_target_path_deprecation_warning():
     with pytest.warns(
         DeprecationWarning,
-        match="'target_path' is deprecated and will be removed in the future. Use 'target' instead.",
+        match="'target_path' is deprecated and will be removed in the future. "
+        "Use 'target' instead.",
     ):
         config = EventClassConfig(target_path="old_path")
 

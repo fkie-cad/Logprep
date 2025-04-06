@@ -48,7 +48,7 @@ class TestOutput(BaseOutputTestCase):
         responses.add(responses.POST, f"{TARGET_URL}/123", status=404)
         events = '{"event1_key": "event1_value", "event2_key": "event2_value"}'
         batch = f"/123,{events}"
-        batch = f"/123,{events}"
+        self.object.store(batch)
         assert self.object.metrics.number_of_failed_events == 1
         assert self.object.metrics.number_of_processed_events == 0
         assert self.object.metrics.number_of_http_requests == 1
@@ -152,7 +152,7 @@ class TestOutput(BaseOutputTestCase):
 
     @responses.activate
     def test_respond_verify_unverified_host(self):
-    def test_respond_verify_unverified_host(self):
+        with patch("requests.post", side_effect=SSLError("SSL certificate verify failed")):
             with patch.object(self.object.__class__, "verify", new=True):
                 try:
                     self.object.store("," + '"message": "my event message"')
