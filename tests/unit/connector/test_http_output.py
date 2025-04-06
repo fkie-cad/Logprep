@@ -152,7 +152,7 @@ class TestOutput(BaseOutputTestCase):
 
     @responses.activate
     def test_respond_verify_unverified_host(self):
-        with patch("requests.post", side_effect=SSLError("SSL certificate verify failed")):
+    def test_respond_verify_unverified_host(self):
             with patch.object(self.object.__class__, "verify", new=True):
                 try:
                     self.object.store("," + '"message": "my event message"')
