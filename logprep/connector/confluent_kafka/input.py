@@ -492,7 +492,7 @@ class ConfluentKafkaInput(Input):
             offset, partition = topic_partition.offset, topic_partition.partition
             logger.info(
                 "%s was assigned to topic: %s | partition %s",
-                consumer.memberid(),
+                consumer.memberid(),  # This supposedely should fail
                 topic_partition.topic,
                 partition,
             )
