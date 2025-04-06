@@ -17,7 +17,7 @@ class TestSender:
             self.mock_input_events, self.mock_output, **{"target_url": "http://example.com"}
         )
 
-    def test_init_sets_dafault(self):
+    def test_init_sets_default(self):
         assert self.sender.output is self.mock_output
         assert self.sender.thread_count is 1
 
