@@ -54,7 +54,7 @@ class TestOutput(BaseOutputTestCase):
         assert self.object.metrics.number_of_http_requests == 1
 
     @pytest.mark.parametrize(
-        "testcase, input_data, number_of_expected_requests, number_of_expeted_events",
+        "testcase, input_data, number_of_expected_requests, number_of_expected_events",
         [
             ("dict to root", {"message": "my event message"}, 1, 1),
             ("dict to target", ("/abc", {"message": "my event message"}), 1, 1),
@@ -74,7 +74,7 @@ class TestOutput(BaseOutputTestCase):
     )
     @responses.activate
     def test_store_counts_number_of_requests_and_events(
-        self, testcase, input_data, number_of_expected_requests, number_of_expeted_events
+        self, testcase, input_data, number_of_expected_requests, number_of_expected_events
     ):
         if isinstance(input_data, tuple):
             target_url = input_data[0]
@@ -89,7 +89,7 @@ class TestOutput(BaseOutputTestCase):
         assert (
             self.object.metrics.number_of_failed_events == 0
         ), f"no failed events for input {testcase}"
-        assert self.object.metrics.number_of_processed_events == number_of_expeted_events
+        assert self.object.metrics.number_of_processed_events == number_of_expected_events
         assert self.object.metrics.number_of_http_requests == number_of_expected_requests
 
     @pytest.mark.parametrize(
