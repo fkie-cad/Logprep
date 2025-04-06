@@ -44,8 +44,6 @@ class TestConfluentKafkaGeneratorOutput(TestConfluentKafkaOutput):
         "logprep_number_of_errors",
     ]
 
-    def test_test(self):
-        assert 5 == 5
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_sends_event_to_expected_topic(self, _):
