@@ -64,6 +64,7 @@ class Replacer(FieldManager):
                 return None
             result += first_replacement.match
 
+        replacement: Replacement | None
         for idx, replacement in enumerate(template.replacements):
             replacement = Replacer._handle_wildcard(replacement, to_replace)
             if replacement is None:
