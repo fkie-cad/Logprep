@@ -279,93 +279,199 @@ class TestRunLogprepCli:
         mock_kafka_load_tester.assert_called()
 
 
-@mock.patch("logprep.run_logprep.Controller")
 class TestGeneratorCLI:
-    def test_generator_cli_runs_generator_with_default_values(self, mock_controller_class):
-        mock_controller_instance = mock.MagicMock()
-        mock_controller_class.return_value = mock_controller_instance
-        runner = CliRunner()
-        result = runner.invoke(
-            cli,
-            [
-                "generate",
-                "http",
-                "--input-dir",
-                "/some-path",
-                "--target-url",
-                "some-domain",
-                "--user",
-                "user",
-                "--password",
-                "password",
-            ],
-        )
-        assert result.exit_code == 0
-        mock_controller_class.assert_called_with(
-            input_dir="/some-path",
-            target_url="some-domain",
-            user="user",
-            password="password",
-            batch_size=500,
-            events=None,
-            shuffle=False,
-            thread_count=1,
-            replace_timestamp=True,
-            tag="loadtest",
-            loglevel="INFO",
-            timeout=2,
-        )
-        mock_controller_instance.run.assert_called()
+    @pytest.mark.parametrize(
+        "create_path, command_args, expected_kwargs",
+        [
+            (
+                "logprep.generator.factory.ControllerFactory.create",
+                [
+                    "generate",
+                    "http",
+                    "--input-dir",
+                    "/some-path",
+                    "--target-url",
+                    "some-domain",
+                    "--user",
+                    "user",
+                    "--events",
+                    "1000",
+                    "--password",
+                    "password",
+                ],
+                {
+                    "target": "http",
+                    "input_dir": "/some-path",
+                    "target_url": "some-domain",
+                    "user": "user",
+                    "password": "password",
+                    "batch_size": 500,
+                    "events": 1000,
+                    "shuffle": False,
+                    "thread_count": 1,
+                    "replace_timestamp": True,
+                    "tag": "loadtest",
+                    "loglevel": "INFO",
+                    "timeout": 2,
+                    "verify": "False",
+                },
+            ),
+            (
+                "logprep.generator.factory.ControllerFactory.create",
+                [
+                    "generate",
+                    "kafka2",
+                    "--input-dir",
+                    "/some-path",
+                    "--output-config",
+                    '{"bootstrap.servers": "localhost:9092"}',
+                    "--user",
+                    "user",
+                    "--events",
+                    "1000",
+                    "--password",
+                    "password",
+                ],
+                {
+                    "target": "kafka",
+                    "input_dir": "/some-path",
+                    "output_config": '{"bootstrap.servers": "localhost:9092"}',
+                    "user": "user",
+                    "password": "password",
+                    "batch_size": 500,
+                    "events": 1000,
+                    "shuffle": False,
+                    "thread_count": 1,
+                    "replace_timestamp": True,
+                    "tag": "loadtest",
+                    "loglevel": "INFO",
+                    "send_timeout": 0,
+                },
+            ),
+        ],
+    )
+    def test_generator_cli_runs_generator_with_default_values(
+        self, create_path, command_args, expected_kwargs
+    ):
 
-    def test_generator_cli_overwrites_default_values(self, mock_generator):
-        mock_controller = mock.MagicMock()
-        mock_generator.return_value = mock_controller
         runner = CliRunner()
-        result = runner.invoke(
-            cli,
-            [
-                "generate",
-                "http",
-                "--input-dir",
-                "/some-path",
-                "--target-url",
-                "some-domain",
-                "--user",
-                "user",
-                "--password",
-                "password",
-                "--events",
-                "5000",
-                "--shuffle",
-                "False",
-                "--thread-count",
-                "2",
-                "--batch-size",
-                "1000",
-                "--replace-timestamp",
-                "False",
-                "--tag",
-                "test-tag",
-                "--loglevel",
-                "DEBUG",
-            ],
-        )
-        assert result.exit_code == 0, result.stdout
-        mock_generator.assert_called_with(
-            input_dir="/some-path",
-            target_url="some-domain",
-            user="user",
-            password="password",
-            batch_size=1000,
-            events=5000,
-            shuffle=False,
-            thread_count=2,
-            replace_timestamp=False,
-            tag="test-tag",
-            loglevel="DEBUG",
-            timeout=2,
-        )
-        mock_controller.run.assert_called()
+        with mock.patch(create_path) as mock_create:
+            mock_controller_instance = mock.Mock()
+            mock_create.return_value = mock_controller_instance
+
+            result = runner.invoke(cli, command_args)
+            mock_create.assert_called_once_with(**expected_kwargs)
+            mock_controller_instance.run.assert_called_once()
+            assert result.exit_code == 0
+
+    @pytest.mark.parametrize(
+        "create_path, command_args, expected_kwargs",
+        [
+            (
+                "logprep.generator.factory.ControllerFactory.create",
+                [
+                    "generate",
+                    "http",
+                    "--input-dir",
+                    "/some-path",
+                    "--target-url",
+                    "some-domain",
+                    "--user",
+                    "user",
+                    "--password",
+                    "password",
+                    "--events",
+                    "5000",
+                    "--shuffle",
+                    "False",
+                    "--thread-count",
+                    "2",
+                    "--batch-size",
+                    "1000",
+                    "--replace-timestamp",
+                    "False",
+                    "--tag",
+                    "test-tag",
+                    "--loglevel",
+                    "DEBUG",
+                    "--verify",
+                    "/test/path",
+                ],
+                {
+                    "target": "http",
+                    "input_dir": "/some-path",
+                    "target_url": "some-domain",
+                    "user": "user",
+                    "password": "password",
+                    "batch_size": 1000,
+                    "events": 5000,
+                    "shuffle": False,
+                    "thread_count": 2,
+                    "replace_timestamp": False,
+                    "tag": "test-tag",
+                    "loglevel": "DEBUG",
+                    "timeout": 2,
+                    "verify": "/test/path",
+                },
+            ),
+            (
+                "logprep.generator.factory.ControllerFactory.create",
+                [
+                    "generate",
+                    "kafka2",
+                    "--input-dir",
+                    "/some-path",
+                    "--output-config",
+                    '{"bootstrap.servers": "localhost:9092"}',
+                    "--user",
+                    "user",
+                    "--password",
+                    "password",
+                    "--events",
+                    "5000",
+                    "--shuffle",
+                    "False",
+                    "--thread-count",
+                    "2",
+                    "--batch-size",
+                    "1000",
+                    "--replace-timestamp",
+                    "False",
+                    "--tag",
+                    "test-tag",
+                    "--loglevel",
+                    "DEBUG",
+                ],
+                {
+                    "target": "kafka",
+                    "input_dir": "/some-path",
+                    "output_config": '{"bootstrap.servers": "localhost:9092"}',
+                    "user": "user",
+                    "password": "password",
+                    "events": 5000,
+                    "shuffle": False,
+                    "thread_count": 2,
+                    "batch_size": 1000,
+                    "replace_timestamp": False,
+                    "tag": "test-tag",
+                    "loglevel": "DEBUG",
+                    "send_timeout": 0,
+                },
+            ),
+        ],
+    )
+    def test_generator_cli_overwrites_default_values(
+        self, create_path, command_args, expected_kwargs
+    ):
+        runner = CliRunner()
+        with mock.patch(create_path) as mock_create:
+            mock_controller_instance = mock.Mock()
+            mock_create.return_value = mock_controller_instance
+
+            result = runner.invoke(cli, command_args)
+            mock_create.assert_called_once_with(**expected_kwargs)
+            mock_controller_instance.run.assert_called_once()
+            assert result.exit_code == 0
 
 
 class TestPseudoCLI:

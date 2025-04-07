@@ -1,4 +1,4 @@
-target_path: /lab/123/ABC/auditlog
+target: /lab/123/ABC/auditlog
 timestamps:
   - key: TIMESTAMP_FIELD_1
     format: "%Y%m%d"
