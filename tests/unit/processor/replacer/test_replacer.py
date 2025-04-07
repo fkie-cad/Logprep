@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
+from unittest import mock
 import pytest
 
+from logprep.processor.replacer.rule import Replacement
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -484,3 +486,59 @@ class TestReplacer(BaseProcessorTestCase):
         self._load_rule(rule)
         self.object.process(event)
         assert event == expected, testcase
+
+    def test_template_is_none_does_nothing(self):
+        rule = {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{replace this}"},
+            },
+        }
+        event = {"field": "anything"}
+        expected = {"field": "anything"}
+        self._load_rule(rule)
+        self.object.rules[0].templates["field"] = None
+        self.object.process(event)
+        assert event == expected
+
+    @mock.patch("logprep.processor.replacer.processor.Replacer._handle_wildcard", return_value=None)
+    def test_replacement_is_none_does_nothing(self, _):
+        rule = {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{replace this}"},
+            },
+        }
+        event = {"field": "anything"}
+        expected = {"field": "anything"}
+        self._load_rule(rule)
+        self.object.process(event)
+        assert event == expected
+
+    def test_not_first_match_is_not_none_but_does_not_match_does_nothing(self):
+        rule = {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "%{replace this} and %{also this}"},
+            },
+        }
+        event = {"field": "anything and something"}
+        expected = {"field": "anything and something"}
+        self._load_rule(rule)
+        replacements = self.object.rules[0].templates["field"].replacements
+        second_replacement = replacements[1]._asdict()
+        second_replacement["match"] = "exists and does not match"
+        replacements[1] = Replacement(**second_replacement)
+        self.object.process(event)
+        assert event == expected
+
+    def test_handle_wildcard_keep_original_without_matching_next_returns_none(self):
+        replacement = Replacement(
+            value="anything",
+            next="does not match",
+            match=None,
+            keep_original=True,
+            greedy=False,
+        )
+        result = self.object._handle_wildcard(replacement, "something")
+        assert result is None
