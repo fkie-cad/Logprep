@@ -80,8 +80,8 @@ class Replacer(FieldManager):
                 result += replacement.value
                 break
 
-            _, seperator, to_replace = to_replace.partition(replacement.next)
-            if not seperator:
+            _, separator, to_replace = to_replace.partition(replacement.next)
+            if not separator:
                 return None
 
             if replacement.greedy:

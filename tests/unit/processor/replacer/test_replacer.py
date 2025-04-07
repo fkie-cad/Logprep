@@ -83,7 +83,7 @@ test_cases = [  # testcase, rule, event, expected
         {"field": "456 login attempts by 789."},
     ),
     (
-        "replace specific with colon notation at beginning matchs",
+        "replace specific with colon notation at beginning matches",
         {
             "filter": "field",
             "replacer": {
