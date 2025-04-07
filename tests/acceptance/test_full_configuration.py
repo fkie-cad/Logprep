@@ -16,7 +16,6 @@ from tests.acceptance.util import (
     get_full_pipeline,
     start_logprep,
     stop_logprep,
-    wait_for_output,
 )
 
 
@@ -115,7 +114,6 @@ output:
             if re.search("Startup complete", output):
                 break
             output = proc.stdout.readline().decode("utf8")
-
 
 
 def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
