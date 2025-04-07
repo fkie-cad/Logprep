@@ -33,7 +33,7 @@ class Replacer(FieldManager):
 
     rule_class = ReplacerRule
 
-    def _apply_rules(self, event: dict, rule: ReplacerRule):
+    def _apply_rules(self, event: dict, rule: ReplacerRule) -> None:
         for source_field in rule.mapping:
             template = rule.templates.get(source_field)
             if template is None:
@@ -55,7 +55,7 @@ class Replacer(FieldManager):
                 add_fields_to(event, {target: result}, rule, overwrite_target=rule.overwrite_target)
 
     @staticmethod
-    def replace_by_templates(template: ReplacementTemplate, to_replace: str):
+    def replace_by_templates(template: ReplacementTemplate, to_replace: str) -> str | None:
         """Replace parts of `to_replace` by strings defined in `template`."""
         first_replacement = template.replacements[0]
         result = "" if first_replacement.keep_original else template.prefix
@@ -102,7 +102,7 @@ class Replacer(FieldManager):
         return to_replace
 
     @staticmethod
-    def _handle_wildcard(replacement: Replacement, to_replace: str):
+    def _handle_wildcard(replacement: Replacement, to_replace: str) -> Replacement | None:
         """Do not replace anything if replacement value is `*`.
 
         This is used to match a variable string without having to replace it.

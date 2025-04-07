@@ -146,14 +146,14 @@ class ReplacerRule(FieldManagerRule):
 
     def __init__(
         self, filter_rule: FilterExpression, config: "ReplacerRule.Config", processor_name: str
-    ):
+    ) -> None:
         super().__init__(filter_rule, config, processor_name)
         self.templates = {}
         for source, template in self._config.mapping.items():
             self.templates[source] = self._get_replacement_strings(template)
 
     @staticmethod
-    def _get_replacement_strings(template: str):
+    def _get_replacement_strings(template: str) -> ReplacementTemplate:
         prefix, replacements = ReplacerRule._get_replacements(template)
         ReplacerRule._parse_colon_notation(replacements)
         ReplacerRule._get_greedy_state(replacements)
@@ -169,7 +169,7 @@ class ReplacerRule(FieldManagerRule):
         replacements: list[dict] = []
         idx = 0
         while template:
-            replacement = {}
+            replacement: dict = {}
             pre_start, _, post_start = template.partition(START)
             if idx == 0:
                 prefix = pre_start
@@ -188,7 +188,7 @@ class ReplacerRule(FieldManagerRule):
         return prefix, replacements
 
     @staticmethod
-    def _parse_colon_notation(replacements: list):
+    def _parse_colon_notation(replacements: list[dict]) -> None:
         for idx, replacement in enumerate(replacements):
             col_pos = ReplacerRule._find_not_escaped_character(replacement["value"], ":")
 
@@ -204,7 +204,7 @@ class ReplacerRule(FieldManagerRule):
                 replacements[idx - 1]["replace_next"] += replacement["match"]
 
     @staticmethod
-    def _get_colon_match_value(colon_pos, replacement) -> str:
+    def _get_colon_match_value(colon_pos: int, replacement: dict) -> str:
         match = replacement["value"][:colon_pos]
         match = ReplacerRule._unescape_backslashes_at_end_of_string(match)
         match = ReplacerRule._unescape_character(match, ":")
@@ -217,7 +217,7 @@ class ReplacerRule(FieldManagerRule):
         return match
 
     @staticmethod
-    def _get_colon_replacement_value(colon_pos, replacement) -> str:
+    def _get_colon_replacement_value(colon_pos: int, replacement: dict) -> str:
         value = replacement["value"][colon_pos + 1 :]
         return ReplacerRule._unescape_character(value, ":")
 
@@ -240,8 +240,8 @@ class ReplacerRule(FieldManagerRule):
         return None
 
     @staticmethod
-    def _get_replacements_with_wildcard_state(replacements: list) -> list:
-        replacements_with_wildcard_state = []
+    def _get_replacements_with_wildcard_state(replacements: list[dict]) -> list[dict]:
+        replacements_with_wildcard_state: list[dict] = []
         for replacement in replacements:
             replacements_with_wildcard_state.append(
                 {
@@ -255,7 +255,7 @@ class ReplacerRule(FieldManagerRule):
         return replacements_with_wildcard_state
 
     @staticmethod
-    def _unescape_single_star_symbol(replacements: list):
+    def _unescape_single_star_symbol(replacements: list) -> None:
         for replacement in replacements:
             if not replacement["keep_original"] and replacement["value"].endswith("*"):
                 pre_wildcard = replacement["value"][:-1]
@@ -263,7 +263,7 @@ class ReplacerRule(FieldManagerRule):
                     replacement["value"] = replacement["value"][1:]
 
     @staticmethod
-    def _get_greedy_state(replacements: list):
+    def _get_greedy_state(replacements: list) -> None:
         for idx, replacement in enumerate(replacements):
             pipe_pos = ReplacerRule._find_not_escaped_character(replacement["value"], "|")
 
