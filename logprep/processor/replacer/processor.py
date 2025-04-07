@@ -97,9 +97,8 @@ class Replacer(FieldManager):
     @staticmethod
     def _partition_greedily(replacement: Replacement, to_replace: str) -> str:
         """Ensure to replace as much as possible if next is contained in string to replace"""
-        while to_replace != replacement.next and replacement.next in to_replace:
-            _, _, to_replace = to_replace.partition(replacement.next)
-        return to_replace
+        last_index = to_replace.rfind(replacement.next)
+        return to_replace[last_index + len(replacement.next) :] if last_index != -1 else to_replace
 
     @staticmethod
     def _handle_wildcard(replacement: Replacement, to_replace: str) -> Replacement | None:
