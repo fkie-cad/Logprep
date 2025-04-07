@@ -70,7 +70,7 @@ class Replacer(FieldManager):
                 return None
 
             if replacement.match:
-                pre, match, post = result.rpartition(replacement.match)
+                pre, match, _ = result.rpartition(replacement.match)
                 if not match:
                     return None
                 result = pre + replacement.value + replacement.next

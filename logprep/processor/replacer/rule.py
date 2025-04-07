@@ -264,7 +264,7 @@ class ReplacerRule(FieldManagerRule):
 
     @staticmethod
     def _get_greedy_state(replacements: list) -> None:
-        for idx, replacement in enumerate(replacements):
+        for replacement in replacements:
             pipe_pos = ReplacerRule._find_not_escaped_character(replacement["value"], "|")
 
             if pipe_pos is None:
