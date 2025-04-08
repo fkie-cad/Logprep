@@ -46,6 +46,9 @@ RUN pip3 uninstall \
     --yes \
     'setuptools' \
     'wheel'
+RUN apt-get update && apt-get -y upgrade && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 COPY --from=build /opt/venv /opt/venv
 RUN useradd -s /bin/sh -m -c "logprep user" logprep
 USER logprep

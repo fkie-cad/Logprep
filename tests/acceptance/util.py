@@ -268,7 +268,7 @@ def wait_for_output(
     proc: subprocess.Popen, expected_output, test_timeout=10, forbidden_outputs=None
 ) -> None:
     if forbidden_outputs is None:
-        forbidden_outputs = ["Invalid", "Exception", "critical", "Error", "ERROR"]
+        forbidden_outputs = ["Invalid", "Exception", "Critical", "Error", "ERROR"]
 
     @timeout(test_timeout)
     def wait_for_output_inner(

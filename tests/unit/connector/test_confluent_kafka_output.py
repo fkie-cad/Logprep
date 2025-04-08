@@ -9,7 +9,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
-from confluent_kafka.error import KafkaException
+from confluent_kafka.error import KafkaException  # type: ignore
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
@@ -23,6 +23,7 @@ KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 
 class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):
+
     CONFIG = {
         "type": "confluentkafka_output",
         "topic": "test_input_raw",

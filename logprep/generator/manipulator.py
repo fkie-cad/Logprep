@@ -10,7 +10,7 @@ from functools import reduce
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from logprep.generator.http.input import EventClassConfig
+    from logprep.generator.input import EventClassConfig
 
 
 class Manipulator:
@@ -70,4 +70,7 @@ class Manipulator:
         if isinstance(current_value, dict):
             return current_value
         sub_dict.update({key: {}})
-        return sub_dict.get(key)
+        result = sub_dict.get(key)
+        if result is None:
+            raise KeyError("Key not found in dictionary")
+        return result
