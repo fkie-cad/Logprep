@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
 from unittest import mock
 import pytest
 
