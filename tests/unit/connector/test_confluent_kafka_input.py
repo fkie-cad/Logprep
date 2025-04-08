@@ -454,3 +454,27 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         input_connector = Factory.create({"input_connector": new_kafka_config})
         _ = input_connector._admin
         admin_client.assert_called_with(expected_admin_client_config)
+
+    def test_revoke_callback_raises_on_invalid_consumer_state(self):
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.memberid.side_effect = KafkaException("invalid state")
+
+        self.object.partition = mock.MagicMock()
+        self.object.partition.topic = "test-topic"
+        self.object.partition.partition = 0
+        topic_partitions = [self.object.partition]
+
+        with pytest.raises(RuntimeError, match="Consumer in invalid state:"):
+            self.object._revoke_callback(self.object._consumer, topic_partitions)
+
+    def test_revoke_callback_fails_if_consumer_closed(self):
+
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.closed = True
+
+        self.object.partition = mock.MagicMock()
+        self.object.partition.topic = "test-topic"
+        self.object.partition.partition = 0
+
+        with pytest.raises(RuntimeError, match="consumer is already closed"):
+            self.object._revoke_callback(self.object._consumer, [self.object.partition])
