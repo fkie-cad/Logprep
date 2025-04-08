@@ -9,7 +9,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
-from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException
+from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException  # type: ignore
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -377,6 +377,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_revoke_callback_logs_warning_and_counts(self, mock_consumer):
+        mock_consumer.closed = False
         self.object.metrics.number_of_warnings = 0
         self.object.output_connector = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
@@ -387,6 +388,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_revoke_callback_calls_batch_finished_callback(self, mock_consumer):
+        mock_consumer.closed = False
         self.object.output_connector = mock.MagicMock()
         self.object.batch_finished_callback = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
@@ -454,3 +456,28 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         input_connector = Factory.create({"input_connector": new_kafka_config})
         _ = input_connector._admin
         admin_client.assert_called_with(expected_admin_client_config)
+
+    def test_revoke_callback_raises_on_invalid_consumer_state(self):
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.closed = False
+        self.object._consumer.memberid.side_effect = KafkaException("invalid state")
+
+        self.object.partition = mock.MagicMock()
+        self.object.partition.topic = "test-topic"
+        self.object.partition.partition = 0
+        topic_partitions = [self.object.partition]
+
+        with pytest.raises(RuntimeError, match="Failed to retrieve member ID"):
+            self.object._revoke_callback(self.object._consumer, topic_partitions)
+
+    def test_revoke_callback_fails_if_consumer_closed(self):
+
+        self.object._consumer = mock.MagicMock()
+        self.object._consumer.closed = True
+
+        self.object.partition = mock.MagicMock()
+        self.object.partition.topic = "test-topic"
+        self.object.partition.partition = 0
+
+        with pytest.raises(RuntimeError, match="consumer is already closed"):
+            self.object._revoke_callback(self.object._consumer, [self.object.partition])

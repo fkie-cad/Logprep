@@ -492,7 +492,7 @@ class ConfluentKafkaInput(Input):
             offset, partition = topic_partition.offset, topic_partition.partition
             logger.info(
                 "%s was assigned to topic: %s | partition %s",
-                consumer.memberid(),
+                consumer.memberid(),  # This supposedely should fail
                 topic_partition.topic,
                 partition,
             )
@@ -504,14 +504,24 @@ class ConfluentKafkaInput(Input):
             self.metrics.current_offsets.add_with_labels(offset, labels)
 
     def _revoke_callback(self, consumer, topic_partitions):
+
+        if getattr(consumer, "closed", False):
+            raise RuntimeError("Cannot revoke: consumer is already closed")
+
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
+            try:
+                member_id = consumer.memberid()
+            except Exception as error:
+                raise RuntimeError(f"Failed to retrieve member ID: {error}\n") from error
+
             logger.warning(
                 "%s to be revoked from topic: %s | partition %s",
-                consumer.memberid(),
+                member_id,
                 topic_partition.topic,
                 topic_partition.partition,
             )
+
         self.batch_finished_callback()
 
     def _lost_callback(self, consumer, topic_partitions):
