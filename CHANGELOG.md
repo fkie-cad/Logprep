@@ -3,6 +3,9 @@
 ## next release
 ### Breaking
 ### Features
+
+* add `replacer` processor to replace substrings in fields using a syntax similar to the `dissector`
+
 ### Improvements
 ### Bugfix
 
@@ -33,6 +36,7 @@
 ### Breaking
 
 * remove `hyperscan_resolver` processor because it is not significantly faster as the `generic_resolver` with enabled cache
+
 ### Features
 
 * add support for rule files with suffix `.yaml`
