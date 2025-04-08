@@ -492,7 +492,7 @@ class ConfluentKafkaInput(Input):
             offset, partition = topic_partition.offset, topic_partition.partition
             logger.info(
                 "%s was assigned to topic: %s | partition %s",
-                consumer.memberid(),  # This supposedely should fail
+                consumer.memberid(),
                 topic_partition.topic,
                 partition,
             )
@@ -521,7 +521,6 @@ class ConfluentKafkaInput(Input):
                 topic_partition.topic,
                 topic_partition.partition,
             )
-
         self.batch_finished_callback()
 
     def _lost_callback(self, consumer, topic_partitions):
