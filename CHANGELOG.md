@@ -2,6 +2,12 @@
 
 ## next release
 ### Breaking
+### Features
+### Improvements
+### Bugfix
+
+## 16.1.0
+### Deprecations
 
 * the generator input config now uses target instead of the deprecated target_path.
 
