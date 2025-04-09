@@ -10,6 +10,7 @@
 ### Bugfix
 
 - Fixed logging error in _revoke_callback() by adding error handling
+- Fixed endless loading in logprep test config
 
 ## 16.1.0
 ### Deprecations
