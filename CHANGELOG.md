@@ -5,6 +5,7 @@
 ### Features
 ### Improvements
 ### Bugfix
+
 - Fixed logging error in _revoke_callback() by adding error handling
 
 ## 16.1.0
