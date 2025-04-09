@@ -3,6 +3,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
+import logging
 import os
 import socket
 from copy import deepcopy
@@ -457,27 +458,20 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         _ = input_connector._admin
         admin_client.assert_called_with(expected_admin_client_config)
 
-    def test_revoke_callback_raises_on_invalid_consumer_state(self):
+    def test_get_member_returns_consumer_memberid(self, caplog):
+        caplog.set_level(logging.ERROR)
         self.object._consumer = mock.MagicMock()
         self.object._consumer.closed = False
-        self.object._consumer.memberid.side_effect = KafkaException("invalid state")
+        self.object._consumer.memberid.side_effect = "1"
 
-        self.object.partition = mock.MagicMock()
-        self.object.partition.topic = "test-topic"
-        self.object.partition.partition = 0
-        topic_partitions = [self.object.partition]
+        member_id = self.object._get_memberid()
+        assert member_id is "1"
 
-        with pytest.raises(RuntimeError, match="Failed to retrieve member ID"):
-            self.object._revoke_callback(self.object._consumer, topic_partitions)
-
-    def test_revoke_callback_fails_if_consumer_closed(self):
-
+    def test_get_member_id_raises_on_invalid_consumer_state(self, caplog):
+        caplog.set_level(logging.ERROR)
         self.object._consumer = mock.MagicMock()
-        self.object._consumer.closed = True
+        self.object._consumer.closed = False
+        self.object._consumer.memberid.side_effect = RuntimeError("consumer is closed")
 
-        self.object.partition = mock.MagicMock()
-        self.object.partition.topic = "test-topic"
-        self.object.partition.partition = 0
-
-        with pytest.raises(RuntimeError, match="consumer is already closed"):
-            self.object._revoke_callback(self.object._consumer, [self.object.partition])
+        self.object._get_memberid()
+        assert "Failed to retrieve member ID:" in caplog.text

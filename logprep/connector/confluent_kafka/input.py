@@ -505,9 +505,6 @@ class ConfluentKafkaInput(Input):
 
     def _revoke_callback(self, consumer, topic_partitions):
 
-        if getattr(consumer, "closed", False):
-            raise RuntimeError("Cannot revoke: consumer is already closed")
-
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
             member_id = self._get_memberid()
@@ -535,6 +532,7 @@ class ConfluentKafkaInput(Input):
             member_id = self._consumer.memberid()
         except RuntimeError as error:
             logger.error("Failed to retrieve member ID: %s", error)
+            member_id = None
         return member_id
 
     def shut_down(self) -> None:
