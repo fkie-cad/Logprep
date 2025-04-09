@@ -510,11 +510,7 @@ class ConfluentKafkaInput(Input):
 
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
-            try:
-                member_id = consumer.memberid()
-            except Exception as error:
-                raise RuntimeError(f"Failed to retrieve member ID: {error}\n") from error
-
+            member_id = self._get_memberid()
             logger.warning(
                 "%s to be revoked from topic: %s | partition %s",
                 member_id,
@@ -526,12 +522,20 @@ class ConfluentKafkaInput(Input):
     def _lost_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
+            member_id = self._get_memberid()
             logger.warning(
                 "%s has lost topic: %s | partition %s - try to reassign",
-                consumer.memberid(),
+                member_id,
                 topic_partition.topic,
                 topic_partition.partition,
             )
+
+    def _get_memberid(self) -> str | None:
+        try:
+            member_id = self._consumer.memberid()
+        except RuntimeError as error:
+            logger.error("Failed to retrieve member ID: %s", error)
+        return member_id
 
     def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
