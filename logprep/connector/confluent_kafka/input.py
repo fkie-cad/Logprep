@@ -503,7 +503,7 @@ class ConfluentKafkaInput(Input):
             self.metrics.committed_offsets.add_with_labels(offset, labels)
             self.metrics.current_offsets.add_with_labels(offset, labels)
 
-    def _revoke_callback(self, consumer, topic_partitions):
+    def _revoke_callback(self, topic_partitions):
 
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
@@ -516,7 +516,7 @@ class ConfluentKafkaInput(Input):
             )
         self.batch_finished_callback()
 
-    def _lost_callback(self, consumer, topic_partitions):
+    def _lost_callback(self, topic_partitions):
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
             member_id = self._get_memberid()
@@ -527,7 +527,9 @@ class ConfluentKafkaInput(Input):
                 topic_partition.partition,
             )
 
-    def _get_memberid(self) -> str | None:
+    def _get_memberid(
+        self,
+    ) -> str | None:
         try:
             member_id = self._consumer.memberid()
         except RuntimeError as error:
