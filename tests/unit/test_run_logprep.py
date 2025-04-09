@@ -122,6 +122,17 @@ class TestRunLogprepCli:
         mock_verify.assert_called()
         assert "The verification of the configuration was successful" in result.stdout
 
+    @mock.patch("logprep.run_logprep.LogprepMPQueueListener")
+    def test_listener_start_and_stop_called(self, mock_listener_cls):
+        mock_listener = mock.Mock()
+        mock_listener_cls.return_value = mock_listener
+
+        args = ["test", "config", "tests/testdata/config/config.yml"]
+        result = self.cli_runner.invoke(cli, args)
+
+        assert mock_listener.start.called, "Listener start() was not called"
+        assert mock_listener.stop.called, "Listener stop() was not called"
+
     @mock.patch("logprep.util.configuration.Configuration._verify")
     def test_test_config_verifies_configuration_unsuccessfully(self, mock_verify):
         mock_verify.side_effect = InvalidConfigurationError("test error")

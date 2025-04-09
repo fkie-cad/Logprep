@@ -17,6 +17,7 @@ from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.helper import get_versions_string, print_fcolor
+from logprep.util.logging import LogprepMPQueueListener, logqueue
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.util.rule_dry_runner import DryRunner
 
@@ -37,7 +38,14 @@ def _get_configuration(config_paths: tuple[str]) -> Configuration:
         config = Configuration.from_sources(config_paths)
         config.logger.setup_logging()
         logger = logging.getLogger("root")  # pylint: disable=redefined-outer-name
+
+        console_logger = logging.getLogger("console")
+        console_handler = console_logger.handlers[0]
+        listener = LogprepMPQueueListener(logqueue, console_handler)
+        listener.start()
+
         logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
+        listener.stop()
         return config
     except InvalidConfigurationError as error:
         print(f"InvalidConfigurationError: {error}", file=sys.stderr)
@@ -62,7 +70,7 @@ def cli() -> None:
     "--version",
     is_flag=True,
     default=False,
-    help="Print version and exit (includes also congfig version)",
+    help="Print version and exit (includes also config version)",
 )
 def run(configs: tuple[str], version=None) -> None:
     """
