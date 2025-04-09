@@ -130,11 +130,16 @@ class ConfluentKafkaInput(Input):
 
         librdkafka_replyq: GaugeMetric = field(
             factory=lambda: GaugeMetric(
-                description="Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()",
+                description=(
+                    "Number of ops (callbacks, events, etc) waiting in "
+                    "queue for application to serve with rd_kafka_poll()"
+                ),
                 name="confluent_kafka_input_librdkafka_replyq",
             )
         )
-        """Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()"""
+        """Number of ops (callbacks, events, etc) waiting in queue for application
+           to serve with rd_kafka_poll()
+        """
         librdkafka_tx: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Total number of requests sent to Kafka brokers",
@@ -166,14 +171,22 @@ class ConfluentKafkaInput(Input):
         """Total number of bytes received from Kafka brokers"""
         librdkafka_rxmsgs: GaugeMetric = field(
             factory=lambda: GaugeMetric(
-                description="Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers.",
+                description=(
+                    "Total number of messages consumed, not including ignored messages"
+                    "(due to offset, etc), from Kafka brokers."
+                ),
                 name="confluent_kafka_input_librdkafka_rxmsgs",
             )
         )
-        """Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers."""
+        """Total number of messages consumed, not including ignored messages
+           (due to offset, etc), from Kafka brokers.
+        """
         librdkafka_rxmsg_bytes: GaugeMetric = field(
             factory=lambda: GaugeMetric(
-                description="Total number of message bytes (including framing) received from Kafka brokers",
+                description=(
+                    "Total number of message bytes (including framing)"
+                    "received from Kafka brokers"
+                ),
                 name="confluent_kafka_input_librdkafka_rxmsg_bytes",
             )
         )
@@ -195,11 +208,11 @@ class ConfluentKafkaInput(Input):
         """Time elapsed since last rebalance (assign or revoke) (milliseconds)."""
         librdkafka_cgrp_rebalance_cnt: GaugeMetric = field(
             factory=lambda: GaugeMetric(
-                description="Total number of rebalances (assign or revoke).",
+                description="Total number of rebalance (assign or revoke).",
                 name="confluent_kafka_input_librdkafka_cgrp_rebalance_cnt",
             )
         )
-        """Total number of rebalances (assign or revoke)."""
+        """Total number of rebalance (assign or revoke)."""
         librdkafka_cgrp_assignment_size: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Current assignment's partition count.",
@@ -487,12 +500,13 @@ class ConfluentKafkaInput(Input):
         except KafkaException as error:
             raise InputWarning(self, f"{error}, {self._last_valid_record}") from error
 
-    def _assign_callback(self, consumer: Consumer, topic_partitions: list[TopicPartition]) -> None:
+    def _assign_callback(self, topic_partitions: list[TopicPartition]) -> None:
         for topic_partition in topic_partitions:
             offset, partition = topic_partition.offset, topic_partition.partition
+            member_id = self._get_memberid()
             logger.info(
                 "%s was assigned to topic: %s | partition %s",
-                consumer.memberid(),
+                member_id,
                 topic_partition.topic,
                 partition,
             )
@@ -528,11 +542,11 @@ class ConfluentKafkaInput(Input):
             )
 
     def _get_memberid(self) -> str | None:
+        member_id = None
         try:
             member_id = self._consumer.memberid()
         except RuntimeError as error:
             logger.error("Failed to retrieve member ID: %s", error)
-            member_id = None
         return member_id
 
     def shut_down(self) -> None:
