@@ -3,8 +3,8 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
-import logging
 import os
+import re
 import socket
 from copy import deepcopy
 from unittest import mock
@@ -361,14 +361,13 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         }
         self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_assign_callback_sets_offsets_and_logs_info(self, mock_consumer):
+    def test_assign_callback_sets_offsets_and_logs_info(self):
         self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
         self.object.metrics.current_offsets.add_with_labels = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         mock_partitions[0].offset = OFFSET_BEGINNING
         with mock.patch("logging.Logger.info") as mock_info:
-            self.object._assign_callback(mock_consumer, mock_partitions)
+            self.object._assign_callback(mock_partitions)
         expected_labels = {
             "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
         }
@@ -376,9 +375,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
         self.object.metrics.current_offsets.add_with_labels.assert_called_with(0, expected_labels)
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_revoke_callback_logs_warning_and_counts(self, mock_consumer):
-        mock_consumer.closed = False
+    def test_revoke_callback_logs_warning_and_counts(self):
         self.object.metrics.number_of_warnings = 0
         self.object.output_connector = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
@@ -387,14 +384,20 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_warning.assert_called()
         assert self.object.metrics.number_of_warnings == 1
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_revoke_callback_calls_batch_finished_callback(self, mock_consumer):
-        mock_consumer.closed = False
+    def test_revoke_callback_calls_batch_finished_callback(self):
         self.object.output_connector = mock.MagicMock()
         self.object.batch_finished_callback = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         self.object._revoke_callback(mock_partitions)
         self.object.batch_finished_callback.assert_called()
+
+    def test_revoke_callback_logs_error_if_consumer_closed(self, caplog):
+        with mock.patch.object(self.object, "_consumer") as mock_consumer:
+            mock_consumer.memberid = mock.MagicMock()
+            mock_consumer.memberid.side_effect = RuntimeError("Consumer is closed")
+            mock_partitions = [mock.MagicMock()]
+            self.object._revoke_callback(mock_partitions)
+            assert re.search(r"ERROR.*Consumer is closed", caplog.text)
 
     def test_health_returns_true_if_no_error(self):
         self.object._admin = mock.MagicMock()
@@ -457,21 +460,3 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         input_connector = Factory.create({"input_connector": new_kafka_config})
         _ = input_connector._admin
         admin_client.assert_called_with(expected_admin_client_config)
-
-    def test_get_member_returns_consumer_memberid(self, caplog):
-        caplog.set_level(logging.ERROR)
-        self.object._consumer = mock.MagicMock()
-        self.object._consumer.closed = False
-        self.object._consumer.memberid.side_effect = "1"
-
-        member_id = self.object._get_memberid()
-        assert member_id is "1"
-
-    def test_get_member_id_raises_on_invalid_consumer_state(self, caplog):
-        caplog.set_level(logging.ERROR)
-        self.object._consumer = mock.MagicMock()
-        self.object._consumer.closed = False
-        self.object._consumer.memberid.side_effect = RuntimeError("consumer is closed")
-
-        self.object._get_memberid()
-        assert "Failed to retrieve member ID:" in caplog.text
