@@ -232,7 +232,7 @@ class ConfluentKafkaOutput(Output):
             the error that occurred
         """
         self.metrics.number_of_errors += 1
-        logger.error(f"{self.describe()}: {error}")  # pylint: disable=logging-fstring-interpolation
+        logger.error("%s: %s", self.describe(), error)
 
     def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
