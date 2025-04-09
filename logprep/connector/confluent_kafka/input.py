@@ -316,7 +316,7 @@ class ConfluentKafkaInput(Input):
             the error that occurred
         """
         self.metrics.number_of_errors += 1
-        logger.error(f"{self.describe()}: {error}")
+        logger.error("%s: %s", self.describe(), error)
 
     def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
@@ -487,7 +487,7 @@ class ConfluentKafkaInput(Input):
         except KafkaException as error:
             raise InputWarning(self, f"{error}, {self._last_valid_record}") from error
 
-    def _assign_callback(self, consumer, topic_partitions):
+    def _assign_callback(self, consumer: Consumer, topic_partitions: list[TopicPartition]) -> None:
         for topic_partition in topic_partitions:
             offset, partition = topic_partition.offset, topic_partition.partition
             logger.info(
@@ -503,7 +503,7 @@ class ConfluentKafkaInput(Input):
             self.metrics.committed_offsets.add_with_labels(offset, labels)
             self.metrics.current_offsets.add_with_labels(offset, labels)
 
-    def _revoke_callback(self, topic_partitions):
+    def _revoke_callback(self, topic_partitions: list[TopicPartition]) -> None:
 
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
@@ -516,7 +516,7 @@ class ConfluentKafkaInput(Input):
             )
         self.batch_finished_callback()
 
-    def _lost_callback(self, topic_partitions):
+    def _lost_callback(self, topic_partitions: list[TopicPartition]) -> None:
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
             member_id = self._get_memberid()
@@ -527,9 +527,7 @@ class ConfluentKafkaInput(Input):
                 topic_partition.partition,
             )
 
-    def _get_memberid(
-        self,
-    ) -> str | None:
+    def _get_memberid(self) -> str | None:
         try:
             member_id = self._consumer.memberid()
         except RuntimeError as error:
