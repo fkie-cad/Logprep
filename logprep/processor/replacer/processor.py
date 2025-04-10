@@ -110,7 +110,10 @@ class Replacer(FieldManager):
         Other patterns require no escaping of `*`.
         """
         if replacement.keep_original:
-            match_idx = to_replace.find(replacement.next)
+            if replacement.greedy:
+                match_idx = to_replace.rfind(replacement.next)
+            else:
+                match_idx = to_replace.find(replacement.next)
             if match_idx < 0:
                 return None
             original = to_replace[:match_idx] if match_idx else to_replace
