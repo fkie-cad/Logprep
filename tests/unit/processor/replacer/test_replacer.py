@@ -284,6 +284,17 @@ test_cases = [  # testcase, rule, event, expected
         {"field": "Disconnected from IP. Connected to IP."},
     ),
     (
+        "replace wildcard greedily",
+        {
+            "filter": "field",
+            "replacer": {
+                "mapping": {"field": "Disconnected from %{IP|g}. Connected to %{*|g}."},
+            },
+        },
+        {"field": "Disconnected from 1.2.3.4. Connected to 1.2.3.4."},
+        {"field": "Disconnected from IP. Connected to 1.2.3.4."},
+    ),
+    (
         "replace multiple fields",
         {
             "filter": "field_a AND field_b",
