@@ -1,6 +1,8 @@
-import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from itertools import islice
+
+from logprep.factory import Factory
+from logprep.util.time import TimeParser
 
 
 class Input:
@@ -37,8 +39,10 @@ class Pipeline:
         return self
 
     def compute(self, event):
-        time.sleep(1)
-        return f"processed {event}"
+        return {
+            "processed": event,
+            "@timestamp": TimeParser.from_timestamp(TimeParser.now().timestamp()).isoformat(),
+        }
 
     def process_pipeline(self):
         """processes the Pipeline"""
@@ -78,10 +82,24 @@ class Runner:
     A class to run the pipeline
     """
 
+    output_config = {
+        "type": "opensearchng_output",
+        "hosts": ["127.0.0.1:9200"],
+        "default_index": "processed",
+        "default_op_type": "create",
+        "message_backlog_size": 500,
+        "timeout": 10000,
+        "flush_timeout": 60,
+        "user": "admin",
+        "secret": "admin",
+        "desired_cluster_status": ["green", "yellow"],
+    }
+
     def __init__(self, process_count=10):
         self.process_count = process_count
         self.input = Input()
-        self.output = Output()
+        # self.output = Output()
+        self.output = Factory.create({"opesearch": self.output_config})
         self.pipeline = Pipeline(self.input)
         self.sender = Sender(self.pipeline, self.output)
 
