@@ -235,7 +235,7 @@ class OpensearchNGOutput(Output):
         document : dict
            Document to store.
         """
-        self.store_custom(document, document.get("_index", self._config.default_index))
+        self.store_custom(document, document.get("_index", "processed"))
 
     def store_custom(self, document: dict, target: str) -> None:
         """Store document into backlog to be written into Opensearch with the target index.
@@ -289,10 +289,11 @@ class OpensearchNGOutput(Output):
             "raise_on_exception": False,
         }
         for success, item in helpers.streaming_bulk(client, actions, **kwargs):
-            if success:
-                print(f"success: {item}")
-            else:
-                print(f"failed {item}")
+            pass
+            # if success:
+            #     print(f"success: {item}")
+            # else:
+            #     print(f"failed {item}")
 
     def health(self) -> bool:
         """Check the health of the component."""
