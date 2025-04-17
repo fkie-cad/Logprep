@@ -5,6 +5,7 @@ The tag `!set_anchor ANCHOR_NAME` sets an anchor like using regular YAML anchors
 for multiple documents within the same YAML stream (i.e. within a file).
 It can be then loaded with `!load_anchor ANCHOR_NAME`.
 """
+
 import os.path
 from typing import Set
 
@@ -34,6 +35,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         -------
         Yaml data where the !include tag has been replaced by the content of the include file.
         """
+
         def _include(_: Loader, node: Node):
             if not isinstance(node.value, (str, os.PathLike)):
                 raise ValueError(f"'{node.value}' is not a file path")
@@ -84,7 +86,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
             if scalar_value:
                 anchor_value = scalar_value
             else:
-                anchor_value = "\n".join(lines[node.start_mark.line + 1: node.end_mark.line + 1])
+                anchor_value = "\n".join(lines[node.start_mark.line + 1 : node.end_mark.line + 1])
             parsed_anchor_value = _yaml.load(anchor_value)
             if parsed_anchor_value is None:
                 raise ValueError(f"'{lines[node.start_mark.line]}' is en empty scalar anchor")
@@ -106,6 +108,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         -------
         Yaml data where the !load_anchor tag has been replaced by the content of the anchor.
         """
+
         def _load_anchor(constructor: BaseConstructor, node: Node):
             clear_anchors_if_buffer_changed(constructor, _anchors, _last_buffer)
 
@@ -118,7 +121,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         return _load_anchor
 
     def clear_anchors_if_buffer_changed(
-            constructor: BaseConstructor, _anchors: dict, _last_buffer: Set[str]
+        constructor: BaseConstructor, _anchors: dict, _last_buffer: Set[str]
     ):
         if constructor.loader.reader.buffer not in _last_buffer:
             _last_buffer.clear()
@@ -127,7 +130,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
 
     def get_anchor_name(tag: str, constructor: BaseConstructor, node: Node) -> str:
         lines = constructor.loader.reader.buffer.splitlines()
-        _, _, anchor_name = lines[node.start_mark.line][node.start_mark.column:].partition(tag)
+        _, _, anchor_name = lines[node.start_mark.line][node.start_mark.column :].partition(tag)
         anchor_name = anchor_name.strip()
         anchor_name = anchor_name.split()[0]
         return anchor_name

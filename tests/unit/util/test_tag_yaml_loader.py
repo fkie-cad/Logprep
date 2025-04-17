@@ -214,9 +214,7 @@ class TestTagYamlLoader:
         assert loaded[0]["processor"]["some_node"] == "some value"
         assert loaded[1]["processor"]["another_node"] == "some value"
 
-    def test_load_with_empty_scalar_anchor_tag(
-            self, yaml_empty_scalar_anchor_tag
-    ):
+    def test_load_with_empty_scalar_anchor_tag(self, yaml_empty_scalar_anchor_tag):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
         loaded = self._load_all_yaml(yaml_empty_scalar_anchor_tag, yaml)
