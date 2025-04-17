@@ -140,7 +140,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
 
         yaml.constructor.add_constructor("!include", include(yaml))
 
-        last_buffer = set()
-        anchors = {}
+        last_buffer: Set[str] = set()
+        anchors: dict = {}
         yaml.constructor.add_constructor("!set_anchor", set_anchor(yaml, anchors, last_buffer))
         yaml.constructor.add_constructor("!load_anchor", load_anchor(anchors, last_buffer))
