@@ -3,6 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 import sys
+import tempfile
 from importlib.metadata import version
 from pathlib import Path
 from unittest import mock
@@ -11,6 +12,7 @@ import pytest
 import requests
 import responses
 from click.testing import CliRunner
+from ruamel.yaml import YAML
 
 from logprep import run_logprep
 from logprep.run_logprep import cli
@@ -525,3 +527,25 @@ class TestPseudoCLI:
         )
         assert result.exit_code == 0
         assert result.output.strip() == "string"
+
+
+class TestYamlLoaderTags:
+    def test_yaml_loader_include_tag_initialized(self):
+        yaml = YAML(pure=True, typ="safe")
+        target_directory = tempfile.mkdtemp()
+        path_to_file_to_include = self._write_to_yaml_file("this: was included", target_directory)
+        yml_with_tag = f"""
+        foo:
+            bar: !include {path_to_file_to_include}
+        """
+        yaml_file = self._write_to_yaml_file(yml_with_tag, target_directory)
+        with open(yaml_file, "r", encoding="utf-8") as file:
+            loaded = yaml.load(file)
+        assert loaded["foo"]["bar"] == {"this": "was included"}
+
+    @staticmethod
+    def _write_to_yaml_file(file_content: str, target_directory: str):
+        rule_file = tempfile.mktemp(dir=target_directory, suffix=".yml")
+        with open(rule_file, "w", encoding="utf-8") as file:
+            file.write(file_content)
+        return rule_file
