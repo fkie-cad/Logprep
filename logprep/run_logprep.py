@@ -20,12 +20,14 @@ from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.util.rule_dry_runner import DryRunner
+from logprep.util.tag_yaml_loader import init_yaml_loader_tags
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
 logging.config.dictConfig(DEFAULT_LOG_CONFIG)
 logger = logging.getLogger("logprep")
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
+init_yaml_loader_tags("safe", "rt")
 
 
 def _print_version(config: "Configuration") -> None:
