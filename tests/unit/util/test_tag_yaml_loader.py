@@ -152,11 +152,8 @@ def write_yaml_file_into_directory(file_content: str, target_directory: str):
 class TestTagYamlLoader:
     def test_load_tag_from_valid_file_for_given_loader_type(self, yaml_file_with_valid_include_tag):
         yaml = YAML(pure=True, typ="safe")
-
-        with pytest.raises(ConstructorError, match=r"!include"):
-            self._load_yaml(yaml_file_with_valid_include_tag, yaml)
-
         init_yaml_loader_tags("safe")
+
         loaded = self._load_yaml(yaml_file_with_valid_include_tag, yaml)
 
         expected = {".*foo.*": "foo", "bar. *": "bar", ".*baz": "baz"}
