@@ -24,6 +24,7 @@ from logprep.processor.base.exceptions import (
     ProcessingCriticalError,
 )
 from logprep.processor.base.rule import Rule
+from logprep.util.defaults import RULE_FILE_EXTENSIONS
 from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -59,7 +60,9 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         rules = []
         for rules_dir in rules_dirs:
             rule_paths = [
-                p for p in Path(rules_dir).glob("**/*") if p.suffix in [".yml", ".json", "yaml"]
+                path
+                for path in Path(rules_dir).glob("**/*")
+                if path.suffix in RULE_FILE_EXTENSIONS and not path.name.endswith("_test.json")
             ]
             for rule_path in rule_paths:
                 loaded_rules = []
