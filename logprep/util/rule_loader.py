@@ -197,7 +197,7 @@ class FileRuleLoader(RuleLoader):
             raise TypeError(f"Expected a string, got {type(self.source)}")
         if self.source.endswith(".yaml") or self.source.endswith(".yml"):
             rule_definitions = GetterFactory.from_string(self.source).get_yaml()
-        elif self.source.endswith(".json"):
+        elif self.source.endswith(".json") and not self.source.endswith("_test.json"):
             rule_definitions = GetterFactory.from_string(self.source).get_json()
         if not isinstance(rule_definitions, list):
             rule_definitions = [rule_definitions]
