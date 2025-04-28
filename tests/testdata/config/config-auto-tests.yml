@@ -25,6 +25,11 @@ pipeline:
       type: dropper
       rules:
         - tests/testdata/auto_tests/dropper/rules
+        - filter: "test_dropper"
+          dropper:
+            drop:
+              - drop_me
+            description: "..."
   - pre_detector:
       type: pre_detector
       rules:

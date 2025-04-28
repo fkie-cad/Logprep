@@ -729,8 +729,9 @@ class AutoRuleTester:
         """
         rules_to_add = []
 
-        rule_path_lists = processor_cfg.get("rules")
-        if rule_path_lists:
-            for rule_path_list in rule_path_lists:
+        rules_list = processor_cfg.get("rules")
+        rules_path_list = (rule_path for rule_path in rules_list if isinstance(rule_path, str))
+        if rules_path_list:
+            for rule_path_list in rules_path_list:
                 rules_to_add.append(rule_path_list)
         return rules_to_add
