@@ -75,8 +75,8 @@ class PipelineMP(Pipeline):
     def process_pipeline(self):
         """processes the Pipeline"""
         while True:
-            batch = islice(self.input_generator, self.process_count)
-            with ProcessPoolExecutor(max_workers=self.process_count) as executor:
+            batch = islice(self.input_generator, 20)
+            with ProcessPoolExecutor(max_workers=20) as executor:
                 results = executor.map(self.compute, batch)
                 yield from results
 
@@ -145,11 +145,11 @@ class Runner:
     """
 
     output_config = {
-        "type": "opensearchng_output",
+        "type": "opensearch_output",
         "hosts": ["127.0.0.1:9200"],
         "default_index": "processed",
         "default_op_type": "create",
-        "message_backlog_size": 500,
+        "message_backlog_size": 2500,
         "timeout": 10000,
         "flush_timeout": 60,
         "user": "admin",
