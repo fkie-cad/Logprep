@@ -348,7 +348,7 @@ The :code:`--tags` option allows setting a tag for the generated events, which c
 
 .. code-block:: bash
 
-    logprep generate http --tags loglevel --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata --events 10000
+    logprep generate http --tag loglevel --target-url http://localhost:9000/ --input-dir ./examples/exampledata/input_logdata --events 10000
 
 
 The :code:`--timeout` option specifies the HTTP request timeout duration (in seconds), controlling how long the generator waits for a response.
@@ -403,11 +403,10 @@ Here is an example of a more extensive output configuration for the ConfluentKaf
 
     logprep generate kafka2 --output-config '{"bootstrap.servers": "127.0.0.1:9092", "enable.ssl.certificate.verification" : "true"}' --input-dir ./examples/exampledata/input_logdata/ --batch-size 1000 --events 10000
 
-For a full list of available options, refer to the  `ConfluentKafka documentation <https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html>`
+For a full list of available options, refer to the  `ConfluentKafka documentation <https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html>`_.
 
 The :code:`--send_timeout` option determines the maximum wait time for an answer from the broker on polling.
 
 .. code-block:: bash
 
     logprep generate kafka2 --send-timeout 2 --input-dir ./examples/exampledata/input_logdata/ --output-config '{"bootstrap.servers": "127.0.0.1:9092"}' --batch-size 1000 --events 10000
-
