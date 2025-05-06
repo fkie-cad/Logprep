@@ -500,7 +500,7 @@ class ConfluentKafkaInput(Input):
         except KafkaException as error:
             raise InputWarning(self, f"{error}, {self._last_valid_record}") from error
 
-    def _assign_callback(self, topic_partitions: list[TopicPartition]) -> None:
+    def _assign_callback(self, _, topic_partitions: list[TopicPartition]) -> None:
         for topic_partition in topic_partitions:
             offset, partition = topic_partition.offset, topic_partition.partition
             member_id = self._get_memberid()
