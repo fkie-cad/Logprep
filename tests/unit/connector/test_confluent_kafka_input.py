@@ -361,13 +361,14 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         }
         self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
 
-    def test_assign_callback_sets_offsets_and_logs_info(self):
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_assign_callback_sets_offsets_and_logs_info(self, mock_consumer):
         self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
         self.object.metrics.current_offsets.add_with_labels = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         mock_partitions[0].offset = OFFSET_BEGINNING
         with mock.patch("logging.Logger.info") as mock_info:
-            self.object._assign_callback(mock_partitions)
+            self.object._assign_callback(mock_consumer, mock_partitions)
         expected_labels = {
             "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
         }
