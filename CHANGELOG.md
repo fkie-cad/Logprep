@@ -11,6 +11,7 @@
 
 - Fixed logging error in _revoke_callback() by adding error handling
 - Fixed endless loading in logprep test config
+- prevent the auto rule tester from loading rules directly defined inside the config, since they break the auto rule tester and can't have tests anyways
 
 ## 16.1.0
 ### Deprecations
