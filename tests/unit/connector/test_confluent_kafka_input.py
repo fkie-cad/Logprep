@@ -247,10 +247,10 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     def test_commit_callback_sets_committed_offsets(self):
         mock_add = mock.MagicMock()
         self.object.metrics.committed_offsets.add_with_labels = mock_add
-        topic_partion = mock.MagicMock()
-        topic_partion.partition = 99
-        topic_partion.offset = 666
-        self.object._commit_callback(None, [topic_partion])
+        topic_partition = mock.MagicMock()
+        topic_partition.partition = 99
+        topic_partition.offset = 666
+        self.object._commit_callback(None, [topic_partition])
         call_args = 666, {"description": "topic: test_input_raw - partition: 99"}
         mock_add.assert_called_with(*call_args)
 
@@ -361,13 +361,14 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         }
         self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
 
-    def test_assign_callback_sets_offsets_and_logs_info(self):
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_assign_callback_sets_offsets_and_logs_info(self, mock_consumer):
         self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
         self.object.metrics.current_offsets.add_with_labels = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         mock_partitions[0].offset = OFFSET_BEGINNING
         with mock.patch("logging.Logger.info") as mock_info:
-            self.object._assign_callback(mock_partitions)
+            self.object._assign_callback(mock_consumer, mock_partitions)
         expected_labels = {
             "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
         }
@@ -380,7 +381,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.output_connector = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
-            self.object._revoke_callback(mock_partitions)
+            self.object._revoke_callback(None, mock_partitions)
         mock_warning.assert_called()
         assert self.object.metrics.number_of_warnings == 1
 
@@ -388,7 +389,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.output_connector = mock.MagicMock()
         self.object.batch_finished_callback = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
-        self.object._revoke_callback(mock_partitions)
+        self.object._revoke_callback(None, mock_partitions)
         self.object.batch_finished_callback.assert_called()
 
     def test_revoke_callback_logs_error_if_consumer_closed(self, caplog):
@@ -396,7 +397,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             mock_consumer.memberid = mock.MagicMock()
             mock_consumer.memberid.side_effect = RuntimeError("Consumer is closed")
             mock_partitions = [mock.MagicMock()]
-            self.object._revoke_callback(mock_partitions)
+            self.object._revoke_callback(None, mock_partitions)
             assert re.search(r"ERROR.*Consumer is closed", caplog.text)
 
     def test_health_returns_true_if_no_error(self):
