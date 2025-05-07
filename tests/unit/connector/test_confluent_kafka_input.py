@@ -247,10 +247,10 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     def test_commit_callback_sets_committed_offsets(self):
         mock_add = mock.MagicMock()
         self.object.metrics.committed_offsets.add_with_labels = mock_add
-        topic_partion = mock.MagicMock()
-        topic_partion.partition = 99
-        topic_partion.offset = 666
-        self.object._commit_callback(None, [topic_partion])
+        topic_partition = mock.MagicMock()
+        topic_partition.partition = 99
+        topic_partition.offset = 666
+        self.object._commit_callback(None, [topic_partition])
         call_args = 666, {"description": "topic: test_input_raw - partition: 99"}
         mock_add.assert_called_with(*call_args)
 
