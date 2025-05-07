@@ -33,7 +33,7 @@ import os
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
-from typing import Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
@@ -517,7 +517,7 @@ class ConfluentKafkaInput(Input):
             self.metrics.committed_offsets.add_with_labels(offset, labels)
             self.metrics.current_offsets.add_with_labels(offset, labels)
 
-    def _revoke_callback(self, topic_partitions: list[TopicPartition]) -> None:
+    def _revoke_callback(self, _: Any, topic_partitions: list[TopicPartition]) -> None:
 
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1

@@ -381,7 +381,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.output_connector = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
-            self.object._revoke_callback(mock_partitions)
+            self.object._revoke_callback(None, mock_partitions)
         mock_warning.assert_called()
         assert self.object.metrics.number_of_warnings == 1
 
@@ -389,7 +389,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.output_connector = mock.MagicMock()
         self.object.batch_finished_callback = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
-        self.object._revoke_callback(mock_partitions)
+        self.object._revoke_callback(None, mock_partitions)
         self.object.batch_finished_callback.assert_called()
 
     def test_revoke_callback_logs_error_if_consumer_closed(self, caplog):
@@ -397,7 +397,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             mock_consumer.memberid = mock.MagicMock()
             mock_consumer.memberid.side_effect = RuntimeError("Consumer is closed")
             mock_partitions = [mock.MagicMock()]
-            self.object._revoke_callback(mock_partitions)
+            self.object._revoke_callback(None, mock_partitions)
             assert re.search(r"ERROR.*Consumer is closed", caplog.text)
 
     def test_health_returns_true_if_no_error(self):
