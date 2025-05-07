@@ -1,15 +1,18 @@
 """Load YAML files with include and anchor tags.
 The tag `!include PATH_TO_YAML_FILE` loads a single yaml document from a file and inserts it at the
 given spot.
-The tag `!set_anchor ANCHOR_NAME` sets an anchor like using regular YAML anchors, but it is valid
+The tag `!set_anchor(:[0-9])?` sets an anchor like using regular YAML anchors, but it is valid
 for multiple documents within the same YAML stream (i.e. within a file).
-It can be then loaded with `!load_anchor ANCHOR_NAME`.
+It can be then loaded with `!load_anchor(:[0-9])?`.
+`!set_anchor` and `!load_anchor` are shorthands for `!set_anchor:0` and `!load_anchor:0`.
+
+`!include` and `!set_anchor` can't be nested inside `!set_anchor`.
 """
 
 import os.path
 from typing import Set
 
-from ruamel.yaml import YAML, Loader, Node, BaseConstructor
+from ruamel.yaml import YAML, Node, BaseConstructor
 
 
 def init_yaml_loader_tags(*loader_types: str) -> None:
@@ -36,13 +39,16 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         Yaml data where the !include tag has been replaced by the content of the include file.
         """
 
-        def _include(_: Loader, node: Node):
+        def _include(_: BaseConstructor, node: Node):
             if not isinstance(node.value, (str, os.PathLike)):
                 raise ValueError(f"'{node.value}' is not a file path")
             if not os.path.isfile(node.value):
                 raise FileNotFoundError(node.value)
             with open(node.value, "r", encoding="utf-8") as yaml_file:
-                data = _yaml.load(yaml_file)
+                try:
+                    data = _yaml.load(yaml_file)
+                except AttributeError:
+                    raise ValueError(f"'{node.tag} {node.value}' could not be loaded")
                 if data is None:
                     raise ValueError(f"'{node.value}' is empty")
                 return data
@@ -68,29 +74,28 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         -------
         The loaded yaml data without any modifications.
         """
-        tag = "!set_anchor"
 
         def _set_anchor(constructor: BaseConstructor, node: Node):
             clear_anchors_if_buffer_changed(constructor, _anchors, _last_buffer)
 
-            anchor_name = get_anchor_name(tag, constructor, node)
+            anchor_name = get_anchor_name(node)
             _anchors[anchor_name] = _extract_anchor_value(constructor, node)
             return _anchors[anchor_name]
 
         def _extract_anchor_value(constructor: BaseConstructor, node: Node):
             lines = constructor.loader.reader.buffer.splitlines()
-            scalar_value = lines[node.start_mark.line]
-            anchor_name = get_anchor_name(tag, constructor, node)
-            _, _, scalar_value = scalar_value.partition(tag)
-            _, _, scalar_value = scalar_value.partition(anchor_name)
-            if scalar_value:
-                anchor_value = scalar_value
-            else:
-                anchor_value = "\n".join(lines[node.start_mark.line + 1 : node.end_mark.line + 1])
-            parsed_anchor_value = _yaml.load(anchor_value)
-            if parsed_anchor_value is None:
-                raise ValueError(f"'{lines[node.start_mark.line]}' is en empty scalar anchor")
-            return _yaml.load(anchor_value)
+            anchor_value_lines = lines[node.start_mark.line : node.end_mark.line + 1]
+            anchor_value_lines[0] = anchor_value_lines[0][node.start_mark.column + len(node.tag) :]
+            anchor_value_lines[-1] = anchor_value_lines[-1][: node.end_mark.column]
+            anchor_value = "\n".join(anchor_value_lines)
+            try:
+                data = _yaml.load(anchor_value)
+            except AttributeError:
+                _, _, value = "\\n".join(lines).partition(node.tag)
+                raise ValueError(f"'{node.tag}{value}' could not be loaded")
+            if data is None:
+                raise ValueError(f"'{lines[node.start_mark.line]}' is en empty anchor")
+            return data
 
         return _set_anchor
 
@@ -112,7 +117,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         def _load_anchor(constructor: BaseConstructor, node: Node):
             clear_anchors_if_buffer_changed(constructor, _anchors, _last_buffer)
 
-            anchor_name = get_anchor_name("!load_anchor", constructor, node)
+            anchor_name = get_anchor_name(node)
             try:
                 return _anchors[anchor_name]
             except KeyError:
@@ -128,11 +133,11 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
             _anchors.clear()
             _last_buffer.add(constructor.loader.reader.buffer)
 
-    def get_anchor_name(tag: str, constructor: BaseConstructor, node: Node) -> str:
-        lines = constructor.loader.reader.buffer.splitlines()
-        _, _, anchor_name = lines[node.start_mark.line][node.start_mark.column :].partition(tag)
+    def get_anchor_name(node: Node) -> str:
+        _, _, anchor_name = node.tag.partition(":")
+        if anchor_name == "":
+            anchor_name = "0"
         anchor_name = anchor_name.strip()
-        anchor_name = anchor_name.split()[0]
         return anchor_name
 
     for loader_type in loader_types:
@@ -144,3 +149,11 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         anchors: dict = {}
         yaml.constructor.add_constructor("!set_anchor", set_anchor(yaml, anchors, last_buffer))
         yaml.constructor.add_constructor("!load_anchor", load_anchor(anchors, last_buffer))
+
+        for num in range(10):
+            yaml.constructor.add_constructor(
+                f"!set_anchor:{num}", set_anchor(yaml, anchors, last_buffer)
+            )
+            yaml.constructor.add_constructor(
+                f"!load_anchor:{num}", load_anchor(anchors, last_buffer)
+            )
