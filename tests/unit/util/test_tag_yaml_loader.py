@@ -1,5 +1,4 @@
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
 # pylint: disable=line-too-long
 # pylint: disable=unspecified-encoding
 # pylint: disable=protected-access
@@ -43,8 +42,8 @@ def fixture_yaml_file_with_valid_include_tag(yaml_dict_file_path, yaml_directory
 
 
 @pytest.fixture(name="yaml_file_with_invalid_include_tag")
-def fixture_yaml_file_with_invalid_include_tag(yaml_dict_file_path, yaml_directory) -> str:
-    yml_with_tag = f"""
+def fixture_yaml_file_with_invalid_include_tag(yaml_directory) -> str:
+    yml_with_tag = """
     filter: 'something'
     processor:
         some_dict: !include
@@ -76,7 +75,7 @@ def fixture_yaml_file_with_include_tag_empty_file(empty_yaml_file_path, yaml_dir
 
 @pytest.fixture(name="yaml_file_with_valid_list_anchor_tag")
 def fixture_yaml_file_with_valid_list_anchor_tag(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
     filter: 'something'
     processor:
         some_node: !set_anchor
@@ -89,7 +88,7 @@ def fixture_yaml_file_with_valid_list_anchor_tag(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_file_with_valid_dict_anchor_tag")
 def fixture_yaml_file_with_valid_dict_anchor_tag(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
 filter: 'something'
 processor:
     some_node: !set_anchor:0
@@ -103,7 +102,7 @@ processor:
 
 @pytest.fixture(name="yaml_file_with_nested_valid_dict_anchor_tag")
 def fixture_yaml_file_with_nested_valid_dict_anchor_tag(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
 filter: 'something'
 processor:
     some_node: !set_anchor:0
@@ -117,7 +116,7 @@ processor:
 
 @pytest.fixture(name="yaml_valid_anchor_tag_in_two_documents")
 def fixture_yaml_valid_anchor_tag_in_two_documents(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             some_node: !set_anchor
                 - a
@@ -131,7 +130,7 @@ def fixture_yaml_valid_anchor_tag_in_two_documents(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_scalar_anchor_tag_in_two_documents")
 def fixture_yaml_scalar_anchor_tag_in_two_documents(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             some_node: !set_anchor some value
 ---
@@ -143,7 +142,7 @@ def fixture_yaml_scalar_anchor_tag_in_two_documents(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_scalar_anchor_tag_new_line")
 def fixture_yaml_scalar_anchor_tag_new_line(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             some_node: !set_anchor
               some value
@@ -156,7 +155,7 @@ def fixture_yaml_scalar_anchor_tag_new_line(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_empty_scalar_anchor_tag")
 def fixture_yaml_empty_scalar_anchor_tag(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             some_node: !set_anchor
         """
@@ -165,7 +164,7 @@ def fixture_yaml_empty_scalar_anchor_tag(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_set_anchor")
 def fixture_yaml_set_anchor(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             some_node: !set_anchor
                 - a
@@ -176,7 +175,7 @@ def fixture_yaml_set_anchor(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_load_anchor")
 def fixture_yaml_load_anchor(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             some_node: !load_anchor
         """
@@ -185,7 +184,7 @@ def fixture_yaml_load_anchor(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_multiple_anchor_tags")
 def fixture_yaml_multiple_anchor_tags(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             node_0: !set_anchor:0
                 value_0
@@ -201,7 +200,7 @@ def fixture_yaml_multiple_anchor_tags(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_invalid_anchor_tag_name")
 def fixture_yaml_invalid_anchor_tag_name(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             node_0: !set_anchor:0
                 value_0
@@ -217,7 +216,7 @@ def fixture_yaml_invalid_anchor_tag_name(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_anchor_tag_name_zero_and_none_equal")
 def fixture_yaml_anchor_tag_name_zero_and_none_equal(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             node_0: !set_anchor value_0
 ---
@@ -235,7 +234,7 @@ def fixture_yaml_anchor_tag_name_zero_and_none_equal(yaml_directory) -> str:
 
 @pytest.fixture(name="yaml_nested_anchor_tag")
 def fixture_yaml_nested_anchor_tag(yaml_directory) -> str:
-    yml_with_tag = f"""
+    yml_with_tag = """
         processor:
             node_0: !set_anchor
                 node_1: !set_anchor:1
@@ -349,7 +348,7 @@ class TestTagYamlLoader:
         with pytest.raises(ValueError, match=r"empty anchor"):
             list(loaded)
 
-    def test_load_does_not_exist(self, yaml_set_anchor, yaml_load_anchor):
+    def test_load_does_not_exist(self, yaml_load_anchor):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
 
