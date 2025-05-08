@@ -47,8 +47,8 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
             with open(node.value, "r", encoding="utf-8") as yaml_file:
                 try:
                     data = _yaml.load(yaml_file)
-                except AttributeError:
-                    raise ValueError(f"'{node.tag} {node.value}' could not be loaded")
+                except AttributeError as error:
+                    raise ValueError(f"'{node.tag} {node.value}' could not be loaded") from error
                 if data is None:
                     raise ValueError(f"'{node.value}' is empty")
                 return data
@@ -90,9 +90,9 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
             anchor_value = "\n".join(anchor_value_lines)
             try:
                 data = _yaml.load(anchor_value)
-            except AttributeError:
+            except AttributeError as error:
                 _, _, value = "\\n".join(lines).partition(node.tag)
-                raise ValueError(f"'{node.tag}{value}' could not be loaded")
+                raise ValueError(f"'{node.tag}{value}' could not be loaded") from error
             if data is None:
                 raise ValueError(f"'{lines[node.start_mark.line]}' is en empty anchor")
             return data
@@ -120,8 +120,10 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
             anchor_name = get_anchor_name(node)
             try:
                 return _anchors[anchor_name]
-            except KeyError:
-                raise ValueError(f"'{node.value}' is not a defined anchor within this yaml stream")
+            except KeyError as error:
+                raise ValueError(
+                    f"'{node.value}' is not a defined anchor within this yaml stream"
+                ) from error
 
         return _load_anchor
 
