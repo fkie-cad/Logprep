@@ -1,0 +1,11 @@
+[
+    {
+        "filter": "message",
+        "clusterer": {
+            "source_fields": ["message"],
+            "pattern": "test (signature) test",
+            "repl": "<+>\\1</+>"
+        },
+        "description": "insert a description text"
+    }
+]
