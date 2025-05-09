@@ -76,6 +76,8 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         return rules
 
     def _load_rule(self, rule: dict | Rule):
+        if self.object is None:
+            raise ValueError("Processor object is not initialized")
         self.object._rule_tree = RuleTree()
         rule = self.object.rule_class.create_from_dict(rule) if isinstance(rule, dict) else rule
         self.object._rule_tree.add_rule(rule)
@@ -116,6 +118,8 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     def teardown_method(self) -> None:
         """teardown for all methods"""
+        if self.patchers is None:
+            raise ValueError("Patchers is not initialized")
         while len(self.patchers) > 0:
             patcher = self.patchers.pop()
             patcher.stop()
