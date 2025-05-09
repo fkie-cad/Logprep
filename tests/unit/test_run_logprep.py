@@ -530,21 +530,20 @@ class TestPseudoCLI:
 
 
 class TestYamlLoaderTags:
-    def test_yaml_loader_include_tag_initialized(self):
+    def test_yaml_loader_include_tag_initialized(self, tmp_path):
         yaml = YAML(pure=True, typ="safe")
-        target_directory = tempfile.mkdtemp()
-        path_to_file_to_include = self._write_to_yaml_file("this: was included", target_directory)
+        path_to_file_to_include = self._write_to_yaml_file("this: was included", tmp_path)
         yml_with_tag = f"""
         foo:
             bar: !include {path_to_file_to_include}
         """
-        yaml_file = self._write_to_yaml_file(yml_with_tag, target_directory)
+        yaml_file = self._write_to_yaml_file(yml_with_tag, tmp_path)
         with open(yaml_file, "r", encoding="utf-8") as file:
             loaded = yaml.load(file)
         assert loaded["foo"]["bar"] == {"this": "was included"}
 
     @staticmethod
-    def _write_to_yaml_file(file_content: str, target_directory: str):
+    def _write_to_yaml_file(file_content: str, target_directory: Path):
         rule_file = tempfile.mktemp(dir=target_directory, suffix=".yml")
         with open(rule_file, "w", encoding="utf-8") as file:
             file.write(file_content)

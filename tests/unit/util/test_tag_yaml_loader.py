@@ -3,6 +3,7 @@
 # pylint: disable=unspecified-encoding
 # pylint: disable=protected-access
 import tempfile
+from pathlib import Path
 
 import pytest
 from ruamel.yaml import YAML
@@ -11,38 +12,33 @@ from ruamel.yaml.constructor import ConstructorError
 from logprep.util.tag_yaml_loader import init_yaml_loader_tags
 
 
-@pytest.fixture(name="yaml_directory")
-def fixture_yaml_directory() -> str:
-    return tempfile.mkdtemp()
-
-
 @pytest.fixture(name="yaml_dict_file_path")
-def fixture_yaml_dict_file_path(yaml_directory) -> str:
+def fixture_yaml_dict_file_path(tmp_path) -> str:
     some_dict_yml = """
             .*foo.*: foo
             bar. *: bar
             .*baz: baz
             """
-    return write_yaml_file_into_directory(some_dict_yml, yaml_directory)
+    return write_yaml_file_into_directory(some_dict_yml, tmp_path)
 
 
 @pytest.fixture(name="empty_yaml_file_path")
-def fixture_empty_yaml_file_path(yaml_directory) -> str:
-    return write_yaml_file_into_directory("", yaml_directory)
+def fixture_empty_yaml_file_path(tmp_path) -> str:
+    return write_yaml_file_into_directory("", tmp_path)
 
 
 @pytest.fixture(name="yaml_file_with_valid_include_tag")
-def fixture_yaml_file_with_valid_include_tag(yaml_dict_file_path, yaml_directory) -> str:
+def fixture_yaml_file_with_valid_include_tag(yaml_dict_file_path, tmp_path) -> str:
     yml_with_tag = f"""
     filter: 'something'
     processor:
         some_dict: !include {yaml_dict_file_path}
     """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_file_with_invalid_include_tag")
-def fixture_yaml_file_with_invalid_include_tag(yaml_directory) -> str:
+def fixture_yaml_file_with_invalid_include_tag(tmp_path) -> str:
     yml_with_tag = """
     filter: 'something'
     processor:
@@ -50,31 +46,31 @@ def fixture_yaml_file_with_invalid_include_tag(yaml_directory) -> str:
             - foo
             - bar
     """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_file_with_include_tag_no_file")
-def fixture_yaml_file_with_include_tag_no_file(yaml_dict_file_path, yaml_directory) -> str:
+def fixture_yaml_file_with_include_tag_no_file(yaml_dict_file_path, tmp_path) -> str:
     yml_with_tag = f"""
     filter: 'something'
     processor:
         some_dict: !include {yaml_dict_file_path}_i_do_not_exist.yml
     """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_file_with_include_tag_empty_file")
-def fixture_yaml_file_with_include_tag_empty_file(empty_yaml_file_path, yaml_directory) -> str:
+def fixture_yaml_file_with_include_tag_empty_file(empty_yaml_file_path, tmp_path) -> str:
     yml_with_tag = f"""
     filter: 'something'
     processor:
         some_dict: !include {empty_yaml_file_path}
     """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_file_with_valid_list_anchor_tag")
-def fixture_yaml_file_with_valid_list_anchor_tag(yaml_directory) -> str:
+def fixture_yaml_file_with_valid_list_anchor_tag(tmp_path) -> str:
     yml_with_tag = """
     filter: 'something'
     processor:
@@ -83,11 +79,11 @@ def fixture_yaml_file_with_valid_list_anchor_tag(yaml_directory) -> str:
             - b
         another_node: !load_anchor
     """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_file_with_valid_dict_anchor_tag")
-def fixture_yaml_file_with_valid_dict_anchor_tag(yaml_directory) -> str:
+def fixture_yaml_file_with_valid_dict_anchor_tag(tmp_path) -> str:
     yml_with_tag = """
 filter: 'something'
 processor:
@@ -97,11 +93,11 @@ processor:
         baz: 3
     another_node: !load_anchor:0
     """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_file_with_nested_valid_dict_anchor_tag")
-def fixture_yaml_file_with_nested_valid_dict_anchor_tag(yaml_directory) -> str:
+def fixture_yaml_file_with_nested_valid_dict_anchor_tag(tmp_path) -> str:
     yml_with_tag = """
 filter: 'something'
 processor:
@@ -111,11 +107,11 @@ processor:
             baz: 3
     another_node: !load_anchor:0
     """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_valid_anchor_tag_in_two_documents")
-def fixture_yaml_valid_anchor_tag_in_two_documents(yaml_directory) -> str:
+def fixture_yaml_valid_anchor_tag_in_two_documents(tmp_path) -> str:
     yml_with_tag = """
         processor:
             some_node: !set_anchor
@@ -125,11 +121,11 @@ def fixture_yaml_valid_anchor_tag_in_two_documents(yaml_directory) -> str:
         processor:
             another_node: !load_anchor
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_scalar_anchor_tag_in_two_documents")
-def fixture_yaml_scalar_anchor_tag_in_two_documents(yaml_directory) -> str:
+def fixture_yaml_scalar_anchor_tag_in_two_documents(tmp_path) -> str:
     yml_with_tag = """
         processor:
             some_node: !set_anchor some value
@@ -137,11 +133,11 @@ def fixture_yaml_scalar_anchor_tag_in_two_documents(yaml_directory) -> str:
         processor:
             another_node: !load_anchor
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_scalar_anchor_tag_new_line")
-def fixture_yaml_scalar_anchor_tag_new_line(yaml_directory) -> str:
+def fixture_yaml_scalar_anchor_tag_new_line(tmp_path) -> str:
     yml_with_tag = """
         processor:
             some_node: !set_anchor
@@ -150,40 +146,40 @@ def fixture_yaml_scalar_anchor_tag_new_line(yaml_directory) -> str:
         processor:
             another_node: !load_anchor
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_empty_scalar_anchor_tag")
-def fixture_yaml_empty_scalar_anchor_tag(yaml_directory) -> str:
+def fixture_yaml_empty_scalar_anchor_tag(tmp_path) -> str:
     yml_with_tag = """
         processor:
             some_node: !set_anchor
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_set_anchor")
-def fixture_yaml_set_anchor(yaml_directory) -> str:
+def fixture_yaml_set_anchor(tmp_path) -> str:
     yml_with_tag = """
         processor:
             some_node: !set_anchor
                 - a
                 - b
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_load_anchor")
-def fixture_yaml_load_anchor(yaml_directory) -> str:
+def fixture_yaml_load_anchor(tmp_path) -> str:
     yml_with_tag = """
         processor:
             some_node: !load_anchor
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_multiple_anchor_tags")
-def fixture_yaml_multiple_anchor_tags(yaml_directory) -> str:
+def fixture_yaml_multiple_anchor_tags(tmp_path) -> str:
     yml_with_tag = """
         processor:
             node_0: !set_anchor:0
@@ -195,11 +191,11 @@ def fixture_yaml_multiple_anchor_tags(yaml_directory) -> str:
             node_0: !load_anchor:0
             node_1: !load_anchor:1
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_invalid_anchor_tag_name")
-def fixture_yaml_invalid_anchor_tag_name(yaml_directory) -> str:
+def fixture_yaml_invalid_anchor_tag_name(tmp_path) -> str:
     yml_with_tag = """
         processor:
             node_0: !set_anchor:0
@@ -211,11 +207,11 @@ def fixture_yaml_invalid_anchor_tag_name(yaml_directory) -> str:
             node_0: !load_anchor:0
             node_1: !load_anchor:10
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_anchor_tag_name_zero_and_none_equal")
-def fixture_yaml_anchor_tag_name_zero_and_none_equal(yaml_directory) -> str:
+def fixture_yaml_anchor_tag_name_zero_and_none_equal(tmp_path) -> str:
     yml_with_tag = """
         processor:
             node_0: !set_anchor value_0
@@ -229,30 +225,30 @@ def fixture_yaml_anchor_tag_name_zero_and_none_equal(yaml_directory) -> str:
         processor:
             node_1: !load_anchor value_1
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_nested_anchor_tag")
-def fixture_yaml_nested_anchor_tag(yaml_directory) -> str:
+def fixture_yaml_nested_anchor_tag(tmp_path) -> str:
     yml_with_tag = """
         processor:
             node_0: !set_anchor
                 node_1: !set_anchor:1
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
 @pytest.fixture(name="yaml_nested_include_tag")
-def fixture_yaml_nested_include_tag(yaml_dict_file_path, yaml_directory) -> str:
+def fixture_yaml_nested_include_tag(yaml_dict_file_path, tmp_path) -> str:
     yml_with_tag = f"""
         processor:
             node_0: !set_anchor
                 node_1: !include {yaml_dict_file_path}
         """
-    return write_yaml_file_into_directory(yml_with_tag, yaml_directory)
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
-def write_yaml_file_into_directory(file_content: str, target_directory: str):
+def write_yaml_file_into_directory(file_content: str, target_directory: Path):
     rule_file = tempfile.mktemp(dir=target_directory, suffix=".yml")
     with open(rule_file, "w", encoding="utf-8") as file:
         file.write(file_content)
