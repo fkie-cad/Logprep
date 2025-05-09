@@ -7,6 +7,9 @@
 * add `replacer` processor to replace substrings in fields using a syntax similar to the `dissector`
 
 ### Improvements
+
+* ensured that "_test.json" files are not loaded as rules
+
 ### Bugfix
 
 - Fixed logging error in _revoke_callback() by adding error handling
