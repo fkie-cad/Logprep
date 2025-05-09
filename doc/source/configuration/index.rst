@@ -20,3 +20,4 @@ Configuration
    rules
    getter
    metrics
+   yaml_tags
