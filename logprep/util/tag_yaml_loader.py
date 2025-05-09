@@ -1,12 +1,75 @@
-"""Load YAML files with include and anchor tags.
-The tag `!include PATH_TO_YAML_FILE` loads a single yaml document from a file and inserts it at the
-given spot.
-The tag `!set_anchor(:[0-9])?` sets an anchor like using regular YAML anchors, but it is valid
-for multiple documents within the same YAML stream (i.e. within a file).
-It can be then loaded with `!load_anchor(:[0-9])?`.
+"""
+Logprep supports the custom YAML tags `!include`, `!set_anchor` and `!load_anchor`.
+Those can be used inside any YAML file that is loaded by Logprep.
+
+Include tags
+^^^^^^^^^^^^
+
+The tag `!include PATH_TO_YAML_FILE` loads a single YAML document from a local file path and inserts
+it in its place.
+
+Included files can't contain an `!include` tag.
+
+Example:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Include tag
+
+    filter: to_resolve
+    generic_resolver:
+        field_mapping:
+            to_resolve: resolved
+        resolve_list: !include /path/to/resolve_list.yml
+
+Anchor tags
+^^^^^^^^^^^
+
+Anchor tags work similar to regular YAML anchors, but are valid for all documents inside a file or
+stream.
+Tags are set with `!set_anchor(:[0-9])?` and loaded with `!load_anchor(:[0-9])?`.
+Ten anchors can be active inside a single file or stream.
 `!set_anchor` and `!load_anchor` are shorthands for `!set_anchor:0` and `!load_anchor:0`.
 
 `!include` and `!set_anchor` can't be nested inside `!set_anchor`.
+
+Examples:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Anchor tag without shorthand
+
+    filter: to_resolve
+    generic_resolver:
+        field_mapping:
+            to_resolve: resolved
+        resolve_list: !set_anchor:1
+            one: foo
+            two: bar
+    ---
+    filter: to_resolve_2
+    generic_resolver:
+        field_mapping:
+            to_resolve_2: resolved
+        resolve_list: !load_anchor:1
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Anchor tag with shorthand
+
+    filter: to_resolve
+    generic_resolver:
+        field_mapping:
+            to_resolve: resolved
+        resolve_list: !set_anchor
+            one: foo
+            two: bar
+    ---
+    filter: to_resolve_2
+    generic_resolver:
+        field_mapping:
+            to_resolve_2: resolved
+        resolve_list: !load_anchor
 """
 
 import os.path
