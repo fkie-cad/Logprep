@@ -76,8 +76,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         return rules
 
     def _load_rule(self, rule: dict | Rule):
-        if self.object is None:
-            raise ValueError("Processor object is not initialized")
+        assert self.object is not None
         self.object._rule_tree = RuleTree()
         rule = self.object.rule_class.create_from_dict(rule) if isinstance(rule, dict) else rule
         self.object._rule_tree.add_rule(rule)
@@ -118,8 +117,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     def teardown_method(self) -> None:
         """teardown for all methods"""
-        if self.patchers is None:
-            raise ValueError("Patchers is not initialized")
+        assert self.patchers is not None
         while len(self.patchers) > 0:
             patcher = self.patchers.pop()
             patcher.stop()
@@ -300,3 +298,11 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         ]
         with pytest.raises(InvalidRuleDefinitionError):
             self.object.load_rules(rules_targets=rule_definitions)
+
+    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
+    @mock.patch("logging.Logger.debug")
+    def test_load_rules_with_none(self, mock_debug, _):
+        self.object.load_rules(
+            rules_targets=self.rules_dirs,
+        )
+        mock_debug.assert_called()
