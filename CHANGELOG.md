@@ -17,6 +17,7 @@
 - prevent the auto rule tester from loading rules directly defined inside the config, since they break the auto rule tester and can't have tests anyways
 - Fixed typo and broken link in documentation
 - Fixed assign_callback error in confluentkafka input
+- Resolved `mypy` errors in `BaseProcessorTestCase.` by ensuring `self.object` and `self.patchers` are not `None` before accessing attributes.
 
 ## 16.1.0
 ### Deprecations
