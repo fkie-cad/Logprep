@@ -20,6 +20,7 @@
 - Fixed typo and broken link in documentation
 - Fixed assign_callback error in confluentkafka input
 - Fixed error logging in ` _get_configuration`, which caused the github checks to fail
+- Resolved `mypy` errors in `BaseProcessorTestCase.` by ensuring `self.object` and `self.patchers` are not `None` before accessing attributes.
 
 ## 16.1.0
 ### Deprecations
