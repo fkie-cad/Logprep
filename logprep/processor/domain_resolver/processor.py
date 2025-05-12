@@ -52,10 +52,16 @@ logger = logging.getLogger("DomainResolver")
 
 
 class ResolveStatus(IntEnum):
+    """Status of resolving domains"""
+
     SUCCESS = 0
+    """Resolving the domain was successful"""
     TIMEOUT = 1
+    """Domain resolver timeout while trying to resolve the domain (this is not a socket timeout)"""
     INVALID = 2
+    """The resolved domain was invalid and thus not resolved"""
     UNKNOWN = 3
+    """Tried to resolve the domain, but the domain is unknown"""
 
 
 class DomainResolver(Processor):
