@@ -205,7 +205,7 @@ class DomainResolver(Processor):
         if resolved_ip:
             self._write_target_field(event, rule, resolved_ip)
 
-    def _resolve_ip(self, domain, hash_string=None):
+    def _resolve_ip(self, domain):
         """Resolve domain with timeout.
 
         Assumes socket default timeout is None and relies on threading to create a timeout.
