@@ -32,7 +32,7 @@ Processor Configuration
 import datetime
 import logging
 import socket
-from enum import Enum
+from enum import IntEnum
 from functools import cached_property
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
@@ -51,7 +51,7 @@ from logprep.util.helper import add_fields_to, get_dotted_field_value
 logger = logging.getLogger("DomainResolver")
 
 
-class ResolveStatus(Enum):
+class ResolveStatus(IntEnum):
     SUCCESS = 0
     TIMEOUT = 1
     INVALID = 2
