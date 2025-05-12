@@ -36,7 +36,7 @@ from enum import IntEnum
 from functools import cached_property
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
-from typing import Optional
+from typing import Optional, Any
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
@@ -145,7 +145,7 @@ class DomainResolver(Processor):
 
     __slots__ = ["_domain_ip_map"]
 
-    _domain_ip_map: dict
+    _domain_ip_map: dict[str, Optional[str]]
 
     rule_class = DomainResolverRule
 
@@ -154,19 +154,19 @@ class DomainResolver(Processor):
         self._domain_ip_map = {}
 
     @cached_property
-    def _cache(self):
+    def _cache(self) -> Cache:
         cache_max_timedelta = datetime.timedelta(days=self._config.max_caching_days)
         return Cache(max_items=self._config.max_cached_domains, max_timedelta=cache_max_timedelta)
 
     @cached_property
-    def _hasher(self):
+    def _hasher(self) -> SHA256Hasher:
         return SHA256Hasher()
 
     @cached_property
-    def _thread_pool(self):
+    def _thread_pool(self) -> ThreadPool:
         return ThreadPool(processes=1)
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict[str, Any], rule: DomainResolverRule) -> None:
         source_field = rule.source_fields[0]
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
@@ -185,7 +185,9 @@ class DomainResolver(Processor):
             resolved_ip, _ = self._resolve_ip(domain)
             self._add_resolve_infos_to_event(event, rule, resolved_ip)
 
-    def _resolve_with_cache(self, domain, event, rule):
+    def _resolve_with_cache(
+        self, domain: str, event: dict[str, Any], rule: DomainResolverRule
+    ) -> None:
         hash_string = self._hasher.hash_str(domain, salt=self._config.hash_salt)
         requires_storing = self._cache.requires_storing(hash_string)
         if requires_storing:
@@ -201,11 +203,13 @@ class DomainResolver(Processor):
         if self._config.debug_cache:
             self._store_debug_infos(event, requires_storing)
 
-    def _add_resolve_infos_to_event(self, event, rule, resolved_ip):
+    def _add_resolve_infos_to_event(
+        self, event: dict[str, Any], rule: DomainResolverRule, resolved_ip: Optional[str]
+    ) -> None:
         if resolved_ip:
             self._write_target_field(event, rule, resolved_ip)
 
-    def _resolve_ip(self, domain):
+    def _resolve_ip(self, domain: str) -> tuple[Optional[str], int]:
         """Resolve domain with timeout.
 
         Assumes socket default timeout is None and relies on threading to create a timeout.
@@ -224,7 +228,7 @@ class DomainResolver(Processor):
             self.metrics.unknown_domains += 1
             return None, ResolveStatus.UNKNOWN
 
-    def _store_debug_infos(self, event, requires_storing):
+    def _store_debug_infos(self, event: dict[str, Any], requires_storing: bool) -> None:
         event_dbg = {
             "resolved_ip_debug": {
                 "obtained_from_cache": not requires_storing,
