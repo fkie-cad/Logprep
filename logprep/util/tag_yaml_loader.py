@@ -1,14 +1,15 @@
 """
-Logprep supports the custom YAML tags `!include`, `!set_anchor` and `!load_anchor`.
+Logprep supports the custom YAML tags :code:`!include`, :code:`!set_anchor` and
+:code:`!load_anchor`.
 Those can be used inside any YAML file that is loaded by Logprep.
 
 Include tags
 ^^^^^^^^^^^^
 
-The tag `!include PATH_TO_YAML_FILE` loads a single YAML document from a local file path and inserts
-it in its place.
+The tag :code:`!include PATH_TO_YAML_FILE` loads a single YAML document from a local file path and
+inserts it in its place.
 
-Included files can't contain an `!include` tag.
+Included files can't contain an :code:`!include` tag.
 
 Example:
 
@@ -27,11 +28,12 @@ Anchor tags
 
 Anchor tags work similar to regular YAML anchors, but are valid for all documents inside a file or
 stream.
-Tags are set with `!set_anchor(:[0-9])?` and loaded with `!load_anchor(:[0-9])?`.
+Tags are set with :code:`!set_anchor(:[0-9])?` and loaded with :code:`!load_anchor(:[0-9])?`.
 Ten anchors can be active inside a single file or stream.
-`!set_anchor` and `!load_anchor` are shorthands for `!set_anchor:0` and `!load_anchor:0`.
+`!set_anchor` and :code:`!load_anchor` are shorthands for :code:`!set_anchor:0` and
+:code:`!load_anchor:0`.
 
-`!include` and `!set_anchor` can't be nested inside `!set_anchor`.
+`!include` and :code:`!set_anchor` can't be nested inside :code:`!set_anchor`.
 
 Examples:
 
