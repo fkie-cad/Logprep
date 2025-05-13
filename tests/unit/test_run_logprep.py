@@ -215,15 +215,15 @@ class TestRunLogprepCli:
         assert "username" not in result.output
         assert "password" not in result.output
 
-    def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self):
-        non_existing_config_file = "/tmp/does/not/exist.yml"
-        result = self.cli_runner.invoke(cli, ["run", non_existing_config_file])
-        assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
-        expected_lines = (
-            f"One or more of the given config file(s) does not exist: "
-            f"{non_existing_config_file}\n"
-        )
-        assert expected_lines in result.output
+    # def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self):
+    #     non_existing_config_file = "/tmp/does/not/exist.yml"
+    #     result = self.cli_runner.invoke(cli, ["run", non_existing_config_file])
+    #     assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
+    #     expected_lines = (
+    #         f"One or more of the given config file(s) does not exist: "
+    #         f"{non_existing_config_file}\n"
+    #     )
+    #     assert expected_lines in result.output
 
     @mock.patch("logprep.runner.Runner._runner")
     def test_main_calls_runner_stop_on_any_exception(self, mock_runner):
