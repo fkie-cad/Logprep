@@ -1,7 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=too-many-arguments
-from datetime import datetime
+from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -60,13 +60,13 @@ class TestTimeParser:
         for attribute, value in expected.items():
             assert getattr(timestamp, attribute) == value
 
-    @pytest.mark.parametrize("timezone", [None, ZoneInfo("UTC"), ZoneInfo("Europe/Berlin")])
+    @pytest.mark.parametrize("timezone", [None, UTC, ZoneInfo("Europe/Berlin")])
     def test_has_utc_if_timezone_was_set(self, timezone):
         datetime_time = datetime.now(timezone)
         time_parser_time = TimeParser.now(timezone)
         assert time_parser_time.second == pytest.approx(datetime_time.second, abs=1)
         if timezone is None:
-            assert time_parser_time.tzinfo == ZoneInfo("UTC")
+            assert time_parser_time.tzinfo == UTC
         else:
             assert time_parser_time.tzinfo == timezone
 
@@ -74,7 +74,7 @@ class TestTimeParser:
         datetime_time = datetime.now()
         assert datetime_time.tzinfo is None
         time_parser_time = TimeParser._set_utc_if_timezone_is_missing(datetime_time)
-        assert time_parser_time.tzinfo is ZoneInfo("UTC")
+        assert time_parser_time.tzinfo is UTC
         assert time_parser_time.second == pytest.approx(datetime_time.second, abs=1)
 
     @pytest.mark.parametrize(
@@ -90,28 +90,28 @@ class TestTimeParser:
             (
                 "2021-03-13T11:23:13Z",
                 "ISO8601",
-                ZoneInfo("UTC"),
+                UTC,
                 "UTC",
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
             (
                 "2021-03-13T11:23:13+01",
                 "ISO8601",
-                ZoneInfo("UTC"),
+                UTC,
                 "UTC+01:00",
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
             (
                 "2021-03-13T11:23:13",
                 "ISO8601",
-                ZoneInfo("UTC"),
+                UTC,
                 "UTC",
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
             (
                 "2021 03 13 - 11:23:13",
                 "%Y %m %d - %H:%M:%S",
-                ZoneInfo("UTC"),
+                UTC,
                 "UTC",
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
@@ -132,7 +132,7 @@ class TestTimeParser:
             (
                 "03 13 - 11:23:13",
                 "%m %d - %H:%M:%S",
-                ZoneInfo("UTC"),
+                UTC,
                 "UTC",
                 {
                     "year": datetime.now().year,
@@ -159,7 +159,7 @@ class TestTimeParser:
             (
                 "1615634593",
                 "UNIX",
-                ZoneInfo("UTC"),
+                UTC,
                 "UTC",
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),

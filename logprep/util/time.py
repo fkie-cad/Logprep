@@ -1,12 +1,9 @@
 """logprep time helpers module"""
 
-from datetime import datetime, tzinfo
+from datetime import datetime, tzinfo, UTC
 from typing import Union
-from zoneinfo import ZoneInfo
 
 from logprep.abc.exceptions import LogprepException
-
-UTC = ZoneInfo("UTC")
 
 
 class TimeParserException(LogprepException):
@@ -54,7 +51,7 @@ class TimeParser:
         datetime
             datetime object
         """
-        time_object = datetime.utcfromtimestamp(timestamp)
+        time_object = datetime.fromtimestamp(timestamp, tz=UTC)
         time_object = cls._set_utc_if_timezone_is_missing(time_object)
         return time_object
 

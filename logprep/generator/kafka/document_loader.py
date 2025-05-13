@@ -1,7 +1,7 @@
 """For loading documents from Kafka or from file and preparing them for sending"""
 
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from logging import Logger
 
 import ndjson
@@ -64,7 +64,7 @@ class DocumentLoader:
         for doc in docs:
             doc["_index"] = index_name
             doc["tags"] = ["load-tester"]
-            doc["@timestamp"] = f"{datetime.utcnow().isoformat()}Z"
+            doc["@timestamp"] = datetime.now(UTC).isoformat()
 
     @staticmethod
     def _prepare_string_addition_of_additional_fields(docs: list):

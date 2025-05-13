@@ -119,7 +119,7 @@ class TestDocumentLoader:
         for document in documents:
             assert re.match(
                 r'{"_index": "load-tester", "tags": \["load-tester"\], '
-                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z", '
+                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+00:00", '
                 r'"load-tester-unique": "',
                 document,
             )
@@ -133,7 +133,7 @@ class TestDocumentLoader:
         for document in documents:
             assert re.match(
                 r'{"bar": "2", "_index": "load-tester", "tags": \["load-tester"\], '
-                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z", '
+                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+00:00", '
                 r'"load-tester-unique": "',
                 document,
             )
@@ -143,7 +143,7 @@ class TestDocumentLoader:
         for document in documents:
             assert re.match(
                 r'{"foo": "1", "_index": "load-tester", "tags": \["load-tester"\], '
-                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z", '
+                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+00:00", '
                 r'"load-tester-unique": "',
                 document,
             )
@@ -159,7 +159,7 @@ class TestDocumentLoader:
         for document in documents:
             assert re.match(
                 r'{"foo": "bar", "_index": "load-tester", "tags": \["load-tester"\], '
-                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z", '
+                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+00:00", '
                 r'"load-tester-unique": "',
                 document,
             )
@@ -175,7 +175,7 @@ class TestDocumentLoader:
         for document in documents:
             assert re.match(
                 r'{"foo": "bar", "_index": "load-tester", "tags": \["load-tester"\], '
-                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z", '
+                r'"@timestamp": "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+00:00", '
                 r'"load-tester-unique": "',
                 document,
             )
