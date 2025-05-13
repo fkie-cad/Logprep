@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from confluent_kafka import Consumer, Producer
+from confluent_kafka import Consumer, Producer  # type: ignore[import-untyped]
 
 from logprep.generator.kafka.configuration import Kafka
 
