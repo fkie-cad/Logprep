@@ -59,7 +59,7 @@ class DocumentLoader:
         return self._get_from_file() if self._source_file else self._get_from_kafka()
 
     @staticmethod
-    def _prepare_json_docs(docs: list[dict[Any, Any]], index_name: str="load-tester") -> None:
+    def _prepare_json_docs(docs: list[dict[Any, Any]], index_name: str = "load-tester") -> None:
         for doc in docs:
             doc["_index"] = index_name
             doc["tags"] = ["load-tester"]
