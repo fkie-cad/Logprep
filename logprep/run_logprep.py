@@ -48,7 +48,7 @@ def _get_configuration(config_paths: tuple[str]) -> Configuration:
         listener.stop()
         return config
     except InvalidConfigurationError as error:
-        print(f"InvalidConfigurationError: {error}", file=sys.stderr)
+        print(f"InvalidConfigurationError: {error}")
         sys.exit(EXITCODES.CONFIGURATION_ERROR)
 
 
