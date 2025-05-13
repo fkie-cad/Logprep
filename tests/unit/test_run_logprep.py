@@ -70,19 +70,19 @@ class TestRunLogprepCli:
         mocked_target.assert_called()
         assert result.exit_code == 0, f"{result.exc_info}"
 
-    # @pytest.mark.parametrize(
-    #     "command",
-    #     [
-    #         ("run",),
-    #         ("test", "config"),
-    #         ("test", "unit"),
-    #         ("test", "dry-run", "input_data"),
-    #     ],
-    # )
-    # def test_cli_invokes_default_config_location(self, command):
-    #     result = self.cli_runner.invoke(cli, [*command])
-    #     assert result.exit_code != 0
-    #     assert "does not exist: /etc/logprep/pipeline.yml" in result.stderr
+    @pytest.mark.parametrize(
+        "command",
+        [
+            ("run",),
+            ("test", "config"),
+            ("test", "unit"),
+            ("test", "dry-run", "input_data"),
+        ],
+    )
+    def test_cli_invokes_default_config_location(self, command):
+        result = self.cli_runner.invoke(cli, [*command])
+        assert result.exit_code != 0
+        assert "does not exist: /etc/logprep/pipeline.yml" in result.stdout
 
     @mock.patch("logprep.run_logprep.Runner")
     def test_cli_run_starts_runner_with_config(self, mock_runner):
