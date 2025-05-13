@@ -1,7 +1,7 @@
 """For retrieval and insertion of data from and into Kafka."""
 
 import json
-from typing import Optional
+from typing import Any
 
 from confluent_kafka import Consumer, Producer
 
@@ -76,7 +76,7 @@ class KafkaConsumer:
         self._consumer = Consumer(self._config)
         self._consumer.subscribe([config.consumer.topic])
 
-    def get(self, timeout: float) -> Optional[str]:
+    def get(self, timeout: float) -> dict[Any, Any] | None:
         """Get document from Kafka"""
         record = self._consumer.poll(timeout=timeout)
         if not record:

@@ -105,7 +105,7 @@ class TimeParser:
             raise TimeParserException(str(error)) from error
 
     @classmethod
-    def _set_utc_if_timezone_is_missing(cls, time_object):
+    def _set_utc_if_timezone_is_missing(cls, time_object: datetime) -> datetime:
         if time_object.tzinfo is None:
             time_object = time_object.replace(tzinfo=UTC)
         return time_object
