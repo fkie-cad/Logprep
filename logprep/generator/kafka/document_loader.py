@@ -4,8 +4,6 @@ import json
 from datetime import datetime, UTC
 from logging import Logger
 
-import ndjson
-
 from logprep.generator.kafka.configuration import Configuration
 from logprep.generator.kafka.kafka_connector import KafkaConsumer
 
@@ -22,7 +20,7 @@ class DocumentLoader:
 
     def _get_from_file(self) -> list:
         with self._source_file.open("r", encoding="utf-8") as input_docs:
-            input_docs = ndjson.load(input_docs)
+            input_docs = [json.loads(doc) for doc in input_docs.readlines()]
             self._logger.info(f"Loaded {len(input_docs)} documents")
             return input_docs
 
@@ -52,7 +50,7 @@ class DocumentLoader:
         docs = self._get_raw_documents()
 
         self._prepare_json_docs(docs)
-        docs = ndjson.dumps(docs).splitlines()
+        docs = [json.dumps(doc) for doc in docs]
         self._prepare_string_addition_of_additional_fields(docs)
         return docs
 
