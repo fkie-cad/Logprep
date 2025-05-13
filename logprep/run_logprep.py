@@ -34,21 +34,20 @@ def _print_version(config: "Configuration") -> None:
 
 
 def _get_configuration(config_paths: tuple[str]) -> Configuration:
+
+    console_logger = logging.getLogger("console")
     try:
         config = Configuration.from_sources(config_paths)
         config.logger.setup_logging()
         logger = logging.getLogger("root")  # pylint: disable=redefined-outer-name
-
-        console_logger = logging.getLogger("console")
         console_handler = console_logger.handlers[0]
         listener = LogprepMPQueueListener(logqueue, console_handler)
         listener.start()
-
-        logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
+        logger.info("Log level set to '%s'", logging.getLevelName(logger.level))
         listener.stop()
         return config
     except InvalidConfigurationError as error:
-        print(f"InvalidConfigurationError: {error}")
+        console_logger.error("InvalidConfigurationError: %s", error)
         sys.exit(EXITCODES.CONFIGURATION_ERROR)
 
 
