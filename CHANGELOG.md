@@ -21,6 +21,7 @@
 - Fixed assign_callback error in confluentkafka input
 - Fixed error logging in ` _get_configuration`, which caused the github checks to fail
 - Fix domain resolver errors for invalid domains
+- Fixed deprecation warnings caused by datetime when using Python >= 3.12
 
 ## 16.1.0
 ### Deprecations
