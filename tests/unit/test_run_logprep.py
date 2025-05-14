@@ -31,10 +31,6 @@ class TestRunLogprepCli:
                 "logprep.run_logprep._get_configuration",
             ),
             (
-                "test unit tests/testdata/config/config.yml",
-                "logprep.util.auto_rule_tester.auto_rule_tester.AutoRuleTester.run",
-            ),
-            (
                 "print tests/testdata/config/config.yml",
                 "logprep.util.configuration.Configuration.as_yaml",
             ),
@@ -45,10 +41,6 @@ class TestRunLogprepCli:
             (
                 "test config tests/testdata/config/config.yml tests/testdata/config/config.yml",
                 "logprep.run_logprep._get_configuration",
-            ),
-            (
-                "test unit tests/testdata/config/config.yml tests/testdata/config/config.yml",
-                "logprep.util.auto_rule_tester.auto_rule_tester.AutoRuleTester.run",
             ),
             (
                 "print tests/testdata/config/config.yml tests/testdata/config/config.yml",
