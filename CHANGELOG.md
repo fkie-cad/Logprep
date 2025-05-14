@@ -17,6 +17,7 @@
 - prevent the auto rule tester from loading rules directly defined inside the config, since they break the auto rule tester and can't have tests anyways
 - Fixed typo and broken link in documentation
 - Fixed assign_callback error in confluentkafka input
+- Fixed error logging in ` _get_configuration`, which caused the github checks to fail
 
 ## 16.1.0
 ### Deprecations

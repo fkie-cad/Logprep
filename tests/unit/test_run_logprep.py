@@ -79,10 +79,10 @@ class TestRunLogprepCli:
             ("test", "dry-run", "input_data"),
         ],
     )
-    def test_cli_invokes_default_config_location(self, command):
+    def test_cli_invokes_default_config_location(self, command, caplog):
         result = self.cli_runner.invoke(cli, [*command])
         assert result.exit_code != 0
-        assert "does not exist: /etc/logprep/pipeline.yml" in result.stdout
+        assert "does not exist: /etc/logprep/pipeline.yml" in caplog.text
 
     @mock.patch("logprep.run_logprep.Runner")
     def test_cli_run_starts_runner_with_config(self, mock_runner):
@@ -108,11 +108,11 @@ class TestRunLogprepCli:
         mock_runner.get_runner.assert_called_with(expected_config)
         runner_instance.start.assert_called()
 
-    def test_exits_after_getter_error_for_not_existing_protocol(self):
+    def test_exits_after_getter_error_for_not_existing_protocol(self, caplog):
         args = ["run", "almighty_protocol://tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
-        assert "No getter for protocol 'almighty_protocol'" in result.output
+        assert "No getter for protocol 'almighty_protocol'" in caplog.text
 
     @mock.patch("logprep.util.configuration.Configuration._verify")
     def test_test_config_verifies_configuration_successfully(self, mock_verify):
@@ -215,7 +215,7 @@ class TestRunLogprepCli:
         assert "username" not in result.output
         assert "password" not in result.output
 
-    def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self):
+    def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self, caplog):
         non_existing_config_file = "/tmp/does/not/exist.yml"
         result = self.cli_runner.invoke(cli, ["run", non_existing_config_file])
         assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
@@ -223,7 +223,7 @@ class TestRunLogprepCli:
             f"One or more of the given config file(s) does not exist: "
             f"{non_existing_config_file}\n"
         )
-        assert expected_lines in result.output
+        assert expected_lines in caplog.text
 
     @mock.patch("logprep.runner.Runner._runner")
     def test_main_calls_runner_stop_on_any_exception(self, mock_runner):
@@ -280,7 +280,7 @@ class TestRunLogprepCli:
         with mock.patch("logprep.run_logprep.Runner"):
             with pytest.raises(SystemExit):
                 run_logprep.run(("tests/testdata/config/config.yml",))
-        mock_info.assert_has_calls([mock.call("Log level set to 'INFO'")])
+        mock_info.assert_has_calls([mock.call("Log level set to '%s'", "INFO")])
 
     @mock.patch("logprep.generator.kafka.run_load_tester.LoadTester.run")
     def test_generate_kafka_starts_kafka_load_tester(self, mock_kafka_load_tester):
