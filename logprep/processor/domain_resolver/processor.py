@@ -32,10 +32,11 @@ Processor Configuration
 import datetime
 import logging
 import socket
+from enum import IntEnum
 from functools import cached_property
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
-from typing import Optional
+from typing import Optional, Any
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
@@ -48,6 +49,19 @@ from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 logger = logging.getLogger("DomainResolver")
+
+
+class ResolveStatus(IntEnum):
+    """Status of resolving domains"""
+
+    SUCCESS = 0
+    """Resolving the domain was successful"""
+    TIMEOUT = 1
+    """Domain resolver timeout while trying to resolve the domain (this is not a socket timeout)"""
+    INVALID = 2
+    """The resolved domain was invalid and thus not resolved"""
+    UNKNOWN = 3
+    """Tried to resolve the domain, but the domain is unknown"""
 
 
 class DomainResolver(Processor):
@@ -120,10 +134,24 @@ class DomainResolver(Processor):
             )
         )
         """Number of timeouts that occurred while resolving a url"""
+        invalid_domains: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of invalid domains",
+                name="domain_resolver_invalid_domains",
+            )
+        )
+        """Number of invalid domains that were trying to be resolved"""
+        unknown_domains: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of unknown domains",
+                name="domain_resolver_unknown_domains",
+            )
+        )
+        """Number of unknown domains that were trying to be resolved"""
 
     __slots__ = ["_domain_ip_map"]
 
-    _domain_ip_map: dict
+    _domain_ip_map: dict[str, Optional[str]]
 
     rule_class = DomainResolverRule
 
@@ -132,19 +160,19 @@ class DomainResolver(Processor):
         self._domain_ip_map = {}
 
     @cached_property
-    def _cache(self):
+    def _cache(self) -> Cache:
         cache_max_timedelta = datetime.timedelta(days=self._config.max_caching_days)
         return Cache(max_items=self._config.max_cached_domains, max_timedelta=cache_max_timedelta)
 
     @cached_property
-    def _hasher(self):
+    def _hasher(self) -> SHA256Hasher:
         return SHA256Hasher()
 
     @cached_property
-    def _thread_pool(self):
+    def _thread_pool(self) -> ThreadPool:
         return ThreadPool(processes=1)
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict[str, Any], rule: DomainResolverRule) -> None:
         source_field = rule.source_fields[0]
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
@@ -158,37 +186,55 @@ class DomainResolver(Processor):
             return
         self.metrics.total_urls += 1
         if self._config.cache_enabled:
-            hash_string = self._hasher.hash_str(domain, salt=self._config.hash_salt)
-            requires_storing = self._cache.requires_storing(hash_string)
-            if requires_storing:
-                resolved_ip = self._resolve_ip(domain, hash_string)
-                self._domain_ip_map.update({hash_string: resolved_ip})
-                self.metrics.resolved_new += 1
-            else:
-                resolved_ip = self._domain_ip_map.get(hash_string)
-                self.metrics.resolved_cached += 1
-            self._add_resolve_infos_to_event(event, rule, resolved_ip)
-            if self._config.debug_cache:
-                self._store_debug_infos(event, requires_storing)
+            self._resolve_with_cache(domain, event, rule)
         else:
-            resolved_ip = self._resolve_ip(domain)
+            resolved_ip, _ = self._resolve_ip(domain)
             self._add_resolve_infos_to_event(event, rule, resolved_ip)
 
-    def _add_resolve_infos_to_event(self, event, rule, resolved_ip):
+    def _resolve_with_cache(
+        self, domain: str, event: dict[str, Any], rule: DomainResolverRule
+    ) -> None:
+        hash_string = self._hasher.hash_str(domain, salt=self._config.hash_salt)
+        requires_storing = self._cache.requires_storing(hash_string)
+        if requires_storing:
+            resolved_ip, status = self._resolve_ip(domain)
+            if status in (ResolveStatus.SUCCESS, ResolveStatus.UNKNOWN, ResolveStatus.TIMEOUT):
+                self._domain_ip_map.update({hash_string: resolved_ip})
+            self.metrics.resolved_new += 1
+        else:
+            resolved_ip = self._domain_ip_map.get(hash_string)
+            self.metrics.resolved_cached += 1
+        self._add_resolve_infos_to_event(event, rule, resolved_ip)
+
+        if self._config.debug_cache:
+            self._store_debug_infos(event, requires_storing)
+
+    def _add_resolve_infos_to_event(
+        self, event: dict[str, Any], rule: DomainResolverRule, resolved_ip: Optional[str]
+    ) -> None:
         if resolved_ip:
             self._write_target_field(event, rule, resolved_ip)
 
-    def _resolve_ip(self, domain, hash_string=None):
+    def _resolve_ip(self, domain: str) -> tuple[Optional[str], int]:
+        """Resolve domain with timeout.
+
+        Assumes socket default timeout is None and relies on threading to create a timeout.
+        """
         try:
             result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
             resolved_ip = result.get(timeout=self._config.timeout)
-            return resolved_ip
-        except (context.TimeoutError, OSError):
-            if hash_string:
-                self._domain_ip_map[hash_string] = None
+            return resolved_ip, ResolveStatus.SUCCESS
+        except ValueError:  # Makes no connection so does not need to be cached
+            self.metrics.invalid_domains += 1
+            return None, ResolveStatus.INVALID
+        except context.TimeoutError:
             self.metrics.timeouts += 1
+            return None, ResolveStatus.TIMEOUT
+        except OSError:  # Won't be timeout if default timeout is None
+            self.metrics.unknown_domains += 1
+            return None, ResolveStatus.UNKNOWN
 
-    def _store_debug_infos(self, event, requires_storing):
+    def _store_debug_infos(self, event: dict[str, Any], requires_storing: bool) -> None:
         event_dbg = {
             "resolved_ip_debug": {
                 "obtained_from_cache": not requires_storing,
