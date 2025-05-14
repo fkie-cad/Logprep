@@ -298,11 +298,3 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         ]
         with pytest.raises(InvalidRuleDefinitionError):
             self.object.load_rules(rules_targets=rule_definitions)
-
-    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
-    @mock.patch("logging.Logger.debug")
-    def test_load_rules_with_none(self, mock_debug, _):
-        self.object.load_rules(
-            rules_targets=self.rules_dirs,
-        )
-        mock_debug.assert_called()

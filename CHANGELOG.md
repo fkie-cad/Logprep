@@ -23,7 +23,6 @@
 - Resolved `mypy` errors in `BaseProcessorTestCase.` by ensuring `self.object` and `self.patchers` are not `None` before accessing attributes.
 - Fix domain resolver errors for invalid domains
 
-
 ## 16.1.0
 ### Deprecations
 
