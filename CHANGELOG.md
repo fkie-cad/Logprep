@@ -5,6 +5,8 @@
 ### Features
 
 * add `replacer` processor to replace substrings in fields using a syntax similar to the `dissector`
+* add custom yaml tag `!include PATH_TO_YAML_FILE` that allows to include other yaml files. 
+* add custom yaml tags `!set_anchor ANCHOR_NAME` and `!load_anchor ANCHOR_NAME` that allow to use anchors across documents inside a file/stream.
 
 ### Improvements
 
