@@ -7,7 +7,6 @@ import json
 from copy import deepcopy
 from logging import getLogger
 from pathlib import Path
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -77,7 +76,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         return rules
 
     def _load_rule(self, rule: dict | Rule):
-        assert isinstance(self.object, Processor)
         self.object._rule_tree = RuleTree()
         rule = self.object.rule_class.create_from_dict(rule) if isinstance(rule, dict) else rule
         self.object._rule_tree.add_rule(rule)
@@ -299,13 +297,3 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         ]
         with pytest.raises(InvalidRuleDefinitionError):
             self.object.load_rules(rules_targets=rule_definitions)
-
-
-class Processor:
-    def __init__(self):
-        self.name = "MyProcessor"
-
-
-def use_processor(processor: Optional[Processor]):
-    # This will cause mypy error: Item "None" of "Processor | None" has no attribute "name"
-    print(processor.name)
