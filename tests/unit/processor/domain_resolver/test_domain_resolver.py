@@ -1,11 +1,13 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 from copy import deepcopy
+from multiprocessing import context
 from pathlib import Path
 from unittest import mock
 
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.domain_resolver.processor import ResolveStatus
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -28,6 +30,8 @@ class TestDomainResolver(BaseProcessorTestCase):
         "logprep_domain_resolver_resolved_new",
         "logprep_domain_resolver_resolved_cached",
         "logprep_domain_resolver_timeouts",
+        "logprep_domain_resolver_invalid_domains",
+        "logprep_domain_resolver_unknown_domains",
     ]
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
@@ -161,6 +165,35 @@ class TestDomainResolver(BaseProcessorTestCase):
         expected = {"url": "https://www.google.de/something", "resolved_ip": "1.2.3.4"}
         self.object.process(document)
         assert document == expected
+
+    @mock.patch("socket.gethostbyname", side_effect=UnicodeError("invalid"), return_value="1.2.3.4")
+    def test_invalid_domain_with_unicode_error_is_resolved_to_none_and_returns_status(self, _):
+        resolved_ip, status = self.object._resolve_ip("google..invalid.de")
+        assert resolved_ip is None
+        assert status is ResolveStatus.INVALID
+
+    @mock.patch("socket.gethostbyname", side_effect=context.TimeoutError, return_value="1.2.3.4")
+    def test_valid_domain_with_timeout_error_is_resolved_to_none_and_returns_status(self, _):
+        resolved_ip, status = self.object._resolve_ip("google.de")
+        assert resolved_ip is None
+        assert status is ResolveStatus.TIMEOUT
+
+    @mock.patch("socket.gethostbyname", side_effect=OSError, return_value="1.2.3.4")
+    def test_unknown_domain_with_os_error_is_resolved_to_none_and_returns_status(self, _):
+        resolved_ip, status = self.object._resolve_ip("google.de")
+        assert resolved_ip is None
+        assert status is ResolveStatus.UNKNOWN
+
+    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
+    def test_existing_domain_is_resolved_to_and_returns_status(self, _):
+        resolved_ip, status = self.object._resolve_ip("google.de")
+        assert resolved_ip == "1.2.3.4"
+        assert status is ResolveStatus.SUCCESS
+
+    def test_empty_domain_is_snot_resolved(self):
+        document = {"url": " "}
+        self.object.process(document)
+        assert document.get("resolved_ip") is None
 
     def test_domain_to_ip_not_resolved(self):
         document = {"url": "google.thisisnotavalidtld"}
