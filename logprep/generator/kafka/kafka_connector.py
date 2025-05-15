@@ -1,9 +1,9 @@
 """For retrieval and insertion of data from and into Kafka."""
 
 import json
-from typing import Optional
+from typing import Any
 
-from confluent_kafka import Consumer, Producer
+from confluent_kafka import Consumer, Producer  # type: ignore[import-untyped]
 
 from logprep.generator.kafka.configuration import Kafka
 
@@ -35,7 +35,7 @@ class KafkaProducer:
 
         self._producer = Producer(self._config)
 
-    def store(self, document: str):
+    def store(self, document: str) -> None:
         """Write document into Kafka"""
         try:
             self._producer.produce(self._producer_topic, value=document)
@@ -43,7 +43,7 @@ class KafkaProducer:
         except BufferError:
             self._producer.flush(timeout=self._flush_timeout)
 
-    def shut_down(self):
+    def shut_down(self) -> None:
         """Gracefully close Kafka producer"""
         if self._producer is not None:
             self._producer.flush(self._flush_timeout)
@@ -76,7 +76,7 @@ class KafkaConsumer:
         self._consumer = Consumer(self._config)
         self._consumer.subscribe([config.consumer.topic])
 
-    def get(self, timeout: float) -> Optional[str]:
+    def get(self, timeout: float) -> Any:
         """Get document from Kafka"""
         record = self._consumer.poll(timeout=timeout)
         if not record:
@@ -86,7 +86,7 @@ class KafkaConsumer:
             raise record.error()
         return json.loads(record.value().decode("utf-8"))
 
-    def shut_down(self):
+    def shut_down(self) -> None:
         """Gracefully close Kafka consumer"""
         if self._consumer is not None:
             self._consumer.close()

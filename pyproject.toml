@@ -84,7 +84,6 @@ dependencies = [
   "msgspec",
   "boto3",
   "pydantic",
-  "ndjson",
   "click",
   "pandas",
   "tabulate",
