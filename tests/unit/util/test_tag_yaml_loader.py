@@ -178,16 +178,6 @@ def fixture_yaml_load_anchor(tmp_path) -> str:
     return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
-@pytest.fixture(name="yaml_load_anchor_after")
-def fixture_yaml_load_anchor_after(tmp_path) -> str:
-    yml_with_tag = """
-        processor:
-            some_node:
-             other: !load_anchor
-        """
-    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
-
-
 @pytest.fixture(name="yaml_multiple_anchor_tags")
 def fixture_yaml_multiple_anchor_tags(tmp_path) -> str:
     yml_with_tag = """
