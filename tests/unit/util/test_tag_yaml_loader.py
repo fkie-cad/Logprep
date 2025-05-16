@@ -358,17 +358,14 @@ class TestTagYamlLoader:
             self._load_yaml(yaml_load_anchor, yaml)
 
     def test_load_with_anchor_tag_with_two_separate_documents(
-        self, yaml_set_anchor, yaml_load_anchor, yaml_load_anchor_after
+        self, yaml_set_anchor, yaml_load_anchor
     ):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
         loaded = self._load_all_yaml(yaml_set_anchor, yaml)
         assert loaded[0]["processor"]["some_node"] == ["a", "b"]
-
-        with pytest.raises(ValueError, match=r"not a defined anchor"):
-            self._load_all_yaml(yaml_load_anchor, yaml)
-        with pytest.raises(ValueError, match=r"not a defined anchor"):
-            self._load_all_yaml(yaml_load_anchor_after, yaml)
+        loaded = self._load_all_yaml(yaml_load_anchor, yaml)
+        assert loaded[0]["processor"]["some_node"] == ["a", "b"]
 
     def test_with_yaml_multiple_anchor_tags(self, yaml_multiple_anchor_tags):
         yaml = YAML(pure=True, typ="safe")

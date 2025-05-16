@@ -26,10 +26,10 @@ Example:
 Anchor tags
 ^^^^^^^^^^^
 
-Anchor tags work similar to regular YAML anchors, but are valid for all documents inside a file or
-stream.
+Anchor tags work similar to regular YAML anchors, but are valid across different documents.
 Tags are set with :code:`!set_anchor(:[0-9])?` and loaded with :code:`!load_anchor(:[0-9])?`.
-Ten anchors can be active inside a single file or stream.
+Ten anchors can be active at the same time. If more then ten are set then the first will be removed
+until there are ten.
 `!set_anchor` and :code:`!load_anchor` are shorthands for :code:`!set_anchor:0` and
 :code:`!load_anchor:0`.
 
@@ -75,7 +75,6 @@ Examples:
 """
 
 import os.path
-import re
 from typing import Callable, Any
 
 from ruamel.yaml import (
@@ -207,29 +206,6 @@ def _get_anchor_name(node: Node) -> str:
     return anchor_name
 
 
-def _reset_anchors(
-    _anchors: dict[str, Any], _last_line_pos: dict[str, int]
-) -> Callable[[BaseConstructor, Node], Any]:
-    """Loads a global anchor if the '!load_anchor'tag is used, which is valid within a file.
-
-    Parameters
-    ----------
-    _anchors : dict[str, Any]
-        The dict where all anchors are stored.
-    _last_line_pos : dict[str, int]
-        Used to check if a different file/stream has been loaded.
-    """
-
-    def _reset_anchors_inner(constructor: BaseConstructor, node: Node) -> Any:
-        line_pos = constructor.loader.reader.line
-        if line_pos < _last_line_pos["value"]:
-            _anchors.clear()
-        _last_line_pos["value"] = line_pos
-        return node.value
-
-    return _reset_anchors_inner
-
-
 def init_yaml_loader_tags(*loader_types: str) -> None:
     """Add custom tags !include, !set_anchor and !load_anchor to the specified loader types.
 
@@ -241,13 +217,11 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         Types of loaders for which tags will be initialized (i.e. "safe" or "rt").
     """
 
+    anchors: dict[str, Any] = {}
+
     for loader_type in loader_types:
         yaml = YAML(pure=True, typ=loader_type)
-
         yaml.constructor.add_constructor("!include", _include(yaml))
-
-        last_line_pos: dict[str, int] = {"value": 0}
-        anchors: dict[str, Any] = {}
 
         yaml.constructor.add_constructor("!set_anchor", _set_anchor(yaml, anchors))
         yaml.constructor.add_constructor("!load_anchor", _load_anchor(anchors))
@@ -255,6 +229,3 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         for num in range(10):
             yaml.constructor.add_constructor(f"!set_anchor:{num}", _set_anchor(yaml, anchors))
             yaml.constructor.add_constructor(f"!load_anchor:{num}", _load_anchor(anchors))
-
-        yaml.constructor.add_constructor("!reset_anchors", _reset_anchors(anchors, last_line_pos))
-        yaml.resolver.add_implicit_resolver("!reset_anchors", re.compile(r".*"), None)
