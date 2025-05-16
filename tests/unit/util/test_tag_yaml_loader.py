@@ -178,6 +178,16 @@ def fixture_yaml_load_anchor(tmp_path) -> str:
     return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
+@pytest.fixture(name="yaml_load_anchor_after")
+def fixture_yaml_load_anchor_after(tmp_path) -> str:
+    yml_with_tag = """
+        processor:
+            some_node:
+             other: !load_anchor
+        """
+    return write_yaml_file_into_directory(yml_with_tag, tmp_path)
+
+
 @pytest.fixture(name="yaml_multiple_anchor_tags")
 def fixture_yaml_multiple_anchor_tags(tmp_path) -> str:
     yml_with_tag = """
@@ -348,7 +358,7 @@ class TestTagYamlLoader:
             self._load_yaml(yaml_load_anchor, yaml)
 
     def test_load_with_anchor_tag_with_two_separate_documents(
-        self, yaml_set_anchor, yaml_load_anchor
+        self, yaml_set_anchor, yaml_load_anchor, yaml_load_anchor_after
     ):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
@@ -357,6 +367,8 @@ class TestTagYamlLoader:
 
         with pytest.raises(ValueError, match=r"not a defined anchor"):
             self._load_all_yaml(yaml_load_anchor, yaml)
+        with pytest.raises(ValueError, match=r"not a defined anchor"):
+            self._load_all_yaml(yaml_load_anchor_after, yaml)
 
     def test_with_yaml_multiple_anchor_tags(self, yaml_multiple_anchor_tags):
         yaml = YAML(pure=True, typ="safe")

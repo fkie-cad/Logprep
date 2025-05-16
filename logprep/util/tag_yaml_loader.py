@@ -75,7 +75,8 @@ Examples:
 """
 
 import os.path
-from typing import Set, Callable, Any
+import re
+from typing import Callable, Any
 
 from ruamel.yaml import (
     YAML,
@@ -118,9 +119,7 @@ def _include(_yaml: YAML) -> Callable[[BaseConstructor, Node], Any]:
     return _include_inner
 
 
-def _set_anchor(
-    _yaml: YAML, _anchors: dict[str, Any], _last_line_pos: Set[int]
-) -> Callable[[BaseConstructor, Node], Any]:
+def _set_anchor(_yaml: YAML, _anchors: dict[str, Any]) -> Callable[[BaseConstructor, Node], Any]:
     """Sets a global anchor if the '!set_anchor'tag is used, which is valid within a file.
 
     Setting it for a node with children stores the children inside the anchor.
@@ -132,8 +131,6 @@ def _set_anchor(
         Used to load the yaml file that will be included.
     _anchors : dict[str, Any]
         The dict where all anchors are stored.
-    _last_line_pos : Set[int]
-        Used to check if a different file/stream has been loaded.
 
     Returns
     -------
@@ -141,7 +138,6 @@ def _set_anchor(
     """
 
     def _set_anchor_inner(constructor: BaseConstructor, node: Node) -> Any:
-        _clear_anchors_if_stream_changed(node, _anchors, _last_line_pos)
         anchor_name = _get_anchor_name(node)
         _anchors[anchor_name] = _extract_anchor_value(constructor, node)
         return _anchors[anchor_name]
@@ -177,17 +173,13 @@ def _set_anchor(
     return _set_anchor_inner
 
 
-def _load_anchor(
-    _anchors: dict[str, Any], _last_line_pos: Set[int]
-) -> Callable[[BaseConstructor, Node], Any]:
+def _load_anchor(_anchors: dict[str, Any]) -> Callable[[BaseConstructor, Node], Any]:
     """Loads a global anchor if the '!load_anchor'tag is used, which is valid within a file.
 
     Parameters
     ----------
     _anchors : dict[str, Any]
         The dict where all anchors are stored.
-    _last_line_pos : Set[int]
-        Used to check if a different file/stream has been loaded.
 
     Returns
     -------
@@ -195,8 +187,6 @@ def _load_anchor(
     """
 
     def _load_anchor_inner(_: BaseConstructor, node: Node) -> Any:
-        _clear_anchors_if_stream_changed(node, _anchors, _last_line_pos)
-
         anchor_name = _get_anchor_name(node)
         try:
             return _anchors[anchor_name]
@@ -208,17 +198,6 @@ def _load_anchor(
     return _load_anchor_inner
 
 
-def _clear_anchors_if_stream_changed(
-    node: Node, _anchors: dict[str, Any], _last_line_pos: Set[int]
-) -> None:
-    if not _last_line_pos:
-        _last_line_pos.add(node.start_mark.line)
-    elif node.start_mark.line <= list(_last_line_pos)[0]:
-        _last_line_pos.clear()
-        _anchors.clear()
-        _last_line_pos.add(node.start_mark.line)
-
-
 def _get_anchor_name(node: Node) -> str:
     anchor_name: str
     _, _, anchor_name = node.tag.partition(":")
@@ -226,6 +205,29 @@ def _get_anchor_name(node: Node) -> str:
         anchor_name = "0"
     anchor_name = anchor_name.strip()
     return anchor_name
+
+
+def _reset_anchors(
+    _anchors: dict[str, Any], _last_line_pos: dict[str, int]
+) -> Callable[[BaseConstructor, Node], Any]:
+    """Loads a global anchor if the '!load_anchor'tag is used, which is valid within a file.
+
+    Parameters
+    ----------
+    _anchors : dict[str, Any]
+        The dict where all anchors are stored.
+    _last_line_pos : dict[str, int]
+        Used to check if a different file/stream has been loaded.
+    """
+
+    def _reset_anchors_inner(constructor: BaseConstructor, node: Node) -> Any:
+        line_pos = constructor.loader.reader.line
+        if line_pos < _last_line_pos["value"]:
+            _anchors.clear()
+        _last_line_pos["value"] = line_pos
+        return node.value
+
+    return _reset_anchors_inner
 
 
 def init_yaml_loader_tags(*loader_types: str) -> None:
@@ -244,15 +246,15 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
 
         yaml.constructor.add_constructor("!include", _include(yaml))
 
-        last_line_pos: Set[int] = set()
+        last_line_pos: dict[str, int] = {"value": 0}
         anchors: dict[str, Any] = {}
-        yaml.constructor.add_constructor("!set_anchor", _set_anchor(yaml, anchors, last_line_pos))
-        yaml.constructor.add_constructor("!load_anchor", _load_anchor(anchors, last_line_pos))
+
+        yaml.constructor.add_constructor("!set_anchor", _set_anchor(yaml, anchors))
+        yaml.constructor.add_constructor("!load_anchor", _load_anchor(anchors))
 
         for num in range(10):
-            yaml.constructor.add_constructor(
-                f"!set_anchor:{num}", _set_anchor(yaml, anchors, last_line_pos)
-            )
-            yaml.constructor.add_constructor(
-                f"!load_anchor:{num}", _load_anchor(anchors, last_line_pos)
-            )
+            yaml.constructor.add_constructor(f"!set_anchor:{num}", _set_anchor(yaml, anchors))
+            yaml.constructor.add_constructor(f"!load_anchor:{num}", _load_anchor(anchors))
+
+        yaml.constructor.add_constructor("!reset_anchors", _reset_anchors(anchors, last_line_pos))
+        yaml.resolver.add_implicit_resolver("!reset_anchors", re.compile(r".*"), None)
