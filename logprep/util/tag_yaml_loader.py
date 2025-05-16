@@ -33,7 +33,7 @@ Ten anchors can be active inside a single file or stream.
 `!set_anchor` and :code:`!load_anchor` are shorthands for :code:`!set_anchor:0` and
 :code:`!load_anchor:0`.
 
-`!include` and :code:`!set_anchor` can't be nested inside :code:`!set_anchor`.
+`!set_anchor` can't be nested inside another :code:`!set_anchor`.
 
 Examples:
 
@@ -77,7 +77,15 @@ Examples:
 import os.path
 from typing import Set, Callable, Any
 
-from ruamel.yaml import YAML, Node, BaseConstructor
+from ruamel.yaml import (
+    YAML,
+    Node,
+    BaseConstructor,
+    ScalarNode,
+    SequenceNode,
+    MappingNode,
+    RoundTripConstructor,
+)
 
 
 def init_yaml_loader_tags(*loader_types: str) -> None:
@@ -121,7 +129,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         return _include
 
     def set_anchor(
-        _yaml: YAML, _anchors: dict[str, Any], _last_buffer: Set[str]
+        _yaml: YAML, _anchors: dict[str, Any], _last_line_pos: Set[int]
     ) -> Callable[[BaseConstructor, Node], Any]:
         """Sets a global anchor if the '!set_anchor'tag is used, which is valid within a file.
 
@@ -134,7 +142,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
             Used to load the yaml file that will be included.
         _anchors : dict[str, Any]
             The dict where all anchors are stored.
-        _last_buffer : Set[str]
+        _last_line_pos : Set[int]
             Used to check if a different file/stream has been loaded.
 
         Returns
@@ -143,31 +151,43 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         """
 
         def _set_anchor(constructor: BaseConstructor, node: Node) -> Any:
-            clear_anchors_if_buffer_changed(constructor, _anchors, _last_buffer)
-
+            clear_anchors_if_stream_changed(node, _anchors, _last_line_pos)
             anchor_name = get_anchor_name(node)
             _anchors[anchor_name] = _extract_anchor_value(constructor, node)
             return _anchors[anchor_name]
 
+        def _parse_node(constructor: BaseConstructor, node: Node) -> Any:
+            if node.value == "":
+                raise ValueError(f"{node.tag} is an empty anchor")
+
+            if isinstance(node, ScalarNode):
+                return constructor.construct_scalar(node)
+
+            if isinstance(constructor, RoundTripConstructor):
+                if isinstance(node, SequenceNode):
+                    return list(constructor.construct_yaml_seq(node))[0]
+                if isinstance(node, MappingNode):
+                    return list(constructor.construct_yaml_map(node))[0]
+
+            if isinstance(node, SequenceNode):
+                return constructor.construct_sequence(node)
+            if isinstance(node, MappingNode):
+                return constructor.construct_mapping(node)
+            return {}
+
         def _extract_anchor_value(constructor: BaseConstructor, node: Node) -> Any:
-            lines = constructor.loader.reader.buffer.splitlines()
-            anchor_value_lines = lines[node.start_mark.line : node.end_mark.line + 1]
-            anchor_value_lines[0] = anchor_value_lines[0][node.start_mark.column + len(node.tag) :]
-            anchor_value_lines[-1] = anchor_value_lines[-1][: node.end_mark.column]
-            anchor_value = "\n".join(anchor_value_lines)
             try:
-                data = _yaml.load(anchor_value)
+                data = _parse_node(constructor, node)
             except AttributeError as error:
-                _, _, value = "\\n".join(lines).partition(node.tag)
-                raise ValueError(f"'{node.tag}{value}' could not be loaded") from error
+                raise ValueError(f"'{node.tag} {node.value}' could not be loaded") from error
             if data is None:
-                raise ValueError(f"'{lines[node.start_mark.line]}' is en empty anchor")
+                raise ValueError(f"{node.tag} is en empty anchor")
             return data
 
         return _set_anchor
 
     def load_anchor(
-        _anchors: dict[str, Any], _last_buffer: Set[str]
+        _anchors: dict[str, Any], _last_line_pos: Set[int]
     ) -> Callable[[BaseConstructor, Node], Any]:
         """Loads a global anchor if the '!load_anchor'tag is used, which is valid within a file.
 
@@ -175,7 +195,7 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         ----------
         _anchors : dict[str, Any]
             The dict where all anchors are stored.
-        _last_buffer : Set[str]
+        _last_line_pos : Set[int]
             Used to check if a different file/stream has been loaded.
 
         Returns
@@ -183,8 +203,8 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
         Yaml data where the !load_anchor tag has been replaced by the content of the anchor.
         """
 
-        def _load_anchor(constructor: BaseConstructor, node: Node) -> Any:
-            clear_anchors_if_buffer_changed(constructor, _anchors, _last_buffer)
+        def _load_anchor(_: BaseConstructor, node: Node) -> Any:
+            clear_anchors_if_stream_changed(node, _anchors, _last_line_pos)
 
             anchor_name = get_anchor_name(node)
             try:
@@ -196,13 +216,15 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
 
         return _load_anchor
 
-    def clear_anchors_if_buffer_changed(
-        constructor: BaseConstructor, _anchors: dict[str, Any], _last_buffer: Set[str]
+    def clear_anchors_if_stream_changed(
+        node: Node, _anchors: dict[str, Any], _last_line_pos: Set[int]
     ) -> None:
-        if constructor.loader.reader.buffer not in _last_buffer:
-            _last_buffer.clear()
+        if not _last_line_pos:
+            _last_line_pos.add(node.start_mark.line)
+        elif node.start_mark.line <= list(_last_line_pos)[0]:
+            _last_line_pos.clear()
             _anchors.clear()
-            _last_buffer.add(constructor.loader.reader.buffer)
+            _last_line_pos.add(node.start_mark.line)
 
     def get_anchor_name(node: Node) -> str:
         anchor_name: str
@@ -217,15 +239,15 @@ def init_yaml_loader_tags(*loader_types: str) -> None:
 
         yaml.constructor.add_constructor("!include", include(yaml))
 
-        last_buffer: Set[str] = set()
+        last_line_pos: Set[int] = set()
         anchors: dict[str, Any] = {}
-        yaml.constructor.add_constructor("!set_anchor", set_anchor(yaml, anchors, last_buffer))
-        yaml.constructor.add_constructor("!load_anchor", load_anchor(anchors, last_buffer))
+        yaml.constructor.add_constructor("!set_anchor", set_anchor(yaml, anchors, last_line_pos))
+        yaml.constructor.add_constructor("!load_anchor", load_anchor(anchors, last_line_pos))
 
         for num in range(10):
             yaml.constructor.add_constructor(
-                f"!set_anchor:{num}", set_anchor(yaml, anchors, last_buffer)
+                f"!set_anchor:{num}", set_anchor(yaml, anchors, last_line_pos)
             )
             yaml.constructor.add_constructor(
-                f"!load_anchor:{num}", load_anchor(anchors, last_buffer)
+                f"!load_anchor:{num}", load_anchor(anchors, last_line_pos)
             )
