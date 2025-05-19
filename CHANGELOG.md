@@ -5,7 +5,7 @@
 ### Features
 
 * add `replacer` processor to replace substrings in fields using a syntax similar to the `dissector`
-* add custom yaml tag `!include PATH_TO_YAML_FILE` that allows to include other yaml files. 
+* add custom yaml tag `!include PATH_TO_YAML_FILE` that allows to include other yaml files.
 * add custom yaml tags `!set_anchor ANCHOR_NAME` and `!load_anchor ANCHOR_NAME` that allow to use anchors across documents inside a file/stream.
 
 ### Improvements
@@ -20,6 +20,7 @@
 - Fixed typo and broken link in documentation
 - Fixed assign_callback error in confluentkafka input
 - Fixed error logging in ` _get_configuration`, which caused the github checks to fail
+- Resolved `mypy` errors in `BaseProcessorTestCase.` by ensuring `self.object` and `self.patchers` are not `None` before accessing attributes.
 - Fix domain resolver errors for invalid domains
 - Fixed deprecation warnings caused by datetime when using Python >= 3.12
 
