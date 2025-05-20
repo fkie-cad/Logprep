@@ -344,7 +344,9 @@ class TestTagYamlLoader:
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
 
-        with pytest.raises(ValueError, match=r"not a defined anchor"):
+        with pytest.raises(
+            ValueError, match=r"Global anchor '0' is not defined within this YAML stream"
+        ):
             self._load_yaml(yaml_load_anchor, yaml)
 
     def test_load_with_anchor_tag_with_two_separate_documents(

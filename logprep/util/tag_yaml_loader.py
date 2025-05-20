@@ -191,7 +191,7 @@ def _load_anchor(_anchors: dict[str, Any]) -> Callable[[BaseConstructor, Node], 
             return _anchors[anchor_name]
         except KeyError as error:
             raise ValueError(
-                f"'{node.value}' is not a defined anchor within this yaml stream"
+                f"Global anchor '{anchor_name}' is not defined within this YAML stream"
             ) from error
 
     return _load_anchor_inner
