@@ -195,6 +195,7 @@ class Runner:
             self._schedule_config_refresh_job()
         except ConfigVersionDidNotChangeError as error:
             self._logger.info(str(error))
+            self._config_refresh_interval = self._configuration.config_refresh_interval
         except InvalidConfigurationError as error:
             self._logger.error(str(error))
             self.metrics.number_of_config_refresh_failures += 1
