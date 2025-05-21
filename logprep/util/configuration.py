@@ -216,7 +216,7 @@ from logprep.util.defaults import (
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.rule_loader import RuleLoader
 
-logger = logging.getLogger("Configuration")
+logger = logging.getLogger("Config")
 
 
 class MyYAML(YAML):
