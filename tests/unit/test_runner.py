@@ -3,14 +3,12 @@
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-function-docstring
 # pylint: disable=attribute-defined-outside-init
-import re
 import uuid
 from importlib.metadata import version
 from pathlib import Path
 from unittest import mock
 
 import pytest
-from requests.exceptions import HTTPError, SSLError
 
 from logprep.runner import Runner
 from logprep.util.configuration import Configuration
@@ -56,81 +54,6 @@ class TestRunner:
         for _ in range(10):
             assert runner is Runner.get_runner(configuration)
 
-    @mock.patch("logging.Logger.info")
-    def test_reload_configuration_logs_info_when_reloading_config_was_successful(
-        self, mock_info, runner
-    ):
-        with mock.patch.object(runner._manager, "restart"):
-            runner.metrics.number_of_config_refreshes = 0
-            runner._configuration.version = "very old version"
-            runner.reload_configuration()
-            mock_info.assert_has_calls([mock.call("Successfully reloaded configuration")])
-            assert runner.metrics.number_of_config_refreshes == 1
-
-    @mock.patch("logging.Logger.info")
-    def test_reload_configuration_logs_info_if_config_does_not_change(self, mock_info, runner):
-        runner.metrics.number_of_config_refreshes = 0
-        runner.metrics.number_of_config_refresh_failures = 0
-        runner.reload_configuration()
-        mock_info.assert_has_calls(
-            [
-                mock.call(
-                    "Configuration version didn't change. Continue running with current version."
-                )
-            ]
-        )
-        assert runner.metrics.number_of_config_refreshes == 0
-        assert runner.metrics.number_of_config_refresh_failures == 0
-
-    @mock.patch("logging.Logger.error")
-    def test_reload_configuration_logs_error_on_invalid_config(
-        self, mock_error, runner, config_path
-    ):
-        runner.metrics.number_of_config_refreshes = 0
-        runner.metrics.number_of_config_refresh_failures = 0
-        config_path.write_text("invalid config")
-        runner.reload_configuration()
-        mock_error.assert_called()
-        assert runner.metrics.number_of_config_refreshes == 0
-        assert runner.metrics.number_of_config_refresh_failures == 1
-
-    def test_reload_configuration_leaves_old_configuration_in_place_if_new_config_is_invalid(
-        self, runner, config_path
-    ):
-        assert runner._configuration.version == "1"
-        config_path.write_text("invalid config")
-        runner.reload_configuration()
-        assert runner._configuration.version == "1"
-
-    def test_reload_invokes_manager_reload_on_config_change(self, runner: Runner):
-        runner._configuration.version = "very old version"
-        with mock.patch.object(runner._manager, "reload") as mock_restart:
-            runner.reload_configuration()
-        mock_restart.assert_called()
-
-    @pytest.mark.parametrize(
-        "new_value, expected_value",
-        [(None, None), (0, 5), (1, 5), (2, 5), (3, 5), (10, 10), (42, 42)],
-    )
-    def test_set_config_refresh_interval(self, new_value, expected_value, runner):
-        with mock.patch.object(runner, "_manager"):
-            runner._config_refresh_interval = new_value
-            runner._exit_received = True
-            runner.start()
-            if expected_value is None:
-                assert len(runner.scheduler.jobs) == 0
-            else:
-                assert runner.scheduler.jobs[0].interval == expected_value
-
-    @mock.patch("schedule.Scheduler.run_pending")
-    def test_iteration_calls_run_pending(self, mock_run_pending, runner):
-        with mock.patch.object(runner, "_manager") as mock_manager:
-            mock_manager.restart_count = 0
-            mock_manager.should_exit.side_effect = [False, False, True]
-            with pytest.raises(SystemExit):
-                runner.start()
-            mock_run_pending.call_count = 3
-
     def test_iteration_sets_error_queue_size(self, runner):
         with mock.patch.object(runner, "_manager") as mock_manager:
             mock_manager.restart_count = 0
@@ -150,134 +73,6 @@ class TestRunner:
             with pytest.raises(SystemExit):
                 runner.start()
             mock_manager.should_exit.call_count = 3
-
-    def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(
-        self, runner: Runner, configuration: Configuration, config_path: Path
-    ):
-        runner.metrics.config_refresh_interval = 0
-        assert len(runner.scheduler.jobs) == 0
-        configuration.config_refresh_interval = 60
-        config_path.write_text(configuration.as_yaml())
-        runner._configuration.version = "very old version"
-        with mock.patch.object(runner._manager, "restart"):
-            runner.reload_configuration()
-        assert len(runner.scheduler.jobs) == 1
-        assert runner.metrics.config_refresh_interval == 60
-
-    def test_reload_configuration_does_not_schedules_job_if_no_config_refresh_interval_is_set(
-        self, runner: Runner
-    ) -> None:
-        assert len(runner.scheduler.jobs) == 0
-        if runner._configuration.config_refresh_interval is not None:
-            runner._configuration.config_refresh_interval = None
-        runner.reload_configuration()
-        assert len(runner.scheduler.jobs) == 0
-
-    def test_reload_configuration_reschedules_job_with_new_refresh_interval(
-        self, runner: Runner, configuration: Configuration, config_path: Path
-    ) -> None:
-        assert len(runner.scheduler.jobs) == 0
-        # first refresh
-        configuration.config_refresh_interval = 5
-        config_path.write_text(configuration.as_yaml())
-        runner._configuration.version = "very old version"
-        with mock.patch.object(runner._manager, "restart"):
-            runner.reload_configuration()
-        assert len(runner.scheduler.jobs) == 1
-        assert runner.scheduler.jobs[0].interval == 5
-        # second refresh with new refresh interval
-        configuration.config_refresh_interval = 10
-        config_path.write_text(configuration.as_yaml())
-        runner._configuration.version = "even older version"
-        with mock.patch.object(runner._manager, "restart"):
-            runner.reload_configuration()
-        assert len(runner.scheduler.jobs) == 1
-        assert runner.scheduler.jobs[0].interval == 10
-
-    @pytest.mark.parametrize(
-        "exception, log_message",
-        [
-            (HTTPError(404), "404"),
-            (
-                FileNotFoundError("no such file or directory"),
-                "One or more of the given config file(s) does not exist",
-            ),
-            (SSLError("SSL context"), "SSL context"),
-        ],
-    )
-    @mock.patch("logprep.abc.getter.Getter.get")
-    def test_reload_configuration_logs_exception_and_schedules_new_refresh_with_a_quarter_the_time(
-        self, mock_get, runner: Runner, caplog, exception, log_message
-    ):
-        mock_get.side_effect = exception
-        assert len(runner.scheduler.jobs) == 0
-        runner._config_refresh_interval = 40
-        runner.reload_configuration()
-        assert log_message in caplog.text
-        assert len(runner.scheduler.jobs) == 1
-        assert runner.scheduler.jobs[0].interval == 10
-
-    @mock.patch("logprep.abc.getter.Getter.get")
-    def test_reload_configuration_sets_config_refresh_interval_metric_with_a_quarter_of_the_time(
-        self, mock_get, runner: Runner
-    ):
-        mock_get.side_effect = HTTPError(404)
-        assert len(runner.scheduler.jobs) == 0
-        runner._config_refresh_interval = 40
-        runner.metrics.config_refresh_interval = 0
-        runner.reload_configuration()
-        assert runner.metrics.config_refresh_interval == 10
-
-    @mock.patch("logprep.abc.getter.Getter.get")
-    def test_reload_configuration_does_not_set_refresh_interval_below_5_seconds(
-        self, mock_get, caplog, runner: Runner
-    ):
-        mock_get.side_effect = HTTPError(404)
-        assert len(runner.scheduler.jobs) == 0
-        runner._config_refresh_interval = 12
-        with caplog.at_level("INFO"):
-            runner.reload_configuration()
-        assert re.search(r"Failed to load configuration: .*404", caplog.text)
-        assert re.search("Config refresh interval is set to: 5 seconds", caplog.text)
-        assert len(runner.scheduler.jobs) == 1
-        assert runner.scheduler.jobs[0].interval == 5
-
-    def test_reload_configuration_sets_refresh_interval_on_successful_reload_after_request_exception(
-        self, runner: Runner, config_path: Path
-    ):
-        runner._config_refresh_interval = 12
-        new_config = Configuration.from_sources([str(config_path)])
-        new_config.config_refresh_interval = 60
-        new_config.version = "new version"
-        config_path.write_text(new_config.as_yaml())
-        with mock.patch("logprep.abc.getter.Getter.get") as mock_get:
-            mock_get.side_effect = HTTPError(404)
-            runner.reload_configuration()
-            assert len(runner.scheduler.jobs) == 1
-            assert runner.scheduler.jobs[0].interval == 5
-        with mock.patch.object(runner._manager, "restart"):
-            runner.reload_configuration()
-        assert len(runner.scheduler.jobs) == 1
-        assert runner.scheduler.jobs[0].interval == 60
-
-    def test_reload_configuration_logs_new_version_and_sets_metric(
-        self, runner: Runner, config_path: Path
-    ):
-        assert len(runner.scheduler.jobs) == 0
-        new_config = Configuration.from_sources([str(config_path)])
-        new_config.config_refresh_interval = 5
-        config_version = str(uuid.uuid4().hex)
-        new_config.version = config_version
-        config_path.write_text(new_config.as_yaml())
-        with mock.patch("logging.Logger.info") as mock_info:
-            with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
-                with mock.patch.object(runner._manager, "restart"):
-                    runner.reload_configuration()
-        mock_info.assert_called_with(f"Configuration version: {config_version}")
-        mock_add.assert_called()
-        mock_add.assert_has_calls(
-            (mock.call(1, {"logprep": f"{version('logprep')}", "config": config_version}),)
-        )
 
     def test_stop_method(self, runner: Runner):
         assert not runner._exit_received
