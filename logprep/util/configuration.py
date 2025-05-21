@@ -715,18 +715,38 @@ class Configuration:
         if errors:
             raise InvalidConfigurationErrors(errors)
 
-    def schedule_config_refresh(self):
+    def schedule_config_refresh(self) -> None:
+        """
+        Schedules a periodic configuration refresh based on the specified interval.
+
+        Cancels any existing scheduled configuration refresh job and schedules a new one
+        using the current :code:`config_refresh_interval`.
+        The refresh job will call the :code:`reload` method at the specified interval
+        in seconds on invoking the :code:`refresh` method.
+
+        Notes
+        -----
+        - Only one configuration refresh job is scheduled at a time
+        - Any existing job is cancelled before scheduling a new one.
+        - The interval must be an integer representing seconds.
+
+        Examples
+        --------
+        >>> self.schedule_config_refresh()
+        Config refresh interval is set to: 60 seconds
+        """
+
         refresh_interval = self.config_refresh_interval
         scheduler = self._scheduler
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
-        if isinstance(refresh_interval, (float, int)):
+        if isinstance(refresh_interval, int):
             # self.metrics.config_refresh_interval += refresh_interval
             scheduler.every(refresh_interval).seconds.do(self.reload)
             logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
 
     def refresh(self):
-        """Run the jobs in the scheduler."""
+        """Wrap the scheduler run_pending method hide the implementation details."""
         self._scheduler.run_pending()
 
     def _set_attributes_from_configs(self) -> None:
