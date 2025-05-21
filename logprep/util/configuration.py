@@ -706,14 +706,26 @@ class Configuration:
         try:
             new_config = Configuration.from_sources(self.config_paths)
             if new_config == self:
-                raise ConfigVersionDidNotChangeError()
+                logger.info(
+                    "Configuration version didn't change. Continue running with current version."
+                )
+                return
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
             self.pipeline = new_config.pipeline
+            # self.metrics.number_of_config_refreshes += 1
+            logger.info("Successfully reloaded configuration")
+            logger.info("Configuration version: %s", self.version)
+        except ConfigGetterException as error:
+            logger.warning("Failed to load configuration: %s", error)
+            # self.metrics.number_of_config_refresh_failures += 1
+            self.config_refresh_interval = int(self.config_refresh_interval / 4)
+            self.schedule_config_refresh()
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         if errors:
-            raise InvalidConfigurationErrors(errors)
+            logger.error("Failed to reload configuration: %s", errors)
+            # self.metrics.number_of_config_refresh_failures += 1
 
     def schedule_config_refresh(self) -> None:
         """
