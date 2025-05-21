@@ -706,6 +706,8 @@ class Configuration:
         try:
             new_config = Configuration.from_sources(self.config_paths)
             if new_config == self:
+                self.config_refresh_interval = new_config.config_refresh_interval
+                self.schedule_config_refresh()
                 logger.info(
                     "Configuration version didn't change. Continue running with current version."
                 )
@@ -719,6 +721,8 @@ class Configuration:
         except ConfigGetterException as error:
             logger.warning("Failed to load configuration: %s", error)
             # self.metrics.number_of_config_refresh_failures += 1
+            if self.config_refresh_interval is None:
+                return
             self.config_refresh_interval = int(self.config_refresh_interval / 4)
             self.schedule_config_refresh()
         except InvalidConfigurationErrors as error:
@@ -747,7 +751,10 @@ class Configuration:
         >>> self.schedule_config_refresh()
         Config refresh interval is set to: 60 seconds
         """
+        if self.config_refresh_interval is None:
+            return
 
+        self.config_refresh_interval = max(self.config_refresh_interval, 5)
         refresh_interval = self.config_refresh_interval
         scheduler = self._scheduler
         if scheduler.jobs:
