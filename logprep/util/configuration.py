@@ -197,6 +197,7 @@ from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
+from schedule import Scheduler
 
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
@@ -576,6 +577,16 @@ class Configuration:
         validator=validators.instance_of(tuple), factory=tuple, repr=False, eq=False
     )
 
+    _scheduler: Scheduler = field(
+        factory=Scheduler,
+        validator=validators.instance_of(Scheduler),
+        repr=False,
+        eq=False,
+        init=False,
+    )
+
+    _unserializable_fields = ("_getter", "_configs", "_scheduler")
+
     @property
     def config_paths(self) -> list[str]:
         """Paths of the configuration files."""
@@ -675,7 +686,7 @@ class Configuration:
         """Return the configuration as dict."""
         return asdict(
             self,
-            filter=lambda attribute, _: attribute.name not in ("_getter", "_configs"),
+            filter=lambda attribute, _: attribute.name not in ("_getter", "_configs", "_scheduler"),
             recurse=True,
         )
 
