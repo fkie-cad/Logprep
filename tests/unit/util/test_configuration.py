@@ -3,7 +3,6 @@
 # pylint: disable=line-too-long
 import json
 import os
-import time
 import uuid
 from logging import getLogger
 from pathlib import Path
@@ -770,6 +769,34 @@ output:
         assert "Failed to load configuration" in caplog.text
         assert config.config_refresh_interval == 10, "refresh interval should be divided by 4"
 
+    def test_reload_with_errors_does_not_set_interval_le_5_seconds(self, config_path, caplog):
+        caplog.set_level("WARNING")
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 8
+        assert config.version == "1", "version should be 1"
+        config_path.unlink()  # causes FileNotFoundError
+        config.reload()
+        assert "Failed to load configuration" in caplog.text
+        assert (
+            config.config_refresh_interval == 5
+        ), "refresh interval should not be less than 5 seconds"
+
+    def test_reload_resets_origin_refresh_interval_after_error_is_fixed(self, config_path, caplog):
+        caplog.set_level("INFO")
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 8
+        assert config.version == "1", "version should be 1"
+        config_path.unlink()  # causes FileNotFoundError
+        config.reload()
+        assert "Failed to load configuration" in caplog.text
+        assert config.config_refresh_interval == 5, "set minimum refresh interval to 5"
+        config.config_refresh_interval = 8  # to write original config
+        config_path.write_text(config.as_yaml())
+        config.config_refresh_interval = 5
+        config.reload()
+        assert "Config refresh interval is set to: 8 seconds" in caplog.text
+        assert config.config_refresh_interval == 8, "refresh interval should be reset to origin"
+
     def test_as_dict_returns_config(self):
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])
         config_dict = config.as_dict()
@@ -907,14 +934,21 @@ output:
         ):
             Configuration.from_sources()
 
-    def test_schedule_config_refresh_schedules_config_refresh(self, config_path):
+    def test_schedule_config_refresh_schedules_job(self, config_path):
         config = Configuration.from_sources([str(config_path)])
         config.config_refresh_interval = 60
         config.schedule_config_refresh()
         assert config.config_refresh_interval == 60
         assert len(config._scheduler.jobs) == 1
+        assert config._scheduler.jobs[0].interval == 60
 
-    def test_schedule_config_deletes_old_job(self, config_path):
+    def test_schedule_config_refresh_schedules_job_with_reload_method(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 60
+        config.schedule_config_refresh()
+        assert config._scheduler.jobs[0].job_func.__qualname__ == "Configuration.reload"
+
+    def test_schedule_config_refresh_deletes_old_job(self, config_path):
         config = Configuration.from_sources([str(config_path)])
         config.config_refresh_interval = 60
         config.schedule_config_refresh()
@@ -923,21 +957,26 @@ output:
         assert not old_job in config._scheduler.jobs
         assert len(config._scheduler.jobs) == 1
 
+    def test_schedule_config_refresh_does_not_schedule_if_none(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = None
+        config.schedule_config_refresh()
+        assert config.config_refresh_interval is None
+        assert len(config._scheduler.jobs) == 0
+
+    def test_schedule_config_refresh_schedules_with_minimum_of_5(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 1
+        config.schedule_config_refresh()
+        assert config.config_refresh_interval == 5
+        assert len(config._scheduler.jobs) == 1
+
     def test_refresh_calls_run_pending(self, config_path):
         config = Configuration.from_sources([str(config_path)])
         config.config_refresh_interval = 60
         with mock.patch.object(config._scheduler, "run_pending") as mock_run_pending:
             config.refresh()
             mock_run_pending.assert_called_once()
-
-    def test_refresh_calls_job_with_reload(self, config_path):
-        config = Configuration.from_sources([str(config_path)])
-        config.config_refresh_interval = 1
-        config.schedule_config_refresh()
-        config.version = "older version"
-        time.sleep(1)
-        config.refresh()
-        assert config.version != "older version"
 
     def test_config_with_missing_environment_error(self):
         with mock.patch("os.environ", {"PROMETHEUS_MULTIPROC_DIR": "DOES/NOT/EXIST"}):
