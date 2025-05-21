@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=too-many-arguments
 from datetime import datetime, UTC
+from math import isclose
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -43,6 +44,9 @@ class TestTimeParser:
 
     def test_now_returns_datetime(self):
         assert isinstance(TimeParser.now(), datetime)
+
+    def test_now_returns_utc_time_by_default(self):
+        assert isclose(TimeParser.now().timestamp(), datetime.now(UTC).timestamp())
 
     @pytest.mark.parametrize(
         "source, format_str, expected",
