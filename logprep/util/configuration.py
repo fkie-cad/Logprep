@@ -197,6 +197,7 @@ from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
+from schedule import Scheduler
 
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
@@ -214,6 +215,8 @@ from logprep.util.defaults import (
 )
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.rule_loader import RuleLoader
+
+logger = logging.getLogger("Config")
 
 
 class MyYAML(YAML):
@@ -576,6 +579,16 @@ class Configuration:
         validator=validators.instance_of(tuple), factory=tuple, repr=False, eq=False
     )
 
+    _scheduler: Scheduler = field(
+        factory=Scheduler,
+        validator=validators.instance_of(Scheduler),
+        repr=False,
+        eq=False,
+        init=False,
+    )
+
+    _unserializable_fields = ("_getter", "_configs", "_scheduler")
+
     @property
     def config_paths(self) -> list[str]:
         """Paths of the configuration files."""
@@ -675,7 +688,7 @@ class Configuration:
         """Return the configuration as dict."""
         return asdict(
             self,
-            filter=lambda attribute, _: attribute.name not in ("_getter", "_configs"),
+            filter=lambda attribute, _: attribute.name not in ("_getter", "_configs", "_scheduler"),
             recurse=True,
         )
 
@@ -693,14 +706,67 @@ class Configuration:
         try:
             new_config = Configuration.from_sources(self.config_paths)
             if new_config == self:
-                raise ConfigVersionDidNotChangeError()
+                self.config_refresh_interval = new_config.config_refresh_interval
+                self.schedule_config_refresh()
+                logger.info(
+                    "Configuration version didn't change. Continue running with current version."
+                )
+                return
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
             self.pipeline = new_config.pipeline
+            # self.metrics.number_of_config_refreshes += 1
+            logger.info("Successfully reloaded configuration")
+            logger.info("Configuration version: %s", self.version)
+        except ConfigGetterException as error:
+            logger.warning("Failed to load configuration: %s", error)
+            # self.metrics.number_of_config_refresh_failures += 1
+            if self.config_refresh_interval is None:
+                return
+            self.config_refresh_interval = int(self.config_refresh_interval / 4)
+            self.schedule_config_refresh()
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         if errors:
-            raise InvalidConfigurationErrors(errors)
+            logger.error("Failed to reload configuration: %s", errors)
+            # self.metrics.number_of_config_refresh_failures += 1
+
+    def schedule_config_refresh(self) -> None:
+        """
+        Schedules a periodic configuration refresh based on the specified interval.
+
+        Cancels any existing scheduled configuration refresh job and schedules a new one
+        using the current :code:`config_refresh_interval`.
+        The refresh job will call the :code:`reload` method at the specified interval
+        in seconds on invoking the :code:`refresh` method.
+
+        Notes
+        -----
+        - Only one configuration refresh job is scheduled at a time
+        - Any existing job is cancelled before scheduling a new one.
+        - The interval must be an integer representing seconds.
+
+        Examples
+        --------
+        >>> self.schedule_config_refresh()
+        Config refresh interval is set to: 60 seconds
+        """
+        if self.config_refresh_interval is None:
+            return
+
+        self.config_refresh_interval = max(self.config_refresh_interval, 5)
+        refresh_interval = self.config_refresh_interval
+        scheduler = self._scheduler
+        if scheduler.jobs:
+            scheduler.cancel_job(scheduler.jobs[0])
+        if isinstance(refresh_interval, int):
+            # self.metrics.config_refresh_interval += refresh_interval
+            scheduler.every(refresh_interval).seconds.do(self.reload)
+            logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
+
+    def refresh(self):
+        """Wrap the scheduler run_pending method hide the implementation details."""
+        self._scheduler.run_pending()
 
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, fields(self.__class__)):
