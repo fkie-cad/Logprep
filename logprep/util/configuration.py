@@ -216,6 +216,8 @@ from logprep.util.defaults import (
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.rule_loader import RuleLoader
 
+logger = logging.getLogger("Configuration")
+
 
 class MyYAML(YAML):
     """helper class to dump yaml with ruamel.yaml"""
@@ -712,6 +714,20 @@ class Configuration:
             errors = [*errors, *error.errors]
         if errors:
             raise InvalidConfigurationErrors(errors)
+
+    def schedule_config_refresh(self):
+        refresh_interval = self.config_refresh_interval
+        scheduler = self._scheduler
+        if scheduler.jobs:
+            scheduler.cancel_job(scheduler.jobs[0])
+        if isinstance(refresh_interval, (float, int)):
+            # self.metrics.config_refresh_interval += refresh_interval
+            scheduler.every(refresh_interval).seconds.do(self.reload)
+            logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
+
+    def refresh(self):
+        """Run the jobs in the scheduler."""
+        self._scheduler.run_pending()
 
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, fields(self.__class__)):
