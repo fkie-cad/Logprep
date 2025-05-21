@@ -1307,6 +1307,18 @@ class TestInvalidConfigurationErrors:
         assert len(error.errors) == len(expected_error_list)
         assert error.errors == expected_error_list
 
+    def test_configuration_metrics_from_runner(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        assert False, "Test not implemented yet"
+
+    def test_log_config_refresh_interval_only_if_it_change(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        assert False, "Test not implemented yet"
+
+    def test_log_recovery_from_failing_source(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        assert False, "Test not implemented yet"
+
 
 class TestLoggerConfig:
 
