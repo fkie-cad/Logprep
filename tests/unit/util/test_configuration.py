@@ -3,6 +3,7 @@
 # pylint: disable=line-too-long
 import json
 import os
+import time
 import uuid
 from logging import getLogger
 from pathlib import Path
@@ -976,6 +977,38 @@ output:
             InvalidConfigurationError, match=r"does not exist: \/etc\/logprep\/pipeline\.yml"
         ):
             Configuration.from_sources()
+
+    def test_schedule_config_refresh_schedules_config_refresh(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 60
+        config.schedule_config_refresh()
+        assert config.config_refresh_interval == 60
+        assert len(config._scheduler.jobs) == 1
+
+    def test_schedule_config_deletes_old_job(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 60
+        config.schedule_config_refresh()
+        old_job = config._scheduler.jobs[0]
+        config.schedule_config_refresh()
+        assert not old_job in config._scheduler.jobs
+        assert len(config._scheduler.jobs) == 1
+
+    def test_refresh_calls_run_pending(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 60
+        with mock.patch.object(config._scheduler, "run_pending") as mock_run_pending:
+            config.refresh()
+            mock_run_pending.assert_called_once()
+
+    def test_refresh_calls_job_with_reload(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 1
+        config.schedule_config_refresh()
+        config.version = "older version"
+        time.sleep(1)
+        config.refresh()
+        assert config.version != "older version"
 
     def test_config_with_missing_environment_error(self):
         with mock.patch("os.environ", {"PROMETHEUS_MULTIPROC_DIR": "DOES/NOT/EXIST"}):
