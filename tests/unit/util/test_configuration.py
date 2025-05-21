@@ -662,26 +662,11 @@ pipeline:
             with pytest.raises(raised_error):
                 _ = Configuration(**{"metrics": metrics_config_dict})
 
-    def test_reload_reloads_complete_config(self, tmp_path):
-        config_path = tmp_path / "pipeline.yml"
-        config_path.write_text(
-            """
-version: first_version
-process_count: 2
-timeout: 0.1
-logger:
-    level: DEBUG
-input:
-    dummy:
-        type: dummy_input
-        documents: []
-output:
-    dummy:
-        type: dummy_output
-"""
-        )
+    def test_reload_reloads_complete_config_if_different_config(self, config_path, caplog):
+        caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
-        assert config.version == "first_version"
+        assert config.version == "1"
+        assert config.process_count == 3
         config_path.write_text(
             """
 version: second_version
@@ -699,28 +684,25 @@ output:
 """
         )
         config.reload()
-        assert config.version == "second_version"
+        assert config.version == "second_version", "version should be updated"
+        assert config.process_count == 2, "process count should be updated"
+        assert "Successfully reloaded" in caplog.text
+        assert "Configuration version: second_version" in caplog.text
 
-    def test_reload_raises_on_invalid_config(self, tmp_path):
-        config_path = tmp_path / "pipeline.yml"
-        config_path.write_text(
-            """
-version: first_version
-process_count: 2
-timeout: 0.1
-logger:
-    level: DEBUG
-input:
-    dummy:
-        type: dummy_input
-        documents: []
-output:
-    dummy:
-        type: dummy_output
-"""
-        )
+    def test_reload_does_not_reload_but_logs_info_on_same_config(self, config_path, caplog):
+        caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
-        assert config.version == "first_version"
+        # set process_count to a different value and save it assert that it is not reloaded
+        config.process_count = 99
+        config_path.write_text(config.as_yaml())
+        config.process_count = 2
+        config.reload()
+        assert "Configuration version didn't change." in caplog.text
+        assert config.process_count == 2
+
+    def test_reload_logs_error_on_invalid_config(self, config_path, caplog):
+        config = Configuration.from_sources([str(config_path)])
+        assert config.version == "1"
         config_path.write_text(
             """
 version: second_version
@@ -737,36 +719,16 @@ output:
         type: dummy_output
 """
         )
-        with pytest.raises(InvalidConfigurationError):
-            config.reload()
-        assert config.version == "first_version"
 
-    def test_reload_raises_on_invalid_processor_config(self, tmp_path):
-        config_path = tmp_path / "pipeline.yml"
-        config_path.write_text(
-            """
-version: first_version
-process_count: 2
-timeout: 0.1
-logger:
-    level: DEBUG
-pipeline:
-    - labelername:
-        type: labeler
-        schema: examples/exampledata/rules/labeler/schema.json
-        include_parent_labels: true
-        rules: []
-input:
-    dummy:
-        type: dummy_input
-        documents: []
-output:
-    dummy:
-        type: dummy_output
-"""
-        )
+        config.reload()
+        assert "Failed to reload configuration" in caplog.text
+        assert "THIS SHOULD BE AN INT" in caplog.text
+        assert config.version == "1", "version should not change"
+
+    def test_reload_logs_error_on_invalid_processor_config(self, config_path, caplog):
+        caplog.set_level("DEBUG")
         config = Configuration.from_sources([str(config_path)])
-        assert config.version == "first_version"
+        assert config.version == "1", "version should be 1"
         config_path.write_text(
             """
 version: second_version
@@ -791,55 +753,22 @@ output:
         type: dummy_output
 """
         )
-        with pytest.raises(InvalidConfigurationError):
-            config.reload()
-        assert config.version == "first_version"
+        config.reload()
+        assert "Failed to reload configuration" in caplog.text
+        assert "THIS SHOULD BE A VALID PROCESSOR" in caplog.text
+        assert config.version == "1", "version should not change"
 
-    def test_reload_raises_on_same_version(self, tmp_path):
-        config_path = tmp_path / "pipeline.yml"
-        config_path.write_text(
-            """
-version: first_version
-process_count: 2
-timeout: 0.1
-logger:
-    level: DEBUG
-input:
-    dummy:
-        type: dummy_input
-        documents: []
-output:
-    dummy:
-        type: dummy_output
-"""
-        )
+    def test_reload_logs_warning_on_getter_exception_and_computes_new_refresh_interval(
+        self, config_path, caplog
+    ):
+        caplog.set_level("WARNING")
         config = Configuration.from_sources([str(config_path)])
-        assert config.version == "first_version"
-        config_path.write_text(
-            """
-version: first_version
-process_count: 2
-timeout: 0.1
-logger:
-    level: DEBUG
-pipeline:
-    - labelername:
-        type: labeler
-        schema: examples/exampledata/rules/labeler/schema.json
-        include_parent_labels: true
-        rules: []
-input:
-    dummy:
-        type: dummy_input
-        documents: []
-output:
-    dummy:
-        type: dummy_output
-"""
-        )
-        with pytest.raises(InvalidConfigurationError, match="Configuration version didn't change."):
-            config.reload()
-        assert config.version == "first_version"
+        config.config_refresh_interval = 40
+        assert config.version == "1", "version should be 1"
+        config_path.unlink()  # causes FileNotFoundError
+        config.reload()
+        assert "Failed to load configuration" in caplog.text
+        assert config.config_refresh_interval == 10, "refresh interval should be divided by 4"
 
     def test_as_dict_returns_config(self):
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])
