@@ -187,6 +187,7 @@ import json
 import logging
 import os
 from copy import deepcopy
+from importlib.metadata import version
 from itertools import chain
 from logging.config import dictConfig
 from pathlib import Path
@@ -199,10 +200,12 @@ from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
 from schedule import Scheduler
 
+from logprep.abc.component import Component
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
@@ -589,6 +592,62 @@ class Configuration:
 
     _unserializable_fields = ("_getter", "_configs", "_scheduler")
 
+    @define(kw_only=True)
+    class Metrics(Component.Metrics):
+        """Metrics for the Logprep Runner."""
+
+        version_info: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep version information",
+                name="version_info",
+                labels={"logprep": "unset", "config": "unset"},
+                inject_label_values=False,
+            )
+        )
+        """Logprep version info."""
+        config_refresh_interval: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep config refresh interval",
+                name="config_refresh_interval",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates the configuration refresh interval in seconds."""
+        number_of_config_refreshes: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Indicates how often the logprep configuration was updated.",
+                name="number_of_config_refreshes",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates how often the logprep configuration was updated."""
+        number_of_config_refresh_failures: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description=(
+                    "Indicates how often the logprep configuration "
+                    "could not be updated due to failures during the update."
+                ),
+                name="number_of_config_refreshes",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates how often the logprep configuration could not be updated
+          due to failures during the update."""
+
+    _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
+
+    def __attrs_post_init__(self) -> None:
+        self._metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
+        self._set_version_info_metric()
+
+    @property
+    def _metric_labels(self) -> dict[str, str]:
+        labels = {
+            "logprep": f"{version('logprep')}",
+            "config": f"{self.version}",
+        }
+        return labels
+
     @property
     def config_paths(self) -> list[str]:
         """Paths of the configuration files."""
@@ -715,12 +774,12 @@ class Configuration:
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
             self.pipeline = new_config.pipeline
-            # self.metrics.number_of_config_refreshes += 1
+            self._metrics.number_of_config_refreshes += 1
             logger.info("Successfully reloaded configuration")
             logger.info("Configuration version: %s", self.version)
         except ConfigGetterException as error:
             logger.warning("Failed to load configuration: %s", error)
-            # self.metrics.number_of_config_refresh_failures += 1
+            self._metrics.number_of_config_refresh_failures += 1
             if self.config_refresh_interval is None:
                 return
             self.config_refresh_interval = int(self.config_refresh_interval / 4)
@@ -729,7 +788,7 @@ class Configuration:
             errors = [*errors, *error.errors]
         if errors:
             logger.error("Failed to reload configuration: %s", errors)
-            # self.metrics.number_of_config_refresh_failures += 1
+            self._metrics.number_of_config_refresh_failures += 1
 
     def schedule_config_refresh(self) -> None:
         """
@@ -760,7 +819,7 @@ class Configuration:
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, int):
-            # self.metrics.config_refresh_interval += refresh_interval
+            self._metrics.config_refresh_interval += refresh_interval
             scheduler.every(refresh_interval).seconds.do(self.reload)
             logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
 
@@ -923,3 +982,9 @@ class Configuration:
                         f"{processor.describe()}: output"
                         f" '{output_name}' does not exist in logprep outputs"
                     )
+
+    def _set_version_info_metric(self):
+        self._metrics.version_info.add_with_labels(
+            1,
+            {"logprep": f"{version('logprep')}", "config": self.version},
+        )
