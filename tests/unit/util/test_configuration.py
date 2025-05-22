@@ -4,6 +4,7 @@
 import json
 import os
 import uuid
+from importlib.metadata import version
 from logging import getLogger
 from pathlib import Path
 from unittest import mock
@@ -664,6 +665,8 @@ pipeline:
     def test_reload_reloads_complete_config_if_different_config(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config._metrics.number_of_config_refreshes = 0
+        config._metrics.number_of_config_refresh_failures = 0
         assert config.version == "1"
         assert config.process_count == 3
         config_path.write_text(
@@ -687,10 +690,14 @@ output:
         assert config.process_count == 2, "process count should be updated"
         assert "Successfully reloaded" in caplog.text
         assert "Configuration version: second_version" in caplog.text
+        assert config._metrics.number_of_config_refreshes == 1, "one config refresh"
+        assert config._metrics.number_of_config_refresh_failures == 0, "no config refresh failure"
 
     def test_reload_does_not_reload_but_logs_info_on_same_config(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config._metrics.number_of_config_refreshes = 0
+        config._metrics.number_of_config_refresh_failures = 0
         # set process_count to a different value and save it assert that it is not reloaded
         config.process_count = 99
         config_path.write_text(config.as_yaml())
@@ -698,9 +705,13 @@ output:
         config.reload()
         assert "Configuration version didn't change." in caplog.text
         assert config.process_count == 2
+        assert config._metrics.number_of_config_refreshes == 0, "no config refresh"
+        assert config._metrics.number_of_config_refresh_failures == 0, "no config refresh failure"
 
     def test_reload_logs_error_on_invalid_config(self, config_path, caplog):
         config = Configuration.from_sources([str(config_path)])
+        config._metrics.number_of_config_refreshes = 0
+        config._metrics.number_of_config_refresh_failures = 0
         assert config.version == "1"
         config_path.write_text(
             """
@@ -723,10 +734,14 @@ output:
         assert "Failed to reload configuration" in caplog.text
         assert "THIS SHOULD BE AN INT" in caplog.text
         assert config.version == "1", "version should not change"
+        assert config._metrics.number_of_config_refreshes == 0, "no config refresh"
+        assert config._metrics.number_of_config_refresh_failures == 1, "one config refresh failure"
 
     def test_reload_logs_error_on_invalid_processor_config(self, config_path, caplog):
         caplog.set_level("DEBUG")
         config = Configuration.from_sources([str(config_path)])
+        config._metrics.number_of_config_refreshes = 0
+        config._metrics.number_of_config_refresh_failures = 0
         assert config.version == "1", "version should be 1"
         config_path.write_text(
             """
@@ -756,23 +771,32 @@ output:
         assert "Failed to reload configuration" in caplog.text
         assert "THIS SHOULD BE A VALID PROCESSOR" in caplog.text
         assert config.version == "1", "version should not change"
+        assert config._metrics.number_of_config_refreshes == 0, "no config refresh"
+        assert config._metrics.number_of_config_refresh_failures == 1, "one config refresh failure"
 
     def test_reload_logs_warning_on_getter_exception_and_computes_new_refresh_interval(
         self, config_path, caplog
     ):
         caplog.set_level("WARNING")
         config = Configuration.from_sources([str(config_path)])
+        config._metrics.number_of_config_refreshes = 0
+        config._metrics.number_of_config_refresh_failures = 0
         config.config_refresh_interval = 40
+        config._metrics.config_refresh_interval = 40  # set to primitive type
         assert config.version == "1", "version should be 1"
         config_path.unlink()  # causes FileNotFoundError
         config.reload()
         assert "Failed to load configuration" in caplog.text
         assert config.config_refresh_interval == 10, "refresh interval should be divided by 4"
+        assert config._metrics.config_refresh_interval == 50, "should be += new value"
+        assert config._metrics.number_of_config_refreshes == 0, "no config refresh"
+        assert config._metrics.number_of_config_refresh_failures == 1, "one config refresh failure"
 
     def test_reload_with_errors_does_not_set_interval_le_5_seconds(self, config_path, caplog):
         caplog.set_level("WARNING")
         config = Configuration.from_sources([str(config_path)])
         config.config_refresh_interval = 8
+        config._metrics.config_refresh_interval = 0  # set to primitive type
         assert config.version == "1", "version should be 1"
         config_path.unlink()  # causes FileNotFoundError
         config.reload()
@@ -780,10 +804,13 @@ output:
         assert (
             config.config_refresh_interval == 5
         ), "refresh interval should not be less than 5 seconds"
+        assert config._metrics.config_refresh_interval == 5, "should be set to 5 seconds"
 
     def test_reload_resets_origin_refresh_interval_after_error_is_fixed(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config._metrics.number_of_config_refreshes = 0
+        config._metrics.number_of_config_refresh_failures = 0
         config.config_refresh_interval = 8
         assert config.version == "1", "version should be 1"
         config_path.unlink()  # causes FileNotFoundError
@@ -796,6 +823,8 @@ output:
         config.reload()
         assert "Config refresh interval is set to: 8 seconds" in caplog.text
         assert config.config_refresh_interval == 8, "refresh interval should be reset to origin"
+        config._metrics.number_of_config_refreshes = 1, "one config refresh after recovering"
+        config._metrics.number_of_config_refresh_failures = 1, "one config refresh failure"
 
     def test_as_dict_returns_config(self):
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])
@@ -1181,7 +1210,7 @@ endpoints:
                 _ = Configuration.from_sources([str(config_path)])
 
     def test_no_config_parameter_is_overwritten_with_a_default(self, tmp_path):
-        prometheus_multiproc_dir: Path = tmp_path / "prometheus_multiproc_dir"
+        prometheus_multiproc_dir = tmp_path / "prometheus_multiproc_dir"
         prometheus_multiproc_dir.mkdir()
         exporter_config = tmp_path / "exporter-config"
         exporter_config.write_text(
@@ -1246,6 +1275,30 @@ output:
             ):
                 config._verify()
 
+    def test_sets_version_metric(self, config_path):
+        with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
+            config = Configuration.from_sources([str(config_path)])
+        mock_add.assert_called()
+        mock_add.assert_has_calls(
+            (
+                mock.call(
+                    1,
+                    {
+                        "logprep": f"{version('logprep')}",
+                        "config": config.version,
+                    },
+                ),
+            )
+        )
+
+    def test_log_config_refresh_interval_only_if_it_change(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        assert False, "Test not implemented yet"
+
+    def test_log_recovery_from_failing_source(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        assert False, "Test not implemented yet"
+
 
 class TestInvalidConfigurationErrors:
     @pytest.mark.parametrize(
@@ -1306,18 +1359,6 @@ class TestInvalidConfigurationErrors:
         error = InvalidConfigurationErrors(error_list)
         assert len(error.errors) == len(expected_error_list)
         assert error.errors == expected_error_list
-
-    def test_configuration_metrics_from_runner(self, config_path):
-        config = Configuration.from_sources([str(config_path)])
-        assert False, "Test not implemented yet"
-
-    def test_log_config_refresh_interval_only_if_it_change(self, config_path):
-        config = Configuration.from_sources([str(config_path)])
-        assert False, "Test not implemented yet"
-
-    def test_log_recovery_from_failing_source(self, config_path):
-        config = Configuration.from_sources([str(config_path)])
-        assert False, "Test not implemented yet"
 
 
 class TestLoggerConfig:
