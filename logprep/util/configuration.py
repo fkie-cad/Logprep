@@ -215,6 +215,7 @@ from logprep.util.defaults import (
     DEFAULT_MESSAGE_BACKLOG_SIZE,
     DEFAULT_RESTART_COUNT,
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
+    MIN_CONFIG_REFRESH_INTERVAL,
 )
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.rule_loader import RuleLoader
@@ -571,6 +572,8 @@ class Configuration:
     )
     """Size of the error backlog. Defaults to :code:`15000`."""
 
+    _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
+
     _getter: Getter = field(
         validator=validators.instance_of(Getter),
         default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
@@ -590,7 +593,13 @@ class Configuration:
         init=False,
     )
 
-    _unserializable_fields = ("_getter", "_configs", "_scheduler")
+    _unserializable_fields = (
+        "_getter",
+        "_configs",
+        "_scheduler",
+        "_metrics",
+        "_unserializable_fields",
+    )
 
     @define(kw_only=True)
     class Metrics(Component.Metrics):
@@ -633,8 +642,6 @@ class Configuration:
         )
         """Indicates how often the logprep configuration could not be updated
           due to failures during the update."""
-
-    _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 
     def __attrs_post_init__(self) -> None:
         self._metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
@@ -747,7 +754,7 @@ class Configuration:
         """Return the configuration as dict."""
         return asdict(
             self,
-            filter=lambda attribute, _: attribute.name not in ("_getter", "_configs", "_scheduler"),
+            filter=lambda attribute, _: attribute.name not in self._unserializable_fields,
             recurse=True,
         )
 
@@ -765,11 +772,12 @@ class Configuration:
         try:
             new_config = Configuration.from_sources(self.config_paths)
             if new_config == self:
-                self.config_refresh_interval = new_config.config_refresh_interval
-                self.schedule_config_refresh()
                 logger.info(
                     "Configuration version didn't change. Continue running with current version."
                 )
+                if new_config.config_refresh_interval is None:
+                    return
+                self._set_config_refresh_interval(new_config.config_refresh_interval)
                 return
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
@@ -782,13 +790,18 @@ class Configuration:
             self._metrics.number_of_config_refresh_failures += 1
             if self.config_refresh_interval is None:
                 return
-            self.config_refresh_interval = int(self.config_refresh_interval / 4)
-            self.schedule_config_refresh()
+            self._set_config_refresh_interval(int(self.config_refresh_interval / 4))
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         if errors:
             logger.error("Failed to reload configuration: %s", errors)
             self._metrics.number_of_config_refresh_failures += 1
+
+    def _set_config_refresh_interval(self, config_refresh_interval: int) -> None:
+        config_refresh_interval = max(config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL)
+        self.config_refresh_interval = config_refresh_interval
+        self.schedule_config_refresh()
+        self._metrics.config_refresh_interval += config_refresh_interval
 
     def schedule_config_refresh(self) -> None:
         """
@@ -813,13 +826,14 @@ class Configuration:
         if self.config_refresh_interval is None:
             return
 
-        self.config_refresh_interval = max(self.config_refresh_interval, 5)
+        self.config_refresh_interval = max(
+            self.config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL
+        )
         refresh_interval = self.config_refresh_interval
         scheduler = self._scheduler
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, int):
-            self._metrics.config_refresh_interval += refresh_interval
             scheduler.every(refresh_interval).seconds.do(self.reload)
             logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
 

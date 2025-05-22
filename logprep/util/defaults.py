@@ -26,7 +26,7 @@ DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 DEFAULT_AES_KEY_LENGTH = 32
 DEFAULT_BATCH_SIZE = 1
 DEFAULT_BATCH_TIME = 1.0
-
+MIN_CONFIG_REFRESH_INTERVAL = 5
 
 # dictconfig as described in
 # https://docs.python.org/3/library/logging.config.html#configuration-dictionary-schema
