@@ -13,7 +13,7 @@ from schedule import Scheduler
 
 from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
-from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.metrics.metrics import GaugeMetric
 from logprep.util.configuration import Configuration
 from logprep.util.defaults import EXITCODES
 
@@ -59,44 +59,6 @@ class Runner:
         )
         """Current size of the error queue."""
 
-        version_info: GaugeMetric = field(
-            factory=lambda: GaugeMetric(
-                description="Logprep version information",
-                name="version_info",
-                labels={"logprep": "unset", "config": "unset"},
-                inject_label_values=False,
-            )
-        )
-        """Logprep version info."""
-        config_refresh_interval: GaugeMetric = field(
-            factory=lambda: GaugeMetric(
-                description="Logprep config refresh interval",
-                name="config_refresh_interval",
-                labels={"from": "unset", "config": "unset"},
-            )
-        )
-        """Indicates the configuration refresh interval in seconds."""
-        number_of_config_refreshes: CounterMetric = field(
-            factory=lambda: CounterMetric(
-                description="Indicates how often the logprep configuration was updated.",
-                name="number_of_config_refreshes",
-                labels={"from": "unset", "config": "unset"},
-            )
-        )
-        """Indicates how often the logprep configuration was updated."""
-        number_of_config_refresh_failures: CounterMetric = field(
-            factory=lambda: CounterMetric(
-                description=(
-                    "Indicates how often the logprep configuration "
-                    "could not be updated due to failures during the update."
-                ),
-                name="number_of_config_refreshes",
-                labels={"from": "unset", "config": "unset"},
-            )
-        )
-        """Indicates how often the logprep configuration could not be updated
-          due to failures during the update."""
-
     @property
     def _metric_labels(self) -> dict[str, str]:
         labels = {
@@ -130,7 +92,6 @@ class Runner:
         This runs until an SIGTERM, SIGINT or KeyboardInterrupt signal is received, or an unhandled
         error occurs.
         """
-        self._set_version_info_metric()
         self._configuration.schedule_config_refresh()
         self._manager.start()
         self._logger.info("Startup complete")
@@ -155,12 +116,6 @@ class Runner:
             if self._manager.error_queue is not None:
                 self.metrics.number_of_events_in_error_queue += self._manager.error_queue.qsize()
             self._manager.restart_failed_pipeline()
-
-    def _set_version_info_metric(self):
-        self.metrics.version_info.add_with_labels(
-            1,
-            {"logprep": f"{version('logprep')}", "config": self._configuration.version},
-        )
 
     def stop(self):
         """Stop the logprep runner. Is called by the signal handler
