@@ -23,6 +23,7 @@
 - Resolved `mypy` errors in `BaseProcessorTestCase.` by ensuring `self.object` and `self.patchers` are not `None` before accessing attributes.
 - Fix domain resolver errors for invalid domains
 - Fixed deprecation warnings caused by datetime when using Python >= 3.12
+- Fixed timestamp and timezone mismatch issue
 
 ## 16.1.0
 ### Deprecations
