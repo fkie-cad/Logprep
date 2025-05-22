@@ -56,12 +56,12 @@ class TimeParser:
         return time_object
 
     @classmethod
-    def now(cls, timezone: tzinfo = None) -> datetime:
+    def now(cls, timezone: tzinfo | None = UTC) -> datetime:
         """returns the current time
 
         Parameters
         ----------
-        timezone : tzinfo
+        timezone : tzinfo | None
             the timezone to use for the timestamp
 
         Returns
@@ -69,8 +69,8 @@ class TimeParser:
         datetime
             current date and time as datetime
         """
+        timezone = timezone if timezone else UTC
         time_object = datetime.now(timezone)
-        time_object = cls._set_utc_if_timezone_is_missing(time_object)
         return time_object
 
     @classmethod
