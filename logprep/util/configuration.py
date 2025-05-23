@@ -798,6 +798,8 @@ class Configuration:
             self._metrics.number_of_config_refresh_failures += 1
 
     def _set_config_refresh_interval(self, config_refresh_interval: int) -> None:
+        if config_refresh_interval == self.config_refresh_interval:
+            return
         config_refresh_interval = max(config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL)
         self.config_refresh_interval = config_refresh_interval
         self.schedule_config_refresh()
