@@ -1291,9 +1291,24 @@ output:
             )
         )
 
-    def test_log_config_refresh_interval_only_if_it_change(self, config_path):
+    def test_log_config_refresh_interval_only_if_it_change(self, config_path, caplog):
+        caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
-        assert False, "Test not implemented yet"
+        config.config_refresh_interval = 10
+        config.reload()
+        assert "Configuration version didn't change." in caplog.text
+        assert "Config refresh interval is set to:" not in caplog.text
+
+    def test_config_refresh_interval_cant_be_set_to_none(self, config_path, caplog):
+        caplog.set_level("INFO")
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = None
+        config_path.write_text(config.as_yaml())
+        config.config_refresh_interval = 10
+        config.reload()
+        assert "Configuration version didn't change." in caplog.text
+        assert "Config refresh interval is set to:" not in caplog.text
+        assert config.config_refresh_interval == 10, "should not be changed to None"
 
     def test_log_recovery_from_failing_source(self, config_path):
         config = Configuration.from_sources([str(config_path)])
