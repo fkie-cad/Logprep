@@ -116,3 +116,4 @@ class TestRunner:
             with pytest.raises(SystemExit):
                 runner.start()
             mock_manager.reload.assert_called_once()
+        assert runner._config_version == "new_version"
