@@ -261,7 +261,7 @@ def generate():
     default=0,
     type=int,
 )
-def generate_kafka2(**kwargs):
+def generate_kafka(**kwargs):
     """
     Generates events based on templated sample files stored inside a dataset directory.
     The events will be sent to a kafka endpoint.
