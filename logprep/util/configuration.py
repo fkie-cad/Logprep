@@ -226,7 +226,7 @@ logger = logging.getLogger("Config")
 class MyYAML(YAML):
     """helper class to dump yaml with ruamel.yaml"""
 
-    def dump(self, data, stream=None, **kw):
+    def dump(self, data: Any, stream: Any | None = None, **kw: Any) -> Any:
         inefficient = False
         if stream is None:
             inefficient = True
@@ -244,7 +244,7 @@ class InvalidConfigurationErrors(InvalidConfigurationError):
 
     errors: List[InvalidConfigurationError]
 
-    def __init__(self, errors: List[Exception]):
+    def __init__(self, errors: List[Exception]) -> None:
         unique_errors = []
         for error in errors:
             if not isinstance(error, InvalidConfigurationError):
@@ -261,7 +261,7 @@ class InvalidConfigurationErrors(InvalidConfigurationError):
 class ConfigVersionDidNotChangeError(InvalidConfigurationError):
     """Raise if configuration version did not change."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             "Configuration version didn't change. Continue running with current version."
         )
@@ -270,28 +270,28 @@ class ConfigVersionDidNotChangeError(InvalidConfigurationError):
 class ConfigGetterException(InvalidConfigurationError):
     """Raise if configuration getter fails."""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
 
 
 class RequiredConfigurationKeyMissingError(InvalidConfigurationError):
     """Raise if required option is missing in configuration."""
 
-    def __init__(self, key: str):
+    def __init__(self, key: str) -> None:
         super().__init__(f"Required option is missing: {key}")
 
 
 class InvalidProcessorConfigurationError(InvalidConfigurationError):
     """Raise if processor configuration is invalid."""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(f"Invalid processor configuration: {message}")
 
 
 class MissingEnvironmentError(InvalidConfigurationError):
     """Raise if environment variables are missing"""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(f"Environment variable(s) used, but not set: {message}")
 
 
@@ -418,7 +418,7 @@ class LoggerConfig:
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
         dictConfig(log_config)
 
-    def _set_loggers_levels(self):
+    def _set_loggers_levels(self) -> None:
         """sets the loggers levels to the default or to the given level."""
         for logger_name, logger_config in self.loggers.items():
             default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
@@ -426,7 +426,7 @@ class LoggerConfig:
                 default_logger_config.update({"level": logger_config["level"]})
             self.loggers[logger_name].update(default_logger_config)
 
-    def _set_defaults(self):
+    def _set_defaults(self) -> None:
         """resets all keys to the defined defaults except :code:`loggers`."""
         for key, value in DEFAULT_LOG_CONFIG.items():
             if key == "loggers":
@@ -847,7 +847,7 @@ class Configuration:
             scheduler.every(refresh_interval).seconds.do(self.reload)
             logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
 
-    def refresh(self):
+    def refresh(self) -> None:
         """Wrap the scheduler run_pending method hide the implementation details."""
         self._scheduler.run_pending()
 
@@ -861,7 +861,7 @@ class Configuration:
         versions = (config.version for config in self._configs if config.version)
         self.version = ", ".join(versions)
 
-    def _build_merged_pipeline(self):
+    def _build_merged_pipeline(self) -> None:
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
         pipeline = list(chain(*pipelines))
         errors = []
@@ -904,9 +904,9 @@ class Configuration:
             return values[-1]
         return getattr(Configuration(), attribute)
 
-    def _verify(self):
+    def _verify(self) -> None:
         """Verify the configuration."""
-        errors = []
+        errors: list[Exception] = []
         try:
             self._verify_environment()
         except MissingEnvironmentError as error:
@@ -953,7 +953,7 @@ class Configuration:
         if errors:
             raise InvalidConfigurationErrors(errors)
 
-    def _verify_processor_outputs(self, processor_config):
+    def _verify_processor_outputs(self, processor_config) -> None:
         processor_config = deepcopy(processor_config)
         processor_name, processor_config = processor_config.popitem()
         if "outputs" not in processor_config:
@@ -966,7 +966,7 @@ class Configuration:
                         f"{processor_name}: output '{output_name}' does not exist in logprep outputs"  # pylint: disable=line-too-long
                     )
 
-    def _verify_environment(self):
+    def _verify_environment(self) -> None:
         # pylint: disable=protected-access
         getters = (config._getter for config in self._configs if config._getter)
         # pylint: enable=protected-access
@@ -1007,7 +1007,7 @@ class Configuration:
                         f" '{output_name}' does not exist in logprep outputs"
                     )
 
-    def _set_version_info_metric(self):
+    def _set_version_info_metric(self) -> None:
         self._metrics.version_info.add_with_labels(
             1,
             {"logprep": f"{version('logprep')}", "config": self.version},
