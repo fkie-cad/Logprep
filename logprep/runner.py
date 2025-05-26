@@ -81,6 +81,7 @@ class Runner:
         atexit.register(self.stop_and_exit)
         self.exit_code = EXITCODES.SUCCESS
         self._configuration = configuration
+        self._config_version = self._configuration.version  # to trigger reloads
         self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._logger = logging.getLogger("Runner")
         self._manager = PipelineManager(configuration)
@@ -109,6 +110,8 @@ class Runner:
             if self._exit_received:
                 break
             self._configuration.refresh()
+            if self._configuration.version != self._config_version:
+                self._manager.reload()
             if self._manager.should_exit():
                 self.exit_code = EXITCODES.PIPELINE_ERROR.value
                 self._logger.error("Restart count exceeded. Exiting.")
