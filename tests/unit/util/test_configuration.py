@@ -806,7 +806,9 @@ output:
         ), "refresh interval should not be less than 5 seconds"
         assert config._metrics.config_refresh_interval == 5, "should be set to 5 seconds"
 
-    def test_reload_resets_origin_refresh_interval_after_error_is_fixed(self, config_path, caplog):
+    def test_reload_resets_origin_refresh_interval_after_error_is_fixed_and_logs_recovery(
+        self, config_path, caplog
+    ):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
         config._metrics.number_of_config_refreshes = 0
@@ -821,10 +823,11 @@ output:
         config_path.write_text(config.as_yaml())
         config.config_refresh_interval = 5
         config.reload()
+        assert "Config refresh recovered from failing source" in caplog.text
         assert "Config refresh interval is set to: 8 seconds" in caplog.text
         assert config.config_refresh_interval == 8, "refresh interval should be reset to origin"
-        config._metrics.number_of_config_refreshes = 1, "one config refresh after recovering"
-        config._metrics.number_of_config_refresh_failures = 1, "one config refresh failure"
+        assert config._metrics.number_of_config_refreshes == 0, "no refresh after recovering"
+        assert config._metrics.number_of_config_refresh_failures == 1, "config refresh failure"
 
     def test_as_dict_returns_config(self):
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])
@@ -865,15 +868,15 @@ output:
         config = Configuration.from_sources([str(config_path)])
         config.version = "super_custom_version"
         config_path.write_text(config.as_json())
-        newconfig = Configuration.from_sources([str(config_path)])
-        assert newconfig.version == "super_custom_version"
+        new_config = Configuration.from_sources([str(config_path)])
+        assert new_config.version == "super_custom_version"
 
     def test_returned_yaml_is_valid_config(self, config_path):
         config = Configuration.from_sources([str(config_path)])
         config.version = "super_custom_version"
         config_path.write_text(config.as_yaml())
-        newconfig = Configuration.from_sources([str(config_path)])
-        assert newconfig.version == "super_custom_version"
+        new_config = Configuration.from_sources([str(config_path)])
+        assert new_config.version == "super_custom_version"
 
     def test_reload_loads_generated_config(self, config_path):
         config = Configuration.from_sources([str(config_path)])
@@ -1309,10 +1312,6 @@ output:
         assert "Configuration version didn't change." in caplog.text
         assert "Config refresh interval is set to:" not in caplog.text
         assert config.config_refresh_interval == 10, "should not be changed to None"
-
-    def test_log_recovery_from_failing_source(self, config_path):
-        config = Configuration.from_sources([str(config_path)])
-        assert False, "Test not implemented yet"
 
 
 class TestInvalidConfigurationErrors:
