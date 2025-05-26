@@ -77,7 +77,6 @@ class Runner:
 
     # For production, use the get_runner method to create/get access to a singleton!
     def __init__(self, configuration: Configuration) -> None:
-        self._manager: PipelineManager | None = None
         atexit.register(self.stop_and_exit)
         self.exit_code = EXITCODES.SUCCESS
         self._configuration = configuration
@@ -87,7 +86,7 @@ class Runner:
         self._manager = PipelineManager(configuration)
         self.scheduler = Scheduler()
 
-    def start(self):
+    def start(self) -> None:
         """Start processing.
 
         This runs until an SIGTERM, SIGINT or KeyboardInterrupt signal is received, or an unhandled
@@ -99,13 +98,13 @@ class Runner:
         self._logger.debug("Runner iterating")
         self._iterate()
 
-    def stop_and_exit(self):
+    def stop_and_exit(self) -> None:
         """Stop the runner and exit the process."""
         self._logger.info("Shutting down")
         if self._manager:
             self._manager.stop()
 
-    def _iterate(self):
+    def _iterate(self) -> None:
         for _ in self._keep_iterating():
             if self._exit_received:
                 break
@@ -120,7 +119,7 @@ class Runner:
                 self.metrics.number_of_events_in_error_queue += self._manager.error_queue.qsize()
             self._manager.restart_failed_pipeline()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the logprep runner. Is called by the signal handler
         in run_logprep.py."""
         self._exit_received = True
