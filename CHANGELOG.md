@@ -17,6 +17,7 @@
 * introduce new logger `Config`
 * refactor config refresh behavior from `logprep.runner` to `logprep.util.configuration`
 * refactor config related metrics from `logprep.runner` to `logprep.util.configuration`
+* added a log message for recovering config refresh mechanic from failing source
 
 ### Bugfix
 

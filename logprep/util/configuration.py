@@ -593,9 +593,12 @@ class Configuration:
         init=False,
     )
 
+    _config_failure: bool = field(default=False, repr=False, eq=False, init=False)
+
     _unserializable_fields = (
         "_getter",
         "_configs",
+        "_config_failure",
         "_scheduler",
         "_metrics",
         "_unserializable_fields",
@@ -636,7 +639,7 @@ class Configuration:
                     "Indicates how often the logprep configuration "
                     "could not be updated due to failures during the update."
                 ),
-                name="number_of_config_refreshes",
+                name="number_of_config_refresh_failures",
                 labels={"from": "unset", "config": "unset"},
             )
         )
@@ -771,6 +774,9 @@ class Configuration:
         errors: List[Exception] = []
         try:
             new_config = Configuration.from_sources(self.config_paths)
+            if self._config_failure:
+                logger.info("Config refresh recovered from failing source")
+            self._config_failure = False
             if new_config == self:
                 logger.info(
                     "Configuration version didn't change. Continue running with current version."
@@ -786,12 +792,14 @@ class Configuration:
             logger.info("Successfully reloaded configuration")
             logger.info("Configuration version: %s", self.version)
         except ConfigGetterException as error:
+            self._config_failure = True
             logger.warning("Failed to load configuration: %s", error)
             self._metrics.number_of_config_refresh_failures += 1
             if self.config_refresh_interval is None:
                 return
             self._set_config_refresh_interval(int(self.config_refresh_interval / 4))
         except InvalidConfigurationErrors as error:
+            self._config_failure = True
             errors = [*errors, *error.errors]
         if errors:
             logger.error("Failed to reload configuration: %s", errors)
