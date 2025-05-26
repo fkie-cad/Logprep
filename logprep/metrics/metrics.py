@@ -117,16 +117,18 @@ Processor Specific Metrics
 
 import os
 import time
-from _socket import gethostname
 from abc import ABC, abstractmethod
 from typing import Any, Union
 
+from _socket import gethostname
 from attrs import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 from logprep.util.helper import _add_field_to_silent_fail
 
 
+### Setting $env:PROMETHEUS_MULTIPROC_DIR="/tmp/logprep" before using the generator falsefies the statistics
+### Can be undone by using os.environ.pop("PROMETHEUS_MULTIPROC_DIR") before importing from prometheus_client
 @define(kw_only=True, slots=False)
 class Metric(ABC):
     """Metric base class"""
@@ -143,6 +145,7 @@ class Metric(ABC):
         ],
         factory=dict,
     )
+
     _registry: CollectorRegistry = field(default=None)
     _prefix: str = field(default="logprep_")
     inject_label_values: bool = field(default=True)
