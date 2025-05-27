@@ -24,6 +24,7 @@
 - Fix domain resolver errors for invalid domains
 - Fixed deprecation warnings caused by datetime when using Python >= 3.12
 - Fixed timestamp and timezone mismatch issue
+- Fixed inconsistent generator statistics report during multithreading by making it thread safe
 
 ## 16.1.0
 ### Deprecations
