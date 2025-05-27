@@ -71,7 +71,8 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
 
     def store(self, document) -> None:
 
-        self.metrics.processed_batches += 1
+        with self.lock:
+            self.metrics.processed_batches += 1
         topic, _, payload = document.partition(",")
         _, _, topic = topic.rpartition("/")
         self._config = evolve(self._config, topic=topic)

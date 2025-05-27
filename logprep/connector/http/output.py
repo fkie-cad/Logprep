@@ -227,20 +227,23 @@ class HttpOutput(Output):
                     },
                 )
                 response.raise_for_status()
-                self.metrics.number_of_processed_events += document_count
-                self.metrics.number_of_http_requests += 1
+                with self.lock:
+                    self.metrics.number_of_processed_events += document_count
+                    self.metrics.number_of_http_requests += 1
             except requests.RequestException as error:
                 logger.error("Failed to send event: %s", str(error))
                 logger.debug("Failed event: %s", document)
-                self.metrics.number_of_failed_events += document_count
-                self.metrics.number_of_http_requests += 1
+                with self.lock:
+                    self.metrics.number_of_failed_events += document_count
+                    self.metrics.number_of_http_requests += 1
                 if not isinstance(error, requests.exceptions.HTTPError):
                     raise error
         except requests.exceptions.ConnectionError as error:
             logger.error(error)
-            self.metrics.connection_errors += 1
-            if isinstance(error, requests.exceptions.Timeout):
-                self.metrics.timeouts += 1
+            with self.lock:
+                self.metrics.connection_errors += 1
+                if isinstance(error, requests.exceptions.Timeout):
+                    self.metrics.timeouts += 1
         except requests.exceptions.MissingSchema as error:
             raise ConnectionError(
                 f"No schema set in target-url: {self._config.get('target_url')}"
@@ -248,4 +251,5 @@ class HttpOutput(Output):
         except requests.exceptions.Timeout as error:
             # other timeouts than connection timeouts are handled here
             logger.error(error)
-            self.metrics.timeouts += 1
+            with self.lock:
+                self.metrics.timeouts += 1
