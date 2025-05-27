@@ -2,6 +2,9 @@
 
 ## next release
 ### Breaking
+
+* removed the deprecated kafka generator. The new generator previously available via the kafka2 CLI has been renamed to kafka.
+
 ### Features
 
 * add `replacer` processor to replace substrings in fields using a syntax similar to the `dissector`

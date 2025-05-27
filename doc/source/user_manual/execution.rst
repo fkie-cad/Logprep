@@ -27,71 +27,9 @@ and it can send events to a http endpoint as POST requests.
 Following sections describe the usage of these event generators.
 
 Kafka
-^^^^^
-
-The kafka load-tester can send a configurable amount of documents to Kafka.
-The documents that are being send can be obtained either from Kafka or from a file with JSON lines.
-
-It can be configured how many documents should be retrieved from Kafka (if Kafka is used as source)
-and how many documents will be sent.
-Documents obtained from Kafka won't be written down to disk.
-
-The documents will be sent repeatedly until the desired amount has been sent.
-The `tags` field and the `_index` field of each document will be set to `load-tester`.
-Furthermore, a field `load-tester-unique` with a unique value will be added to each document every
-time a document is sent.
-This is done to prevent that repeatedly sent documents are identical.
-
-To find out more about the usage of the kafka load-tester execute:
-
-.. code-block:: bash
-
-    logprep generate kafka --help
-
-Configuration
-"""""""""""""
-
-The kafka load-tester is configured via a YAML file.
-It must have the following format:
-
-.. code-block:: yaml
-    :caption: Example configuration file for the kafka load-tester
-
-    logging_level: LOG_LEVEL  # Default: "INFO"
-    source_count: INTEGER  # Number of documents to obtain form Kafka
-    count: INTEGER  # Number of documents to send
-    process_count: INTEGER  # Number of processes (default: 1)
-    profile: BOOL  # Shows profiling data (default: false)
-    target_send_per_sec: INTEGER  # Desired number of documents to send per second with each process. Setting it to 0 sends as much as possible (default: 0).
-
-    kafka:
-    bootstrap_servers:  # List of bootstrap servers
-        - URL:PORT  # i.e. "127.0.0.1:9092"
-    consumer:  # Kafka consumer
-        topic: STRING  # Topic to obtain documents from
-        group_id: STRING  # Should be different from the group_id of the Logprep Consumer, otherwise the offset in Logprep will be changed!
-        timeout: FLOAT  # Timeout for retrieving documents (default: 1.0)
-    producer:  # Kafka producer
-        acks: STRING/INTEGER # Determines if sending should be acknowledged (default: 0)
-        compression_type: STRING  # Compression type (default: "none")
-        topic: STRING  # Topic to send documents to
-        queue_buffering_max_messages: INTEGER # Batch for sending documents (default: 10000)
-        linger_ms: INTEGER # Time to wait before a batch is sent if the max wasn't reached before (default: 5000)
-        flush_timeout: FLOAT # Timeout to flush the producer (default 30.0)
-    ssl:  # SSL authentication (Optional)
-        ca_location: STRING
-        certificate_location: STRING
-        key:
-        location: STRING
-        password: STRING # Optional
-
-Unused parameters must be removed or commented.
-
-
-Kafka2
 ^^^^^^
 
-Kafka2 is a load tester for generating events based on templated sample files
+Kafka is a load tester for generating events based on templated sample files
 stored in a dataset directory. These events are then sent to specified Kafka topics.
 The event generation process is identical to the :ref:`http_generator` generator.
 
@@ -127,7 +65,7 @@ To learn more about the Kafka event generator, run:
 
 .. code-block:: bash
 
-    logprep generate kafka2 --help
+    logprep generate kafka --help
 
 
 
@@ -380,7 +318,7 @@ To generate events and send them to Kafka, follow these steps:
 
 .. code-block:: bash
 
-    logprep generate kafka2 --input-dir ./examples/exampledata/input_logdata/  --batch-size 1000 --events 10000 --output-config '{"bootstrap.servers": "127.0.0.1:9092"}'
+    logprep generate kafka --input-dir ./examples/exampledata/input_logdata/  --batch-size 1000 --events 10000 --output-config '{"bootstrap.servers": "127.0.0.1:9092"}'
 
 3. When executed, the console should display output similar to the following
 
@@ -401,7 +339,7 @@ Here is an example of a more extensive output configuration for the ConfluentKaf
 
 .. code-block:: bash
 
-    logprep generate kafka2 --output-config '{"bootstrap.servers": "127.0.0.1:9092", "enable.ssl.certificate.verification" : "true"}' --input-dir ./examples/exampledata/input_logdata/ --batch-size 1000 --events 10000
+    logprep generate kafka --output-config '{"bootstrap.servers": "127.0.0.1:9092", "enable.ssl.certificate.verification" : "true"}' --input-dir ./examples/exampledata/input_logdata/ --batch-size 1000 --events 10000
 
 For a full list of available options, refer to the  `ConfluentKafka documentation <https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html>`_.
 
@@ -409,4 +347,4 @@ The :code:`--send_timeout` option determines the maximum wait time for an answer
 
 .. code-block:: bash
 
-    logprep generate kafka2 --send-timeout 2 --input-dir ./examples/exampledata/input_logdata/ --output-config '{"bootstrap.servers": "127.0.0.1:9092"}' --batch-size 1000 --events 10000
+    logprep generate kafka --send-timeout 2 --input-dir ./examples/exampledata/input_logdata/ --output-config '{"bootstrap.servers": "127.0.0.1:9092"}' --batch-size 1000 --events 10000
