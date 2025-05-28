@@ -22,4 +22,5 @@ class HttpGeneratorOutput(HttpOutput):
 
     def store(self, document) -> None:
         target, _, payload = document.partition(",")
-        self.store_custom(payload, self._config.target_url + target)
+        with self.lock:
+            self.store_custom(payload, self._config.target_url + target)

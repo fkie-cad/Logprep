@@ -206,8 +206,7 @@ class HttpOutput(Output):
             request_data = document.replace(";", "\n")
         else:
             error = TypeError(f"Document type {type(document)} is not supported")
-            with self.lock:
-                self.metrics.number_of_failed_events += 1
+            self.metrics.number_of_failed_events += 1
             logger.error(str(error))
             return
         try:
@@ -221,30 +220,27 @@ class HttpOutput(Output):
                     data=request_data,
                 )
                 logger.debug("Servers response code is: %i", response.status_code)
-                with self.lock:
-                    self.metrics.status_codes.add_with_labels(
-                        1,
-                        {
-                            "description": f"{self.metrics.status_codes.description} {response.status_code}"
-                        },
-                    )
-                    response.raise_for_status()
-                    self.metrics.number_of_processed_events += document_count
-                    self.metrics.number_of_http_requests += 1
+                self.metrics.status_codes.add_with_labels(
+                    1,
+                    {
+                        "description": f"{self.metrics.status_codes.description} {response.status_code}"
+                    },
+                )
+                response.raise_for_status()
+                self.metrics.number_of_processed_events += document_count
+                self.metrics.number_of_http_requests += 1
             except requests.RequestException as error:
                 logger.error("Failed to send event: %s", str(error))
                 logger.debug("Failed event: %s", document)
-                with self.lock:
-                    self.metrics.number_of_failed_events += document_count
-                    self.metrics.number_of_http_requests += 1
+                self.metrics.number_of_failed_events += document_count
+                self.metrics.number_of_http_requests += 1
                 if not isinstance(error, requests.exceptions.HTTPError):
                     raise error
         except requests.exceptions.ConnectionError as error:
             logger.error(error)
-            with self.lock:
-                self.metrics.connection_errors += 1
-                if isinstance(error, requests.exceptions.Timeout):
-                    self.metrics.timeouts += 1
+            self.metrics.connection_errors += 1
+            if isinstance(error, requests.exceptions.Timeout):
+                self.metrics.timeouts += 1
         except requests.exceptions.MissingSchema as error:
             raise ConnectionError(
                 f"No schema set in target-url: {self._config.get('target_url')}"
@@ -252,5 +248,4 @@ class HttpOutput(Output):
         except requests.exceptions.Timeout as error:
             # other timeouts than connection timeouts are handled here
             logger.error(error)
-            with self.lock:
-                self.metrics.timeouts += 1
+            self.metrics.timeouts += 1
