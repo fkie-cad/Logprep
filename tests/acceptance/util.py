@@ -339,7 +339,9 @@ def get_full_pipeline(exclude=None):
 
 
 def convert_to_http_config(config: Configuration, endpoint) -> Configuration:
-    config = deepcopy(config)
+    config_path = Path(tempfile.gettempdir() + "/config.json")
+    config_path.write_text(config.as_yaml(), encoding="utf-8")
+    config = Configuration.from_sources([str(config_path)])
     http_fields = [
         "regex_mapping",
         "html_replace_fields",
