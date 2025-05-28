@@ -206,7 +206,8 @@ class HttpOutput(Output):
             request_data = document.replace(";", "\n")
         else:
             error = TypeError(f"Document type {type(document)} is not supported")
-            self.metrics.number_of_failed_events += 1
+            with self.lock:
+                self.metrics.number_of_failed_events += 1
             logger.error(str(error))
             return
         try:
@@ -220,14 +221,14 @@ class HttpOutput(Output):
                     data=request_data,
                 )
                 logger.debug("Servers response code is: %i", response.status_code)
-                self.metrics.status_codes.add_with_labels(
-                    1,
-                    {
-                        "description": f"{self.metrics.status_codes.description} {response.status_code}"
-                    },
-                )
-                response.raise_for_status()
                 with self.lock:
+                    self.metrics.status_codes.add_with_labels(
+                        1,
+                        {
+                            "description": f"{self.metrics.status_codes.description} {response.status_code}"
+                        },
+                    )
+                    response.raise_for_status()
                     self.metrics.number_of_processed_events += document_count
                     self.metrics.number_of_http_requests += 1
             except requests.RequestException as error:
