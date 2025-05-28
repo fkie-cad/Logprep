@@ -48,6 +48,10 @@ class Output(Connector):
     """Connect to a output destination."""
 
     @define(kw_only=True)
+    class Metrics(Connector.Metrics):
+        """Tracks statistics about this connector"""
+
+    @define(kw_only=True)
     class Config(Connector.Config):
         """output config parameters"""
 
