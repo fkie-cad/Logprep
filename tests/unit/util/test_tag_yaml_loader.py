@@ -228,8 +228,8 @@ def fixture_yaml_anchor_tag_name_zero_and_none_equal(tmp_path) -> str:
     return write_yaml_file_into_directory(yml_with_tag, tmp_path)
 
 
-@pytest.fixture(name="yaml_nested_anchor_tag")
-def fixture_yaml_nested_anchor_tag(tmp_path) -> str:
+@pytest.fixture(name="yaml_nested_empty_anchor_tag")
+def fixture_yaml_nested_empty_anchor_tag(tmp_path) -> str:
     yml_with_tag = """
         processor:
             node_0: !set_anchor
@@ -315,7 +315,6 @@ class TestTagYamlLoader:
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
         loaded = self._load_all_yaml(yaml_valid_anchor_tag_in_two_documents, yaml)
-        loaded = list(loaded)
         assert loaded[0]["processor"]["some_node"] == ["a", "b"]
         assert loaded[1]["processor"]["another_node"] == ["a", "b"]
 
@@ -325,7 +324,6 @@ class TestTagYamlLoader:
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
         loaded = self._load_all_yaml(yaml_scalar_anchor_tag_in_two_documents, yaml)
-        loaded = list(loaded)
         assert loaded[0]["processor"]["some_node"] == "some value"
         assert loaded[1]["processor"]["another_node"] == "some value"
 
@@ -333,22 +331,22 @@ class TestTagYamlLoader:
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
         loaded = self._load_all_yaml(yaml_scalar_anchor_tag_new_line, yaml)
-        loaded = list(loaded)
         assert loaded[0]["processor"]["some_node"] == "some value"
         assert loaded[1]["processor"]["another_node"] == "some value"
 
     def test_load_with_empty_scalar_anchor_tag(self, yaml_empty_scalar_anchor_tag):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
-        loaded = self._load_all_yaml(yaml_empty_scalar_anchor_tag, yaml)
         with pytest.raises(ValueError, match=r"empty anchor"):
-            list(loaded)
+            self._load_all_yaml(yaml_empty_scalar_anchor_tag, yaml)
 
     def test_load_does_not_exist(self, yaml_load_anchor):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
 
-        with pytest.raises(ValueError, match=r"not a defined anchor"):
+        with pytest.raises(
+            ValueError, match=r"Global anchor '0' is not defined within this YAML stream"
+        ):
             self._load_yaml(yaml_load_anchor, yaml)
 
     def test_load_with_anchor_tag_with_two_separate_documents(
@@ -356,17 +354,15 @@ class TestTagYamlLoader:
     ):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
-        loaded = list(self._load_all_yaml(yaml_set_anchor, yaml))
+        loaded = self._load_all_yaml(yaml_set_anchor, yaml)
         assert loaded[0]["processor"]["some_node"] == ["a", "b"]
-
-        with pytest.raises(ValueError, match=r"not a defined anchor"):
-            list(self._load_all_yaml(yaml_load_anchor, yaml))
+        loaded = self._load_all_yaml(yaml_load_anchor, yaml)
+        assert loaded[0]["processor"]["some_node"] == ["a", "b"]
 
     def test_with_yaml_multiple_anchor_tags(self, yaml_multiple_anchor_tags):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
         loaded = self._load_all_yaml(yaml_multiple_anchor_tags, yaml)
-        loaded = list(loaded)
         assert loaded[0]["processor"]["node_0"] == "value_0"
         assert loaded[1]["processor"]["node_1"] == "value_1"
 
@@ -374,27 +370,37 @@ class TestTagYamlLoader:
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
         with pytest.raises(ConstructorError, match=r"tag '!set_anchor:10'"):
-            list(self._load_all_yaml(yaml_invalid_anchor_tag_name, yaml))
+            self._load_all_yaml(yaml_invalid_anchor_tag_name, yaml)
 
     def test_anchor_tag_name_zero_and_none_equal(self, yaml_anchor_tag_name_zero_and_none_equal):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
         loaded = self._load_all_yaml(yaml_anchor_tag_name_zero_and_none_equal, yaml)
-        loaded = list(loaded)
         assert loaded[0]["processor"]["node_0"] == "value_0"
         assert loaded[3]["processor"]["node_1"] == "value_1"
 
-    def test_with_nested_anchor_tag(self, yaml_nested_anchor_tag):
+    def test_with_nested_anchor_tag(self, yaml_nested_empty_anchor_tag):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
-        with pytest.raises(ValueError, match=r"could not be loaded"):
-            list(self._load_all_yaml(yaml_nested_anchor_tag, yaml))
+        with pytest.raises(ValueError, match=r"empty anchor"):
+            self._load_all_yaml(yaml_nested_empty_anchor_tag, yaml)
 
     def test_with_nested_include_tag(self, yaml_nested_include_tag):
         yaml = YAML(pure=True, typ="safe")
         init_yaml_loader_tags("safe")
-        with pytest.raises(ValueError, match=r"could not be loaded"):
-            list(self._load_all_yaml(yaml_nested_include_tag, yaml))
+        assert self._load_all_yaml(yaml_nested_include_tag, yaml) == [
+            {
+                "processor": {
+                    "node_0": {
+                        "node_1": {
+                            ".*baz": "baz",
+                            ".*foo.*": "foo",
+                            "bar. *": "bar",
+                        },
+                    },
+                },
+            },
+        ]
 
     @staticmethod
     def _load_yaml(yaml_file, yaml):
@@ -404,4 +410,4 @@ class TestTagYamlLoader:
     @staticmethod
     def _load_all_yaml(yaml_file, yaml):
         with open(yaml_file, "r", encoding="utf-8") as file:
-            return yaml.load_all(file.read())
+            return list(yaml.load_all(file))
