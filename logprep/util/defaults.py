@@ -30,7 +30,7 @@ MIN_CONFIG_REFRESH_INTERVAL = 5
 
 # dictconfig as described in
 # https://docs.python.org/3/library/logging.config.html#configuration-dictionary-schema
-DEFAULT_LOG_CONFIG = {
+DEFAULT_LOG_CONFIG: dict = {
     "version": 1,
     "formatters": {
         "logprep": {
