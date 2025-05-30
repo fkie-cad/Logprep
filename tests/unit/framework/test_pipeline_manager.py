@@ -4,9 +4,10 @@
 # pylint: disable=unnecessary-lambda-assignment
 import multiprocessing
 import time
-from copy import deepcopy
+import uuid
 from logging import Logger
 from logging.config import dictConfig
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -23,6 +24,14 @@ from logprep.util.configuration import Configuration, MetricsConfig
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.logging import logqueue
 from tests.testdata.metadata import path_to_config
+
+
+@pytest.fixture(name="config_path", scope="function")
+def fixture_config_path(tmp_path: Path) -> Path:
+    config_path = tmp_path / uuid.uuid4().hex
+    configuration = Configuration.from_sources([path_to_config])
+    config_path.write_text(configuration.as_yaml())
+    return config_path
 
 
 @mock.patch("multiprocessing.Process", new=mock.MagicMock())
@@ -115,13 +124,13 @@ class TestPipelineManager:
         for logprep_instance in logprep_instances:
             assert logprep_instance.was_started and logprep_instance.was_stopped
 
-    def test_restart_failed_pipelines_calls_prometheus_cleanup_method(self, tmpdir):
+    def test_restart_failed_pipelines_calls_prometheus_cleanup_method(self, tmpdir, config_path):
         with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
             failed_pipeline = mock.MagicMock()
             failed_pipeline.is_alive = mock.MagicMock()
             failed_pipeline.is_alive.return_value = False
             failed_pipeline.pid = 42
-            config = deepcopy(self.config)
+            config = Configuration.from_sources([str(config_path)])
             config.metrics = {"enabled": True, "port": 1234}
             config.process_count = 2
             manager = PipelineManager(config)
@@ -141,9 +150,9 @@ class TestPipelineManager:
         self.manager.restart_failed_pipeline()
         assert self.manager.metrics.number_of_failed_pipelines == 1
 
-    def test_stop_calls_prometheus_cleanup_method(self, tmpdir):
+    def test_stop_calls_prometheus_cleanup_method(self, tmpdir, config_path):
         with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
-            config = deepcopy(self.config)
+            config = Configuration.from_sources([str(config_path)])
             config.metrics = {"enabled": True, "port": 1234}
             config.process_count = 2
             manager = PipelineManager(config)
@@ -152,8 +161,8 @@ class TestPipelineManager:
             manager.stop()
             prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
 
-    def test_prometheus_exporter_is_instantiated_if_metrics_enabled(self):
-        config = deepcopy(self.config)
+    def test_prometheus_exporter_is_instantiated_if_metrics_enabled(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
         config.metrics = MetricsConfig(enabled=True, port=8000)
         with mock.patch("logprep.metrics.exporter.PrometheusExporter.prepare_multiprocessing"):
             manager = PipelineManager(config)
@@ -176,8 +185,8 @@ class TestPipelineManager:
             mock_set_count.assert_called()
             assert mock_set_count.call_count == 2
 
-    def test_restart_sets_deterministic_pipeline_index(self):
-        config = deepcopy(self.config)
+    def test_restart_sets_deterministic_pipeline_index(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
         config.metrics = MetricsConfig(enabled=False, port=666)
         pipeline_manager = PipelineManager(config)
         pipeline_manager.set_count(3)
@@ -196,11 +205,11 @@ class TestPipelineManager:
             mock_create_pipeline.assert_called_once_with(1)
 
     def test_restart_failed_pipeline_adds_error_output_health_check_to_metrics_exporter(
-        self, tmp_path
+        self, config_path
     ):
         with mock.patch("logprep.framework.pipeline_manager.OutputQueueListener"):
             with mock.patch("logprep.framework.pipeline_manager.ThrottlingQueue"):
-                config = deepcopy(self.config)
+                config = Configuration.from_sources([str(config_path)])
                 config.error_output = {"dummy": {"type": "dummy_output"}}
                 pipeline_manager = PipelineManager(config)
                 mock_export = mock.MagicMock()
@@ -208,8 +217,8 @@ class TestPipelineManager:
                 pipeline_manager.restart()
                 mock_export.update_healthchecks.assert_called()
 
-    def test_pipeline_manager_sets_queue_size_for_http_input(self):
-        config = deepcopy(self.config)
+    def test_pipeline_manager_sets_queue_size_for_http_input(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
         config.input = {
             "http": {
                 "type": "http_input",
@@ -276,9 +285,9 @@ class TestPipelineManager:
 
     @mock.patch("time.sleep")
     def test_restart_failed_pipeline_restarts_immediately_on_negative_restart_count_parameter(
-        self, mock_time_sleep
+        self, mock_time_sleep, config_path
     ):
-        config = deepcopy(self.config)
+        config = Configuration.from_sources([str(config_path)])
         config.restart_count = -1
         pipeline_manager = PipelineManager(config)
         pipeline_manager._pipelines = [mock.MagicMock()]
