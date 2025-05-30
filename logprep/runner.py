@@ -113,7 +113,7 @@ class Runner:
                 self._manager.reload()
                 self._config_version = self._configuration.version
             if self._manager.should_exit():
-                self.exit_code = EXITCODES.PIPELINE_ERROR.value
+                self.exit_code = EXITCODES.PIPELINE_ERROR
                 self._logger.error("Restart count exceeded. Exiting.")
                 sys.exit(self.exit_code)
             if self._manager.error_queue is not None:
