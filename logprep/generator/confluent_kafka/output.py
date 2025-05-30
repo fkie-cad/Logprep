@@ -71,13 +71,14 @@ class ConfluentKafkaGeneratorOutput(ConfluentKafkaOutput):
 
     def store(self, document) -> None:
 
-        self.metrics.processed_batches += 1
-        topic, _, payload = document.partition(",")
-        _, _, topic = topic.rpartition("/")
-        self._config = evolve(self._config, topic=topic)
-        documents = list(payload.split(";"))
-        for item in documents:
-            self.store_custom(item, topic)
+        with self.lock:
+            self.metrics.processed_batches += 1
+            topic, _, payload = document.partition(",")
+            _, _, topic = topic.rpartition("/")
+            self._config = evolve(self._config, topic=topic)
+            documents = list(payload.split(";"))
+            for item in documents:
+                self.store_custom(item, topic)
 
     @Metric.measure_time()
     def store_custom(self, document: str, target: str) -> None:
