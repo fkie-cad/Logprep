@@ -737,6 +737,83 @@ output:
         assert config._metrics.number_of_config_refreshes == 0, "no config refresh"
         assert config._metrics.number_of_config_refresh_failures == 1, "one config refresh failure"
 
+    def test_reload_exposes_config_refresh_interval_metric(self, config_path, caplog):
+        caplog.set_level("INFO")
+        config = Configuration.from_sources([str(config_path)])
+        config_path.write_text(
+            """
+version: different_version
+process_count: 1
+config_refresh_interval: 66
+timeout: 0.1
+logger:
+    level: DEBUG
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+"""
+        )
+        with mock.patch.object(
+            config._metrics.config_refresh_interval, "add_with_labels"
+        ) as mock_add:
+            config.reload()
+        assert "Successfully reloaded" in caplog.text
+        mock_add.assert_called_once_with(66, {"logprep": "unset", "config": "unset"})
+
+    def test_reload_exposes_version_info_metric(self, config_path, caplog):
+        caplog.set_level("INFO")
+        config = Configuration.from_sources([str(config_path)])
+        config_path.write_text(
+            """
+version: different_version
+process_count: 1
+config_refresh_interval: 66
+timeout: 0.1
+logger:
+    level: DEBUG
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+"""
+        )
+        with mock.patch.object(config._metrics.version_info, "add_with_labels") as mock_add:
+            config.reload()
+        assert "Successfully reloaded" in caplog.text
+        mock_add.assert_called_once()
+
+    def test_init_exposes_version_info_metric(self, config_path, caplog):
+        caplog.set_level("INFO")
+        config_path.write_text(
+            """
+version: different_version
+process_count: 1
+config_refresh_interval: 66
+timeout: 0.1
+logger:
+    level: DEBUG
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+"""
+        )
+        with mock.patch("logprep.util.configuration.GaugeMetric.add_with_labels") as mock_add:
+            Configuration.from_sources([str(config_path)])
+        assert (
+            mock_add.call_count == 3
+        ), "version_info and config_refresh_interval and fixture should be called"
+
     def test_reload_logs_error_on_invalid_processor_config(self, config_path, caplog):
         caplog.set_level("DEBUG")
         config = Configuration.from_sources([str(config_path)])

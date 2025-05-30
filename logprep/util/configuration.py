@@ -649,6 +649,8 @@ class Configuration:
     def __attrs_post_init__(self) -> None:
         self._metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._set_version_info_metric()
+        if self.config_refresh_interval is not None:
+            self._set_config_refresh_interval(self.config_refresh_interval)
 
     @property
     def _metric_labels(self) -> dict[str, str]:
@@ -787,10 +789,14 @@ class Configuration:
                 return
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
+            self._set_version_info_metric()
             self.pipeline = new_config.pipeline
             self._metrics.number_of_config_refreshes += 1
             logger.info("Successfully reloaded configuration")
             logger.info("Configuration version: %s", self.version)
+            if new_config.config_refresh_interval is None:
+                return
+            self._set_config_refresh_interval(new_config.config_refresh_interval)
         except ConfigGetterException as error:
             self._config_failure = True
             logger.warning("Failed to load configuration: %s", error)
@@ -806,8 +812,6 @@ class Configuration:
             self._metrics.number_of_config_refresh_failures += 1
 
     def _set_config_refresh_interval(self, config_refresh_interval: int) -> None:
-        if config_refresh_interval == self.config_refresh_interval:
-            return
         config_refresh_interval = max(config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL)
         self.config_refresh_interval = config_refresh_interval
         self.schedule_config_refresh()
