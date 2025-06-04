@@ -9,7 +9,6 @@ from unittest import mock
 
 import pytest
 import requests
-from _pytest.python_api import raises
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -514,7 +513,7 @@ class TestPipeline(ConfigurationForTests):
     def test_pipeline_raises_http_error_from_factory_create(self, _):
         with mock.patch("logprep.factory.Factory.create") as mock_create:
             mock_create.side_effect = requests.HTTPError()
-            with raises(requests.HTTPError):
+            with pytest.raises(requests.HTTPError):
                 self.pipeline._setup()
 
     def test_multiple_outputs(self, _):
