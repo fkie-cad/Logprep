@@ -3,6 +3,13 @@
 ## next release
 ### Breaking
 
+### Features
+### Improvements
+### Bugfix
+
+## 17.0.0
+### Breaking
+
 * removed the deprecated kafka generator. The new generator previously available via the kafka2 CLI has been renamed to kafka.
 
 ### Features
