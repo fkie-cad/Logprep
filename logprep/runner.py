@@ -9,7 +9,6 @@ from importlib.metadata import version
 from typing import Generator
 
 from attrs import define, field
-from schedule import Scheduler
 
 from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
@@ -84,7 +83,6 @@ class Runner:
         self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._logger = logging.getLogger("Runner")
         self._manager = PipelineManager(configuration)
-        self.scheduler = Scheduler()
 
     def start(self) -> None:
         """Start processing.
