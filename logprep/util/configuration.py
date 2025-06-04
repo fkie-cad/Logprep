@@ -187,6 +187,7 @@ import json
 import logging
 import os
 from copy import deepcopy
+from importlib.metadata import version
 from itertools import chain
 from logging.config import dictConfig
 from pathlib import Path
@@ -197,11 +198,14 @@ from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
+from schedule import Scheduler
 
+from logprep.abc.component import Component
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
@@ -211,15 +215,18 @@ from logprep.util.defaults import (
     DEFAULT_MESSAGE_BACKLOG_SIZE,
     DEFAULT_RESTART_COUNT,
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
+    MIN_CONFIG_REFRESH_INTERVAL,
 )
 from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.rule_loader import RuleLoader
+
+logger = logging.getLogger("Config")
 
 
 class MyYAML(YAML):
     """helper class to dump yaml with ruamel.yaml"""
 
-    def dump(self, data, stream=None, **kw):
+    def dump(self, data: Any, stream: Any | None = None, **kw: Any) -> Any:
         inefficient = False
         if stream is None:
             inefficient = True
@@ -237,7 +244,7 @@ class InvalidConfigurationErrors(InvalidConfigurationError):
 
     errors: List[InvalidConfigurationError]
 
-    def __init__(self, errors: List[Exception]):
+    def __init__(self, errors: List[Exception]) -> None:
         unique_errors = []
         for error in errors:
             if not isinstance(error, InvalidConfigurationError):
@@ -254,7 +261,7 @@ class InvalidConfigurationErrors(InvalidConfigurationError):
 class ConfigVersionDidNotChangeError(InvalidConfigurationError):
     """Raise if configuration version did not change."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             "Configuration version didn't change. Continue running with current version."
         )
@@ -263,28 +270,28 @@ class ConfigVersionDidNotChangeError(InvalidConfigurationError):
 class ConfigGetterException(InvalidConfigurationError):
     """Raise if configuration getter fails."""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
 
 
 class RequiredConfigurationKeyMissingError(InvalidConfigurationError):
     """Raise if required option is missing in configuration."""
 
-    def __init__(self, key: str):
+    def __init__(self, key: str) -> None:
         super().__init__(f"Required option is missing: {key}")
 
 
 class InvalidProcessorConfigurationError(InvalidConfigurationError):
     """Raise if processor configuration is invalid."""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(f"Invalid processor configuration: {message}")
 
 
 class MissingEnvironmentError(InvalidConfigurationError):
     """Raise if environment variables are missing"""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(f"Environment variable(s) used, but not set: {message}")
 
 
@@ -411,7 +418,7 @@ class LoggerConfig:
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
         dictConfig(log_config)
 
-    def _set_loggers_levels(self):
+    def _set_loggers_levels(self) -> None:
         """sets the loggers levels to the default or to the given level."""
         for logger_name, logger_config in self.loggers.items():
             default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
@@ -419,7 +426,7 @@ class LoggerConfig:
                 default_logger_config.update({"level": logger_config["level"]})
             self.loggers[logger_name].update(default_logger_config)
 
-    def _set_defaults(self):
+    def _set_defaults(self) -> None:
         """resets all keys to the defined defaults except :code:`loggers`."""
         for key, value in DEFAULT_LOG_CONFIG.items():
             if key == "loggers":
@@ -565,6 +572,8 @@ class Configuration:
     )
     """Size of the error backlog. Defaults to :code:`15000`."""
 
+    _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
+
     _getter: Getter = field(
         validator=validators.instance_of(Getter),
         default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
@@ -575,6 +584,80 @@ class Configuration:
     _configs: Tuple["Configuration", ...] = field(
         validator=validators.instance_of(tuple), factory=tuple, repr=False, eq=False
     )
+
+    _scheduler: Scheduler = field(
+        factory=Scheduler,
+        validator=validators.instance_of(Scheduler),
+        repr=False,
+        eq=False,
+        init=False,
+    )
+
+    _config_failure: bool = field(default=False, repr=False, eq=False, init=False)
+
+    _unserializable_fields = (
+        "_getter",
+        "_configs",
+        "_config_failure",
+        "_scheduler",
+        "_metrics",
+        "_unserializable_fields",
+    )
+
+    @define(kw_only=True)
+    class Metrics(Component.Metrics):
+        """Metrics for the Logprep Runner."""
+
+        version_info: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep version information",
+                name="version_info",
+                labels={"logprep": "unset", "config": "unset"},
+                inject_label_values=False,
+            )
+        )
+        """Logprep version info."""
+        config_refresh_interval: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep config refresh interval",
+                name="config_refresh_interval",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates the configuration refresh interval in seconds."""
+        number_of_config_refreshes: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Indicates how often the logprep configuration was updated.",
+                name="number_of_config_refreshes",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates how often the logprep configuration was updated."""
+        number_of_config_refresh_failures: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description=(
+                    "Indicates how often the logprep configuration "
+                    "could not be updated due to failures during the update."
+                ),
+                name="number_of_config_refresh_failures",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates how often the logprep configuration could not be updated
+          due to failures during the update."""
+
+    def __attrs_post_init__(self) -> None:
+        self._metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
+        self._set_version_info_metric()
+        self._set_config_refresh_interval(self.config_refresh_interval)
+
+    @property
+    def _metric_labels(self) -> dict[str, str]:
+        labels = {
+            "logprep": f"{version('logprep')}",
+            "config": f"{self.version}",
+        }
+        return labels
 
     @property
     def config_paths(self) -> list[str]:
@@ -675,7 +758,7 @@ class Configuration:
         """Return the configuration as dict."""
         return asdict(
             self,
-            filter=lambda attribute, _: attribute.name not in ("_getter", "_configs"),
+            filter=lambda attribute, _: attribute.name not in self._unserializable_fields,
             recurse=True,
         )
 
@@ -688,19 +771,119 @@ class Configuration:
         return yaml.dump(self.as_dict())
 
     def reload(self) -> None:
-        """Reload the configuration."""
+        """Reloads the application's configuration from the specified sources.
+
+        This method attempts to reload the application's configuration by reading from the
+        configured paths or urls. If the new configuration is identical to the current one, it
+        simply updates the refresh interval and continues. If the configuration has changed, it
+        updates the internal state, metrics, and pipeline accordingly.
+
+        In case of a failure to load the configuration, it logs the error, updates failure metrics,
+        and, if possible, reduces the configuration refresh interval to attempt more frequent
+        retries.
+
+        The configuration refresh interval (:code:`config_refresh_interval`) determines how often
+        the configuration should be reloaded. If the configuration reload fails, the interval is
+        temporarily reduced to a quarter of its previous value to allow for quicker recovery. If
+        the reload is successful or the configuration hasn't changed, the interval is set or
+        maintained according to the latest configuration.
+
+        Note
+        ----
+        The `config_refresh_interval` in the new configuration cannot be set to `None` because it
+        is required to control the periodic reloads of the configuration. If it is missing in the
+        new configuration, the previous interval is retained to ensure the reload mechanism
+        continues to function.
+
+        Raises
+        ------
+        ConfigGetterException
+            If there is an error retrieving the configuration.
+        InvalidConfigurationErrors
+            If the configuration is invalid.
+        """
         errors: List[Exception] = []
         try:
             new_config = Configuration.from_sources(self.config_paths)
+            if self._config_failure:
+                logger.info("Config refresh recovered from failing source")
+            self._config_failure = False
             if new_config == self:
-                raise ConfigVersionDidNotChangeError()
+                logger.info(
+                    "Configuration version didn't change. Continue running with current version."
+                )
+                self._set_config_refresh_interval(new_config.config_refresh_interval)
+                return
+            if new_config.config_refresh_interval is None:
+                new_config.config_refresh_interval = self.config_refresh_interval
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
+            self._set_version_info_metric()
             self.pipeline = new_config.pipeline
+            self._metrics.number_of_config_refreshes += 1
+            logger.info("Successfully reloaded configuration")
+            logger.info("Configuration version: %s", self.version)
+            self._set_config_refresh_interval(new_config.config_refresh_interval)
+        except ConfigGetterException as error:
+            self._config_failure = True
+            logger.warning("Failed to load configuration: %s", error)
+            self._metrics.number_of_config_refresh_failures += 1
+            if self.config_refresh_interval is not None:
+                self._set_config_refresh_interval(int(self.config_refresh_interval / 4))
         except InvalidConfigurationErrors as error:
+            self._config_failure = True
             errors = [*errors, *error.errors]
         if errors:
-            raise InvalidConfigurationErrors(errors)
+            logger.error("Failed to reload configuration: %s", errors)
+            self._metrics.number_of_config_refresh_failures += 1
+
+    def _set_config_refresh_interval(self, config_refresh_interval: int | None) -> None:
+        if config_refresh_interval is None:
+            return
+        config_refresh_interval = max(config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL)
+        self.config_refresh_interval = config_refresh_interval
+        self.schedule_config_refresh()
+        self._metrics.config_refresh_interval += config_refresh_interval
+
+    def schedule_config_refresh(self) -> None:
+        """
+        Schedules a periodic configuration refresh based on the specified interval.
+
+        Cancels any existing scheduled configuration refresh job and schedules a new one
+        using the current :code:`config_refresh_interval`.
+        The refresh job will call the :code:`reload` method at the specified interval
+        in seconds on invoking the :code:`refresh` method.
+
+        Notes
+        -----
+        - Only one configuration refresh job is scheduled at a time
+        - Any existing job is cancelled before scheduling a new one.
+        - The interval must be an integer representing seconds.
+
+        Examples
+        --------
+        >>> self.schedule_config_refresh()
+        Config refresh interval is set to: 60 seconds
+        """
+        scheduler = self._scheduler
+        if self.config_refresh_interval is None:
+            if scheduler.jobs:
+                scheduler.cancel_job(scheduler.jobs[0])
+            return
+
+        self.config_refresh_interval = max(
+            self.config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL
+        )
+        refresh_interval = self.config_refresh_interval
+        if scheduler.jobs:
+            scheduler.cancel_job(scheduler.jobs[0])
+        if isinstance(refresh_interval, int):
+            scheduler.every(refresh_interval).seconds.do(self.reload)
+            logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
+
+    def refresh(self) -> None:
+        """Wrap the scheduler run_pending method hide the implementation details."""
+        self._scheduler.run_pending()
 
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, fields(self.__class__)):
@@ -712,7 +895,7 @@ class Configuration:
         versions = (config.version for config in self._configs if config.version)
         self.version = ", ".join(versions)
 
-    def _build_merged_pipeline(self):
+    def _build_merged_pipeline(self) -> None:
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
         pipeline = list(chain(*pipelines))
         errors = []
@@ -755,9 +938,9 @@ class Configuration:
             return values[-1]
         return getattr(Configuration(), attribute)
 
-    def _verify(self):
+    def _verify(self) -> None:
         """Verify the configuration."""
-        errors = []
+        errors: list[Exception] = []
         try:
             self._verify_environment()
         except MissingEnvironmentError as error:
@@ -804,7 +987,7 @@ class Configuration:
         if errors:
             raise InvalidConfigurationErrors(errors)
 
-    def _verify_processor_outputs(self, processor_config):
+    def _verify_processor_outputs(self, processor_config) -> None:
         processor_config = deepcopy(processor_config)
         processor_name, processor_config = processor_config.popitem()
         if "outputs" not in processor_config:
@@ -817,7 +1000,7 @@ class Configuration:
                         f"{processor_name}: output '{output_name}' does not exist in logprep outputs"  # pylint: disable=line-too-long
                     )
 
-    def _verify_environment(self):
+    def _verify_environment(self) -> None:
         # pylint: disable=protected-access
         getters = (config._getter for config in self._configs if config._getter)
         # pylint: enable=protected-access
@@ -857,3 +1040,9 @@ class Configuration:
                         f"{processor.describe()}: output"
                         f" '{output_name}' does not exist in logprep outputs"
                     )
+
+    def _set_version_info_metric(self) -> None:
+        self._metrics.version_info.add_with_labels(
+            1,
+            {"logprep": f"{version('logprep')}", "config": self.version},
+        )

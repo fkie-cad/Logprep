@@ -14,20 +14,26 @@
 ### Improvements
 
 * ensured that "_test.json" files are not loaded as rules
+* introduce new logger `Config`
+* refactor config refresh behavior from `logprep.runner` to `logprep.util.configuration`
+* refactor config related metrics from `logprep.runner` to `logprep.util.configuration`
+* added a log message for recovering config refresh mechanic from failing source
 
 ### Bugfix
 
-- Fixed logging error in _revoke_callback() by adding error handling
-- Fixed endless loading in logprep test config
-- prevent the auto rule tester from loading rules directly defined inside the config, since they break the auto rule tester and can't have tests anyways
-- Fixed typo and broken link in documentation
-- Fixed assign_callback error in confluentkafka input
-- Fixed error logging in ` _get_configuration`, which caused the github checks to fail
-- Resolved `mypy` errors in `BaseProcessorTestCase.` by ensuring `self.object` and `self.patchers` are not `None` before accessing attributes.
-- Fix domain resolver errors for invalid domains
-- Fixed deprecation warnings caused by datetime when using Python >= 3.12
-- Fixed timestamp and timezone mismatch issue
-- Fixed inconsistent generator statistics report during multithreading by making it thread safe
+* Fixed logging error in _revoke_callback() by adding error handling
+* Fixed endless loading in logprep test config
+* prevent the auto rule tester from loading rules directly defined inside the config, since they break the auto rule tester and can't have tests anyways
+* Fixed typo and broken link in documentation
+* Fixed assign_callback error in confluentkafka input
+* Fixed error logging in ` _get_configuration`, which caused the github checks to fail
+* Resolved `mypy` errors in `BaseProcessorTestCase.` by ensuring `self.object` and `self.patchers` are not `None` before accessing attributes.
+* Fix domain resolver errors for invalid domains
+* Fixed deprecation warnings caused by datetime when using Python >= 3.12
+* Fixed timestamp and timezone mismatch issue
+* Fixed a bug where config refresh interval was not reset to original interval after recovering from source related failures (i.e. http timeouts)
+* Fixed inconsistent generator statistics report during multithreading by making it thread safe
+
 
 ## 16.1.0
 ### Deprecations

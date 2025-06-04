@@ -1,4 +1,4 @@
-version: 1
+version: 2
 process_count: 2
 timeout: 0.1
 restart_count: 2
