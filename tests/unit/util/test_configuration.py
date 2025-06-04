@@ -828,7 +828,7 @@ output:
         )
         with mock.patch("logprep.util.configuration.GaugeMetric.add_with_labels") as mock_add:
             Configuration.from_sources([str(config_path)])
-        assert mock_add.call_count == 2, "version_info and config_refresh_interval"
+        assert mock_add.call_count == 3, "version_info and config_refresh_interval and ???"
 
     def test_reload_logs_error_on_invalid_processor_config(self, config_path, caplog):
         caplog.set_level("DEBUG")

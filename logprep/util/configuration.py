@@ -649,6 +649,7 @@ class Configuration:
     def __attrs_post_init__(self) -> None:
         self._metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._set_version_info_metric()
+        self._set_config_refresh_interval(self.config_refresh_interval)
 
     @property
     def _metric_labels(self) -> dict[str, str]:
