@@ -693,6 +693,24 @@ output:
         assert config._metrics.number_of_config_refreshes == 1, "one config refresh"
         assert config._metrics.number_of_config_refresh_failures == 0, "no config refresh failure"
 
+    def test_reload_sets_config_refresh_interval_none(self, config_path, caplog):
+        caplog.set_level("INFO")
+        config = Configuration.from_sources([str(config_path)])
+        assert config.config_refresh_interval is None, "should be None"
+        config.config_refresh_interval = 60
+        config_path.write_text(config.as_yaml())
+        config = Configuration.from_sources([str(config_path)])
+        config.schedule_config_refresh()
+        assert config.config_refresh_interval == 60, "should be 60 seconds"
+        assert config._scheduler.jobs, "should have a job"
+        config_temp = Configuration.from_sources([str(config_path)])
+        config_temp.config_refresh_interval = None
+        config_temp.version = "brand new version"
+        config_path.write_text(config_temp.as_yaml())
+        config.reload()
+        assert config._scheduler.jobs, "not cancelled job"
+        assert config.config_refresh_interval == 60, "should be None"
+
     def test_reload_does_not_reload_but_logs_info_on_same_config(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
@@ -810,9 +828,7 @@ output:
         )
         with mock.patch("logprep.util.configuration.GaugeMetric.add_with_labels") as mock_add:
             Configuration.from_sources([str(config_path)])
-        assert (
-            mock_add.call_count == 3
-        ), "version_info and config_refresh_interval and fixture should be called"
+        assert mock_add.call_count == 2, "version_info and config_refresh_interval"
 
     def test_reload_logs_error_on_invalid_processor_config(self, config_path, caplog):
         caplog.set_level("DEBUG")

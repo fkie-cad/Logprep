@@ -649,8 +649,6 @@ class Configuration:
     def __attrs_post_init__(self) -> None:
         self._metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._set_version_info_metric()
-        if self.config_refresh_interval is not None:
-            self._set_config_refresh_interval(self.config_refresh_interval)
 
     @property
     def _metric_labels(self) -> dict[str, str]:
@@ -772,7 +770,37 @@ class Configuration:
         return yaml.dump(self.as_dict())
 
     def reload(self) -> None:
-        """Reload the configuration."""
+        """Reloads the application's configuration from the specified sources.
+
+        This method attempts to reload the application's configuration by reading from the
+        configured paths or urls. If the new configuration is identical to the current one, it
+        simply updates the refresh interval and continues. If the configuration has changed, it
+        updates the internal state, metrics, and pipeline accordingly.
+
+        In case of a failure to load the configuration, it logs the error, updates failure metrics,
+        and, if possible, reduces the configuration refresh interval to attempt more frequent
+        retries.
+
+        The configuration refresh interval (:code:`config_refresh_interval`) determines how often
+        the configuration should be reloaded. If the configuration reload fails, the interval is
+        temporarily reduced to a quarter of its previous value to allow for quicker recovery. If
+        the reload is successful or the configuration hasn't changed, the interval is set or
+        maintained according to the latest configuration.
+
+        Note
+        ----
+        The `config_refresh_interval` in the new configuration cannot be set to `None` because it
+        is required to control the periodic reloads of the configuration. If it is missing in the
+        new configuration, the previous interval is retained to ensure the reload mechanism
+        continues to function.
+
+        Raises
+        ------
+        ConfigGetterException
+            If there is an error retrieving the configuration.
+        InvalidConfigurationErrors
+            If the configuration is invalid.
+        """
         errors: List[Exception] = []
         try:
             new_config = Configuration.from_sources(self.config_paths)
@@ -783,10 +811,10 @@ class Configuration:
                 logger.info(
                     "Configuration version didn't change. Continue running with current version."
                 )
-                if new_config.config_refresh_interval is None:
-                    return
                 self._set_config_refresh_interval(new_config.config_refresh_interval)
                 return
+            if new_config.config_refresh_interval is None:
+                new_config.config_refresh_interval = self.config_refresh_interval
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
             self._set_version_info_metric()
@@ -794,16 +822,13 @@ class Configuration:
             self._metrics.number_of_config_refreshes += 1
             logger.info("Successfully reloaded configuration")
             logger.info("Configuration version: %s", self.version)
-            if new_config.config_refresh_interval is None:
-                return
             self._set_config_refresh_interval(new_config.config_refresh_interval)
         except ConfigGetterException as error:
             self._config_failure = True
             logger.warning("Failed to load configuration: %s", error)
             self._metrics.number_of_config_refresh_failures += 1
-            if self.config_refresh_interval is None:
-                return
-            self._set_config_refresh_interval(int(self.config_refresh_interval / 4))
+            if self.config_refresh_interval is not None:
+                self._set_config_refresh_interval(int(self.config_refresh_interval / 4))
         except InvalidConfigurationErrors as error:
             self._config_failure = True
             errors = [*errors, *error.errors]
@@ -811,7 +836,9 @@ class Configuration:
             logger.error("Failed to reload configuration: %s", errors)
             self._metrics.number_of_config_refresh_failures += 1
 
-    def _set_config_refresh_interval(self, config_refresh_interval: int) -> None:
+    def _set_config_refresh_interval(self, config_refresh_interval: int | None) -> None:
+        if config_refresh_interval is None:
+            return
         config_refresh_interval = max(config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL)
         self.config_refresh_interval = config_refresh_interval
         self.schedule_config_refresh()
@@ -837,14 +864,16 @@ class Configuration:
         >>> self.schedule_config_refresh()
         Config refresh interval is set to: 60 seconds
         """
+        scheduler = self._scheduler
         if self.config_refresh_interval is None:
+            if scheduler.jobs:
+                scheduler.cancel_job(scheduler.jobs[0])
             return
 
         self.config_refresh_interval = max(
             self.config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL
         )
         refresh_interval = self.config_refresh_interval
-        scheduler = self._scheduler
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, int):
