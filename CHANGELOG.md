@@ -10,6 +10,8 @@
 * integrate a finite state machine to control valid state transitions
 * support for both automatic and conditional (success-based) state transitions
 
+* add ng packages as namespace in dirs 'unit' and 'logprep' as preparation for new architecutre implementation
+
 ### Bugfix
 
 ## 17.0.0
