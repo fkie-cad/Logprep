@@ -4,7 +4,10 @@
 ### Breaking
 
 ### Features
+
 ### Improvements
+* add ng packages as namespace in dirs 'unit' and 'logprep' as preparation for new architecutre implementation
+
 ### Bugfix
 
 ## 17.0.0
