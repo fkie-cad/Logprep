@@ -11,6 +11,9 @@
 * support for both automatic and conditional (success-based) state transitions
 
 * add ng packages as namespace in dirs 'unit' and 'logprep' as preparation for new architecutre implementation
+* add ng packages as namespace in dirs 'unit' and 'logprep' as preparation for new architecture implementation
+* add abstract EventMetaclass
+* implement KafkaInputMetadata
 
 ### Bugfix
 
