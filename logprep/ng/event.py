@@ -68,6 +68,9 @@ class EventState:
 
     >>> state.next()
     <EventStateType.STORED_IN_ERROR: 'stored_in_error'>
+
+    >>> state.next(success=True)
+    <EventStateType.DELIVERED: 'delivered'>
     """
 
     def __init__(self) -> None:
@@ -100,7 +103,10 @@ class EventState:
                 EventStateType.DELIVERED,
             ],
             EventStateType.FAILED: [EventStateType.STORED_IN_ERROR],
-            EventStateType.STORED_IN_ERROR: [EventStateType.FAILED],
+            EventStateType.STORED_IN_ERROR: [
+                EventStateType.FAILED,
+                EventStateType.DELIVERED,
+            ],
             EventStateType.DELIVERED: [EventStateType.ACKED],
         }
 
