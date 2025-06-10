@@ -7,4 +7,4 @@ from abc import ABC
 
 
 class EventMetadata(ABC):
-    """Abstract EbentMetada Class to define the Interface"""
+    """Abstract EventMetadata Class to define the Interface"""
