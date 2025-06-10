@@ -4,7 +4,12 @@
 ### Breaking
 
 ### Features
+
 ### Improvements
+* implement EventState class to manage the lifecycle of log events
+* integrate a finite state machine to control valid state transitions
+* support for both automatic and conditional (success-based) state transitions
+
 ### Bugfix
 
 ## 17.0.0
