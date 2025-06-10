@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+
 import pytest
 
 from logprep.ng.event import EventState, EventStateType
@@ -8,14 +9,16 @@ from logprep.ng.event import EventState, EventStateType
 @pytest.mark.parametrize(
     "initial, success, next_expected",
     [
-        # Automatic transitions (only one possible next state)
+        # Automatic transitions
         (EventStateType.RECEIVING, None, EventStateType.RECEIVED),
         (EventStateType.RECEIVED, None, EventStateType.PROCESSING),
         (EventStateType.PROCESSED, None, EventStateType.STORED_IN_OUTPUT),
         (EventStateType.FAILED, None, EventStateType.STORED_IN_ERROR),
-        (EventStateType.STORED_IN_ERROR, None, EventStateType.FAILED),
         (EventStateType.DELIVERED, None, EventStateType.ACKED),
-        # Ambiguous transitions resolved with success flag
+        # Now ambiguous transition for STORED_IN_ERROR
+        (EventStateType.STORED_IN_ERROR, True, EventStateType.DELIVERED),
+        (EventStateType.STORED_IN_ERROR, False, EventStateType.FAILED),
+        # Other ambiguous transitions
         (EventStateType.PROCESSING, True, EventStateType.PROCESSED),
         (EventStateType.PROCESSING, False, EventStateType.FAILED),
         (EventStateType.STORED_IN_OUTPUT, True, EventStateType.DELIVERED),
@@ -27,8 +30,6 @@ def test_next_transitions_correctly(
     success: bool | None,
     next_expected: EventStateType,
 ) -> None:
-    """Ensure next() transitions correctly for all defined state cases."""
-
     state = EventState()
     state.current_state = initial
     result = state.next(success=success)
@@ -37,18 +38,14 @@ def test_next_transitions_correctly(
 
 
 def test_next_returns_none_on_ambiguous_without_success() -> None:
-    """Returns None if multiple options exist but success flag is missing."""
-
     state = EventState()
-    state.current_state = EventStateType.PROCESSING
+    state.current_state = EventStateType.STORED_IN_ERROR
     result = state.next()
     assert result is None
-    assert state.current_state == EventStateType.PROCESSING
+    assert state.current_state == EventStateType.STORED_IN_ERROR
 
 
 def test_next_returns_none_when_no_further_state() -> None:
-    """Returns None if already in final state."""
-
     state = EventState()
     state.current_state = EventStateType.ACKED
     result = state.next()
@@ -57,8 +54,6 @@ def test_next_returns_none_when_no_further_state() -> None:
 
 
 def test_resolve_by_success_flag_returns_correct_result() -> None:
-    """Test success flag resolution in ambiguous transitions."""
-
     state = EventState()
     assert (
         state._resolve_by_success_flag(
@@ -66,7 +61,6 @@ def test_resolve_by_success_flag_returns_correct_result() -> None:
         )
         == EventStateType.PROCESSED
     )
-
     assert (
         state._resolve_by_success_flag(
             [EventStateType.FAILED, EventStateType.PROCESSED], success=False
@@ -76,15 +70,11 @@ def test_resolve_by_success_flag_returns_correct_result() -> None:
 
 
 def test_resolve_by_success_flag_returns_none_if_no_match() -> None:
-    """Returns None if no match for success path is found."""
-
     state = EventState()
     assert state._resolve_by_success_flag([EventStateType.ACKED], success=False) is None
 
 
 def test_reset_sets_state_to_initial() -> None:
-    """Calling reset() sets current state to RECEIVING."""
-
     state = EventState()
     state.current_state = EventStateType.FAILED
     state.reset()
@@ -92,7 +82,5 @@ def test_reset_sets_state_to_initial() -> None:
 
 
 def test_str_representation() -> None:
-    """__str__ returns readable output."""
-
     state = EventState()
     assert str(state) == "<EventState: receiving>"
