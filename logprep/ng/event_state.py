@@ -28,7 +28,8 @@ class EventStateType(StrEnum):
     """The event failed during processing or output storage."""
 
     STORED_IN_ERROR = "stored_in_error"
-    """The event was stored in the error output (e.g. error queue or fallback output)."""
+    """The event was stored in the error output (e.g. error queue or
+    fallback output)."""
 
     DELIVERED = "delivered"
     """The event was delivered to the target system or final destination."""
@@ -73,11 +74,25 @@ class EventState:
     <EventStateType.DELIVERED: 'delivered'>
     """
 
+    _FAILURE_STATES = {EventStateType.FAILED, EventStateType.STORED_IN_ERROR}
+    _SUCCESS_STATES = {
+        EventStateType.RECEIVED,
+        EventStateType.PROCESSING,
+        EventStateType.PROCESSED,
+        EventStateType.STORED_IN_OUTPUT,
+        EventStateType.DELIVERED,
+        EventStateType.ACKED,
+    }
+
+    _state_machine = None  # Will be initialized lazily
+    """Class-level state transition map, initialized once and shared across
+    all instances."""
+
     def __init__(self) -> None:
         """Initialize the event state with the default starting state."""
-
+        if EventState._state_machine is None:
+            EventState._state_machine = EventState._construct_state_machine()
         self.current_state: EventStateType = EventStateType.RECEIVING
-        self._state_machine = self._construct_state_machine()
 
     @staticmethod
     def _construct_state_machine() -> dict[EventStateType, list[EventStateType]]:
@@ -149,8 +164,9 @@ class EventState:
 
         return None
 
+    @classmethod
     def _resolve_by_success_flag(
-        self, options: list[EventStateType], success: bool
+        cls, options: list[EventStateType], success: bool
     ) -> EventStateType | None:
         """
         Resolve a path when multiple options are available based on success.
@@ -168,23 +184,8 @@ class EventState:
             The chosen next state, or None if no suitable match was found.
         """
 
-        if success:
-            return next(
-                (
-                    state
-                    for state in options
-                    if state not in {EventStateType.FAILED, EventStateType.STORED_IN_ERROR}
-                ),
-                None,
-            )
-        return next(
-            (
-                state
-                for state in options
-                if state in {EventStateType.FAILED, EventStateType.STORED_IN_ERROR}
-            ),
-            None,
-        )
+        candidates = cls._SUCCESS_STATES if success else cls._FAILURE_STATES
+        return next((state for state in options if state in candidates), None)
 
     def reset(self) -> None:
         """Reset the event state to the initial state (RECEIVING)."""
