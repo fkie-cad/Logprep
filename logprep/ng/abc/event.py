@@ -33,9 +33,9 @@ class Event(ABC):
         The actual payload or metadata of the event.
     state : EventState
         Tracks the current state of the event lifecycle.
-    warnings : list[Any]
+    warnings : list[str]
         Collected warnings during event handling or transformation.
-    errors : list[Any]
+    errors : list[Exception]
         Collected errors encountered while processing the event.
 
     Examples
@@ -51,9 +51,14 @@ class Event(ABC):
 
     __slots__: tuple[str, ...] = ("data", "state", "errors", "warnings")
 
-    def __init__(self, data: dict[str, Any], *, state: EventState | None = None) -> None:
+    def __init__(
+        self,
+        data: dict[str, Any],
+        *,
+        state: EventState | None = None,
+    ) -> None:
         self.state: EventState = EventState() if state is None else state
         self.data: dict[str, Any] = data
-        self.warnings: list[Any] = []
-        self.errors: list[Any] = []
+        self.warnings: list[str] = []
+        self.errors: list[Exception] = []
         super().__init__()
