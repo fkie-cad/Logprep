@@ -2,6 +2,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=redefined-slots-in-subclass
 # pylint: disable=too-few-public-methods
+# pylint: disable=protected-access
 
 import pickle
 from typing import Any
@@ -26,9 +27,80 @@ class DummyRule:
 
 
 class TestEventClassStructure:
+    def test_event_equality_and_hashing_with_identical_data(self):
+        """
+        Ensure that two Events with identical data are considered equal
+        and have identical hashes.
+        """
+
+        event1 = DummyEvent({"user": {"id": 42, "name": "Alice"}})
+        event2 = DummyEvent({"user": {"id": 42, "name": "Alice"}})
+
+        assert event1 == event2
+        assert hash(event1) == hash(event2)
+
+    def test_event_inequality_with_different_data(self):
+        """
+        Ensure that Events with different data are not equal and produce
+        different hashes.
+        """
+
+        event1 = DummyEvent({"user": {"id": 42}})
+        event2 = DummyEvent({"user": {"id": 99}})
+
+        assert event1 != event2
+        assert hash(event1) != hash(event2)
+
+    def test_event_usable_as_dict_key_and_set_element(self):
+        """
+        Ensure that Event instances can be used as dictionary keys or
+        stored in sets. Equality is based on the contents of self.data.
+        """
+
+        e1 = DummyEvent({"id": 1})
+        e2 = DummyEvent({"id": 1})
+        e3 = DummyEvent({"id": 2})
+
+        event_dict = {e1: "exists"}
+        assert event_dict[e2] == "exists"
+
+        event_set = {e1, e3}
+        assert e2 in event_set
+        assert len(event_set) == 2
+
+    def test_event_set_membership_reduces_duplicates_by_data_equality(self):
+        """
+        Ensure that adding multiple Event instances with identical `data`
+        results in a set of length 1.
+        """
+
+        event1 = DummyEvent({"x": [1, 2, 3], "y": {"z": "abc"}})
+        event2 = DummyEvent({"x": [1, 2, 3], "y": {"z": "abc"}})
+
+        event_set = {event1, event2}
+
+        assert len(event_set) == 1
+        assert event1 in event_set
+        assert event2 in event_set
+
+    def test_event_deep_freeze_on_nested_structure(self):
+        """
+        Ensure that _deep_freeze transforms nested dicts/lists into hashable
+        frozen structures.
+        """
+        e = DummyEvent({})
+        nested = {"a": [1, {"b": 2}], "c": {"d": [3, 4]}}
+
+        frozen = e._deep_freeze(nested)
+
+        assert isinstance(frozen, frozenset)
+        assert ("a", (1, frozenset({("b", 2)}))) in frozen
+        assert ("c", frozenset({("d", (3, 4))})) in frozen
+
     def test_event_initialization_defaults(self) -> None:
         """
-        Verify that the Event initializes correctly when no custom state is provided.
+        Verify that the Event initializes correctly when no custom state
+        is provided.
 
         It should:
         - Create a default EventState instance
@@ -66,7 +138,8 @@ class TestEventClassStructure:
 
     def test_event_data_as_positional_argument(self) -> None:
         """
-        Ensure that the Event can be instantiated using a positional argument for 'data'.
+        Ensure that the Event can be instantiated using a positional
+        argument for 'data'.
         """
 
         event = DummyEvent({"source": "positional"})
@@ -76,7 +149,8 @@ class TestEventClassStructure:
 
     def test_event_data_as_keyword_argument(self) -> None:
         """
-        Ensure that the Event can also be instantiated using 'data' as a keyword argument.
+        Ensure that the Event can also be instantiated using 'data' as
+        a keyword argument.
         """
 
         event = DummyEvent(data={"source": "keyword"})
@@ -97,7 +171,11 @@ class TestEventClassStructure:
             ({"message": "A test message"}, [], []),
             ({"user": "alice"}, ["Low confidence"], []),
             ({"id": 123}, [], [ValueError("invalid id")]),
-            ({"foo": "bar"}, ["Deprecated format"], [RuntimeError("processing error")]),
+            (
+                {"foo": "bar"},
+                ["Deprecated format"],
+                [RuntimeError("processing error")],
+            ),
         ],
     )
     def test_event_is_picklable_with_typed_values(
