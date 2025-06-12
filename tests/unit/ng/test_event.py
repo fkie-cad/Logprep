@@ -26,7 +26,7 @@ class DummyRule:
         self.metrics = type("metrics", (), {"number_of_warnings": 0})()
 
 
-class TestEventClassStructure:
+class TestEventClass:
     def test_event_equality_and_hashing_with_identical_data(self):
         """
         Ensure that two Events with identical data are considered equal
@@ -166,31 +166,45 @@ class TestEventClassStructure:
         DummyEvent({"source": "fail"}, state=EventState())
 
     @pytest.mark.parametrize(
-        "data, warnings, errors",
+        "data, warnings, errors, state",
         [
-            ({"message": "A test message"}, [], []),
-            ({"user": "alice"}, ["Low confidence"], []),
-            ({"id": 123}, [], [ValueError("invalid id")]),
+            ({"message": "A test message"}, [], [], None),
+            ({"user": "alice"}, ["Low confidence"], [], None),
+            ({"id": 123}, [], [ValueError("invalid id")], None),
             (
                 {"foo": "bar"},
                 ["Deprecated format"],
                 [RuntimeError("processing error")],
+                None,
+            ),
+            (
+                {"status": "ok"},
+                [],
+                [],
+                EventState(),
+            ),
+            (
+                {"service": "auth"},
+                ["auth timeout"],
+                [TimeoutError("Service did not respond")],
+                EventState(),
             ),
         ],
     )
-    def test_event_is_picklable_with_typed_values(
+    def test_event_is_picklable_with_values(
         self,
         data: dict[str, Any],
         warnings: list[str],
         errors: list[Exception],
+        state: EventState | None,
     ) -> None:
         """
         Ensure that DummyEvent instances with type-consistent
         data, warnings (strings), and errors (Exception instances)
-        can be pickled and unpickled correctly.
+        can be pickled and unpickled correctly – with and without custom EventState.
         """
 
-        event = DummyEvent(data=data)
+        event = DummyEvent(data=data, state=state)
         event.warnings = warnings
         event.errors = errors
 
