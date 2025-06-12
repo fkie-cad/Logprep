@@ -19,46 +19,55 @@ class Event(ABC):
     """
     Abstract base class representing an event in the processing pipeline.
 
-    This class encapsulates event-related data, warnings, errors,
-    and its current processing state via a state machine.
-
-    Parameters
-    ----------
-    data : dict[str, Any]
-        The raw or processed data associated with the event.
-    state : EventState, optional (keyword-only)
-        The initial state of the event. If not provided, defaults to `EventState()`.
-
-    Attributes
-    ----------
-    data : dict[str, Any]
-        The actual payload or metadata of the event.
-    state : EventState
-        Tracks the current state of the event lifecycle.
-    warnings : list[str]
-        Collected warnings during event handling or transformation.
-    errors : list[Exception]
-        Collected errors encountered while processing the event.
-
-    Examples
-    --------
-    >>> event = Event({"source": "syslog"})
-    >>> event.state.current_state
-    <EventStateType.RECEIVING: 'receiving'>
-
-    >>> event_with_state = Event({"source": "api"}, state=EventState())
-    >>> isinstance(event_with_state.state, EventState)
-    True
+    Encapsulates data, warnings, errors, and processing state.
     """
 
     __slots__: tuple[str, ...] = ("data", "state", "errors", "warnings")
 
     def __init__(
-        self,
-        data: dict[str, Any],
-        *,
-        state: EventState | None = None,
+            self,
+            data: dict[str, Any],
+            *,
+            state: EventState | None = None,
     ) -> None:
+        """
+        Initialize an Event instance.
+
+        Parameters
+        ----------
+        data : dict[str, Any]
+            The raw or processed data associated with the event.
+        state : EventState, optional
+            An optional initial EventState. Defaults to a new EventState() if not provided.
+
+        Examples
+        --------
+        Basic usage with automatic state:
+
+        >>> event = Event({"source": "syslog"})
+        >>> event.data
+        {'source': 'syslog'}
+        >>> event.state.current_state.name
+        'RECEIVING'
+
+        Providing a custom state:
+
+        >>> custom_state = EventState()
+        >>> event = Event({"source": "api"}, state=custom_state)
+        >>> event.state is custom_state
+        True
+
+        Handling warnings and errors:
+
+        >>> event = Event({"id": 123})
+        >>> event.warnings.append("Missing timestamp")
+        >>> event.errors.append(ValueError("Invalid format"))
+        >>> event.warnings
+        ['Missing timestamp']
+        >>> isinstance(event.errors[0], ValueError)
+        True
+        """
+        
         self.state: EventState = EventState() if state is None else state
         self.data: dict[str, Any] = data
         self.warnings: list[str] = []
