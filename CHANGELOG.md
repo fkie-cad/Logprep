@@ -7,7 +7,7 @@
 
 ### Improvements
 * add ng packages as namespace in dirs 'unit' and 'logprep' as preparation for new architecture implementation
-* add abstract EventMetaclass
+* add abstract EventMetadata class and KafkaInputMetadata class
 * implement KafkaInputMetadata
 
 ### Bugfix
