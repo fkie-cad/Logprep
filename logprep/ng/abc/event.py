@@ -65,19 +65,86 @@ class Event(ABC):
         self.errors: list[Exception] = []
         super().__init__()
 
+    def __eq__(self, other: object) -> bool:
+        """
+        Determines whether two Event instances are considered equal.
+        Equality is defined by the equality of their `data` content.
+
+        Parameters
+        ----------
+        other : object
+            The object to compare against.
+
+        Returns
+        -------
+        bool
+            True if the other object is an Event and its `data` is equal to this instance's `data`.
+        """
+
+        if not isinstance(other, Event):
+            return NotImplemented
+
+        return self.data == other.data
+
+    def __hash__(self) -> int:
+        """
+        Returns a hash based on the immutable representation of the `data` field.
+        This enables Event instances to be used as keys in dictionaries or as members of sets.
+
+        Returns
+        -------
+        int
+            A hash value derived from the event's `data`.
+        """
+
+        return hash(self._deep_freeze(self.data))
+
+    def _deep_freeze(self, obj: Any) -> Any:
+        """
+        Recursively converts a data structure into a
+        hashable (immutable) representation. Used internally for generating
+        consistent hash values from nested dictionaries/lists.
+
+        Parameters
+        ----------
+        obj : Any
+            The object (usually dict or list) to be frozen.
+
+        Returns
+        -------
+        Any
+            A hashable, immutable version of the input object.
+        """
+
+        if isinstance(obj, dict):
+            return frozenset((k, self._deep_freeze(v)) for k, v in obj.items())
+
+        if isinstance(obj, list):
+            return tuple(self._deep_freeze(x) for x in obj)
+
+        if isinstance(obj, set):
+            return frozenset(self._deep_freeze(x) for x in obj)
+
+        return obj
+
     def _add_and_overwrite_key(self, sub_dict, key):
         current_value = sub_dict.get(key)
+
         if isinstance(current_value, dict):
             return current_value
+
         sub_dict.update({key: {}})
         return sub_dict.get(key)
 
     def _add_and_not_overwrite_key(self, sub_dict, key):
         current_value = sub_dict.get(key)
+
         if isinstance(current_value, dict):
             return current_value
+
         if key in sub_dict:
             raise KeyError("key exists")
+
         sub_dict.update({key: {}})
         return sub_dict.get(key)
 
@@ -135,6 +202,7 @@ class Event(ABC):
         else:
             if not overwrite_target:
                 raise FieldExistsWarning(rule, self.data, [target_field])
+
             target_parent[target_key] = [existing_value, content]
 
     def _add_field_to_silent_fail(self, *args, **kwargs) -> str | None:
@@ -216,6 +284,7 @@ class Event(ABC):
 
             for field in self.get_dotted_field_list(dotted_field):
                 current = self._get_item(current, field)
+
             return current
 
         except (KeyError, ValueError, TypeError, IndexError):
@@ -261,6 +330,7 @@ class Event(ABC):
                 del sub_dict[next_key]
 
             return field_value
+
         return None
 
     @lru_cache(maxsize=100000)

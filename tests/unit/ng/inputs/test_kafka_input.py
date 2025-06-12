@@ -53,7 +53,7 @@ class TestKafkaInputMetadata:
     def test_accessing_unknown_attribute_raises(self):
         meta = KafkaInputMetadata(partition=1, offset=2)
         with pytest.raises(AttributeError):
-            _ = meta.topic
+            _ = meta.topic  # pylint: disable=no-member
 
     def test_creating_with_unknown_attribute_raises(self):
         with pytest.raises(TypeError) as exc_info:
