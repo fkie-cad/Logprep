@@ -88,8 +88,9 @@ class EventState:
     def __init__(self) -> None:
         """Initialize the event state with the default starting state."""
 
-        if EventState._state_machine is None:
+        if not EventState._state_machine:
             EventState._state_machine = EventState._construct_state_machine()
+
         self.current_state: str = EventStateType.RECEIVING
 
     @staticmethod
