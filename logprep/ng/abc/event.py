@@ -25,10 +25,10 @@ class Event(ABC):
     __slots__: tuple[str, ...] = ("data", "state", "errors", "warnings")
 
     def __init__(
-            self,
-            data: dict[str, Any],
-            *,
-            state: EventState | None = None,
+        self,
+        data: dict[str, Any],
+        *,
+        state: EventState | None = None,
     ) -> None:
         """
         Initialize an Event instance.
@@ -67,7 +67,7 @@ class Event(ABC):
         >>> isinstance(event.errors[0], ValueError)
         True
         """
-        
+
         self.state: EventState = EventState() if state is None else state
         self.data: dict[str, Any] = data
         self.warnings: list[str] = []
