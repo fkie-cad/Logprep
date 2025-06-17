@@ -154,7 +154,7 @@ class EventState:
         next_states = self._state_machine.get(self.current_state)
 
         if not next_states:
-            raise ValueError("Invalid state transition.")
+            raise ValueError("Invalid state transition: Already reached terminal state")
 
         if len(next_states) == 1:
             self.current_state = next_states[0]
