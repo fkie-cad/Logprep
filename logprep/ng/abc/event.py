@@ -5,10 +5,13 @@
 import itertools
 from abc import ABC
 from functools import lru_cache, reduce
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from logprep.ng.event_state import EventState
 from logprep.processor.base.exceptions import FieldExistsWarning
+
+if TYPE_CHECKING:
+    from logprep.processor.base.rule import Rule
 
 
 class EventMetadata(ABC):
