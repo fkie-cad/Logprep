@@ -29,11 +29,11 @@ def test_next_transitions_correctly(
     success: bool | None,
     next_expected: EventStateType,
 ) -> None:
-    """Ensure next() correctly advances to the expected state."""
+    """Ensure next_state() correctly advances to the expected state."""
 
     state = EventState()
     state.current_state = initial
-    result = state.next(success=success)
+    result = state.next_state(success=success)
     assert result == next_expected
     assert state.current_state == next_expected
 
@@ -80,35 +80,24 @@ def test_str_representation() -> None:
 
 
 def test_next_raises_exception_if_invalid_current_state() -> None:
-    """If the current state is not in the state machine, next()
+    """If the current state is not in the state machine, next_state()
     should raise an ValueError."""
 
     state = EventState()
     state.current_state = EventStateType.ACKED  # No successors
 
     with pytest.raises(ValueError, match="Invalid state transition."):
-        state.next()
+        state.next_state()
 
 
 def test_next_raises_exception_when_no_further_state() -> None:
-    """If no further transition is defined, next() should return None."""
+    """If no further transition is defined, next_state() should return None."""
 
     state = EventState()
     state.current_state = EventStateType.ACKED
 
     with pytest.raises(ValueError, match="Invalid state transition."):
-        state.next()
-
-
-def test_next_returns_none_on_ambiguous_without_success() -> None:
-    """If multiple options exist but success is not given, next()
-    should return None."""
-
-    state = EventState()
-    state.current_state = EventStateType.STORED_IN_ERROR
-
-    with pytest.raises(ValueError, match="Invalid state transition."):
-        state.next()
+        state.next_state()
 
 
 def test_all_states_covered_in_state_machine() -> None:

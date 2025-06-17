@@ -49,25 +49,25 @@ class EventState:
     >>> state.current_state
     <EventStateType.RECEIVING: 'receiving'>
 
-    >>> state.next()
+    >>> state.next_state()
     <EventStateType.RECEIVED: 'received'>
 
-    >>> state.next()
+    >>> state.next_state()
     <EventStateType.PROCESSING: 'processing'>
 
-    >>> state.next(success=True)
+    >>> state.next_state(success=True)
     <EventStateType.PROCESSED: 'processed'>
 
-    >>> state.next()
+    >>> state.next_state()
     <EventStateType.STORED_IN_OUTPUT: 'stored_in_output'>
 
-    >>> state.next(success=False)
+    >>> state.next_state(success=False)
     <EventStateType.FAILED: 'failed'>
 
-    >>> state.next()
+    >>> state.next_state()
     <EventStateType.STORED_IN_ERROR: 'stored_in_error'>
 
-    >>> state.next(success=True)
+    >>> state.next_state(success=True)
     <EventStateType.DELIVERED: 'delivered'>
     """
 
@@ -124,7 +124,7 @@ class EventState:
             EventStateType.DELIVERED: [EventStateType.ACKED],
         }
 
-    def next(self, *, success: bool | None = None) -> str:
+    def next_state(self, *, success: bool | None = None) -> str:
         """
         Advance to the next logical state based on the current state.
 
