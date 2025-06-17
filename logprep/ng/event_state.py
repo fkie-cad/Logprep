@@ -167,7 +167,7 @@ class EventState:
                 self.current_state = chosen
                 return self.current_state
 
-        raise ValueError("Invalid state transition.")
+        raise ValueError("Invalid state transition: Ambiguous event without success.")
 
     @classmethod
     def _resolve_by_success_flag(cls, options: list[str], success: bool) -> str | None:
