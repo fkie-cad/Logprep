@@ -79,25 +79,57 @@ def test_str_representation() -> None:
     assert str(state) == "<EventState: receiving>"
 
 
-def test_next_raises_exception_if_invalid_current_state() -> None:
-    """If the current state is not in the state machine, next_state()
-    should raise an ValueError."""
-
-    state = EventState()
-    state.current_state = EventStateType.ACKED  # No successors
-
-    with pytest.raises(ValueError, match="Invalid state transition."):
-        state.next_state()
-
-
 def test_next_raises_exception_when_no_further_state() -> None:
     """If no further transition is defined, next_state() should return None."""
 
     state = EventState()
     state.current_state = EventStateType.ACKED
 
-    with pytest.raises(ValueError, match="Invalid state transition."):
+    with pytest.raises(
+        ValueError, match="Invalid state transition: Already reached terminal state"
+    ):
         state.next_state()
+
+
+@pytest.mark.parametrize(
+    "current_state, success, expected",
+    [
+        # STORED_IN_OUTPUT -> ...
+        (
+            EventStateType.STORED_IN_OUTPUT,
+            None,
+            pytest.raises(ValueError, match="Ambiguous event without success"),
+        ),
+        (EventStateType.STORED_IN_OUTPUT, True, EventStateType.DELIVERED),
+        (EventStateType.STORED_IN_OUTPUT, False, EventStateType.FAILED),
+        # STORED_IN_ERROR -> ...
+        (
+            EventStateType.STORED_IN_ERROR,
+            None,
+            pytest.raises(ValueError, match="Ambiguous event without success"),
+        ),
+        (EventStateType.STORED_IN_ERROR, True, EventStateType.DELIVERED),
+        (EventStateType.STORED_IN_ERROR, False, EventStateType.FAILED),
+    ],
+)
+def test_next_state_handles_ambiguous_transitions_with_or_without_success_flag(
+    current_state, success, expected
+) -> None:
+    """
+    Handle ambiguous transitions based on the success flag.
+    Raises ValueError if success is not provided.
+    """
+
+    state = EventState()
+    state.current_state = current_state
+
+    if isinstance(expected, type(pytest.raises(ValueError))):
+        with expected:
+            state.next_state(success=success)
+    else:
+        result = state.next_state(success=success)
+        assert result == expected
+        assert state.current_state == expected
 
 
 def test_all_states_covered_in_state_machine() -> None:
