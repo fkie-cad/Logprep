@@ -58,7 +58,7 @@ class TestEventState:
 
         state = EventState()
         state.current_state = current_state
-        result = state.next(success=success)
+        result = state.next_state(success=success)
         assert result == next_expected
         assert state.current_state == next_expected
 
@@ -68,7 +68,7 @@ class TestEventState:
 
         state = EventState()
         state.current_state = EventStateType.STORED_IN_ERROR
-        result = state.next()
+        result = state.next_state()
         assert result is None
         assert state.current_state == EventStateType.STORED_IN_ERROR
 
@@ -77,7 +77,7 @@ class TestEventState:
 
         state = EventState()
         state.current_state = EventStateType.ACKED
-        result = state.next()
+        result = state.next_state()
         assert result is None
         assert state.current_state == EventStateType.ACKED
 
@@ -124,7 +124,7 @@ class TestEventState:
 
         state = EventState()
         state.current_state = EventStateType.ACKED  # No successors
-        assert state.next() is None
+        assert state.next_state() is None
 
     def test_all_states_covered_in_state_machine(self) -> None:
         """Ensure that all EventStateType values are represented
