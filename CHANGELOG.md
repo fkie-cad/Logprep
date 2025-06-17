@@ -6,6 +6,9 @@
 ### Features
 
 ### Improvements
+* implement EventState class to manage the lifecycle of log events
+* integrate a finite state machine to control valid state transitions
+
 * add ng packages as namespace in dirs 'unit' and 'logprep' as preparation for new architecture implementation
 * add abstract EventMetadata class and KafkaInputMetadata class
 
