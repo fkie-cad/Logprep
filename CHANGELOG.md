@@ -6,6 +6,9 @@
 ### Features
 
 ### Improvements
+* implement LogEvent class as subclass of Event with support for original, extra_data, and metadata attributes
+* ensure consistent state behavior by helper-based wrapping of next_state() to enforce transition validation
+
 * implement abstract Event class to encapsulate event data, processing state, warnings, and errors
 * integrate dotted field handling methods directly into Event, enabling structured field access and manipulation
 * support event identity and hashability based on data, allowing usage in sets and as dictionary keys
