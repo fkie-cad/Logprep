@@ -398,3 +398,54 @@ class TestEventAddFields:
 
         assert "a" not in e.data
         assert e.data["x"]["y"] == 1
+
+    def test_add_field_to_raises_if_merge_and_overwrite_are_true(self):
+        e = DummyEvent({"a": {"b": 1}})
+        rule = DummyRule()
+
+        with pytest.raises(ValueError, match="Can't merge with and overwrite"):
+            e._add_field_to(("a.b", 2), rule, merge_with_target=True, overwrite_target=True)
+
+
+    def test_add_field_to_raises_field_exists_warning_on_keyerror(self):
+        e = DummyEvent({"a": {"b": "not_a_dict"}})
+        rule = DummyRule()
+
+        with pytest.raises(FieldExistsWarning) as excinfo:
+            e._add_field_to(("a.b.c", 123), rule)
+
+        assert excinfo.value.skipped_fields == ["a.b.c"]
+
+    def test_add_field_to_combines_unhandled_types_without_overwrite_raises(self):
+        class CustomTypeA:
+            def __repr__(self): return "A"
+
+        class CustomTypeB:
+            def __repr__(self): return "B"
+
+        e = DummyEvent({"a": {"b": CustomTypeA()}})
+        rule = DummyRule()
+
+        with pytest.raises(FieldExistsWarning) as excinfo:
+            e._add_field_to(("a.b", CustomTypeB()), rule, merge_with_target=True, overwrite_target=False)
+
+        assert excinfo.value.skipped_fields == ["a.b"]
+
+ 
+def test_retrieve_field_value_returns_none_if_key_not_in_dict():
+    e = DummyEvent({"a": {"b": {"c": 1}}})
+
+    result = e._retrieve_field_value_and_delete_field_if_configured(
+        {"x": {"y": 2}}, ["nonexistent"], delete_source_field=True
+    )
+
+    assert result is None
+
+def test_retrieve_field_value_returns_none_if_sub_dict_is_not_dict():
+    e = DummyEvent({"a": {"b": {"c": 1}}})
+
+    result = e._retrieve_field_value_and_delete_field_if_configured(
+        ["this", "is", "a", "list"], ["a"], delete_source_field=True
+    )
+
+    assert result is None
