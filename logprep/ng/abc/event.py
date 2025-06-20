@@ -139,7 +139,7 @@ class Event(ABC):
 
         return obj
 
-    def _add_and_overwrite_key(self, sub_dict, key):
+    def _add_and_overwrite_key(self, sub_dict: dict, key: str) -> dict | None:
         current_value = sub_dict.get(key)
 
         if isinstance(current_value, dict):
@@ -148,7 +148,7 @@ class Event(ABC):
         sub_dict.update({key: {}})
         return sub_dict.get(key)
 
-    def _add_and_not_overwrite_key(self, sub_dict, key):
+    def _add_and_not_overwrite_key(self, sub_dict: dict, key: str) -> dict | None:
         current_value = sub_dict.get(key)
 
         if isinstance(current_value, dict):
@@ -266,24 +266,27 @@ class Event(ABC):
         if unsuccessful_targets_resolved:
             raise FieldExistsWarning(rule, self.data, unsuccessful_targets_resolved)
 
-    def _get_slice_arg(self, slice_item):
+    def _get_slice_arg(self, slice_item: str | None) -> int | None:
         return int(slice_item) if slice_item else None
 
-    def _get_item(self, items, item):
+    def _get_item(self, items: dict[Any, Any] | list[Any], item: str) -> Any:
         """
         Internal helper for dict or list access by index or slice.
         """
+        if isinstance(items, dict):
+            return items[item]
 
-        try:
-            return dict.__getitem__(items, item)
-        except TypeError:
+        elif isinstance(items, list):
             if ":" in item:
                 slice_args = map(self._get_slice_arg, item.split(":"))
-                item = slice(*slice_args)
+                slice_item = slice(*slice_args)
+                return items[slice_item]
             else:
-                item = int(item)
+                index = int(item)
+                return items[index]
 
-            return list.__getitem__(items, item)
+        else:
+            raise TypeError(f"Unsupported type for _get_item: {type(items)}")
 
     def get_dotted_field_value(self, dotted_field: str) -> dict | list | str | None:
         """
@@ -315,10 +318,10 @@ class Event(ABC):
 
     def _retrieve_field_value_and_delete_field_if_configured(
         self,
-        sub_dict,
-        dotted_fields_path,
-        delete_source_field=False,
-    ):
+        sub_dict: dict,
+        dotted_fields_path: list[str],
+        delete_source_field: bool = False,
+    ) -> dict | list | str | None:
         """
         Recursive retrieval of a dotted field with optional deletion.
         """
