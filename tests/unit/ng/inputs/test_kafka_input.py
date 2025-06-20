@@ -3,7 +3,7 @@
 
 import pytest
 
-from logprep.ng.abc.event_metadata import EventMetadata
+from logprep.ng.abc.event import EventMetadata
 from logprep.ng.inputs.kafka_input import KafkaInputMetadata
 
 

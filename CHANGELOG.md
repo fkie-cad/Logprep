@@ -6,6 +6,10 @@
 ### Features
 
 ### Improvements
+* implement abstract Event class to encapsulate event data, processing state, warnings, and errors
+* integrate dotted field handling methods directly into Event, enabling structured field access and manipulation
+* support event identity and hashability based on data, allowing usage in sets and as dictionary keys
+
 * implement EventState class to manage the lifecycle of log events
 * integrate a finite state machine to control valid state transitions
 
