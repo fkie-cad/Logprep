@@ -164,7 +164,7 @@ class Event(ABC):
         Returns:
             None
         """
-        return add_fields_to(fields, rule, merge_with_target, overwrite_target)
+        return add_fields_to(self.data, fields, rule, merge_with_target, overwrite_target)
 
     def get_dotted_field_value(self, dotted_field: str) -> Any:
         """

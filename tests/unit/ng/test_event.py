@@ -6,6 +6,7 @@
 
 import pickle
 from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -49,6 +50,14 @@ class TestEventClass:
 
         assert event1 != event2
         assert hash(event1) != hash(event2)
+
+    def test_event_eq_not_implemented(self):
+
+        event = Event(data={"key": "value"})
+        non_event = {"key": "value"}
+
+        assert (event == non_event) is False
+        assert event.__eq__(non_event) is NotImplemented
 
     def test_event_usable_as_dict_key_and_set_element(self):
         """
@@ -95,6 +104,18 @@ class TestEventClass:
         assert isinstance(frozen, frozenset)
         assert ("a", (1, frozenset({("b", 2)}))) in frozen
         assert ("c", frozenset({("d", (3, 4))})) in frozen
+
+    def test_event_deep_freeze_on_set(self):
+        """
+        Ensure that _deep_freeze transforms nested dicts/lists into hashable
+        frozen structures.
+        """
+        e = DummyEvent({})
+        input_set = {1, 2, 3}
+        frozen = e._deep_freeze(input_set)
+
+        assert isinstance(frozen, frozenset)
+        assert frozen == frozenset({1, 2, 3})
 
     def test_event_initialization_defaults(self) -> None:
         """
@@ -220,99 +241,27 @@ class TestEventClass:
         assert loaded.warnings == warnings
         assert [str(e) for e in loaded.errors] == [str(e) for e in errors]
 
+    def test_add_fields_to_delegates_correctly(self):
+        dummy = DummyEvent({"user": {"id": 42}})
+        fields = {"key": "value"}
+        rule = MagicMock()
 
-class TestGetDottedFieldValue:
-    def test_get_dotted_field_value_nesting_depth_zero(self):
-        e = DummyEvent({"dotted": "127.0.0.1"})
-        assert e.get_dotted_field_value("dotted") == "127.0.0.1"
+        with patch("logprep.ng.abc.event.add_fields_to") as mock_add:
+            dummy.add_fields_to(fields, rule, merge_with_target=True, overwrite_target=True)
+            mock_add.assert_called_once()
 
-    def test_get_dotted_field_value_nesting_depth_one(self):
-        e = DummyEvent({"dotted": {"field": "127.0.0.1"}})
-        assert e.get_dotted_field_value("dotted.field") == "127.0.0.1"
+    def test_get_dotted_field_delegates_correctly(self):
+        dummy = DummyEvent({"user": {"id": 42}})
+        field = "id"
 
-    def test_get_dotted_field_value_nesting_depth_two(self):
-        e = DummyEvent({"some": {"dotted": {"field": "127.0.0.1"}}})
-        assert e.get_dotted_field_value("some.dotted.field") == "127.0.0.1"
+        with patch("logprep.ng.abc.event.get_dotted_field_value") as mock_get:
+            dummy.get_dotted_field_value(field)
+            mock_get.assert_called_once()
 
-    def test_get_dotted_field_retrieves_sub_dict(self):
-        e = DummyEvent({"some": {"dotted": {"field": "127.0.0.1"}}})
-        assert e.get_dotted_field_value("some.dotted") == {"field": "127.0.0.1"}
+    def test_pop_dotted_field_delegates_correctly(self):
+        dummy = DummyEvent({"user": {"id": 42}})
+        field = "user"
 
-    def test_get_dotted_field_retrieves_list(self):
-        e = DummyEvent({"some": {"dotted": ["list", "with", "values"]}})
-        assert e.get_dotted_field_value("some.dotted") == ["list", "with", "values"]
-
-    def test_get_dotted_field_value_that_does_not_exist(self):
-        e = DummyEvent({})
-        assert e.get_dotted_field_value("field") is None
-
-    def test_get_dotted_field_value_that_does_not_exist_from_nested_dict(self):
-        e = DummyEvent({"some": {}})
-        assert e.get_dotted_field_value("some.dotted.field") is None
-
-    def test_get_dotted_field_value_that_matches_part_of_dotted_field(self):
-        e = DummyEvent({"some": "do_not_match"})
-        assert e.get_dotted_field_value("some.dotted") is None
-
-    def test_get_dotted_field_value_key_matches_value(self):
-        e = DummyEvent({"get": "dotted"})
-        assert e.get_dotted_field_value("get.dotted") is None
-
-    def test_get_dotted_field_with_list(self):
-        e = DummyEvent({"get": ["dotted"]})
-        assert e.get_dotted_field_value("get.0") == "dotted"
-
-    def test_get_dotted_field_with_nested_list(self):
-        e = DummyEvent({"get": ["dotted", ["does_not_matter", "target"]]})
-        assert e.get_dotted_field_value("get.1.1") == "target"
-
-    def test_get_dotted_field_with_list_not_found(self):
-        e = DummyEvent({"get": ["dotted"]})
-        assert e.get_dotted_field_value("get.0.1") is None
-
-    def test_get_dotted_field_with_list_last_element(self):
-        e = DummyEvent({"get": ["dotted", "does_not_matter", "target"]})
-        assert e.get_dotted_field_value("get.-1") == "target"
-
-    def test_get_dotted_field_with_out_of_bounds_index(self):
-        e = DummyEvent({"get": ["dotted", "does_not_matter", "target"]})
-        assert e.get_dotted_field_value("get.3") is None
-
-    def test_get_dotted_fields_with_list_slicing(self):
-        e = DummyEvent({"get": ["dotted", "does_not_matter", "target"]})
-        assert e.get_dotted_field_value("get.0:2") == ["dotted", "does_not_matter"]
-
-    def test_get_dotted_fields_with_list_slicing_short(self):
-        e = DummyEvent({"get": ["dotted", "does_not_matter", "target"]})
-        assert e.get_dotted_field_value("get.:2") == ["dotted", "does_not_matter"]
-
-    def test_get_dotted_fields_reverse_order_with_slicing(self):
-        e = DummyEvent({"get": ["dotted", "does_not_matter", "target"]})
-        assert e.get_dotted_field_value("get.::-1") == ["target", "does_not_matter", "dotted"]
-
-    def test_get_dotted_fiels_with_list_slicing_2(self):
-        e = DummyEvent({"get": ["dotted", "does_not_matter", "target"]})
-        assert e.get_dotted_field_value("get.::2") == ["dotted", "target"]
-
-
-class TestPopDottedFieldValue:
-    def test_get_dotted_field_removes_source_field_in_nested_structure_but_leaves_sibling(self):
-        e = DummyEvent({"get": {"nested": "field", "other": "field"}})
-        value = e.pop_dotted_field_value("get.nested")
-
-        assert value == "field"
-        assert e.data == {"get": {"other": "field"}}
-
-    def test_get_dotted_field_removes_source_field(self):
-        e = DummyEvent({"get": {"nested": "field"}})
-        value = e.pop_dotted_field_value("get.nested")
-
-        assert value == "field"
-        assert not e.data
-
-    def test_get_dotted_field_removes_source_field2(self):
-        e = DummyEvent({"get": {"very": {"deeply": {"nested": {"field": "value"}}}}})
-        value = e.pop_dotted_field_value("get.very.deeply.nested")
-
-        assert value == {"field": "value"}
-        assert not e.data
+        with patch("logprep.ng.abc.event.pop_dotted_field_value") as mock_pop:
+            dummy.pop_dotted_field_value(field)
+            mock_pop.assert_called_once()
