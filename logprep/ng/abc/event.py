@@ -143,7 +143,7 @@ class Event(ABC):
 
     def add_fields_to(
         self,
-        fields: dict,
+        fields: dict[str, Any],
         rule: "Rule" = None,
         merge_with_target: bool = False,
         overwrite_target: bool = False,
