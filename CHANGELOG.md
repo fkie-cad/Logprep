@@ -13,6 +13,7 @@
 * add abstract EventMetadata class and KafkaInputMetadata class
 
 ### Bugfix
+* Fixed failing container build pipeline
 
 ## 17.0.0
 ### Breaking
