@@ -35,7 +35,7 @@ class LogEvent(Event):
         original : bytes
             The raw representation of the event (e.g., as received from Kafka).
         extra_data : list[Event], optional
-            Additional associated Event objects.
+            Sub-events that were derived or caused by this event
         metadata : EventMetadata, optional
             Structured metadata for the event.
         state : EventState, optional
