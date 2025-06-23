@@ -18,14 +18,6 @@ class DummyEvent(Event):
     __slots__ = Event.__slots__
 
 
-class DummyRule:
-    def __init__(self):
-        self.id = "dummy_rule"
-        self.description = "Dummy rule description"
-        self.source_fields = []
-        self.metrics = type("metrics", (), {"number_of_warnings": 0})()
-
-
 class TestEventClass:
     def test_event_equality_and_hashing_with_identical_data(self):
         """
