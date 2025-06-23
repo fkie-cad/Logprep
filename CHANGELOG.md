@@ -6,20 +6,11 @@
 ### Features
 
 ### Improvements
-* implement LogEvent class as subclass of Event with support for original, extra_data, and metadata attributes
-* ensure consistent state behavior by helper-based wrapping of next_state() to enforce transition validation
-
-* implement abstract Event class to encapsulate event data, processing state, warnings, and errors
-* integrate dotted field handling methods directly into Event, enabling structured field access and manipulation
-* support event identity and hashability based on data, allowing usage in sets and as dictionary keys
-
-* add ng packages as namespace in dirs 'unit' and 'logprep' as preparation for new architecture implementation
-* add abstract EventMetaclass
-* implement KafkaInputMetadata
-
 * implement EventState class to manage the lifecycle of log events
 * integrate a finite state machine to control valid state transitions
-* support for both automatic and conditional (success-based) state transitions
+
+* add ng packages as namespace in dirs 'unit' and 'logprep' as preparation for new architecture implementation
+* add abstract EventMetadata class and KafkaInputMetadata class
 
 ### Bugfix
 

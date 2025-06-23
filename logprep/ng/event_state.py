@@ -1,6 +1,3 @@
-# type: ignore
-# -> mypy does not correctly handle IntEnum or StrEnum in some cases
-
 """The event classes and related types"""
 
 from enum import StrEnum
@@ -84,24 +81,26 @@ class EventState:
         EventStateType.ACKED,
     }
 
-    _state_machine = None  # Will be initialized lazily
+    _state_machine: dict[str, list[str]] = {}  # Will be initialized lazily
     """Class-level state transition map, initialized once and shared across
     all instances."""
 
     def __init__(self) -> None:
         """Initialize the event state with the default starting state."""
-        if EventState._state_machine is None:
+
+        if not EventState._state_machine:
             EventState._state_machine = EventState._construct_state_machine()
-        self.current_state: EventStateType = EventStateType.RECEIVING
+
+        self.current_state: str = EventStateType.RECEIVING
 
     @staticmethod
-    def _construct_state_machine() -> dict[EventStateType, list[EventStateType]]:
+    def _construct_state_machine() -> dict[str, list[str]]:
         """
         Define the valid state transitions as an adjacency list.
 
         Returns
         -------
-        dict[EventStateType, list[EventStateType]]
+        dict[EventStateType, list[str]]
             A dictionary mapping each state to its allowed successor states.
         """
 
@@ -125,7 +124,7 @@ class EventState:
             EventStateType.DELIVERED: [EventStateType.ACKED],
         }
 
-    def next_state(self, *, success: bool | None = None) -> EventStateType | None:
+    def next_state(self, *, success: bool | None = None) -> str:
         """
         Advance to the next logical state based on the current state.
 
@@ -142,15 +141,20 @@ class EventState:
 
         Returns
         -------
-        EventStateType or None
-            The new current state after transition, or None if the transition is ambiguous
-            or not possible.
+        EventStateType
+            The new current state after transition.
+
+        Raises
+        ------
+        ValueError
+            If the current state has no defined next transitions or if the transition
+            is ambiguous and `success` is not provided.
         """
 
-        next_states = self._state_machine.get(self.current_state, [])
+        next_states = self._state_machine.get(self.current_state)
 
         if not next_states:
-            return None
+            raise ValueError("Invalid state transition: Already reached terminal state")
 
         if len(next_states) == 1:
             self.current_state = next_states[0]
@@ -158,16 +162,15 @@ class EventState:
 
         if success is not None:
             chosen = self._resolve_by_success_flag(next_states, success)
+
             if chosen:
                 self.current_state = chosen
                 return self.current_state
 
-        return None
+        raise ValueError("Invalid state transition: Ambiguous event without success.")
 
     @classmethod
-    def _resolve_by_success_flag(
-        cls, options: list[EventStateType], success: bool
-    ) -> EventStateType | None:
+    def _resolve_by_success_flag(cls, options: list[str], success: bool) -> str | None:
         """
         Resolve a path when multiple options are available based on success.
 
@@ -180,7 +183,7 @@ class EventState:
 
         Returns
         -------
-        EventStateType or None
+        str or None
             The chosen next state, or None if no suitable match was found.
         """
 
