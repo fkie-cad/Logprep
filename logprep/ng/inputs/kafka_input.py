@@ -2,7 +2,7 @@
 
 import attrs
 
-from logprep.ng.abc.event_metadata import EventMetadata
+from logprep.ng.abc.event import EventMetadata
 
 
 @attrs.define(slots=True, kw_only=True)
