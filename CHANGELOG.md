@@ -6,6 +6,8 @@
 ### Features
 
 ### Improvements
+
+* add LogEvent class
 * implement abstract Event class to encapsulate event data, processing state, warnings, and errors
 * integrate dotted field handling methods directly into Event, enabling structured field access and manipulation
 * support event identity and hashability based on data, allowing usage in sets and as dictionary keys
