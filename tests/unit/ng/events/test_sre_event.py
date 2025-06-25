@@ -1,0 +1,39 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=too-few-public-methods
+# pylint: disable=redefined-slots-in-subclass
+
+
+from logprep.ng.abc.event import Event
+from logprep.ng.event_state import EventState, EventStateType
+from logprep.ng.events.sre_event import SreEvent
+from tests.unit.ng.test_event import TestEventClass
+
+
+class DummyEvent(Event):
+    __slots__ = Event.__slots__
+
+
+class TestSreEvents(TestEventClass):
+
+    def test_sre_event_initializes_correctly(self) -> None:
+        sre_event = SreEvent(data={"foo": "bar"})
+
+        assert isinstance(sre_event.state, EventState)
+
+    def test_sre_event_preserves_state_on_init(self) -> None:
+        state = EventState()
+        state.current_state = EventStateType.STORED_IN_OUTPUT
+        sre_event = SreEvent(data={"msg": "payload"}, state=state)
+
+        assert sre_event.state.current_state is EventStateType.STORED_IN_OUTPUT
+
+    def test_sre_event_transition_to_next(self) -> None:
+
+        sre_event = SreEvent(
+            data={"parent": "yes"},
+        )
+        sre_event.state.current_state = EventStateType.PROCESSING
+
+        sre_event.state.next_state(success=True)
+        assert sre_event.state.current_state == EventStateType.PROCESSED

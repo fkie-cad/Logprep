@@ -18,7 +18,7 @@ class LogEvent(Event):
         "_origin_state_next_state_fn",
     )
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
         self,
         data: dict[str, Any],
         *,
