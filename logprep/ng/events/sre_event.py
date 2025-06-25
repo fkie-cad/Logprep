@@ -7,12 +7,9 @@ from logprep.ng.event_state import EventState
 
 
 class SreEvent(Event):
-    """Concrete Sre event class with additional attribute and constraints."""
+    """Concrete Sre event class."""
 
-    __slots__: tuple[str, ...] = (
-        "_state",
-        "_origin_state_next_state_fn",
-    )
+    __slots__: tuple[str, ...] = ("_state",)
 
     def __init__(
         self,
