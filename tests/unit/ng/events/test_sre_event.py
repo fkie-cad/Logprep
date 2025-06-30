@@ -16,7 +16,7 @@ class DummyEvent(Event):
 
 class TestSreEvents(TestEventClass):
 
-    def test_sre_event_initializes_correctly(self) -> None:
+    def test_sre_event_initialisation(self) -> None:
         sre_event = SreEvent(data={"foo": "bar"})
 
         assert isinstance(sre_event.state, EventState)
