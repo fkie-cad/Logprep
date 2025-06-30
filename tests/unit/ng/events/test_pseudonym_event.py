@@ -16,7 +16,7 @@ class DummyEvent(Event):
 
 class TestPseudonymEvents(TestEventClass):
 
-    def test_pseudonym_event_initializes_correctly(self) -> None:
+    def test_pseudonym_event_initializes(self) -> None:
         pseudonym_event = PseudonymEvent(data={"foo": "bar"})
 
         assert isinstance(pseudonym_event.state, EventState)
