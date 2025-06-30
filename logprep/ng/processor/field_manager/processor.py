@@ -28,6 +28,7 @@ Processor Configuration
 """
 
 from logprep.ng.abc.processor import Processor
+from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
     add_fields_to,
@@ -41,7 +42,7 @@ class FieldManager(Processor):
 
     rule_class = FieldManagerRule
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: "Rule") -> None:
         rule_args = (
             rule.source_fields,
             rule.target_field,
@@ -64,7 +65,7 @@ class FieldManager(Processor):
         args = (event, target_field, source_field_values)
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
-    def _apply_mapping(self, event, rule, rule_args):
+    def _apply_mapping(self, event: dict, rule: "Rule", rule_args: tuple) -> None:
         source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())
@@ -111,7 +112,9 @@ class FieldManager(Processor):
                 ordered_flatten_list.append(field_value)
         return ordered_flatten_list
 
-    def _handle_missing_fields(self, event, rule, source_fields, field_values):
+    def _handle_missing_fields(
+        self, event: dict, rule: "Rule", source_fields: list, field_values: list
+    ) -> bool:
         if rule.ignore_missing_fields:
             return False
         if None in field_values:
