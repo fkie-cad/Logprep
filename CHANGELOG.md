@@ -7,7 +7,9 @@
 
 ### Improvements
 
+
 * add PseudonymEvent Class
+* add SreEvent class
 * add LogEvent class
 * implement abstract Event class to encapsulate event data, processing state, warnings, and errors
 * integrate dotted field handling methods directly into Event, enabling structured field access and manipulation
