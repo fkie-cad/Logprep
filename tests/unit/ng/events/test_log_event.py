@@ -18,7 +18,7 @@ class DummyEvent(Event):
 
 
 class TestLogEvents(TestEventClass):
-    def test_log_event_initializes_correctly(self) -> None:
+    def test_log_event_initializes(self) -> None:
         log_event = LogEvent(data={"foo": "bar"}, original=b"raw")
 
         assert isinstance(log_event.state, EventState)
