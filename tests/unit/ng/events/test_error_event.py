@@ -35,44 +35,28 @@ class TestErrorEvents(TestEventClass):
 
     def test_error_event_initializes_correctly(self) -> None:
         self.log_event.extra_data = [self.child2_event]
-        error_event = ErrorEvent(log_event=self.log_event)
+        error_event = ErrorEvent(log_event=self.log_event, reason=ValueError("Some value is wrong"))
 
         assert isinstance(error_event.data["@timestamp"], str)
         assert error_event.data["original"] == b"raw"
         assert isinstance(error_event.data["event"], bytes)
         assert error_event.data["event"] == b'{"foo":"bar"}'
+        assert isinstance(error_event.data["reason"], str)
+        assert error_event.data["reason"] == "Some value is wrong"
 
     def test_error_event_preserves_state_on_init(self) -> None:
         state = EventState()
         state.current_state = EventStateType.STORED_IN_OUTPUT
 
         self.log_event.state.current_state = EventStateType.FAILED
-        error_event = ErrorEvent(log_event=self.log_event, state=state)
+        error_event = ErrorEvent(
+            log_event=self.log_event, reason=ValueError("Some value is wrong"), state=state
+        )
 
         assert error_event.state.current_state is EventStateType.STORED_IN_OUTPUT
-
-    def test_error_event_with_no_failed_extra_data_sets_reason_for_log_event(self):
-        self.log_event.extra_data = [self.child1_event]
-        self.log_event.state.current_state = EventStateType.FAILED
-        error_event = ErrorEvent(log_event=self.log_event)
-
-        assert error_event.data["reason"] == "log event couldn't be processed or delivered"
-        assert isinstance(error_event.data["@timestamp"], str)
-        assert error_event.data["original"] == b"raw"
-        assert isinstance(error_event.data["event"], bytes)
-
-    def test_error_event_with_failed_extra_data_sets_reason_for_log_event(self):
-        self.log_event.extra_data = [self.child1_event, self.child2_event]
-        error_event = ErrorEvent(log_event=self.log_event)
-
-        assert error_event.data["reason"] == "extra data event couldn't be delivered"
-
-    def test_error_event_with_no_failed_events_raises_error(self):
-        with pytest.raises(ValueError, match="No failed events detected"):
-            ErrorEvent(log_event=self.log_event)
 
     def test_unserializable_event_raises_encode_error(self):
         self.log_event.extra_data = [self.child2_event]
         self.log_event.data["bad"] = lambda x: x + 1
         with pytest.raises(TypeError):
-            ErrorEvent(log_event=self.log_event)
+            ErrorEvent(log_event=self.log_event, reason=ValueError("Some value is wrong"))
