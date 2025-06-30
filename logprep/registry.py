@@ -22,6 +22,7 @@ from logprep.connector.opensearch.output import OpensearchOutput
 from logprep.connector.s3.output import S3Output
 from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutput
 from logprep.generator.http.output import HttpGeneratorOutput
+from logprep.ng.processor.field_manager.processor import FieldManager as NgFieldManager
 from logprep.processor.amides.processor import Amides
 from logprep.processor.base.rule import Rule
 from logprep.processor.calculator.processor import Calculator
@@ -77,6 +78,7 @@ class Registry:
         "key_checker": KeyChecker,
         "labeler": Labeler,
         "list_comparison": ListComparison,
+        "ng_field_manager": NgFieldManager,
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,
