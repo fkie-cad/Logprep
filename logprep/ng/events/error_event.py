@@ -17,7 +17,7 @@ class ErrorEvent(Event):
 
     __slots__ = ("_data", "_state", "_encoder")
 
-    def __init__(self, log_event: LogEvent, *, state: EventState | None = None) -> None:
+    def __init__(self, log_event: LogEvent, reason: str, *, state: EventState | None = None) -> None:
         """
         Parameters
         ----------
@@ -36,21 +36,8 @@ class ErrorEvent(Event):
             }
         """
         self._state: EventState = EventState() if state is None else state
-        self._encoder: msgspec.json.Encoder = msgspec.json.Encoder()
         now = datetime.now(timezone.utc).isoformat()
-
-        if any(e.state.current_state is EventStateType.FAILED for e in log_event.extra_data):
-            reason = "extra data event couldn't be delivered"
-        elif log_event.state.current_state is EventStateType.FAILED:
-            reason = "log event couldn't be processed or delivered"
-        else:
-            raise ValueError("No failed events detected")
-
         original = log_event.original
-        try:
-            event_bytes = self._encoder.encode(log_event.data)
-        except (msgspec.EncodeError, TypeError) as e:
-            raise e
 
         data: dict[str, Any] = {
             "@timestamp": now,
