@@ -231,7 +231,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_accepts_tree_config_from_http(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
-        tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
+        tree_config = Path("tests/testdata/unit/tree_config.json").read_text("utf-8")
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
         processor = Factory.create({"test instance": config})
         tree_config = json.loads(tree_config)
