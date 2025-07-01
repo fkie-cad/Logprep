@@ -7,7 +7,7 @@
 
 ### Improvements
 
-
+* add ErrorEvent class
 * add PseudonymEvent Class
 * add SreEvent class
 * add LogEvent class
