@@ -44,7 +44,7 @@ class FieldManager(Processor):
 
     rule_class = FieldManagerRule
 
-    def _apply_rules(self, event: dict, rule: "Rule") -> None:
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
         rule_args = (
             rule.source_fields,
             rule.target_field,
@@ -57,7 +57,7 @@ class FieldManager(Processor):
         if rule.source_fields and rule.target_field:
             self._apply_single_target_processing(event, rule, rule_args)
 
-    def _apply_single_target_processing(self, event, rule, rule_args):
+    def _apply_single_target_processing(self, event: dict, rule: Rule, rule_args: tuple) -> None:
         source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
@@ -86,7 +86,9 @@ class FieldManager(Processor):
             for dotted_field in source_fields:
                 pop_dotted_field_value(event, dotted_field)
 
-    def _write_to_single_target(self, args, merge_with_target, overwrite_target, rule):
+    def _write_to_single_target(
+        self, args: tuple, merge_with_target: bool, overwrite_target: bool, rule: Rule
+    ) -> None:
         event, target_field, source_fields_values = args
         if len(source_fields_values) == 1 and not merge_with_target:
             source_fields_values = source_fields_values.pop()
@@ -104,7 +106,7 @@ class FieldManager(Processor):
             merge_with_target = False
         add_fields_to(event, {target_field: new_values}, rule, merge_with_target, overwrite_target)
 
-    def _overwrite_from_source_values(self, source_fields_values):
+    def _overwrite_from_source_values(self, source_fields_values: Iterable) -> Iterable:
         duplicates = []
         ordered_flatten_list = []
         flat_source_fields = self._get_flatten_source_fields(source_fields_values)
@@ -131,7 +133,7 @@ class FieldManager(Processor):
         return False
 
     @staticmethod
-    def _get_field_values(event, source):
+    def _get_field_values(event, source: Iterable) -> list:
         return [get_dotted_field_value(event, source_field) for source_field in source]
 
     def _get_missing_fields_error(
@@ -141,7 +143,7 @@ class FieldManager(Processor):
         return Exception(f"{self.name}: missing source_fields: {missing_fields}")
 
     @staticmethod
-    def _get_flatten_source_fields(source_fields_values):
+    def _get_flatten_source_fields(source_fields_values: Iterable) -> list:
         flat_source_fields = []
         for item in source_fields_values:
             if isinstance(item, list):
@@ -151,7 +153,9 @@ class FieldManager(Processor):
         return flat_source_fields
 
     @staticmethod
-    def _filter_missing_fields(source_field_values, targets):
+    def _filter_missing_fields(
+        source_field_values: Iterable, targets: list | tuple
+    ) -> tuple | list:
         if None in source_field_values:
             mapping = [
                 (value, targets[i])
