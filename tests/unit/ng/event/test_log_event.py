@@ -2,7 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=too-few-public-methods
 # pylint: disable=redefined-slots-in-subclass
-
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
@@ -10,7 +10,7 @@ import pytest
 from logprep.ng.abc.event import Event
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.ng.event.log_event import LogEvent
-from tests.unit.ng.test_event import TestEventClass
+from tests.unit.ng.event.test_event import TestEventClass
 
 
 class DummyEvent(Event):
@@ -31,7 +31,7 @@ class TestLogEvents(TestEventClass):
 
     def test_log_event_preserves_state_on_init(self) -> None:
         state = EventState()
-        state.current_state = EventStateType.STORED_IN_OUTPUT
+        state.current_state = cast(EventStateType, EventStateType.STORED_IN_OUTPUT)
         log_event = LogEvent(data={"msg": "payload"}, original=b"event", state=state)
 
         assert log_event.state.current_state is EventStateType.STORED_IN_OUTPUT
@@ -39,18 +39,18 @@ class TestLogEvents(TestEventClass):
     def test_log_event_transition_to_delivered_succeeds_if_all_extra_data_delivered(self) -> None:
         child1 = DummyEvent({"c1": 1})
         child2 = DummyEvent({"c2": 2})
-        child1.state.current_state = EventStateType.DELIVERED
-        child2.state.current_state = EventStateType.DELIVERED
+        child1.state.current_state = cast(EventStateType, EventStateType.DELIVERED)
+        child2.state.current_state = cast(EventStateType, EventStateType.DELIVERED)
 
         log_event = LogEvent(
             data={"parent": "yes"},
             original=b"...",
             extra_data=[child1, child2],
         )
-        log_event.state.current_state = EventStateType.STORED_IN_OUTPUT
+        log_event.state.current_state = cast(EventStateType, EventStateType.STORED_IN_OUTPUT)
 
         log_event.state.next_state(success=True)
-        assert log_event.state.current_state == EventStateType.DELIVERED
+        assert log_event.state.current_state is EventStateType.DELIVERED
 
     def test_log_event_transition_to_next_state_excluding_delivered(self) -> None:
 
@@ -59,19 +59,19 @@ class TestLogEvents(TestEventClass):
             original=b"...",
             extra_data=[],
         )
-        log_event.state.current_state = EventStateType.PROCESSING
+        log_event.state.current_state = cast(EventStateType, EventStateType.PROCESSING)
 
         log_event.state.next_state(success=True)
-        assert log_event.state.current_state == EventStateType.PROCESSED
+        assert log_event.state.current_state is EventStateType.PROCESSED
 
     def test_log_event_transition_to_delivered_fails_if_extra_data_not_delivered(self) -> None:
         child1 = DummyEvent({"c1": 1})
         child2 = DummyEvent({"c2": 2})
-        child1.state.current_state = EventStateType.DELIVERED
-        child2.state.current_state = EventStateType.FAILED
+        child1.state.current_state = cast(EventStateType, EventStateType.DELIVERED)
+        child2.state.current_state = cast(EventStateType, EventStateType.FAILED)
 
         log_event = LogEvent(data={"parent": "e"}, original=b"...", extra_data=[child1, child2])
-        log_event.state.current_state = EventStateType.STORED_IN_OUTPUT
+        log_event.state.current_state = cast(EventStateType, EventStateType.STORED_IN_OUTPUT)
 
         with pytest.raises(ValueError, match="not all extra_data events are DELIVERED"):
             log_event.state.next_state(success=True)
@@ -90,4 +90,4 @@ class TestLogEvents(TestEventClass):
 
         result = log_event._next_state_validation_helper(success=True)
 
-        assert result == EventStateType.DELIVERED
+        assert result is EventStateType.DELIVERED
