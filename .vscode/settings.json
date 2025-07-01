@@ -43,6 +43,7 @@
         "editor.formatOnSave": true
     },
     "cSpell.words": [
-        "concatenator"
+        "concatenator",
+        "SIEM"
     ],
 }
