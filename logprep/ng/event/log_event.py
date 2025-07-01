@@ -1,6 +1,6 @@
 """Concrete Log Event implementation"""
 
-from types import MethodType
+from functools import partial
 from typing import Any
 
 from logprep.ng.abc.event import Event, EventMetadata
@@ -59,8 +59,8 @@ class LogEvent(Event):
         super().__init__(data=data, state=self._state)
 
         # Wrap original next_state with validation logic
-        self._origin_state_next_state_fn = MethodType(EventState.next_state, self._state)
-        self._state.next_state = self._next_state_validation_helper
+        self._origin_state_next_state_fn = partial(EventState.next_state, self._state)
+        setattr(self._state, "next_state", self._next_state_validation_helper)
 
     @property
     def state(self) -> EventState:
@@ -83,12 +83,12 @@ class LogEvent(Event):
         ValueError
             If value.state is DELIVERED but any sub-event is not DELIVERED.
         """
-        self._validate_state(value.current_state)
+        self._validate_state(value.current_state)  # type: ignore
         self._state = value
 
         # Wrap next_state again if needed
         self._origin_state_next_state_fn = self._state.next_state
-        self._state.next_state = self._next_state_validation_helper
+        setattr(self._state, "next_state", self._next_state_validation_helper)
 
     def _next_state_validation_helper(
         self, *, success: bool | None = None
