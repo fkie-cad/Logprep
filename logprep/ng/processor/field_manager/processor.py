@@ -27,6 +27,8 @@ Processor Configuration
 .. automodule:: logprep.processor.field_manager.rule
 """
 
+from typing import Iterable
+
 from logprep.ng.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -113,7 +115,7 @@ class FieldManager(Processor):
         return ordered_flatten_list
 
     def _handle_missing_fields(
-        self, event: dict, rule: "Rule", source_fields: list, field_values: list
+        self, event: dict, rule: "Rule", source_fields: Iterable, field_values: list
     ) -> bool:
         if rule.ignore_missing_fields:
             return False
@@ -132,7 +134,9 @@ class FieldManager(Processor):
     def _get_field_values(event, source):
         return [get_dotted_field_value(event, source_field) for source_field in source]
 
-    def _get_missing_fields_error(self, source_fields, field_values):
+    def _get_missing_fields_error(
+        self, source_fields: Iterable, field_values: Iterable
+    ) -> Exception:
         missing_fields = [key for key, value in zip(source_fields, field_values) if value is None]
         return Exception(f"{self.name}: missing source_fields: {missing_fields}")
 
