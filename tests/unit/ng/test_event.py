@@ -257,3 +257,7 @@ class TestEventClass:
         with patch("logprep.ng.abc.event.pop_dotted_field_value") as mock_pop:
             dummy.pop_dotted_field_value(field)
             mock_pop.assert_called_once()
+
+    def test_event_repr(self):
+        event = DummyEvent({"user": {"id": 42, "name": "Alice"}})
+        assert repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=receiving)"
