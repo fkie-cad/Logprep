@@ -5,8 +5,8 @@
 
 
 from logprep.ng.abc.event import Event
+from logprep.ng.event.sre_event import SreEvent
 from logprep.ng.event_state import EventState, EventStateType
-from logprep.ng.events.sre_event import SreEvent
 from tests.unit.ng.test_event import TestEventClass
 
 
