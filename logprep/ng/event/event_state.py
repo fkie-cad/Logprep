@@ -181,7 +181,9 @@ class EventState:
         raise ValueError("Invalid state transition: Ambiguous event without success.")
 
     @classmethod
-    def _resolve_by_success_flag(cls, options: list[EventStateType], success: bool) -> EventStateType | None:
+    def _resolve_by_success_flag(
+        cls, options: list[EventStateType], success: bool
+    ) -> EventStateType | None:
         """
         Resolve a path when multiple options are available based on success.
 
