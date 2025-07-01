@@ -4,7 +4,7 @@
 import pytest
 
 from logprep.ng.abc.event import EventMetadata
-from logprep.ng.inputs.kafka_input import KafkaInputMetadata
+from logprep.ng.connector.confluent_kafka.metadata import KafkaInputMetadata
 
 
 class TestKafkaInputMetadata:
