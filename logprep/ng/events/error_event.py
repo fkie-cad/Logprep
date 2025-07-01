@@ -15,8 +15,6 @@ class ErrorEvent(Event):
     ErrorEvent represents a failed event.
     """
 
-    __slots__ = ("_data", "_state", "_encoder")
-
     def __init__(
         self, log_event: LogEvent, reason: Exception, *, state: EventState | None = None
     ) -> None:
@@ -24,29 +22,15 @@ class ErrorEvent(Event):
         Parameters
         ----------
         log_event : LogEvent
-            The event that could not be delivered or processed.
-
-        Attributes
-        ----------
-        data : dict
-            A dictionary holding the error information:
-            {
-                "@timestamp": str (ISO-8601),
-                "reason": str,
-                "original": bytes,
-                "event": bytes
-            }
+            The event causing the error.
+        reason : Exception
+            The reason for the error, typically an exception.
+        state : EventState, optional
+            An optional initial EventState. Defaults to a new EventState() if not provided.
         """
-        self._state: EventState = EventState() if state is None else state
         now = datetime.now(timezone.utc).isoformat()
-        self._encoder: msgspec.json.Encoder = msgspec.json.Encoder()
         original = log_event.original
-
-        try:
-            event_bytes = self._encoder.encode(log_event.data)
-        except (msgspec.EncodeError, TypeError) as e:
-            raise e
-
+        event_bytes = str(log_event.data).encode("utf-8")
         data: dict[str, Any] = {
             "@timestamp": now,
             "reason": str(reason),
@@ -54,16 +38,4 @@ class ErrorEvent(Event):
             "event": event_bytes,
         }
 
-        super().__init__(data=data, state=self._state)
-
-    @property
-    def state(self) -> EventState:
-        """Return the current EventState instance."""
-        return self._state
-
-    @state.setter
-    def state(self, value: EventState) -> None:
-        """
-        Assigns a new EventState.
-        """
-        self._state = value
+        super().__init__(data=data, state=state)
