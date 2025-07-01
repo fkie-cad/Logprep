@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from logprep.ng.abc.event import Event
-from logprep.ng.event_state import EventState
-from logprep.ng.events.log_event import LogEvent
+from logprep.ng.event.event_state import EventState
+from logprep.ng.event.log_event import LogEvent
 
 
 class ErrorEvent(Event):
