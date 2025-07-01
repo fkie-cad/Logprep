@@ -61,7 +61,7 @@ class Processor(Component):
     _strategy = None
     _bypass_rule_tree: bool
 
-    def __init__(self, name: str, configuration: "Processor.Config"):
+    def __init__(self, name: str, configuration: "Processor.Config") -> None:
         super().__init__(name, configuration)
         self._rule_tree = RuleTree(config=self._config.tree_config)
         self.load_rules(rules_targets=self._config.rules)
@@ -71,7 +71,7 @@ class Processor(Component):
             logger.debug("Bypassing rule tree for processor %s", self.name)
 
     @property
-    def rules(self):
+    def rules(self) -> List["Rule"]:
         """Returns all rules
 
         Returns
@@ -125,7 +125,7 @@ class Processor(Component):
             if rule.matches(event):
                 _process_rule(rule, event)
 
-    def _process_rule_tree(self, event: dict, tree: RuleTree):
+    def _process_rule_tree(self, event: dict, tree: RuleTree) -> None:
         applied_rules = set()
 
         @Metric.measure_time()
@@ -135,14 +135,14 @@ class Processor(Component):
             applied_rules.add(rule)
             return event
 
-        def _process_rule_tree_multiple_times(tree: RuleTree, event: dict):
+        def _process_rule_tree_multiple_times(tree: RuleTree, event: dict) -> None:
             matching_rules = tree.get_matching_rules(event)
             while matching_rules:
                 for rule in matching_rules:
                     _process_rule(rule, event)
                 matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
-        def _process_rule_tree_once(tree: RuleTree, event: dict):
+        def _process_rule_tree_once(tree: RuleTree, event: dict) -> None:
             matching_rules = tree.get_matching_rules(event)
             for rule in matching_rules:
                 _process_rule(rule, event)
@@ -152,7 +152,7 @@ class Processor(Component):
         else:
             _process_rule_tree_once(tree, event)
 
-    def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
+    def _apply_rules_wrapper(self, event: dict, rule: "Rule") -> None:
         try:
             self._apply_rules(event, rule)
         except ProcessingWarning as error:
@@ -209,7 +209,9 @@ class Processor(Component):
                 return False
         return True
 
-    def _handle_warning_error(self, event, rule, error, failure_tags=None):
+    def _handle_warning_error(
+        self, event: dict, rule: "Rule", error: Exception, failure_tags: list | None = None
+    ) -> None:
         tags = get_dotted_field_value(event, "tags")
         if failure_tags is None:
             failure_tags = rule.failure_tags
@@ -229,7 +231,7 @@ class Processor(Component):
         else:
             self._event.warnings.append(ProcessingWarning(str(error), rule, event))
 
-    def _has_missing_values(self, event, rule, source_field_dict):
+    def _has_missing_values(self, event: dict, rule: "Rule", source_field_dict: dict) -> bool:
         missing_fields = list(
             dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
         )
@@ -249,7 +251,7 @@ class Processor(Component):
             overwrite_target=rule.overwrite_target,
         )
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup
