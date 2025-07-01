@@ -5,8 +5,6 @@
 # pylint: disable=attribute-defined-outside-init
 
 
-import pytest
-
 from logprep.ng.abc.event import Event
 from logprep.ng.event_state import EventState, EventStateType
 from logprep.ng.events.error_event import ErrorEvent
@@ -33,16 +31,17 @@ class TestErrorEvents(TestEventClass):
             extra_data=[],
         )
 
-    def test_error_event_initializes_correctly(self) -> None:
+    def test_error_event_initializes(self) -> None:
         self.log_event.extra_data = [self.child2_event]
         error_event = ErrorEvent(log_event=self.log_event, reason=ValueError("Some value is wrong"))
 
         assert isinstance(error_event.data["@timestamp"], str)
         assert error_event.data["original"] == b"raw"
         assert isinstance(error_event.data["event"], bytes)
-        assert error_event.data["event"] == b'{"foo":"bar"}'
+        assert error_event.data["event"] == b"{'foo': 'bar'}"
         assert isinstance(error_event.data["reason"], str)
         assert error_event.data["reason"] == "Some value is wrong"
+        assert error_event.data["event"] == str(self.log_event.data).encode("utf-8")
 
     def test_error_event_preserves_state_on_init(self) -> None:
         state = EventState()
@@ -54,9 +53,3 @@ class TestErrorEvents(TestEventClass):
         )
 
         assert error_event.state.current_state is EventStateType.STORED_IN_OUTPUT
-
-    def test_unserializable_event_raises_encode_error(self):
-        self.log_event.extra_data = [self.child2_event]
-        self.log_event.data["bad"] = lambda x: x + 1
-        with pytest.raises(TypeError):
-            ErrorEvent(log_event=self.log_event, reason=ValueError("Some value is wrong"))

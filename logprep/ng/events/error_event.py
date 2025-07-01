@@ -3,8 +3,6 @@
 from datetime import datetime, timezone
 from typing import Any
 
-import msgspec
-
 from logprep.ng.abc.event import Event
 from logprep.ng.event_state import EventState
 from logprep.ng.events.log_event import LogEvent
