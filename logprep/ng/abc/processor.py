@@ -10,7 +10,7 @@ from attrs import define, field, validators
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
-from logprep.ng.events.log_event import LogEvent
+from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import (
     ProcessingCriticalError,
     ProcessingError,
