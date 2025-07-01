@@ -76,16 +76,6 @@ class TestLogEvents(TestEventClass):
         with pytest.raises(ValueError, match="not all extra_data events are DELIVERED"):
             log_event.state.next_state(success=True)
 
-    def test_log_event_direct_state_assignment_succeeds_if_all_extra_data_delivered(self) -> None:
-        child = DummyEvent({"child": "ok"})
-        child.state.current_state = EventStateType.DELIVERED
-        log_event = LogEvent(data={"parent": "x"}, original=b"...", extra_data=[child])
-        new_state = EventState()
-        new_state.current_state = EventStateType.DELIVERED
-        log_event.state = new_state
-
-        assert log_event.state.current_state is EventStateType.DELIVERED
-
     def test_next_state_validation_helper_returns_new_state(self):
         sub_event = Mock(spec=Event)
         sub_event.state.current_state = EventStateType.DELIVERED

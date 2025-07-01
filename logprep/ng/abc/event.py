@@ -27,7 +27,7 @@ class Event(ABC):
     Encapsulates data, warnings, errors, and processing state.
     """
 
-    __slots__: tuple[str, ...] = ("data", "state", "errors", "warnings")
+    __slots__: tuple[str, ...] = ("data", "_state", "errors", "warnings")
 
     def __init__(
         self,
@@ -73,7 +73,7 @@ class Event(ABC):
         True
         """
 
-        self.state: EventState = EventState() if state is None else state
+        self._state: EventState = EventState() if state is None else state
         self.data: dict[str, Any] = data
         self.warnings: list[str] = []
         self.errors: list[Exception] = []
@@ -112,6 +112,15 @@ class Event(ABC):
         """
 
         return hash(self._deep_freeze(self.data))
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(data={self.data}, state={self.state.current_state})"
+
+    @property
+    def state(self) -> EventState:
+        """Return the current EventState instance."""
+
+        return self._state
 
     def _deep_freeze(self, obj: Any) -> Any:
         """

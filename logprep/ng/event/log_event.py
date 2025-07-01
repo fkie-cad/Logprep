@@ -62,34 +62,6 @@ class LogEvent(Event):
         self._origin_state_next_state_fn = partial(EventState.next_state, self._state)
         setattr(self._state, "next_state", self._next_state_validation_helper)
 
-    @property
-    def state(self) -> EventState:
-        """Return the current EventState instance."""
-
-        return self._state
-
-    @state.setter
-    def state(self, value: EventState) -> None:
-        """
-        Prevent assignment of a DELIVERED state if not all extra_data events are DELIVERED.
-
-        Parameters
-        ----------
-        value : EventState
-            The state to assign.
-
-        Raises
-        ------
-        ValueError
-            If value.state is DELIVERED but any sub-event is not DELIVERED.
-        """
-        self._validate_state(value.current_state)  # type: ignore
-        self._state = value
-
-        # Wrap next_state again if needed
-        self._origin_state_next_state_fn = self._state.next_state
-        setattr(self._state, "next_state", self._next_state_validation_helper)
-
     def _next_state_validation_helper(
         self, *, success: bool | None = None
     ) -> EventStateType | None:
