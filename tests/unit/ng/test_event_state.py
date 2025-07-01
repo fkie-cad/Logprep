@@ -3,7 +3,7 @@
 
 import pytest
 
-from logprep.ng.event_state import EventState, EventStateType
+from logprep.ng.event.event_state import EventState, EventStateType
 
 
 @pytest.mark.parametrize(

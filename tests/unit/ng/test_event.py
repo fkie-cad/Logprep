@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from logprep.ng.abc.event import Event
-from logprep.ng.event_state import EventState
+from logprep.ng.event.event_state import EventState
 
 
 class DummyEvent(Event):

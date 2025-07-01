@@ -8,8 +8,8 @@ from unittest.mock import Mock
 import pytest
 
 from logprep.ng.abc.event import Event
+from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event_state import EventState, EventStateType
 from tests.unit.ng.test_event import TestEventClass
 
 

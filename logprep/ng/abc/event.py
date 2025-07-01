@@ -5,7 +5,7 @@
 from abc import ABC
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from logprep.ng.event_state import EventState
+from logprep.ng.event.event_state import EventState
 from logprep.util.helper import (
     add_fields_to,
     get_dotted_field_value,
