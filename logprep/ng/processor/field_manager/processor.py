@@ -115,7 +115,7 @@ class FieldManager(Processor):
         return ordered_flatten_list
 
     def _handle_missing_fields(
-        self, event: dict, rule: "Rule", source_fields: Iterable, field_values: list
+        self, event: dict, rule: "Rule", source_fields: Iterable, field_values: Iterable
     ) -> bool:
         if rule.ignore_missing_fields:
             return False
