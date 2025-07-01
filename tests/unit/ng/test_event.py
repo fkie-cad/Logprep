@@ -260,4 +260,6 @@ class TestEventClass:
 
     def test_event_repr(self):
         event = DummyEvent({"user": {"id": 42, "name": "Alice"}})
-        assert repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=receiving)"
+        assert (
+            repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=receiving)"
+        )

@@ -76,7 +76,6 @@ class TestLogEvents(TestEventClass):
         with pytest.raises(ValueError, match="not all extra_data events are DELIVERED"):
             log_event.state.next_state(success=True)
 
-
     def test_next_state_validation_helper_returns_new_state(self):
         sub_event = Mock(spec=Event)
         sub_event.state.current_state = EventStateType.DELIVERED
