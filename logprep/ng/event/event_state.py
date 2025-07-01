@@ -1,6 +1,7 @@
 """The event classes and related types"""
 
 from enum import StrEnum
+from typing import cast
 
 
 class EventStateType(StrEnum):
@@ -81,7 +82,7 @@ class EventState:
         EventStateType.ACKED,
     }
 
-    _state_machine: dict[str, list[str]] = {}  # Will be initialized lazily
+    _state_machine: dict[EventStateType, list[EventStateType]] = {}  # Will be initialized lazily
     """Class-level state transition map, initialized once and shared across
     all instances."""
 
@@ -91,40 +92,50 @@ class EventState:
         if not EventState._state_machine:
             EventState._state_machine = EventState._construct_state_machine()
 
-        self.current_state: str = EventStateType.RECEIVING
+        self.current_state: EventStateType = cast(EventStateType, EventStateType.RECEIVING)
 
     @staticmethod
-    def _construct_state_machine() -> dict[str, list[str]]:
+    def _construct_state_machine() -> dict[EventStateType, list[EventStateType]]:
         """
         Define the valid state transitions as an adjacency list.
 
         Returns
         -------
-        dict[EventStateType, list[str]]
+        dict[EventStateType, list[EventStateType]]
             A dictionary mapping each state to its allowed successor states.
         """
 
         return {
-            EventStateType.RECEIVING: [EventStateType.RECEIVED],
-            EventStateType.RECEIVED: [EventStateType.PROCESSING],
-            EventStateType.PROCESSING: [
-                EventStateType.FAILED,
-                EventStateType.PROCESSED,
+            cast(EventStateType, EventStateType.RECEIVING): [
+                cast(EventStateType, EventStateType.RECEIVED)
             ],
-            EventStateType.PROCESSED: [EventStateType.STORED_IN_OUTPUT],
-            EventStateType.STORED_IN_OUTPUT: [
-                EventStateType.FAILED,
-                EventStateType.DELIVERED,
+            cast(EventStateType, EventStateType.RECEIVED): [
+                cast(EventStateType, EventStateType.PROCESSING)
             ],
-            EventStateType.FAILED: [EventStateType.STORED_IN_ERROR],
-            EventStateType.STORED_IN_ERROR: [
-                EventStateType.FAILED,
-                EventStateType.DELIVERED,
+            cast(EventStateType, EventStateType.PROCESSING): [
+                cast(EventStateType, EventStateType.FAILED),
+                cast(EventStateType, EventStateType.PROCESSED),
             ],
-            EventStateType.DELIVERED: [EventStateType.ACKED],
+            cast(EventStateType, EventStateType.PROCESSED): [
+                cast(EventStateType, EventStateType.STORED_IN_OUTPUT)
+            ],
+            cast(EventStateType, EventStateType.STORED_IN_OUTPUT): [
+                cast(EventStateType, EventStateType.FAILED),
+                cast(EventStateType, EventStateType.DELIVERED),
+            ],
+            cast(EventStateType, EventStateType.FAILED): [
+                cast(EventStateType, EventStateType.STORED_IN_ERROR)
+            ],
+            cast(EventStateType, EventStateType.STORED_IN_ERROR): [
+                cast(EventStateType, EventStateType.FAILED),
+                cast(EventStateType, EventStateType.DELIVERED),
+            ],
+            cast(EventStateType, EventStateType.DELIVERED): [
+                cast(EventStateType, EventStateType.ACKED)
+            ],
         }
 
-    def next_state(self, *, success: bool | None = None) -> str:
+    def next_state(self, *, success: bool | None = None) -> EventStateType:
         """
         Advance to the next logical state based on the current state.
 
@@ -170,7 +181,7 @@ class EventState:
         raise ValueError("Invalid state transition: Ambiguous event without success.")
 
     @classmethod
-    def _resolve_by_success_flag(cls, options: list[str], success: bool) -> str | None:
+    def _resolve_by_success_flag(cls, options: list[EventStateType], success: bool) -> EventStateType | None:
         """
         Resolve a path when multiple options are available based on success.
 
@@ -183,7 +194,7 @@ class EventState:
 
         Returns
         -------
-        str or None
+        EventStateType or None
             The chosen next state, or None if no suitable match was found.
         """
 
@@ -193,7 +204,7 @@ class EventState:
     def reset(self) -> None:
         """Reset the event state to the initial state (RECEIVING)."""
 
-        self.current_state = EventStateType.RECEIVING
+        self.current_state = cast(EventStateType, EventStateType.RECEIVING)
 
     def __str__(self) -> str:
         """
