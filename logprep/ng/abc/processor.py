@@ -11,11 +11,7 @@ from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
 from logprep.ng.event.log_event import LogEvent
-from logprep.processor.base.exceptions import (
-    ProcessingCriticalError,
-    ProcessingError,
-    ProcessingWarning,
-)
+from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
 from logprep.util.rule_loader import RuleLoader
 
@@ -23,52 +19,6 @@ if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
 
 logger = logging.getLogger("Processor")
-
-
-@define(kw_only=True)
-class ProcessorResult:
-    """
-    Result object to be returned by every processor. It contains the processor name, created data
-    and errors (incl. warnings).
-
-    Parameters
-    ----------
-
-
-    processor_name : str
-        The name of the processor
-    event: Optional[dict]
-        A reference to the event that was processed
-    data : Optional[list]
-        The generated extra data
-    errors : Optional[list]
-        The errors that occurred during processing
-    warnings : Optional[list]
-        The warnings that occurred during processing
-    """
-
-    data: list = field(validator=validators.instance_of(list), factory=list)
-    """ The generated extra data """
-    errors: list = field(
-        validator=validators.deep_iterable(
-            member_validator=validators.instance_of(ProcessingError),
-            iterable_validator=validators.instance_of(list),
-        ),
-        factory=list,
-    )
-    """ The errors that occurred during processing """
-    warnings: list = field(
-        validator=validators.deep_iterable(
-            member_validator=validators.instance_of(ProcessingWarning),
-            iterable_validator=validators.instance_of(list),
-        ),
-        factory=list,
-    )
-    """ The warnings that occurred during processing """
-    event: dict | None = field(validator=validators.instance_of((dict, type(None))), default=None)
-    """ A reference to the event that was processed """
-    processor_name: str = field(validator=validators.instance_of(str))
-    """ The name of the processor """
 
 
 class Processor(Component):
@@ -87,7 +37,8 @@ class Processor(Component):
         """List of rule locations to load rules from.
         In addition to paths to file directories it is possible to retrieve rules from a URI.
         For valid URI formats see :ref:`getters`.
-        As last option it is possible to define entire rules with all their configuration parameters as list elements.
+        As last option it is possible to define entire rules with all their configuration parameters
+        as list elements.
         """
         tree_config: str | None = field(
             default=None, validator=validators.instance_of((str, type(None)))
@@ -101,7 +52,6 @@ class Processor(Component):
     __slots__ = [
         "_event",
         "_rule_tree",
-        "result",
         "_bypass_rule_tree",
     ]
 
