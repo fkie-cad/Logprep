@@ -93,7 +93,6 @@ import joblib
 from attr import define, field, validators
 
 from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
-from logprep.ng.abc.processor import Processor
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
@@ -131,7 +130,7 @@ class Amides(FieldManager):
         """
 
     @define(kw_only=True)
-    class Metrics(Processor.Metrics):
+    class Metrics(FieldManager.Metrics):
         """Track statistics specific for Amides processor instances."""
 
         total_cmdlines: CounterMetric = field(
