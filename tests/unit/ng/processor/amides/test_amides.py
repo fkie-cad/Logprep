@@ -5,6 +5,7 @@ import re
 from copy import deepcopy
 from multiprocessing import current_process
 from pathlib import Path
+from unittest import mock
 
 import pytest
 import responses
@@ -220,3 +221,19 @@ class TestAmides(BaseProcessorTestCase):
             assert loaded_file.exists()
             loaded_checksum = hashlib.md5(loaded_file.read_bytes()).hexdigest()  # nosemgrep
             assert expected_checksum == loaded_checksum
+
+    def test_normalizer_returns_empty_string(self):
+        with mock.patch.object(self.object, "_normalizer") as mock_normalizer:
+            with mock.patch.object(self.object, "_write_target_field") as mock_write_target:
+                mock_normalizer.normalize = mock.MagicMock()
+                mock_normalizer.normalize.return_value = ""
+                document = {
+                    "winlog": {
+                        "event_id": 1,
+                        "provider_name": "Microsoft-Windows-Sysmon",
+                        "event_data": {"CommandLine": "cmd.exe /c taskkill.exe /im cmd.exe"},
+                    }
+                }
+                event = LogEvent(document, original=b"")
+                self.object.process(event)
+                mock_write_target.assert_not_called()
