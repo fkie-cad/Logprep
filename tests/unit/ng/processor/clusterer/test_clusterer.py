@@ -114,8 +114,12 @@ class TestClusterer(BaseProcessorTestCase):
             "clusterable": False,
         }
 
-        assert self.object._is_clusterable(log_with_facility_and_severity_clusterable_true, "message")
-        assert not self.object._is_clusterable(log_with_facility_and_severity_clusterable_false, "message")
+        assert self.object._is_clusterable(
+            log_with_facility_and_severity_clusterable_true, "message"
+        )
+        assert not self.object._is_clusterable(
+            log_with_facility_and_severity_clusterable_false, "message"
+        )
 
     def test_cluster_signature_contains_facility_and_severity_prefix(self):
         log_with_facility_and_severity = {
@@ -125,7 +129,7 @@ class TestClusterer(BaseProcessorTestCase):
         }
         event = LogEvent(log_with_facility_and_severity, original=b"test")
         result_event = self.object.process(event)
-        
+
         assert "cluster_signature" in result_event.data
         cluster_signature = result_event.data["cluster_signature"]
         assert cluster_signature.startswith("3 , 6 ,")
