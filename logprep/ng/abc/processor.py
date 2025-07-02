@@ -55,7 +55,7 @@ class Processor(Component):
         "_bypass_rule_tree",
     ]
 
-    rule_class: ClassVar["Type[Rule] | None"] = None
+    rule_class: ClassVar[Type["Rule"] | None] = None
     _event: LogEvent
     _rule_tree: RuleTree
     _strategy = None
