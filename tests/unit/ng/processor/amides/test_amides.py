@@ -48,8 +48,8 @@ class TestAmides(BaseProcessorTestCase):
                 "event_data": {"CommandLine": "cmd.exe /c taskkill.exe /im cmd.exe"},
             },
         }
-
-        self.object.process(document)
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
 
         result = document.get("amides")
         assert result

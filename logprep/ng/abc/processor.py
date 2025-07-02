@@ -24,6 +24,9 @@ logger = logging.getLogger("Processor")
 class Processor(Component):
     """Abstract Processor Class to define the Interface"""
 
+    class Metrics(Component.Metrics):
+        """Metrics for Processor"""
+
     @define(kw_only=True, slots=False)
     class Config(Component.Config):
         """Common Configurations"""
