@@ -18,7 +18,8 @@ from ruamel.yaml import YAML
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
-from logprep.ng.abc.processor import Processor, ProcessorResult
+from logprep.ng.abc.processor import Processor
+from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
     ProcessingCriticalError,
@@ -92,28 +93,31 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             self.patchers.append(patcher)
         super().setup_method()
         self.rules = self.set_rules(self.rules_dirs)
-        self.match_all_event = {
-            "message": "event",
-            "winlog": {
-                "event_id": 1,
-                "provider_name": "Microsoft-Windows-Sysmon",
-                "event_data": {"IpAddress": "127.0.0.54"},
+        self.match_all_event = LogEvent(
+            {
+                "message": "event",
+                "winlog": {
+                    "event_id": 1,
+                    "provider_name": "Microsoft-Windows-Sysmon",
+                    "event_data": {"IpAddress": "127.0.0.54"},
+                },
+                "field1": "foo",
+                "field2": "bar",
+                "another_random_field": "baz",
+                "@timestamp": "2021-01-01T00:00:00.000Z",
+                "delete_event": "does not matter",
+                "irrelevant": "does not matter",
+                "url": "http://example.local",
+                "drop_me": "does not matter",
+                "add_generic_test": "does not matter",
+                "anything": "does not matter",
+                "client": {"ip": "127.0.0.54"},
+                "ips": ["127.0.0.54", "192.168.4.33"],
+                "applyrule": "yes",
+                "A": "foobarfoo",
             },
-            "field1": "foo",
-            "field2": "bar",
-            "another_random_field": "baz",
-            "@timestamp": "2021-01-01T00:00:00.000Z",
-            "delete_event": "does not matter",
-            "irrelevant": "does not matter",
-            "url": "http://example.local",
-            "drop_me": "does not matter",
-            "add_generic_test": "does not matter",
-            "anything": "does not matter",
-            "client": {"ip": "127.0.0.54"},
-            "ips": ["127.0.0.54", "192.168.4.33"],
-            "applyrule": "yes",
-            "A": "foobarfoo",
-        }  # this is an event that can be used in all processor tests, cause it matches everywhere
+            original="",
+        )  # this is an event that can be used in all processor tests, cause it matches everywhere
 
     def teardown_method(self) -> None:
         """teardown for all methods"""
@@ -192,7 +196,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
 
     @mock.patch("logging.Logger.debug")
     def test_process_writes_debug_messages(self, mock_debug):
-        event = {}
+        event = LogEvent({}, original=b"")
         self.object.process(event)
         mock_debug.assert_called()
 
@@ -262,15 +266,12 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         for metric1, metric2 in pairs:
             assert metric1.name != metric2.name, f"{metric1.name} == {metric2.name}"
 
-    def test_process_return_result_object(self):
-        event = {"some": "event"}
+    def test_process_return_event_object(self):
+        event = LogEvent({"some": "event"}, original=b"")
         result = self.object.process(event)
-        assert isinstance(result, ProcessorResult)
-        assert isinstance(result.data, list)
-        assert isinstance(result.errors, list)
-        assert result.processor_name == "Test Instance Name"
+        assert isinstance(result, LogEvent)
 
-    def test_process_collects_errors_in_result_object(self):
+    def test_process_collects_errors_in_event_object(self):
         with mock.patch.object(
             self.object,
             "_apply_rules",
@@ -278,10 +279,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         ):
             result = self.object.process(self.match_all_event)
         assert len(result.errors) > 0, "minimum one error should be in result object"
-
-    def test_result_object_has_reference_to_event(self):
-        result = self.object.process(self.match_all_event)
-        assert result.event is self.match_all_event
 
     def test_invalid_rule_raises(self, caplog):
         rule_definition = {"filter": "test", "does_not_exist": "test"}

@@ -10,69 +10,15 @@ from attrs import define, field, validators
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
-from logprep.processor.base.exceptions import (
-    ProcessingCriticalError,
-    ProcessingError,
-    ProcessingWarning,
-)
-from logprep.util.helper import (
-    add_and_overwrite,
-    add_fields_to,
-    get_dotted_field_value,
-    pop_dotted_field_value,
-)
+from logprep.ng.event.log_event import LogEvent
+from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
 from logprep.util.rule_loader import RuleLoader
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
 
 logger = logging.getLogger("Processor")
-
-
-@define(kw_only=True)
-class ProcessorResult:
-    """
-    Result object to be returned by every processor. It contains the processor name, created data
-    and errors (incl. warnings).
-
-    Parameters
-    ----------
-
-
-    processor_name : str
-        The name of the processor
-    event: Optional[dict]
-        A reference to the event that was processed
-    data : Optional[list]
-        The generated extra data
-    errors : Optional[list]
-        The errors that occurred during processing
-    warnings : Optional[list]
-        The warnings that occurred during processing
-    """
-
-    data: list = field(validator=validators.instance_of(list), factory=list)
-    """ The generated extra data """
-    errors: list = field(
-        validator=validators.deep_iterable(
-            member_validator=validators.instance_of(ProcessingError),
-            iterable_validator=validators.instance_of(list),
-        ),
-        factory=list,
-    )
-    """ The errors that occurred during processing """
-    warnings: list = field(
-        validator=validators.deep_iterable(
-            member_validator=validators.instance_of(ProcessingWarning),
-            iterable_validator=validators.instance_of(list),
-        ),
-        factory=list,
-    )
-    """ The warnings that occurred during processing """
-    event: dict | None = field(validator=validators.instance_of((dict, type(None))), default=None)
-    """ A reference to the event that was processed """
-    processor_name: str = field(validator=validators.instance_of(str))
-    """ The name of the processor """
 
 
 class Processor(Component):
@@ -91,7 +37,8 @@ class Processor(Component):
         """List of rule locations to load rules from.
         In addition to paths to file directories it is possible to retrieve rules from a URI.
         For valid URI formats see :ref:`getters`.
-        As last option it is possible to define entire rules with all their configuration parameters as list elements.
+        As last option it is possible to define entire rules with all their configuration parameters
+        as list elements.
         """
         tree_config: str | None = field(
             default=None, validator=validators.instance_of((str, type(None)))
@@ -105,29 +52,26 @@ class Processor(Component):
     __slots__ = [
         "_event",
         "_rule_tree",
-        "result",
         "_bypass_rule_tree",
     ]
 
-    rule_class: ClassVar["Type[Rule] | None"] = None
-    _event: dict
+    rule_class: ClassVar[Type["Rule"] | None] = None
+    _event: LogEvent
     _rule_tree: RuleTree
     _strategy = None
     _bypass_rule_tree: bool
-    result: ProcessorResult | None
 
-    def __init__(self, name: str, configuration: "Processor.Config"):
+    def __init__(self, name: str, configuration: "Processor.Config") -> None:
         super().__init__(name, configuration)
         self._rule_tree = RuleTree(config=self._config.tree_config)
         self.load_rules(rules_targets=self._config.rules)
-        self.result = None
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
             logger.debug("Bypassing rule tree for processor %s", self.name)
 
     @property
-    def rules(self):
+    def rules(self) -> List["Rule"]:
         """Returns all rules
 
         Returns
@@ -146,7 +90,7 @@ class Processor(Component):
             "name": self.name,
         }
 
-    def process(self, event: dict) -> ProcessorResult:
+    def process(self, event: LogEvent) -> LogEvent:
         """Process a log event.
 
         Parameters
@@ -156,20 +100,20 @@ class Processor(Component):
 
         Returns
         -------
-        ProcessorResult
-            A ProcessorResult object containing the processed event, errors,
-            extra data and a list of target outputs.
+        LogEvent
+            A LogEvent object containing the processed event, errors, warnings and
+            extra data
 
         """
-        self.result = ProcessorResult(processor_name=self.name, event=event)  # type: ignore
+        self._event = event
         logger.debug("%s processing event %s", self.describe(), event)
         if self._bypass_rule_tree:
-            self._process_all_rules(event)
-            return self.result
-        self._process_rule_tree(event, self._rule_tree)
-        return self.result
+            self._process_all_rules(event.data)
+            return self._event
+        self._process_rule_tree(event.data, self._rule_tree)
+        return self._event
 
-    def _process_all_rules(self, event: dict):
+    def _process_all_rules(self, event: dict) -> None:
 
         @Metric.measure_time()
         def _process_rule(rule, event):
@@ -181,7 +125,7 @@ class Processor(Component):
             if rule.matches(event):
                 _process_rule(rule, event)
 
-    def _process_rule_tree(self, event: dict, tree: RuleTree):
+    def _process_rule_tree(self, event: dict, tree: RuleTree) -> None:
         applied_rules = set()
 
         @Metric.measure_time()
@@ -191,14 +135,14 @@ class Processor(Component):
             applied_rules.add(rule)
             return event
 
-        def _process_rule_tree_multiple_times(tree: RuleTree, event: dict):
+        def _process_rule_tree_multiple_times(tree: RuleTree, event: dict) -> None:
             matching_rules = tree.get_matching_rules(event)
             while matching_rules:
                 for rule in matching_rules:
                     _process_rule(rule, event)
                 matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
-        def _process_rule_tree_once(tree: RuleTree, event: dict):
+        def _process_rule_tree_once(tree: RuleTree, event: dict) -> None:
             matching_rules = tree.get_matching_rules(event)
             for rule in matching_rules:
                 _process_rule(rule, event)
@@ -208,29 +152,29 @@ class Processor(Component):
         else:
             _process_rule_tree_once(tree, event)
 
-    def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
+    def _apply_rules_wrapper(self, event: dict, rule: "Rule") -> None:
         try:
             self._apply_rules(event, rule)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
-            if self.result is None:
+            if self._event is None:
                 raise error
-            self.result.errors.append(error)  # is needed to prevent wrapping it in itself
+            self._event.errors.append(error)  # is needed to prevent wrapping it in itself
             event.clear()
         except Exception as error:  # pylint: disable=broad-except
-            if self.result is None:
+            if self._event is None:
                 raise error
-            self.result.errors.append(ProcessingCriticalError(str(error), rule))
+            self._event.errors.append(ProcessingCriticalError(str(error), rule))
             event.clear()
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:
             for dotted_field in rule.source_fields:
-                pop_dotted_field_value(event, dotted_field)
+                self._event.pop_dotted_field_value(dotted_field)
 
     @abstractmethod
-    def _apply_rules(self, event, rule): ...  # pragma: no cover
+    def _apply_rules(self, event: dict, rule: "Rule"): ...  # pragma: no cover
 
     def test_rules(self) -> dict | None:
         """Perform custom rule tests.
@@ -265,7 +209,9 @@ class Processor(Component):
                 return False
         return True
 
-    def _handle_warning_error(self, event, rule, error, failure_tags=None):
+    def _handle_warning_error(
+        self, event: dict, rule: "Rule", error: Exception, failure_tags: list | None = None
+    ) -> None:
         tags = get_dotted_field_value(event, "tags")
         if failure_tags is None:
             failure_tags = rule.failure_tags
@@ -281,11 +227,11 @@ class Processor(Component):
                 tags_list = tags if isinstance(tags, list) else [tags]
                 new_field = {"tags": sorted(list({*error.tags, *tags_list, *failure_tags}))}
                 add_and_overwrite(event, new_field, rule)
-            self.result.warnings.append(error)
+            self._event.warnings.append(error)
         else:
-            self.result.warnings.append(ProcessingWarning(str(error), rule, event))
+            self._event.warnings.append(ProcessingWarning(str(error), rule, event))
 
-    def _has_missing_values(self, event, rule, source_field_dict):
+    def _has_missing_values(self, event: dict, rule: "Rule", source_field_dict: dict) -> bool:
         missing_fields = list(
             dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
         )
@@ -305,7 +251,7 @@ class Processor(Component):
             overwrite_target=rule.overwrite_target,
         )
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup

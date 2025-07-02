@@ -4,6 +4,7 @@ import re
 
 import pytest
 
+from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
@@ -626,18 +627,20 @@ class TestFieldManager(BaseProcessorTestCase):
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
         self._load_rule(rule)
+        event = LogEvent(event, original=b"")
         self.object.process(event)
-        assert event == expected
+        assert event.data == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
         self._load_rule(rule)
+        event = LogEvent(event, original=b"")
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(error, str(result.warnings[0]))
-        assert event == expected, testcase
+        assert event.data == expected, testcase
 
-    def test_process_raises_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
+    def test_process_adds_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
         self,
     ):
         rule = {
@@ -651,13 +654,14 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
-        result = self.object.process(document)
+        event = LogEvent(document, original=b"")
+        result = self.object.process(event)
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert "target_field" in document
-        assert document.get("target_field") == "has already content"
-        assert document.get("tags") == ["_field_manager_failure"]
+        assert event.data.get("target_field") == "has already content"
+        assert event.data.get("tags") == ["_field_manager_failure"]
 
-    def test_process_raises_processing_warning_with_missing_fields(self):
+    def test_process_adds_processing_warning_with_missing_fields(self):
         rule = {
             "filter": "field.a",
             "field_manager": {
@@ -667,7 +671,8 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
-        result = self.object.process(document)
+        event = LogEvent(document, original=b"")
+        result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(
             r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]",
@@ -686,18 +691,19 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
+        event = LogEvent(document, original=b"")
         expected = {
             "field": {"a": "first", "b": "second"},
             "target_field": "first",
             "tags": ["_field_manager_missing_field_warning"],
         }
-        result = self.object.process(document)
+        result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(
             r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]",
             str(result.warnings[0]),
         )
-        assert document == expected
+        assert event.data == expected
 
     def test_process_dos_not_raises_processing_warning_with_missing_fields_and_event_is_processed(
         self, caplog
@@ -714,13 +720,14 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
+        event = LogEvent(document, original=b"")
         expected = {
             "field": {"a": "first", "b": "second"},
             "target_field": "first",
         }
         with caplog.at_level(logging.WARNING):
-            self.object.process(document)
+            self.object.process(event)
         assert not re.match(
             r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]", caplog.text
         )
-        assert document == expected
+        assert event.data == expected
