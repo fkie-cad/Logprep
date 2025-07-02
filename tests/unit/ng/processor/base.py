@@ -79,7 +79,11 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def _load_rule(self, rule: dict | Rule):
         assert isinstance(self.object, Processor)
         self.object._rule_tree = RuleTree()
-        rule = self.object.rule_class.create_from_dict(rule) if isinstance(rule, dict) else rule
+        rule = (
+            self.object.rule_class.create_from_dict(rule)
+            if isinstance(rule, dict) and self.object.rule_class is not None
+            else rule
+        )
         self.object._rule_tree.add_rule(rule)
 
     def setup_method(self) -> None:
@@ -231,7 +235,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_accepts_tree_config_from_http(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
-        tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
+        tree_config = Path("tests/testdata/unit/tree_config.json").read_text("utf-8")
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
         processor = Factory.create({"test instance": config})
         tree_config = json.loads(tree_config)

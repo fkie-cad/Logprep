@@ -3,7 +3,7 @@
 import logging
 import os
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Type
+from typing import TYPE_CHECKING, Any, ClassVar, Type
 
 from attrs import define, field, validators
 
@@ -28,7 +28,7 @@ class Processor(Component):
     class Config(Component.Config):
         """Common Configurations"""
 
-        rules: List[str] = field(
+        rules: list[str] = field(
             validator=[
                 validators.instance_of(list),
                 validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
@@ -71,7 +71,7 @@ class Processor(Component):
             logger.debug("Bypassing rule tree for processor %s", self.name)
 
     @property
-    def rules(self) -> List["Rule"]:
+    def rules(self) -> list["Rule"]:
         """Returns all rules
 
         Returns
@@ -185,7 +185,7 @@ class Processor(Component):
 
         """
 
-    def load_rules(self, rules_targets: List[str | Dict]) -> None:
+    def load_rules(self, rules_targets: list[str | dict]) -> None:
         """method to add rules from directories or urls"""
         try:
             rules = RuleLoader(rules_targets, self.name).rules
