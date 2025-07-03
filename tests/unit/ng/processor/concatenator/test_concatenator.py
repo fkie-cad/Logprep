@@ -3,13 +3,14 @@
 
 import pytest
 
+from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
-from tests.unit.processor.base import BaseProcessorTestCase
+from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
 class TestConcatenator(BaseProcessorTestCase):
     CONFIG = {
-        "type": "concatenator",
+        "type": "ng_concatenator",
         "rules": ["tests/testdata/unit/concatenator/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
@@ -157,9 +158,10 @@ class TestConcatenator(BaseProcessorTestCase):
         ],
     )
     def test_for_expected_output(self, test_case, rule, document, expected_output):
+        log_event = LogEvent(document, original=b"test_message")
         self._load_rule(rule)
-        self.object.process(document)
-        assert document == expected_output, test_case
+        self.object.process(log_event)
+        assert log_event == LogEvent(expected_output, original=b"test_message"), test_case
 
     def test_process_raises_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
         self,
@@ -175,10 +177,13 @@ class TestConcatenator(BaseProcessorTestCase):
             },
         }
         self._load_rule(rule)
-        document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
+        document = LogEvent(
+            {"field": {"a": "first", "b": "second"}, "target_field": "has already content"},
+            original=b"test_message",
+        )
         result = self.object.process(document)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
-        assert "target_field" in document
-        assert document.get("target_field") == "has already content"
-        assert document.get("tags") == ["_concatenator_failure"]
+        assert "target_field" in document.data
+        assert document.data["target_field"] == "has already content"
+        assert document.data["tags"] == ["_concatenator_failure"]

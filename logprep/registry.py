@@ -24,6 +24,7 @@ from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutp
 from logprep.generator.http.output import HttpGeneratorOutput
 from logprep.ng.processor.amides.processor import Amides as NgAmides
 from logprep.ng.processor.calculator.processor import Calculator as NGCalculator
+from logprep.ng.processor.concatenator.processor import Concatenator as NgConcatenator
 from logprep.ng.processor.field_manager.processor import FieldManager as NgFieldManager
 from logprep.processor.amides.processor import Amides
 from logprep.processor.base.rule import Rule
@@ -81,6 +82,7 @@ class Registry:
         "labeler": Labeler,
         "list_comparison": ListComparison,
         "ng_calculator": NGCalculator,
+        "ng_concatenator": NgConcatenator,
         "ng_field_manager": NgFieldManager,
         "ng_amides": NgAmides,
         "pre_detector": PreDetector,
