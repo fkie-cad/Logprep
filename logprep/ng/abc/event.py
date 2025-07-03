@@ -2,8 +2,8 @@
 
 """abstract module for event"""
 
-from abc import ABC
-from typing import TYPE_CHECKING, Any, Iterable, Literal, Optional, Sequence, Union
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
@@ -222,55 +222,36 @@ class EventBacklog(ABC):
         """
         Automatically wraps the subclass's `unregister` method to enforce a state check.
 
-        If a subclass defines its own `unregister` method, it is wrapped to ensure
-        that only allowed states (`FAILED`, `ACKED`) are accepted. This prevents
-        accidental misuse by enforcing validation at runtime.
+        Wrapping only happens if the subclass explicitly overrides `unregister`.
 
         Parameters
         ----------
         **kwargs : dict
             Additional keyword arguments passed to the superclass.
         """
-
         super().__init_subclass__(**kwargs)
 
-        orig_unregister = getattr(cls, "unregister", None)
+        if "unregister" in cls.__dict__:
+            original = cls.__dict__["unregister"]
 
-        def guarded_unregister(self, state_type: EventStateType) -> Sequence[Event]:
-            """
-            Wrapped version of the `unregister` method that enforces allowed states.
+            def guarded_unregister(self, state_type: EventStateType) -> Sequence[Event]:
+                """
+                Wrapper that enforces allowed final states for `unregister`.
 
-            Parameters
-            ----------
-            self : EventBacklog
-                The instance of the subclass calling `unregister`. Used to access the original method.
+                Raises
+                ------
+                ValueError
+                    If an invalid state is passed.
+                """
 
-            state_type : EventStateType
-                Final state of the event, must be `EventStateType.FAILED` or `EventStateType.ACKED`.
+                if state_type not in (EventStateType.FAILED, EventStateType.ACKED):
+                    raise ValueError(f"Invalid state_type: {state_type}")
 
-            Returns
-            -------
-            Sequence[Event]
-                Events that have been removed from the backlog for the given final state.
+                return original(self, state_type)
 
-            Raises
-            ------
-            ValueError
-                If an invalid state is passed.
-            NotImplementedError
-                If the original `unregister` method is not implemented.
-            """
+            setattr(cls, "unregister", guarded_unregister)
 
-            if state_type not in (EventStateType.FAILED, EventStateType.ACKED):
-                raise ValueError(f"Invalid state_type: {state_type}")
-
-            if orig_unregister:
-                return orig_unregister(self, state_type)
-
-            raise NotImplementedError("Subclasses must implement 'unregister' method.")
-
-        cls.unregister = guarded_unregister
-
+    @abstractmethod
     def register(self, events: Sequence[Event]) -> None:
         """
         Register one or more events to the backlog.
@@ -279,22 +260,16 @@ class EventBacklog(ABC):
         ----------
         events : Sequence[Event]
             A sequence of event instances to be added to the backlog.
-
-        Raises
-        ------
-        NotImplementedError
-            If the method is not implemented by the subclass.
         """
 
-        raise NotImplementedError("Subclasses must implement 'register' method.")
-
+    @abstractmethod
     def unregister(self, state_type: EventStateType) -> Sequence[Event]:
         """
         Unregister events from the backlog with the given final state.
 
         Parameters
         ----------
-        state_type : AllowedUnregisterStates
+        state_type : EventStateType
             Final state indicating why the events should be removed.
             Only `FAILED` and `ACKED` are permitted.
 
@@ -307,12 +282,9 @@ class EventBacklog(ABC):
         ------
         ValueError
             If an invalid state is passed (automatically enforced).
-        NotImplementedError
-            If the method is not implemented by the subclass.
         """
 
-        raise NotImplementedError("Subclasses must implement 'unregister' method.")
-
+    @abstractmethod
     def get(self, state_type: EventStateType) -> Sequence[Event]:
         """
         Retrieve all events currently in the backlog that match a specific processing state.
@@ -326,11 +298,4 @@ class EventBacklog(ABC):
         -------
         Sequence[Event]
             All events currently in the backlog with the specified state.
-
-        Raises
-        ------
-        NotImplementedError
-            If the method is not implemented by the subclass.
         """
-
-        raise NotImplementedError("Subclasses must implement 'get' method.")

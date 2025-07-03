@@ -13,44 +13,41 @@ class DummyEvent(Event):
 
 
 class TestEventBacklog:
-    def test_missing_register_raises(self):
-        class MissingRegister(EventBacklog):
-            def unregister(self, state_type: EventStateType) -> Sequence[Event]:
-                return []
+    def test_missing_register_prevents_instantiation(self):
+        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
 
-            def get(self, state_type: EventStateType) -> Sequence[Event]:
-                return []
+            class MissingRegister(EventBacklog):
+                def unregister(self, state_type: EventStateType) -> Sequence[Event]:
+                    return []
 
-        backlog = MissingRegister()
+                def get(self, state_type: EventStateType) -> Sequence[Event]:
+                    return []
 
-        with pytest.raises(NotImplementedError):
-            backlog.register([])
+            _ = MissingRegister()  # pylint: disable=abstract-class-instantiated
 
-    def test_missing_unregister_raises(self):
-        class MissingUnregister(EventBacklog):
-            def register(self, events: Sequence[Event]) -> None:
-                pass
+    def test_missing_unregister_prevents_instantiation(self):
+        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
 
-            def get(self, state_type: EventStateType) -> Sequence[Event]:
-                return []
+            class MissingUnregister(EventBacklog):
+                def register(self, events: Sequence[Event]) -> None:
+                    pass
 
-        backlog = MissingUnregister()
+                def get(self, state_type: EventStateType) -> Sequence[Event]:
+                    return []
 
-        with pytest.raises(NotImplementedError):
-            backlog.unregister(EventStateType.ACKED)
+            _ = MissingUnregister()  # pylint: disable=abstract-class-instantiated
 
-    def test_missing_get_raises(self):
-        class MissingGet(EventBacklog):
-            def register(self, events: Sequence[Event]) -> None:
-                pass
+    def test_missing_get_prevents_instantiation(self):
+        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
 
-            def unregister(self, state_type: EventStateType) -> Sequence[Event]:
-                return []
+            class MissingGet(EventBacklog):
+                def register(self, events: Sequence[Event]) -> None:
+                    pass
 
-        backlog = MissingGet()
+                def unregister(self, state_type: EventStateType) -> Sequence[Event]:
+                    return []
 
-        with pytest.raises(NotImplementedError):
-            backlog.get(EventStateType.RECEIVED)
+            _ = MissingGet()  # pylint: disable=abstract-class-instantiated
 
     def test_unregister_with_invalid_state_raises(self):
         class DummyBacklog(EventBacklog):
@@ -64,7 +61,6 @@ class TestEventBacklog:
                 return []
 
         backlog = DummyBacklog()
-
         with pytest.raises(ValueError, match="Invalid state_type"):
             backlog.unregister("unexpected")  # type: ignore
 
