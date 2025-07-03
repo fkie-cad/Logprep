@@ -51,6 +51,7 @@ from logprep.processor.clusterer.signature_calculation.signature_phase import (
     SignatureEngine,
     SignaturePhaseStreaming,
 )
+from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
 class Clusterer(FieldManager):
@@ -63,13 +64,22 @@ class Clusterer(FieldManager):
         output_field_name: str = field(validator=validators.instance_of(str))
         """defines in which field results of the clustering should be stored."""
 
+    __slots__ = ("sps", "_last_rule_id", "_last_non_extracted_signature")
+
     rule_class = ClustererRule
+
+    sps: SignaturePhaseStreaming
+
+    _last_rule_id: int
+
+    _last_non_extracted_signature: str | None
 
     def __init__(self, name: str, configuration: Processor.Config):
         super().__init__(name=name, configuration=configuration)
         self.sps = SignaturePhaseStreaming()
+
         self._last_rule_id = math.inf
-        self._last_non_extracted_signature: str | None = None
+        self._last_non_extracted_signature = None
 
     def _apply_rules(self, event, rule):
         source_field_values = self._get_field_values(event, rule.source_fields)
@@ -77,36 +87,38 @@ class Clusterer(FieldManager):
         if self._is_clusterable(event, rule.source_fields[0]):
             self._cluster(event, rule)
 
-    def _is_clusterable(self, event, source_field: str) -> bool:
+    def _is_clusterable(self, event: dict, source_field: str) -> bool:
         # The following blocks have not been extracted into functions for performance reasons
         # A message can only be clustered if it exists or if a clustering step exists
-        message = event.get_dotted_field_value(source_field)
+        message = get_dotted_field_value(event, source_field)
         if message is None and self._last_non_extracted_signature is None:
             return False
 
         # Return clusterable state if it exists, since it can be true or false
-        clusterable = event.get_dotted_field_value("clusterable")
+        clusterable = get_dotted_field_value(event, "clusterable")
         if clusterable is not None:
             return clusterable
 
         # Alternatively, check for a clusterable tag
-        tags = event.get_dotted_field_value("tags")
+        tags = get_dotted_field_value(event, "tags")
         if tags and "clusterable" in tags:
             return True
 
         # It is clusterable if a syslog with PRI exists even if no clusterable field exists
+        # has_facility = 'syslog' in event and 'facility' in event['syslog']
+        # has_severity = 'event' in event and 'severity' in event['event']
         if self._syslog_has_pri(event):
             return True
 
         return False
 
     @staticmethod
-    def _syslog_has_pri(event):
-        syslog_value = event.get_dotted_field_value("syslog")
-        event_value = event.get_dotted_field_value("event")
+    def _syslog_has_pri(event: dict):
+        syslog_value = get_dotted_field_value(event, "syslog")
+        event_value = get_dotted_field_value(event, "event")
         return not (syslog_value is None or event_value is None)
 
-    def _cluster(self, event, rule: ClustererRule):
+    def _cluster(self, event: dict, rule: ClustererRule):
         raw_text, sig_text = self._get_text_to_cluster(rule, event)
         if raw_text is None:
             return
@@ -121,17 +133,16 @@ class Clusterer(FieldManager):
         if self._syslog_has_pri(event):
             cluster_signature = " , ".join(
                 [
-                    str(event.get_dotted_field_value("syslog.facility")),
-                    str(event.get_dotted_field_value("event.severity")),
+                    str(get_dotted_field_value(event, "syslog.facility")),
+                    str(get_dotted_field_value(event, "event.severity")),
                     cluster_signature_based_on_message,
                 ]
             )
         else:
             cluster_signature = cluster_signature_based_on_message
-        
-        event.add_fields_to(
+        add_fields_to(
+            event,
             fields={self._config.output_field_name: cluster_signature},
-            rule=rule,
             merge_with_target=rule.merge_with_target,
             overwrite_target=rule.overwrite_target,
         )
@@ -145,14 +156,14 @@ class Clusterer(FieldManager):
         self._last_rule_id = rule_id
         return is_new_iteration
 
-    def _get_text_to_cluster(self, rule: ClustererRule, event) -> Tuple[str | None, str | None]:
+    def _get_text_to_cluster(self, rule: ClustererRule, event: dict) -> Tuple[str, str | None]:
         sig_text = None
         if self._is_new_tree_iteration(rule):
             self._last_non_extracted_signature = None
         else:
             sig_text = self._last_non_extracted_signature
         if sig_text is None:
-            raw_text = event.get_dotted_field_value(rule.source_fields[0])
+            raw_text = get_dotted_field_value(event, rule.source_fields[0])
         else:
             raw_text = sig_text
         return raw_text, sig_text
@@ -160,7 +171,7 @@ class Clusterer(FieldManager):
     def test_rules(self):
         results = {}
         for _, rule in enumerate(self.rules):
-            rule_repr = rule.__repr__()
+            rule_repr = repr(rule)
             results[rule_repr] = []
             try:
                 for test in rule.tests:

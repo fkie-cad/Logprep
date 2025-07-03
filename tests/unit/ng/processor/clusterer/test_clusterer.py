@@ -66,27 +66,22 @@ class TestClusterer(BaseProcessorTestCase):
         invalid_syslog_with_missing_tag = {"message": "Listen normally on 5 lo ::1 UDP 123\n"}
         invalid_syslog_with_none_message = {"message": None, "tags": ["clusterable"]}
 
-        event1 = LogEvent(sample_syslog_without_pri, original=b"")
-        event2 = LogEvent(sample_winevtlog, original=b"")
-        event3 = LogEvent(invalid_syslog_with_missing_tag, original=b"")
-        event4 = LogEvent(invalid_syslog_with_none_message, original=b"")
-
-        assert self.object._is_clusterable(event1, "message")
-        assert not self.object._is_clusterable(event2, "message")
-        assert not self.object._is_clusterable(event3, "message")
-        assert not self.object._is_clusterable(event4, "message")
+        assert self.object._is_clusterable(sample_syslog_without_pri, "message")
+        assert not self.object._is_clusterable(sample_winevtlog, "message")
+        assert not self.object._is_clusterable(invalid_syslog_with_missing_tag, "message")
+        assert not self.object._is_clusterable(invalid_syslog_with_none_message, "message")
 
     @mock.patch("logprep.ng.processor.clusterer.processor.Clusterer._is_clusterable")
     @mock.patch("logprep.ng.processor.clusterer.processor.Clusterer._cluster")
     def test_only_clusterable_logs_are_clustered(self, mock_cluster, mock_is_clusterable):
         mock_is_clusterable.return_value = False
-        event = LogEvent({"message": "test_message"}, original=b"")
+        event = LogEvent({"message": "test_message"}, original=b"test_message")
         self.object.process(event)
         mock_is_clusterable.assert_called()
         mock_cluster.assert_not_called()
 
         mock_is_clusterable.return_value = True
-        event = LogEvent({"message": "test_message"}, original=b"")
+        event = LogEvent({"message": "test_message"}, original=b"test_message")
         self.object.process(event)
         mock_is_clusterable.assert_called()
         assert mock_cluster.call_count == 2
@@ -101,11 +96,8 @@ class TestClusterer(BaseProcessorTestCase):
             "message": "Listen normally on 5 lo ::1 UDP 123\n"
         }
 
-        event1 = LogEvent(valid_syslog_with_facility_and_severity, original=b"")
-        event2 = LogEvent(invalid_syslog_with_missing_severity_and_facility, original=b"")
-
-        assert self.object._syslog_has_pri(event1)
-        assert not self.object._syslog_has_pri(event2)
+        assert self.object._syslog_has_pri(valid_syslog_with_facility_and_severity)
+        assert not self.object._syslog_has_pri(invalid_syslog_with_missing_severity_and_facility)
 
     def test_clusterable_field_determines_if_clusterable(self):
         """Check if clusterable has precedence over the existence of facility and severity"""
@@ -130,15 +122,14 @@ class TestClusterer(BaseProcessorTestCase):
             "clusterable": False,
         }
 
-        event1 = LogEvent(log_with_clusterable_field_equals_true, original=b"")
-        event2 = LogEvent(log_with_clusterable_field_equals_false, original=b"")
-        event3 = LogEvent(valid_syslog_with_clusterable_field_equals_true, original=b"")
-        event4 = LogEvent(syslog_with_clusterable_field_equals_false, original=b"")
-
-        assert self.object._is_clusterable(event1, "message")
-        assert self.object._is_clusterable(event3, "message")
-        assert not self.object._is_clusterable(event2, "message")
-        assert not self.object._is_clusterable(event4, "message")
+        assert self.object._is_clusterable(log_with_clusterable_field_equals_true, "message")
+        assert self.object._is_clusterable(
+            valid_syslog_with_clusterable_field_equals_true, "message"
+        )
+        assert not self.object._is_clusterable(log_with_clusterable_field_equals_false, "message")
+        assert not self.object._is_clusterable(
+            syslog_with_clusterable_field_equals_false, "message"
+        )
 
     def test_rule_tests(self):
         rule_definition = {
@@ -177,12 +168,12 @@ class TestClusterer(BaseProcessorTestCase):
             "message": "test signature test",
         }
 
-        event = LogEvent({"message": "test signature test"}, original=b"")
+        document = {"message": "test signature test"}
         rule = ClustererRule.create_from_dict(rule_definition)
         self.object._rule_tree.add_rule(rule)
-        self.object._cluster(event, rule)
+        self.object._cluster(document, rule)
 
-        assert event.data == expected
+        assert document == expected
 
     def test_rule_dependency_one(self, tmp_path):
         config = deepcopy(self.CONFIG)
@@ -249,20 +240,20 @@ class TestClusterer(BaseProcessorTestCase):
             "cluster_signature": "signature baz",
         }
 
-        event = LogEvent({"message": "test some signature xyz-foo"}, original=b"")
+        document = {"message": "test some signature xyz-foo"}
         for rule in rules:
-            clusterer._cluster(event, rule)
-        assert event.data == expected
+            clusterer._cluster(document, rule)
+        assert document == expected
 
-        event = LogEvent({"message": "test some signature xyz-foo"}, original=b"")
+        document = {"message": "test some signature xyz-foo"}
         for rule in rules:
-            clusterer._cluster(event, rule)
-        assert event.data == expected
+            clusterer._cluster(document, rule)
+        assert document == expected
 
-        event = LogEvent({"message": "test some signature xyz-foo"}, original=b"")
+        document = {"message": "test some signature xyz-foo"}
         for rule in rules[1:]:
-            clusterer._cluster(event, rule)
-        assert event.data == expected
+            clusterer._cluster(document, rule)
+        assert document == expected
 
     def test_rule_dependency_two(self, tmp_path):
         config = deepcopy(self.CONFIG)
@@ -275,10 +266,10 @@ class TestClusterer(BaseProcessorTestCase):
             "message": "test some signature xyz-foo",
             "cluster_signature": "test SIGN",
         }
-        event = LogEvent({
+        document = {
             "message": "test some signature xyz-foo",
             "cluster_signature": "signature baz",
-        }, original=b"")
+        }
 
         rule_0 = {
             "filter": "no_match",
@@ -325,5 +316,5 @@ class TestClusterer(BaseProcessorTestCase):
             clusterer._rule_tree.add_rule(new_rule)
 
         for rule in rules:
-            clusterer._cluster(event, rule)
-        assert event.data == expected
+            clusterer._cluster(document, rule)
+        assert document == expected
