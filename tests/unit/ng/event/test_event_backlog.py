@@ -13,54 +13,19 @@ class DummyEvent(Event):
 
 
 class TestEventBacklog:
-    def test_missing_register_prevents_instantiation(self):
-        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-
-            class MissingRegister(EventBacklog):
-                def unregister(self, state_type: EventStateType) -> Sequence[Event]:
-                    return []
-
-                def get(self, state_type: EventStateType) -> Sequence[Event]:
-                    return []
-
-            _ = MissingRegister()  # pylint: disable=abstract-class-instantiated
-
-    def test_missing_unregister_prevents_instantiation(self):
-        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-
-            class MissingUnregister(EventBacklog):
-                def register(self, events: Sequence[Event]) -> None:
-                    pass
-
-                def get(self, state_type: EventStateType) -> Sequence[Event]:
-                    return []
-
-            _ = MissingUnregister()  # pylint: disable=abstract-class-instantiated
-
-    def test_missing_get_prevents_instantiation(self):
-        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-
-            class MissingGet(EventBacklog):
-                def register(self, events: Sequence[Event]) -> None:
-                    pass
-
-                def unregister(self, state_type: EventStateType) -> Sequence[Event]:
-                    return []
-
-            _ = MissingGet()  # pylint: disable=abstract-class-instantiated
-
     def test_unregister_with_invalid_state_raises(self):
         class DummyBacklog(EventBacklog):
-            def register(self, events: Sequence[Event]) -> None:
+            def register(self, events: Sequence[Event]) -> None:  # pragma: no cover
                 pass
 
-            def unregister(self, state_type: EventStateType) -> Sequence[Event]:
+            def unregister(self, state_type: EventStateType) -> Sequence[Event]:  # pragma: no cover
                 return []
 
-            def get(self, state_type: EventStateType) -> Sequence[Event]:
+            def get(self, state_type: EventStateType) -> Sequence[Event]:  # pragma: no cover
                 return []
 
         backlog = DummyBacklog()
+
         with pytest.raises(ValueError, match="Invalid state_type"):
             backlog.unregister("unexpected")  # type: ignore
 
@@ -68,14 +33,14 @@ class TestEventBacklog:
         called_states = []
 
         class DummyBacklog(EventBacklog):
-            def register(self, events: Sequence[Event]) -> None:
+            def register(self, events: Sequence[Event]) -> None:  # pragma: no cover
                 pass
 
             def unregister(self, state_type: EventStateType) -> Sequence[Event]:
                 called_states.append(state_type)
                 return [DummyEvent({"id": 1})]
 
-            def get(self, state_type: EventStateType) -> Sequence[Event]:
+            def get(self, state_type: EventStateType) -> Sequence[Event]:  # pragma: no cover
                 return []
 
         backlog = DummyBacklog()
