@@ -318,3 +318,145 @@ class TestClusterer(BaseProcessorTestCase):
         for rule in rules:
             clusterer._cluster(document, rule)
         assert document == expected
+
+    def test_is_clusterable_with_syslog_has_pri(self):
+        sample_syslog_with_pri = {
+            "syslog": {"facility": 3, "severity": 6},
+            "event": {"severity": 6},
+            "message": "Listen normally on 5 lo ::1 UDP 123\n",
+        }
+        sample_syslog_without_pri = {
+            "message": "Listen normally on 5 lo ::1 UDP 123\n",
+        }
+
+        assert self.object._is_clusterable(sample_syslog_with_pri, "message")
+        assert not self.object._is_clusterable(sample_syslog_without_pri, "message")
+
+    def test_cluster_with_syslog_has_pri(self):
+        sample_syslog_with_pri = {
+            "syslog": {"facility": 3, "severity": 6},
+            "event": {"severity": 6},
+            "message": "Listen normally on 5 lo ::1 UDP 123\n",
+        }
+        expected = {
+            "message": "Listen normally on 5 lo ::1 UDP 123\n",
+            "cluster_signature": "3 , 6 , 5 lo ::1 UDP 123",
+            "syslog": {"facility": 3, "severity": 6},
+            "event": {"severity": 6},
+        }
+
+        rule_definition = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"Listen normally on (.*)",
+                "repl": r"<+>\1</+>",
+            },
+            "description": "",
+        }
+
+        rule = ClustererRule.create_from_dict(rule_definition)
+        self.object._rule_tree.add_rule(rule)
+        self.object._cluster(sample_syslog_with_pri, rule)
+
+        assert sample_syslog_with_pri == expected
+
+    def test_cluster_without_syslog_has_pri(self):
+        sample_syslog_without_pri = {
+            "message": "Listen normally on 5 lo ::1 UDP 123\n",
+        }
+        expected = {
+            "message": "Listen normally on 5 lo ::1 UDP 123\n",
+            "cluster_signature": "5 lo ::1 UDP 123",
+        }
+
+        rule_definition = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"Listen normally on (.*)",
+                "repl": r"<+>\1</+>",
+            },
+            "description": "",
+        }
+
+        rule = ClustererRule.create_from_dict(rule_definition)
+        self.object._rule_tree.add_rule(rule)
+        self.object._cluster(sample_syslog_without_pri, rule)
+
+        assert sample_syslog_without_pri == expected
+
+    def test_cluster_with_raw_text_is_none(self):
+        """Test that if raw_text is None, the event is not modified."""
+        rule_definition = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"test (signature) test",
+                "repl": r"<+>\1</+>",
+            },
+            "description": "",
+        }
+
+        rule = ClustererRule.create_from_dict(rule_definition)
+        self.object._rule_tree.add_rule(rule)
+
+        event = {"message": None}
+        self.object._cluster(event, rule)
+
+        assert event == {"message": None}
+
+    def test_cluster_with_rule_id_is_none(self):
+        """Test that if rule_id is None, a new tree iteration is started."""
+        rule_definition = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"test (signature) test",
+                "repl": r"<+>\1</+>",
+            },
+            "description": "",
+        }
+
+        rule = ClustererRule.create_from_dict(rule_definition)
+        self.object._rule_tree.add_rule(rule)
+
+        event = {"message": "test signature test"}
+        with mock.patch.object(self.object._rule_tree, "get_rule_id", return_value=None):
+            self.object._cluster(event, rule)
+        assert event == {
+            "message": "test signature test",
+            "cluster_signature": "signature",
+        }
+
+    def test_test_rules_with_two_rules(self):
+        """Test that two rules can be tested correctly."""
+        rule_definition_1 = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"test (signature) test",
+                "repl": r"<+>\1</+>",
+            },
+            "description": "",
+            "tests": {"raw": "test signature test", "result": "<+>signature</+>"},
+        }
+
+        rule_definition_2 = {
+            "filter": "message",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"another (signature) test",
+                "repl": r"<+>\1</+>",
+            },
+            "description": "",
+            "tests": {"raw": "another signature test", "result": "<+>signature</+>"},
+        }
+
+        rule_1 = ClustererRule.create_from_dict(rule_definition_1)
+        rule_2 = ClustererRule.create_from_dict(rule_definition_2)
+        self.object._rule_tree.add_rule(rule_1)
+        self.object._rule_tree.add_rule(rule_2)
+
+        results = self.object.test_rules()
+        assert results

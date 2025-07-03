@@ -178,6 +178,6 @@ class Clusterer(FieldManager):
                     result = SignatureEngine.apply_signature_rule(test["raw"], rule)
                     expected_result = test["result"]
                     results[rule_repr].append((result, expected_result))
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 results[rule_repr].append(None)
         return results
