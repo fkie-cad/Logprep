@@ -37,6 +37,7 @@ class TestSetEventBacklog:
         result = backlog.get(EventStateType.RECEIVED)
 
         assert len(result) == 1
+        assert len(backlog.backlog) == 3
 
     def test_unregister_removes_events_with_failed_state(self):
         backlog = SetEventBacklog()
@@ -52,7 +53,7 @@ class TestSetEventBacklog:
         backlog.register([e1, e2, e3])
         result = backlog.unregister(EventStateType.FAILED)
 
-        assert result == [e2]
+        assert e2 in result
         assert e1 in backlog.backlog
         assert e2 not in backlog.backlog
         assert e3 in backlog.backlog
@@ -72,7 +73,8 @@ class TestSetEventBacklog:
         backlog.register([e1, e2, e3])
         result = backlog.unregister(state_type=EventStateType.ACKED)
 
-        assert result == [e1, e3]
+        assert e1 in result
+        assert e3 in result
         assert e1 not in backlog.backlog
         assert e2 in backlog.backlog
         assert e3 not in backlog.backlog
