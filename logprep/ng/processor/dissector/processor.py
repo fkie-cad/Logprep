@@ -41,11 +41,11 @@ class Dissector(FieldManager):
 
     rule_class = DissectorRule
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: DissectorRule):
         self._apply_mapping(event, rule)
         self._apply_convert_datatype(event, rule)
 
-    def _apply_mapping(self, event, rule, rule_args=None):
+    def _apply_mapping(self, event: dict, rule: DissectorRule, rule_args=None):
         action_mappings_sorted_by_position = sorted(
             self._get_mappings(event, rule), key=lambda x: x[5]
         )
@@ -53,7 +53,7 @@ class Dissector(FieldManager):
             action(*args)
 
     def _get_mappings(
-        self, event, rule
+        self, event: dict, rule: DissectorRule
     ) -> Generator[Tuple[Callable, dict, dict, str, "Rule", int], None, None]:
         current_field = None
         target_field_mapping = {}
@@ -90,7 +90,7 @@ class Dissector(FieldManager):
             field = {target_field: content}
             yield rule_action, event, field, separator, rule, position
 
-    def _apply_convert_datatype(self, event, rule):
+    def _apply_convert_datatype(self, event: dict, rule: DissectorRule):
         for target_field, converter in rule.convert_actions:
             try:
                 target_value = converter(get_dotted_field_value(event, target_field))
