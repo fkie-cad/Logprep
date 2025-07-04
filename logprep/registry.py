@@ -27,6 +27,7 @@ from logprep.ng.processor.calculator.processor import Calculator as NGCalculator
 from logprep.ng.processor.clusterer.processor import Clusterer as NgClusterer
 from logprep.ng.processor.concatenator.processor import Concatenator as NgConcatenator
 from logprep.ng.processor.field_manager.processor import FieldManager as NgFieldManager
+from logprep.ng.processor.pre_detector.processor import PreDetector as NgPreDetector
 from logprep.processor.amides.processor import Amides
 from logprep.processor.base.rule import Rule
 from logprep.processor.calculator.processor import Calculator
@@ -87,6 +88,7 @@ class Registry:
         "ng_concatenator": NgConcatenator,
         "ng_field_manager": NgFieldManager,
         "ng_amides": NgAmides,
+        "ng_pre_detector": NgPreDetector,
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,
