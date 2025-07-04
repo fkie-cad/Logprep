@@ -32,6 +32,6 @@ class Deleter(Processor):
 
     rule_class = DeleterRule
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: DeleterRule) -> None:
         if rule.delete_event:
             event.clear()
