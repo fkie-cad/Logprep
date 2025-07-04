@@ -31,7 +31,7 @@ from attrs import define, field, validators
 from logprep.ng.abc.processor import Processor
 from logprep.metrics.metrics import GaugeMetric
 from logprep.processor.base.exceptions import FieldExistsWarning
-from logprep.processor.field_manager.processor import FieldManager
+from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.helper import add_fields_to, get_dotted_field_value
 
@@ -167,6 +167,7 @@ class GenericResolver(FieldManager):
         for pattern, content in rule.compiled_resolve_list:
             if pattern.search(source_field_value):
                 return content
+        return None
 
     def _update_cache_metrics(self):
         if self.max_cache_entries <= 0:
