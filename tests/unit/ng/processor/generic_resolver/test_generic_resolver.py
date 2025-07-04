@@ -12,7 +12,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/generic_resolver/rules"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
-    
+
     expected_metrics: list = []
 
     def test_resolve_generic_instantiates(self):

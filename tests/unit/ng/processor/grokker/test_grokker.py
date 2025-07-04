@@ -9,17 +9,13 @@ class TestGrokker(BaseProcessorTestCase):
         "type": "ng_grokker",
         "rules": ["tests/testdata/unit/grokker/rules"],
     }
-    
+
     expected_metrics: list = []
 
     def test_grokker_instantiates(self):
         rule = {
             "filter": "message",
-            "grokker": {
-                "mapping": {
-                    "message": "%{WORD:first_word} %{GREEDYDATA:rest}"
-                }
-            }
+            "grokker": {"mapping": {"message": "%{WORD:first_word} %{GREEDYDATA:rest}"}},
         }
         self._load_rule(rule)
         document = {"message": "hello world"}

@@ -28,8 +28,8 @@ from functools import partial
 from itertools import chain
 from typing import Iterable
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.ip_informer.rule import IpInformerRule, get_ip_property_names
 from logprep.util.helper import get_dotted_field_value
 

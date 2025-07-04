@@ -11,7 +11,7 @@ class TestListComparison(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
         "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
     }
-    
+
     expected_metrics: list = []
 
     def test_list_comparison_instantiates(self):
@@ -20,8 +20,8 @@ class TestListComparison(BaseProcessorTestCase):
             "list_comparison": {
                 "source_fields": ["value"],
                 "target_field": "matched",
-                "ignore_case": True
-            }
+                "ignore_case": True,
+            },
         }
         self._load_rule(rule)
         document = {"value": "test"}

@@ -2,8 +2,6 @@
 
 import pytest
 import responses
-from requests import ConnectTimeout, HTTPError
-from responses import matchers
 
 from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -25,15 +23,18 @@ test_cases = [
     ),
 ]  # testcase, rule, event, expected, response_mock
 
+
 class TestRequester(BaseProcessorTestCase):
     CONFIG = {
-        "type": "ng_requester", 
+        "type": "ng_requester",
         "rules": ["tests/testdata/unit/requester/rules"],
     }
 
     @responses.activate
     @pytest.mark.parametrize("testcase, rule, event, expected, response_mock", test_cases)
-    def test_testcases(self, testcase, rule, event, expected, response_mock):  # pylint: disable=unused-argument
+    def test_testcases(
+        self, testcase, rule, event, expected, response_mock
+    ):  # pylint: disable=unused-argument
         responses.add(
             getattr(responses, response_mock["method"]),
             response_mock["url"],

@@ -20,22 +20,19 @@ class TestDomainResolver(BaseProcessorTestCase):
         "hash_salt": "a_secret_tasty_ingredient",
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
-    
+
     expected_metrics: list = []
 
     def test_domain_resolution_adds_resolved_ip(self):
         document = {"url": {"domain": "example.org"}}
         rule = {
             "filter": "url.domain",
-            "domain_resolver": {
-                "source_fields": ["url.domain"],
-                "target_field": "url.resolved_ip"
-            }
+            "domain_resolver": {"source_fields": ["url.domain"], "target_field": "url.resolved_ip"},
         }
         self._load_rule(rule)
         log_event = LogEvent(document, original=b"test_message")
-        
-        with mock.patch('socket.gethostbyname', return_value='93.184.216.34'):
+
+        with mock.patch("socket.gethostbyname", return_value="93.184.216.34"):
             self.object.process(log_event)
-        
+
         assert "resolved_ip" in log_event.data["url"]

@@ -11,16 +11,13 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         "db_path": "tests/testdata/mock_external/MockGeoLite2-City.mmdb",
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
-    
+
     expected_metrics: list = []
 
     def test_geoip_enricher_instantiates(self):
         rule = {
             "filter": "client.ip",
-            "geoip_enricher": {
-                "source_fields": ["client.ip"],
-                "target_field": "client.geo"
-            }
+            "geoip_enricher": {"source_fields": ["client.ip"], "target_field": "client.geo"},
         }
         self._load_rule(rule)
         document = {"client": {"ip": "8.8.8.8"}}

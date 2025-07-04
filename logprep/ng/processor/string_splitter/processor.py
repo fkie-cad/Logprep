@@ -24,8 +24,8 @@ Processor Configuration
 .. automodule:: logprep.processor.string_splitter.rule
 """
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.string_splitter.rule import StringSplitterRule
 from logprep.util.helper import get_dotted_field_value
 
