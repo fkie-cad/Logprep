@@ -33,12 +33,13 @@ Processor Configuration
 
 import ipaddress
 import logging
+from typing import Any, Dict
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
 
-from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
 from logprep.util.url.url import Domain
 
@@ -61,7 +62,7 @@ class DomainLabelExtractor(FieldManager):
 
     rule_class = DomainLabelExtractorRule
 
-    def _apply_rules(self, event, rule: DomainLabelExtractorRule):
+    def _apply_rules(self, event: Dict[str, Any], rule: DomainLabelExtractorRule) -> None:
         """
         Apply matching rule to given log event. Such that a given domain,
         configured via rule, is split into it's labels and parts. The resulting
@@ -113,7 +114,7 @@ class DomainLabelExtractor(FieldManager):
             )
 
     @staticmethod
-    def _is_valid_ip(domain):
+    def _is_valid_ip(domain: str) -> bool:
         try:
             ipaddress.ip_address(domain)
             return True

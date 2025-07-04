@@ -39,8 +39,8 @@ import re
 
 import requests
 
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.requester.rule import RequesterRule
 from logprep.util.helper import add_fields_to, get_source_fields_dict
 

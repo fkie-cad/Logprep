@@ -1,10 +1,8 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 
-import pytest
 
 from logprep.ng.event.log_event import LogEvent
-from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 

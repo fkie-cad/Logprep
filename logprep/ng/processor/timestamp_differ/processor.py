@@ -30,7 +30,7 @@ from typing import Union
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
 from logprep.util.helper import get_source_fields_dict
-from logprep.util.time import TimeParser, TimeParserException, UTC
+from logprep.util.time import UTC, TimeParser, TimeParserException
 
 
 class TimestampDiffer(FieldManager):

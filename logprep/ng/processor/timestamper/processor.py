@@ -24,8 +24,8 @@ Processor Configuration
 .. automodule:: logprep.processor.timestamper.rule
 """
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.timestamper.rule import TimestamperRule
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser, TimeParserException

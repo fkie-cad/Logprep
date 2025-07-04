@@ -9,16 +9,13 @@ class TestIpInformer(BaseProcessorTestCase):
         "type": "ng_ip_informer",
         "rules": ["tests/testdata/unit/ip_informer/rules"],
     }
-    
+
     expected_metrics: list = []
 
     def test_ip_informer_instantiates(self):
         rule = {
             "filter": "client.ip",
-            "ip_informer": {
-                "source_fields": ["client.ip"],
-                "target_field": "client.ip_info"
-            }
+            "ip_informer": {"source_fields": ["client.ip"], "target_field": "client.ip_info"},
         }
         self._load_rule(rule)
         document = {"client": {"ip": "192.168.1.1"}}

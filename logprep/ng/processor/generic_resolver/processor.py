@@ -28,10 +28,10 @@ from typing import Optional
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.processor import Processor
 from logprep.metrics.metrics import GaugeMetric
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.ng.abc.processor import Processor
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.helper import add_fields_to, get_dotted_field_value
 
