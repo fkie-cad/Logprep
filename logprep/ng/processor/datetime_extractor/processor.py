@@ -24,7 +24,7 @@ Processor Configuration
 .. automodule:: logprep.ng.processor.datetime_extractor.rule
 """
 
-from datetime import datetime
+from datetime import datetime, tzinfo
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
@@ -40,14 +40,14 @@ class DatetimeExtractor(FieldManager):
     rule_class = DatetimeExtractorRule
 
     @staticmethod
-    def _get_timezone_name(local_timezone):
+    def _get_timezone_name(local_timezone: tzinfo) -> str:
         tz_name = datetime.now(local_timezone).strftime("%z")
         local_timezone_name = "UTC"
         if tz_name != "+0000":
             local_timezone_name += f"{tz_name[:-2]}:{tz_name[-2:]}"
         return local_timezone_name
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: DatetimeExtractorRule) -> None:
         datetime_field = rule.source_fields[0]
         destination_field = rule.target_field
 
