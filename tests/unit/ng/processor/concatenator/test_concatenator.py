@@ -163,7 +163,7 @@ class TestConcatenator(BaseProcessorTestCase):
         self.object.process(log_event)
         assert log_event == LogEvent(expected_output, original=b"test_message"), test_case
 
-    def test_process_raises_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
+    def test_process_handles_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
         self,
     ):
         rule = {
