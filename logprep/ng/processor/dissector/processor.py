@@ -26,10 +26,10 @@ Processor Configuration
 .. automodule:: logprep.processor.dissector.rule
 """
 
-from typing import TYPE_CHECKING, Callable, List, Tuple
+from typing import TYPE_CHECKING, Callable, Generator, Tuple
 
-from logprep.processor.dissector.rule import DissectorRule
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.dissector.rule import DissectorRule
 from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 if TYPE_CHECKING:
@@ -45,14 +45,16 @@ class Dissector(FieldManager):
         self._apply_mapping(event, rule)
         self._apply_convert_datatype(event, rule)
 
-    def _apply_mapping(self, event, rule):
+    def _apply_mapping(self, event, rule, rule_args=None):
         action_mappings_sorted_by_position = sorted(
             self._get_mappings(event, rule), key=lambda x: x[5]
         )
         for action, *args, _ in action_mappings_sorted_by_position:
             action(*args)
 
-    def _get_mappings(self, event, rule) -> List[Tuple[Callable, dict, dict, str, "Rule", int]]:
+    def _get_mappings(
+        self, event, rule
+    ) -> Generator[Tuple[Callable, dict, dict, str, "Rule", int], None, None]:
         current_field = None
         target_field_mapping = {}
         for rule_action in rule.actions:
