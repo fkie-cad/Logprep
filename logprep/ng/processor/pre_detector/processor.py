@@ -127,10 +127,8 @@ class PreDetector(Processor):
             pre_detection_id = str(uuid4())
             add_fields_to(event, {"pre_detection_id": pre_detection_id}, rule=rule)
         detection_result = self._generate_detection_result(pre_detection_id, event, rule)
-        sre_event = SreEvent(
-            data=detection_result,
-        )
-        self._event.extra_data.append((sre_event, self._config.outputs))
+        sre_event = SreEvent(data=detection_result, outputs=self._config.outputs)
+        self._event.extra_data.append(sre_event)
 
     @staticmethod
     def _generate_detection_result(
