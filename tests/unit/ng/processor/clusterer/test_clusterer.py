@@ -131,26 +131,6 @@ class TestClusterer(BaseProcessorTestCase):
             syslog_with_clusterable_field_equals_false, "message"
         )
 
-    def test_rule_tests(self):
-        rule_definition = {
-            "filter": "message",
-            "clusterer": {
-                "source_fields": ["message"],
-                "pattern": r"test (signature) test",
-                "repl": r"<+>\1</+>",
-            },
-            "description": "insert a description text",
-            "tests": {"raw": "test signature test", "result": "<+>signature</+>"},
-        }
-
-        rule = ClustererRule.create_from_dict(rule_definition)
-        self.object.rules.append(rule)
-
-        results = self.object.test_rules()
-        for rule_results in results.values():
-            for result, expected in rule_results:
-                assert result == expected
-
     def test_cluster(self):
         rule_definition = {
             "filter": "message",
@@ -460,3 +440,6 @@ class TestClusterer(BaseProcessorTestCase):
 
         results = self.object.test_rules()
         assert results
+        for rule_results in results.values():
+            for result, expected in rule_results:
+                assert result == expected
