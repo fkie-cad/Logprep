@@ -37,7 +37,7 @@ from zipfile import ZipFile
 from attrs import define, field, validators
 
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
-from logprep.processor.field_manager.processor import FieldManager
+from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_fields_to, get_dotted_field_value

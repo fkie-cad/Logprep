@@ -36,7 +36,7 @@ from filelock import FileLock
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
-from logprep.processor.field_manager.processor import FieldManager
+from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_fields_to, get_dotted_field_value
