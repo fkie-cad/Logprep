@@ -35,7 +35,7 @@ class Concatenator(FieldManager):
 
     rule_class = ConcatenatorRule
 
-    def _apply_rules(self, event: dict, rule: ConcatenatorRule):
+    def _apply_rules(self, event: dict, rule: ConcatenatorRule) -> None:
         """
         Apply matching rule to given log event.
         In the process of doing so, concat all found source fields into the new target field,
