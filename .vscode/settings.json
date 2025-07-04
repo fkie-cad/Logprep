@@ -43,6 +43,8 @@
         "editor.formatOnSave": true
     },
     "cSpell.words": [
+        "clusterable",
+        "Clusterer",
         "concatenator",
         "SIEM"
     ],
