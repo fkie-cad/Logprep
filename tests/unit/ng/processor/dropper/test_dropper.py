@@ -22,7 +22,7 @@ class TestDropper(BaseProcessorTestCase):
     def test_not_nested_field_gets_dropped_with_rule_loaded_from_file(self):
         expected = {}
         document = {"drop_me": "something"}
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
         assert log_event.data == expected
@@ -32,7 +32,7 @@ class TestDropper(BaseProcessorTestCase):
         expected = {}
         document = {"drop": {"me": "something"}}
         self._load_rule(rule)
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
         assert log_event.data == expected
@@ -42,7 +42,7 @@ class TestDropper(BaseProcessorTestCase):
         expected = {"keep_me": {"keep_me_too": "something"}}
         document = {"keep_me": {"drop_me": "something", "keep_me_too": "something"}}
         self._load_rule(rule)
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
         assert log_event.data == expected
@@ -55,7 +55,7 @@ class TestDropper(BaseProcessorTestCase):
         expected = {"keep_me": {"drop": {}}}
         document = {"keep_me": {"drop": {"me": "something"}}}
         self._load_rule(rule)
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
         assert log_event.data == expected
@@ -65,7 +65,7 @@ class TestDropper(BaseProcessorTestCase):
         expected = {}
         document = {"please": {"drop": {"me": {"fully": "something"}}}}
         self._load_rule(rule)
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
         assert log_event.data == expected
@@ -78,7 +78,7 @@ class TestDropper(BaseProcessorTestCase):
         expected = {"keep_me": {"drop": {}, "keep_me_too": "something"}}
         document = {"keep_me": {"drop": {"me": "something"}, "keep_me_too": "something"}}
         self._load_rule(rule)
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
         assert log_event.data == expected
@@ -88,7 +88,7 @@ class TestDropper(BaseProcessorTestCase):
         expected = {}
         document = {"drop": {"child": "something"}}
         self._load_rule(rule)
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
         assert log_event.data == expected
@@ -98,7 +98,7 @@ class TestDropper(BaseProcessorTestCase):
         expected = {}
         document = {"drop": {"me": {"child": "foo"}}}
         self._load_rule(rule)
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
         assert log_event.data == expected
@@ -108,7 +108,83 @@ class TestDropper(BaseProcessorTestCase):
         expected = {"drop": {"neighbour": "bar"}}
         document = {"drop": {"me": {"child": "foo"}, "neighbour": "bar"}}
         self._load_rule(rule)
-        log_event = LogEvent(document, original=b"test_message")
+        log_event = LogEvent(document, original=b"")
+        self.object.process(log_event)
+
+        assert log_event.data == expected
+
+    def test_deep_nested_field_with_child_and_not_drop_full_gets_partially_dropped(self):
+        rule = {"filter": "drop.me", "dropper": {"drop": ["drop.me"], "drop_full": False}}
+        expected = {"drop": {}}
+        document = {"drop": {"me": {"child": "foo"}}}
+        self._load_rule(rule)
+        log_event = LogEvent(document, original=b"")
+        self.object.process(log_event)
+
+        assert log_event.data == expected
+
+    def test_deep_nested_field_with_child_neighbour_and_not_drop_full_gets_partially_dropped(self):
+        rule = {"filter": "drop.child", "dropper": {"drop": ["drop.child"], "drop_full": False}}
+        expected = {"drop": {"neighbour": "bar"}}
+        document = {"drop": {"child": {"grand_child": "foo"}, "neighbour": "bar"}}
+        self._load_rule(rule)
+        log_event = LogEvent(document, original=b"")
+        self.object.process(log_event)
+
+        assert log_event.data == expected
+
+    def test_apply_rules_is_called(self):
+        rule = {"filter": "drop.child", "dropper": {"drop": ["drop.child"], "drop_full": False}}
+        document = {"drop": {"child": {"grand_child": "foo"}, "neighbour": "bar"}}
+        self._load_rule(rule)
+        log_event = LogEvent(document, original=b"")
+        with mock.patch(
+            f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"
+        ) as mock_apply_rules:
+            self.object.process(log_event)
+            mock_apply_rules.assert_called()
+
+    def test_subkey_not_in_event(self):
+        document = {
+            "list": ["existing"],
+            "key1": {
+                "a": {"b": "value"},
+            },
+        }
+        expected = {
+            "list": ["existing"],
+            "key1": {},
+        }
+
+        rule = {
+            "filter": "key1",
+            "dropper": {
+                "drop": ["key1.a", "key1.b", "key1.key2.a", "key1.key2.key3.b"],
+                "drop_full": False,
+            },
+        }
+        self._load_rule(rule)
+        log_event = LogEvent(document, original=b"")
+        self.object.process(log_event)
+
+        assert log_event.data == expected
+
+    def test_key_not_in_event(self):
+        document = {
+            "list": ["existing"],
+        }
+        expected = {
+            "list": ["existing"],
+        }
+        rule = {
+            "filter": "list",
+            "dropper": {
+                "drop": ["key1.a"],
+                "drop_full": False,
+            },
+        }
+        self._load_rule(rule)
+        log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
         assert log_event.data == expected
