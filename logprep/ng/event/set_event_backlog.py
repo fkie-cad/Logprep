@@ -33,7 +33,7 @@ class SetEventBacklog(EventBacklog):
 
         self.backlog.update(events)
 
-    def unregister(self, state_type: EventStateType) -> list[Event]:
+    def unregister(self, state_type: EventStateType) -> set[Event]:
         """
         Unregister all events from the backlog that match the given final state.
 
@@ -47,16 +47,16 @@ class SetEventBacklog(EventBacklog):
 
         Returns
         -------
-        list[Event]
-            A list of events that were removed from the backlog.
+        set[Event]
+            A set of events that were removed from the backlog.
         """
 
-        matching = [event for event in self.backlog if event.state.current_state is state_type]
+        matching = {event for event in self.backlog if event.state.current_state is state_type}
         self.backlog.difference_update(matching)
 
         return matching
 
-    def get(self, state_type: EventStateType) -> list[Event]:
+    def get(self, state_type: EventStateType) -> set[Event]:
         """
         Retrieve all events from the backlog that match the given processing state.
 
@@ -69,8 +69,8 @@ class SetEventBacklog(EventBacklog):
 
         Returns
         -------
-        list[Event]
-            A list of events currently in the backlog that match the given state.
+        set[Event]
+            A set of events currently in the backlog that match the given state.
         """
 
-        return [event for event in self.backlog if event.state.current_state is state_type]
+        return {event for event in self.backlog if event.state.current_state is state_type}
