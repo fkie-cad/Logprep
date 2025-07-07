@@ -25,10 +25,10 @@ Processor Configuration
 """
 
 from functools import partial
-from logprep.ng.abc.processor import Processor
 
+from logprep.ng.abc.processor import Processor
 from logprep.processor.dropper.rule import DropperRule
-from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, pop_dotted_field_value
 
 
 class Dropper(Processor):
@@ -36,7 +36,7 @@ class Dropper(Processor):
 
     rule_class = DropperRule
 
-    def _apply_rules(self, event: dict, rule: DropperRule):
+    def _apply_rules(self, event: dict, rule: DropperRule) -> None:
         """Drops fields from event Logs."""
         if rule.drop_full:
             drop_function = partial(pop_dotted_field_value, event)
@@ -45,7 +45,7 @@ class Dropper(Processor):
         list(map(drop_function, rule.fields_to_drop))
 
     @staticmethod
-    def _drop(event, dotted_field):
+    def _drop(event: dict, dotted_field: str) -> None:
         parent_field, _, key = dotted_field.rpartition(".")
         parent_field_value = get_dotted_field_value(event, parent_field)
         if not parent_field_value:
