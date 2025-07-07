@@ -24,7 +24,7 @@ Processor Configuration
 """
 
 from functools import cached_property, lru_cache
-from typing import Optional
+from typing import Callable, Optional
 
 from attrs import define, field, validators
 
@@ -96,23 +96,23 @@ class GenericResolver(FieldManager):
     rule_class = GenericResolverRule
 
     @property
-    def max_cache_entries(self):
+    def max_cache_entries(self) -> int:
         """Returns the configured number of max_cache_entries"""
         return self._config.max_cache_entries
 
     @property
-    def cache_metrics_interval(self):
+    def cache_metrics_interval(self) -> int:
         """Returns the configured cache_metrics_interval"""
         return self._config.cache_metrics_interval
 
     @cached_property
-    def _get_lru_cached_value_from_list(self):
+    def _get_lru_cached_value_from_list(self) -> Callable[[GenericResolverRule, str], str | None]:
         """Returns lru cashed method to retrieve values from list if configured"""
         if self.max_cache_entries <= 0:
             return self._resolve_value_from_list
         return lru_cache(maxsize=self.max_cache_entries)(self._resolve_value_from_list)
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: GenericResolverRule) -> None:
         """Apply the given rule to the current event"""
         source_field_values = [
             get_dotted_field_value(event, source_field)
@@ -127,15 +127,16 @@ class GenericResolver(FieldManager):
             content = self._find_content_of_first_matching_pattern(rule, source_field_value)
             if not content:
                 continue
+            fields: dict = {target_field: content}
             current_content = get_dotted_field_value(event, target_field)
             if isinstance(current_content, list) and content in current_content:
                 continue
             if rule.merge_with_target and current_content is None:
-                content = [content]
+                fields[target_field] = [content]
             try:
                 add_fields_to(
                     event,
-                    fields={target_field: content},
+                    fields=fields,
                     rule=rule,
                     merge_with_target=rule.merge_with_target,
                     overwrite_target=rule.overwrite_target,
@@ -148,7 +149,9 @@ class GenericResolver(FieldManager):
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
-    def _find_content_of_first_matching_pattern(self, rule, source_field_value):
+    def _find_content_of_first_matching_pattern(
+        self, rule: GenericResolverRule, source_field_value: str
+    ) -> str | None:
         if rule.resolve_from_file:
             replacements = rule.resolve_from_file["additions"]
             matches = rule.pattern.match(source_field_value)
@@ -169,7 +172,7 @@ class GenericResolver(FieldManager):
                 return content
         return None
 
-    def _update_cache_metrics(self):
+    def _update_cache_metrics(self) -> None:
         if self.max_cache_entries <= 0:
             return
         self._cache_metrics_skip_count += 1
@@ -183,6 +186,6 @@ class GenericResolver(FieldManager):
         self.metrics.num_cache_entries += cache_info.currsize
         self.metrics.cache_load += cache_info.currsize / cache_info.maxsize
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         self._cache_metrics_skip_count = 0
