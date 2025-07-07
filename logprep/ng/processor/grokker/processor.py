@@ -62,7 +62,7 @@ class Grokker(FieldManager):
         directory structure in it.
         """
 
-    def _apply_rules(self, event: dict, rule: GrokkerRule):
+    def _apply_rules(self, event: dict, rule: GrokkerRule) -> None:
         matches = []
         source_values = []
         for dotted_field, grok in rule.actions.items():
@@ -94,7 +94,7 @@ class Grokker(FieldManager):
         if not matches:
             raise ProcessingWarning("no grok pattern matched", rule, event)
 
-    def setup(self):
+    def setup(self) -> None:
         """Loads the action mapping. Has to be called before processing"""
         super().setup()
         custom_patterns_dir = self._config.custom_patterns_dir
@@ -111,7 +111,7 @@ class Grokker(FieldManager):
         for rule in self.rules:
             rule.set_mapping_actions()
 
-    def _download_zip_file(self, source_file: str, target_dir: Path):
+    def _download_zip_file(self, source_file: str, target_dir: Path) -> None:
         if not target_dir.exists():
             logger.debug("start grok pattern download...")
             archive = Path(f"{target_dir}.zip")
