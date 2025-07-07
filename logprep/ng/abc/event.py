@@ -3,7 +3,7 @@
 """abstract module for event"""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
 
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
@@ -234,7 +234,7 @@ class EventBacklog(ABC):
         if "unregister" in cls.__dict__:
             original = cls.__dict__["unregister"]
 
-            def guarded_unregister(self, state_type: EventStateType) -> Sequence[Event]:
+            def guarded_unregister(self, state_type: EventStateType) -> Iterable[Event]:
                 """
                 Wrapper that enforces allowed final states for `unregister`.
 
@@ -252,18 +252,18 @@ class EventBacklog(ABC):
             setattr(cls, "unregister", guarded_unregister)
 
     @abstractmethod
-    def register(self, events: Sequence[Event]) -> None:
+    def register(self, events: Iterable[Event]) -> None:
         """
         Register one or more events to the backlog.
 
         Parameters
         ----------
-        events : Sequence[Event]
-            A sequence of event instances to be added to the backlog.
+        events : Iterable[Event]
+            An iterable of event instances to be added to the backlog.
         """
 
     @abstractmethod
-    def unregister(self, state_type: EventStateType) -> Sequence[Event]:
+    def unregister(self, state_type: EventStateType) -> Iterable[Event]:
         """
         Unregister events from the backlog with the given final state.
 
@@ -275,7 +275,7 @@ class EventBacklog(ABC):
 
         Returns
         -------
-        Sequence[Event]
+        Iterable[Event]
             Events that were unregistered from the backlog.
 
         Raises
@@ -285,7 +285,7 @@ class EventBacklog(ABC):
         """
 
     @abstractmethod
-    def get(self, state_type: EventStateType) -> Sequence[Event]:
+    def get(self, state_type: EventStateType) -> Iterable[Event]:
         """
         Retrieve all events currently in the backlog that match a specific processing state.
 
@@ -296,6 +296,6 @@ class EventBacklog(ABC):
 
         Returns
         -------
-        Sequence[Event]
+        Iterable[Event]
             All events currently in the backlog with the specified state.
         """

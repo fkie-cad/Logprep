@@ -1,6 +1,6 @@
 """Concrete SetEventBacklog implementation"""
 
-from typing import Sequence
+from typing import Iterable
 
 from logprep.ng.abc.event import Event, EventBacklog
 from logprep.ng.event.event_state import EventStateType
@@ -21,14 +21,14 @@ class SetEventBacklog(EventBacklog):
 
         self.backlog: set[Event] = set()
 
-    def register(self, events: Sequence[Event]) -> None:
+    def register(self, events: Iterable[Event]) -> None:
         """
         Register one or more events by adding them to the internal backlog set.
 
         Parameters
         ----------
-        events : Sequence[Event]
-            A sequence of event instances to be added.
+        events : Iterable[Event]
+            An iterable of event instances to be added.
         """
 
         self.backlog.update(events)
