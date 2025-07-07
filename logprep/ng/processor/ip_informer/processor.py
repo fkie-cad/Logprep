@@ -64,7 +64,7 @@ class IpInformer(FieldManager):
         str_elements = filter(lambda x: isinstance(x, str), source_field_values)
         return chain(*list_elements, str_elements)
 
-    def _ip_properties(self, ip_address: str, rule: IpInformerRule) -> dict[str, any]:
+    def _ip_properties(self, ip_address: str, rule: IpInformerRule) -> dict:
         try:
             ip_address = ipaddress.ip_address(ip_address)
         except ValueError as error:
