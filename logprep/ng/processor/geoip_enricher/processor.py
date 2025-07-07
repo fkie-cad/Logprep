@@ -59,12 +59,10 @@ class GeoipEnricher(FieldManager):
             This product includes GeoLite2 data created by MaxMind, available from
             https://www.maxmind.com."""
 
-    __slots__ = []
-
     rule_class = GeoipEnricherRule
 
     @cached_property
-    def _city_db(self):
+    def _city_db(self) -> database.Reader:
         db_path = Path(self._config.db_path)
         if not db_path.exists():
             logger.debug("start geoip database download...")
@@ -81,11 +79,11 @@ class GeoipEnricher(FieldManager):
             logger.debug("finished geoip database download.")
         return database.Reader(db_path)
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         _ = self._city_db  # trigger download
 
-    def _try_getting_geoip_data(self, ip_string):
+    def _try_getting_geoip_data(self, ip_string: str) -> dict:
         try:
             ip_addr = str(ip_address(ip_string))
             ip_data = self._city_db.city(ip_addr)
@@ -119,7 +117,7 @@ class GeoipEnricher(FieldManager):
         except (ValueError, AddressNotFoundError):
             return {}
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: GeoipEnricherRule) -> None:
         ip_string = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [ip_string]):
             return
