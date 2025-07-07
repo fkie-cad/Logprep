@@ -41,7 +41,7 @@ class Labeler(Processor):
     class Config(Processor.Config):
         """Labeler Configurations"""
 
-        schema: str = field(validator=(validators.instance_of(str)))
+        schema: str = field(validator=validators.instance_of(str))
         """Path to a labeling schema file. For string format see :ref:`getters`."""
         include_parent_labels: Optional[bool] = field(
             default=False, validator=validators.optional(validator=validators.instance_of(bool))
@@ -52,24 +52,24 @@ class Labeler(Processor):
         This allows to search for higher level labels if this option was activated in the rule.
         """
 
-    __slots__ = ["_schema", "_include_parent_labels"]
+    __slots__ = ["_schema"]
 
     _schema: LabelingSchema
 
     rule_class = LabelerRule
 
-    def __init__(self, name: str, configuration: Processor.Config):
+    def __init__(self, name: str, configuration: Processor.Config) -> None:
         self._schema = LabelingSchema.create_from_file(configuration.schema)
         super().__init__(name, configuration=configuration)
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         for rule in self.rules:
             if self._config.include_parent_labels:
                 rule.add_parent_labels_from_schema(self._schema)
             rule.conforms_to_schema(self._schema)
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: LabelerRule) -> None:
         """Applies the rule to the current event"""
         fields = {key: value for key, value in rule.prefixed_label.items()}
         add_fields_to(event, fields, rule=rule, merge_with_target=True)
