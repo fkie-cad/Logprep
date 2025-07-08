@@ -14,7 +14,7 @@ class SetEventBacklog(EventBacklog):
     and unregistration based on the current processing state of each event.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the internal event backlog as an empty set.
         """
@@ -52,7 +52,7 @@ class SetEventBacklog(EventBacklog):
         """
 
         matching = {event for event in self.backlog if event.state.current_state is state_type}
-        self.backlog.difference_update(matching)
+        self.backlog -= matching
 
         return matching
 

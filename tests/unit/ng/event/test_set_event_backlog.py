@@ -2,21 +2,17 @@
 
 import pytest
 
-from logprep.ng.abc.event import Event
 from logprep.ng.event.event_state import EventStateType
+from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.set_event_backlog import SetEventBacklog
-
-
-class DummyEvent(Event):
-    __slots__ = Event.__slots__
 
 
 class TestSetEventBacklog:
     def test_register_adds_events(self):
         backlog = SetEventBacklog()
 
-        e1 = DummyEvent(data={"foo": "bar"})
-        e2 = DummyEvent(data={"john": "doe"})
+        e1 = LogEvent(data={"foo": "bar"}, original=b"")
+        e2 = LogEvent(data={"john": "doe"}, original=b"")
 
         backlog.register([e1, e2])
 
@@ -27,11 +23,11 @@ class TestSetEventBacklog:
     def test_get_returns_events_but_does_not_remove(self):
         backlog = SetEventBacklog()
 
-        e1 = DummyEvent(data={"foo": "bar"})
+        e1 = LogEvent(data={"foo": "bar"}, original=b"")
         e1.state.current_state = EventStateType.RECEIVED
 
-        e2 = DummyEvent(data={"john": "doe"})
-        e3 = DummyEvent(data={"state": "done"})
+        e2 = LogEvent(data={"john": "doe"}, original=b"")
+        e3 = LogEvent(data={"state": "done"}, original=b"")
 
         backlog.register([e1, e2, e3])
         result = backlog.get(EventStateType.RECEIVED)
@@ -42,13 +38,13 @@ class TestSetEventBacklog:
     def test_unregister_removes_events_with_failed_state(self):
         backlog = SetEventBacklog()
 
-        e1 = DummyEvent(data={"foo": "bar"})
+        e1 = LogEvent(data={"foo": "bar"}, original=b"")
         e1.state.current_state = EventStateType.ACKED
 
-        e2 = DummyEvent(data={"john": "doe"})
+        e2 = LogEvent(data={"john": "doe"}, original=b"")
         e2.state.current_state = EventStateType.FAILED
 
-        e3 = DummyEvent(data={"state": "done"})
+        e3 = LogEvent(data={"state": "done"}, original=b"")
 
         backlog.register([e1, e2, e3])
         result = backlog.unregister(EventStateType.FAILED)
@@ -61,13 +57,13 @@ class TestSetEventBacklog:
     def test_unregister_removes_events_with_acked_state(self):
         backlog = SetEventBacklog()
 
-        e1 = DummyEvent(data={"foo": "bar"})
+        e1 = LogEvent(data={"foo": "bar"}, original=b"")
         e1.state.current_state = EventStateType.ACKED
 
-        e2 = DummyEvent(data={"john": "doe"})
+        e2 = LogEvent(data={"john": "doe"}, original=b"")
         e2.state.current_state = EventStateType.FAILED
 
-        e3 = DummyEvent(data={"state": "done"})
+        e3 = LogEvent(data={"state": "done"}, original=b"")
         e3.state.current_state = EventStateType.ACKED
 
         backlog.register([e1, e2, e3])

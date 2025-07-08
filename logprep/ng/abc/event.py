@@ -218,7 +218,7 @@ class EventBacklog(ABC):
     method is automatically wrapped to prevent misuse with disallowed final states.
     """
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: dict) -> None:
         """
         Automatically wraps the subclass's `unregister` method to enforce a state check.
 
@@ -245,7 +245,10 @@ class EventBacklog(ABC):
                 """
 
                 if state_type not in (EventStateType.FAILED, EventStateType.ACKED):
-                    raise ValueError(f"Invalid state_type: {state_type}")
+                    raise ValueError(
+                        f"Invalid state_type: {state_type}, state must be in "
+                        f"{(EventStateType.FAILED, EventStateType.ACKED)}"
+                    )
 
                 return original(self, state_type)
 
