@@ -32,7 +32,7 @@ Processor Configuration
 .. automodule:: logprep.processor.template_replacer.rule
 """
 
-from typing import Any, List, Optional
+from typing import Any
 
 from attr import define, field, validators
 
@@ -45,7 +45,7 @@ from logprep.util.helper import add_fields_to, get_dotted_field_value
 class TemplateReplacerError(Exception):
     """Base class for TemplateReplacer related exceptions."""
 
-    def __init__(self, name: str, message: str):
+    def __init__(self, name: str, message: str) -> None:
         super().__init__(f"TemplateReplacer ({name}): {message}")
 
 
@@ -79,11 +79,11 @@ class TemplateReplacer(FieldManager):
 
     _fields: list
 
-    _mapping: dict
+    _mapping: dict[str, Any]
 
     rule_class = TemplateReplacerRule
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: TemplateReplacerRule) -> None:
         source_field_values = self._get_field_values(event, self._fields)
         if self._handle_missing_fields(event, rule, self._fields, source_field_values):
             return
@@ -92,7 +92,7 @@ class TemplateReplacer(FieldManager):
         if replacement is not None:
             self._perform_replacement(event, replacement, rule)
 
-    def _get_replacement_value(self, field_values: list) -> Optional[str]:
+    def _get_replacement_value(self, field_values: list) -> str | None:
         replacement = self._mapping
         for dotted_field_value in field_values:
             value = str(dotted_field_value)
@@ -101,7 +101,9 @@ class TemplateReplacer(FieldManager):
                 return None
         return replacement
 
-    def _perform_replacement(self, event: dict, replacement: str, rule: TemplateReplacerRule):
+    def _perform_replacement(
+        self, event: dict, replacement: str, rule: TemplateReplacerRule
+    ) -> None:
         """Replace the target value, but not its parent fields.
 
         If target field is None, then its parents could be non-dict/None and might be replaced.
@@ -119,13 +121,13 @@ class TemplateReplacer(FieldManager):
             overwrite_target=overwrite,
         )
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         self._target_field = self._config.pattern["target_field"]
         self._fields = self._config.pattern["fields"]
         self._initialize_replacement_mapping()
 
-    def _initialize_replacement_mapping(self):
+    def _initialize_replacement_mapping(self) -> None:
         allow_delimiter_field = self._config.pattern["allowed_delimiter_field"]
         allow_delimiter_index = self._fields.index(allow_delimiter_field)
         self._mapping = {}
@@ -139,7 +141,7 @@ class TemplateReplacer(FieldManager):
                     self.name, "template_replacer template is invalid!"
                 ) from error
 
-    def _recombine_keys(self, allow_delimiter_index: int, keys_string: str) -> List[str]:
+    def _recombine_keys(self, allow_delimiter_index: int, keys_string: str) -> list[str]:
         split_key = keys_string.split(self._config.pattern["delimiter"])
         left, middle_and_right = (
             split_key[:allow_delimiter_index],
@@ -156,7 +158,7 @@ class TemplateReplacer(FieldManager):
             )
         return recombined_key
 
-    def _set_value_for_recombined_keys(self, recombined_keys: List[str], value: Any):
+    def _set_value_for_recombined_keys(self, recombined_keys: list[str], value: Any) -> None:
         mapping = self._mapping
         for idx, recombined_key in enumerate(recombined_keys):
             if idx < len(self._fields) - 1:
