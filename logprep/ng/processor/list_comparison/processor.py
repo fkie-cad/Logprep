@@ -49,12 +49,12 @@ class ListComparison(Processor):
 
     rule_class = ListComparisonRule
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         for rule in self.rules:
             rule.init_list_comparison(self._config.list_search_base_path)
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: ListComparisonRule) -> None:
         """
         Apply matching rule to given log event.
         In the process of doing so, add the result of comparing
@@ -74,23 +74,21 @@ class ListComparison(Processor):
             fields = {f"{rule.target_field}.{comparison_key}": comparison_result}
             add_fields_to(event, fields, rule=rule, merge_with_target=True)
 
-    def _list_comparison(self, rule: ListComparisonRule, event: dict):
+    def _list_comparison(self, rule: ListComparisonRule, event: dict) -> tuple[list[str], str]:
         """
         Check if field value violates block or allow list.
         Returns the result of the comparison (res_key), as well as a dictionary containing
         the result (key) and a list of filenames pertaining to said result (value).
         """
 
-        # get value that should be checked in the lists
         field_value = get_dotted_field_value(event, rule.source_fields[0])
 
-        # iterate over lists and check if element is in any
-        list_matches = []
-        for compare_list in rule.compare_sets:
-            if field_value in rule.compare_sets[compare_list]:
-                list_matches.append(compare_list)
+        list_matches = [
+            compare_list
+            for compare_list in rule.compare_sets
+            if field_value in rule.compare_sets[compare_list]
+        ]
 
-        # if matching list was found return it, otherwise return all list names
-        if len(list_matches) == 0:
+        if not list_matches:
             return list(rule.compare_sets.keys()), "not_in_list"
         return list_matches, "in_list"
