@@ -26,6 +26,7 @@ from logprep.ng.processor.amides.processor import Amides as NgAmides
 from logprep.ng.processor.calculator.processor import Calculator as NGCalculator
 from logprep.ng.processor.clusterer.processor import Clusterer as NgClusterer
 from logprep.ng.processor.concatenator.processor import Concatenator as NgConcatenator
+from logprep.ng.processor.deleter.processor import Deleter as NgDeleter
 from logprep.ng.processor.datetime_extractor.processor import (
     DatetimeExtractor as NgDatetimeExtractor,
 )
@@ -88,6 +89,7 @@ class Registry:
         "ng_calculator": NGCalculator,
         "ng_clusterer": NgClusterer,
         "ng_concatenator": NgConcatenator,
+        "ng_deleter": NgDeleter,
         "ng_datetime_extractor": NgDatetimeExtractor,
         "ng_field_manager": NgFieldManager,
         "ng_amides": NgAmides,
