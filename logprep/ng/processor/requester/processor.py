@@ -53,7 +53,7 @@ class Requester(FieldManager):
 
     rule_class = RequesterRule
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: RequesterRule) -> None:
         source_field_dict = get_source_fields_dict(event, rule)
         if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
             return
@@ -64,7 +64,9 @@ class Requester(FieldManager):
         if response is not None:
             self._handle_response(event, rule, response)
 
-    def _handle_response(self, event, rule, response):
+    def _handle_response(
+        self, event: dict, rule: RequesterRule, response: requests.Response
+    ) -> None:
         conflicting_fields = []
         if rule.target_field:
             try:
@@ -94,7 +96,7 @@ class Requester(FieldManager):
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
-    def _request(self, event, rule, kwargs):
+    def _request(self, event: dict, rule: RequesterRule, kwargs: dict) -> requests.Response | None:
         try:
             response = requests.request(**kwargs)
             response.raise_for_status()
@@ -106,14 +108,14 @@ class Requester(FieldManager):
         return None
 
     @staticmethod
-    def _get_result(response):
+    def _get_result(response: requests.Response) -> dict | str:
         try:
             result = json.loads(response.content)
         except json.JSONDecodeError:
             result = response.content.decode("utf-8")
         return result
 
-    def _template_kwargs(self, kwargs: dict, source: dict):
+    def _template_kwargs(self, kwargs: dict, source: dict) -> dict:
         for key, value in kwargs.items():
             if key in TEMPLATE_KWARGS:
                 kwargs.update({key: json.loads(self._template(json.dumps(value), source))})
