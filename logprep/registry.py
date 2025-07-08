@@ -31,23 +31,39 @@ from logprep.ng.processor.datetime_extractor.processor import (
 )
 from logprep.ng.processor.deleter.processor import Deleter as NgDeleter
 from logprep.ng.processor.dissector.processor import Dissector as NgDissector
-from logprep.ng.processor.domain_label_extractor.processor import DomainLabelExtractor as NgDomainLabelExtractor
-from logprep.ng.processor.domain_resolver.processor import DomainResolver as NgDomainResolver
+from logprep.ng.processor.domain_label_extractor.processor import (
+    DomainLabelExtractor as NgDomainLabelExtractor,
+)
+from logprep.ng.processor.domain_resolver.processor import (
+    DomainResolver as NgDomainResolver,
+)
 from logprep.ng.processor.dropper.processor import Dropper as NgDropper
 from logprep.ng.processor.field_manager.processor import FieldManager as NgFieldManager
 from logprep.ng.processor.generic_adder.processor import GenericAdder as NgGenericAdder
-from logprep.ng.processor.generic_resolver.processor import GenericResolver as NgGenericResolver
-from logprep.ng.processor.geoip_enricher.processor import GeoipEnricher as NgGeoipEnricher
+from logprep.ng.processor.generic_resolver.processor import (
+    GenericResolver as NgGenericResolver,
+)
+from logprep.ng.processor.geoip_enricher.processor import (
+    GeoipEnricher as NgGeoipEnricher,
+)
 from logprep.ng.processor.grokker.processor import Grokker as NgGrokker
 from logprep.ng.processor.ip_informer.processor import IpInformer as NgIpInformer
 from logprep.ng.processor.key_checker.processor import KeyChecker as NgKeyChecker
 from logprep.ng.processor.labeler.processor import Labeler as NgLabeler
-from logprep.ng.processor.list_comparison.processor import ListComparison as NgListComparison
+from logprep.ng.processor.list_comparison.processor import (
+    ListComparison as NgListComparison,
+)
 from logprep.ng.processor.replacer.processor import Replacer as NgReplacer
 from logprep.ng.processor.requester.processor import Requester as NgRequester
-from logprep.ng.processor.string_splitter.processor import StringSplitter as NgStringSplitter
-from logprep.ng.processor.template_replacer.processor import TemplateReplacer as NgTemplateReplacer
-from logprep.ng.processor.timestamp_differ.processor import TimestampDiffer as NgTimestampDiffer
+from logprep.ng.processor.string_splitter.processor import (
+    StringSplitter as NgStringSplitter,
+)
+from logprep.ng.processor.template_replacer.processor import (
+    TemplateReplacer as NgTemplateReplacer,
+)
+from logprep.ng.processor.timestamp_differ.processor import (
+    TimestampDiffer as NgTimestampDiffer,
+)
 from logprep.ng.processor.timestamper.processor import Timestamper as NgTimestamper
 from logprep.processor.amides.processor import Amides
 from logprep.processor.base.rule import Rule
