@@ -25,7 +25,6 @@ Processor Configuration
 
 from datetime import datetime
 from functools import reduce
-from typing import Union
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
@@ -38,7 +37,7 @@ class TimestampDiffer(FieldManager):
 
     rule_class = TimestampDifferRule
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: TimestampDifferRule) -> None:
         source_field_formats = rule.source_field_formats
         source_field_dict = get_source_fields_dict(event, rule)
         if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
@@ -62,7 +61,7 @@ class TimestampDiffer(FieldManager):
             self._write_target_field(event, rule, diff)
 
     @staticmethod
-    def _create_timestamp_object(source: Union[str, int], format_str: str) -> datetime:
+    def _create_timestamp_object(source: str | int, format_str: str) -> datetime:
         if isinstance(source, int):
             return TimeParser.from_timestamp(source).astimezone(UTC)
         if format_str is None:
@@ -70,16 +69,16 @@ class TimestampDiffer(FieldManager):
         return TimeParser.from_format(source, format_str).astimezone(UTC)
 
     @staticmethod
-    def _apply_output_format(diff, rule):
+    def _apply_output_format(diff: datetime, rule: TimestampDifferRule) -> str:
         output_format = rule.output_format
         show_unit = rule.show_unit
         seconds = diff.total_seconds()
         if output_format == "seconds":
-            diff = f"{seconds} s" if show_unit else f"{seconds}"
+            return f"{seconds} s" if show_unit else f"{seconds}"
         if output_format == "milliseconds":
             milliseconds = seconds * 1000
-            diff = f"{milliseconds} ms" if show_unit else f"{milliseconds}"
+            return f"{milliseconds} ms" if show_unit else f"{milliseconds}"
         if output_format == "nanoseconds":
             nanoseconds = seconds * 1000000000
-            diff = f"{nanoseconds} ns" if show_unit else f"{nanoseconds}"
-        return diff
+            return f"{nanoseconds} ns" if show_unit else f"{nanoseconds}"
+        return "undefined time format"  # pragma: no cover just in case, should never happen
