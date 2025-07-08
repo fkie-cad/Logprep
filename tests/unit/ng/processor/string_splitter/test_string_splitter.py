@@ -1,9 +1,9 @@
 # pylint: disable=missing-docstring
+import re
 
 import pytest
 
 from logprep.ng.event.log_event import LogEvent
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 test_cases = [
@@ -64,15 +64,15 @@ class TestStringSplitter(BaseProcessorTestCase):
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
         self._load_rule(rule)
-        log_event = LogEvent(event, original=b"test_message")
-        self.object.process(log_event)
-        assert log_event.data == expected
+        event = LogEvent(event, original=b"")
+        self.object.process(event)
+        assert event.data == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):  # pylint: disable=unused-argument
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
         self._load_rule(rule)
-        log_event = LogEvent(event, original=b"test_message")
-        result = self.object.process(log_event)
+        event = LogEvent(event, original=b"")
+        result = self.object.process(event)
         assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], ProcessingWarning)
-        assert log_event.data == expected, testcase
+        assert re.match(error_message, str(result.warnings[0]))
+        assert event.data == expected, testcase

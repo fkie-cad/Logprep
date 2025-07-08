@@ -35,7 +35,7 @@ class StringSplitter(FieldManager):
 
     rule_class = StringSplitterRule
 
-    def _apply_rules(self, event: dict, rule: StringSplitterRule):
+    def _apply_rules(self, event: dict, rule: StringSplitterRule) -> None:
         source_field = rule.source_fields[0]
         source_field_content = get_dotted_field_value(event, source_field)
         self._handle_missing_fields(event, rule, rule.source_fields, [source_field_content])
