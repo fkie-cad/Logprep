@@ -92,14 +92,60 @@ class TemplateReplacer(FieldManager):
         if replacement is not None:
             self._perform_replacement(event, replacement, rule)
 
-    def _get_replacement_value(self, field_values: list) -> str | None:
-        replacement = self._mapping
-        for dotted_field_value in field_values:
-            value = str(dotted_field_value)
-            replacement = replacement.get(value, None)
-            if replacement is None:
+    def _resolve_to_last_node(self, mapping: dict, path: list[str]) -> dict | None:
+        """
+        Resolves a nested dictionary by traversing the given path to last node (dict).
+
+        Parameters
+        ----------
+        mapping : dict
+            The dictionary to resolve keys against.
+        path : list[str]
+            A list of string keys forming the path to the nested value.
+
+        Returns
+        -------
+        Any
+            The resolved value (dict) at the end of the path, or None if resolution fails.
+        """
+
+        current: dict | None = mapping
+
+        for key in path:
+            if not isinstance(current, dict):
                 return None
-        return replacement
+
+            current = current.get(key)
+
+            if current is None:
+                return None
+
+        return current
+
+    def _get_replacement_value(self, field_values: list) -> str | None:
+        """
+        Attempts to resolve a replacement string from a nested mapping
+        using a list of field values as lookup keys.
+
+        Parameters
+        ----------
+        field_values : list
+            The list of field names used to traverse the internal self._mapping.
+
+        Returns
+        -------
+        str or None
+            The resolved replacement string if found, otherwise None.
+        """
+
+        *path, last_key = [str(field_value) for field_value in field_values]
+        last_node = self._resolve_to_last_node(mapping=self._mapping, path=path)
+
+        if not isinstance(last_node, dict):
+            return None
+
+        value = last_node.get(last_key)
+        return value if isinstance(value, str) else None
 
     def _perform_replacement(
         self, event: dict, replacement: str, rule: TemplateReplacerRule
