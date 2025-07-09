@@ -6,6 +6,7 @@ from copy import deepcopy
 import pytest
 
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.event.sre_event import SreEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
@@ -38,14 +39,16 @@ class TestPreDetector(BaseProcessorTestCase):
             )
         ]
         event = LogEvent(document, original=b"")
-        detection_results = self.object.process(event)
-        self._assert_equality_of_results(
-            document, expected, detection_results.data, expected_detection_results
-        )
+        event = self.object.process(event)
+        assert event.extra_data
+        assert len(event.extra_data) == 1, "one extra data item expected"
+        assert isinstance(event.extra_data[0], SreEvent), "extra data should be SreEvent"
+        self._assert_equality_of_results(event, expected, expected_detection_results)
 
     def test_perform_pre_detection_that_fails_if_filter_children_were_slots(self):
         document = {"A": "foo X bar Y"}
         expected = deepcopy(document)
+        event = LogEvent(document, original=b"")
         expected_detection_results = [
             (
                 {
@@ -60,13 +63,13 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
-        detection_results = self.object.process(document)
-        self._assert_equality_of_results(
-            document, expected, detection_results.data, expected_detection_results
-        )
+        event = self.object.process(event)
+        detection_results = event.extra_data[0]
+        self._assert_equality_of_results(event, expected, expected_detection_results)
 
         document = {"A": "foo X bar Y baz"}
-        detection_results = self.object.process(document)
+        event = LogEvent(document, original=b"")
+        detection_results = self.object.process(event)
         assert detection_results.data == []
 
     def test_perform_successful_pre_detection_with_host_name(self):
@@ -306,24 +309,25 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
     def _assert_equality_of_results(
-        self, document, expected, detection_results, expected_detection_results
-    ):
-        for detection_result, _ in detection_results:
+        self, event: LogEvent, expected: dict, expected_detection_results: list[dict]
+    ) -> None:
+        detection_results = [sre_event.data for sre_event in event.extra_data]
+        for detection_result in detection_results:
             assert detection_result.pop("creation_timestamp")
 
-        pre_detection_id = document.pop("pre_detection_id", None)
+        pre_detection_id = event.data.pop("pre_detection_id", None)
 
         assert pre_detection_id is not None
         assert self.uuid_pattern.search(pre_detection_id)
-        assert document == expected
+        assert event.data == expected
 
-        for detection_result, _ in detection_results:
+        for detection_result in detection_results:
             result_pre_detection_id = detection_result.pop("pre_detection_id", None)
             assert result_pre_detection_id is not None
             assert pre_detection_id == result_pre_detection_id
 
         sorted_detection_results = sorted(
-            [(frozenset(result[0]), result[1]) for result in detection_results]
+            [(frozenset(sre_event.data), sre_event.outputs) for sre_event in event.extra_data]
         )
         sorted_expected_detection_results = sorted(
             [(frozenset(result[0]), result[1]) for result in expected_detection_results]

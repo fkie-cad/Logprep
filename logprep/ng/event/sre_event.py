@@ -1,7 +1,5 @@
 """Concrete Sre Event implementation"""
 
-from typing import Iterable
-
 from logprep.ng.abc.event import Event
 from logprep.ng.event.event_state import EventState
 
@@ -11,10 +9,10 @@ class SreEvent(Event):
 
     __slots__ = ("outputs",)
 
-    outputs: list[str]
+    outputs: tuple[dict[str, str]]
 
     def __init__(
-        self, data: dict[str, str], *, outputs: Iterable[str], state: EventState | None = None
+        self, data: dict[str, str], *, outputs: tuple[dict], state: EventState | None = None
     ) -> None:
         """
         Parameters
@@ -26,5 +24,5 @@ class SreEvent(Event):
         outputs : Iterable[str]
             The collection of output connector names associated with the SRE event
         """
-        self.outputs = list(outputs)
+        self.outputs = outputs
         super().__init__(data=data, state=state)

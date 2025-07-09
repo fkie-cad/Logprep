@@ -115,11 +115,11 @@ class PreDetector(Processor):
             and not self._ip_alerter.is_in_alerts_list(rule, event)
         ):
             self._get_detection_result(event, rule)
-        for detection, _ in self._event.extra_data:
-            detection.data["creation_timestamp"] = TimeParser.now().isoformat()
+        for sre_event in self._event.extra_data:
+            sre_event.data["creation_timestamp"] = TimeParser.now().isoformat()
             timestamp = get_dotted_field_value(event, rule.timestamp_field)
             if timestamp is not None:
-                detection[rule.timestamp_field] = self.normalize_timestamp(rule, timestamp)
+                sre_event[rule.timestamp_field] = self.normalize_timestamp(rule, timestamp)
 
     def _get_detection_result(self, event: dict, rule: PreDetectorRule):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
