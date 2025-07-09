@@ -17,22 +17,22 @@ class DummyEvent(Event):
 class TestSreEvents(TestEventClass):
 
     def test_sre_event_initialisation(self) -> None:
-        sre_event = SreEvent(data={"foo": "bar"})
+        outputs = ({"name": "sre_topic"},)
+        sre_event = SreEvent(data={"foo": "bar"}, outputs=outputs)
 
         assert isinstance(sre_event.state, EventState)
 
     def test_sre_event_preserves_state_on_init(self) -> None:
         state = EventState()
         state.current_state = EventStateType.STORED_IN_OUTPUT
-        sre_event = SreEvent(data={"msg": "payload"}, state=state)
+        outputs = ({"name": "sre_topic"},)
+        sre_event = SreEvent(data={"msg": "payload"}, state=state, outputs=outputs)
 
         assert sre_event.state.current_state is EventStateType.STORED_IN_OUTPUT
 
     def test_sre_event_transition_to_next(self) -> None:
-
-        sre_event = SreEvent(
-            data={"parent": "yes"},
-        )
+        outputs = ({"name": "sre_topic"},)
+        sre_event = SreEvent(data={"parent": "yes"}, outputs=outputs)
         sre_event.state.current_state = EventStateType.PROCESSING
 
         sre_event.state.next_state(success=True)
