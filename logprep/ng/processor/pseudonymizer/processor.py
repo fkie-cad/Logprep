@@ -46,7 +46,7 @@ Processor Configuration
 import re
 from functools import cached_property, lru_cache
 from itertools import chain
-from typing import Pattern
+from typing import Callable, Pattern
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from attrs import define, field, validators
@@ -188,7 +188,7 @@ class Pseudonymizer(FieldManager):
     rule_class = PseudonymizerRule
 
     @cached_property
-    def _hasher(self):
+    def _hasher(self) -> SHA256Hasher:
         return SHA256Hasher()
 
     @cached_property
@@ -205,18 +205,18 @@ class Pseudonymizer(FieldManager):
         return GetterFactory.from_string(self._config.regex_mapping).get_yaml()
 
     @cached_property
-    def _get_pseudonym_dict_cached(self):
+    def _get_pseudonym_dict_cached(self) -> Callable:
         return lru_cache(maxsize=self._config.max_cached_pseudonyms)(self._pseudonymize)
 
     @cached_property
-    def _pseudonymize_url_cached(self):
+    def _pseudonymize_url_cached(self) -> Callable:
         return lru_cache(maxsize=self._config.max_cached_pseudonymized_urls)(self._pseudonymize_url)
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         self._replace_regex_keywords_by_regex_expression()
 
-    def _replace_regex_keywords_by_regex_expression(self):
+    def _replace_regex_keywords_by_regex_expression(self) -> None:
         for rule in self.rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
                 if regex_keyword in self._regex_mapping:
@@ -282,7 +282,7 @@ class Pseudonymizer(FieldManager):
             self._event.extra_data.append(pseudonym_event)
         return self._wrap_hash(pseudonym_dict["pseudonym"])
 
-    def _pseudonymize(self, value):
+    def _pseudonymize(self, value: str) -> dict[str, str]:
         hash_string = self._hasher.hash_str(value, salt=self._config.hash_salt)
         encrypted_origin = self._encrypter.encrypt(value)
         return {"pseudonym": hash_string, "origin": encrypted_origin}
@@ -324,7 +324,7 @@ class Pseudonymizer(FieldManager):
     def _wrap_hash(self, hash_string: str) -> str:
         return self.HASH_PREFIX + hash_string + self.HASH_SUFFIX
 
-    def _update_cache_metrics(self):
+    def _update_cache_metrics(self) -> None:
         cache_info_pseudonyms = self._get_pseudonym_dict_cached.cache_info()
         cache_info_urls = self._pseudonymize_url_cached.cache_info()
         self.metrics.new_results += cache_info_pseudonyms.misses + cache_info_urls.misses
