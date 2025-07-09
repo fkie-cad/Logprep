@@ -147,6 +147,7 @@ class Registry:
         "ng_timestamp_differ": NgTimestampDiffer,
         "ng_timestamper": NgTimestamper,
         "ng_pre_detector": NgPreDetector,
+        "ng_pseudonymizer": NgPseudonymizer,
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,
