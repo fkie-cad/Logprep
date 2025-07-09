@@ -134,14 +134,13 @@ class PreDetector(Processor):
     def _generate_detection_result(
         pre_detection_id: str, event: dict, rule: PreDetectorRule
     ) -> dict:
-        detection_result = rule.detection_data
-        detection_result.update(
-            {
-                "rule_filter": rule.filter_str,
-                "description": rule.description,
-                "pre_detection_id": pre_detection_id,
-            }
-        )
+        detection_result = {
+            **rule.detection_data,
+            "rule_filter": rule.filter_str,
+            "description": rule.description,
+            "pre_detection_id": pre_detection_id,
+        }
+
         if host_name := get_dotted_field_value(event, "host.name"):
             detection_result.update({"host": {"name": host_name}})
         return detection_result

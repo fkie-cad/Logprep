@@ -481,3 +481,23 @@ class TestPreDetector(BaseProcessorTestCase):
         assert "tags" in document
         assert "_pre_detector_failure" in document["tags"]
         assert "_pre_detector_timeparsing_failure" in document["tags"]
+
+    def test_generate_detection_result_does_not_modify_rule_data(self):
+        rule = {
+            "filter": "*",
+            "pre_detector": {
+                "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+            },
+            "description": "Test rule one",
+        }
+        self._load_rule(rule)
+        document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        assert (
+            "rule_filter" not in self.object.rules[0].detection_data
+        ), "rule_filter should not be in detection data"
