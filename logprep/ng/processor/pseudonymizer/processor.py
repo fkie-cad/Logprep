@@ -54,7 +54,8 @@ from attrs import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.processor.field_manager.processor import FieldManager
+from logprep.ng.event.pseudonym_event import PseudonymEvent
+from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
@@ -152,11 +153,11 @@ class Pseudonymizer(FieldManager):
 
         new_results: GaugeMetric = field(
             factory=lambda: GaugeMetric(
-                description="Number of new pseudodonyms",
+                description="Number of new pseudonyms",
                 name="pseudonymizer_new_results",
             )
         )
-        """Number of new pseudodonyms"""
+        """Number of new pseudonyms"""
         cached_results: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Number of resolved from cache pseudonyms",
@@ -225,7 +226,7 @@ class Pseudonymizer(FieldManager):
                         f"Regex keyword '{regex_keyword}' not found in regex_mapping '{self._config.regex_mapping}'"
                     )
 
-    def _apply_rules(self, event: dict, rule: PseudonymizerRule):
+    def _apply_rules(self, event: dict, rule: PseudonymizerRule) -> None:
         source_dict = {}
         for source_field in rule.pseudonyms:
             source_dict[source_field] = get_dotted_field_value(event, source_field)
@@ -246,8 +247,8 @@ class Pseudonymizer(FieldManager):
                 event, fields={dotted_field: field_value}, rule=rule, overwrite_target=True
             )
         if "@timestamp" in event:
-            for pseudonym, _ in self.result.data:
-                pseudonym["@timestamp"] = event["@timestamp"]
+            for pseudonym in self._event.extra_data:
+                pseudonym.data["@timestamp"] = event["@timestamp"]
         self._update_cache_metrics()
 
     def _pseudonymize_field(
@@ -276,9 +277,9 @@ class Pseudonymizer(FieldManager):
         if self.pseudonymized_pattern.match(value):
             return value
         pseudonym_dict = self._get_pseudonym_dict_cached(value)
-        extra = (pseudonym_dict, self._config.outputs)
-        if extra not in self.result.data:
-            self.result.data.append(extra)
+        pseudonym_event = PseudonymEvent(pseudonym_dict, outputs=self._config.outputs)
+        if pseudonym_event not in self._event.extra_data:
+            self._event.extra_data.append(pseudonym_event)
         return self._wrap_hash(pseudonym_dict["pseudonym"])
 
     def _pseudonymize(self, value):

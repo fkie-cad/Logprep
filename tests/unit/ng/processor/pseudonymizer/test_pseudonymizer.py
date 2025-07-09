@@ -8,9 +8,10 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
+from logprep.ng.event.log_event import LogEvent
+from logprep.ng.event.pseudonym_event import PseudonymEvent
 from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
@@ -755,8 +756,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         if regex_mapping is not None:
             self.regex_mapping = regex_mapping
         self._load_rule(rule)
+        event = LogEvent(event, original=b"")
         self.object.process(event)
-        assert event == expected, testcase
+        assert event.data == expected, testcase
 
     def _load_rule(self, rule):
         config = deepcopy(self.CONFIG)
@@ -782,10 +784,11 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
         self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
         self._load_rule(rule)
+        event = LogEvent(event, original=b"")
         self.object.process(event)
 
-        assert event["do_not_pseudo_this"] == url
-        assert event["pseudo_this"] == pseudonym
+        assert event.data["do_not_pseudo_this"] == url
+        assert event.data["pseudo_this"] == pseudonym
 
     def test_replace_regex_keywords_by_regex_expression_is_idempotent(self):
         rule_dict = {
@@ -800,9 +803,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert self.object._rule_tree.rules[0].pseudonyms == {"something": expected_pattern}
 
     def test_pseudonymize_string_adds_pseudonyms(self):
-        self.object.result = ProcessorResult(processor_name="test")
+        self.object._event = LogEvent({"does not": "matter"}, original=b"")
         assert self.object._pseudonymize_string("foo").startswith("<pseudonym:")
-        assert len(self.object.result.data) == 1
+        assert len(self.object._event.extra_data) == 1
 
     def test_resolve_from_cache_pseudonym(self):
         rule_dict = {
@@ -828,6 +831,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
+        event = LogEvent(event, original=b"")
         self.object.process(event)
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
@@ -853,6 +857,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
+        event = LogEvent(event, original=b"")
         self.object.process(event)
         # 1 subdomains -> pseudonym_cache, 1 url -> url_cache
         assert self.object.metrics.new_results == 2
@@ -894,7 +899,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         ],
     )
     def test_pseudonymize_url(self, url, expected):
-        self.object.result = ProcessorResult(processor_name="test")
+        self.object._event = LogEvent({"does not": "matter"}, original=b"")
         assert self.object._pseudonymize_url(url) == expected
 
     def test_process_returns_extra_output(self):
@@ -917,18 +922,16 @@ class TestPseudonymizer(BaseProcessorTestCase):
             },
         }
         self._load_rule(rule_dict)  # First call
-        extra_output = self.object.process(event)
-        assert extra_output.data
-        assert isinstance(extra_output.data, list)
-        assert isinstance(extra_output, ProcessorResult)
-        assert isinstance(extra_output.data[0], tuple)
-        assert isinstance(extra_output.data[0][0], dict)
-        assert isinstance(extra_output.data[0][1], tuple)
-        assert extra_output.data[0][1] == ({"kafka": "topic"},), "Output is set as in CONFIG"
-        assert len(extra_output.data) == 1, "Should contain only one pseudonym"
-        assert extra_output.data[0][0].get("pseudonym"), "pseudonym is set"
-        assert extra_output.data[0][0].get("origin"), "encrypted original is set"
-        assert extra_output.data[0][0].get("@timestamp"), "timestamp is set if present in event"
+        event = LogEvent(event, original=b"")
+        self.object.process(event)
+        assert len(event.extra_data) == 1, "Should contain only one pseudonym"
+        pseudonym_event = event.extra_data[0]
+        assert pseudonym_event.data
+        assert isinstance(pseudonym_event, PseudonymEvent)
+        assert pseudonym_event.outputs == ({"kafka": "topic"},), "Output is set as in CONFIG"
+        assert pseudonym_event.data.get("pseudonym"), "pseudonym is set"
+        assert pseudonym_event.data.get("origin"), "encrypted original is set"
+        assert pseudonym_event.data.get("@timestamp"), "timestamp is set if present in event"
 
     def test_extra_output_contains_only_one_pseudonym_even_if_pseudonym_appears_multiple_times_in_event(
         self,
@@ -953,22 +956,18 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_rule(rule_dict)  # First call
-        extra_output = self.object.process(event)
-        assert extra_output
-        assert isinstance(extra_output.data, list)
-        assert len(extra_output.data[0]) == 2
-        assert isinstance(extra_output.data[0], tuple)
-        assert isinstance(extra_output.data[0][0], dict)
-        assert isinstance(extra_output.data[0][1], tuple)
-        assert isinstance(extra_output.data[0][1][0], dict)
-        assert extra_output.data[0][1] == ({"kafka": "topic"},), "Output is set as in CONFIG"
+        self._load_rule(rule_dict)
+        event = LogEvent(event, original=b"")
+        event = self.object.process(event)
         assert (
-            len(extra_output.data) == 1
+            len(event.extra_data) == 1
         ), "Should contain only one pseudonym, as the value for both is the same"
-        assert extra_output.data[0][0].get("pseudonym"), "pseudonym is set"
-        assert extra_output.data[0][0].get("origin"), "encrypted original is set"
-        assert extra_output.data[0][0].get("@timestamp"), "timestamp is set if present in event"
+        pseudonym_event = event.extra_data[0]
+        assert pseudonym_event
+        assert pseudonym_event.outputs == ({"kafka": "topic"},), "Output is set as in CONFIG"
+        assert pseudonym_event.data.get("pseudonym"), "pseudonym is set"
+        assert pseudonym_event.data.get("origin"), "encrypted original is set"
+        assert pseudonym_event.data.get("@timestamp"), "timestamp is set if present in event"
 
     def test_extra_output_contains_different_pseudonyms_for_different_values(self):
         rule_dict = {
@@ -991,32 +990,26 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_rule(rule_dict)  # First call
-        extra_output = self.object.process(event)
-        assert extra_output.data
-        assert isinstance(extra_output.data, list)
-        assert len(extra_output.data) == 2
-        assert isinstance(extra_output.data[0], tuple)  # First item of extra_output
-        assert isinstance(extra_output.data[0][0], dict)  # Pseudonym
-        assert isinstance(extra_output.data[0][1], tuple)  # Outputs
-        assert isinstance(extra_output.data[0][1][0], dict)  # Output
-        assert extra_output.data[0][1] == ({"kafka": "topic"},), "Output is set as in CONFIG"
-        assert len(extra_output.data) == 2, "Should contain two pseudonyms, for each value one"
+        self._load_rule(rule_dict)
+        event = LogEvent(event, original=b"")
+        event = self.object.process(event)
+        assert len(event.extra_data) == 2, "Should contain two pseudonyms, for each value one"
+        pseudonym_1 = event.extra_data[0]
+        assert pseudonym_1.data.get("pseudonym"), "pseudonym is set"
+        assert pseudonym_1.data.get("origin"), "encrypted original is set"
+        assert pseudonym_1.data.get("@timestamp"), "timestamp is set if present in event"
 
-        pseudonym_1 = extra_output.data[0][0]
-        assert pseudonym_1.get("pseudonym"), "pseudonym is set"
-        assert pseudonym_1.get("origin"), "encrypted original is set"
-        assert pseudonym_1.get("@timestamp"), "timestamp is set if present in event"
+        pseudonym_2 = event.extra_data[1]
+        assert pseudonym_2.data.get("pseudonym"), "pseudonym is set"
+        assert pseudonym_2.data.get("origin"), "encrypted original is set"
+        assert pseudonym_2.data.get("@timestamp"), "timestamp is set if present in event"
 
-        pseudonym_2 = extra_output.data[1][0]
-        assert pseudonym_2.get("pseudonym"), "pseudonym is set"
-        assert pseudonym_2.get("origin"), "encrypted original is set"
-        assert pseudonym_2.get("@timestamp"), "timestamp is set if present in event"
-
-        assert pseudonym_1.get("pseudonym") != pseudonym_2.get(
+        assert pseudonym_1.data.get("pseudonym") != pseudonym_2.data.get(
             "pseudonym"
         ), "pseudonyms should differ"
-        assert pseudonym_1.get("origin") != pseudonym_2.get("origin"), "origins should differ"
+        assert pseudonym_1.data.get("origin") != pseudonym_2.data.get(
+            "origin"
+        ), "origins should differ"
 
     def test_ignores_missing_field_but_add_warning(self):
         rule_dict = {
@@ -1040,10 +1033,12 @@ class TestPseudonymizer(BaseProcessorTestCase):
             },
         }
         self._load_rule(rule_dict)
+        event = LogEvent(event, original=b"")
         extra_output = self.object.process(event)
-        assert extra_output.data[0][0].get("pseudonym"), "pseudonym is set"
-        assert "_pseudonymizer_missing_field_warning" in event.get("tags", [])
-        assert len(extra_output.data) == 1, "only ONE pseudonym is set"
+        pseudonym_event = extra_output.extra_data[0]
+        assert pseudonym_event.data.get("pseudonym"), "pseudonym is set"
+        assert "_pseudonymizer_missing_field_warning" in event.data.get("tags", [])
+        assert len(event.extra_data) == 1, "only ONE pseudonym is set"
 
     @pytest.mark.parametrize(
         "mode, encrypter_class",
@@ -1096,7 +1091,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
-
+        event = LogEvent(event, original=b"")
         self.object.process(deepcopy(event))
         self.object.process(deepcopy(event))
         self.object.process(event)
