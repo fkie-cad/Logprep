@@ -89,7 +89,7 @@ class PreDetector(Processor):
     rule_class = PreDetectorRule
 
     @cached_property
-    def _ip_alerter(self):
+    def _ip_alerter(self) -> IPAlerter:
         return IPAlerter(self._config.alert_ip_list_path)
 
     def normalize_timestamp(self, rule: PreDetectorRule, timestamp: str) -> str:
@@ -109,7 +109,7 @@ class PreDetector(Processor):
                 tags=["_pre_detector_timeparsing_failure"],
             ) from error
 
-    def _apply_rules(self, event: dict, rule: PreDetectorRule):
+    def _apply_rules(self, event: dict, rule: PreDetectorRule) -> None:
         if not (
             self._ip_alerter.has_ip_fields(rule)
             and not self._ip_alerter.is_in_alerts_list(rule, event)
@@ -121,7 +121,7 @@ class PreDetector(Processor):
             if timestamp is not None:
                 sre_event.data[rule.timestamp_field] = self.normalize_timestamp(rule, timestamp)
 
-    def _get_detection_result(self, event: dict, rule: PreDetectorRule):
+    def _get_detection_result(self, event: dict, rule: PreDetectorRule) -> None:
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
         if pre_detection_id is None:
             pre_detection_id = str(uuid4())
