@@ -1,7 +1,7 @@
 """Concrete Pseudonym Event implementation"""
 
-from logprep.ng.abc.event import Event
+from logprep.ng.abc.event import ExtraDataEvent
 
 
-class PseudonymEvent(Event):
+class PseudonymEvent(ExtraDataEvent):
     """Concrete Pseudonym event class."""

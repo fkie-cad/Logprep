@@ -17,22 +17,22 @@ class DummyEvent(Event):
 class TestPseudonymEvents(TestEventClass):
 
     def test_pseudonym_event_initializes(self) -> None:
-        pseudonym_event = PseudonymEvent(data={"foo": "bar"})
+        outputs = ({"opensearch": "pseudonym_index"},)
+        pseudonym_event = PseudonymEvent(data={"foo": "bar"}, outputs=outputs)
 
         assert isinstance(pseudonym_event.state, EventState)
 
     def test_pseudonym_event_preserves_state_on_init(self) -> None:
         state = EventState()
         state.current_state = EventStateType.STORED_IN_OUTPUT
-        pseudonym_event = PseudonymEvent(data={"msg": "payload"}, state=state)
+        outputs = ({"opensearch": "pseudonym_index"},)
+        pseudonym_event = PseudonymEvent(data={"msg": "payload"}, state=state, outputs=outputs)
 
         assert pseudonym_event.state.current_state is EventStateType.STORED_IN_OUTPUT
 
     def test_pseudonym_event_transition_to_next(self) -> None:
-
-        pseudonym_event = PseudonymEvent(
-            data={"parent": "yes"},
-        )
+        outputs = ({"opensearch": "pseudonym_index"},)
+        pseudonym_event = PseudonymEvent(data={"parent": "yes"}, outputs=outputs)
         pseudonym_event.state.current_state = EventStateType.PROCESSING
 
         pseudonym_event.state.next_state(success=True)
