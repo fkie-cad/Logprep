@@ -69,8 +69,8 @@ class TestPreDetector(BaseProcessorTestCase):
 
         document = {"A": "foo X bar Y baz"}
         event = LogEvent(document, original=b"")
-        detection_results = self.object.process(event)
-        assert detection_results.data == []
+        event = self.object.process(event)
+        assert event.extra_data == []
 
     def test_perform_successful_pre_detection_with_host_name(self):
         document = {
@@ -93,10 +93,9 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
-        detection_results = self.object.process(document)
-        self._assert_equality_of_results(
-            document, expected, detection_results.data, expected_detection_results
-        )
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        self._assert_equality_of_results(event, expected, expected_detection_results)
 
     def test_perform_successful_pre_detection_with_same_existing_pre_detection(self):
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
@@ -117,10 +116,9 @@ class TestPreDetector(BaseProcessorTestCase):
         ]
 
         document["pre_detection_id"] = "11fdfc1f-8e00-476e-b88f-753d92af989c"
-        detection_results = self.object.process(document)
-        self._assert_equality_of_results(
-            document, expected, detection_results.data, expected_detection_results
-        )
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        self._assert_equality_of_results(event, expected, expected_detection_results)
 
     def test_perform_successful_pre_detection_with_pre_detector_complex_rule_suceeds_msg_t1(self):
         document = {"tags": "test", "process": {"program": "test"}, "message": "test1*xyz"}
@@ -140,10 +138,9 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
-        detection_results = self.object.process(document)
-        self._assert_equality_of_results(
-            document, expected, detection_results.data, expected_detection_results
-        )
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        self._assert_equality_of_results(event, expected, expected_detection_results)
 
     def test_perform_successful_pre_detection_with_pre_detector_complex_rule_succeeds_msg_t2(self):
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Xxyz"}
@@ -163,10 +160,9 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
-        detection_results = self.object.process(document)
-        self._assert_equality_of_results(
-            document, expected, detection_results.data, expected_detection_results
-        )
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        self._assert_equality_of_results(event, expected, expected_detection_results)
 
     def test_perform_successful_pre_detection_with_two_rules(self):
         document = {"first_match": "something", "second_match": "something"}
@@ -197,72 +193,83 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             ),
         ]
-        detection_results = self.object.process(document)
-        self._assert_equality_of_results(
-            document, expected, detection_results.data, expected_detection_results
-        )
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        self._assert_equality_of_results(event, expected, expected_detection_results)
 
     def test_correct_star_wildcard_behavior(self):
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
-        self.object.process(document)
-        assert document == expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyzA"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyzA"}
-        self.object.process(document)
-        assert document == expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2*xyzA"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2*xyzA"}
-        self.object.process(document)
-        assert document == expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2xyz"}
-        self.object.process(document)
-        assert document != expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data != expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2Axyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2Axyz"}
-        self.object.process(document)
-        assert document != expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data != expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2AAxyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2AAxyz"}
-        self.object.process(document)
-        assert document != expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data != expected
 
     def test_correct_questionmark_wildcard_behavior(self):
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
-        self.object.process(document)
-        assert document == expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
-        self.object.process(document)
-        assert document == expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
-        self.object.process(document)
-        assert document == expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
-        self.object.process(document)
-        assert document != expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data != expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
-        self.object.process(document)
-        assert document != expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data != expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
-        self.object.process(document)
-        assert document == expected
+        event = LogEvent(document, original=b"")
+        self.object.process(event)
+        assert event.data == expected
 
     def test_ignores_case(self):
         document = {"tags": "test", "process": {"program": "test"}, "message": "TEST2*xyz"}
@@ -281,10 +288,9 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
-        detection_results = self.object.process(document)
-        self._assert_equality_of_results(
-            document, expected, detection_results.data, expected_detection_results
-        )
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        self._assert_equality_of_results(event, expected, expected_detection_results)
 
     def test_ignores_case_list(self):
         document = {"tags": "test", "process": {"program": "test"}, "message": ["TEST2*xyz"]}
@@ -303,10 +309,9 @@ class TestPreDetector(BaseProcessorTestCase):
                 ({"kafka": "pre_detector_alerts"},),
             )
         ]
-        detection_results = self.object.process(document)
-        self._assert_equality_of_results(
-            document, expected, detection_results.data, expected_detection_results
-        )
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        self._assert_equality_of_results(event, expected, expected_detection_results)
 
     def _assert_equality_of_results(
         self, event: LogEvent, expected: dict, expected_detection_results: list[dict]
@@ -352,8 +357,10 @@ class TestPreDetector(BaseProcessorTestCase):
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         self._load_rule(rule)
-        detection_results = self.object.process(document)
-        assert detection_results.data[0][0].get("@timestamp") == "2024-08-12T12:13:04Z"
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        sre_event = event.extra_data[0]
+        assert sre_event.data.get("@timestamp") == "2024-08-12T12:13:04Z"
 
     @pytest.mark.parametrize(
         "testcase, rule, timestamp, expected",
@@ -416,8 +423,10 @@ class TestPreDetector(BaseProcessorTestCase):
             "@timestamp": timestamp,
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
-        detection_results = self.object.process(document)
-        assert detection_results.data[0][0].get("@timestamp") == expected, testcase
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        sre_event = event.extra_data[0]
+        assert sre_event.data.get("@timestamp") == expected, testcase
 
     def test_custom_timestamp_field_can_be_used(self):
         rule = {
@@ -440,11 +449,11 @@ class TestPreDetector(BaseProcessorTestCase):
             "@timestamp": "19960531153655",
         }
         self._load_rule(rule)
-        detection_results = self.object.process(document)
-        assert detection_results.data[0][0].get("custom_timestamp") == "2024-08-11T02:11:45Z"
-        assert (
-            detection_results.data[0][0].get("@timestamp") is None
-        ), "should not be in detection data"
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        sre_event = event.extra_data[0]
+        assert sre_event.data.get("custom_timestamp") == "2024-08-11T02:11:45Z"
+        assert sre_event.data.get("@timestamp") is None, "should not be in detection data"
 
     def test_appends_processing_warning_if_timestamp_could_not_be_parsed(self):
         rule = {
@@ -462,10 +471,11 @@ class TestPreDetector(BaseProcessorTestCase):
             "@timestamp": "this is not a timestamp",
         }
         self._load_rule(rule)
-        detection_results = self.object.process(document)
-        assert detection_results.warnings
-        assert len(detection_results.warnings) == 1
-        assert "Could not parse timestamp" in str(detection_results.warnings[0])
+        event = LogEvent(document, original=b"")
+        event = self.object.process(event)
+        assert event.warnings
+        assert len(event.warnings) == 1
+        assert "Could not parse timestamp" in str(event.warnings[0])
         assert document, "should not be cleared"
         assert document.get("@timestamp") == "this is not a timestamp", "should not be modified"
         assert "tags" in document

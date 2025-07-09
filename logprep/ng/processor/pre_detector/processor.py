@@ -119,7 +119,7 @@ class PreDetector(Processor):
             sre_event.data["creation_timestamp"] = TimeParser.now().isoformat()
             timestamp = get_dotted_field_value(event, rule.timestamp_field)
             if timestamp is not None:
-                sre_event[rule.timestamp_field] = self.normalize_timestamp(rule, timestamp)
+                sre_event.data[rule.timestamp_field] = self.normalize_timestamp(rule, timestamp)
 
     def _get_detection_result(self, event: dict, rule: PreDetectorRule):
         pre_detection_id = get_dotted_field_value(event, "pre_detection_id")
