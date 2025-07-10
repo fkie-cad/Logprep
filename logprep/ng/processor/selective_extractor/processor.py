@@ -38,7 +38,7 @@ class SelectiveExtractor(FieldManager):
 
     rule_class = SelectiveExtractorRule
 
-    def _apply_rules(self, event: dict, rule: SelectiveExtractorRule):
+    def _apply_rules(self, event: dict, rule: SelectiveExtractorRule) -> None:
         """
         Generates a filtered event based on the incoming event and the configured
         extraction_fields list in processor configuration or from rule.
