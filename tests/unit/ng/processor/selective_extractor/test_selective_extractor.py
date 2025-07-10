@@ -3,8 +3,8 @@
 import uuid
 from unittest import mock
 
-from logprep.abc.processor import ProcessorResult
-from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
+from logprep.ng.event.filtered_event import FilteredEvent
+from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
@@ -17,69 +17,55 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
     def test_selective_extractor_does_not_change_orig_doc(self):
         document = {"user": "test_user", "other": "field"}
         exp_document = {"user": "test_user", "other": "field"}
-
-        self.object.process(document)
+        event = LogEvent(document, original=document)
+        self.object.process(event)
 
         assert document == exp_document
 
-    def test_process_returns_list_of_tuples(self):
+    def test_process_adds_filtered_event_to_extra_data(self):
         document = {"message": "test_message", "other": "field"}
-        tuple_list = self.object.process(document)
-        assert isinstance(tuple_list, ProcessorResult)
-        assert len(tuple_list.data) > 0
+        event = LogEvent(document, original=document)
+        event = self.object.process(event)
+        assert len(event.extra_data) == 1
+        filtered_event = event.extra_data[0]
+        assert isinstance(filtered_event, FilteredEvent)
 
-    def test_process_returns_tuple_list_with_extraction_fields_from_rule(self):
+    def test_process_returns_event_extra_data_with_extraction_fields_from_rule(self):
         field_name = f"{uuid.uuid4()}"
-        rule = SelectiveExtractorRule.create_from_dict(
-            {
-                "filter": field_name,
-                "selective_extractor": {
-                    "source_fields": [field_name],
-                    "outputs": [{"kafka": "topic"}],
-                },
-            }
-        )
-        self.object._rule_tree.add_rule(rule)
+        rule = {
+            "filter": field_name,
+            "selective_extractor": {
+                "source_fields": [field_name],
+                "outputs": [{"kafka": "topic"}],
+            },
+        }
+        self._load_rule(rule)
         document = {field_name: "the value"}
-        tuple_list = self.object.process(document)
-        for filtered_event, _ in tuple_list.data:
-            if field_name in filtered_event:
-                break
-        else:
-            assert False
+        event = LogEvent(document, original=document)
+        event = self.object.process(event)
+        filtered_event = event.extra_data[0]
+        assert field_name in filtered_event.data
 
-    def test_process_returns_selective_extractor_target_topic(self):
+    def test_process_returns_selective_extractor_outputs(self):
         field_name = f"{uuid.uuid4()}"
+        outputs = ({"opensearch": "my topic"},)
         rule = {
             "filter": field_name,
             "selective_extractor": {
                 "source_fields": [field_name],
-                "outputs": [{"opensearch": "my topic"}],
+                "outputs": outputs,
             },
         }
         self._load_rule(rule)
         document = {field_name: "test_message", "other": "field"}
-        result = self.object.process(document)
-        output = result.data[0][1][0]
-        assert "my topic" in output.values()
-
-    def test_process_returns_selective_extractor_target_output(self):
-        field_name = f"{uuid.uuid4()}"
-        rule = {
-            "filter": field_name,
-            "selective_extractor": {
-                "source_fields": [field_name],
-                "outputs": [{"opensearch": "index"}],
-            },
-        }
-        self._load_rule(rule)
-        document = {field_name: "test_message", "other": "field"}
-        result = self.object.process(document)
-        output = result.data[0][1][0]
-        assert "opensearch" in output.keys()
+        event = LogEvent(document, original=document)
+        event = self.object.process(event)
+        filtered_event = event.extra_data[0]
+        assert filtered_event.outputs == outputs
 
     def test_process_returns_extracted_fields(self):
         document = {"message": "test_message", "other": "field"}
+        expected = {"message": "test_message"}
         rule = {
             "filter": "message",
             "selective_extractor": {
@@ -88,20 +74,19 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             },
         }
         self._load_rule(rule)
-        result = self.object.process(document)
-        for filtered_event, *_ in result.data:
-            if filtered_event == {"message": "test_message"}:
-                break
-        else:
-            assert False
+        event = LogEvent(document, original=document)
+        event = self.object.process(event)
+        filtered_event = event.extra_data[0]
+        assert isinstance(filtered_event, FilteredEvent)
+        assert filtered_event.data == expected
 
     def test_process_returns_none_when_no_extraction_field_matches(self):
         document = {"nomessage": "test_message", "other": "field"}
-        result = self.object.process(document)
-        assert isinstance(result, ProcessorResult)
-        assert result.data == []
+        event = LogEvent(document, original=document)
+        result = self.object.process(event)
+        assert isinstance(result, LogEvent)
+        assert result.extra_data == []
         assert result.errors == []
-        assert result.processor_name == "Test Instance Name"
 
     def test_gets_matching_rules_from_rules_tree(self):
         matching_rules = self.object._rule_tree.get_matching_rules({"message": "the message"})
@@ -112,7 +97,8 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         with mock.patch(
             f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"
         ) as mock_apply_rules:
-            self.object.process({"message": "the message"})
+            event = LogEvent({"message": "the message"}, original=b"")
+            self.object.process(event)
             mock_apply_rules.assert_called()
 
     def test_process_extracts_dotted_fields(self):
@@ -125,20 +111,19 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         }
         self._load_rule(rule)
         document = {"message": "test_message", "other": {"message": "my message value"}}
-        result = self.object.process(document)
-
-        for extracted_event, *_ in result.data:
-            if extracted_event.get("other", {}).get("message") is not None:
-                break
-        else:
-            assert False, f"other.message not in {result}"
+        event = LogEvent(document, original=document)
+        result = self.object.process(event)
+        filtered_event = result.extra_data[0]
+        assert filtered_event.data.get("other", {}).get("message") is not None
 
     def test_process_clears_internal_filtered_events_list_before_every_event(self):
         document = {"message": "test_message", "other": {"message": "my message value"}}
-        _ = self.object.process(document)
-        assert len(self.object.result.data) == 1
-        _ = self.object.process(document)
-        assert len(self.object.result.data) == 1
+        event = LogEvent(document, original=document)
+        _ = self.object.process(event)
+        assert len(self.object._event.extra_data) == 1
+        event = LogEvent(document, original=document)
+        _ = self.object.process(event)
+        assert len(self.object._event.extra_data) == 1
 
     def test_process_extracts_dotted_fields_complains_on_missing_fields(self):
         rule = {
@@ -156,8 +141,9 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             "other": {"message": "my message value"},
             "tags": ["_selective_extractor_missing_field_warning"],
         }
-        self.object.process(document)
-        assert document == expected
+        event = LogEvent(document, original=document)
+        self.object.process(event)
+        assert event.data == expected
 
     def test_process_extracts_dotted_fields_and_ignores_missing_fields(self):
         rule = {
@@ -174,5 +160,6 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             "message": "test_message",
             "other": {"message": "my message value"},
         }
-        self.object.process(document)
-        assert document == expected
+        event = LogEvent(document, original=document)
+        self.object.process(event)
+        assert event.data == expected

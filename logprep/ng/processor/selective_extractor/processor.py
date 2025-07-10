@@ -27,6 +27,7 @@ Processor Configuration
 .. automodule:: logprep.processor.selective_extractor.rule
 """
 
+from logprep.ng.event.filtered_event import FilteredEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.util.helper import add_fields_to, get_source_fields_dict
@@ -61,6 +62,10 @@ class SelectiveExtractor(FieldManager):
             if content is not None
         }
         if flattened_fields:
-            filtered_event = {}
-            add_fields_to(filtered_event, flattened_fields, rule)
-            self.result.data.append((filtered_event, rule.outputs))
+            filtered_event_data: dict = {}
+            add_fields_to(filtered_event_data, flattened_fields, rule)
+            filtered_event = FilteredEvent(
+                filtered_event_data,
+                outputs=rule.outputs,
+            )
+            self._event.extra_data.append(filtered_event)
