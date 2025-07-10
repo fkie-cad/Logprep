@@ -46,6 +46,9 @@
         "clusterable",
         "Clusterer",
         "concatenator",
-        "SIEM"
+        "SIEM",
+        "timestamper",
+        "wineventlog",
+        "winlog"
     ],
 }
