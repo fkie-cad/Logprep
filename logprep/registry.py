@@ -53,6 +53,7 @@ from logprep.ng.processor.labeler.processor import Labeler as NgLabeler
 from logprep.ng.processor.list_comparison.processor import (
     ListComparison as NgListComparison,
 )
+from logprep.ng.processor.pre_detector.processor import PreDetector as NgPreDetector
 from logprep.ng.processor.replacer.processor import Replacer as NgReplacer
 from logprep.ng.processor.requester.processor import Requester as NgRequester
 from logprep.ng.processor.string_splitter.processor import (
@@ -145,6 +146,7 @@ class Registry:
         "ng_template_replacer": NgTemplateReplacer,
         "ng_timestamp_differ": NgTimestampDiffer,
         "ng_timestamper": NgTimestamper,
+        "ng_pre_detector": NgPreDetector,
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,

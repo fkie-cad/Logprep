@@ -14,7 +14,6 @@ class LogEvent(Event):
         "original",
         "extra_data",
         "metadata",
-        "_state",
         "_origin_state_next_state_fn",
     )
 
@@ -51,12 +50,10 @@ class LogEvent(Event):
         """
 
         self.original = original
-        self.extra_data = extra_data if extra_data else []
+        self.extra_data: list[Event] = extra_data if extra_data else []
         self.metadata = metadata
 
-        self._state: EventState = EventState() if state is None else state
-
-        super().__init__(data=data, state=self._state)
+        super().__init__(data=data, state=state)
 
         # Wrap original next_state with validation logic
         self._origin_state_next_state_fn = partial(EventState.next_state, self._state)
