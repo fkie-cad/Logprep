@@ -20,6 +20,8 @@ class TestSreEvents(TestEventClass):
         outputs = ({"name": "sre_topic"},)
         sre_event = SreEvent(data={"foo": "bar"}, outputs=outputs)
 
+        assert sre_event.data == data
+        assert sre_event.outputs == outputs
         assert isinstance(sre_event.state, EventState)
 
     def test_sre_event_preserves_state_on_init(self) -> None:
