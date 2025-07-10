@@ -14,6 +14,7 @@ import multiprocessing
 import multiprocessing.queues
 import warnings
 from ctypes import c_bool
+from datetime import datetime, timezone
 from functools import cached_property, partial
 from importlib.metadata import version
 from multiprocessing import Value, current_process
@@ -369,6 +370,7 @@ class Pipeline:
                 self._input.batch_finished_callback()
             return
         self.logger.debug(f"Enqueuing error item: {item}")
+
         match item:
             case CriticalOutputError():
                 event = self._get_output_error_event(item)
@@ -385,6 +387,14 @@ class Pipeline:
                 event = [{"event": str(i), "errors": "Unknown error"} for i in item]
             case _:
                 event = {"event": str(item), "errors": "Unknown error"}
+
+        now = datetime.now(tz=timezone.utc).isoformat()
+
+        if isinstance(event, dict):
+            event["@timestamp"] = now
+        elif isinstance(event, list):
+            event = [_event | {"@timestamp": now} for _event in event]
+
         try:
             if isinstance(event, list):
                 for i in event:
