@@ -146,7 +146,6 @@ class Registry:
         "ng_template_replacer": NgTemplateReplacer,
         "ng_timestamp_differ": NgTimestampDiffer,
         "ng_timestamper": NgTimestamper,
-        "ng_amides": NgAmides,
         "ng_pre_detector": NgPreDetector,
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
