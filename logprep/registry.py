@@ -54,6 +54,9 @@ from logprep.ng.processor.list_comparison.processor import (
     ListComparison as NgListComparison,
 )
 from logprep.ng.processor.pre_detector.processor import PreDetector as NgPreDetector
+from logprep.ng.processor.pseudonymizer.processor import (
+    Pseudonymizer as NgPseudonymizer,
+)
 from logprep.ng.processor.replacer.processor import Replacer as NgReplacer
 from logprep.ng.processor.requester.processor import Requester as NgRequester
 from logprep.ng.processor.string_splitter.processor import (
