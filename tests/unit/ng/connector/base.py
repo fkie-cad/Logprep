@@ -673,3 +673,9 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
+
+    def test_changes_state(self):
+        assert False
+
+    def store_accepts_only_event_types(self):
+        assert False
