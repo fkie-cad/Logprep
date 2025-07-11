@@ -15,8 +15,8 @@ import pytest
 
 from logprep.abc.connector import Connector
 from logprep.abc.input import CriticalInputError, Input
-from logprep.abc.output import Output
 from logprep.factory import Factory
+from logprep.ng.abc.output import Output
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase
