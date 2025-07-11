@@ -710,6 +710,8 @@ class TestPipeline(ConfigurationForTests):
     def test_enqueue_error_handles_items(self, _, item, expected_event):
         self.pipeline.enqueue_error(item)
         enqueued_item = self.pipeline.error_queue.get(0.01)
+
+        enqueued_item.pop("@timestamp")
         assert enqueued_item == expected_event
 
     def test_enqueue_error_calls_batch_finished_callback(self, _):
