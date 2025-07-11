@@ -6,12 +6,12 @@ from pytest import fail, raises
 
 from logprep.abc.output import FatalOutputError
 from logprep.factory import Factory
-from tests.unit.connector.base import BaseOutputTestCase
+from tests.unit.ng.connector.base import BaseOutputTestCase
 
 
 class TestDummyOutput(BaseOutputTestCase):
     CONFIG = {
-        "type": "dummy_output",
+        "type": "ng_dummy_output",
     }
 
     def test_store_appends_document_to_variable(self):

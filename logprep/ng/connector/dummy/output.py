@@ -17,13 +17,13 @@ Example
         type: dummy_output
 """
 
-from logging import Logger
 from typing import TYPE_CHECKING, List
 
 from attr import define, field
 from attrs import validators
 
-from logprep.abc.output import Output
+from logprep.ng.abc.event import Event
+from logprep.ng.abc.output import Output
 
 if TYPE_CHECKING:
     from logprep.abc.connector import Connector  # pragma: no cover
@@ -69,7 +69,7 @@ class DummyOutput(Output):
         self.shut_down_called_count = 0
         self._exceptions = configuration.exceptions
 
-    def store(self, document: dict):
+    def store(self, event: Event) -> None:
         """Store the document in the output destination.
 
         Parameters
@@ -83,12 +83,12 @@ class DummyOutput(Output):
             exception = self._exceptions.pop(0)
             if exception is not None:
                 raise Exception(exception)  # pylint: disable=broad-exception-raised
-        self.events.append(document)
+        self.events.append(event)
         self.metrics.number_of_processed_events += 1
 
-    def store_custom(self, document: dict, target: str):
+    def store_custom(self, event: Event, target: str):
         """Store additional data in a custom location inside the output destination."""
-        self.store(document)
+        self.store(event)
 
     def shut_down(self):
         self.shut_down_called_count += 1
