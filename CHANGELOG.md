@@ -6,6 +6,14 @@
 ### Features
 
 ### Improvements
+### Bugfix
+
+## 17.0.1
+### Breaking
+
+### Features
+
+### Improvements
 
 * add ErrorEvent class
 * add PseudonymEvent Class
@@ -25,6 +33,8 @@
 * use LogEvent class in processor base class
 
 ### Bugfix
+
+* add `@timestamp` field to error documents
 
 ## 17.0.0
 ### Breaking
