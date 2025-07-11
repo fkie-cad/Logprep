@@ -59,6 +59,9 @@ from logprep.ng.processor.pseudonymizer.processor import (
 )
 from logprep.ng.processor.replacer.processor import Replacer as NgReplacer
 from logprep.ng.processor.requester.processor import Requester as NgRequester
+from logprep.ng.processor.selective_extractor.processor import (
+    SelectiveExtractor as NGSelectiveExtractor,
+)
 from logprep.ng.processor.string_splitter.processor import (
     StringSplitter as NgStringSplitter,
 )
@@ -151,6 +154,7 @@ class Registry:
         "ng_timestamper": NgTimestamper,
         "ng_pre_detector": NgPreDetector,
         "ng_pseudonymizer": NgPseudonymizer,
+        "ng_selective_extractor": NGSelectiveExtractor,
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,
