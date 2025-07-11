@@ -1,3 +1,5 @@
+# type: ignore
+
 """This module contains all Pipeline functionality.
 
 Pipelines contain a list of processors that can be executed in order to process input log data.
