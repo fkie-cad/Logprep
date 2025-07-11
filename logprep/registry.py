@@ -22,6 +22,10 @@ from logprep.connector.opensearch.output import OpensearchOutput
 from logprep.connector.s3.output import S3Output
 from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutput
 from logprep.generator.http.output import HttpGeneratorOutput
+from logprep.ng.connector.console.output import ConsoleOutput as NgConsoleOutput
+from logprep.ng.connector.dummy.output import DummyOutput as NgDummyOutput
+from logprep.ng.connector.http.output import HttpOutput as NgHttpOutput
+from logprep.ng.connector.jsonl.output import JsonlOutput as NgJsonlOutput
 from logprep.ng.processor.amides.processor import Amides as NgAmides
 from logprep.ng.processor.calculator.processor import Calculator as NGCalculator
 from logprep.ng.processor.clusterer.processor import Clusterer as NgClusterer
@@ -180,6 +184,10 @@ class Registry:
         "http_generator_output": HttpGeneratorOutput,
         "confluentkafka_generator_output": ConfluentKafkaGeneratorOutput,
         "s3_output": S3Output,
+        "ng_dummy_output": NgDummyOutput,
+        "ng_console_output": NgConsoleOutput,
+        "ng_jsonl_output": NgJsonlOutput,
+        "ng_http_output": NgHttpOutput,
     }
 
     @classmethod
