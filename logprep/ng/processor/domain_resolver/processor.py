@@ -36,13 +36,13 @@ from enum import IntEnum
 from functools import cached_property
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
-from typing import Optional, Any
+from typing import Any, Optional
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
 
-from logprep.ng.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric
+from logprep.ng.abc.processor import Processor
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
