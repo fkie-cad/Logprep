@@ -24,7 +24,11 @@ Processor Configuration
 """
 
 from logprep.ng.processor.field_manager.processor import FieldManager
-from logprep.processor.replacer.rule import ReplacerRule, ReplacementTemplate, Replacement
+from logprep.processor.replacer.rule import (
+    Replacement,
+    ReplacementTemplate,
+    ReplacerRule,
+)
 from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
