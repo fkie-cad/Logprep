@@ -571,3 +571,32 @@ class TestHttpConnector(BaseInputTestCase):
     @pytest.mark.skip("Not implemented")
     def test_setup_calls_wait_for_health(self):
         pass
+
+    def test_http_input_iterator(self):
+        data = [
+            {"message": "first message"},
+            {"message": "second message"},
+            {"message": "third message"},
+        ]
+        for message in data:
+            self.client.post("/json", json=message)
+
+        for i, message in enumerate(self.object.iter(0.001)):  # type: ignore
+            assert message == data[i]
+
+    def test_http_input_iterator_stops_after_consuming(self):
+        data = [
+            {"message": "first message"},
+            {"message": "second message"},
+            {"message": "third message"},
+            {"message": "extra data NOT in connector"},
+        ]
+
+        # post only 3 of 4 messages
+        for i in range(3):
+            self.client.post("/json", json=data[i])
+
+        for i, message in enumerate(self.object.iter(0.001)):  # type: ignore
+            assert message == data[i]
+
+        assert i == 2
