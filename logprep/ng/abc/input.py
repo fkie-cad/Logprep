@@ -189,16 +189,16 @@ class Input(Connector):
 
         super().__init__(name, configuration, pipeline_index)
 
-    def __call__(self, timeout: float) -> InputIterator:
+    def __call__(self, *, timeout: float) -> InputIterator:
         """Create and return a new input iterator with the specified timeout.
 
-        This allows the input connector instance to be called directly as a function
+        This enables the input connector instance to be called directly as a function
         to obtain an iterator, e.g. `for event in input_connector(timeout=5.0):`.
 
         Parameters
         ----------
         timeout : float
-            The maximum time in seconds to wait for the next event before raising StopIteration.
+            Keyword-only. The time to wait for blocking.
 
         Returns
         -------

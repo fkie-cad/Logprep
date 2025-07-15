@@ -13,6 +13,7 @@ from unittest import mock
 import pytest
 import requests
 import responses
+from asgiref.timeout import timeout
 from falcon import testing
 from requests.auth import _basic_auth_str
 
@@ -581,7 +582,7 @@ class TestHttpConnector(BaseInputTestCase):
         for message in data:
             self.client.post("/json", json=message)
 
-        for i, message in enumerate(self.object(0.001)):
+        for i, message in enumerate(self.object(timeout=0.001)):
             assert message == data[i]
 
     def test_http_input_iterator_stops_after_consuming(self):
@@ -596,7 +597,7 @@ class TestHttpConnector(BaseInputTestCase):
         for i in range(3):
             self.client.post("/json", json=data[i])
 
-        for i, message in enumerate(self.object(0.001)):
+        for i, message in enumerate(self.object(timeout=0.001)):
             assert message == data[i]
 
         assert i == 2
