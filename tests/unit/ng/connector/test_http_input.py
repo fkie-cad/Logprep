@@ -581,7 +581,7 @@ class TestHttpConnector(BaseInputTestCase):
         for message in data:
             self.client.post("/json", json=message)
 
-        for i, message in enumerate(self.object.iter(0.001)):  # type: ignore
+        for i, message in enumerate(self.object(0.001)):
             assert message == data[i]
 
     def test_http_input_iterator_stops_after_consuming(self):
@@ -596,7 +596,7 @@ class TestHttpConnector(BaseInputTestCase):
         for i in range(3):
             self.client.post("/json", json=data[i])
 
-        for i, message in enumerate(self.object.iter(0.001)):  # type: ignore
+        for i, message in enumerate(self.object(0.001)):
             assert message == data[i]
 
         assert i == 2
