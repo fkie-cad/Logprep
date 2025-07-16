@@ -26,6 +26,7 @@ from logprep.ng.connector.confluent_kafka.input import (
     ConfluentKafkaInput as NgConfluentKafkaInput,
 )
 from logprep.ng.connector.dummy.input import DummyInput as NgDummyInput
+from logprep.ng.connector.file.input import FileInput as NgFileInput
 from logprep.ng.connector.http.input import HttpInput as NgHttpInput
 from logprep.ng.connector.json.input import JsonInput as NgJsonInput
 from logprep.ng.processor.amides.processor import Amides as NgAmides
@@ -190,6 +191,7 @@ class Registry:
         "ng_confluentkafka_input": NgConfluentKafkaInput,
         "ng_dummy_input": NgDummyInput,
         "ng_json_input": NgJsonInput,
+        "ng_file_input": NgFileInput,
     }
 
     @classmethod
