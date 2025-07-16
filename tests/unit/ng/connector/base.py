@@ -17,6 +17,8 @@ from logprep.abc.connector import Connector
 from logprep.abc.input import CriticalInputError, Input
 from logprep.factory import Factory
 from logprep.ng.abc.output import Output
+from logprep.ng.event.event_state import EventStateType
+from logprep.ng.event.log_event import LogEvent
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase
@@ -675,7 +677,13 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         assert self.object.metrics.number_of_processed_events == 1
 
     def test_changes_state(self):
-        assert False
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=EventStateType.PROCESSED,
+        )
+        self.object.store(event)
+        assert event.state == EventStateType.STORED_IN_OUTPUT
 
     def store_accepts_only_event_types(self):
         assert False
