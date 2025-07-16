@@ -28,6 +28,7 @@ class ConsoleOutput(Output):
     def store(self, event: Event):
         pprint(event)
         self.metrics.number_of_processed_events += 1
+        _ = event.state.next_state(success=True)
 
     def store_custom(self, event: dict, target: str):
         pprint(event, stream=getattr(sys, target))
