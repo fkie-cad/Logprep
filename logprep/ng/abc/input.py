@@ -56,24 +56,16 @@ class InputIterator:
 
         return self
 
-    def __next__(self) -> dict:
+    def __next__(self) -> dict | None:
         """Return the next event in the Input Connector within the configured timeout.
 
         Returns
         -------
         dict
             The next event retrieved from the underlying data source.
-
-        Raises
-        ------
-        StopIteration
-            If no event is available within the configured timeout.
         """
 
-        if event := self.input_connector.get_next(timeout=self.timeout):
-            return event
-        else:
-            raise StopIteration
+        return self.input_connector.get_next(timeout=self.timeout)
 
 
 class Input(Connector):

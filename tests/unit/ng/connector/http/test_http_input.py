@@ -574,30 +574,20 @@ class TestHttpConnector(BaseInputTestCase):
         pass
 
     def test_http_input_iterator(self):
-        data = [
+        batch_data = [
             {"message": "first message"},
             {"message": "second message"},
             {"message": "third message"},
         ]
-        for message in data:
+        for message in batch_data:
             self.client.post("/json", json=message)
 
         for i, message in enumerate(self.object(timeout=0.001)):
-            assert message == data[i]
+            if message is not None:
+                assert message == batch_data[i]
+                continue
 
-    def test_http_input_iterator_stops_after_consuming(self):
-        data = [
-            {"message": "first message"},
-            {"message": "second message"},
-            {"message": "third message"},
-            {"message": "extra data NOT in connector"},
-        ]
+            # batch completely consumed
+            break
 
-        # post only 3 of 4 messages
-        for i in range(3):
-            self.client.post("/json", json=data[i])
-
-        for i, message in enumerate(self.object(timeout=0.001)):
-            assert message == data[i]
-
-        assert i == 2
+        assert i == 3  # including increment of None
