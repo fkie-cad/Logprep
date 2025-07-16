@@ -30,8 +30,7 @@ class TestLogEvents(TestEventClass):
         assert log_event.state.next_state != log_event._origin_state_next_state_fn
 
     def test_log_event_preserves_state_on_init(self) -> None:
-        state = EventState()
-        state.current_state = cast(EventStateType, EventStateType.STORED_IN_OUTPUT)
+        state = EventStateType.STORED_IN_OUTPUT
         log_event = LogEvent(data={"msg": "payload"}, original=b"event", state=state)
 
         assert log_event.state.current_state is EventStateType.STORED_IN_OUTPUT

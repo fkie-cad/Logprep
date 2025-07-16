@@ -23,8 +23,7 @@ class TestPseudonymEvents(TestEventClass):
         assert isinstance(pseudonym_event.state, EventState)
 
     def test_pseudonym_event_preserves_state_on_init(self) -> None:
-        state = EventState()
-        state.current_state = EventStateType.STORED_IN_OUTPUT
+        state = EventStateType.STORED_IN_OUTPUT
         outputs = ({"opensearch": "pseudonym_index"},)
         pseudonym_event = PseudonymEvent(data={"msg": "payload"}, state=state, outputs=outputs)
 
