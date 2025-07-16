@@ -3,7 +3,7 @@
 """abstract module for event"""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
 
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
@@ -73,7 +73,7 @@ class Event(ABC):
         """
         self._state: EventState = EventState()
         if state is not None:
-            if state not in cast(str, EventStateType):
+            if state not in list(EventStateType):
                 raise TypeError("state must be an instance of EventStateType or None")
             self._state.current_state = state
         self.data: dict[str, Any] = data
