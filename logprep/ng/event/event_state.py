@@ -94,18 +94,6 @@ class EventState:
 
         self.current_state: EventStateType = cast(EventStateType, EventStateType.RECEIVING)
 
-    def __repr__(self) -> str:
-        """
-        Return a string representation of the current event state.
-
-        Returns
-        -------
-        str
-            A string like "<EventState: current_state>".
-        """
-
-        return f"{self.current_state}"
-
     @staticmethod
     def _construct_state_machine() -> dict[EventStateType, list[EventStateType]]:
         """
@@ -227,7 +215,7 @@ class EventState:
         Returns
         -------
         str
-            A string like "<EventState: current_state>".
+            A string like "processed" reflecting the current state.
         """
 
-        return f"<EventState: {self.current_state}>"
+        return f"{self.current_state}"

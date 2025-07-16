@@ -263,3 +263,9 @@ class TestEventClass:
         assert (
             repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=receiving)"
         )
+
+    def test_event_repr_with_custom_state(self):
+        event = DummyEvent({"user": {"id": 42, "name": "Alice"}}, state=EventStateType.PROCESSED)
+        assert (
+            repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=processed)"
+        )
