@@ -11,7 +11,7 @@ tests/testdata/external/
 .profile/
 *.prof
 *.pyc
-.venv
+.venv*
 coverage.xml
 cov.xml
 -

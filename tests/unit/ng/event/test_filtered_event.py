@@ -26,8 +26,7 @@ class TestFilteredEvents(TestEventClass):
         assert isinstance(filtered_event.state, EventState)
 
     def test_sre_event_preserves_state_on_init(self) -> None:
-        state = EventState()
-        state.current_state = EventStateType.STORED_IN_OUTPUT
+        state = EventStateType.STORED_IN_OUTPUT
         outputs = ({"name": "sre_topic"},)
         sre_event = FilteredEvent(data={"msg": "payload"}, state=state, outputs=outputs)
 

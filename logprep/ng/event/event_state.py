@@ -215,7 +215,7 @@ class EventState:
         Returns
         -------
         str
-            A string like "<EventState: current_state>".
+            A string like "processed" reflecting the current state.
         """
 
-        return f"<EventState: {self.current_state}>"
+        return f"{self.current_state}"

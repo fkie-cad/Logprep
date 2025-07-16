@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from logprep.ng.abc.event import Event
-from logprep.ng.event.event_state import EventState
+from logprep.ng.event.event_state import EventState, EventStateType
 
 
 class DummyEvent(Event):
@@ -136,12 +136,12 @@ class TestEventClass:
         and the other attributes must still initialize correctly.
         """
 
-        state = EventState()
+        state_type = EventStateType.RECEIVING
         payload = {"message": "A test message"}
 
-        event = DummyEvent(data=payload, state=state)
+        event = DummyEvent(data=payload, state=state_type)
 
-        assert event.state is state
+        assert event.state.current_state is EventStateType.RECEIVING
         assert event.data == payload
         assert isinstance(event.errors, list)
         assert isinstance(event.warnings, list)
@@ -175,7 +175,7 @@ class TestEventClass:
         Ensure that providing 'state' as a kw argument is allowed.
         """
 
-        DummyEvent({"source": "fail"}, state=EventState())
+        DummyEvent({"source": "fail"}, state=EventStateType.RECEIVED)
 
     @pytest.mark.parametrize(
         "data, warnings, errors, state",
@@ -193,13 +193,13 @@ class TestEventClass:
                 {"status": "ok"},
                 [],
                 [],
-                EventState(),
+                EventStateType.RECEIVED,
             ),
             (
                 {"service": "auth"},
                 ["auth timeout"],
                 [TimeoutError("Service did not respond")],
-                EventState(),
+                EventStateType.PROCESSED,
             ),
         ],
     )
@@ -208,7 +208,7 @@ class TestEventClass:
         data: dict[str, Any],
         warnings: list[str],
         errors: list[Exception],
-        state: EventState | None,
+        state: EventStateType | None,
     ) -> None:
         """
         Ensure that DummyEvent instances with type-consistent
@@ -263,3 +263,23 @@ class TestEventClass:
         assert (
             repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=receiving)"
         )
+
+    def test_event_repr_with_custom_state(self):
+        event = DummyEvent({"user": {"id": 42, "name": "Alice"}}, state=EventStateType.PROCESSED)
+        assert (
+            repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=processed)"
+        )
+
+    @pytest.mark.parametrize(
+        "event_kwargs",
+        [
+            {"data": {"key": "value"}, "state": EventState()},
+            {"data": {"key": "value"}, "state": "invalid"},
+        ],
+    )
+    def test_init_raises_on_invalid_state(self, event_kwargs):
+        """
+        Ensure that initializing an Event with an invalid state raises a TypeError.
+        """
+        with pytest.raises(TypeError, match="state must be an instance of EventStateType or None"):
+            DummyEvent(**event_kwargs)

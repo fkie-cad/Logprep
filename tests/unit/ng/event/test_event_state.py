@@ -76,7 +76,7 @@ def test_reset_sets_state_to_initial() -> None:
 def test_str_representation() -> None:
     """String representation should be human-readable."""
     state = EventState()
-    assert str(state) == "<EventState: receiving>"
+    assert str(state) == "receiving"
 
 
 def test_next_raises_exception_when_no_further_state() -> None:

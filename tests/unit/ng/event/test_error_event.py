@@ -7,7 +7,7 @@
 
 from logprep.ng.abc.event import Event
 from logprep.ng.event.error_event import ErrorEvent
-from logprep.ng.event.event_state import EventState, EventStateType
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.event.test_event import TestEventClass
 
@@ -44,8 +44,7 @@ class TestErrorEvents(TestEventClass):
         assert error_event.data["event"] == str(self.log_event.data).encode("utf-8")
 
     def test_error_event_preserves_state_on_init(self) -> None:
-        state = EventState()
-        state.current_state = EventStateType.STORED_IN_OUTPUT
+        state = EventStateType.STORED_IN_OUTPUT
 
         self.log_event.state.current_state = EventStateType.FAILED
         error_event = ErrorEvent(

@@ -24,7 +24,7 @@ class LogEvent(Event):
         original: bytes,
         extra_data: list[Event] | None = None,
         metadata: EventMetadata | None = None,
-        state: EventState | None = None,
+        state: EventStateType | None = None,
     ) -> None:
         """
         Parameters
