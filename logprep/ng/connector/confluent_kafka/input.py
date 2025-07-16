@@ -2,7 +2,7 @@ import os
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import msgspec
 from attrs import define, field, validators
@@ -215,7 +215,7 @@ class ConfluentKafkaInput(Input):
 
     __slots__ = ["_last_valid_record"]
 
-    def __init__(self, name: str, configuration: "Connector.Config") -> None:
+    def __init__(self, name: str, configuration: Literal["Config"]) -> None:
         super().__init__(name, configuration)
         self._last_valid_record = None
 

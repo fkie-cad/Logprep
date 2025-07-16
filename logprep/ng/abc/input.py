@@ -10,7 +10,7 @@ import zlib
 from abc import abstractmethod
 from functools import cached_property, partial
 from hmac import HMAC
-from typing import Optional, Self, Tuple
+from typing import Literal, Optional, Self, Tuple
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
@@ -176,7 +176,12 @@ class Input(Connector):
             },
         )
 
-    def __init__(self, name: str, configuration: "Component.Config", pipeline_index: int = None):
+    def __init__(
+        self,
+        name: str,
+        configuration: Literal["Config"],
+        pipeline_index: int | None = None,
+    ):
         self.backlog = SetEventBacklog()
 
         super().__init__(name, configuration, pipeline_index)
