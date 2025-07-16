@@ -42,7 +42,7 @@ class Event(ABC):
         ----------
         data : dict[str, Any]
             The raw or processed data associated with the event.
-        state : EventState, optional
+        state : EventStateType, optional
             An optional initial EventState. Defaults to a new EventState() if not provided.
 
         Examples
@@ -55,9 +55,8 @@ class Event(ABC):
         >>> event.state.current_state.name
         'RECEIVING'
 
-        Providing a custom state:
-
-        >>> custom_state = EventState()
+        Providing a custom state
+        >>> custom_state = EventStateType.PROCESSED
         >>> event = Event({"source": "api"}, state=custom_state)
         >>> event.state is custom_state
         True
@@ -74,7 +73,7 @@ class Event(ABC):
         """
         self._state: EventState = EventState()
         if state is not None:
-            if not isinstance(state, EventStateType):
+            if state not in EventStateType:
                 raise TypeError("state must be an instance of EventStateType or None")
             self._state.current_state = state
         self.data: dict[str, Any] = data
@@ -225,14 +224,14 @@ class ExtraDataEvent(Event):
     outputs: tuple[dict[str, str]]
 
     def __init__(
-        self, data: dict[str, str], *, outputs: tuple[dict], state: EventState | None = None
+        self, data: dict[str, str], *, outputs: tuple[dict], state: EventStateType | None = None
     ) -> None:
         """
         Parameters
         ----------
         data : dict[str, str]
             The main data payload for the SRE event.
-        state : EventState
+        state : EventStateType
             The state of the SRE event.
         outputs : Iterable[str]
             The collection of output connector names associated with the SRE event

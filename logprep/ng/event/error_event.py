@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from logprep.ng.abc.event import Event
-from logprep.ng.event.event_state import EventState
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 
 
@@ -14,7 +14,7 @@ class ErrorEvent(Event):
     """
 
     def __init__(
-        self, log_event: LogEvent, reason: Exception, *, state: EventState | None = None
+        self, log_event: LogEvent, reason: Exception, *, state: EventStateType | None = None
     ) -> None:
         """
         Parameters

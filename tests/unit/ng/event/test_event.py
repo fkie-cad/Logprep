@@ -269,3 +269,17 @@ class TestEventClass:
         assert (
             repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=processed)"
         )
+
+    @pytest.mark.parametrize(
+        "event_kwargs",
+        [
+            {"data": {"key": "value"}, "state": EventState()},
+            {"data": {"key": "value"}, "state": "invalid"},
+        ],
+    )
+    def test_init_raises_on_invalid_state(self, event_kwargs):
+        """
+        Ensure that initializing an Event with an invalid state raises a TypeError.
+        """
+        with pytest.raises(TypeError, match="state must be an instance of EventStateType or None"):
+            DummyEvent(**event_kwargs)
