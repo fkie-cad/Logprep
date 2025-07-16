@@ -73,7 +73,7 @@ class Event(ABC):
         """
         self._state: EventState = EventState()
         if state is not None:
-            if state not in list(EventStateType):
+            if state not in list(EventStateType) or isinstance(state, EventState):
                 raise TypeError("state must be an instance of EventStateType or None")
             self._state.current_state = state
         self.data: dict[str, Any] = data

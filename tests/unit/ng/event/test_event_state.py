@@ -141,3 +141,23 @@ def test_all_states_covered_in_state_machine() -> None:
     all_targets = {state for targets in graph.values() for state in targets}
     all_used = all_keys.union(all_targets)
     assert set(EventStateType).issubset(all_used)
+
+
+@pytest.mark.parametrize(
+    "state1, state2, expected",
+    [
+        (EventStateType.RECEIVING, EventStateType.RECEIVING, True),
+        (EventStateType.RECEIVING, EventStateType.RECEIVED, False),
+        (EventState(), EventState(), True),
+        (EventState(), EventStateType.RECEIVING, True),
+        (EventState(), EventStateType.DELIVERED, False),
+    ],
+)
+def test_equality(state1, state2, expected) -> None:
+    """Test equality of EventState instances."""
+    state_a = EventState()
+    state_b = EventState()
+    state_a.current_state = state1
+    state_b.current_state = state2
+    assert (state_a == state_b) is expected
+    assert (state_a != state_b) is not expected

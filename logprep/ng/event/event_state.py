@@ -94,6 +94,41 @@ class EventState:
 
         self.current_state: EventStateType = cast(EventStateType, EventStateType.RECEIVING)
 
+    def __eq__(self, other: object) -> bool:
+        """
+        Check equality with another EventState instance.
+
+        Parameters
+        ----------
+        other : object
+            The object to compare against.
+
+        Returns
+        -------
+        bool
+            True if the other object is an EventState with the same current state
+            or an EventStateType matching the current state, otherwise False.
+        """
+
+        if not isinstance(other, (EventState, EventStateType)):
+            return False
+        try:
+            return self.current_state == other.current_state
+        except AttributeError:
+            return self.current_state == other
+
+    def __str__(self) -> str:
+        """
+        Return a string representation of the current event state.
+
+        Returns
+        -------
+        str
+            A string like "processed" reflecting the current state.
+        """
+
+        return f"{self.current_state}"
+
     @staticmethod
     def _construct_state_machine() -> dict[EventStateType, list[EventStateType]]:
         """
@@ -207,15 +242,3 @@ class EventState:
         """Reset the event state to the initial state (RECEIVING)."""
 
         self.current_state = cast(EventStateType, EventStateType.RECEIVING)
-
-    def __str__(self) -> str:
-        """
-        Return a string representation of the current event state.
-
-        Returns
-        -------
-        str
-            A string like "processed" reflecting the current state.
-        """
-
-        return f"{self.current_state}"
