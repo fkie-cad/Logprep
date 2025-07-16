@@ -75,7 +75,7 @@ class Event(ABC):
         self._state: EventState = EventState()
         if state is not None:
             if not isinstance(state, EventStateType):
-                raise TypeError("state must be an instance of EventStateType")
+                raise TypeError("state must be an instance of EventStateType or None")
             self._state.current_state = state
         self.data: dict[str, Any] = data
         self.warnings: list[str] = []
