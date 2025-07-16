@@ -462,20 +462,3 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         input_connector = Factory.create({"input_connector": new_kafka_config})
         _ = input_connector._admin
         admin_client.assert_called_with(expected_admin_client_config)
-
-    def test_confluentkafka_input_iterator(self):
-        events = [
-            {"valid": "json_1"},
-            {"valid": "json_2"},
-            {"valid": "json_3"},
-        ]
-
-        def get_next_mock(*args, **kwargs):
-            if events:
-                return events.pop(0)
-            return None
-
-        with mock.patch.object(self.object, "get_next", side_effect=get_next_mock):
-            for i, message in enumerate(self.object(timeout=0.001)):
-                expected = {"valid": f"json_{i + 1}"}
-                assert message == expected

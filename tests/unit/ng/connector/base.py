@@ -622,3 +622,26 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert isinstance(self.object.metrics.processing_time_per_event, mock.MagicMock)
         # asserts entering context manager in metrics.metrics.Metric.measure_time
         mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
+
+    def test_input_iterator(self):
+        batch_events = [
+            {"valid": "json_1"},
+            {"valid": "json_2"},
+            {"valid": "json_3"},
+        ]
+
+        def get_next_mock(*args, **kwargs):
+            if batch_events:
+                return batch_events.pop(0)
+            return None
+
+        with mock.patch.object(self.object, "get_next", side_effect=get_next_mock):
+            for i, message in enumerate(self.object(timeout=0.001)):
+                expected = {"valid": f"json_{i + 1}"}
+
+                if message is not None:
+                    assert message == expected
+                    continue
+
+                # batch completely consumed
+                break
