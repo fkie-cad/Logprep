@@ -128,6 +128,9 @@ class EventState:
 
         return f"{self.current_state}"
 
+    def __repr__(self) -> str:
+        return self.__str__()
+
     @staticmethod
     def _construct_state_machine() -> dict[EventStateType, list[EventStateType]]:
         """
