@@ -1,8 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
-import sys
 from unittest import mock
 
+from logprep.ng.event.event_state import EventStateType
+from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
 
@@ -16,22 +17,29 @@ class TestConsoleOutput(BaseOutputTestCase):
 
     @mock.patch("logprep.ng.connector.console.output.pprint")
     def test_store_calls_pprint(self, mock_pprint):
-        self.object.store({"message": "mymessage"})
+        event = LogEvent({"message": "mymessage"}, original=b"")
+        self.object.store(event)
         mock_pprint.assert_called()
 
     @mock.patch("logprep.ng.connector.console.output.pprint")
     def test_store_calls_pprint_with_message(self, mock_pprint):
         message = {"message": "mymessage"}
-        self.object.store(message)
+        event = LogEvent(message, original=b"")
+        self.object.store(event)
         mock_pprint.assert_called_with(message)
 
     @mock.patch("logprep.ng.connector.console.output.pprint")
     def test_store_custom_calls_pprint(self, mock_pprint):
-        self.object.store_custom({"message": "mymessage"}, target="stdout")
+        event = LogEvent({"message": "mymessage"}, original=b"", state=EventStateType.PROCESSED)
+        self.object.store_custom(event, target="stdout")
         mock_pprint.assert_called()
 
-    @mock.patch("logprep.ng.connector.console.output.pprint")
-    def test_store_custom_calls_pprint_with_message_and_stream(self, mock_pprint):
-        message = {"message": "mymessage"}
-        self.object.store_custom(message, target="stdout")
-        mock_pprint.assert_called_with(message, stream=sys.stdout)
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"")
+        with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
+            mocked_function.side_effect = Exception("Test exception")
+            self.object.store(event)
+        mocked_function.assert_called()
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED

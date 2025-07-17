@@ -673,17 +673,41 @@ class BaseOutputTestCase(BaseConnectorTestCase):
 
     def test_store_counts_processed_events(self):
         self.object.metrics.number_of_processed_events = 0
-        self.object.store({"message": "my event message"})
+        event = LogEvent({"message": "my event message"}, original=b"")
+        self.object.store(event)
         assert self.object.metrics.number_of_processed_events == 1
 
-    def test_changes_state(self):
+    @pytest.mark.parametrize(
+        "state, expected_state",
+        [
+            (EventStateType.PROCESSED, EventStateType.STORED_IN_OUTPUT),
+            (EventStateType.FAILED, EventStateType.STORED_IN_ERROR),
+        ],
+    )
+    def test_store_changes_state(self, state, expected_state):
         event = LogEvent(
             {"message": "test message"},
             original=b"",
-            state=EventStateType.PROCESSED,
+            state=state,
         )
         self.object.store(event)
-        assert event.state == EventStateType.STORED_IN_OUTPUT
+        assert event.state == expected_state
 
-    def store_accepts_only_event_types(self):
-        assert False
+    @pytest.mark.parametrize(
+        "state, expected_state",
+        [
+            (EventStateType.PROCESSED, EventStateType.STORED_IN_OUTPUT),
+            (EventStateType.FAILED, EventStateType.STORED_IN_ERROR),
+        ],
+    )
+    def test_store_custom_changes_state(self, state, expected_state):
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store_custom(event, "stdout")
+        assert event.state == expected_state
+
+    def test_store_handles_errors(self):
+        assert False, "This method should be overridden in the subclass to handle errors."
