@@ -170,7 +170,7 @@ class HttpInput(Input):
         schema = "https" if ssl_options else "http"
         self.target = f"{schema}://{host}:{port}"
         self.app = None
-        self.http_server = None
+        self.http_server: http.ThreadingHTTPServer | None = None
 
     def setup(self) -> None:
         """setup starts the actual functionality of this connector.
@@ -194,6 +194,10 @@ class HttpInput(Input):
         # and add authentication if credentials are existing for path
         for endpoint_path, endpoint_type in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_type)
+
+            if endpoint_class is None:
+                continue
+
             credentials = cred_factory.from_endpoint(endpoint_path)
             endpoints_config[endpoint_path] = endpoint_class(
                 self.messages,
