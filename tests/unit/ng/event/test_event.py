@@ -273,7 +273,7 @@ class TestEventClass:
     @pytest.mark.parametrize(
         "event_kwargs",
         [
-            {"data": {"key": "value"}, "state": EventState()},
+            {"data": {"key": "value"}, "state": object()},
             {"data": {"key": "value"}, "state": "invalid"},
         ],
     )
@@ -281,5 +281,7 @@ class TestEventClass:
         """
         Ensure that initializing an Event with an invalid state raises a TypeError.
         """
-        with pytest.raises(TypeError, match="state must be an instance of EventStateType or None"):
+        with pytest.raises(
+            TypeError, match="state must be an instance of EventStateType or EventState, or None"
+        ):
             DummyEvent(**event_kwargs)

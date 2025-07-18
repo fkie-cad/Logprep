@@ -151,6 +151,8 @@ def test_all_states_covered_in_state_machine() -> None:
         (EventState(), EventState(), True),
         (EventState(), EventStateType.RECEIVING, True),
         (EventState(), EventStateType.DELIVERED, False),
+        (EventState(), object(), False),
+        (EventStateType.DELIVERED, "delivered", False),
     ],
 )
 def test_equality(state1, state2, expected) -> None:

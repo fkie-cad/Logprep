@@ -33,7 +33,7 @@ class Event(ABC):
         self,
         data: dict[str, Any],
         *,
-        state: EventStateType | None = None,
+        state: EventStateType | EventState | None = None,
     ) -> None:
         """
         Initialize an Event instance.
@@ -72,10 +72,13 @@ class Event(ABC):
         True
         """
         self._state: EventState = EventState()
-        if state is not None:
-            if state not in list(EventStateType) or isinstance(state, EventState):
-                raise TypeError("state must be an instance of EventStateType or None")
+
+        if isinstance(state, EventState):
+            self._state = state
+        elif state in list(EventStateType):
             self._state.current_state = state
+        elif state is not None:
+            raise TypeError("state must be an instance of EventStateType or EventState, or None")
         self.data: dict[str, Any] = data
         self.warnings: list[str] = []
         self.errors: list[Exception] = []
