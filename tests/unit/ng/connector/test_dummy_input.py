@@ -66,7 +66,9 @@ class TestDummyInput(BaseInputTestCase):
         dummy_input_connector = Factory.create({"Test Instance Name": config})
 
         with pytest.raises(SourceDisconnectedWarning):
-            for i, event in enumerate(dummy_input_connector(timeout=self.timeout)):
-                assert event["order"] == i
+            dummy_input_iterator = dummy_input_connector(timeout=self.timeout)
 
-        assert i == 2
+            assert next(dummy_input_iterator) == {"order": 0}
+            assert next(dummy_input_iterator) == {"order": 1}
+            assert next(dummy_input_iterator) == {"order": 2}
+            assert next(dummy_input_iterator) is None
