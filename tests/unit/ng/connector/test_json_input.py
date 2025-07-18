@@ -79,8 +79,10 @@ class TestJsonInput(BaseInputTestCase):
         mock_parse.return_value = [{"order": 0}, {"order": 1}, {"order": 2}]
         json_input_connector = Factory.create(configuration={"Test Instance Name": config})
 
-        with pytest.raises(SourceDisconnectedWarning):
-            for i, event in enumerate(json_input_connector(timeout=self.timeout)):
-                assert event["order"] == i
+        json_input_iterator = json_input_connector(timeout=self.timeout)
+        assert next(json_input_iterator) == {"order": 0}
+        assert next(json_input_iterator) == {"order": 1}
+        assert next(json_input_iterator) == {"order": 2}
 
-        assert i == 2
+        with pytest.raises(SourceDisconnectedWarning):
+            next(json_input_iterator)

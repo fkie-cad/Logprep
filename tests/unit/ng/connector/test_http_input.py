@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+# pylint: disable=
+
 import gzip
 import json
 import multiprocessing
@@ -582,12 +584,9 @@ class TestHttpConnector(BaseInputTestCase):
         for message in batch_data:
             self.client.post("/json", json=message)
 
-        for i, message in enumerate(self.object(timeout=0.001)):
-            if message is not None:
-                assert message == batch_data[i]
-                continue
+        dummy_input_iterator = self.object(timeout=0.001)
 
-            # batch completely consumed
-            break
-
-        assert i == 3  # including increment of None
+        assert next(dummy_input_iterator) == {"message": "first message"}
+        assert next(dummy_input_iterator) == {"message": "second message"}
+        assert next(dummy_input_iterator) == {"message": "third message"}
+        assert next(dummy_input_iterator) is None

@@ -1,19 +1,41 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=line-too-long
+# pylint: disable=unnecessary-dunder-call
 import base64
 import json
 import os
 import re
 import zlib
 from copy import deepcopy
+from logging import getLogger
 from unittest import mock
 
 import pytest
 
-from logprep.abc.input import CriticalInputError
+from logprep.abc.connector import Connector
+from logprep.abc.output import Output
 from logprep.factory import Factory
-from logprep.ng.abc.input import Input
+from logprep.ng.abc.input import CriticalInputError, Input
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
-from tests.unit.connector.base import BaseConnectorTestCase
+from tests.unit.component.base import BaseComponentTestCase
+
+
+class BaseConnectorTestCase(BaseComponentTestCase):
+    CONFIG: dict = {}
+    object: Connector = None
+    logger = getLogger()
+
+    expected_metrics = [
+        "logprep_processing_time_per_event",
+        "logprep_number_of_processed_events",
+        "logprep_number_of_warnings",
+        "logprep_number_of_errors",
+    ]
+
+    def test_is_a_connector_implementation(self):
+        assert isinstance(self.object, Connector)
 
 
 class BaseInputTestCase(BaseConnectorTestCase):
@@ -635,13 +657,19 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 return batch_events.pop(0)
             return None
 
-        with mock.patch.object(self.object, "get_next", side_effect=get_next_mock):
-            for i, message in enumerate(self.object(timeout=0.001)):
-                expected = {"valid": f"json_{i + 1}"}
+        with mock.patch.object(self.object, "get_next", new=get_next_mock):
+            input_iterator = self.object(timeout=0.001)
+            assert next(input_iterator) == {"valid": "json_1"}
+            assert next(input_iterator) == {"valid": "json_2"}
+            assert next(input_iterator) == {"valid": "json_3"}
+            assert next(input_iterator) is None
 
-                if message is not None:
-                    assert message == expected
-                    continue
 
-                # batch completely consumed
-                break
+class BaseOutputTestCase(BaseConnectorTestCase):
+    def test_is_output_instance(self):
+        assert isinstance(self.object, Output)
+
+    def test_store_counts_processed_events(self):
+        self.object.metrics.number_of_processed_events = 0
+        self.object.store({"message": "my event message"})
+        assert self.object.metrics.number_of_processed_events == 1
