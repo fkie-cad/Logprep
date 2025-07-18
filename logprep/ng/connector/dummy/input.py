@@ -21,7 +21,7 @@ Example
 
 import copy
 from functools import cached_property
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from attr import field, validators
 from attrs import define
@@ -37,16 +37,14 @@ class DummyInput(Input):
     class Config(Input.Config):
         """DummyInput specific configuration"""
 
-        documents: List[Union[dict, type, Exception]]
+        documents: list[dict | type | Exception]
         """A list of documents that should be returned."""
-        repeat_documents: Optional[str] = field(
-            validator=validators.instance_of(bool), default=False
-        )
+        repeat_documents: str | None = field(validator=validators.instance_of(bool), default=False)
         """If set to :code:`true`, then the given input documents will be repeated after the last
         one is reached. Default: :code:`False`"""
 
     @cached_property
-    def _documents(self):
+    def _documents(self) -> list[dict | type | Exception]:
         return copy.copy(self._config.documents)
 
     def _get_event(self, timeout: float) -> tuple:
