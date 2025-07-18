@@ -10,7 +10,7 @@ import zlib
 from abc import abstractmethod
 from functools import cached_property, partial
 from hmac import HMAC
-from typing import Literal, Optional, Self, Tuple
+from typing import Literal, Optional, Self
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
@@ -181,7 +181,7 @@ class Input(Connector):
         name: str,
         configuration: Literal["Config"],
         pipeline_index: int | None = None,
-    ):
+    ) -> None:
         self.backlog = SetEventBacklog()
 
         super().__init__(name, configuration, pipeline_index)
@@ -279,7 +279,7 @@ class Input(Connector):
         return None
 
     @abstractmethod
-    def _get_event(self, timeout: float) -> Tuple:
+    def _get_event(self, timeout: float) -> tuple:
         """Implements the details how to get the event
 
         Parameters
@@ -365,7 +365,11 @@ class Input(Connector):
             add_fields_to(event, {f"{target}.@original": target_value})
             assert True
 
-    def _write_full_event_to_target_field(self, event_dict: dict, raw_event: bytearray) -> None:
+    def _write_full_event_to_target_field(
+        self,
+        event_dict: dict,
+        raw_event: bytearray | None,
+    ) -> None:
         target = self._config.preprocessing.get("add_full_event_to_target_field")
         complete_event = {}
         if raw_event is None:
@@ -402,7 +406,7 @@ class Input(Connector):
         add_fields_to(event, fields={target_field: self._config._version_information})
         # pylint: enable=protected-access
 
-    def _add_hmac_to(self, event_dict, raw_event) -> dict:
+    def _add_hmac_to(self, event_dict: dict, raw_event: bytearray | None) -> dict:
         """
         Calculates an HMAC (Hash-based message authentication code) based on a given target field
         and adds it to the given event. If the target field has the value '<RAW_MSG>' the full raw

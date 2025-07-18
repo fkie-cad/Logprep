@@ -42,12 +42,10 @@ class JsonInput(DummyInput):
         documents_path: str
         """A path to a file in json format, with can also include multiple jsons
         dicts wrapped in a list."""
-        repeat_documents: Optional[bool] = field(
-            validator=validators.instance_of(bool), default=False
-        )
+        repeat_documents: bool | None = field(validator=validators.instance_of(bool), default=False)
         """If set to :code:`true`, then the given input documents will be repeated after the last
         one is reached. Default: :code:`False`"""
 
     @cached_property
-    def _documents(self):
+    def _documents(self) -> list:
         return copy.copy(parse_json(self._config.documents_path))

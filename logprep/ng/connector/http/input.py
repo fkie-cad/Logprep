@@ -1,6 +1,6 @@
 import queue
 from functools import cached_property
-from typing import Mapping, Type, Union
+from typing import Mapping, Type
 
 import falcon
 import requests
@@ -50,7 +50,7 @@ class HttpInput(Input):
     class Config(Input.Config):
         """Config for HTTPInput"""
 
-        uvicorn_config: Mapping[str, Union[str, int]] = field(
+        uvicorn_config: Mapping[str, str | int] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
@@ -172,7 +172,7 @@ class HttpInput(Input):
         self.app = None
         self.http_server = None
 
-    def setup(self):
+    def setup(self) -> None:
         """setup starts the actual functionality of this connector.
         By checking against pipeline_index we're assuring this connector
         only runs a single time for multiple processes.
@@ -228,7 +228,7 @@ class HttpInput(Input):
         except queue.Empty:
             return None, None
 
-    def shut_down(self):
+    def shut_down(self) -> None:
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
         if self.http_server is None:
             return
