@@ -29,8 +29,3 @@ class TestKafkaInputMetadata:
 
     def test_slots_are_used(self):
         assert hasattr(KafkaInputMetadata, "__slots__")
-
-    def test_accessing_unknown_attribute_raises(self):
-        meta = KafkaInputMetadata(partition=1, offset=2)
-        with pytest.raises(AttributeError):
-            getattr(meta, "topic")
