@@ -75,7 +75,7 @@ class Event(ABC):
 
         if isinstance(state, EventState):
             self._state = state
-        elif state in list(EventStateType):
+        elif state is not None and state in list(EventStateType):
             self._state.current_state = state
         elif state is not None:
             raise TypeError("state must be an instance of EventStateType or EventState, or None")
