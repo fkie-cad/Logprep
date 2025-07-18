@@ -42,7 +42,7 @@ class Event(ABC):
         ----------
         data : dict[str, Any]
             The raw or processed data associated with the event.
-        state : EventStateType, optional
+        state : EventStateType, EventState, optional
             An optional initial EventState. Defaults to a new EventState() if not provided.
 
         Examples

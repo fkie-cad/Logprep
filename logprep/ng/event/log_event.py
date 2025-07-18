@@ -37,7 +37,7 @@ class LogEvent(Event):
             Sub-events that were derived or caused by this event
         metadata : EventMetadata, optional
             Structured metadata for the event.
-        state : EventState, optional
+        state : EventState, EventStateType optional
             Optional existing EventState to initialize from (e.g. deserialization).
 
         Examples
