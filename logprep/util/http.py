@@ -81,7 +81,7 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         self.thread = None
         self.daemon = daemon
 
-    def start(self):
+    def start(self) -> None:
         """Collect all configs, initiate application server and webserver
         and run thread with uvicorn+falcon http server and wait
         until it is up (started)"""
