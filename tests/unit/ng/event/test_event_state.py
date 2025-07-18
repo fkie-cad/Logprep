@@ -28,7 +28,7 @@ def test_next_transitions_correctly(
     initial: EventStateType,
     success: bool | None,
     next_expected: EventStateType,
-) -> None:
+):
     """Ensure next_state() correctly advances to the expected state."""
 
     state = EventState()
@@ -38,7 +38,7 @@ def test_next_transitions_correctly(
     assert state.current_state == next_expected
 
 
-def test_resolve_by_success_flag_returns_correct_result() -> None:
+def test_resolve_by_success_flag_returns_correct_result():
     """Test resolving a next state with success flag (True/False)."""
 
     assert (
@@ -55,7 +55,7 @@ def test_resolve_by_success_flag_returns_correct_result() -> None:
     )
 
 
-def test_resolve_by_success_flag_returns_none_if_no_match() -> None:
+def test_resolve_by_success_flag_returns_none_if_no_match():
     """Return None if no state matches success condition."""
 
     resolve_flag = EventState._resolve_by_success_flag(
@@ -65,7 +65,7 @@ def test_resolve_by_success_flag_returns_none_if_no_match() -> None:
     assert resolve_flag is None
 
 
-def test_reset_sets_state_to_initial() -> None:
+def test_reset_sets_state_to_initial():
     """Calling reset() should set the state back to RECEIVING."""
     state = EventState()
     state.current_state = EventStateType.FAILED
@@ -73,13 +73,13 @@ def test_reset_sets_state_to_initial() -> None:
     assert state.current_state == EventStateType.RECEIVING
 
 
-def test_str_representation() -> None:
+def test_str_representation():
     """String representation should be human-readable."""
     state = EventState()
     assert str(state) == "receiving"
 
 
-def test_next_raises_exception_when_no_further_state() -> None:
+def test_next_raises_exception_when_no_further_state():
     """If no further transition is defined, next_state() should return None."""
 
     state = EventState()
@@ -114,7 +114,7 @@ def test_next_raises_exception_when_no_further_state() -> None:
 )
 def test_next_state_handles_ambiguous_transitions_with_or_without_success_flag(
     current_state, success, expected
-) -> None:
+):
     """
     Handle ambiguous transitions based on the success flag.
     Raises ValueError if success is not provided.
@@ -132,7 +132,7 @@ def test_next_state_handles_ambiguous_transitions_with_or_without_success_flag(
         assert state.current_state == expected
 
 
-def test_all_states_covered_in_state_machine() -> None:
+def test_all_states_covered_in_state_machine():
     """Ensure that all EventStateType values are represented
     in the state machine."""
 
@@ -155,7 +155,7 @@ def test_all_states_covered_in_state_machine() -> None:
         (EventStateType.DELIVERED, "delivered", False),
     ],
 )
-def test_equality(state1, state2, expected) -> None:
+def test_equality(state1, state2, expected):
     """Test equality of EventState instances."""
     state_a = EventState() if isinstance(state1, EventStateType) else state1
     state_b = EventState() if isinstance(state2, EventStateType) else state2

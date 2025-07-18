@@ -31,7 +31,7 @@ class TestErrorEvents(TestEventClass):
             extra_data=[],
         )
 
-    def test_error_event_initializes(self) -> None:
+    def test_error_event_initializes(self):
         self.log_event.extra_data = [self.child2_event]
         error_event = ErrorEvent(log_event=self.log_event, reason=ValueError("Some value is wrong"))
 
@@ -43,7 +43,7 @@ class TestErrorEvents(TestEventClass):
         assert error_event.data["reason"] == "Some value is wrong"
         assert error_event.data["event"] == str(self.log_event.data).encode("utf-8")
 
-    def test_error_event_preserves_state_on_init(self) -> None:
+    def test_error_event_preserves_state_on_init(self):
         state = EventStateType.STORED_IN_OUTPUT
 
         self.log_event.state.current_state = EventStateType.FAILED
