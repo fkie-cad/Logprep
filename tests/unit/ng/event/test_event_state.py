@@ -155,9 +155,11 @@ def test_all_states_covered_in_state_machine() -> None:
 )
 def test_equality(state1, state2, expected) -> None:
     """Test equality of EventState instances."""
-    state_a = EventState()
-    state_b = EventState()
-    state_a.current_state = state1
-    state_b.current_state = state2
+    state_a = EventState() if isinstance(state1, EventStateType) else state1
+    state_b = EventState() if isinstance(state2, EventStateType) else state2
+    if isinstance(state1, EventStateType):
+        state_a.current_state = state1
+    if isinstance(state2, EventStateType):
+        state_b.current_state = state2
     assert (state_a == state_b) is expected
     assert (state_a != state_b) is not expected
