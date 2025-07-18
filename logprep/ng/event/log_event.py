@@ -24,7 +24,7 @@ class LogEvent(Event):
         original: bytes,
         extra_data: list[Event] | None = None,
         metadata: EventMetadata | None = None,
-        state: EventStateType | None = None,
+        state: EventStateType | EventState | None = None,
     ) -> None:
         """
         Parameters
@@ -37,7 +37,7 @@ class LogEvent(Event):
             Sub-events that were derived or caused by this event
         metadata : EventMetadata, optional
             Structured metadata for the event.
-        state : EventState, optional
+        state : EventState, EventStateType optional
             Optional existing EventState to initialize from (e.g. deserialization).
 
         Examples

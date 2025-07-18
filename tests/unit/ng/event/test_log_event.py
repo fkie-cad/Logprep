@@ -18,7 +18,7 @@ class DummyEvent(Event):
 
 
 class TestLogEvents(TestEventClass):
-    def test_log_event_initializes(self) -> None:
+    def test_log_event_initializes(self):
         log_event = LogEvent(data={"foo": "bar"}, original=b"raw")
 
         assert isinstance(log_event.state, EventState)
@@ -29,13 +29,13 @@ class TestLogEvents(TestEventClass):
         assert callable(log_event._origin_state_next_state_fn)
         assert log_event.state.next_state != log_event._origin_state_next_state_fn
 
-    def test_log_event_preserves_state_on_init(self) -> None:
+    def test_log_event_preserves_state_on_init(self):
         state = EventStateType.STORED_IN_OUTPUT
         log_event = LogEvent(data={"msg": "payload"}, original=b"event", state=state)
 
         assert log_event.state.current_state is EventStateType.STORED_IN_OUTPUT
 
-    def test_log_event_transition_to_delivered_succeeds_if_all_extra_data_delivered(self) -> None:
+    def test_log_event_transition_to_delivered_succeeds_if_all_extra_data_delivered(self):
         child1 = DummyEvent({"c1": 1})
         child2 = DummyEvent({"c2": 2})
         child1.state.current_state = cast(EventStateType, EventStateType.DELIVERED)
@@ -51,7 +51,7 @@ class TestLogEvents(TestEventClass):
         log_event.state.next_state(success=True)
         assert log_event.state.current_state is EventStateType.DELIVERED
 
-    def test_log_event_transition_to_next_state_excluding_delivered(self) -> None:
+    def test_log_event_transition_to_next_state_excluding_delivered(self):
 
         log_event = LogEvent(
             data={"parent": "yes"},
@@ -63,7 +63,7 @@ class TestLogEvents(TestEventClass):
         log_event.state.next_state(success=True)
         assert log_event.state.current_state is EventStateType.PROCESSED
 
-    def test_log_event_transition_to_delivered_fails_if_extra_data_not_delivered(self) -> None:
+    def test_log_event_transition_to_delivered_fails_if_extra_data_not_delivered(self):
         child1 = DummyEvent({"c1": 1})
         child2 = DummyEvent({"c2": 2})
         child1.state.current_state = cast(EventStateType, EventStateType.DELIVERED)

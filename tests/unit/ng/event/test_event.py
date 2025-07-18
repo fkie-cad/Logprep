@@ -109,7 +109,7 @@ class TestEventClass:
         assert isinstance(frozen, frozenset)
         assert frozen == frozenset({1, 2, 3})
 
-    def test_event_initialization_defaults(self) -> None:
+    def test_event_initialization_defaults(self):
         """
         Verify that the Event initializes correctly when no custom state
         is provided.
@@ -128,7 +128,7 @@ class TestEventClass:
         assert event.errors == []
         assert event.warnings == []
 
-    def test_event_initialization_with_custom_state(self) -> None:
+    def test_event_initialization_with_custom_state(self):
         """
         Verify that a custom EventState is properly assigned to the Event.
 
@@ -148,7 +148,7 @@ class TestEventClass:
         assert event.errors == []
         assert event.warnings == []
 
-    def test_event_data_as_positional_argument(self) -> None:
+    def test_event_data_as_positional_argument(self):
         """
         Ensure that the Event can be instantiated using a positional
         argument for 'data'.
@@ -159,7 +159,7 @@ class TestEventClass:
         assert event.data["source"] == "positional"
         assert isinstance(event.state, EventState)
 
-    def test_event_data_as_keyword_argument(self) -> None:
+    def test_event_data_as_keyword_argument(self):
         """
         Ensure that the Event can also be instantiated using 'data' as
         a keyword argument.
@@ -170,7 +170,7 @@ class TestEventClass:
         assert event.data["source"] == "keyword"
         assert isinstance(event.state, EventState)
 
-    def test_event_valid_state_positional_argument(self) -> None:
+    def test_event_valid_state_positional_argument(self):
         """
         Ensure that providing 'state' as a kw argument is allowed.
         """
@@ -209,7 +209,7 @@ class TestEventClass:
         warnings: list[str],
         errors: list[Exception],
         state: EventStateType | None,
-    ) -> None:
+    ):
         """
         Ensure that DummyEvent instances with type-consistent
         data, warnings (strings), and errors (Exception instances)
@@ -273,7 +273,7 @@ class TestEventClass:
     @pytest.mark.parametrize(
         "event_kwargs",
         [
-            {"data": {"key": "value"}, "state": EventState()},
+            {"data": {"key": "value"}, "state": object()},
             {"data": {"key": "value"}, "state": "invalid"},
         ],
     )
@@ -281,5 +281,7 @@ class TestEventClass:
         """
         Ensure that initializing an Event with an invalid state raises a TypeError.
         """
-        with pytest.raises(TypeError, match="state must be an instance of EventStateType or None"):
+        with pytest.raises(
+            TypeError, match="state must be an instance of EventStateType or EventState, or None"
+        ):
             DummyEvent(**event_kwargs)
