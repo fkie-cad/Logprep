@@ -112,10 +112,9 @@ class EventState:
 
         if not isinstance(other, (EventState, EventStateType)):
             return False
-        try:
+        if isinstance(other, EventState):
             return self.current_state == other.current_state
-        except AttributeError:
-            return self.current_state == other
+        return self.current_state == other
 
     def __str__(self) -> str:
         """
