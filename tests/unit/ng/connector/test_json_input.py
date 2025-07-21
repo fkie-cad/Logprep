@@ -11,8 +11,6 @@ from logprep.factory import Factory
 from tests.unit.ng.connector.base import BaseInputTestCase
 
 
-
-
 class TestJsonInput(BaseInputTestCase):
     timeout = 0.1
 
