@@ -7,10 +7,6 @@ from typing import Any, Literal, Optional, Union
 import msgspec
 from attrs import define, field, validators
 from confluent_kafka import (  # type: ignore
-    OFFSET_BEGINNING,
-    OFFSET_END,
-    OFFSET_INVALID,
-    OFFSET_STORED,
     Consumer,
     KafkaException,
     Message,
