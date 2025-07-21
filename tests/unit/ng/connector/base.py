@@ -19,7 +19,6 @@ from logprep.factory import Factory
 from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.sre_event import SreEvent
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase
@@ -678,14 +677,16 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         self.object.store(event)
         assert self.object.metrics.number_of_processed_events == 1
 
-    @pytest.mark.parametrize(
-        "state, expected_state",
-        [
-            (EventStateType.PROCESSED, EventStateType.STORED_IN_OUTPUT),
-            (EventStateType.FAILED, EventStateType.STORED_IN_ERROR),
-        ],
-    )
-    def test_store_changes_state(self, state, expected_state):
+    def test_store_changes_state_successful_path(self):
+        """This test is a placeholder for the successful path of the store method.
+        you have to override this method in some output implementations depending on the
+        implementation of the store and write_backlog methods.
+        In simple implementations, the next_state method of the event is called twice and the result
+        is the DELIVERED state.
+        In more complex implementations, the next_state method is called once and the store method and
+        a second time in the write_backlog method.
+        """
+        state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
         event = LogEvent(
             {"message": "test message"},
             original=b"",
@@ -694,22 +695,92 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         self.object.store(event)
         assert event.state == expected_state
 
-    @pytest.mark.parametrize(
-        "state, expected_state",
-        [
-            (EventStateType.PROCESSED, EventStateType.STORED_IN_OUTPUT),
-            (EventStateType.FAILED, EventStateType.STORED_IN_ERROR),
-        ],
-    )
-    def test_store_custom_changes_state(self, state, expected_state):
-        event = SreEvent(
-            {"message": "test message"}, state=state, outputs=({"test_instance_name": "stdout"},)
+    def test_store_changes_state_failed_event_with_unsuccessful_path(self):
+        """This test is a placeholder for the successful path of the store method.
+        you have to override this method in some output implementations depending on the
+        implementation of the store and write_backlog methods.
+        In simple implementations, the next_state method of the event is called twice and the result
+        is the DELIVERED state.
+        In more complex implementations, the next_state method is called once and the store method and
+        a second time in the write_backlog method.
+        """
+        state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
         )
-        self.object.store_custom(event, "stdout")
+        self.object.store(event)
         assert event.state == expected_state
 
+    def test_store_custom_changes_state_successful_path(self):
+        """This test is a placeholder for the successful path of the store method.
+        you have to override this method in some output implementations depending on the
+        implementation of the store and write_backlog methods.
+        In simple implementations, the next_state method of the event is called twice and the result
+        is the DELIVERED state.
+        In more complex implementations, the next_state method is called once and the store method and
+        a second time in the write_backlog method.
+        """
+        state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store_custom(event, "stderr")
+        assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
+
+    def test_store_custom_changes_state_failed_event_with_unsuccessful_path(self):
+        """This test is a placeholder for the successful path of the store method.
+        you have to override this method in some output implementations depending on the
+        implementation of the store and write_backlog methods.
+        In simple implementations, the next_state method of the event is called twice and the result
+        is the DELIVERED state.
+        In more complex implementations, the next_state method is called once and the store method and
+        a second time in the write_backlog method.
+        """
+        state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store_custom(event, "stderr")
+        assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
+
     def test_store_handles_errors(self):
-        assert False, "This method should be overridden in the subclass to handle errors."
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        # implement mocking for target connector here
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
 
     def test_store_custom_handles_errors(self):
-        assert False, "This method should be overridden in the subclass to handle errors."
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        # implement mocking for target connector here
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_store_handles_errors_failed_event(self):
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        # implement mocking for target connector start
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+
+    def test_store_custom_handles_errors_failed_event(self):
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        # implement mocking for target connector start
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"

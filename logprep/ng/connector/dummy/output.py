@@ -87,6 +87,7 @@ class DummyOutput(Output):
         """
         if self._config.do_nothing:
             return
+        event.state.next_state()
         if self._exceptions:
             exception = self._exceptions.pop(0)
             if exception is not None:

@@ -76,6 +76,7 @@ class JsonlOutput(Output):
     @Output._handle_errors
     def store(self, event: Event) -> None:
         """Store the event in the output destination."""
+        event.state.next_state()
         self.events.append(event.data)
         JsonlOutput._write_json(self._config.output_file, event.data)
         self.metrics.number_of_processed_events += 1
@@ -84,6 +85,7 @@ class JsonlOutput(Output):
     @Output._handle_errors
     def store_custom(self, event: Event, target: str) -> None:
         """Store the event in the output destination with a custom target."""
+        event.state.next_state()
         document = {target: event.data}
         self.events.append(document)
 

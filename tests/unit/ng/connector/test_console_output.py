@@ -36,9 +36,7 @@ class TestConsoleOutput(BaseOutputTestCase):
 
     def test_store_handles_errors(self):
         self.object.metrics.number_of_errors = 0
-        event = LogEvent(
-            {"message": "test message"}, original=b"", state=EventStateType.STORED_IN_OUTPUT
-        )
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
         with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
             mocked_function.side_effect = Exception("Test exception")
             self.object.store(event)
@@ -49,13 +47,33 @@ class TestConsoleOutput(BaseOutputTestCase):
 
     def test_store_custom_handles_errors(self):
         self.object.metrics.number_of_errors = 0
-        event = LogEvent(
-            {"message": "test message"}, original=b"", state=EventStateType.STORED_IN_OUTPUT
-        )
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
         with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
             mocked_function.side_effect = Exception("Test exception")
             self.object.store_custom(event, "stdout")
         mocked_function.assert_called()
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_store_handles_errors_failed_event(self):
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
+            mocked_function.side_effect = Exception("Test exception")
+            self.object.store(event)
+        mocked_function.assert_called()
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
         assert event.state == EventStateType.FAILED
+
+    def test_store_custom_handles_errors_failed_event(self):
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
+            mocked_function.side_effect = Exception("Test exception")
+            self.object.store_custom(event, "stdout")
+        mocked_function.assert_called()
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"

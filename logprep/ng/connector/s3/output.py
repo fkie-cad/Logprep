@@ -48,8 +48,7 @@ from uuid import uuid4
 
 import boto3
 import msgspec
-from attr import define, field
-from attrs import validators
+from attrs import define, field, validators
 from botocore.exceptions import (
     BotoCoreError,
     ClientError,
@@ -57,8 +56,9 @@ from botocore.exceptions import (
     EndpointConnectionError,
 )
 
-from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import CounterMetric, Metric
+from logprep.ng.abc.event import Event
+from logprep.ng.abc.output import FatalOutputError, Output
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 
@@ -215,42 +215,30 @@ class S3Output(Output):
 
         _ = self._s3_resource.meta.client.head_bucket(Bucket=self._config.bucket)
 
-    def store(self, document: dict) -> None:
-        """Store a document into s3 bucket.
-
-        Parameters
-        ----------
-        document : dict
-           Document to store.
-        """
+    def store(self, event: Event) -> None:
+        """Store a document into s3 bucket."""
         self.metrics.number_of_processed_events += 1
-        prefix_value = get_dotted_field_value(document, self._config.prefix_field)
+        event_data = event.data
+        prefix_value = get_dotted_field_value(event_data, self._config.prefix_field)
         if prefix_value is None:
-            document = self._build_no_prefix_document(
-                document, f"Prefix field '{self._config.prefix_field}' empty or missing in document"
+            event_data = self._build_no_prefix_document(
+                event_data,
+                f"Prefix field '{self._config.prefix_field}' empty or missing in document",
             )
             prefix_value = self._config.default_prefix
-        self._add_to_backlog(document, prefix_value)
+        self._add_to_backlog(event_data, prefix_value)
         self._write_to_s3_resource()
+        event.state.next_state(success=True)
 
-    def store_custom(self, document: dict, target: str) -> None:
+    def store_custom(self, event: Event, target: str) -> None:
         """Store document into backlog to be written into s3 bucket using the target prefix.
 
         Only add to backlog instead of writing the batch and calling batch_finished_callback,
         since store_custom can be called before the event has been fully processed.
-        Setting the offset or comiting before fully processing an event can lead to data loss if
-        Logprep terminates.
-
-        Parameters
-        ----------
-        document : dict
-            Document to be stored into the target prefix.
-        target : str
-            Prefix for the document.
-
-        """
+        Setting the offset or committing before fully processing an event can lead to data loss if
+        Logprep terminates."""
         self.metrics.number_of_processed_events += 1
-        self._add_to_backlog(document, target)
+        self._add_to_backlog(event, target)
 
     def _add_dates(self, prefix: str) -> str:
         date_format_matches = self._replace_pattern.findall(prefix)

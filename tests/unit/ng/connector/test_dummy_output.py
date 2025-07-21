@@ -3,6 +3,7 @@
 from copy import deepcopy
 
 from logprep.factory import Factory
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.sre_event import SreEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
@@ -68,10 +69,12 @@ class TestDummyOutput(BaseOutputTestCase):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
         dummy_output = Factory.create({"test connector": config})
-        event = LogEvent({"order": 0}, original=b"")
-        dummy_output.store(event)
-        dummy_output.store(event)
-        assert len(event.errors) == 1, "Expected only one error, but got multiple."
+        event1 = LogEvent({"order": 0}, original=b"")
+        event2 = LogEvent({"order": 0}, original=b"")
+        dummy_output.store(event1)
+        dummy_output.store(event2)
+        assert len(event1.errors) == 1, "Expected only one error, but got multiple."
+        assert len(event2.errors) == 0, "Expected only one error, but got multiple."
 
     def test_raises_exception_only_when_not_none(self):
         config = deepcopy(self.CONFIG)
@@ -90,19 +93,43 @@ class TestDummyOutput(BaseOutputTestCase):
     def test_store_handles_errors(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
-        dummy_output = Factory.create({"test connector": config})
-        event = LogEvent({"order": 0}, original=b"")
-        dummy_output.store(event)
-        assert len(event.errors) == 1, "Expected one error, but got none."
+        self.object = Factory.create({"Test Instance Name": config})
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        self.object.store(event)
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
 
     def test_store_custom_handles_errors(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
-        dummy_output = Factory.create({"test connector": config})
-        event = SreEvent(
-            {"order": 0},
-            state="processed",
-            outputs=({"test_instance_name": "stdout"},),
-        )
-        dummy_output.store_custom(event, target="whatever")
-        assert len(event.errors) == 1, "Expected one error, but got none."
+        self.object = Factory.create({"Test Instance Name": config})
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        self.object.store_custom(event, target="custom_target")
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_store_handles_errors_failed_event(self):
+        config = deepcopy(self.CONFIG)
+        config.update({"exceptions": ["FatalOutputError"]})
+        self.object = Factory.create({"Test Instance Name": config})
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        self.object.store(event)
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+
+    def test_store_custom_handles_errors_failed_event(self):
+        config = deepcopy(self.CONFIG)
+        config.update({"exceptions": ["FatalOutputError"]})
+        self.object = Factory.create({"Test Instance Name": config})
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        self.object.store_custom(event, target="custom_target")
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"

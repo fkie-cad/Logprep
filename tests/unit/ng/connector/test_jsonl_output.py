@@ -7,7 +7,7 @@ from unittest import mock
 
 from logprep.connector.jsonl.output import JsonlOutput
 from logprep.factory import Factory
-from logprep.ng.event.filtered_event import FilteredEvent
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
@@ -55,8 +55,8 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
 
     @mock.patch("logprep.ng.connector.jsonl.output.JsonlOutput._write_json")
     def test_write_multiple_documents_to_file_on_store(self, _):
-        self.object.store(self.event)
-        self.object.store(self.event)
+        self.object.store(LogEvent(self.event.data, original=b""))
+        self.object.store(LogEvent(self.event.data, original=b""))
         assert self.object._write_json.call_count == 2
         assert self.object._write_json.call_args_list == [
             mock.call("/tmp/output.jsonl", {"message": "test message"}),
@@ -91,29 +91,53 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
         self.object.store(LogEvent({"message": "my event message"}, original=b""))
 
     def test_store_handles_errors(self):
-        event = LogEvent({"message": "my event message"}, original=b"")
-        self.object.metrics.number_of_processed_events = 0
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
         self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
         with mock.patch(
             "logprep.ng.connector.jsonl.output.JsonlOutput._write_json",
             side_effect=Exception("Test error"),
         ):
             self.object.store(event)
-        assert self.object.metrics.number_of_errors == 1, "one error should be counted"
-        assert self.object.metrics.number_of_processed_events == 0, "no events should be processed"
-        assert len(event.errors) == 1, "Event should have an error"
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
 
     def test_store_custom_handles_errors(self):
-        event = FilteredEvent(
-            {"message": "my event message"}, outputs=({"custom_target": "custom_value"},)
-        )
-        self.object.metrics.number_of_processed_events = 0
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
         self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
         with mock.patch(
             "logprep.ng.connector.jsonl.output.JsonlOutput._write_json",
             side_effect=Exception("Test error"),
         ):
-            self.object.store_custom(event, "custom_target")
-        assert self.object.metrics.number_of_errors == 1, "one error should be counted"
-        assert self.object.metrics.number_of_processed_events == 0, "no events should be processed"
-        assert len(event.errors) == 1, "Event should have an error"
+            self.object.store_custom(event, target="custom_target")
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_store_handles_errors_failed_event(self):
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        with mock.patch(
+            "logprep.ng.connector.jsonl.output.JsonlOutput._write_json",
+            side_effect=Exception("Test error"),
+        ):
+            self.object.store(event)
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+
+    def test_store_custom_handles_errors_failed_event(self):
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        with mock.patch(
+            "logprep.ng.connector.jsonl.output.JsonlOutput._write_json",
+            side_effect=Exception("Test error"),
+        ):
+            self.object.store_custom(event, target="custom_target")
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"

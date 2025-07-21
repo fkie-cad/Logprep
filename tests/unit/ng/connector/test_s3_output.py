@@ -15,8 +15,9 @@ from botocore.exceptions import (
     EndpointConnectionError,
 )
 
-from logprep.abc.output import FatalOutputError
 from logprep.factory import Factory
+from logprep.ng.abc.output import FatalOutputError
+from logprep.ng.event.log_event import LogEvent
 from logprep.util.time import TimeParser
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
@@ -56,7 +57,7 @@ class TestS3Output(BaseOutputTestCase):
 
     @pytest.mark.parametrize("base_prefix", base_prefix_tests_cases)
     def test_store_sends_with_default_prefix(self, base_prefix):
-        event = {"field": "content"}
+        event = LogEvent({"field": "content"}, original=b"")
         default_prefix = (
             f"{base_prefix}/foo_default_prefix" if base_prefix else "foo_default_prefix"
         )
@@ -84,7 +85,7 @@ class TestS3Output(BaseOutputTestCase):
     def test_store_sends_event_to_with_expected_prefix_if_prefix_missing_in_event(
         self, base_prefix
     ):
-        event = {"field": "content"}
+        event = LogEvent({"field": "content"}, original=b"")
         default_prefix = f"{base_prefix}/default_prefix" if base_prefix else "default_prefix"
         expected = {
             "message": '{"field":"content"}',
@@ -209,7 +210,8 @@ class TestS3Output(BaseOutputTestCase):
         s3_output = Factory.create({"s3": s3_config})
         s3_output._s3_resource = mock.MagicMock()
         s3_output.input_connector = mock.MagicMock()
-        s3_output.store({"message": "my event message"})
+        event = LogEvent({"message": "my event message"}, original=b"")
+        s3_output.store(event)
         s3_output.input_connector.batch_finished_callback.assert_not_called()
 
     def test_write_to_s3_resource_replaces_dates(self):
@@ -229,7 +231,8 @@ class TestS3Output(BaseOutputTestCase):
         with mock.patch(
             "logprep.connector.s3.output.S3Output._write_backlog"
         ) as mock_write_backlog:
-            self.object.store({"test": "event"})
+            event = LogEvent({"test": "event"}, original=b"")
+            self.object.store(event)
         mock_write_backlog.assert_not_called()
 
     def test_write_backlog_executed_on_empty_message_backlog(self):
@@ -279,7 +282,7 @@ class TestS3Output(BaseOutputTestCase):
     def _calculate_backlog_size(s3_output):
         return sum(len(values) for values in s3_output._message_backlog.values())
 
-    @mock.patch("logprep.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    @mock.patch("logprep.ng.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
     @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
     def test_setup_populates_cached_properties(self, mock_getmembers):
         self.object.setup()
