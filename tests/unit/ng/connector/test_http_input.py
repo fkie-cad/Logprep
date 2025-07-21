@@ -15,7 +15,6 @@ from unittest import mock
 import pytest
 import requests
 import responses
-from asgiref.timeout import timeout
 from falcon import testing
 from requests.auth import _basic_auth_str
 
