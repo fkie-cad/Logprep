@@ -283,7 +283,7 @@ class HttpInput(Input):
         for endpoint_path, endpoint_type in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_type)
 
-            if endpoint_class is None:
+            if endpoint_class is None:  # pragma: no cover this is a mypy issue fix
                 continue
 
             credentials = cred_factory.from_endpoint(endpoint_path)
@@ -322,7 +322,7 @@ class HttpInput(Input):
 
     def shut_down(self) -> None:
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        if self.http_server is None:
+        if self.http_server is None:  # pragma: no cover this is a mypy issue fix
             return
         self.http_server.shut_down()
 

@@ -12,7 +12,7 @@ import pytest
 from logprep.factory import Factory
 from logprep.util.helper import get_dotted_field_value
 
-KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
+KAFKA_STATS_JSON_FILE = "kafka_stats_return_value.json"
 
 
 class CommonConfluentKafkaTestCase:
@@ -43,7 +43,9 @@ class CommonConfluentKafkaTestCase:
         )
         for metric in librdkafka_metrics:
             setattr(self.object.metrics, metric, 0)
-        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+
+        json_string_path = Path(__file__).resolve().parents[2] / "testdata" / KAFKA_STATS_JSON_FILE
+        json_string = json_string_path.read_text("utf8")
         self.object._stats_callback(json_string)
         stats_dict = json.loads(json_string)
         for metric in librdkafka_metrics:
@@ -53,7 +55,8 @@ class CommonConfluentKafkaTestCase:
 
     def test_stats_set_age_metric_explicitly(self):
         self.object.metrics.librdkafka_age = 0
-        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        json_string_path = Path(__file__).resolve().parents[2] / "testdata" / KAFKA_STATS_JSON_FILE
+        json_string = json_string_path.read_text("utf8")
         self.object._stats_callback(json_string)
         assert self.object.metrics.librdkafka_age == 1337
 
