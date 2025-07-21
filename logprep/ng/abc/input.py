@@ -31,6 +31,7 @@ from logprep.util.validators import dict_structure_validator
 
 
 class InputIterator:
+    """ Base Class for an input Iterator """
     def __init__(self, input_connector: "Input", timeout: float):
         """Initialize the input iterator with a timeout.
 
