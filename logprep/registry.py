@@ -30,7 +30,6 @@ from logprep.ng.connector.dummy.input import DummyInput as NgDummyInput
 from logprep.ng.connector.dummy.output import DummyOutput as NgDummyOutput
 from logprep.ng.connector.file.input import FileInput as NgFileInput
 from logprep.ng.connector.http.input import HttpInput as NgHttpInput
-from logprep.ng.connector.http.output import HttpOutput as NgHttpOutput
 from logprep.ng.connector.json.input import JsonInput as NgJsonInput
 from logprep.ng.connector.jsonl.output import JsonlOutput as NgJsonlOutput
 from logprep.ng.connector.s3.output import S3Output as NgS3Output
@@ -200,7 +199,6 @@ class Registry:
         "ng_dummy_output": NgDummyOutput,
         "ng_console_output": NgConsoleOutput,
         "ng_jsonl_output": NgJsonlOutput,
-        "ng_http_output": NgHttpOutput,
         "ng_s3_output": NgS3Output,
     }
 
