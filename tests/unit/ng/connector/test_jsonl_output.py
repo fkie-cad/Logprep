@@ -7,12 +7,12 @@ from unittest import mock
 
 from logprep.connector.jsonl.output import JsonlOutput
 from logprep.factory import Factory
-from tests.unit.connector.base import BaseOutputTestCase
+from tests.unit.ng.connector.base import BaseOutputTestCase
 
 
 class TestJsonlOutputOutput(BaseOutputTestCase):
     CONFIG = {
-        "type": "jsonl_output",
+        "type": "ng_jsonl_output",
         "output_file": f"{tempfile.gettempdir()}/output.jsonl",
         "output_file_custom": f"{tempfile.gettempdir()}/custom_file",
     }

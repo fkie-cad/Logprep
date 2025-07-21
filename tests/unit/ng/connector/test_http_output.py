@@ -7,7 +7,7 @@ import requests
 import responses
 from requests.exceptions import SSLError
 
-from tests.unit.connector.base import BaseOutputTestCase
+from tests.unit.ng.connector.base import BaseOutputTestCase
 
 TARGET_URL = "https://www.test.de"
 
@@ -15,7 +15,7 @@ TARGET_URL = "https://www.test.de"
 class TestOutput(BaseOutputTestCase):
 
     CONFIG = {
-        "type": "http_output",
+        "type": "ng_http_output",
         "target_url": TARGET_URL,
         "user": "user",
         "password": "password",

@@ -18,7 +18,7 @@ from botocore.exceptions import (
 from logprep.abc.output import FatalOutputError
 from logprep.factory import Factory
 from logprep.util.time import TimeParser
-from tests.unit.connector.base import BaseOutputTestCase
+from tests.unit.ng.connector.base import BaseOutputTestCase
 
 
 class NotJsonSerializableMock:
@@ -27,7 +27,7 @@ class NotJsonSerializableMock:
 
 class TestS3Output(BaseOutputTestCase):
     CONFIG = {
-        "type": "s3_output",
+        "type": "ng_s3_output",
         "endpoint_url": "http://localhost:23423",
         "aws_access_key_id": "foo_aws_access_key_id",
         "aws_secret_access_key": "foo_aws_secret_access_key",
