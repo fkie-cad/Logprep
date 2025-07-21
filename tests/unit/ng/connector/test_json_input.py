@@ -11,8 +11,6 @@ from logprep.factory import Factory
 from tests.unit.ng.connector.base import BaseInputTestCase
 
 
-class DummyError(Exception):
-    pass
 
 
 class TestJsonInput(BaseInputTestCase):
