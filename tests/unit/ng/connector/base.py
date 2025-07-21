@@ -19,6 +19,7 @@ from logprep.factory import Factory
 from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.event.sre_event import SreEvent
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase
@@ -701,10 +702,8 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         ],
     )
     def test_store_custom_changes_state(self, state, expected_state):
-        event = LogEvent(
-            {"message": "test message"},
-            original=b"",
-            state=state,
+        event = SreEvent(
+            {"message": "test message"}, state=state, outputs=({"test_instance_name": "stdout"},)
         )
         self.object.store_custom(event, "stdout")
         assert event.state == expected_state

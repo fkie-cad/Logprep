@@ -24,6 +24,7 @@ from attrs import validators
 
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import Output
+from logprep.ng.event.log_event import LogEvent
 
 if TYPE_CHECKING:
     from logprep.abc.connector import Connector  # pragma: no cover
@@ -39,6 +40,8 @@ class DummyOutput(Output):
         """Common Configurations"""
 
         do_nothing: bool = field(default=False)
+        """If set to True, this connector will behave completely neutral and not do anything.
+        Especially counting metrics or storing events."""
 
         exceptions: List[str] = field(
             validator=validators.deep_iterable(
@@ -47,9 +50,13 @@ class DummyOutput(Output):
             ),
             default=[],
         )
+        """List of exceptions to raise when storing an event. This is useful
+        for testing purposes. If an exception is raised, the exception is handled
+        by the output decorator.
+        """
 
-    events: list
-    failed_events: list
+    events: list[LogEvent]
+    failed_events: list[LogEvent]
     setup_called_count: int
     shut_down_called_count: int
     _exceptions: list
@@ -69,6 +76,7 @@ class DummyOutput(Output):
         self.shut_down_called_count = 0
         self._exceptions = configuration.exceptions
 
+    @Output._handle_errors
     def store(self, event: Event) -> None:
         """Store the document in the output destination.
 
@@ -84,9 +92,10 @@ class DummyOutput(Output):
             if exception is not None:
                 raise Exception(exception)  # pylint: disable=broad-exception-raised
         self.events.append(event)
+        event.state.next_state(success=True)
         self.metrics.number_of_processed_events += 1
 
-    def store_custom(self, event: Event, target: str):
+    def store_custom(self, event: Event, target: str):  # pylint: disable=unused-argument
         """Store additional data in a custom location inside the output destination."""
         self.store(event)
 
