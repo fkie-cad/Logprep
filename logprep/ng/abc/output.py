@@ -5,7 +5,7 @@ New output endpoint types are created by implementing it.
 import threading
 from abc import abstractmethod
 from copy import deepcopy
-from typing import Any
+from typing import Any, Callable
 
 from attrs import define, field, validators
 
@@ -97,3 +97,18 @@ class Output(Connector):
 
     def _write_backlog(self):
         """Write the backlog to the output destination."""
+
+    @staticmethod
+    def _handle_errors(func: Callable) -> Callable:
+        """Decorator to handle errors during the store process."""
+
+        def wrapper(self, *args, **kwargs):
+            event = args[0] if args else kwargs.get("event")
+            try:
+                func(self, *args, **kwargs)
+            except Exception as e:  # pylint: disable=broad-except
+                event.errors.append(e)
+                self.metrics.number_of_errors += 1
+                event.state.next_state(success=False)
+
+        return wrapper

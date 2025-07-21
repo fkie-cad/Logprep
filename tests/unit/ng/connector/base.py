@@ -711,3 +711,6 @@ class BaseOutputTestCase(BaseConnectorTestCase):
 
     def test_store_handles_errors(self):
         assert False, "This method should be overridden in the subclass to handle errors."
+
+    def test_store_custom_handles_errors(self):
+        assert False, "This method should be overridden in the subclass to handle errors."
