@@ -163,7 +163,7 @@ class Input(Connector):
               possible is the value :code:`dict` which copies the event as mapping to the specified
               :code:`target_field`. If the format :code:`str` is set it is necessary to have a
               timestamp set in the event for opensearch to receive the event in the string format.
-              This can be achived by using the :code:`log_arrival_time_target_field` preprocessor.
+              This can be achieved by using the :code:`log_arrival_time_target_field` preprocessor.
             - :code:`target_field` - specifies the field to which the event should be written to.
               the default is :code:`event.original`
         """
