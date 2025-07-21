@@ -22,7 +22,8 @@ import json
 
 from attrs import define, field, validators
 
-from logprep.abc.output import Output
+from logprep.ng.abc.event import Event
+from logprep.ng.abc.output import Output
 
 
 class JsonlOutput(Output):
@@ -46,8 +47,8 @@ class JsonlOutput(Output):
         output_file_custom = field(validator=validators.instance_of(str), default="")
 
     last_timeout: float
-    events: list
-    failed_events: list
+    events: list[dict]
+    failed_events: list[dict]
 
     __slots__ = [
         "last_timeout",
@@ -72,15 +73,21 @@ class JsonlOutput(Output):
         with open(filepath, "a+", encoding="utf8") as file:
             file.write(f"{json.dumps(line)}\n")
 
-    def store(self, document: dict):
-        self.events.append(document)
-        JsonlOutput._write_json(self._config.output_file, document)
+    @Output._handle_errors
+    def store(self, event: Event) -> None:
+        """Store the event in the output destination."""
+        self.events.append(event.data)
+        JsonlOutput._write_json(self._config.output_file, event.data)
         self.metrics.number_of_processed_events += 1
+        event.state.next_state(success=True)
 
-    def store_custom(self, document: dict, target: str):
-        document = {target: document}
+    @Output._handle_errors
+    def store_custom(self, event: Event, target: str) -> None:
+        """Store the event in the output destination with a custom target."""
+        document = {target: event.data}
         self.events.append(document)
 
         if self._config.output_file_custom:
             JsonlOutput._write_json(self._config.output_file_custom, document)
         self.metrics.number_of_processed_events += 1
+        event.state.next_state(success=True)
