@@ -34,10 +34,11 @@ class TestConsoleOutput(BaseOutputTestCase):
         self.object.store_custom(event, target="stdout")
         mock_pprint.assert_called()
 
-    @mock.patch("logprep.ng.connector.console.output.pprint")
-    def test_store_handles_exception(self, mock_pprint):
+    def test_store_handles_errors(self):
         self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        event = LogEvent(
+            {"message": "test message"}, original=b"", state=EventStateType.STORED_IN_OUTPUT
+        )
         with mock.patch("logprep.ng.connector.console.output.pprint") as mocked_function:
             mocked_function.side_effect = Exception("Test exception")
             self.object.store(event)
