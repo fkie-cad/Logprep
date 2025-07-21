@@ -1,3 +1,25 @@
+"""
+FileInput
+==========
+A generic line input that returns the documents it was initialized with.
+If a "document" is derived from Exception, that exception will be thrown instead of
+returning a document. The exception will be removed and subsequent calls may return documents or
+throw other exceptions in the given order.
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    input:
+      myfileinput:
+        type: file_input
+        logfile_path: path/to/a/document
+        start: begin
+        interval: 1
+        watch_file: True
+"""
+
 import queue
 import threading
 import zlib

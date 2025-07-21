@@ -1,3 +1,34 @@
+# pylint: disable=line-too-long
+"""
+ConfluentkafkaInput
+===================
+
+Logprep uses `confluent-kafka` python client library to communicate with kafka-clusters.
+Important documentation sources are:
+
+- `the python client github page <https://github.com/confluentinc/confluent-kafka-python>`_
+- `the python client api documentation <https://docs.confluent.io/current/clients/confluent-kafka-python/>`_
+- `first steps documentation on confluent.io <https://docs.confluent.io/current/clients/python.html#>`_
+- `underlying c-library documentation (librdkafka) <https://github.com/edenhill/librdkafka>`_
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    input:
+      mykafkainput:
+        type: confluentkafka_input
+        topic: consumer
+        kafka_config:
+            bootstrap.servers: "127.0.0.1:9092,127.0.0.1:9093"
+            group.id: "cgroup"
+            enable.auto.commit: "true"
+            session.timeout.ms: "6000"
+            auto.offset.reset: "earliest"
+"""
+# pylint: enable=line-too-long
+
 import os
 from functools import cached_property, partial
 from socket import getfqdn
