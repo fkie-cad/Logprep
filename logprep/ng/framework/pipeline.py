@@ -139,13 +139,17 @@ class Pipeline:
         event.state.next_state()
         result = None
         if self._pipeline:
-            self.process_event(event)
+            self.process_events(event)
 
         if event.state.current_state is EventStateType.FAILED:
             event.state.next_state(success=False)
         else:
             event.state.next_state(success=True)
         return result
+
+    def process_events(self, events: list[Event]) -> list[PipelineResult]:
+        """Maps a batch of events to the process_events"""
+        return list(map(self.process_event, events))
 
     def process_event(self, event):
         """process all processors for one event"""
@@ -157,10 +161,6 @@ class Pipeline:
         for extra_event in result:
             event.extra_data.append(extra_event)
         return result
-
-    def process_events(self, events: list[Event]) -> list[PipelineResult]:
-        """Maps a batch of events to the process_events"""
-        return list(map(self.process_event, events))
 
     def _create_processor(self, entry: dict) -> "Processor":
         processor = Factory.create(entry)
