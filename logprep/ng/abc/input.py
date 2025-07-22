@@ -23,6 +23,8 @@ from logprep.abc.input import (
     TimeDeltaConfig,
 )
 from logprep.metrics.metrics import Metric
+from logprep.ng.abc.event import Event, EventBacklog
+from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.helper import add_fields_to, get_dotted_field_value
@@ -184,7 +186,7 @@ class Input(Connector):
         configuration: Literal["Config"],
         pipeline_index: int | None = None,
     ) -> None:
-        self.backlog = SetEventBacklog()
+        self.event_backlog: EventBacklog | None = None
 
         super().__init__(name, configuration, pipeline_index)
 
@@ -212,6 +214,18 @@ class Input(Connector):
         """
 
         return InputIterator(self, timeout)
+
+    def setup(self):
+        """Initialize the input connector.
+
+        This method sets the event backlog to an instance of `SetEventBacklog`.
+        You can override this to configure a different event backlog type,
+        depending on the available configuration settings.
+        """
+
+        super().setup()
+
+        self.event_backlog = SetEventBacklog()
 
     @property
     def _add_hmac(self) -> bool:
@@ -291,7 +305,7 @@ class Input(Connector):
 
         Returns
         -------
-        (event, raw_event)
+        (event, raw_event, metadata)
         """
 
     @Metric.measure_time()
@@ -305,7 +319,7 @@ class Input(Connector):
 
         Returns
         -------
-        input : dict
+        input : Event, None
             Input log data.
 
         Raises
@@ -313,12 +327,17 @@ class Input(Connector):
         TimeoutWhileWaitingForInputError
             After timeout (usually a fraction of seconds) if no input data was available by then.
         """
-        event, raw_event = self._get_event(timeout)
+
+        event, raw_event, metadata = self._get_event(timeout)
+
         if event is None:
             return None
+
         self.metrics.number_of_processed_events += 1
+
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
+
         try:
             if self._add_full_event_to_target_field:
                 self._write_full_event_to_target_field(event, raw_event)
@@ -334,7 +353,15 @@ class Input(Connector):
                 self._add_env_enrichment_to_event(event)
         except FieldExistsWarning as error:
             raise CriticalInputError(self, error.args[0], event) from error
-        return event
+
+        log_event = LogEvent(
+            data=event,
+            original=raw_event,
+            metadata=metadata,
+        )
+        self.event_backlog.register(events=[log_event])
+
+        return log_event
 
     def batch_finished_callback(self) -> None:
         """Can be called by output connectors after processing a batch of one or more records."""
