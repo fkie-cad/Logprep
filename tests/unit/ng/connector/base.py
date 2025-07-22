@@ -14,8 +14,8 @@ from unittest import mock
 import pytest
 
 from logprep.abc.connector import Connector
-from logprep.abc.input import CriticalInputError, Input
 from logprep.factory import Factory
+from logprep.ng.abc.input import CriticalInputError, Input
 from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
