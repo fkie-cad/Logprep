@@ -784,3 +784,8 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
         assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_shutdown_flushes_output(self):
+        with mock.patch.object(self.object, "flush") as mock_flush:
+            self.object.shutdown()
+            mock_flush.assert_called_once()

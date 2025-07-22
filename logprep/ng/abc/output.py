@@ -103,8 +103,12 @@ class Output(Connector):
             Custom target for the event.
         """
 
-    def _write_backlog(self):
-        """Write the backlog to the output destination."""
+    @abstractmethod
+    def flush(self):
+        """Write the backlog to the output destination.
+        Needs to be implemented in child classes to ensure
+        that the backlog is written to the output destination.
+        """
 
     @staticmethod
     def _handle_errors(func: Callable) -> Callable:
