@@ -19,12 +19,6 @@ from logprep.util.configuration import Configuration
 class Pipeline:
     """Pipeline of processors to be processed."""
 
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self.process_pipeline()
-
     _logprep_config: Configuration
     """ the logprep configuration dict """
 
@@ -60,31 +54,22 @@ class Pipeline:
         self._logprep_config = config
         self._timeout = config.timeout
 
-    # def process_pipeline(self):
-    #     """Retrieve next event, process event with full pipeline and store or return results"""
-    #     event = self._input.get_next(self._timeout)
-    #     if not event:
-    #         raise StopIteration
-    #     event.state.next_state()
-    #     if self._pipeline:
-    #         self.process_event(event)
+    # def __iter__(self):
+    #     return self
 
-    #     if any(event.errors):
-    #         event.state.next_state(success=False)
-    #     else:
-    #         event.state.next_state(success=True)
-    #     return event
+    # def __next__(self):
+    #     next(self.input_generator)
 
     def process_pipeline(self):
         """processes the Pipeline"""
         while True:
-            batch = islice(self._input, self.process_count)
+            batch = list(islice(self._input, self.process_count))
+            if not batch:
+                break
+            for event in batch:
+                event.state.next_state()
             results = map(self.process_event, batch)
             yield from results
-
-    # def process_events(self, events: list[Event]):
-    #     """Maps a batch of events to the process_events"""
-    #     return list(map(self.process_event, events))
 
     def process_event(self, event):
         """process all processors for one event"""

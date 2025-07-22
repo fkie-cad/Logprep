@@ -17,6 +17,18 @@ from logprep.ng.framework.pipeline import Pipeline
 from logprep.util.configuration import Configuration
 
 
+class MockInput:
+    def __init__(self, iterable):
+        self._iterator = iter(iterable)
+        self.backlog = []
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self._iterator)
+
+
 class ConfigurationForTests:
     logprep_config = Configuration(
         **{
@@ -72,9 +84,6 @@ class TestPipeline(ConfigurationForTests):
         self._check_failed_stored = None
 
         config = copy.deepcopy(self.logprep_config)
-        # config["documents"] = [LogEvent({"order": 0}, original=b"")]
-        # self.dummy_input_connector = Factory.create({"Test Instance Name": config})
-
         self.pipeline = Pipeline(
             config=config,
         )
@@ -91,107 +100,56 @@ class TestPipeline(ConfigurationForTests):
         for processor in self.pipeline._pipeline:
             processor.setup.assert_called()
 
-    def test_passes_timeout_parameter_to_input_get_next(self, _):
-        self.pipeline._setup()
-        self.pipeline._input.get_next.return_value = LogEvent({"order": 0}, original=b"")
-        self.pipeline.process_pipeline()
-        timeout = self.logprep_config.timeout
-        self.pipeline._input.get_next.assert_called_with(timeout)
-
-    def test_passes_timeout_parameter_to_input_get_next2(self, _):
-        self.pipeline._setup()
-        self.pipeline._input.get_next.return_value = LogEvent({"order": 0}, original=b"")
-        self.pipeline.process_pipeline()
-        timeout = self.logprep_config.timeout
-        self.pipeline._input.get_next.assert_called_with(timeout)
-
-    def test_pipeline_iterates_over_events(self, _):
-        self.pipeline._setup()
-        events = [LogEvent({"order": 0}, original=b""), LogEvent({"order": 1}, original=b"")]
-        self.pipeline._input.get_next.side_effect = events
-
-        pipeline_iter = iter(self.pipeline)
-        result1 = next(pipeline_iter)
-        result2 = next(pipeline_iter)
-        assert result1 == LogEvent({"order": 0}, original=b"")
-        assert result2 == LogEvent({"order": 1}, original=b"")
-        assert result1.state.current_state is EventStateType.PROCESSED
-        assert result2.state.current_state is EventStateType.PROCESSED
-
-    def test_process_events_changes_event_states(self, _):
-        self.pipeline._setup()
-        event = LogEvent({"order": 0}, original=b"")
-        event = mock.MagicMock()
-
-        with mock.patch("logprep.ng.framework.pipeline.PipelineResult") as mock_pipeline_result:
-            mock_result = mock.MagicMock()
-            mock_pipeline_result.return_value = mock_result
-            self.pipeline.process_event(event)
-            assert event.state.next_state.call_count == 1
-
-    def test_process_pipeline_changes_event_states(self, _):
-
-        self.pipeline._setup()
-
-        mock_event = mock.MagicMock()
-        mock_event.state = mock.MagicMock()
-
-        self.pipeline._input = mock.MagicMock()
-        self.pipeline._input.get_next.return_value = mock_event
-        self.pipeline.process_event = mock.MagicMock()
-
-        self.pipeline.process_pipeline()
-        assert mock_event.state.next_state.call_count == 2
-
-    def test_process_pipeline_changes_event_states_failed_successfully(self, _):
-
-        def mock_process_event(event):
-            event.state.next_state()
-
-        self.pipeline._setup()
-
-        event = LogEvent({"order": 0}, original=b"")
-
-        self.pipeline._input = mock.MagicMock()
-        self.pipeline._input.get_next.return_value = event
-        self.pipeline.process_event = mock_process_event
-
-        self.pipeline.process_pipeline()
-        assert event.state.current_state == EventStateType.PROCESSED
-
-    def test_process_pipeline_changes_event_states_failed(self, _):
-
-        def mock_process_event(event):
-            event.state.next_state()
-
-        self.pipeline._setup()
-
-        event = LogEvent({"order": 0}, original=b"")
-        event.errors = [Exception]
-
-        self.pipeline._input = mock.MagicMock()
-        self.pipeline._input.get_next.return_value = event
-        self.pipeline.process_event = mock_process_event
-
-        self.pipeline.process_pipeline()
-        assert event.state.current_state == EventStateType.FAILED
-
-    def test_extra_data_event_is_passed_to_store_custom(self, _):
-        self.pipeline._logprep_config.pipeline = [
-            {"dummy": {"type": "ng_dummy_processor"}},
-            {"dummy": {"type": "ng_dummy_processor"}},
+    def test_process_pipeline_yields_results(self, _):
+        inputs = [
+            LogEvent({"order": 0}, original=b""),
+            LogEvent({"order": 1}, original=b""),
         ]
+        self.pipeline._setup()
+        self.pipeline._input = iter(inputs)
+        result = list(self.pipeline.process_pipeline())
+        assert result == inputs
+        assert result[0].state.current_state is EventStateType.PROCESSED
 
+    def test_process_pipeline_changes_states_successfully(self, _):
+        inputs = [
+            LogEvent({"order": 0}, original=b""),
+            LogEvent({"order": 1}, original=b""),
+        ]
+        self.pipeline._setup()
+        self.pipeline._input = iter(inputs)
+        result = list(self.pipeline.process_pipeline())
+
+        assert result[0].state.current_state is EventStateType.PROCESSED
+        assert result[1].state.current_state is EventStateType.PROCESSED
+
+    def test_process_pipeline_changes_states_failed(self, _):
+        inputs = [
+            LogEvent({"order": 0}, original=b""),
+            LogEvent({"order": 1}, original=b""),
+        ]
+        inputs[0].errors = [Exception]
+        self.pipeline._setup()
+        self.pipeline._input = iter(inputs)
+        result = list(self.pipeline.process_pipeline())
+
+        assert result[0].state.current_state is EventStateType.FAILED
+        assert result[1].state.current_state is EventStateType.PROCESSED
+
+    def test_extra_data_event_is_registered_in_backlog(self, _):
         outputs = ({"name": "sre_topic"},)
         data = {"foo": "bar"}
         sre_event = SreEvent(data=data, outputs=outputs)
 
+        inputs = [
+            LogEvent({"order": 0}, original=b"", extra_data=[sre_event]),
+            LogEvent({"order": 1}, original=b""),
+        ]
+
         self.pipeline._setup()
-        event = LogEvent({"order": 0}, original=b"")
-        self.pipeline._input.get_next.return_value = event
-        self.pipeline._pipeline[1].process.return_value = ProcessorResult(
-            processor_name="", data=[sre_event]
-        )
-        self.pipeline.process_pipeline()
-        assert self.pipeline._input.get_next.call_count == 1
-        assert event.extra_data == [sre_event]
+        self.pipeline._input = MockInput(inputs)  # wrapped in the custom class
+
+        _ = list(self.pipeline.process_pipeline())
+
+        assert len(self.pipeline._input.backlog) == 1
+        assert self.pipeline._input.backlog[0] == sre_event
