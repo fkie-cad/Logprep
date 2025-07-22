@@ -54,11 +54,11 @@ class Pipeline:
         self._logprep_config = config
         self._timeout = config.timeout
 
-    # def __iter__(self):
-    #     return self
+    def __iter__(self):
+        return self
 
-    # def __next__(self):
-    #     next(self.input_generator)
+    def __next__(self):
+        return next(self._input)
 
     def process_pipeline(self):
         """processes the Pipeline"""

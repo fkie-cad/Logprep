@@ -111,6 +111,16 @@ class TestPipeline(ConfigurationForTests):
         assert result == inputs
         assert result[0].state.current_state is EventStateType.PROCESSED
 
+    def test_process_pipeline_iterates(self, _):
+        inputs = [
+            LogEvent({"order": 0}, original=b""),
+            LogEvent({"order": 1}, original=b""),
+        ]
+        self.pipeline._setup()
+        self.pipeline._input = iter(inputs)
+        for i, result in enumerate(self.pipeline):
+            assert result == inputs[i]
+
     def test_process_pipeline_changes_states_successfully(self, _):
         inputs = [
             LogEvent({"order": 0}, original=b""),
