@@ -213,7 +213,7 @@ class OpensearchOutput(Output):
     def setup(self):
         super().setup()
         flush_timeout = self._config.flush_timeout
-        self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
+        self._schedule_task(task=self.flush, seconds=flush_timeout)
 
     def describe(self) -> str:
         """Get name of Opensearch endpoint with the host.
@@ -261,10 +261,10 @@ class OpensearchOutput(Output):
         This reduces connections to Opensearch and improves performance.
         """
         if len(self._message_backlog) >= self._config.message_backlog_size:
-            self._write_backlog()
+            self.flush()
 
     @Metric.measure_time()
-    def _write_backlog(self):
+    def flush(self):
         if not self._message_backlog:
             return
         logger.debug("Flushing %d documents to Opensearch", len(self._message_backlog))
@@ -313,7 +313,3 @@ class OpensearchOutput(Output):
             self.metrics.number_of_errors += 1
             return False
         return super().health() and resp.get("status") in self._config.desired_cluster_status
-
-    def shut_down(self):
-        self._write_backlog()
-        return super().shut_down()
