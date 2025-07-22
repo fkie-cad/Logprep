@@ -77,11 +77,11 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         )
         logging.getLogger("uvicorn.access").name = self._logger_name
         logging.getLogger("uvicorn.error").name = self._logger_name
-        self.server = None
-        self.thread = None
+        self.server: uvicorn.Server | None = None
+        self.thread: threading.Thread | None = None
         self.daemon = daemon
 
-    def start(self):
+    def start(self) -> None:
         """Collect all configs, initiate application server and webserver
         and run thread with uvicorn+falcon http server and wait
         until it is up (started)"""
