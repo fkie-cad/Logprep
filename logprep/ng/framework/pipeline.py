@@ -1,15 +1,21 @@
+"""This module contains all Pipeline functionality.
+
+Pipelines contain a list of processors that can be executed in order to process input log data.
+They can be multi-processed.
+
+"""
+
 import itertools
 from functools import cached_property
 from importlib.metadata import version
 
 import attrs
 
+from logprep.abc.input import Input
 from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
 from logprep.ng.abc.event import Event
-from logprep.ng.abc.input import Input
 from logprep.ng.abc.processor import Processor
-from logprep.ng.event.event_state import EventStateType
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.configuration import Configuration
 
@@ -70,7 +76,7 @@ class PipelineResult:
         return list(itertools.chain(*[result.warnings for result in self]))
 
     @cached_property
-    def data(self) -> list[tuple[dict, dict]]:
+    def data(self) -> list[Event]:
         """Return all extra data."""
         return list(itertools.chain(*[result.data for result in self]))
 
@@ -88,11 +94,7 @@ class Pipeline:
         return self
 
     def __next__(self):
-        event = self._input.get_next(self._timeout)
-        if not event:
-            raise StopIteration
-
-        return self.process_event(event)
+        return self.process_pipeline()
 
     _logprep_config: Configuration
     """ the logprep configuration dict """
@@ -127,25 +129,20 @@ class Pipeline:
         self._logprep_config = config
         self._timeout = config.timeout
 
-    def run(self):
-        """Start processing processors in the Pipeline."""
-        self.process_pipeline()
-
     def process_pipeline(self):
         """Retrieve next event, process event with full pipeline and store or return results"""
         event = self._input.get_next(self._timeout)
         if not event:
-            return
+            raise StopIteration
         event.state.next_state()
-        result = None
         if self._pipeline:
-            self.process_events(event)
+            self.process_event(event)
 
-        if event.state.current_state is EventStateType.FAILED:
+        if any(event.errors):
             event.state.next_state(success=False)
         else:
             event.state.next_state(success=True)
-        return result
+        return event
 
     def process_events(self, events: list[Event]) -> list[PipelineResult]:
         """Maps a batch of events to the process_events"""
@@ -158,7 +155,8 @@ class Pipeline:
             event=event,
             pipeline=self._pipeline,
         )
-        for extra_event in result:
+        for extra_event in result.data:
+            # extra_event.state.set_state(EventStateType.PROCESSED)
             event.extra_data.append(extra_event)
         return result
 
