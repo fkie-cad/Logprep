@@ -91,6 +91,18 @@ class Output(Connector):
            Processed log event that will be stored.
         """
 
+    @abstractmethod
+    def store_custom(self, event: Event, target: str) -> None:
+        """Store the event in the output destination.
+
+        Parameters
+        ----------
+        event : dict
+           Processed log event that will be stored.
+        target : str
+            Custom target for the event.
+        """
+
     def _write_backlog(self):
         """Write the backlog to the output destination."""
 
