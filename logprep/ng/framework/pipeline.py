@@ -8,13 +8,14 @@ They can be multi-processed.
 from functools import cached_property
 from importlib.metadata import version
 from itertools import islice
-from typing import Generator, Self
+from typing import Self
 
 from logprep.factory import Factory
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.event_state import EventStateType
+from logprep.ng.event.log_event import LogEvent
 from logprep.util.configuration import Configuration
 
 
@@ -62,7 +63,7 @@ class Pipeline:
     def __next__(self) -> Event:
         return next(self._input)
 
-    def process_pipeline(self) -> Generator[Event]:
+    def process_pipeline(self):
         """processes the Pipeline"""
         while True:
             batch = list(islice(self._input, self.process_count))
@@ -73,13 +74,13 @@ class Pipeline:
             results = map(self.process_event, batch)
             yield from results
 
-    def process_event(self, event: Event) -> Event:
+    def process_event(self, event: LogEvent) -> LogEvent:
         """process all processors for one event"""
         event.state.next_state()
         for processor in self._pipeline:
             processor.process(event)
         for extra_event in event.extra_data:
-            extra_event.state.current_state = EventStateType.PROCESSED
+            extra_event.state.current_state = EventStateType.PROCESSED  # type: ignore
             self._input.backlog.append(extra_event)
         if any(event.errors):
             event.state.next_state(success=False)
