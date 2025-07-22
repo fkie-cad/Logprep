@@ -133,3 +133,19 @@ class TestDummyOutput(BaseOutputTestCase):
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
         assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_do_nothing_does_nothing(self):
+        config = deepcopy(self.CONFIG)
+        config.update({"do_nothing": True})
+        self.object = Factory.create({"Test Instance Name": config})
+        self.object.metrics.number_of_errors = 0
+        self.object.metrics.number_of_warnings = 0
+        self.object.metrics.number_of_processed_events = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        self.object.store_custom(event, target="custom_target")
+        assert self.object.metrics.number_of_errors == 0
+        assert self.object.metrics.number_of_warnings == 0
+        assert self.object.metrics.number_of_processed_events == 0
+        assert len(event.errors) == 0
+        assert len(event.warnings) == 0
+        assert event.state == EventStateType.PROCESSED
