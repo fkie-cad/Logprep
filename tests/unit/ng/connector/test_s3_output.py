@@ -381,3 +381,9 @@ class TestS3Output(BaseOutputTestCase):
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
         assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_write_backlog_changes_state_successful_path(self):
+        assert False
+
+    def test_write_backlog_changes_state_unsuccessful_path(self):
+        assert False
