@@ -14,6 +14,7 @@ from opensearchpy import helpers
 from logprep.abc.component import Component
 from logprep.abc.output import CriticalOutputError
 from logprep.factory import Factory
+from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
 helpers.parallel_bulk = mock.MagicMock()
@@ -118,18 +119,20 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object._search_context.cluster.health.return_value = {"status": "yellow"}
         assert not self.object.health()
 
-    def test_write_backlog_clears_message_backlog_on_success(self):
-        self.object._message_backlog = [{"some": "event"}]
-        self.object._write_backlog()
+    def test_flush_clears_message_backlog_on_success(self):
+        event = LogEvent({"some": "event"}, original=b"")
+        self.object._message_backlog = [event]
+        self.object.flush()
         assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
 
-    def test_write_backlog_clears_message_backlog_on_failure(self):
-        self.object._message_backlog = [{"some": "event"}]
+    def test_flush_clears_message_backlog_on_failure(self):
+        event = LogEvent({"some": "event"}, original=b"")
+        self.object._message_backlog = [event]
         self.object._bulk = mock.MagicMock(
             side_effect=CriticalOutputError(mock.MagicMock(), "", "")
         )
         with pytest.raises(CriticalOutputError):
-            self.object._write_backlog()
+            self.object.flush()
         assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
 
     def test_write_backlog_clears_failed_on_success(self):

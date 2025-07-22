@@ -41,6 +41,7 @@ from opensearchpy import OpenSearchException, helpers
 from opensearchpy.serializer import JSONSerializer
 
 from logprep.metrics.metrics import Metric
+from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import CriticalOutputError, Output
 
 logger = logging.getLogger("OpenSearchOutput")
@@ -141,10 +142,10 @@ class OpensearchOutput(Output):
 
     __slots__ = ["_message_backlog", "_failed"]
 
-    _failed: List
+    _failed: list[Event]
     """Temporary list of failed messages."""
 
-    _message_backlog: List
+    _message_backlog: list[Event]
     """List of messages to be sent to Opensearch."""
 
     @cached_property
@@ -227,17 +228,11 @@ class OpensearchOutput(Output):
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self._config.hosts}"
 
-    def store(self, document: dict) -> None:
-        """Store a document in the index defined in the document or to the default index.
+    def store(self, event: Event) -> None:
+        """Store a document in the index defined in the document or to the default index."""
+        self.store_custom(event, event.get("_index", self._config.default_index))
 
-        Parameters
-        ----------
-        document : dict
-           Document to store.
-        """
-        self.store_custom(document, document.get("_index", self._config.default_index))
-
-    def store_custom(self, document: dict, target: str) -> None:
+    def store_custom(self, event: Event, target: str) -> None:
         """Store document into backlog to be written into Opensearch with the target index.
         The target index is determined per document by parameter :code:`target`.
 
@@ -248,10 +243,11 @@ class OpensearchOutput(Output):
         target : str
             Index to store the document in.
         """
+        document = event.data
         document["_index"] = target
         document["_op_type"] = document.get("_op_type", self._config.default_op_type)
         self.metrics.number_of_processed_events += 1
-        self._message_backlog.append(document)
+        self._message_backlog.append(event)
         self._write_to_search_context()
 
     def _write_to_search_context(self):
