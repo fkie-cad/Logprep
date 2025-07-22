@@ -185,7 +185,7 @@ follow_imports = "skip"
 follow_imports_for_stubs = "True"
 
 [[tool.mypy.overrides]]
-module = ["joblib.*"]
+module = ["joblib.*", "boto3.*", "botocore.*"]
 follow_untyped_imports = true
 
 [[tool.mypy.overrides]]
