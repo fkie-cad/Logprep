@@ -27,8 +27,7 @@ Example
             session.timeout.ms: "6000"
             auto.offset.reset: "earliest"
 """
-# pylint: enable=line-too-long
-
+import logging
 import os
 from functools import cached_property, partial
 from socket import getfqdn
@@ -38,6 +37,10 @@ from typing import Any, Literal, Optional, Union
 import msgspec
 from attrs import define, field, validators
 from confluent_kafka import (  # type: ignore
+    OFFSET_BEGINNING,
+    OFFSET_END,
+    OFFSET_INVALID,
+    OFFSET_STORED,
     Consumer,
     KafkaException,
     Message,
@@ -45,16 +48,19 @@ from confluent_kafka import (  # type: ignore
 )
 from confluent_kafka.admin import AdminClient
 
-from logprep.abc.input import (
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.ng.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
     FatalInputError,
+    Input,
     InputWarning,
 )
-from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.ng.abc.input import Input
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
 from logprep.util.validators import keys_in_validator
+
+# pylint: enable=line-too-long
+
 
 DEFAULTS = {
     "enable.auto.offset.store": "false",
@@ -65,6 +71,12 @@ DEFAULTS = {
     "statistics.interval.ms": "30000",
 }
 
+SPECIAL_OFFSETS = {
+    OFFSET_BEGINNING,
+    OFFSET_END,
+    OFFSET_INVALID,
+    OFFSET_STORED,
+}
 
 DEFAULT_RETURN = 0
 
@@ -429,6 +441,7 @@ class ConfluentKafkaInput(Input):
         self._last_valid_record = message
         labels = {"description": f"topic: {self._config.topic} - partition: {message.partition()}"}
         self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
+
         return message
 
     def _get_event(self, timeout: float) -> tuple:
@@ -566,7 +579,7 @@ class ConfluentKafkaInput(Input):
 
         try:
             metadata = self._admin.list_topics(timeout=self._config.health_timeout)
-            if not self._config.topic in metadata.topics:
+            if self._config.topic not in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self._config.topic)
                 return False
         except KafkaException as error:

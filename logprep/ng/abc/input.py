@@ -8,6 +8,8 @@ import json
 import os
 import zlib
 from abc import abstractmethod
+from collections.abc import Iterator
+from copy import deepcopy
 from functools import cached_property, partial
 from hmac import HMAC
 from typing import Literal, Optional, Self
@@ -16,14 +18,9 @@ from zoneinfo import ZoneInfo
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
-from logprep.abc.input import (
-    CriticalInputError,
-    FullEventConfig,
-    HmacConfig,
-    TimeDeltaConfig,
-)
+from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
-from logprep.ng.abc.event import Event, EventBacklog
+from logprep.ng.abc.event import EventBacklog
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -32,7 +29,93 @@ from logprep.util.time import UTC, TimeParser
 from logprep.util.validators import dict_structure_validator
 
 
-class InputIterator:
+class InputError(LogprepException):
+    """Base class for Input related exceptions."""
+
+    def __init__(self, input_connector: "Input", message: str) -> None:
+        input_connector.metrics.number_of_errors += 1
+        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
+
+
+class CriticalInputError(InputError):
+    """A significant error occurred - log and don't process the event."""
+
+    def __init__(self, input_connector: "Input", message, raw_input):
+        super().__init__(
+            input_connector, f"{message} -> event was written to error output if configured"
+        )
+        self.raw_input = deepcopy(raw_input)  # is written to error output
+        self.message = message
+
+
+class CriticalInputParsingError(CriticalInputError):
+    """The input couldn't be parsed correctly."""
+
+
+class FatalInputError(InputError):
+    """Must not be catched."""
+
+
+class InputWarning(LogprepException):
+    """May be catched but must be displayed to the user/logged."""
+
+    def __init__(self, input_connector: "Input", message: str) -> None:
+        input_connector.metrics.number_of_warnings += 1
+        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
+
+
+class SourceDisconnectedWarning(InputWarning):
+    """Lost (or failed to establish) contact with the source."""
+
+
+@define(kw_only=True)
+class HmacConfig:
+    """Hmac Configurations
+    The hmac itself will be calculated with python's hashlib.sha256 algorithm and the compression
+    is based on the zlib library.
+    """
+
+    target: str = field(validator=validators.instance_of(str))
+    """Defines a field inside the log message which should be used for the hmac
+    calculation. If the target field is not found or does not exists an error message
+    is written into the configured output field. If the hmac should be calculated on
+    the full incoming raw message instead of a subfield the target option should be set to
+    :code:`<RAW_MSG>`."""
+    key: str = field(validator=validators.instance_of(str))
+    """The secret key that will be used to calculate the hmac."""
+    output_field: str = field(validator=validators.instance_of(str))
+    """The parent name of the field where the hmac result should be written to in the
+    original incoming log message. As subfields the result will have a field called :code:`hmac`,
+    containing the calculated hmac, and :code:`compressed_base64`, containing the original message
+    that was used to calculate the hmac in compressed and base64 encoded. In case the output
+    field exists already in the original message an error is raised."""
+
+
+@define(kw_only=True)
+class TimeDeltaConfig:
+    """TimeDelta Configurations
+    Works only if the preprocessor log_arrival_time_target_field is set."""
+
+    target_field: str = field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
+    """Defines the fieldname to which the time difference should be written to."""
+    reference_field: str = field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
+    """Defines a field with a timestamp that should be used for the time difference.
+    The calculation will be the arrival time minus the time of this reference field."""
+
+
+@define(kw_only=True)
+class FullEventConfig:
+    """Full Event Configurations
+    Works only if the preprocessor :code:`add_full_event_to_target_field` is set."""
+
+    format: str = field(validator=validators.in_(["dict", "str"]), default="str")
+    """Defines the Format in which the event should be written to the new field.
+    The default ist :code:`str`, which results in escaped json string"""
+    target_field: str = field(validator=validators.instance_of(str), default="event.original")
+    """Defines the fieldname which the event should be written to"""
+
+
+class InputIterator(Iterator):
     """Base Class for an input Iterator"""
 
     def __init__(self, input_connector: "Input", timeout: float):
@@ -359,7 +442,7 @@ class Input(Connector):
             original=raw_event,
             metadata=metadata,
         )
-        self.event_backlog.register(events=[log_event])
+        self.event_backlog.register(events=[log_event])  # type: ignore[union-attr]
 
         return log_event
 

@@ -44,9 +44,10 @@ class BaseInputTestCase(BaseConnectorTestCase):
 
     def test_get_next_returns_event(self):
         return_value = ({"message": "test message"}, b'{"message": "test message"}')
-        self.object._get_event = mock.MagicMock(return_value=return_value)
-        event = self.object.get_next(0.01)
-        assert isinstance(event, dict)
+
+        with mock.patch.object(self.object, "_get_event", return_value=return_value):
+            event = self.object.get_next(0.01)
+            assert isinstance(event, dict)
 
     def test_add_hmac_returns_true_if_hmac_options(self):
         connector_config = deepcopy(self.CONFIG)

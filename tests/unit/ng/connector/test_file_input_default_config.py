@@ -137,7 +137,7 @@ class TestFileInput(BaseInputTestCase):
         wait_for_interval(CHECK_INTERVAL)
         while not self.object._messages.empty():
             self.object._messages.get(timeout=0.001)
-        assert self.object._get_event(timeout=0.001) == (None, None)
+        assert self.object._get_event(timeout=0.001) == (None, None, None)
 
     def test_input_line_function_returns_empty_string(self):
         wait_for_interval(CHECK_INTERVAL)
@@ -146,7 +146,7 @@ class TestFileInput(BaseInputTestCase):
     def test_log_from_file_with_get_next(self):
         wait_for_interval(CHECK_INTERVAL)
         get_next_log_line = self.object.get_next(timeout=0.001)
-        assert get_next_log_line.get("message") == test_initial_log_data[0]
+        assert get_next_log_line.data.get("message") == test_initial_log_data[0]
 
     def test_log_from_file_is_put_in_queue(self):
         wait_for_interval(CHECK_INTERVAL)
