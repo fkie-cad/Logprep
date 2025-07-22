@@ -40,3 +40,8 @@ class ConsoleOutput(Output):
         pprint(event.data, stream=getattr(sys, target))
         self.metrics.number_of_processed_events += 1
         event.state.next_state(success=True)
+
+    def flush(self):
+        """Flush the console output.
+        Do nothing as console output does not have a backlog.
+        """

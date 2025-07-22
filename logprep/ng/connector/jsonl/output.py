@@ -93,3 +93,6 @@ class JsonlOutput(Output):
             JsonlOutput._write_json(self._config.output_file_custom, document)
         self.metrics.number_of_processed_events += 1
         event.state.next_state(success=True)
+
+    def flush(self):
+        """Flush is not implemented because it has no backlog."""

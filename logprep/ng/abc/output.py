@@ -124,3 +124,8 @@ class Output(Connector):
                 event.state.next_state(success=False)
 
         return wrapper
+
+    def shut_down(self) -> None:
+        """Shut down the output connector."""
+        self.flush()
+        super().shut_down()
