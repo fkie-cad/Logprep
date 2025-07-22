@@ -21,13 +21,11 @@ Example
 
 import copy
 from functools import cached_property
-from typing import List, Optional
 
 from attr import field, validators
 from attrs import define
 
-from logprep.abc.input import SourceDisconnectedWarning
-from logprep.ng.abc.input import Input
+from logprep.ng.abc.input import Input, SourceDisconnectedWarning
 
 
 class DummyInput(Input):

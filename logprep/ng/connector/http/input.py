@@ -95,7 +95,6 @@ import requests
 from attrs import define, field, validators
 from joblib._multiprocessing_helpers import mp
 
-from logprep.abc.input import FatalInputError
 from logprep.connector.http.input import (
     HttpEndpoint,
     JSONHttpEndpoint,
@@ -106,7 +105,7 @@ from logprep.connector.http.input import (
 )
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.ng.abc.input import Input
+from logprep.ng.abc.input import FatalInputError, Input
 from logprep.util import http, rstr
 from logprep.util.credentials import CredentialsFactory
 

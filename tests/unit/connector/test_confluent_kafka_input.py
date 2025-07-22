@@ -3,6 +3,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
+import builtins
 import os
 import re
 import socket
@@ -60,113 +61,120 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "logprep_number_of_errors",
     ]
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_next_returns_none_if_no_records(self, _):
-        self.object._consumer.poll = mock.MagicMock(return_value=None)
-        event = self.object.get_next(1)
-        assert event is None
+    def test_get_next_returns_none_if_no_records(self):
+        with mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer:
+            mock_consumer.poll.return_value = None
+            event = self.object.get_next(1)
+            assert event is None
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(self, _):
-        mock_record = mock.MagicMock()
-        mock_record.error = mock.MagicMock(
-            return_value=KafkaError(
-                error=3,
-                reason="Subscribed topic not available: (Test Instance Name) : "
-                "Broker: Unknown topic or partition",
-                fatal=False,
-                retriable=False,
-                txn_requires_abort=False,
+    def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(self):
+        with mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer:
+            mock_record = mock.MagicMock()
+            mock_record.error = mock.MagicMock(
+                return_value=KafkaError(
+                    error=3,
+                    reason="Subscribed topic not available: (Test Instance Name) : "
+                    "Broker: Unknown topic or partition",
+                    fatal=False,
+                    retriable=False,
+                    txn_requires_abort=False,
+                )
             )
-        )
+            mock_consumer.poll.return_value = mock_record
 
-        mock_record.value = mock.MagicMock(return_value=None)
-        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
-        with pytest.raises(
-            CriticalInputError,
-            match=(
-                r"CriticalInputError in ConfluentKafkaInput \(Test Instance Name\) - "
-                r"Kafka Input: testserver:9092: "
-                r"A confluent-kafka record contains an error code -> "
-                r"event was written to error output if configured"
-            ),
-        ):
-            _ = self.object.get_next(1)
+            with pytest.raises(
+                CriticalInputError,
+                match=(
+                    r"CriticalInputError in ConfluentKafkaInput \(Test Instance Name\) - "
+                    r"Kafka Input: testserver:9092: "
+                    r"A confluent-kafka record contains an error code -> "
+                    r"event was written to error output if configured"
+                ),
+            ):
+                _ = self.object.get_next(1)
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_shut_down_calls_consumer_close(self, _):
-        kafka_consumer = self.object._consumer
-        self.object.shut_down()
-        kafka_consumer.close.assert_called()
+    def test_shut_down_calls_consumer_close(
+        self,
+    ):
+        with mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer:
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_calls_store_offsets(self, _):
-        input_config = deepcopy(self.CONFIG)
-        kafka_input = Factory.create({"test": input_config})
-        kafka_consumer = kafka_input._consumer
+            # When the first "with" block ends, it tries to delete the mocked _consumer from self.object.
+            # But self.object.shut_down() removes all attributes from self.object, so this causes AttributeError.
+            # To prevent that, we mock builtins.hasattr so shut_down doesn’t try to delete attributes in this test.
+            with mock.patch.object(builtins, "hasattr", autospec=True, return_value=False):
+                self.object.shut_down()
+
+            mock_consumer.close.assert_called()
+
+    def test_batch_finished_callback_calls_store_offsets(self):
         message = "test message"
-        kafka_input._last_valid_record = message
-        kafka_input.batch_finished_callback()
-        kafka_consumer.store_offsets.assert_called()
-        kafka_consumer.store_offsets.assert_called_with(message=message)
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_does_not_call_store_offsets(self, _):
-        input_config = deepcopy(self.CONFIG)
-        kafka_input = Factory.create({"test": input_config})
-        kafka_consumer = kafka_input._consumer
-        kafka_input._last_valid_record = None
-        kafka_input.batch_finished_callback()
-        kafka_consumer.store_offsets.assert_not_called()
+        with (
+            mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer,
+            mock.patch.object(self.object, "_last_valid_record", new=message),
+        ):
+            self.object.batch_finished_callback()
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_raises_input_warning_on_kafka_exception(self, _):
-        input_config = deepcopy(self.CONFIG)
-        kafka_input = Factory.create({"test": input_config})
-        kafka_consumer = kafka_input._consumer
-        return_sequence = [KafkaException("test error"), None]
+            mock_consumer.store_offsets.assert_called()
+            mock_consumer.store_offsets.assert_called_with(message=message)
 
-        def raise_generator(return_sequence):
-            return list(reversed(return_sequence)).pop()
+    def test_batch_finished_callback_does_not_call_store_offsets(self):
+        with (
+            mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer,
+            mock.patch.object(self.object, "_last_valid_record", new=None),
+        ):
+            self.object.batch_finished_callback()
+            mock_consumer.store_offsets.assert_not_called()
 
-        kafka_consumer.store_offsets.side_effect = raise_generator(return_sequence)
-        kafka_input._last_valid_record = {0: "message"}
-        with pytest.raises(InputWarning):
-            kafka_input.batch_finished_callback()
+    def test_batch_finished_callback_raises_input_warning_on_kafka_exception(self):
+        with (
+            mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer,
+            mock.patch.object(self.object, "_last_valid_record", new={0: "message"}),
+        ):
+            return_sequence = [KafkaException("test error"), None]
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_next_raises_critical_input_error_if_not_a_dict(self, _):
-        mock_record = mock.MagicMock()
-        mock_record.error = mock.MagicMock()
-        mock_record.error.return_value = None
-        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
-        mock_record.value = mock.MagicMock()
-        mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
-        with pytest.raises(CriticalInputError, match=r"not a dict"):
-            self.object.get_next(1)
+            def raise_generator(return_sequence):
+                return list(reversed(return_sequence)).pop()
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_next_raises_critical_input_error_if_invalid_json(self, _):
-        mock_record = mock.MagicMock()
-        mock_record.error = mock.MagicMock()
-        mock_record.error.return_value = None
-        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
-        mock_record.value = mock.MagicMock()
-        mock_record.value.return_value = "I'm not valid json".encode("utf8")
-        with pytest.raises(CriticalInputError, match=r"not a valid json"):
-            self.object.get_next(1)
+            mock_consumer.store_offsets.side_effect = raise_generator(return_sequence)
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_event_returns_event_and_raw_event(self, _):
-        mock_record = mock.MagicMock()
-        mock_record.error = mock.MagicMock()
-        mock_record.error.return_value = None
-        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
-        mock_record.value = mock.MagicMock()
-        mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
-        event, raw_event = self.object._get_event(0.001)
-        assert event == {"element": "in list"}
-        assert raw_event == '{"element":"in list"}'.encode("utf8")
+            with pytest.raises(InputWarning):
+                self.object.batch_finished_callback()
+
+    def test_get_next_raises_critical_input_error_if_not_a_dict(self):
+        with mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer:
+            mock_record = mock.MagicMock()
+            mock_record.error.return_value = None
+            mock_record.value.return_value = b'[{"element":"in list"}]'
+
+            mock_consumer.poll.return_value = mock_record
+
+            with pytest.raises(CriticalInputError, match=r"not a dict"):
+                self.object.get_next(1)
+
+    def test_get_next_raises_critical_input_error_if_invalid_json(self):
+        with mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer:
+            mock_record = mock.MagicMock()
+            mock_record.error.return_value = None
+            mock_record.value.return_value = b"I'm not valid json"
+
+            mock_consumer.poll.return_value = mock_record
+
+            with pytest.raises(CriticalInputError, match=r"not a valid json"):
+                self.object.get_next(1)
+
+    def test_get_event_returns_event_and_raw_event(self):
+        with mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer:
+            mock_record = mock.MagicMock()
+            mock_record.error.return_value = None
+            mock_record.value.return_value = b'{"element":"in list"}'
+
+            mock_consumer.poll.return_value = mock_record
+
+            event, raw_event = self.object._get_event(0.001)
+
+            assert event == {"element": "in list"}
+            assert raw_event == '{"element":"in list"}'.encode("utf8")
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_raw_event_is_callable(self, _):  # pylint: disable=arguments-differ
@@ -315,11 +323,14 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_raises_fatal_input_error_if_poll_raises_runtime_error(self, _):
-        self.object._consumer.poll.side_effect = RuntimeError("test error")
-        with pytest.raises(FatalInputError, match="test error"):
-            self.object.get_next(0.01)
+    def test_raises_fatal_input_error_if_poll_raises_runtime_error(
+        self,
+    ):
+        with mock.patch.object(self.object, "_consumer") as mock_consumer:
+            mock_consumer.poll.side_effect = RuntimeError("test error")
+
+            with pytest.raises(FatalInputError, match="test error"):
+                self.object.get_next(0.01)
 
     def test_raises_value_error_if_mandatory_parameters_not_set(self):
         config = deepcopy(self.CONFIG)
@@ -401,37 +412,46 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             assert re.search(r"ERROR.*Consumer is closed", caplog.text)
 
     def test_health_returns_true_if_no_error(self):
-        self.object._admin = mock.MagicMock()
-        metadata = mock.MagicMock()
-        metadata.topics = [self.object._config.topic]
-        self.object._admin.list_topics.return_value = metadata
-        assert self.object.health()
+        with mock.patch.object(self.object, "_admin", autospec=True) as mock_admin:
+            metadata = mock.MagicMock()
+            metadata.topics = [self.object._config.topic]
+            mock_admin.list_topics.return_value = metadata
+
+            assert self.object.health()
 
     def test_health_returns_false_if_topic_not_present(self):
-        self.object._consumer = mock.MagicMock()
-        metadata = mock.MagicMock()
-        metadata.topics = ["not_the_topic"]
-        self.object._consumer.list_topics.return_value = metadata
-        assert not self.object.health()
+        with mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer:
+            metadata = mock.MagicMock()
+            metadata.topics = ["not_the_topic"]
+            mock_consumer.list_topics.return_value = metadata
+
+            assert not self.object.health()
 
     def test_health_returns_false_on_kafka_exception(self):
-        self.object._consumer = mock.MagicMock()
-        self.object._consumer.list_topics.side_effect = KafkaException("test error")
-        assert not self.object.health()
+        with mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer:
+            mock_consumer.list_topics.side_effect = KafkaException("test error")
+
+            assert not self.object.health()
 
     def test_health_logs_error_on_kafka_exception(self):
-        self.object._consumer = mock.MagicMock()
-        self.object._consumer.list_topics.side_effect = KafkaException("test error")
-        with mock.patch("logging.Logger.error") as mock_error:
+        with (
+            mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer,
+            mock.patch("logging.Logger.error") as mock_error,
+        ):
+            mock_consumer.list_topics.side_effect = KafkaException("test error")
+
             self.object.health()
+
         mock_error.assert_called()
 
     def test_health_counts_metrics_on_kafka_exception(self):
         self.object.metrics.number_of_errors = 0
-        self.object._consumer = mock.MagicMock()
-        self.object._consumer.list_topics.side_effect = KafkaException("test error")
-        assert not self.object.health()
-        assert self.object.metrics.number_of_errors == 1
+
+        with mock.patch.object(self.object, "_consumer", autospec=True) as mock_consumer:
+            mock_consumer.list_topics.side_effect = KafkaException("test error")
+
+            assert not self.object.health()
+            assert self.object.metrics.number_of_errors == 1
 
     @pytest.mark.parametrize(
         ["kafka_config_update", "expected_admin_client_config"],
