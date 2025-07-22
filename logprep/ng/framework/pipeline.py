@@ -5,86 +5,15 @@ They can be multi-processed.
 
 """
 
-import itertools
 from functools import cached_property
 from importlib.metadata import version
+from itertools import islice
 
-import attrs
-
-from logprep.abc.input import Input
-from logprep.abc.processor import ProcessorResult
 from logprep.factory import Factory
-from logprep.ng.abc.event import Event
+from logprep.ng.abc.input import Input
 from logprep.ng.abc.processor import Processor
-from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
+from logprep.ng.event.event_state import EventStateType
 from logprep.util.configuration import Configuration
-
-
-@attrs.define(kw_only=True)
-class PipelineResult:
-    """Result object to be returned after processing the event.
-    It contains all results of each processor of the pipeline.
-
-    Parameters
-    ----------
-
-    event : dict
-        The event that was processed
-    pipeline : List[Processor]
-        The pipeline that processed the event
-
-    Returns
-    -------
-    PipelineResult
-        The result object
-    """
-
-    __match_args__ = ("event", "errors")
-
-    results: list[ProcessorResult] = attrs.field(
-        validator=[
-            attrs.validators.instance_of(list),
-            attrs.validators.deep_iterable(
-                member_validator=attrs.validators.instance_of(ProcessorResult)
-            ),
-        ],
-        init=False,
-    )
-    """List of ProcessorResults. Is populated in __attrs_post_init__"""
-    event: Event = attrs.field(validator=attrs.validators.instance_of(Event))
-    """The event that was processed"""
-
-    pipeline: list[Processor] = attrs.field(
-        validator=[
-            attrs.validators.deep_iterable(
-                member_validator=attrs.validators.instance_of(Processor),
-                iterable_validator=attrs.validators.instance_of(list),
-            ),
-            attrs.validators.min_len(1),
-        ]
-    )
-    """The pipeline that processed the event"""
-
-    @cached_property
-    def errors(self) -> list[ProcessingError]:
-        """Return all processing errors."""
-        return list(itertools.chain(*[result.errors for result in self]))
-
-    @cached_property
-    def warnings(self) -> list[ProcessingWarning]:
-        """Return all processing warnings."""
-        return list(itertools.chain(*[result.warnings for result in self]))
-
-    @cached_property
-    def data(self) -> list[Event]:
-        """Return all extra data."""
-        return list(itertools.chain(*[result.data for result in self]))
-
-    def __attrs_post_init__(self):
-        self.results = [processor.process(self.event) for processor in self.pipeline if self.event]
-
-    def __iter__(self):
-        return iter(self.results)
 
 
 class Pipeline:
@@ -98,6 +27,8 @@ class Pipeline:
 
     _logprep_config: Configuration
     """ the logprep configuration dict """
+
+    process_count = 5
 
     @cached_property
     def _pipeline(self) -> list[Processor]:
@@ -129,36 +60,46 @@ class Pipeline:
         self._logprep_config = config
         self._timeout = config.timeout
 
+    # def process_pipeline(self):
+    #     """Retrieve next event, process event with full pipeline and store or return results"""
+    #     event = self._input.get_next(self._timeout)
+    #     if not event:
+    #         raise StopIteration
+    #     event.state.next_state()
+    #     if self._pipeline:
+    #         self.process_event(event)
+
+    #     if any(event.errors):
+    #         event.state.next_state(success=False)
+    #     else:
+    #         event.state.next_state(success=True)
+    #     return event
+
     def process_pipeline(self):
-        """Retrieve next event, process event with full pipeline and store or return results"""
-        event = self._input.get_next(self._timeout)
-        if not event:
-            raise StopIteration
-        event.state.next_state()
-        if self._pipeline:
-            self.process_event(event)
+        """processes the Pipeline"""
+        while True:
+            batch = islice(self._input, self.process_count)
+            results = map(self.process_event, batch)
+            yield from results
 
-        if any(event.errors):
-            event.state.next_state(success=False)
-        else:
-            event.state.next_state(success=True)
-        return event
-
-    def process_events(self, events: list[Event]) -> list[PipelineResult]:
-        """Maps a batch of events to the process_events"""
-        return list(map(self.process_event, events))
+    # def process_events(self, events: list[Event]):
+    #     """Maps a batch of events to the process_events"""
+    #     return list(map(self.process_event, events))
 
     def process_event(self, event):
         """process all processors for one event"""
         event.state.next_state()
-        result = PipelineResult(
-            event=event,
-            pipeline=self._pipeline,
-        )
-        for extra_event in result.data:
-            # extra_event.state.set_state(EventStateType.PROCESSED)
-            event.extra_data.append(extra_event)
-        return result
+        for processor in self._pipeline:
+            processor.process(event)
+        for extra_event in event.extra_data:
+            extra_event.state.current_state = EventStateType.PROCESSED
+            self._input.backlog.append(extra_event)
+        if any(event.errors):
+            event.state.next_state(success=False)
+        else:
+            event.state.next_state(success=True)
+
+        return event
 
     def _create_processor(self, entry: dict) -> "Processor":
         processor = Factory.create(entry)
