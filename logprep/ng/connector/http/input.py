@@ -312,13 +312,15 @@ class HttpInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the queue"""
+
         self.metrics.message_backlog_size += self.messages.qsize()
+
         try:
             message = self.messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
-            return message, raw_message
+            return message, raw_message, None
         except queue.Empty:
-            return None, None
+            return None, None, None
 
     def shut_down(self) -> None:
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""

@@ -49,6 +49,7 @@ class DummyInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Retrieve next document from configuration and raise warning if found"""
+
         if not self._documents:
             if not self._config.repeat_documents:
                 raise SourceDisconnectedWarning(self, "no documents left")
@@ -58,4 +59,5 @@ class DummyInput(Input):
 
         if (document.__class__ == type) and issubclass(document, Exception):
             raise document
-        return document, None
+
+        return document, None, None

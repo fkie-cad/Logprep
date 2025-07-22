@@ -51,15 +51,24 @@ from logprep.abc.input import (
     FatalInputError,
     InputWarning,
 )
-from logprep.connector.confluent_kafka.input import (
-    DEFAULT_RETURN,
-    DEFAULTS,
-    SPECIAL_OFFSETS,
-    logger,
-)
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.input import Input
+from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
 from logprep.util.validators import keys_in_validator
+
+DEFAULTS = {
+    "enable.auto.offset.store": "false",
+    "enable.auto.commit": "true",
+    "client.id": "<<hostname>>",
+    "auto.offset.reset": "earliest",
+    "session.timeout.ms": "6000",
+    "statistics.interval.ms": "30000",
+}
+
+
+DEFAULT_RETURN = 0
+
+logger = logging.getLogger("KafkaInput")
 
 
 class ConfluentKafkaInput(Input):
@@ -388,7 +397,7 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self._config.kafka_config['bootstrap.servers']}"
 
-    def _get_raw_event(self, timeout: float) -> bytes | None:
+    def _get_raw_event(self, timeout: float) -> Message | None:
         """Get next raw Message from Kafka.
 
         Parameters
@@ -398,8 +407,8 @@ class ConfluentKafkaInput(Input):
 
         Returns
         -------
-        message_value : bytearray
-            A raw document obtained from Kafka.
+        message : Message, None
+            A document obtained from Kafka.
 
         Raises
         ------
@@ -420,9 +429,9 @@ class ConfluentKafkaInput(Input):
         self._last_valid_record = message
         labels = {"description": f"topic: {self._config.topic} - partition: {message.partition()}"}
         self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
-        return message.value()
+        return message
 
-    def _get_event(self, timeout: float) -> tuple[None, None] | tuple[dict, bytes]:
+    def _get_event(self, timeout: float) -> tuple:
         """Parse the raw document from Kafka into a json.
 
         Parameters
@@ -432,19 +441,26 @@ class ConfluentKafkaInput(Input):
 
         Returns
         -------
-        event_dict : dict
+        event_dict : dict, None
             A parsed document obtained from Kafka.
-        raw_event : bytearray
+        raw_event : bytearray, None
             A raw document obtained from Kafka.
+        metadata: EventMetadata, None
+            The kafka metadata with specific data for this event.
 
         Raises
         ------
         CriticalInputError
             Raises if an input is invalid or if it causes an error.
         """
-        raw_event = self._get_raw_event(timeout)
-        if raw_event is None:
-            return None, None
+
+        message = self._get_raw_event(timeout)
+
+        if message is None:
+            return None, None, None
+
+        raw_event = message.value()
+
         try:
             event_dict = self._decoder.decode(raw_event.decode("utf-8"))
         except UnicodeDecodeError as error:
@@ -455,7 +471,12 @@ class ConfluentKafkaInput(Input):
             raise CriticalInputParsingError(
                 self, "Input record value is not a valid json string", raw_event
             ) from error
-        return event_dict, raw_event
+
+        return (
+            event_dict,
+            raw_event,
+            ConfluentKafkaMetadata(partition=message.partition(), offset=message.offset()),
+        )
 
     @property
     def _enable_auto_offset_store(self) -> bool:
