@@ -215,8 +215,10 @@ class S3Output(Output):
 
         _ = self._s3_resource.meta.client.head_bucket(Bucket=self._config.bucket)
 
+    @Output._handle_errors
     def store(self, event: Event) -> None:
         """Store a document into s3 bucket."""
+        event.state.next_state(success=True)
         self.metrics.number_of_processed_events += 1
         event_data = event.data
         prefix_value = get_dotted_field_value(event_data, self._config.prefix_field)
@@ -228,8 +230,8 @@ class S3Output(Output):
             prefix_value = self._config.default_prefix
         self._add_to_backlog(event_data, prefix_value)
         self._write_to_s3_resource()
-        event.state.next_state(success=True)
 
+    @Output._handle_errors
     def store_custom(self, event: Event, target: str) -> None:
         """Store document into backlog to be written into s3 bucket using the target prefix.
 
@@ -237,6 +239,7 @@ class S3Output(Output):
         since store_custom can be called before the event has been fully processed.
         Setting the offset or committing before fully processing an event can lead to data loss if
         Logprep terminates."""
+        event.state.next_state(success=True)
         self.metrics.number_of_processed_events += 1
         self._add_to_backlog(event, target)
 

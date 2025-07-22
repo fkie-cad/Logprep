@@ -17,6 +17,7 @@ from botocore.exceptions import (
 
 from logprep.factory import Factory
 from logprep.ng.abc.output import FatalOutputError
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.util.time import TimeParser
 from tests.unit.ng.connector.base import BaseOutputTestCase
@@ -109,9 +110,9 @@ class TestS3Output(BaseOutputTestCase):
         s3_config = deepcopy(self.CONFIG)
         s3_config.update({"message_backlog_size": 2})
         s3_output = Factory.create({"s3": s3_config})
-
+        event = LogEvent(event, original=b"")
         s3_output.store_custom(event, custom_prefix)
-        assert s3_output._message_backlog[custom_prefix][0] == expected
+        assert s3_output._message_backlog[custom_prefix][0].data == expected
 
     def test_create_s3_building_prefix_with_invalid_json(self):
         expected = {"reason": "A reason for failed prefix"}
@@ -291,3 +292,92 @@ class TestS3Output(BaseOutputTestCase):
     @pytest.mark.skip(reason="Not implemented yet")
     def test_setup_calls_wait_for_health(self):
         pass
+
+    @mock.patch("logprep.ng.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    def test_store_changes_state_successful_path(self):
+        state, expected_state = EventStateType.PROCESSED, EventStateType.STORED_IN_OUTPUT
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store(event)
+        assert event.state == expected_state
+
+    @mock.patch("logprep.ng.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    def test_store_changes_state_failed_event_with_unsuccessful_path(self):
+
+        state, expected_state = EventStateType.FAILED, EventStateType.STORED_IN_ERROR
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store(event)
+        assert event.state == expected_state
+
+    @mock.patch("logprep.ng.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    def test_store_custom_changes_state_successful_path(self):
+        state, expected_state = EventStateType.PROCESSED, EventStateType.STORED_IN_OUTPUT
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store_custom(event, "stderr")
+        assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
+
+    @mock.patch("logprep.ng.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    def test_store_custom_changes_state_failed_event_with_unsuccessful_path(self):
+        state, expected_state = EventStateType.FAILED, EventStateType.STORED_IN_ERROR
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store_custom(event, "stderr")
+        assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
+
+    @mock.patch("logprep.ng.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    def test_store_handles_errors(self):
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        with mock.patch.object(
+            self.object, "_write_to_s3_resource", side_effect=Exception("Test error")
+        ):
+            self.object.store(event)
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+
+    @mock.patch("logprep.ng.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    def test_store_custom_handles_errors(self):
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        with mock.patch.object(self.object, "_add_to_backlog", side_effect=Exception("Test error")):
+            self.object.store_custom(event, "target")
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    @mock.patch("logprep.ng.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    def test_store_handles_errors_failed_event(self):
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        with mock.patch.object(
+            self.object, "_write_to_s3_resource", side_effect=Exception("Test error")
+        ):
+            self.object.store(event)
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+
+    @mock.patch("logprep.ng.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    def test_store_custom_handles_errors_failed_event(self):
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        with mock.patch.object(self.object, "_add_to_backlog", side_effect=Exception("Test error")):
+            self.object.store_custom(event, "target")
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
