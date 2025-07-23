@@ -11,9 +11,11 @@ from unittest import mock
 import pytest
 from confluent_kafka.error import KafkaException  # type: ignore
 
-from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
+from logprep.ng.abc.output import FatalOutputError
+from logprep.ng.event.event_state import EventStateType
+from logprep.ng.event.log_event import LogEvent
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
 )
@@ -51,61 +53,66 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "logprep_number_of_errors",
     ]
 
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
-    def test_producer_property_instanciates_kafka_producer(self, _):
+    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer", return_value="The Producer")
+    def test_producer_property_instantiates_kafka_producer(self, _):
         kafka_output = Factory.create({"test connector": self.CONFIG})
         assert kafka_output._producer == "The Producer"
 
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
     def test_store_sends_event_to_expected_topic(self, _):
         kafka_producer = self.object._producer
-        event = {"field": "content"}
-        event_raw = json.dumps(event, separators=(",", ":")).encode("utf-8")
+        event_data = {"field": "content"}
+        event_raw = json.dumps(event_data, separators=(",", ":")).encode("utf-8")
+        event = LogEvent(event_data, original=b"")
         expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw)
         self.object.store(event)
         kafka_producer.produce.assert_called()
         assert expected_call in kafka_producer.produce.mock_calls
 
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
     def test_store_custom_sends_event_to_expected_topic(self, _):
         kafka_producer = self.object._producer
-        event = {"field": "content"}
-        event_raw = json.dumps(event, separators=(",", ":")).encode("utf-8")
+        event_data = {"field": "content"}
+        event_raw = json.dumps(event_data, separators=(",", ":")).encode("utf-8")
         expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw)
+        event = LogEvent(event_data, original=b"")
         self.object.store_custom(event, self.CONFIG.get("topic"))
         kafka_producer.produce.assert_called()
         assert expected_call in kafka_producer.produce.mock_calls
 
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
     def test_store_custom_calls_producer_flush_on_buffererror(self, _):
         kafka_producer = self.object._producer
         kafka_producer.produce.side_effect = BufferError
-        self.object.store_custom({"message": "does not matter"}, "doesnotcare")
+        event = LogEvent({"message": "does not matter"}, original=b"")
+        self.object.store_custom(event, "does_not_care")
         kafka_producer.flush.assert_called()
 
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
     def test_shut_down_calls_producer_flush(self, _):
         kafka_producer = self.object._producer
         self.object.shut_down()
         kafka_producer.flush.assert_called()
 
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
     def test_raises_critical_output_on_any_exception(self, _):
         self.object._producer.produce.side_effect = [
             Exception("bad things happened"),
             None,
             None,
         ]
-        with pytest.raises(
-            CriticalOutputError,
-            match=r"bad things happened",
-        ):
-            self.object.store({"message": "test message"})
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        self.object.store(event)
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
 
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
         self.object.metrics.number_of_processed_events = 0
-        self.object.store({"message": "my event message"})
+        event = LogEvent(
+            {"message": "my event message"}, original=b"", state=EventStateType.PROCESSED
+        )
+        self.object.store(event)
         assert self.object.metrics.number_of_processed_events == 1
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
@@ -188,7 +195,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             ),
         ],
     )
-    @mock.patch("logprep.connector.confluent_kafka.output.AdminClient")
+    @mock.patch("logprep.ng.connector.confluent_kafka.output.AdminClient")
     def test_set_security_related_config_in_admin_client(
         self, admin_client, kafka_config_update, expected_admin_client_config
     ):
@@ -197,3 +204,118 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         output_connector = Factory.create({"output_connector": new_kafka_config})
         _ = output_connector._admin
         admin_client.assert_called_with(expected_admin_client_config)
+
+    def test_store_changes_state_successful_path(self):
+        """This test is a placeholder for the successful path of the store method.
+        you have to override this method in some output implementations depending on the
+        implementation of the store and write_backlog methods.
+        In simple implementations, the next_state method of the event is called twice and the result
+        is the DELIVERED state.
+        In more complex implementations, the next_state method is called once and the store method and
+        a second time in the write_backlog method.
+        """
+        state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store(event)
+        assert event.state == expected_state
+
+    def test_store_changes_state_failed_event_with_unsuccessful_path(self):
+        """This test is a placeholder for the successful path of the store method.
+        you have to override this method in some output implementations depending on the
+        implementation of the store and write_backlog methods.
+        In simple implementations, the next_state method of the event is called twice and the result
+        is the DELIVERED state.
+        In more complex implementations, the next_state method is called once and the store method and
+        a second time in the write_backlog method.
+        """
+        state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store(event)
+        assert event.state == expected_state
+
+    def test_store_custom_changes_state_successful_path(self):
+        """This test is a placeholder for the successful path of the store method.
+        you have to override this method in some output implementations depending on the
+        implementation of the store and write_backlog methods.
+        In simple implementations, the next_state method of the event is called twice and the result
+        is the DELIVERED state.
+        In more complex implementations, the next_state method is called once and the store method and
+        a second time in the write_backlog method.
+        """
+        state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store_custom(event, "stderr")
+        assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
+
+    def test_store_custom_changes_state_failed_event_with_unsuccessful_path(self):
+        """This test is a placeholder for the successful path of the store method.
+        you have to override this method in some output implementations depending on the
+        implementation of the store and write_backlog methods.
+        In simple implementations, the next_state method of the event is called twice and the result
+        is the DELIVERED state.
+        In more complex implementations, the next_state method is called once and the store method and
+        a second time in the write_backlog method.
+        """
+        state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+        self.object.store_custom(event, "stderr")
+        assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
+
+    def test_store_handles_errors(self):
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        # implement mocking for target connector here
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+
+    def test_store_custom_handles_errors(self):
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        # implement mocking for target connector here
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_store_handles_errors_failed_event(self):
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        # implement mocking for target connector start
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+
+    def test_store_custom_handles_errors_failed_event(self):
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        # implement mocking for target connector start
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_shutdown_flushes_output(self):
+        with mock.patch(
+            f"{self.object.__module__}.{self.object.__class__.__name__}.flush"
+        ) as mock_flush:
+            self.object.shut_down()
+            mock_flush.assert_called_once()
