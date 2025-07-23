@@ -318,7 +318,8 @@ class OpensearchOutput(Output):
             if success:
                 actions[index].state.next_state(success=True)
                 continue
-            error_info = item.get(self._config.default_op_type)
+            op_type = item.get("_op_type", self._config.default_op_type)
+            error_info = item.get(op_type, {})
             error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
             event = actions[index]
             event.state.next_state(success=False)
