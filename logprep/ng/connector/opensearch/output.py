@@ -49,7 +49,21 @@ logger = logging.getLogger("OpenSearchOutput")
 
 
 class BulkError(LogprepException):
-    pass
+    """Exception created when a bulk operation fails in Opensearch."""
+
+    def __init__(
+        self,
+        message: str,
+        status: str | None = None,
+        exception: str | None = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.exception = exception
+
+    def __str__(self) -> str:
+        return f"BulkError: {self.message}, status_code: {self.status}, exception: {self.exception}"
 
 
 class MSGPECSerializer(JSONSerializer):
@@ -278,6 +292,18 @@ class OpensearchOutput(Output):
     def _bulk(self, client: search.OpenSearch, actions: list[Event]) -> None:
         """Bulk index documents into Opensearch.
         Uses the parallel_bulk function from the opensearchpy library.
+
+        the error information is stored in a document with the following structure:
+
+        ```json
+        {
+            "op_type": {
+                "error": "error message",
+                "status": "status_code",
+                "exception": "exception message"
+                }
+            }
+        }
         """
         kwargs = {
             "max_chunk_bytes": self._config.max_chunk_bytes,
@@ -292,8 +318,8 @@ class OpensearchOutput(Output):
             if success:
                 actions[index].state.next_state(success=True)
                 continue
-            error_result = item.get(self._config.default_op_type)
-            error = BulkError(error_result.get("error", "Failed to index document"))
+            error_info = item.get(self._config.default_op_type)
+            error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
             event = actions[index]
             event.state.next_state(success=False)
             event.errors.append(error)

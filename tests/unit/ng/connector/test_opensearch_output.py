@@ -5,6 +5,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-arguments
 import copy
+import re
 from unittest import mock
 
 import pytest
@@ -13,6 +14,7 @@ from opensearchpy import helpers
 
 from logprep.abc.component import Component
 from logprep.factory import Factory
+from logprep.ng.connector.opensearch.output import BulkError
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
@@ -270,3 +272,39 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert event1.state == EventStateType.DELIVERED
         assert event2.state == EventStateType.FAILED
         assert len(event2.errors) == 1
+
+    def test_flush_creates_bulk_error(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 3
+        config["default_op_type"] = "create"
+        self.object = Factory.create({"opensearch_output": config})
+        event1 = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=EventStateType.PROCESSED,
+        )
+        # helpers.parallel_bulk returns an Iterator of tuples (success, item)
+        return_value = [
+            (
+                False,
+                {
+                    "create": {
+                        "error": "Failed to index document",
+                        "status": "503",
+                        "exception": "Service Unavailable",
+                    }
+                },
+            )
+        ]
+        self.object.store(event1)
+        assert event1.state == EventStateType.STORED_IN_OUTPUT
+        with mock.patch("opensearchpy.helpers.parallel_bulk") as mock_bulk:
+            mock_bulk.return_value = return_value
+            self.object.flush()
+        assert event1.state == EventStateType.FAILED
+        assert len(event1.errors) == 1
+        error = event1.errors[0]
+        assert isinstance(error, BulkError)
+        assert re.search("Failed to index document", str(error))
+        assert re.search("503", str(error))
+        assert re.search("Service Unavailable", str(error))
