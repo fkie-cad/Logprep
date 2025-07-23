@@ -39,28 +39,32 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         config = copy.deepcopy(self.CONFIG)
         config["message_backlog_size"] = 2
         self.object = Factory.create({"opensearch_output": config})
-        event = {"field": "content"}
+        event = LogEvent({"field": "content"}, original=b"")
 
         self.object.store(event)
 
         assert self.object._message_backlog[0] == event
-        assert self.object._message_backlog[0].get("_index") == config.get("default_index")
+        assert event.data.get("_index") == config.get("default_index")
 
     def test_store_custom_sends_event_to_expected_index(self):
         custom_index = "custom_index"
-        event = {"field": "content"}
+        event = LogEvent({"field": "content"}, original=b"")
         expected = {"field": "content", "_index": custom_index, "_op_type": "index"}
         config = copy.deepcopy(self.CONFIG)
         config["message_backlog_size"] = 2
         self.object = Factory.create({"opensearch_output": config})
         self.object.store_custom(event, custom_index)
-        assert self.object._message_backlog[0] == expected
+        assert self.object._message_backlog[0] == event
+        assert event.data == expected
 
     def test_setup_registers_flush_timeout_tasks(self):
         job_count = len(Component._scheduler.jobs)
         with mock.patch.object(self.object, "_search_context", new=mock.MagicMock()):
-            self.object.setup()
+            with mock.patch.object(self.object, "flush", new=mock.MagicMock()) as mock_flush:
+                self.object.setup()
         assert len(Component._scheduler.jobs) == job_count + 1
+        Component._scheduler.run_all()
+        mock_flush.assert_called_once()
 
     def test_message_backlog_is_not_written_if_message_backlog_size_not_reached(self):
         config = copy.deepcopy(self.CONFIG)

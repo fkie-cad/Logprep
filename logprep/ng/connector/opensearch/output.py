@@ -230,7 +230,7 @@ class OpensearchOutput(Output):
 
     def store(self, event: Event) -> None:
         """Store a document in the index defined in the document or to the default index."""
-        self.store_custom(event, event.get("_index", self._config.default_index))
+        self.store_custom(event, event.data.get("_index", self._config.default_index))
 
     def store_custom(self, event: Event, target: str) -> None:
         """Store document into backlog to be written into Opensearch with the target index.
