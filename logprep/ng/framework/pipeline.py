@@ -22,10 +22,20 @@ from logprep.util.configuration import Configuration
 class Pipeline:
     """Pipeline of processors to be processed."""
 
-    _logprep_config: Configuration
-    """ the logprep configuration dict """
+    process_count: int = 5
 
-    process_count = 5
+    def __init__(
+        self,
+        config: Configuration,
+    ) -> None:
+        self._logprep_config = config
+        self._timeout = config.timeout
+
+    def __iter__(self) -> Self:
+        return self
+
+    def __next__(self) -> Event:
+        return next(self._input)
 
     @cached_property
     def _pipeline(self) -> list[Processor]:
@@ -50,45 +60,6 @@ class Pipeline:
         )
         return Factory.create(input_connector_config)
 
-    def __init__(
-        self,
-        config: Configuration,
-    ) -> None:
-        self._logprep_config = config
-        self._timeout = config.timeout
-
-    def __iter__(self) -> Self:
-        return self
-
-    def __next__(self) -> Event:
-        return next(self._input)
-
-    def process_pipeline(self):
-        """processes the Pipeline"""
-        while True:
-            batch = list(islice(self._input, self.process_count))
-            if not batch:
-                break
-            for event in batch:
-                event.state.next_state()
-            results = map(self.process_event, batch)
-            yield from results
-
-    def process_event(self, event: LogEvent) -> LogEvent:
-        """process all processors for one event"""
-        event.state.next_state()
-        for processor in self._pipeline:
-            processor.process(event)
-        for extra_event in event.extra_data:
-            extra_event.state.current_state = EventStateType.PROCESSED  # type: ignore
-            self._input.backlog.append(extra_event)
-        if any(event.errors):
-            event.state.next_state(success=False)
-        else:
-            event.state.next_state(success=True)
-
-        return event
-
     def _create_processor(self, entry: dict) -> "Processor":
         processor = Factory.create(entry)
         processor.setup()
@@ -97,3 +68,31 @@ class Pipeline:
     def _setup(self) -> None:
         self._input.setup()
         _ = self._pipeline
+
+    def process_pipeline(self):
+        """processes the Pipeline"""
+        while True:
+            batch = list(islice(self._input, self.process_count))
+            if not batch:
+                break
+
+            for event in batch:
+                event.state.next_state()
+
+            results = map(self.process_event, batch)
+            yield from results
+
+    def process_event(self, event: LogEvent) -> LogEvent:
+        """process all processors for one event"""
+        event.state.next_state()
+        for processor in self._pipeline:
+            processor.process(event)
+
+        for extra_event in event.extra_data:
+            extra_event.state.current_state = EventStateType.PROCESSED  # type: ignore
+
+        self._input.backlog.register(event.extra_data)
+
+        event.state.next_state(success=not any(event.errors))
+
+        return event
