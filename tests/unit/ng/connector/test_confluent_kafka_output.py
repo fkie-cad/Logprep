@@ -206,14 +206,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         admin_client.assert_called_with(expected_admin_client_config)
 
     def test_store_changes_state_successful_path(self):
-        """This test is a placeholder for the successful path of the store method.
-        you have to override this method in some output implementations depending on the
-        implementation of the store and write_backlog methods.
-        In simple implementations, the next_state method of the event is called twice and the result
-        is the DELIVERED state.
-        In more complex implementations, the next_state method is called once and the store method and
-        a second time in the write_backlog method.
-        """
         state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
         event = LogEvent(
             {"message": "test message"},
@@ -319,3 +311,18 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         ) as mock_flush:
             self.object.shut_down()
             mock_flush.assert_called_once()
+
+    def test_on_delivery_successful(self):
+        assert False
+
+    def test_on_delivery_unsuccessful(self):
+        assert False
+
+    def test_produce_sets_on_delivery_callback(self):
+        assert False
+
+    def test_on_delevery_counts_processed_events(self):
+        assert False
+
+    def test_on_delivery_counts_errors(self):
+        assert False
