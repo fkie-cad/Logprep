@@ -30,8 +30,8 @@ from types import MappingProxyType
 from typing import Optional
 
 from attrs import define, field, validators
-from confluent_kafka import KafkaException, Producer  # type: ignore
-from confluent_kafka.admin import AdminClient  # type: ignore
+from confluent_kafka import KafkaException, Message, Producer  # type: ignore
+from confluent_kafka.admin import AdminClient
 
 from logprep.metrics.metrics import GaugeMetric, Metric
 from logprep.ng.abc.event import Event
@@ -312,7 +312,6 @@ class ConfluentKafkaOutput(Output):
             self._producer.produce(target, value=self._encoder.encode(document))
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
-            self.metrics.number_of_processed_events += 1
         except BufferError:
             # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self._config.flush_timeout)
@@ -355,3 +354,17 @@ class ConfluentKafkaOutput(Output):
             super().setup()
         except KafkaException as error:
             raise FatalOutputError(self, f"Could not setup kafka producer: {error}") from error
+
+    def on_delivery(self, event: Event, err: KafkaException, msg: Message) -> None:
+        """Callback for delivery reports."""
+        if err is not None:
+            event.state.next_state(success=False)
+            event.errors.append(err)
+            logger.error("Message delivery failed: %s", err)
+            self.metrics.number_of_errors += 1
+        else:
+            event.state.next_state(success=True)
+            logger.debug(
+                "Message delivered to %s [%s] @ %s", msg.topic(), msg.partition(), msg.offset()
+            )
+            self.metrics.number_of_processed_events += 1
