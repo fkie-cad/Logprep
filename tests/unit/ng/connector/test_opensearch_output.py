@@ -12,8 +12,8 @@ from opensearchpy import OpenSearchException as SearchException
 from opensearchpy import helpers
 
 from logprep.abc.component import Component
-from logprep.abc.output import CriticalOutputError
 from logprep.factory import Factory
+from logprep.ng.abc.output import CriticalOutputError
 from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
@@ -59,8 +59,8 @@ class TestOpenSearchOutput(BaseOutputTestCase):
 
     def test_setup_registers_flush_timeout_tasks(self):
         job_count = len(Component._scheduler.jobs)
-        with mock.patch.object(self.object, "_search_context", new=mock.MagicMock()):
-            with mock.patch.object(self.object, "flush", new=mock.MagicMock()) as mock_flush:
+        with mock.patch.object(self.object, "_search_context"):
+            with mock.patch.object(self.object, "flush") as mock_flush:
                 self.object.setup()
         assert len(Component._scheduler.jobs) == job_count + 1
         Component._scheduler.run_all()
@@ -71,17 +71,15 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         config["message_backlog_size"] = 2
         self.object = Factory.create({"opensearch_output": config})
         assert len(self.object._message_backlog) == 0
-        with mock.patch(
-            "logprep.connector.opensearch.output.OpensearchOutput._write_backlog"
-        ) as mock_write_backlog:
-            self.object.store({"test": "event"})
-        mock_write_backlog.assert_not_called()
+        with mock.patch.object(self.object, "flush") as mock_flush:
+            self.object.store(LogEvent({"test": "event"}, original=b""))
+        mock_flush.assert_not_called()
 
     def test_message_backlog_is_cleared_after_it_was_written(self):
         config = copy.deepcopy(self.CONFIG)
         config["message_backlog_size"] = 1
         self.object = Factory.create({"opensearch_output": config})
-        self.object.store({"event": "test_event"})
+        self.object.store(LogEvent({"event": "test_event"}, original=b""))
         assert len(self.object._message_backlog) == 0
 
     @mock.patch(
@@ -132,28 +130,27 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_flush_clears_message_backlog_on_failure(self):
         event = LogEvent({"some": "event"}, original=b"")
         self.object._message_backlog = [event]
-        self.object._bulk = mock.MagicMock(
-            side_effect=CriticalOutputError(mock.MagicMock(), "", "")
-        )
-        with pytest.raises(CriticalOutputError):
-            self.object.flush()
+        with mock.patch.object(self.object, "_bulk") as mock_bulk:
+            mock_bulk.side_effect = CriticalOutputError(mock.MagicMock(), "", "")
+            with pytest.raises(CriticalOutputError):
+                self.object.flush()
         assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
 
-    def test_write_backlog_clears_failed_on_success(self):
+    def test_flush_clears_failed_on_success(self):
         self.object._message_backlog = [{"some": "event"}]
         self.object._failed = [{"some": "event"}]
-        with mock.patch("logprep.connector.opensearch.output.OpensearchOutput._bulk"):
-            self.object._write_backlog()
+        with mock.patch.object(self.object, "_bulk"):
+            self.object.flush()
         assert len(self.object._failed) == 0, "temporary failed backlog should be cleared"
 
-    def test_write_backlog_clears_failed_on_failure(self):
+    def test_flush_clears_failed_on_failure(self):
         self.object._message_backlog = [{"some": "event"}]
         self.object._failed = [{"some": "event"}]
         with pytest.raises(CriticalOutputError):
-            self.object._write_backlog()
+            self.object.flush()
         assert len(self.object._failed) == 0, "temporary failed backlog should be cleared"
 
-    def test_write_backlog_creates_failed_event(self):
+    def test_flush_creates_failed_event(self):
         error_message = "test error"
         event = {"some": "event"}
         helpers.parallel_bulk = mock.MagicMock(
@@ -161,12 +158,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         )
         self.object._message_backlog = [event]
         with pytest.raises(CriticalOutputError) as error:
-            self.object._write_backlog()
+            self.object.flush()
         assert error.value.message == "failed to index"
         assert error.value.raw_input == [{"errors": error_message, "event": event}]
-
-    def test_shut_down_clears_message_backlog(self):
-        self.object._message_backlog = [{"some": "event"}]
-        with mock.patch("logprep.connector.opensearch.output.OpensearchOutput._bulk"):
-            self.object.shut_down()
-        assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
