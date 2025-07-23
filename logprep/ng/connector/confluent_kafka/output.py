@@ -34,7 +34,8 @@ from confluent_kafka import KafkaException, Producer  # type: ignore
 from confluent_kafka.admin import AdminClient  # type: ignore
 
 from logprep.metrics.metrics import GaugeMetric, Metric
-from logprep.ng.abc.output import CriticalOutputError, FatalOutputError, Output
+from logprep.ng.abc.event import Event
+from logprep.ng.abc.output import FatalOutputError, Output
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -273,7 +274,8 @@ class ConfluentKafkaOutput(Output):
             f"{self._config.kafka_config.get('bootstrap.servers')}"
         )
 
-    def store(self, document: dict) -> None:
+    @Output._handle_errors
+    def store(self, event: Event) -> None:
         """Store a document in the producer topic.
 
         Parameters
@@ -286,10 +288,10 @@ class ConfluentKafkaOutput(Output):
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
-        self.store_custom(document, self._config.topic)
+        self.store_custom(event, self._config.topic)
 
     @Metric.measure_time()
-    def store_custom(self, document: dict, target: str) -> None:
+    def store_custom(self, event: Event, target: str) -> None:
         """Write document to Kafka into target topic.
 
         Parameters
@@ -304,6 +306,8 @@ class ConfluentKafkaOutput(Output):
             Raises if any error except a BufferError occurs while writing into Kafka.
 
         """
+        event.state.next_state()
+        document = event.data
         try:
             self._producer.produce(target, value=self._encoder.encode(document))
             logger.debug("Produced message %s to topic %s", str(document), target)
@@ -313,10 +317,8 @@ class ConfluentKafkaOutput(Output):
             # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self._config.flush_timeout)
             logger.debug("Buffer full, flushing")
-        except Exception as error:
-            raise CriticalOutputError(self, str(error), document) from error
 
-    def shut_down(self) -> None:
+    def flush(self) -> None:
         """ensures that all messages are flushed. According to
         https://confluent-kafka-python.readthedocs.io/en/latest/#confluent_kafka.Producer.flush
         flush without the timeout parameter will block until all messages are delivered.
