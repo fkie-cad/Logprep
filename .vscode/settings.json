@@ -48,6 +48,7 @@
         "concatenator",
         "depseudonymization",
         "encrypter",
+        "opensearchpy",
         "PKCS",
         "pseudonymization",
         "pseudonymize",

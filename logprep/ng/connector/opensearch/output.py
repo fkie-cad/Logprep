@@ -40,11 +40,16 @@ from attrs import define, field, validators
 from opensearchpy import OpenSearchException, helpers
 from opensearchpy.serializer import JSONSerializer
 
+from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.event import Event
-from logprep.ng.abc.output import CriticalOutputError, Output
+from logprep.ng.abc.output import Output
 
 logger = logging.getLogger("OpenSearchOutput")
+
+
+class BulkError(LogprepException):
+    pass
 
 
 class MSGPECSerializer(JSONSerializer):
@@ -228,10 +233,12 @@ class OpensearchOutput(Output):
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self._config.hosts}"
 
+    @Output._handle_errors
     def store(self, event: Event) -> None:
         """Store a document in the index defined in the document or to the default index."""
         self.store_custom(event, event.data.get("_index", self._config.default_index))
 
+    @Output._handle_errors
     def store_custom(self, event: Event, target: str) -> None:
         """Store document into backlog to be written into Opensearch with the target index.
         The target index is determined per document by parameter :code:`target`.
@@ -243,6 +250,7 @@ class OpensearchOutput(Output):
         target : str
             Index to store the document in.
         """
+        event.state.next_state()
         document = event.data
         document["_index"] = target
         document["_op_type"] = document.get("_op_type", self._config.default_op_type)
@@ -264,18 +272,10 @@ class OpensearchOutput(Output):
         if not self._message_backlog:
             return
         logger.debug("Flushing %d documents to Opensearch", len(self._message_backlog))
-        try:
-            self._bulk(self._search_context, self._message_backlog)
-        except CriticalOutputError as error:
-            raise error from error
-        except Exception as error:  # pylint: disable=broad-except
-            logger.error("Failed to index documents: %s", error)
-            raise CriticalOutputError(self, str(error), self._message_backlog) from error
-        finally:
-            self._message_backlog.clear()
-            self._failed.clear()
+        self._bulk(self._search_context, self._message_backlog)
+        self._message_backlog.clear()
 
-    def _bulk(self, client, actions):
+    def _bulk(self, client: search.OpenSearch, actions: list[Event]) -> None:
         """Bulk index documents into Opensearch.
         Uses the parallel_bulk function from the opensearchpy library.
         """
@@ -286,17 +286,17 @@ class OpensearchOutput(Output):
             "raise_on_error": False,
             "raise_on_exception": False,
         }
-        failed = self._failed
-        for index, result in enumerate(helpers.parallel_bulk(client, actions, **kwargs)):
+        actions_iterator = (event.data for event in actions)
+        for index, result in enumerate(helpers.parallel_bulk(client, actions_iterator, **kwargs)):
             success, item = result
             if success:
+                actions[index].state.next_state(success=True)
                 continue
             error_result = item.get(self._config.default_op_type)
-            error = error_result.get("error", "Failed to index document")
-            data = actions[index]
-            failed.append({"errors": error, "event": data})
-        if failed:
-            raise CriticalOutputError(self, "failed to index", failed)
+            error = BulkError(error_result.get("error", "Failed to index document"))
+            event = actions[index]
+            event.state.next_state(success=False)
+            event.errors.append(error)
 
     def health(self) -> bool:
         """Check the health of the component."""

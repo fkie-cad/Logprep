@@ -13,7 +13,7 @@ from opensearchpy import helpers
 
 from logprep.abc.component import Component
 from logprep.factory import Factory
-from logprep.ng.abc.output import CriticalOutputError
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
@@ -127,37 +127,146 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object.flush()
         assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
 
-    def test_flush_clears_message_backlog_on_failure(self):
-        event = LogEvent({"some": "event"}, original=b"")
-        self.object._message_backlog = [event]
-        with mock.patch.object(self.object, "_bulk") as mock_bulk:
-            mock_bulk.side_effect = CriticalOutputError(mock.MagicMock(), "", "")
-            with pytest.raises(CriticalOutputError):
-                self.object.flush()
-        assert len(self.object._message_backlog) == 0, "Message backlog should be cleared"
-
-    def test_flush_clears_failed_on_success(self):
-        self.object._message_backlog = [{"some": "event"}]
-        self.object._failed = [{"some": "event"}]
-        with mock.patch.object(self.object, "_bulk"):
-            self.object.flush()
-        assert len(self.object._failed) == 0, "temporary failed backlog should be cleared"
-
-    def test_flush_clears_failed_on_failure(self):
-        self.object._message_backlog = [{"some": "event"}]
-        self.object._failed = [{"some": "event"}]
-        with pytest.raises(CriticalOutputError):
-            self.object.flush()
-        assert len(self.object._failed) == 0, "temporary failed backlog should be cleared"
-
-    def test_flush_creates_failed_event(self):
-        error_message = "test error"
-        event = {"some": "event"}
-        helpers.parallel_bulk = mock.MagicMock(
-            return_value=[(False, {"index": {"error": error_message}})]
+    def test_store_changes_state_successful_path(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 2
+        self.object = Factory.create({"opensearch_output": config})
+        state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
         )
-        self.object._message_backlog = [event]
-        with pytest.raises(CriticalOutputError) as error:
+
+        return_value = [(True, {"index": {"_id": "1"}})]
+        self.object.store(event)
+        assert event.state == EventStateType.STORED_IN_OUTPUT
+        with mock.patch("opensearchpy.helpers.parallel_bulk") as mock_bulk:
+            mock_bulk.return_value = return_value
             self.object.flush()
-        assert error.value.message == "failed to index"
-        assert error.value.raw_input == [{"errors": error_message, "event": event}]
+        assert event.state == expected_state
+
+    def test_store_changes_state_failed_event_with_unsuccessful_path(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 2
+        self.object = Factory.create({"opensearch_output": config})
+        state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+
+        return_value = [(True, {"index": {"_id": "1"}})]
+        self.object.store(event)
+        assert event.state == EventStateType.STORED_IN_ERROR
+        with mock.patch("opensearchpy.helpers.parallel_bulk") as mock_bulk:
+            mock_bulk.return_value = return_value
+            self.object.flush()
+        assert event.state == expected_state
+
+    def test_store_custom_changes_state_successful_path(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 2
+        self.object = Factory.create({"opensearch_output": config})
+        state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+
+        return_value = [(True, {"index": {"_id": "1"}})]
+        self.object.store_custom(event, "custom_index")
+        assert event.state == EventStateType.STORED_IN_OUTPUT
+        with mock.patch("opensearchpy.helpers.parallel_bulk") as mock_bulk:
+            mock_bulk.return_value = return_value
+            self.object.flush()
+        assert event.state == expected_state
+
+    def test_store_custom_changes_state_failed_event_with_unsuccessful_path(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 2
+        self.object = Factory.create({"opensearch_output": config})
+        state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
+        event = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=state,
+        )
+
+        return_value = [(True, {"index": {"_id": "1"}})]
+        self.object.store_custom(event, "custom_index")
+        assert event.state == EventStateType.STORED_IN_ERROR
+        with mock.patch("opensearchpy.helpers.parallel_bulk") as mock_bulk:
+            mock_bulk.return_value = return_value
+            self.object.flush()
+        assert event.state == expected_state
+
+    def test_store_handles_errors(self):
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        with mock.patch.object(self.object, "_write_to_search_context") as mock_write:
+            mock_write.side_effect = Exception("test error")
+            self.object.store(event)
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+
+    def test_store_custom_handles_errors(self):
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        with mock.patch.object(self.object, "_write_to_search_context") as mock_write:
+            mock_write.side_effect = Exception("test error")
+            self.object.store_custom(event, "custom_index")
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_store_handles_errors_failed_event(self):
+        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        with mock.patch.object(self.object, "_write_to_search_context") as mock_write:
+            mock_write.side_effect = Exception("test error")
+            self.object.store(event)
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+
+    def test_store_custom_handles_errors_failed_event(self):
+        self.object.metrics.number_of_errors = 0
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
+        with mock.patch.object(self.object, "_write_to_search_context") as mock_write:
+            mock_write.side_effect = Exception("test error")
+            self.object.store_custom(event, "custom_index")
+        assert self.object.metrics.number_of_errors == 1
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
+
+    def test_flush_handles_failed_bulk_operations(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["message_backlog_size"] = 3
+        self.object = Factory.create({"opensearch_output": config})
+        event1 = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=EventStateType.PROCESSED,
+        )
+        event2 = LogEvent(
+            {"message": "test message"},
+            original=b"",
+            state=EventStateType.PROCESSED,
+        )
+        # helpers.parallel_bulk returns an Iterator of tuples (success, item)
+        return_value = [(True, {"index": {"_id": "1"}}), (False, {"index": {"_id": "1"}})]
+        self.object.store(event1)
+        self.object.store(event2)
+        assert event1.state == EventStateType.STORED_IN_OUTPUT
+        assert event2.state == EventStateType.STORED_IN_OUTPUT
+        with mock.patch("opensearchpy.helpers.parallel_bulk") as mock_bulk:
+            mock_bulk.return_value = return_value
+            self.object.flush()
+        assert event1.state == EventStateType.DELIVERED
+        assert event2.state == EventStateType.FAILED
+        assert len(event2.errors) == 1
