@@ -25,6 +25,9 @@ from logprep.generator.http.output import HttpGeneratorOutput
 from logprep.ng.connector.confluent_kafka.input import (
     ConfluentKafkaInput as NgConfluentKafkaInput,
 )
+from logprep.ng.connector.confluent_kafka.output import (
+    ConfluentKafkaOutput as NgConfluentKafkaOutput,
+)
 from logprep.ng.connector.console.output import ConsoleOutput as NgConsoleOutput
 from logprep.ng.connector.dummy.input import DummyInput as NgDummyInput
 from logprep.ng.connector.dummy.output import DummyOutput as NgDummyOutput
@@ -202,6 +205,7 @@ class Registry:
         "ng_console_output": NgConsoleOutput,
         "ng_jsonl_output": NgJsonlOutput,
         "ng_opensearch_output": NgOpensearchOutput,
+        "ng_confluentkafka_output": NgConfluentKafkaOutput,
     }
 
     @classmethod
