@@ -365,6 +365,9 @@ class ConfluentKafkaOutput(Output):
         else:
             event.state.next_state(success=True)
             logger.debug(
-                "Message delivered to %s [%s] @ %s", msg.topic(), msg.partition(), msg.offset()
+                "Message delivered to '%s' partition %s, offset %s",
+                msg.topic(),
+                msg.partition(),
+                msg.offset(),
             )
             self.metrics.number_of_processed_events += 1
