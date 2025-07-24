@@ -5,6 +5,7 @@
 # pylint: disable=attribute-defined-outside-init
 
 import json
+import re
 from copy import deepcopy
 from unittest import mock
 
@@ -312,8 +313,22 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             self.object.shut_down()
             mock_flush.assert_called_once()
 
-    def test_on_delivery_successful(self):
-        assert False
+    def test_on_delivery_successful(self, caplog):
+        caplog.set_level("DEBUG")
+        kafka_message = mock.MagicMock()
+        kafka_message.topic = mock.MagicMock(return_value="test_topic")
+        kafka_message.partition = mock.MagicMock(return_value=0)
+        kafka_message.offset = mock.MagicMock(return_value=42)
+        event = LogEvent(
+            {"message": "test message"}, original=b"", state=EventStateType.STORED_IN_OUTPUT
+        )
+        self.object.on_delivery(event, None, kafka_message)
+        assert len(event.errors) == 0
+        assert event.state == EventStateType.DELIVERED
+        assert re.search(
+            r"Message delivered to 'test_topic' partition 0, offset 42",
+            caplog.text,
+        )
 
     def test_on_delivery_unsuccessful(self):
         assert False
