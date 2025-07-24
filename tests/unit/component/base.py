@@ -35,6 +35,7 @@ class BaseComponentTestCase(ABC):
         config = {"Test Instance Name": self.CONFIG}
         self.object = Factory.create(configuration=config)
         self.object._wait_for_health = mock.MagicMock()
+
         assert "metrics" not in self.object.__dict__, "metrics should be a cached_property"
         self.metric_attributes = asdict(
             self.object.metrics,

@@ -157,12 +157,13 @@ class FileInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the threadsafe queue"""
+
         try:
             message: dict = self._messages.get(timeout=timeout)
             raw_message: bytes = str(message).encode("utf8")
-            return message, raw_message
+            return message, raw_message, None
         except queue.Empty:
-            return None, None
+            return None, None, None
 
     def setup(self) -> None:
         """Creates and starts the Thread that continuously monitors the given logfile.
