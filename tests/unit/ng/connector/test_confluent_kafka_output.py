@@ -330,14 +330,26 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             caplog.text,
         )
 
-    def test_on_delivery_unsuccessful(self):
-        assert False
+    def test_on_delivery_unsuccessful(self, caplog):
+        caplog.set_level("ERROR")
+        kafka_message = mock.MagicMock()
+        kafka_error = mock.MagicMock()
+        kafka_error.__str__ = mock.MagicMock(return_value="Kafka delivery error")
+        event = LogEvent(
+            {"message": "test message"}, original=b"", state=EventStateType.STORED_IN_OUTPUT
+        )
+        self.object.metrics.number_of_errors = 0
+        self.object.on_delivery(event, kafka_error, kafka_message)
+        assert len(event.errors) == 1
+        assert event.state == EventStateType.FAILED
+        assert self.object.metrics.number_of_errors == 1
+        assert re.search(
+            r"Message delivery failed: Kafka delivery error",
+            caplog.text,
+        )
 
     def test_produce_sets_on_delivery_callback(self):
         assert False
 
-    def test_on_delevery_counts_processed_events(self):
-        assert False
-
-    def test_on_delivery_counts_errors(self):
+    def test_on_delivery_counts_processed_events(self):
         assert False
