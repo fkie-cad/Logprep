@@ -260,14 +260,7 @@ class ConfluentKafkaOutput(Output):
         self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", DEFAULT_RETURN)
 
     def describe(self) -> str:
-        """Get name of Kafka endpoint with the bootstrap server.
-
-        Returns
-        -------
-        kafka : ConfluentKafka
-            Acts as input and output connector.
-
-        """
+        """Get name of Kafka endpoint with the bootstrap server."""
         base_description = super().describe()
         return (
             f"{base_description} - Kafka Output: "
@@ -279,13 +272,8 @@ class ConfluentKafkaOutput(Output):
 
         Parameters
         ----------
-        document : dict
-           Document to store.
-
-        Returns
-        -------
-        Returns True to inform the pipeline to call the batch_finished_callback method in the
-        configured input
+        event : Event
+            The event to store.
         """
         self.store_custom(event, self._config.topic)
 
@@ -296,15 +284,10 @@ class ConfluentKafkaOutput(Output):
 
         Parameters
         ----------
-        document : dict
-            Document to be stored in target topic.
+        event : Event
+            Event to store.
         target : str
-            Topic to store document in.
-        Raises
-        ------
-        CriticalOutputError
-            Raises if any error except a BufferError occurs while writing into Kafka.
-
+            Topic to store event data in.
         """
         event.state.next_state()
         document = event.data
