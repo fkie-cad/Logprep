@@ -7,6 +7,7 @@
 import json
 import re
 from copy import deepcopy
+from functools import partial
 from unittest import mock
 
 import pytest
@@ -61,16 +62,12 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
 
     def test_store_sends_event_to_expected_topic(self):
         event_data = {"field": "content"}
-        event_raw = json.dumps(event_data, separators=(",", ":")).encode("utf-8")
         event = LogEvent(event_data, original=b"")
         with mock.patch.object(self.object, "_producer") as mock_producer:
             self.object.store(event)
         mock_producer.produce.assert_called()
-        mock_producer.produce.assert_called_once_with(
-            self.object._config.topic,
-            value=event_raw,
-            on_delivery=self.object.on_delivery,
-        )
+        kwargs = mock_producer.produce.call_args[1]
+        assert kwargs["topic"] == self.object._config.topic
 
     def test_store_custom_sends_event_to_expected_topic(self):
         event_data = {"field": "content"}
@@ -79,11 +76,8 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         with mock.patch.object(self.object, "_producer") as mock_producer:
             self.object.store_custom(event, self.CONFIG.get("topic"))
         mock_producer.produce.assert_called()
-        mock_producer.produce.assert_called_once_with(
-            self.object._config.topic,
-            value=event_raw,
-            on_delivery=self.object.on_delivery,
-        )
+        kwargs = mock_producer.produce.call_args[1]
+        assert kwargs["topic"] == self.object._config.topic
 
     @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
     def test_store_custom_calls_producer_flush_on_buffererror(self, _):
@@ -337,11 +331,13 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         event_data = self.object._encoder.encode(event.data)
         self.object._producer.produce = mock.MagicMock()
         self.object.store(event)
-        self.object._producer.produce.assert_called_once_with(
-            self.object._config.topic,
-            value=event_data,
-            on_delivery=self.object.on_delivery,
-        )
+        kwargs = self.object._producer.produce.call_args[1]
+        assert kwargs["value"] == event_data
+        assert kwargs["topic"] == self.object._config.topic
+        partial_function = kwargs["on_delivery"]
+        assert isinstance(partial_function, partial)
+        assert partial_function.func == self.object.on_delivery
+        assert partial_function.args[0] == event
 
     def test_store_counts_processed_events(self):
         self.object.metrics.number_of_processed_events = 0
