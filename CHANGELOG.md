@@ -6,6 +6,9 @@
 ### Features
 
 ### Improvements
+
+* make confluentkafka_output store Event class based objects
+
 ### Bugfix
 
 ## 17.0.1
