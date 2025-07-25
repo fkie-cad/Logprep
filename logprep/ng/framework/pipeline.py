@@ -40,6 +40,12 @@ class Pipeline:
     @cached_property
     def _pipeline(self) -> list[Processor]:
         pipeline = [self._create_processor(entry) for entry in self._logprep_config.pipeline]
+
+        if len(pipeline) == 0:
+            raise ValueError("Length of 'pipeline' must be >= 1")
+        if not all(isinstance(p, Processor) for p in pipeline):
+            raise TypeError("All elements in pipeline must be instances of Processor.")
+
         return pipeline
 
     @cached_property
