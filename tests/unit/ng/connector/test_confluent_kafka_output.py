@@ -59,27 +59,31 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         kafka_output = Factory.create({"test connector": self.CONFIG})
         assert kafka_output._producer == "The Producer"
 
-    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
-    def test_store_sends_event_to_expected_topic(self, _):
-        kafka_producer = self.object._producer
+    def test_store_sends_event_to_expected_topic(self):
         event_data = {"field": "content"}
         event_raw = json.dumps(event_data, separators=(",", ":")).encode("utf-8")
         event = LogEvent(event_data, original=b"")
-        expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw)
-        self.object.store(event)
-        kafka_producer.produce.assert_called()
-        assert expected_call in kafka_producer.produce.mock_calls
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            self.object.store(event)
+        mock_producer.produce.assert_called()
+        mock_producer.produce.assert_called_once_with(
+            self.object._config.topic,
+            value=event_raw,
+            on_delivery=self.object.on_delivery,
+        )
 
-    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
-    def test_store_custom_sends_event_to_expected_topic(self, _):
-        kafka_producer = self.object._producer
+    def test_store_custom_sends_event_to_expected_topic(self):
         event_data = {"field": "content"}
         event_raw = json.dumps(event_data, separators=(",", ":")).encode("utf-8")
-        expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw)
         event = LogEvent(event_data, original=b"")
-        self.object.store_custom(event, self.CONFIG.get("topic"))
-        kafka_producer.produce.assert_called()
-        assert expected_call in kafka_producer.produce.mock_calls
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            self.object.store_custom(event, self.CONFIG.get("topic"))
+        mock_producer.produce.assert_called()
+        mock_producer.produce.assert_called_once_with(
+            self.object._config.topic,
+            value=event_raw,
+            on_delivery=self.object.on_delivery,
+        )
 
     @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
     def test_store_custom_calls_producer_flush_on_buffererror(self, _):
@@ -106,15 +110,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object.store(event)
         assert len(event.errors) == 1
         assert event.state == EventStateType.FAILED
-
-    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
-    def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
-        self.object.metrics.number_of_processed_events = 0
-        event = LogEvent(
-            {"message": "my event message"}, original=b"", state=EventStateType.PROCESSED
-        )
-        self.object.store(event)
-        assert self.object.metrics.number_of_processed_events == 1
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
         kafka_config = {"myconfig": "the config", "bootstrap.servers": "localhost:9092"}
@@ -214,6 +209,8 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             state=state,
         )
         self.object.store(event)
+        assert event.state == EventStateType.STORED_IN_OUTPUT
+        self.object.on_delivery(event, None, mock.MagicMock())
         assert event.state == expected_state
 
     def test_store_changes_state_failed_event_with_unsuccessful_path(self):
@@ -255,34 +252,39 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
     def test_store_handles_errors(self):
         self.object.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
-        # implement mocking for target connector here
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            mock_producer.produce.side_effect = Exception("test error")
+            self.object.store(event)
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
         assert event.state == EventStateType.FAILED
 
     def test_store_custom_handles_errors(self):
-        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
         self.object.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
-        # implement mocking for target connector here
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            mock_producer.produce.side_effect = Exception("test error")
+            self.object.store_custom(event, "target_topic")
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
         assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
 
     def test_store_handles_errors_failed_event(self):
-        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
         self.object.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
-        # implement mocking for target connector start
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            mock_producer.produce.side_effect = Exception("test error")
+            self.object.store(event)
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
         assert event.state == EventStateType.FAILED
 
     def test_store_custom_handles_errors_failed_event(self):
-        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
         self.object.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
-        # implement mocking for target connector start
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            mock_producer.produce.side_effect = Exception("test error")
+            self.object.store_custom(event, "target_topic")
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
         assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
@@ -330,7 +332,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         )
 
     @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
-    def test_produce_sets_on_delivery_callback(self, mock_producer):
+    def test_produce_sets_on_delivery_callback(self, _):
         event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
         event_data = self.object._encoder.encode(event.data)
         self.object._producer.produce = mock.MagicMock()
@@ -341,14 +343,9 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             on_delivery=self.object.on_delivery,
         )
 
-    def test_on_delivery_counts_processed_events(self):
+    def test_store_counts_processed_events(self):
         self.object.metrics.number_of_processed_events = 0
-        kafka_message = mock.MagicMock()
-        kafka_message.topic = mock.MagicMock(return_value="test_topic")
-        kafka_message.partition = mock.MagicMock(return_value=0)
-        kafka_message.offset = mock.MagicMock(return_value=42)
-        event = LogEvent(
-            {"message": "test message"}, original=b"", state=EventStateType.STORED_IN_OUTPUT
-        )
-        self.object.on_delivery(event, None, kafka_message)
+        event = LogEvent({"message": "my event message"}, original=b"")
+        with mock.patch.object(self.object, "_producer"):
+            self.object.store(event)
         assert self.object.metrics.number_of_processed_events == 1

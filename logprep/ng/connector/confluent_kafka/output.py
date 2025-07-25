@@ -274,7 +274,6 @@ class ConfluentKafkaOutput(Output):
             f"{self._config.kafka_config.get('bootstrap.servers')}"
         )
 
-    @Output._handle_errors
     def store(self, event: Event) -> None:
         """Store a document in the producer topic.
 
@@ -290,6 +289,7 @@ class ConfluentKafkaOutput(Output):
         """
         self.store_custom(event, self._config.topic)
 
+    @Output._handle_errors
     @Metric.measure_time()
     def store_custom(self, event: Event, target: str) -> None:
         """Write document to Kafka into target topic.
@@ -308,6 +308,7 @@ class ConfluentKafkaOutput(Output):
         """
         event.state.next_state()
         document = event.data
+        self.metrics.number_of_processed_events += 1
         try:
             self._producer.produce(
                 target, value=self._encoder.encode(document), on_delivery=self.on_delivery
@@ -372,4 +373,3 @@ class ConfluentKafkaOutput(Output):
                 msg.partition(),
                 msg.offset(),
             )
-            self.metrics.number_of_processed_events += 1
