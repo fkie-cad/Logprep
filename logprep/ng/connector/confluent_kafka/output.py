@@ -311,7 +311,9 @@ class ConfluentKafkaOutput(Output):
         self.metrics.number_of_processed_events += 1
         try:
             self._producer.produce(
-                target, value=self._encoder.encode(document), on_delivery=self.on_delivery
+                topic=target,
+                value=self._encoder.encode(document),
+                on_delivery=partial(self.on_delivery, event),
             )
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
