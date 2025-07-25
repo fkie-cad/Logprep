@@ -3,7 +3,7 @@
 from functools import partial
 from typing import Any
 
-from logprep.ng.abc.event import Event, EventMetadata
+from logprep.ng.abc.event import Event, EventMetadata, ExtraDataEvent
 from logprep.ng.event.event_state import EventState, EventStateType
 
 
@@ -22,7 +22,7 @@ class LogEvent(Event):
         data: dict[str, Any],
         *,
         original: bytes,
-        extra_data: list[Event] | None = None,
+        extra_data: list[ExtraDataEvent] | None = None,
         metadata: EventMetadata | None = None,
         state: EventStateType | EventState | None = None,
     ) -> None:
@@ -50,12 +50,11 @@ class LogEvent(Event):
         """
 
         self.original = original
-        self.extra_data: list[Event] = extra_data if extra_data else []
+        self.extra_data: list[ExtraDataEvent] = extra_data if extra_data else []
         self.metadata = metadata
 
         super().__init__(data=data, state=state)
 
-        # Wrap original next_state with validation logic
         self._origin_state_next_state_fn = partial(EventState.next_state, self._state)
         setattr(self._state, "next_state", self._next_state_validation_helper)
 
