@@ -159,10 +159,7 @@ class OpensearchOutput(Output):
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
 
-    __slots__ = ["_message_backlog", "_failed"]
-
-    _failed: list[Event]
-    """Temporary list of failed messages."""
+    __slots__ = ("_message_backlog",)
 
     _message_backlog: list[Event]
     """List of messages to be sent to Opensearch."""
@@ -228,7 +225,6 @@ class OpensearchOutput(Output):
     def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
         super().__init__(name, configuration)
         self._message_backlog = []
-        self._failed = []
 
     def setup(self):
         super().setup()
