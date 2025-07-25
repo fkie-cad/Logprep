@@ -278,7 +278,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         config["message_backlog_size"] = 3
         config["default_op_type"] = "create"
         self.object = Factory.create({"opensearch_output": config})
-        event1 = LogEvent(
+        event = LogEvent(
             {"message": "test message"},
             original=b"",
             state=EventStateType.PROCESSED,
@@ -296,14 +296,14 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 },
             )
         ]
-        self.object.store(event1)
-        assert event1.state == EventStateType.STORED_IN_OUTPUT
+        self.object.store(event)
+        assert event.state == EventStateType.STORED_IN_OUTPUT
         with mock.patch("opensearchpy.helpers.parallel_bulk") as mock_bulk:
             mock_bulk.return_value = return_value
             self.object.flush()
-        assert event1.state == EventStateType.FAILED
-        assert len(event1.errors) == 1
-        error = event1.errors[0]
+        assert event.state == EventStateType.FAILED
+        assert len(event.errors) == 1
+        error = event.errors[0]
         assert isinstance(error, BulkError)
         assert re.search("Failed to index document", str(error))
         assert re.search("503", str(error))
