@@ -6,6 +6,15 @@
 ### Features
 
 ### Improvements
+
+* make `processors` handle Event class based objects
+* add an EventBacklog class hierarchies 
+* implement an iterator interface to Input connectors
+* make simple connectors handle Event class based objects
+* make `opensearch_output` handle Event class based objects
+* deprecate `s3_output` as it does not fit into new architecture
+* deprecate `http_output` as it does not fit into new architecture
+
 ### Bugfix
 
 ## 17.0.1

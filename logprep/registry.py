@@ -32,6 +32,9 @@ from logprep.ng.connector.file.input import FileInput as NgFileInput
 from logprep.ng.connector.http.input import HttpInput as NgHttpInput
 from logprep.ng.connector.json.input import JsonInput as NgJsonInput
 from logprep.ng.connector.jsonl.output import JsonlOutput as NgJsonlOutput
+from logprep.ng.connector.opensearch.output import (
+    OpensearchOutput as NgOpensearchOutput,
+)
 from logprep.ng.processor.amides.processor import Amides as NgAmides
 from logprep.ng.processor.calculator.processor import Calculator as NGCalculator
 from logprep.ng.processor.clusterer.processor import Clusterer as NgClusterer
@@ -198,6 +201,7 @@ class Registry:
         "ng_dummy_output": NgDummyOutput,
         "ng_console_output": NgConsoleOutput,
         "ng_jsonl_output": NgJsonlOutput,
+        "ng_opensearch_output": NgOpensearchOutput,
     }
 
     @classmethod
