@@ -21,7 +21,7 @@ from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.helper import add_fields_to, get_dotted_field_value
-from logprep.util.time import UTC, TimeParser
+from logprep.util.time import UTC, TimeParser, TimeParserException
 from logprep.util.validators import dict_structure_validator
 
 
@@ -338,7 +338,7 @@ class Input(Connector):
                 self._add_arrival_timedelta_information_to_event(event)
             if self._add_env_enrichment:
                 self._add_env_enrichment_to_event(event)
-        except FieldExistsWarning as error:
+        except (FieldExistsWarning, TimeParserException) as error:
             raise CriticalInputError(self, error.args[0], event) from error
         return event
 
