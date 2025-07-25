@@ -285,7 +285,7 @@ class OpensearchOutput(Output):
         self._bulk(self._search_context, self._message_backlog)
         self._message_backlog.clear()
 
-    def _bulk(self, client: search.OpenSearch, actions: list[Event]) -> None:
+    def _bulk(self, client: search.OpenSearch, events: list[Event]) -> None:
         """Bulk index documents into Opensearch.
         Uses the parallel_bulk function from the opensearchpy library.
 
@@ -308,16 +308,16 @@ class OpensearchOutput(Output):
             "raise_on_error": False,
             "raise_on_exception": False,
         }
-        actions_iterator = (event.data for event in actions)
-        for index, result in enumerate(helpers.parallel_bulk(client, actions_iterator, **kwargs)):
+        actions = (event.data for event in events)
+        for index, result in enumerate(helpers.parallel_bulk(client, actions, **kwargs)):
             success, item = result
             if success:
-                actions[index].state.next_state(success=True)
+                events[index].state.next_state(success=True)
                 continue
             op_type = item.get("_op_type", self._config.default_op_type)
             error_info = item.get(op_type, {})
             error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
-            event = actions[index]
+            event = events[index]
             event.state.next_state(success=False)
             event.errors.append(error)
 
