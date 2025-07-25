@@ -217,14 +217,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         assert event.state == expected_state
 
     def test_store_changes_state_failed_event_with_unsuccessful_path(self):
-        """This test is a placeholder for the successful path of the store method.
-        you have to override this method in some output implementations depending on the
-        implementation of the store and write_backlog methods.
-        In simple implementations, the next_state method of the event is called twice and the result
-        is the DELIVERED state.
-        In more complex implementations, the next_state method is called once and the store method and
-        a second time in the write_backlog method.
-        """
         state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
         event = LogEvent(
             {"message": "test message"},
@@ -232,17 +224,11 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             state=state,
         )
         self.object.store(event)
+        assert event.state == EventStateType.STORED_IN_ERROR
+        self.object.on_delivery(event, None, mock.MagicMock())
         assert event.state == expected_state
 
     def test_store_custom_changes_state_successful_path(self):
-        """This test is a placeholder for the successful path of the store method.
-        you have to override this method in some output implementations depending on the
-        implementation of the store and write_backlog methods.
-        In simple implementations, the next_state method of the event is called twice and the result
-        is the DELIVERED state.
-        In more complex implementations, the next_state method is called once and the store method and
-        a second time in the write_backlog method.
-        """
         state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
         event = LogEvent(
             {"message": "test message"},
@@ -250,17 +236,11 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             state=state,
         )
         self.object.store_custom(event, "stderr")
+        assert event.state == EventStateType.STORED_IN_OUTPUT
+        self.object.on_delivery(event, None, mock.MagicMock())
         assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
 
     def test_store_custom_changes_state_failed_event_with_unsuccessful_path(self):
-        """This test is a placeholder for the successful path of the store method.
-        you have to override this method in some output implementations depending on the
-        implementation of the store and write_backlog methods.
-        In simple implementations, the next_state method of the event is called twice and the result
-        is the DELIVERED state.
-        In more complex implementations, the next_state method is called once and the store method and
-        a second time in the write_backlog method.
-        """
         state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
         event = LogEvent(
             {"message": "test message"},
@@ -268,10 +248,11 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             state=state,
         )
         self.object.store_custom(event, "stderr")
+        assert event.state == EventStateType.STORED_IN_ERROR
+        self.object.on_delivery(event, None, mock.MagicMock())
         assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
 
     def test_store_handles_errors(self):
-        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
         self.object.metrics.number_of_errors = 0
         event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
         # implement mocking for target connector here
@@ -348,8 +329,26 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
             caplog.text,
         )
 
-    def test_produce_sets_on_delivery_callback(self):
-        assert False
+    @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
+    def test_produce_sets_on_delivery_callback(self, mock_producer):
+        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
+        event_data = self.object._encoder.encode(event.data)
+        self.object._producer.produce = mock.MagicMock()
+        self.object.store(event)
+        self.object._producer.produce.assert_called_once_with(
+            self.object._config.topic,
+            value=event_data,
+            on_delivery=self.object.on_delivery,
+        )
 
     def test_on_delivery_counts_processed_events(self):
-        assert False
+        self.object.metrics.number_of_processed_events = 0
+        kafka_message = mock.MagicMock()
+        kafka_message.topic = mock.MagicMock(return_value="test_topic")
+        kafka_message.partition = mock.MagicMock(return_value=0)
+        kafka_message.offset = mock.MagicMock(return_value=42)
+        event = LogEvent(
+            {"message": "test message"}, original=b"", state=EventStateType.STORED_IN_OUTPUT
+        )
+        self.object.on_delivery(event, None, kafka_message)
+        assert self.object.metrics.number_of_processed_events == 1

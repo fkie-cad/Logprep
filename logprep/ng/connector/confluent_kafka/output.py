@@ -222,7 +222,7 @@ class ConfluentKafkaOutput(Output):
     def _producer(self) -> Producer:
         return Producer(self._kafka_config)
 
-    def _error_callback(self, error: KafkaException):
+    def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
         This callback is served upon calling client.poll()
@@ -309,7 +309,9 @@ class ConfluentKafkaOutput(Output):
         event.state.next_state()
         document = event.data
         try:
-            self._producer.produce(target, value=self._encoder.encode(document))
+            self._producer.produce(
+                target, value=self._encoder.encode(document), on_delivery=self.on_delivery
+            )
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self._config.send_timeout)
         except BufferError:
