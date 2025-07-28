@@ -350,11 +350,11 @@ class ConfluentKafkaOutput(Output):
             event.errors.append(err)
             logger.error("Message delivery failed: %s", err)
             self.metrics.number_of_errors += 1
-        else:
-            event.state.next_state(success=True)
-            logger.debug(
-                "Message delivered to '%s' partition %s, offset %s",
-                msg.topic(),
-                msg.partition(),
-                msg.offset(),
-            )
+            return
+        event.state.next_state(success=True)
+        logger.debug(
+            "Message delivered to '%s' partition %s, offset %s",
+            msg.topic(),
+            msg.partition(),
+            msg.offset(),
+        )
