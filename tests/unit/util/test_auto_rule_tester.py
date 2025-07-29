@@ -1,15 +1,12 @@
 # pylint: disable=protected-access
 # pylint: disable=broad-exception-caught
 # pylint: disable=missing-function-docstring)
-import logging
 import re
 from unittest import mock
 import pytest
 
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration
-
-LOGGER = logging.getLogger()
 
 
 @pytest.fixture(name="auto_rule_tester")
@@ -20,7 +17,6 @@ def fixture_auto_rule_tester():
 
 
 class TestAutoRuleTester:
-
     def test_get_rule_dict_valid_file(self, auto_rule_tester):
         processor_name = "dummy"
         rules_pn = {"dummy": {"type": "dummy", "rules": []}}

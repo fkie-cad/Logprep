@@ -17,6 +17,8 @@
 
 ### Bugfix
 
+* fix auto-rule tester getting stuck due to logging
+
 ## 17.0.1
 ### Breaking
 
