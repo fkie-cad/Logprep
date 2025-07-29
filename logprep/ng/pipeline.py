@@ -27,8 +27,11 @@ class Pipeline:
 
     def process_event(self, event: LogEvent) -> LogEvent:
         """process all processors for one event"""
-        event.state.next_state()
         for processor in self._processors:
             processor.process(event)
+        if not event.errors:
+            event.state.next_state(success=True)
+        else:
+            event.state.next_state(success=False)
 
         return event

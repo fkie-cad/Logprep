@@ -2,6 +2,7 @@
 import pytest
 
 from logprep.factory import Factory
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.pipeline import Pipeline
 
@@ -10,8 +11,8 @@ from logprep.ng.pipeline import Pipeline
 def get_input_mock():
     return iter(
         [
-            LogEvent({"message": "Log message 1"}, original=b""),
-            LogEvent({"message": "Log message 2"}, original=b""),
+            LogEvent({"message": "Log message 1"}, original=b"", state=EventStateType.RECEIVED),
+            LogEvent({"message": "Log message 2"}, original=b"", state=EventStateType.RECEIVED),
         ]
     )
 
@@ -57,3 +58,4 @@ class TestPipeline:
         for event in processed_events:
             assert isinstance(event, LogEvent)
             assert "generic added tag" in event.get_dotted_field_value("event.tags")
+            assert event.state.current_state == EventStateType.PROCESSED
