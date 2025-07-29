@@ -75,7 +75,6 @@ class Pipeline(Iterator):
 
     def _process_event(self, event: LogEvent) -> LogEvent:
         """process all processors for one event"""
-        event.state.next_state()
         for processor in self._processors:
             if not event.data:
                 break
