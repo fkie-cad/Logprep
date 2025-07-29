@@ -45,6 +45,7 @@
 ### Bugfix
 
 * add `@timestamp` field to error documents
+* fix crash on `TimeParserException` during preprocessing caused by invalid timestamps
 
 ## 17.0.0
 ### Breaking
