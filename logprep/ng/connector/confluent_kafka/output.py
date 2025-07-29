@@ -311,10 +311,7 @@ class ConfluentKafkaOutput(Output):
         flush without the timeout parameter will block until all messages are delivered.
         This ensures no messages will get lost on shutdown.
         """
-        if self._producer is None:
-            return
-        remaining_messages = self._producer.flush()
-        if remaining_messages:
+        if remaining_messages := self._producer.flush():
             self.metrics.number_of_errors += 1
             logger.error(
                 "Flushing producer timed out. %s messages are still in the buffer.",

@@ -4,7 +4,6 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 
-import json
 import re
 from copy import deepcopy
 from functools import partial
@@ -71,7 +70,6 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
 
     def test_store_custom_sends_event_to_expected_topic(self):
         event_data = {"field": "content"}
-        event_raw = json.dumps(event_data, separators=(",", ":")).encode("utf-8")
         event = LogEvent(event_data, original=b"")
         with mock.patch.object(self.object, "_producer") as mock_producer:
             self.object.store_custom(event, self.CONFIG.get("topic"))
@@ -345,3 +343,10 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         with mock.patch.object(self.object, "_producer"):
             self.object.store(event)
         assert self.object.metrics.number_of_processed_events == 1
+
+    def test_flush_successfully_flushes_producer(self, caplog):
+        caplog.set_level("INFO")
+        with mock.patch.object(self.object, "_producer") as mock_producer:
+            mock_producer.flush.return_value = 0
+            self.object.flush()
+        assert "0 messages remaining" in caplog.text
