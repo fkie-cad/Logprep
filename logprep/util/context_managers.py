@@ -20,6 +20,7 @@ def logqueue_listener(logger_name: str):
     else:
         yield
 
+
 @contextmanager
 def disable_loggers():
     """Temporarily disable enabled loggers."""
