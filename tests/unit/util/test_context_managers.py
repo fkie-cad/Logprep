@@ -60,5 +60,5 @@ class TestContextManagers:
             for logger in logger_dict.values():
                 try:
                     logger.disabled = original_logger_states[logger.name]
-                except AttributeError:
+                except (AttributeError, KeyError):
                     pass
