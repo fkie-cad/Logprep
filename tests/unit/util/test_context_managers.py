@@ -50,12 +50,15 @@ class TestContextManagers:
             with disable_loggers():
                 assert enabled_logger.disabled is True
                 assert disabled_logger.disabled is True
+
+            assert enabled_logger.disabled is False
+            assert disabled_logger.disabled is True
         finally:
             del logger_dict["test_logger_enabled"]
             del logger_dict["test_logger_disabled"]
             del logger_dict["not_a_logger"]
             for logger in logger_dict.values():
-                if isinstance(logger, logging.Logger):
+                try:
                     logger.disabled = original_logger_states[logger.name]
-        assert enabled_logger.disabled is False
-        assert disabled_logger.disabled is True
+                except AttributeError:
+                    pass
