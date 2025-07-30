@@ -28,6 +28,7 @@ class TestLogEvents(TestEventClass):
 
         assert callable(log_event._origin_state_next_state_fn)
         assert log_event.state.next_state != log_event._origin_state_next_state_fn
+        assert log_event.state.current_state is EventStateType.RECEIVING
 
     def test_log_event_preserves_state_on_init(self):
         state = EventStateType.STORED_IN_OUTPUT

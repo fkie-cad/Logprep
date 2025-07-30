@@ -24,6 +24,7 @@ class TestSreEvents(TestEventClass):
         assert sre_event.data == data
         assert sre_event.outputs == outputs
         assert isinstance(sre_event.state, EventState)
+        assert sre_event.state.current_state is EventStateType.PROCESSED
 
     def test_sre_event_preserves_state_on_init(self) -> None:
         state = EventStateType.STORED_IN_OUTPUT
