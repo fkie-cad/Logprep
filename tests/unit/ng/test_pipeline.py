@@ -129,3 +129,17 @@ class TestPipeline:
         pipeline = Pipeline(empty_input, processors)
         processed_events = list(pipeline.process_pipeline())
         assert not processed_events
+
+    def test_process_pipeline_breaks_processing_of_empty_events_during_processing(
+        self, input_connector, processors
+    ):
+        with mock.patch.object(
+            processors[0], "process", side_effect=lambda event: event.data.clear()
+        ):
+            with mock.patch.object(processors[1], "process"):
+                pipeline = Pipeline(input_connector, processors)
+                processed_events = list(pipeline.process_pipeline())
+                assert len(processed_events) == 3
+                assert processed_events[0].data == {}
+                assert processors[0].process.call_count == 3
+                assert processors[1].process.call_count == 0
