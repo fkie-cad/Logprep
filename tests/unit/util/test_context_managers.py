@@ -1,8 +1,10 @@
+# pylint: disable=missing-module-docstring
 # pylint: disable=missing-function-docstring
 import logging
+from copy import deepcopy
 from unittest import mock
 
-from logprep.util.context_managers import logqueue_listener
+from logprep.util.context_managers import logqueue_listener, disable_loggers
 
 LOGGER = logging.getLogger()
 
@@ -29,3 +31,22 @@ class TestContextManagers:
 
         assert not mock_listener.start.called, "Listener start() was called"
         assert not mock_listener.stop.called, "Listener stop() was called"
+
+    def test_disabled_loggers_disables_enabled_loggers(self):
+        original_loggers = deepcopy(logging.root.manager.loggerDict)
+        try:
+            enabled_logger = logging.getLogger("test_logger_enabled")
+            enabled_logger.disabled = False
+
+            disabled_logger = logging.getLogger("test_logger_disabled")
+            disabled_logger.disabled = True
+
+            logging.root.manager.loggerDict["not_a_logger"] = "not_a_logger"
+
+            with disable_loggers():
+                assert enabled_logger.disabled is True
+                assert disabled_logger.disabled is True
+        finally:
+            logging.root.manager.loggerDict = original_loggers
+        assert enabled_logger.disabled is False
+        assert disabled_logger.disabled is True

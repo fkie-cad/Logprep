@@ -14,7 +14,7 @@ from logprep.runner import Runner
 from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.context_managers import logqueue_listener
+from logprep.util.context_managers import logqueue_listener, disable_loggers
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
@@ -164,7 +164,7 @@ def test_rules(configs: tuple[str]) -> None:
     _get_configuration(configs)
     for config in configs:
         tester = AutoRuleTester(config)
-        with logqueue_listener("console"):
+        with disable_loggers():
             tester.run()
 
 
