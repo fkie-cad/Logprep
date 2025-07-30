@@ -1,4 +1,6 @@
 # pylint: disable=missing-docstring
+from unittest import mock
+
 import pytest
 
 from logprep.factory import Factory
@@ -50,7 +52,7 @@ class TestPipeline:
         assert isinstance(processed_event, LogEvent)
         assert "generic added tag" in processed_event.get_dotted_field_value("event.tags")
 
-    def test_process_pipeline(self, input_connector, processors):
+    def test_process_pipeline_success(self, input_connector, processors):
         pipeline = Pipeline(input_connector, processors)
         processed_events = list(pipeline.process_pipeline())
 
@@ -59,3 +61,16 @@ class TestPipeline:
             assert isinstance(event, LogEvent)
             assert "generic added tag" in event.get_dotted_field_value("event.tags")
             assert event.state.current_state == EventStateType.PROCESSED
+
+    def test_process_pipeline_failure(self, input_connector, processors):
+        with mock.patch.object(
+            processors[0], "_apply_rules", side_effect=[None, Exception("Processing error")]
+        ):
+            pipeline = Pipeline(input_connector, processors)
+            processed_events = list(pipeline.process_pipeline())
+
+        assert len(processed_events) == 2
+        assert len(processed_events[0].errors) == 0
+        assert len(processed_events[1].errors) == 1
+        assert processed_events[0].state.current_state == EventStateType.PROCESSED
+        assert processed_events[1].state.current_state == EventStateType.FAILED

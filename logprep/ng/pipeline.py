@@ -19,14 +19,11 @@ class Pipeline:
             batch = list(islice(self._input, 10))
             if not batch:
                 break
-
-            for event in batch:
-                event.state.next_state()
-
             yield from map(self.process_event, batch)
 
     def process_event(self, event: LogEvent) -> LogEvent:
         """process all processors for one event"""
+        event.state.next_state()
         for processor in self._processors:
             processor.process(event)
         if not event.errors:
