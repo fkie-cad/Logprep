@@ -1,3 +1,5 @@
+"""pipeline module for processing events through a series of processors."""
+
 from collections.abc import Iterator
 from itertools import islice
 from typing import Generator
@@ -8,6 +10,32 @@ from logprep.ng.event.log_event import LogEvent
 
 
 class Pipeline:
+    """Pipeline class to process events through a series of processors.
+    Examples:
+        >>> from logprep.ng.event.log_event import LogEvent
+        >>> from logprep.ng.abc.event import Event
+        >>> class MockProcessor:
+        ...     def process(self, event: LogEvent) -> None:
+        ...         event.data["processed"] = True
+        ...
+        >>>
+        >>> # Create test events
+        >>> events = [
+        ...     LogEvent({"message": "test1"}, original=b""),
+        ...     LogEvent({"message": "test2"}, original=b"")
+        ... ]
+        >>> processors = [MockProcessor()]
+        >>>
+        >>> # Create and run pipeline
+        >>> pipeline = Pipeline(iter(events), processors)
+        >>> processed_events = list(pipeline.process_pipeline())
+        >>> len(processed_events)
+        2
+        >>> processed_events[0].data["processed"]
+        True
+        >>> processed_events[1].data["message"]
+        'test2'
+    """
 
     def __init__(self, input_connector: Iterator[Event], processors: list[Processor]) -> None:
         self._input = input_connector
