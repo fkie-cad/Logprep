@@ -111,3 +111,21 @@ class TestPipeline:
         extra_data_event = processed_events[2].extra_data[0]
         assert isinstance(extra_data_event, PseudonymEvent)
         assert extra_data_event.state.current_state == EventStateType.PROCESSED
+
+    def test_process_pipeline_none_input(self, processors):
+        empty_input = iter([None, None, None])
+        pipeline = Pipeline(empty_input, processors)
+        processed_events = list(pipeline.process_pipeline())
+        assert not processed_events
+
+    def test_process_pipeline_empty_input(self, processors):
+        empty_input = iter([])
+        pipeline = Pipeline(empty_input, processors)
+        processed_events = list(pipeline.process_pipeline())
+        assert not processed_events
+
+    def test_process_pipeline_empty_events_in_input(self, processors):
+        empty_input = iter([LogEvent({}, original=b"") for _ in range(5)])
+        pipeline = Pipeline(empty_input, processors)
+        processed_events = list(pipeline.process_pipeline())
+        assert not processed_events

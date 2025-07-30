@@ -16,7 +16,8 @@ class Pipeline:
     def process_pipeline(self) -> Generator[LogEvent, None, None]:
         """processes the Pipeline"""
         while True:
-            batch = list(islice(self._input, 10))
+            events = (event for event in self._input if event is not None and event.data)
+            batch = list(islice(events, 10))
             if not batch:
                 break
             yield from map(self.process_event, batch)
