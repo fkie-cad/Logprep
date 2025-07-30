@@ -37,15 +37,18 @@ class Pipeline(Iterator):
         'test2'
     """
 
-    def __init__(self, input_connector: Iterator[Event], processors: list[Processor]) -> None:
+    def __init__(
+        self, input_connector: Iterator[Event], processors: list[Processor], process_count: int = 10
+    ) -> None:
         self._input = input_connector
         self._processors = processors
+        self._process_count = process_count
 
     def __iter__(self) -> Generator[LogEvent, None, None]:
         """Iterate over processed events."""
         while True:
             events = (event for event in self._input if event is not None and event.data)
-            batch = list(islice(events, 10))
+            batch = list(islice(events, self._process_count))
             if not batch:
                 break
             yield from map(self._process_event, batch)
