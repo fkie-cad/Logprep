@@ -6,6 +6,7 @@ import pytest
 from logprep.factory import Factory
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.event.pseudonym_event import PseudonymEvent
 from logprep.ng.pipeline import Pipeline
 
 
@@ -15,14 +16,14 @@ def get_input_mock():
         [
             LogEvent({"message": "Log message 1"}, original=b"", state=EventStateType.RECEIVED),
             LogEvent({"message": "Log message 2"}, original=b"", state=EventStateType.RECEIVED),
+            LogEvent({"user": {"name": "John Doe"}}, original=b"", state=EventStateType.RECEIVED),
         ]
     )
 
 
-@pytest.fixture(name="processors")
+@pytest.fixture(name="processors", scope="session")
 def get_processors_mock():
-
-    return [
+    processors = [
         Factory.create(
             {
                 "processor": {
@@ -36,7 +37,32 @@ def get_processors_mock():
                 }
             }
         ),
+        Factory.create(
+            {
+                "pseudo_this": {
+                    "type": "ng_pseudonymizer",
+                    "pubkey_analyst": "examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem",
+                    "pubkey_depseudo": "examples/exampledata/rules/pseudonymizer/example_depseudo_pub.pem",
+                    "regex_mapping": "examples/exampledata/rules/pseudonymizer/regex_mapping.yml",
+                    "hash_salt": "a_secret_tasty_ingredient",
+                    "outputs": [{"opensearch": "pseudonyms"}],
+                    "rules": [
+                        {
+                            "filter": "user.name",
+                            "pseudonymizer": {
+                                "id": "pseudonymizer-1a3c69b2-5d54-4b6b-ab07-c7ddbea7917c",
+                                "mapping": {"user.name": "RE_WHOLE_FIELD"},
+                            },
+                        }
+                    ],
+                    "max_cached_pseudonyms": 1000000,
+                }
+            }
+        ),
     ]
+    for processor in processors:
+        processor.setup()
+    return processors
 
 
 class TestPipeline:
@@ -56,9 +82,9 @@ class TestPipeline:
         pipeline = Pipeline(input_connector, processors)
         processed_events = list(pipeline.process_pipeline())
 
-        assert len(processed_events) == 2
         for event in processed_events:
             assert isinstance(event, LogEvent)
+            assert not event.errors
             assert "generic added tag" in event.get_dotted_field_value("event.tags")
             assert event.state.current_state == EventStateType.PROCESSED
 
@@ -69,8 +95,19 @@ class TestPipeline:
             pipeline = Pipeline(input_connector, processors)
             processed_events = list(pipeline.process_pipeline())
 
-        assert len(processed_events) == 2
         assert len(processed_events[0].errors) == 0
         assert len(processed_events[1].errors) == 1
         assert processed_events[0].state.current_state == EventStateType.PROCESSED
         assert processed_events[1].state.current_state == EventStateType.FAILED
+
+    def test_process_pipeline_generates_extra_data(self, input_connector, processors):
+        pipeline = Pipeline(input_connector, processors)
+        processed_events = list(pipeline.process_pipeline())
+
+        for event in processed_events:
+            assert isinstance(event, LogEvent)
+            assert not event.errors
+        assert len(processed_events[2].extra_data) == 1
+        extra_data_event = processed_events[2].extra_data[0]
+        assert isinstance(extra_data_event, PseudonymEvent)
+        assert extra_data_event.state.current_state == EventStateType.PROCESSED
