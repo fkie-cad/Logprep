@@ -15,6 +15,7 @@
 * deprecate `s3_output` as it does not fit into new architecture
 * deprecate `http_output` as it does not fit into new architecture
 * make confluentkafka_output store Event class based objects
+* add new class `Pipeline` to ng module
 
 ### Bugfix
 
