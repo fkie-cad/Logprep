@@ -2,6 +2,7 @@
 from unittest import mock
 
 import pytest
+from pyparsing import Iterator
 
 from logprep.factory import Factory
 from logprep.ng.event.event_state import EventStateType
@@ -69,18 +70,10 @@ class TestPipeline:
     def test_init(self, input_connector, processors):
         pipeline = Pipeline(input_connector, processors)
         assert isinstance(pipeline, Pipeline)
-
-    def test_process_event(self, input_connector, processors):
-        pipeline = Pipeline(input_connector, processors)
-        event = next(input_connector)
-        processed_event = pipeline.process_event(event)
-
-        assert isinstance(processed_event, LogEvent)
-        assert "generic added tag" in processed_event.get_dotted_field_value("event.tags")
+        assert isinstance(pipeline, Iterator)
 
     def test_process_pipeline_success(self, input_connector, processors):
-        pipeline = Pipeline(input_connector, processors)
-        processed_events = list(pipeline.process_pipeline())
+        processed_events = list(Pipeline(input_connector, processors))
 
         for event in processed_events:
             assert isinstance(event, LogEvent)
@@ -93,7 +86,7 @@ class TestPipeline:
             processors[0], "_apply_rules", side_effect=[None, Exception("Processing error")]
         ):
             pipeline = Pipeline(input_connector, processors)
-            processed_events = list(pipeline.process_pipeline())
+            processed_events = list(pipeline)
 
         assert len(processed_events[0].errors) == 0
         assert len(processed_events[1].errors) == 1
@@ -102,7 +95,7 @@ class TestPipeline:
 
     def test_process_pipeline_generates_extra_data(self, input_connector, processors):
         pipeline = Pipeline(input_connector, processors)
-        processed_events = list(pipeline.process_pipeline())
+        processed_events = list(pipeline)
 
         for event in processed_events:
             assert isinstance(event, LogEvent)
@@ -115,22 +108,22 @@ class TestPipeline:
     def test_process_pipeline_none_input(self, processors):
         empty_input = iter([None, None, None])
         pipeline = Pipeline(empty_input, processors)
-        processed_events = list(pipeline.process_pipeline())
+        processed_events = list(pipeline)
         assert not processed_events
 
     def test_process_pipeline_empty_input(self, processors):
         empty_input = iter([])
         pipeline = Pipeline(empty_input, processors)
-        processed_events = list(pipeline.process_pipeline())
+        processed_events = list(pipeline)
         assert not processed_events
 
     def test_process_pipeline_empty_events_in_input(self, processors):
         empty_input = iter([LogEvent({}, original=b"") for _ in range(5)])
         pipeline = Pipeline(empty_input, processors)
-        processed_events = list(pipeline.process_pipeline())
+        processed_events = list(pipeline)
         assert not processed_events
 
-    def test_process_pipeline_breaks_processing_of_empty_events_during_processing(
+    def test_empty_documents_are_not_forwarded_to_other_processors(
         self, input_connector, processors
     ):
         with mock.patch.object(
@@ -138,7 +131,7 @@ class TestPipeline:
         ):
             with mock.patch.object(processors[1], "process"):
                 pipeline = Pipeline(input_connector, processors)
-                processed_events = list(pipeline.process_pipeline())
+                processed_events = list(pipeline)
                 assert len(processed_events) == 3
                 assert processed_events[0].data == {}
                 assert processors[0].process.call_count == 3

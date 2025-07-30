@@ -9,7 +9,7 @@ from logprep.ng.abc.processor import Processor
 from logprep.ng.event.log_event import LogEvent
 
 
-class Pipeline:
+class Pipeline(Iterator):
     """Pipeline class to process events through a series of processors.
     Examples:
         >>> from logprep.ng.event.log_event import LogEvent
@@ -28,7 +28,7 @@ class Pipeline:
         >>>
         >>> # Create and run pipeline
         >>> pipeline = Pipeline(iter(events), processors)
-        >>> processed_events = list(pipeline.process_pipeline())
+        >>> processed_events = list(pipeline)
         >>> len(processed_events)
         2
         >>> processed_events[0].data["processed"]
@@ -41,16 +41,19 @@ class Pipeline:
         self._input = input_connector
         self._processors = processors
 
-    def process_pipeline(self) -> Generator[LogEvent, None, None]:
-        """processes the Pipeline"""
+    def __iter__(self) -> Generator[LogEvent, None, None]:
+        """Iterate over processed events."""
         while True:
             events = (event for event in self._input if event is not None and event.data)
             batch = list(islice(events, 10))
             if not batch:
                 break
-            yield from map(self.process_event, batch)
+            yield from map(self._process_event, batch)
 
-    def process_event(self, event: LogEvent) -> LogEvent:
+    def __next__(self):
+        return self._process_event(next(self._input))
+
+    def _process_event(self, event: LogEvent) -> LogEvent:
         """process all processors for one event"""
         event.state.next_state()
         for processor in self._processors:
