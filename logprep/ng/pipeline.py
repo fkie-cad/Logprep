@@ -54,7 +54,13 @@ class Pipeline(Iterator):
             yield from map(self._process_event, batch)
 
     def __next__(self):
-        return self._process_event(next(self._input))
+        """Get the next processed event."""
+        try:
+            while (next_event := next(self._input)) is None or not next_event.data:
+                continue
+        except StopIteration:
+            return None
+        return self._process_event(next_event)
 
     def _process_event(self, event: LogEvent) -> LogEvent:
         """process all processors for one event"""
