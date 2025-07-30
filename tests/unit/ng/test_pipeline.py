@@ -3,6 +3,7 @@ from typing import Iterator
 from unittest import mock
 
 import pytest
+from pyparsing import Iterator
 
 from logprep.factory import Factory
 from logprep.ng.event.event_state import EventStateType
