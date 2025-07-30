@@ -16,7 +16,7 @@ class DummyEvent(Event):
 
 class TestFilteredEvents(TestEventClass):
 
-    def test_sre_event_initialisation(self) -> None:
+    def test_sre_event_initialization(self) -> None:
         outputs = ({"name": "sre_topic"},)
         data = {"foo": "bar"}
         filtered_event = FilteredEvent(data=data, outputs=outputs)

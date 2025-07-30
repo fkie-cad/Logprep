@@ -16,7 +16,7 @@ class DummyEvent(Event):
 
 class TestSreEvents(TestEventClass):
 
-    def test_sre_event_initialisation(self) -> None:
+    def test_sre_event_initialization(self) -> None:
         outputs = ({"name": "sre_topic"},)
         data = {"foo": "bar"}
         sre_event = SreEvent(data=data, outputs=outputs)
