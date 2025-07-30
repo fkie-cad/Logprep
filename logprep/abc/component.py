@@ -7,7 +7,7 @@ import sys
 import time
 from abc import ABC
 from functools import cached_property
-from typing import Callable
+from typing import Callable, Literal
 
 import msgspec
 from attr import define, field, validators
@@ -72,7 +72,7 @@ class Component(ABC):
         """Labels for the metrics"""
         return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
 
-    def __init__(self, name: str, configuration: "Component.Config", pipeline_index: int = None):
+    def __init__(self, name: str, configuration: "Config", pipeline_index: int = None):
         self._config = configuration
         self.name = name
         self.pipeline_index = pipeline_index

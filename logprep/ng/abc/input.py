@@ -21,6 +21,7 @@ from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.event import EventBacklog
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -266,7 +267,7 @@ class Input(Connector):
     def __init__(
         self,
         name: str,
-        configuration: Literal["Config"],
+        configuration: Literal["Input.Config"],
         pipeline_index: int | None = None,
     ) -> None:
         self.event_backlog: EventBacklog | None = None
@@ -391,8 +392,27 @@ class Input(Connector):
         (event, raw_event, metadata)
         """
 
+    def _register_failed_event(
+        self,
+        event: dict | None,
+        raw_event: bytes | None,
+        metadata: dict | None,
+        error: Exception,
+    ) -> None:
+        """Helper method to register the failed event to event backlog."""
+
+        error_log_event = LogEvent(
+            data=event if isinstance(event, dict) else {},
+            original=raw_event if raw_event is not None else b"",
+            metadata=metadata,
+        )
+        error_log_event.errors.append(error)
+        error_log_event.state.current_state = EventStateType.FAILED
+
+        self.event_backlog.register(events=[error_log_event])  # type: ignore[union-attr]
+
     @Metric.measure_time()
-    def get_next(self, timeout: float) -> dict | None:
+    def get_next(self, timeout: float) -> LogEvent | None:
         """Return the next document
 
         Parameters
@@ -402,48 +422,56 @@ class Input(Connector):
 
         Returns
         -------
-        input : Event, None
+        input : LogEvent, None
             Input log data.
-
-        Raises
-        ------
-        TimeoutWhileWaitingForInputError
-            After timeout (usually a fraction of seconds) if no input data was available by then.
         """
 
-        event, raw_event, metadata = self._get_event(timeout)
-
-        if event is None:
-            return None
-
-        self.metrics.number_of_processed_events += 1
-
-        if not isinstance(event, dict):
-            raise CriticalInputError(self, "not a dict", event)
+        event: dict | None = None
+        raw_event: bytearray | None = None
+        metadata: dict | None = None
 
         try:
-            if self._add_full_event_to_target_field:
-                self._write_full_event_to_target_field(event, raw_event)
-            if self._add_hmac:
-                event = self._add_hmac_to(event, raw_event)
-            if self._add_version_info:
-                self._add_version_information_to_event(event)
-            if self._add_log_arrival_time_information:
-                self._add_arrival_time_information_to_event(event)
-            if self._add_log_arrival_timedelta_information:
-                self._add_arrival_timedelta_information_to_event(event)
-            if self._add_env_enrichment:
-                self._add_env_enrichment_to_event(event)
-        except FieldExistsWarning as error:
-            raise CriticalInputError(self, error.args[0], event) from error
+            event, raw_event, metadata = self._get_event(timeout)
+
+            if event is None:
+                return None
+
+            if not isinstance(event, dict):
+                raise CriticalInputError(self, "not a dict", event)
+
+            self.metrics.number_of_processed_events += 1
+
+            try:
+                if self._add_full_event_to_target_field:
+                    self._write_full_event_to_target_field(event, raw_event)
+                if self._add_hmac:
+                    event = self._add_hmac_to(event, raw_event)
+                if self._add_version_info:
+                    self._add_version_information_to_event(event)
+                if self._add_log_arrival_time_information:
+                    self._add_arrival_time_information_to_event(event)
+                if self._add_log_arrival_timedelta_information:
+                    self._add_arrival_timedelta_information_to_event(event)
+                if self._add_env_enrichment:
+                    self._add_env_enrichment_to_event(event)
+            except FieldExistsWarning as error:
+                raise CriticalInputError(self, error.args[0], event) from error
+        except CriticalInputError as error:
+            self._register_failed_event(
+                event=event,
+                raw_event=raw_event,
+                metadata=metadata,
+                error=error,
+            )
+            return None
 
         log_event = LogEvent(
             data=event,
             original=raw_event,
             metadata=metadata,
         )
-        self.event_backlog.register(events=[log_event])  # type: ignore[union-attr]
 
+        self.event_backlog.register(events=[log_event])  # type: ignore[union-attr]
         return log_event
 
     def batch_finished_callback(self) -> None:

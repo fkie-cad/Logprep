@@ -16,6 +16,7 @@ from confluent_kafka import (  # type: ignore
     KafkaException,
 )
 
+from logprep.abc.connector import Connector
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.input import (
@@ -25,6 +26,7 @@ from logprep.ng.abc.input import (
     InputWarning,
 )
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
+from logprep.ng.event.event_state import EventStateType
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
 )
@@ -84,6 +86,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     ):
         input_config = deepcopy(self.CONFIG)
         kafka_input = Factory.create({"test": input_config})
+        kafka_input._wait_for_health = mock.MagicMock()
+        kafka_input.setup()
 
         mock_kafka_message = mock.MagicMock()
         mock_kafka_message.error.return_value = KafkaError(
@@ -99,14 +103,13 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_consumer.poll.return_value = mock_kafka_message
         mock_consumer_cls.return_value = mock_consumer
 
-        expected_msg = (
-            "CriticalInputError in ConfluentKafkaInput (test) - "
-            "Kafka Input: testserver:9092: "
-            "A confluent-kafka record contains an error code -> "
-            "event was written to error output if configured"
+        assert kafka_input.get_next(1) is None
+
+        expected_error_message = "A confluent-kafka record contains an error code"
+        self.check_input_registered_failed_event_with_message(
+            connector=kafka_input,
+            expected_error_message=expected_error_message,
         )
-        with pytest.raises(CriticalInputError, match=re.escape(expected_msg)):
-            _ = kafka_input.get_next(1)
 
         kafka_input.shut_down()
 
@@ -165,31 +168,55 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
         kafka_input.shut_down()
 
-    def test_get_next_raises_critical_input_error_if_not_a_dict(self):
-        with mock.patch.object(self.object, "_consumer") as mock_consumer:
-            mock_record = mock.MagicMock()
+    @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
+    def test_get_next_raises_critical_input_error_if_not_a_dict(self, mock_consumer):
+        input_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test": input_config})
+        connector._wait_for_health = mock.MagicMock()
+        connector.setup()
 
-            mock_record.error.return_value = None
-            mock_record.partition.return_value = 1
-            mock_record.offset.return_value = 42
-            mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
+        mock_record = mock.MagicMock()
 
-            mock_consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.error.return_value = None
+        mock_record.partition.return_value = 1
+        mock_record.offset.return_value = 42
+        mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
 
-            with pytest.raises(CriticalInputError, match=r"not a dict"):
-                self.object.get_next(1)
+        mock_consumer.poll = mock.MagicMock(return_value=mock_record)
 
-    def test_get_next_raises_critical_input_error_if_invalid_json(self):
-        with mock.patch.object(self.object, "_consumer") as mock_consumer:
-            mock_record = mock.MagicMock()
+        assert connector.get_next(1) is None
 
-            mock_record.error.return_value = None
-            mock_record.value.return_value = "I'm not valid json".encode("utf8")
+        expected_error_message = "A confluent-kafka record contains an error code"
+        self.check_input_registered_failed_event_with_message(
+            connector=connector,
+            expected_error_message=expected_error_message,
+        )
 
-            mock_consumer.poll = mock.MagicMock(return_value=mock_record)
+        connector.shut_down()
 
-            with pytest.raises(CriticalInputError, match=r"not a valid json"):
-                self.object.get_next(1)
+    @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
+    def test_get_next_raises_critical_input_error_if_invalid_json(self, mock_consumer):
+        input_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test": input_config})
+        connector._wait_for_health = mock.MagicMock()
+        connector.setup()
+
+        mock_record = mock.MagicMock()
+
+        mock_record.error.return_value = None
+        mock_record.value.return_value = "I'm not valid json".encode("utf8")
+
+        mock_consumer.poll = mock.MagicMock(return_value=mock_record)
+
+        assert connector.get_next(1) is None
+
+        expected_error_message = "A confluent-kafka record contains an error code"
+        self.check_input_registered_failed_event_with_message(
+            connector=connector,
+            expected_error_message=expected_error_message,
+        )
+
+        connector.shut_down()
 
     def test_get_event_returns_event_and_raw_event(self):
         with mock.patch.object(self.object, "_consumer") as mock_consumer:
@@ -272,13 +299,22 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             connector.setup()
 
     def test_get_next_raises_critical_input_parsing_error(self):
+        input_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test": input_config})
+        connector._wait_for_health = mock.MagicMock()
+        connector.setup()
+
         return_value = b'{"invalid": "json'
         mock_message = mock.MagicMock()
         mock_message.value.return_value = return_value
 
-        with mock.patch.object(self.object, "_get_raw_event", return_value=mock_message):
-            with pytest.raises(CriticalInputParsingError, match="is not a valid json"):
-                self.object.get_next(0.01)
+        with mock.patch.object(connector, "_get_raw_event", return_value=mock_message):
+            assert connector.get_next(1) is None
+
+            self.check_input_registered_failed_event_with_message(
+                connector=connector,
+                expected_error_message="Input record value is not a valid json string",
+            )
 
     def test_commit_callback_raises_warning_error_and_counts_failures(self):
         with pytest.raises(InputWarning, match="Could not commit offsets"):

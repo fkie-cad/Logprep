@@ -61,6 +61,32 @@ class BaseInputTestCase(BaseConnectorTestCase):
             side_effect=side_effect,
         )
 
+    def check_input_registered_failed_event_with_message(
+        self,
+        connector: Connector,
+        expected_error_message: str,
+        expected_event_data: dict | None = None,
+    ):
+        """Helper method to reduce code duplication by checking if a failed event
+        is registered to input connectors event backlog with expected error message."""
+
+        if expected_event_data is None:
+            expected_event_data = {}
+
+        error_events = [
+            error_event
+            for error_event in connector.event_backlog.backlog
+            if error_event.state.current_state is EventStateType.FAILED
+        ]
+
+        assert len(error_events) == 1
+
+        failed_event = error_events[0]
+        assert failed_event.data == expected_event_data
+        assert len(failed_event.errors) == 1
+        assert isinstance(failed_event.errors[0], CriticalInputError)
+        assert failed_event.errors[0].message == expected_error_message
+
     def test_is_input_instance(self):
         assert isinstance(self.object, Input)
 
@@ -268,10 +294,18 @@ class BaseInputTestCase(BaseConnectorTestCase):
             connector._get_event = mock.MagicMock(
                 return_value=(return_value.copy(), raw_encoded_test_event, None)
             )
-            critical_input_error_msg = "Couldn't find the hmac target field 'non_existing_field'"
-            with pytest.raises(CriticalInputError, match=critical_input_error_msg) as error:
-                _ = connector.get_next(1)
-            assert error.value.raw_input == b'{"message":{"with_subfield":"content"}}'
+            expected_error_message = "Couldn't find the hmac target field 'non_existing_field'"
+
+            assert connector.get_next(1) is None
+            assert len(connector.event_backlog.backlog) == 1
+
+            subscriptable_event_backlog = list(connector.event_backlog.backlog)
+            failed_event = subscriptable_event_backlog[0]
+            assert failed_event.data["message"]["with_subfield"] == "content"
+            assert failed_event.state.current_state == EventStateType.FAILED
+            assert len(failed_event.errors) == 1
+            assert isinstance(failed_event.errors[0], CriticalInputError)
+            assert failed_event.errors[0].message == expected_error_message
 
             connector.shut_down()
 
@@ -327,29 +361,49 @@ class BaseInputTestCase(BaseConnectorTestCase):
             connector.shut_down()
 
     def test_get_next_with_hmac_result_in_already_existing_subfield(self):
-        connector_config = deepcopy(self.CONFIG)
-        connector_config.update(
-            {
-                "preprocessing": {
-                    "hmac": {
-                        "target": "<RAW_MSG>",
-                        "key": "hmac-test-key",
-                        "output_field": "message",
+        test_event = {"message": {"with_subfield": "content"}}
+
+        with self.patch_documents_property(document=test_event):
+            connector_config = deepcopy(self.CONFIG)
+            connector_config.update(
+                {
+                    "preprocessing": {
+                        "hmac": {
+                            "target": "<RAW_MSG>",
+                            "key": "hmac-test-key",
+                            "output_field": "message",
+                        }
                     }
                 }
-            }
-        )
-        connector = Factory.create({"test connector": connector_config})
-        test_event = {"message": {"with_subfield": "content"}}
-        raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
-        connector._get_event = mock.MagicMock(
-            return_value=(test_event.copy(), raw_encoded_test_event, None)
-        )
-        with pytest.raises(CriticalInputError, match="could not be written") as error:
-            _ = connector.get_next(1)
-        assert error.value.raw_input == {"message": {"with_subfield": "content"}}
+            )
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
 
-        connector.shut_down()
+            raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
+            connector._get_event = mock.MagicMock(
+                return_value=(test_event.copy(), raw_encoded_test_event, None)
+            )
+
+            expected_error_message = (
+                "FieldExistsWarning: The following fields could not be written, because one or "
+                "more subfields existed and could not be extended: message, event={'message': "
+                "{'with_subfield': 'content'}}"
+            )
+
+            assert connector.get_next(1) is None
+            assert len(connector.event_backlog.backlog) == 1
+
+            subscriptable_event_backlog = list(connector.event_backlog.backlog)
+            failed_event = subscriptable_event_backlog[0]
+            assert failed_event.data == test_event
+            assert failed_event.state.current_state == EventStateType.FAILED
+            assert len(failed_event.errors) == 1
+            assert isinstance(failed_event.errors[0], CriticalInputError)
+            assert failed_event.errors[0].message == expected_error_message
+
+            connector.shut_down()
 
     def test_get_next_without_hmac(self):
         return_value = {"message": "with_content"}
@@ -395,39 +449,78 @@ class BaseInputTestCase(BaseConnectorTestCase):
             connector.shut_down()
 
     def test_pipeline_preprocessing_does_not_add_versions_if_target_field_exists_already(self):
-        preprocessing_config = {
-            "preprocessing": {
-                "version_info_target_field": "version_info",
-                "hmac": {"target": "", "key": "", "output_field": ""},
-            }
-        }
-        connector_config = deepcopy(self.CONFIG)
-        connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "version_info": "something random"}
-        connector._get_event = mock.MagicMock(return_value=(test_event, None, None))
-        with pytest.raises(CriticalInputError, match="could not be written") as error:
-            _ = connector.get_next(0.01)
-        assert error.value.raw_input == {"any": "content", "version_info": "something random"}
 
-        connector.shut_down()
+        with self.patch_documents_property(document=test_event):
+            preprocessing_config = {
+                "preprocessing": {
+                    "version_info_target_field": "version_info",
+                    "hmac": {"target": "", "key": "", "output_field": ""},
+                }
+            }
+            connector_config = deepcopy(self.CONFIG)
+            connector_config.update(preprocessing_config)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+            connector._get_event = mock.MagicMock(return_value=(test_event, None, None))
+
+            expected_error_message = (
+                "FieldExistsWarning: The following fields could not be written, because one or "
+                "more subfields existed and could not be extended: version_info, "
+                "event={'any': 'content', 'version_info': 'something random'}"
+            )
+
+            assert connector.get_next(1) is None
+            assert len(connector.event_backlog.backlog) == 1
+
+            subscriptable_event_backlog = list(connector.event_backlog.backlog)
+            failed_event = subscriptable_event_backlog[0]
+            assert failed_event.data == test_event
+            assert failed_event.state.current_state == EventStateType.FAILED
+            assert len(failed_event.errors) == 1
+            assert isinstance(failed_event.errors[0], CriticalInputError)
+            assert failed_event.errors[0].message == expected_error_message
+
+            connector.shut_down()
 
     def test_pipeline_preprocessing_only_version_information(self):
-        preprocessing_config = {
-            "preprocessing": {
-                "version_info_target_field": "version_info",
-            }
-        }
-        connector_config = deepcopy(self.CONFIG)
-        connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "version_info": "something random"}
-        connector._get_event = mock.MagicMock(return_value=(test_event, None, None))
-        with pytest.raises(CriticalInputError, match="could not be written") as error:
-            _ = connector.get_next(0.01)
-        assert error.value.raw_input == {"any": "content", "version_info": "something random"}
 
-        connector.shut_down()
+        with self.patch_documents_property(document=test_event):
+            preprocessing_config = {
+                "preprocessing": {
+                    "version_info_target_field": "version_info",
+                }
+            }
+            connector_config = deepcopy(self.CONFIG)
+            connector_config.update(preprocessing_config)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+
+            connector._get_event = mock.MagicMock(return_value=(test_event, None, None))
+
+            expected_error_message = (
+                "FieldExistsWarning: The following fields could not be written, because one or "
+                "more subfields existed and could not be extended: version_info, "
+                "event={'any': 'content', 'version_info': 'something random'}"
+            )
+
+            assert connector.get_next(1) is None
+            assert len(connector.event_backlog.backlog) == 1
+
+            subscriptable_event_backlog = list(connector.event_backlog.backlog)
+            failed_event = subscriptable_event_backlog[0]
+            assert failed_event.data == test_event
+            assert failed_event.state.current_state == EventStateType.FAILED
+            assert len(failed_event.errors) == 1
+            assert isinstance(failed_event.errors[0], CriticalInputError)
+            assert failed_event.errors[0].message == expected_error_message
+
+            connector.shut_down()
 
     def test_get_raw_event_is_callable(self):
         # should be overwritten for special implementation
@@ -490,21 +583,40 @@ class BaseInputTestCase(BaseConnectorTestCase):
     def test_pipeline_preprocessing_does_not_add_log_arrival_time_if_target_field_exists_already(
         self,
     ):
-        preprocessing_config = {
-            "preprocessing": {
-                "log_arrival_time_target_field": "arrival_time",
-            }
-        }
-        connector_config = deepcopy(self.CONFIG)
-        connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "arrival_time": "does not matter"}
-        connector._get_event = mock.MagicMock(return_value=(test_event, None, None))
-        with pytest.raises(CriticalInputError, match="could not be written") as error:
-            _ = connector.get_next(0.01)
-        assert error.value.raw_input == {"any": "content", "arrival_time": "does not matter"}
 
-        connector.shut_down()
+        with self.patch_documents_property(document=test_event):
+            preprocessing_config = {
+                "preprocessing": {
+                    "log_arrival_time_target_field": "arrival_time",
+                }
+            }
+            connector_config = deepcopy(self.CONFIG)
+            connector_config.update(preprocessing_config)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+            connector._get_event = mock.MagicMock(return_value=(test_event, None, None))
+
+            expected_error_message = (
+                "FieldExistsWarning: The following fields could not be written, because one "
+                "or more subfields existed and could not be extended: arrival_time, "
+                "event={'any': 'content', 'arrival_time': 'does not matter'}"
+            )
+
+            assert connector.get_next(1) is None
+            assert len(connector.event_backlog.backlog) == 1
+
+            subscriptable_event_backlog = list(connector.event_backlog.backlog)
+            failed_event = subscriptable_event_backlog[0]
+            assert failed_event.data == test_event
+            assert failed_event.state.current_state == EventStateType.FAILED
+            assert len(failed_event.errors) == 1
+            assert isinstance(failed_event.errors[0], CriticalInputError)
+            assert failed_event.errors[0].message == expected_error_message
+
+            connector.shut_down()
 
     def test_pipeline_preprocessing_add_log_arrival_time_if_target_parent_field_exists_already_and_is_dict(
         self,
