@@ -59,7 +59,7 @@ class Component(ABC):
 
     # instance attributes
     name: str
-    pipeline_index: int
+    pipeline_index: int | None
     _config: Config
 
     # class attributes
@@ -72,7 +72,7 @@ class Component(ABC):
         """Labels for the metrics"""
         return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
 
-    def __init__(self, name: str, configuration: "Config", pipeline_index: int = None):
+    def __init__(self, name: str, configuration: "Config", pipeline_index: int | None = None):
         self._config = configuration
         self.name = name
         self.pipeline_index = pipeline_index
@@ -149,9 +149,7 @@ class Component(ABC):
         logger.debug("Checking health of %s", self.name)
         return True
 
-    def _schedule_task(
-        self, task: Callable, seconds: int, args: tuple = None, kwargs: dict = None
-    ) -> None:
+    def _schedule_task(self, task: Callable, seconds: int, *args, **kwargs) -> None:
         """Schedule a task to run periodically during pipeline run.
         The task is run in :code:`pipeline.py` in the :code:`process_pipeline` method.
 
