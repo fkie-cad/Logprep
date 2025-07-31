@@ -18,11 +18,12 @@ import responses
 from falcon import testing
 from requests.auth import _basic_auth_str
 
-from logprep.abc.input import FatalInputError
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.framework.pipeline_manager import ThrottlingQueue
+from logprep.ng.abc.input import FatalInputError
 from logprep.ng.connector.http.input import HttpInput
+from logprep.ng.event.log_event import LogEvent
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from tests.unit.ng.connector.base import BaseInputTestCase
 
@@ -80,15 +81,19 @@ class TestHttpConnector(BaseInputTestCase):
     ]
 
     def setup_method(self):
+        super().setup_method()
+
+        self.object.pipeline_index = 1
+
         HttpInput.messages = ThrottlingQueue(
             ctx=multiprocessing.get_context(), maxsize=self.CONFIG.get("message_backlog_size")
         )
-        super().setup_method()
-        self.object.pipeline_index = 1
+
         with mock.patch(
             "logprep.ng.connector.http.input.http.ThreadingHTTPServer", new=mock.MagicMock()
         ):
             self.object.setup()
+
         self.target = self.object.target
         self.client = testing.TestClient(self.object.app)
 
@@ -103,6 +108,7 @@ class TestHttpConnector(BaseInputTestCase):
     def test_no_pipeline_index(self):
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config})
+
         try:
             connector.setup()
             assert False
@@ -215,7 +221,7 @@ class TestHttpConnector(BaseInputTestCase):
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
         self.client.post("/json", json=data)
-        assert self.object.get_next(0.001) == data
+        assert self.object.get_next(0.001).data == data
 
     def test_get_next_returns_first_in_first_out(self):
         data = [
@@ -225,9 +231,9 @@ class TestHttpConnector(BaseInputTestCase):
         ]
         for message in data:
             self.client.post("/json", json=message)
-        assert self.object.get_next(0.001) == data[0]
-        assert self.object.get_next(0.001) == data[1]
-        assert self.object.get_next(0.001) == data[2]
+        assert self.object.get_next(0.001).data == data[0]
+        assert self.object.get_next(0.001).data == data[1]
+        assert self.object.get_next(0.001).data == data[2]
 
     def test_get_next_returns_first_in_first_out_for_mixed_endpoints(self):
         data = [
@@ -241,9 +247,9 @@ class TestHttpConnector(BaseInputTestCase):
                 self.client.post("/json", json=post_data)
             if endpoint == "plaintext":
                 self.client.post("/plaintext", body=post_data)
-        assert self.object.get_next(0.001) == data[0].get("data")
-        assert self.object.get_next(0.001) == {"message": data[1].get("data")}
-        assert self.object.get_next(0.001) == data[2].get("data")
+        assert self.object.get_next(0.001).data == data[0].get("data")
+        assert self.object.get_next(0.001).data == {"message": data[1].get("data")}
+        assert self.object.get_next(0.001).data == data[2].get("data")
 
     def test_get_next_returns_none_for_empty_queue(self):
         assert self.object.get_next(0.001) is None
@@ -356,13 +362,16 @@ class TestHttpConnector(BaseInputTestCase):
         test_event = "the content"
         self.client.post("/plaintext", body=test_event)
 
-        expected_event = {
-            "message": "the content",
-            "Hmac": {
-                "compressed_base64": "eJyrVs9NLS5OTE9Vt1JQL8lIVUjOzytJzStRrwUAem8JMA==",
-                "hmac": "f0221a62c4ea38a4cc3af176faba010212e0ce7e0052c71fe726cbf3cb03dfd1",
+        expected_event = LogEvent(
+            data={
+                "message": "the content",
+                "Hmac": {
+                    "compressed_base64": "eJyrVs9NLS5OTE9Vt1JQL8lIVUjOzytJzStRrwUAem8JMA==",
+                    "hmac": "f0221a62c4ea38a4cc3af176faba010212e0ce7e0052c71fe726cbf3cb03dfd1",
+                },
             },
-        }
+            original=b"",
+        )
         connector_next_msg = connector.get_next(1)
         assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
 
@@ -585,7 +594,7 @@ class TestHttpConnector(BaseInputTestCase):
 
         dummy_input_iterator = self.object(timeout=0.001)
 
-        assert next(dummy_input_iterator) == {"message": "first message"}
-        assert next(dummy_input_iterator) == {"message": "second message"}
-        assert next(dummy_input_iterator) == {"message": "third message"}
+        assert next(dummy_input_iterator).data == {"message": "first message"}
+        assert next(dummy_input_iterator).data == {"message": "second message"}
+        assert next(dummy_input_iterator).data == {"message": "third message"}
         assert next(dummy_input_iterator) is None

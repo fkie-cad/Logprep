@@ -22,12 +22,11 @@ Example
 
 import copy
 from functools import cached_property
-from typing import Optional
 
 from attr import field, validators
 from attrs import define
 
-from logprep.abc.input import Input
+from logprep.ng.abc.input import Input
 from logprep.ng.connector.dummy.input import DummyInput
 from logprep.util.json_handling import parse_json
 

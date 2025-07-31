@@ -64,7 +64,7 @@ class TestPreDetector(BaseProcessorTestCase):
             )
         ]
         event = self.object.process(event)
-        detection_results = event.extra_data[0]
+        _ = event.extra_data[0]
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
         document = {"A": "foo X bar Y baz"}

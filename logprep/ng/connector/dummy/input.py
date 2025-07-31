@@ -21,13 +21,11 @@ Example
 
 import copy
 from functools import cached_property
-from typing import List, Optional
 
 from attr import field, validators
 from attrs import define
 
-from logprep.abc.input import SourceDisconnectedWarning
-from logprep.ng.abc.input import Input
+from logprep.ng.abc.input import Input, SourceDisconnectedWarning
 
 
 class DummyInput(Input):
@@ -49,6 +47,7 @@ class DummyInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Retrieve next document from configuration and raise warning if found"""
+
         if not self._documents:
             if not self._config.repeat_documents:
                 raise SourceDisconnectedWarning(self, "no documents left")
@@ -58,4 +57,5 @@ class DummyInput(Input):
 
         if (document.__class__ == type) and issubclass(document, Exception):
             raise document
-        return document, None
+
+        return document, None, None

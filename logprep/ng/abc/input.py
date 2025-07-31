@@ -8,6 +8,8 @@ import json
 import os
 import zlib
 from abc import abstractmethod
+from collections.abc import Iterator
+from copy import deepcopy
 from functools import cached_property, partial
 from hmac import HMAC
 from typing import Literal, Optional, Self
@@ -16,13 +18,11 @@ from zoneinfo import ZoneInfo
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
-from logprep.abc.input import (
-    CriticalInputError,
-    FullEventConfig,
-    HmacConfig,
-    TimeDeltaConfig,
-)
+from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
+from logprep.ng.abc.event import EventBacklog
+from logprep.ng.event.event_state import EventStateType
+from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.helper import add_fields_to, get_dotted_field_value
@@ -30,7 +30,93 @@ from logprep.util.time import UTC, TimeParser
 from logprep.util.validators import dict_structure_validator
 
 
-class InputIterator:
+class InputError(LogprepException):
+    """Base class for Input related exceptions."""
+
+    def __init__(self, input_connector: "Input", message: str) -> None:
+        input_connector.metrics.number_of_errors += 1
+        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
+
+
+class CriticalInputError(InputError):
+    """A significant error occurred - log and don't process the event."""
+
+    def __init__(self, input_connector: "Input", message, raw_input):
+        super().__init__(
+            input_connector, f"{message} -> event was written to error output if configured"
+        )
+        self.raw_input = deepcopy(raw_input)  # is written to error output
+        self.message = message
+
+
+class CriticalInputParsingError(CriticalInputError):
+    """The input couldn't be parsed correctly."""
+
+
+class FatalInputError(InputError):
+    """Must not be catched."""
+
+
+class InputWarning(LogprepException):
+    """May be catched but must be displayed to the user/logged."""
+
+    def __init__(self, input_connector: "Input", message: str) -> None:
+        input_connector.metrics.number_of_warnings += 1
+        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
+
+
+class SourceDisconnectedWarning(InputWarning):
+    """Lost (or failed to establish) contact with the source."""
+
+
+@define(kw_only=True)
+class HmacConfig:
+    """Hmac Configurations
+    The hmac itself will be calculated with python's hashlib.sha256 algorithm and the compression
+    is based on the zlib library.
+    """
+
+    target: str = field(validator=validators.instance_of(str))
+    """Defines a field inside the log message which should be used for the hmac
+    calculation. If the target field is not found or does not exists an error message
+    is written into the configured output field. If the hmac should be calculated on
+    the full incoming raw message instead of a subfield the target option should be set to
+    :code:`<RAW_MSG>`."""
+    key: str = field(validator=validators.instance_of(str))
+    """The secret key that will be used to calculate the hmac."""
+    output_field: str = field(validator=validators.instance_of(str))
+    """The parent name of the field where the hmac result should be written to in the
+    original incoming log message. As subfields the result will have a field called :code:`hmac`,
+    containing the calculated hmac, and :code:`compressed_base64`, containing the original message
+    that was used to calculate the hmac in compressed and base64 encoded. In case the output
+    field exists already in the original message an error is raised."""
+
+
+@define(kw_only=True)
+class TimeDeltaConfig:
+    """TimeDelta Configurations
+    Works only if the preprocessor log_arrival_time_target_field is set."""
+
+    target_field: str = field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
+    """Defines the fieldname to which the time difference should be written to."""
+    reference_field: str = field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
+    """Defines a field with a timestamp that should be used for the time difference.
+    The calculation will be the arrival time minus the time of this reference field."""
+
+
+@define(kw_only=True)
+class FullEventConfig:
+    """Full Event Configurations
+    Works only if the preprocessor :code:`add_full_event_to_target_field` is set."""
+
+    format: str = field(validator=validators.in_(["dict", "str"]), default="str")
+    """Defines the Format in which the event should be written to the new field.
+    The default ist :code:`str`, which results in escaped json string"""
+    target_field: str = field(validator=validators.instance_of(str), default="event.original")
+    """Defines the fieldname which the event should be written to"""
+
+
+class InputIterator(Iterator):
     """Base Class for an input Iterator"""
 
     def __init__(self, input_connector: "Input", timeout: float):
@@ -181,10 +267,10 @@ class Input(Connector):
     def __init__(
         self,
         name: str,
-        configuration: Literal["Config"],
+        configuration: "Input.Config",
         pipeline_index: int | None = None,
     ) -> None:
-        self.backlog = SetEventBacklog()
+        self.event_backlog: EventBacklog | None = None
 
         super().__init__(name, configuration, pipeline_index)
 
@@ -212,6 +298,18 @@ class Input(Connector):
         """
 
         return InputIterator(self, timeout)
+
+    def setup(self):
+        """Initialize the input connector.
+
+        This method sets the event backlog to an instance of `SetEventBacklog`.
+        You can override this to configure a different event backlog type,
+        depending on the available configuration settings.
+        """
+
+        super().setup()
+
+        self.event_backlog = SetEventBacklog()
 
     @property
     def _add_hmac(self) -> bool:
@@ -291,11 +389,30 @@ class Input(Connector):
 
         Returns
         -------
-        (event, raw_event)
+        (event, raw_event, metadata)
         """
 
+    def _register_failed_event(
+        self,
+        event: dict | None,
+        raw_event: bytes | None,
+        metadata: dict | None,
+        error: Exception,
+    ) -> None:
+        """Helper method to register the failed event to event backlog."""
+
+        error_log_event = LogEvent(
+            data=event if isinstance(event, dict) else {},
+            original=raw_event if raw_event is not None else b"",
+            metadata=metadata,
+        )
+        error_log_event.errors.append(error)
+        error_log_event.state.current_state = EventStateType.FAILED
+
+        self.event_backlog.register(events=[error_log_event])  # type: ignore[union-attr]
+
     @Metric.measure_time()
-    def get_next(self, timeout: float) -> dict | None:
+    def get_next(self, timeout: float) -> LogEvent | None:
         """Return the next document
 
         Parameters
@@ -305,36 +422,57 @@ class Input(Connector):
 
         Returns
         -------
-        input : dict
+        input : LogEvent, None
             Input log data.
-
-        Raises
-        ------
-        TimeoutWhileWaitingForInputError
-            After timeout (usually a fraction of seconds) if no input data was available by then.
         """
-        event, raw_event = self._get_event(timeout)
-        if event is None:
-            return None
-        self.metrics.number_of_processed_events += 1
-        if not isinstance(event, dict):
-            raise CriticalInputError(self, "not a dict", event)
+
+        event: dict | None = None
+        raw_event: bytearray | None = None
+        metadata: dict | None = None
+
         try:
-            if self._add_full_event_to_target_field:
-                self._write_full_event_to_target_field(event, raw_event)
-            if self._add_hmac:
-                event = self._add_hmac_to(event, raw_event)
-            if self._add_version_info:
-                self._add_version_information_to_event(event)
-            if self._add_log_arrival_time_information:
-                self._add_arrival_time_information_to_event(event)
-            if self._add_log_arrival_timedelta_information:
-                self._add_arrival_timedelta_information_to_event(event)
-            if self._add_env_enrichment:
-                self._add_env_enrichment_to_event(event)
-        except FieldExistsWarning as error:
-            raise CriticalInputError(self, error.args[0], event) from error
-        return event
+            event, raw_event, metadata = self._get_event(timeout)
+
+            if event is None:
+                return None
+
+            if not isinstance(event, dict):
+                raise CriticalInputError(self, "not a dict", event)
+
+            self.metrics.number_of_processed_events += 1
+
+            try:
+                if self._add_full_event_to_target_field:
+                    self._write_full_event_to_target_field(event, raw_event)
+                if self._add_hmac:
+                    event = self._add_hmac_to(event, raw_event)
+                if self._add_version_info:
+                    self._add_version_information_to_event(event)
+                if self._add_log_arrival_time_information:
+                    self._add_arrival_time_information_to_event(event)
+                if self._add_log_arrival_timedelta_information:
+                    self._add_arrival_timedelta_information_to_event(event)
+                if self._add_env_enrichment:
+                    self._add_env_enrichment_to_event(event)
+            except FieldExistsWarning as error:
+                raise CriticalInputError(self, error.args[0], event) from error
+        except CriticalInputError as error:
+            self._register_failed_event(
+                event=event,
+                raw_event=raw_event,
+                metadata=metadata,
+                error=error,
+            )
+            return None
+
+        log_event = LogEvent(
+            data=event,
+            original=raw_event,
+            metadata=metadata,
+        )
+
+        self.event_backlog.register(events=[log_event])  # type: ignore[union-attr]
+        return log_event
 
     def batch_finished_callback(self) -> None:
         """Can be called by output connectors after processing a batch of one or more records."""
