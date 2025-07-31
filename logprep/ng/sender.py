@@ -12,6 +12,7 @@ class Sender(Iterator):
     def __init__(self, pipeline: Pipeline, outputs: list[Output], error_output: Output) -> None:
         self._pipeline = pipeline
         self._outputs = {output.name: output for output in outputs}
+        self._default_outputs = {output.name: output for output in outputs if output.default}
         self._error_output = error_output
 
     def __next__(self):
@@ -35,9 +36,8 @@ class Sender(Iterator):
         if event.extra_data:
             self._send_extra_data(event)
         if event.state.current_state == EventStateType.PROCESSED:
-            for _, output in self._outputs.items():
-                if output.default:
-                    output.store(event)
+            for _, output in self._default_outputs.items():
+                output.store(event)
         elif event.state.current_state == EventStateType.FAILED and self._error_output:
             self._error_output.store(event)
         return event

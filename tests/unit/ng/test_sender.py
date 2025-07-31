@@ -129,3 +129,16 @@ class TestSender:
             mock_process.side_effect = Exception("Processing error")
             events = list(sender)
             assert len(events) == 3
+
+    def test_sender_sends_processed_events_to_all_default_outputs(
+        self, pipeline, opensearch_output, kafka_output
+    ):
+        sender = Sender(
+            pipeline=pipeline,
+            outputs=[opensearch_output, kafka_output],
+            error_output=None,
+        )
+        events = list(sender)
+        assert len(events) == 3
+        assert len(opensearch_output.events) == 3
+        assert len(kafka_output.events) == 3
