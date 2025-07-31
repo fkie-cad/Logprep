@@ -263,7 +263,7 @@ class ConfluentKafkaInput(Input):
 
     __slots__ = ["_last_valid_record"]
 
-    def __init__(self, name: str, configuration: Literal["Input.Config"]) -> None:
+    def __init__(self, name: str, configuration: "Input.Config") -> None:
         super().__init__(name, configuration)
         self._last_valid_record = None
 

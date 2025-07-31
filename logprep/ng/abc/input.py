@@ -267,7 +267,7 @@ class Input(Connector):
     def __init__(
         self,
         name: str,
-        configuration: Literal["Input.Config"],
+        configuration: "Input.Config",
         pipeline_index: int | None = None,
     ) -> None:
         self.event_backlog: EventBacklog | None = None
