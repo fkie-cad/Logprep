@@ -34,6 +34,10 @@ class TestDomainResolver(BaseProcessorTestCase):
         "logprep_domain_resolver_unknown_domains",
     ]
 
+    def setup_method(self) -> None:
+        super().setup_method()
+        self.object._cache.clear()
+
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     def test_domain_to_ip_resolved_and_added(self, mock_gethostbyname):
         rule = {

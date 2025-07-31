@@ -14,9 +14,9 @@ from logprep.runner import Runner
 from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.context_managers import logqueue_listener, disable_loggers
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.helper import get_versions_string, print_fcolor
-from logprep.util.logging import LogprepMPQueueListener, logqueue
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.tag_yaml_loader import init_yaml_loader_tags
@@ -41,11 +41,8 @@ def _get_configuration(config_paths: tuple[str]) -> Configuration:
         config = Configuration.from_sources(config_paths)
         config.logger.setup_logging()
         logger = logging.getLogger("root")  # pylint: disable=redefined-outer-name
-        console_handler = console_logger.handlers[0]
-        listener = LogprepMPQueueListener(logqueue, console_handler)
-        listener.start()
-        logger.info("Log level set to '%s'", logging.getLevelName(logger.level))
-        listener.stop()
+        with logqueue_listener("console"):
+            logger.info("Log level set to '%s'", logging.getLevelName(logger.level))
         return config
     except InvalidConfigurationError as error:
         console_logger.error("InvalidConfigurationError: %s", error)
@@ -167,7 +164,8 @@ def test_rules(configs: tuple[str]) -> None:
     _get_configuration(configs)
     for config in configs:
         tester = AutoRuleTester(config)
-        tester.run()
+        with disable_loggers():
+            tester.run()
 
 
 def common_generate_options(func):
