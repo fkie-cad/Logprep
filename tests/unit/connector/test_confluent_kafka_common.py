@@ -16,7 +16,7 @@ KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 
 class CommonConfluentKafkaTestCase:
-    expected_metrics = []
+    expected_metrics: list = []
 
     def test_client_id_is_set_to_hostname(self):
         self.object.setup()
