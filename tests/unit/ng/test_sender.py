@@ -115,8 +115,11 @@ class TestSender:
         assert sender._pipeline == pipeline
         assert sender._outputs == {opensearch_output.name: opensearch_output}
         assert sender._error_output is None
+        assert sender._default_output == opensearch_output, "Default output should be the first one"
 
-    def test_sender_sends_events_to_output(self, pipeline, opensearch_output, kafka_output):
+    def test_sender_sends_events_and_extra_data_to_output(
+        self, pipeline, opensearch_output, kafka_output
+    ):
         sender = Sender(
             pipeline=pipeline, outputs=[opensearch_output, kafka_output], error_output=None
         )
@@ -124,6 +127,8 @@ class TestSender:
         assert len(events) == 3
         assert len(opensearch_output.events) == 3, "3 log events "
         assert len(kafka_output.events) == 1, "1 extra data event"
+        assert all(event.state == EventStateType.DELIVERED for event in opensearch_output.events)
+        assert all(event.state == EventStateType.DELIVERED for event in kafka_output.events)
 
     def test_sender_sends_failed_events_to_error_output(
         self, pipeline, opensearch_output, error_output, kafka_output
@@ -138,24 +143,3 @@ class TestSender:
             assert len(opensearch_output.events) == 0, "no events delivered"
             assert len(kafka_output.events) == 1, "1 extra data event"
             assert len(error_output.events) == 3, "3 failed events sent to error output"
-
-    def test_sender_sends_processed_events_to_all_default_outputs(
-        self, pipeline, opensearch_output, kafka_output
-    ):
-        sender = Sender(
-            pipeline=pipeline,
-            outputs=[opensearch_output, kafka_output],
-            error_output=None,
-        )
-        events = list(sender)
-        assert len(events) == 3
-        assert len(opensearch_output.events) == 3
-        assert len(kafka_output.events) == 3
-
-    def test_sender_sends_extra_data(self, pipeline, opensearch_output):
-        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
-        events = list(sender)
-        assert len(events) == 3, "only logevents should be returned"
-        assert all(isinstance(event, LogEvent) for event in events)
-        assert len(opensearch_output.events) == 4, "3 events + 1 extra data event"
-        assert all(event.state == EventStateType.DELIVERED for event in opensearch_output.events)
