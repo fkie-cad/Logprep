@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from itertools import islice
 from typing import Generator
 
+from logprep.ng.abc.event import ExtraDataEvent
 from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
@@ -29,8 +30,14 @@ class Sender(Iterator):
             yield from map(self._send, batch)
 
     def _send_extra_data(self, event: LogEvent) -> None:
-        for extra_data in event.extra_data:
-            pass
+        extra_datas: list[ExtraDataEvent] = event.extra_data
+        for extra_data in extra_datas:
+            for output in extra_data.outputs:
+                for output_name, output_target in output.items():
+                    if output_name in self._outputs:
+                        self._outputs[output_name].store_custom(extra_data, output_target)
+                    else:
+                        raise ValueError(f"Output {output_name} not configured.")
 
     def _send(self, event: LogEvent) -> LogEvent:
         if event.extra_data:
