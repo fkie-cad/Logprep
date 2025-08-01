@@ -29,6 +29,7 @@
 * deprecate `http_output` as it does not fit into new architecture
 * make confluentkafka_output store Event class based objects
 * add new class `Pipeline` to ng module
+* add new class `Sender` to ng module
 
 ### Bugfix
 
