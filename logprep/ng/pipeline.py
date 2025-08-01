@@ -54,7 +54,16 @@ class Pipeline(Iterator):
             yield from map(self._process_event, batch)
 
     def __next__(self):
-        """Get the next processed event."""
+        """
+       Return the next processed event or None if no valid event is found.
+
+       This method intentionally deviates from the standard Python iterator protocol.
+       Normally, __next__() must raise StopIteration to signal that there are no more
+       items. In this Pipeline, __next__() instead returns None when no valid event
+       is available. This design allows callers to check for "no event" without
+       handling StopIteration explicitly, but means the method is not strictly
+       iterator-compliant by design.
+       """
         try:
             while (next_event := next(self._input)) is None or not next_event.data:
                 continue
