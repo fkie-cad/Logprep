@@ -4,7 +4,6 @@ from collections.abc import Iterator
 from itertools import islice
 from typing import Generator
 
-from logprep.ng.abc.event import Event
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.log_event import LogEvent
 
@@ -38,7 +37,10 @@ class Pipeline(Iterator):
     """
 
     def __init__(
-        self, input_connector: Iterator[Event], processors: list[Processor], process_count: int = 10
+        self,
+        input_connector: Iterator[LogEvent],
+        processors: list[Processor],
+        process_count: int = 10,
     ) -> None:
         self._input = input_connector
         self._processors = processors
