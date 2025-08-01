@@ -240,6 +240,7 @@ class ExtraDataEvent(Event):
             The collection of output connector names associated with the SRE event
         """
         self.outputs = outputs
+        state = state if state is not None else EventStateType.PROCESSED
         super().__init__(data=data, state=state)
 
 

@@ -16,7 +16,7 @@ class DummyEvent(Event):
 
 class TestFilteredEvents(TestEventClass):
 
-    def test_sre_event_initialisation(self) -> None:
+    def test_sre_event_initialization(self) -> None:
         outputs = ({"name": "sre_topic"},)
         data = {"foo": "bar"}
         filtered_event = FilteredEvent(data=data, outputs=outputs)
@@ -24,6 +24,7 @@ class TestFilteredEvents(TestEventClass):
         assert filtered_event.data == data
         assert filtered_event.outputs == outputs
         assert isinstance(filtered_event.state, EventState)
+        assert filtered_event.state.current_state is EventStateType.PROCESSED
 
     def test_sre_event_preserves_state_on_init(self) -> None:
         state = EventStateType.STORED_IN_OUTPUT

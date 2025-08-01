@@ -21,6 +21,7 @@ class TestPseudonymEvents(TestEventClass):
         pseudonym_event = PseudonymEvent(data={"foo": "bar"}, outputs=outputs)
 
         assert isinstance(pseudonym_event.state, EventState)
+        assert pseudonym_event.state.current_state is EventStateType.PROCESSED
 
     def test_pseudonym_event_preserves_state_on_init(self) -> None:
         state = EventStateType.STORED_IN_OUTPUT
