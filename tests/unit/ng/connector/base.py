@@ -890,6 +890,46 @@ class BaseInputTestCase(BaseConnectorTestCase):
 
             connector.shut_down()
 
+    @pytest.mark.parametrize(
+        ["timestamp", "expected_error_message"],
+        [
+            ("0000-00-00 00:00:00", "year 0 is out of range"),
+            ("invalid", "Invalid isoformat string: 'invalid'"),
+        ],
+    )
+    def test_pipeline_preprocessing_raises_criticalinputerror_on_timeparser_error(
+        self, timestamp, expected_error_message
+    ):
+        test_event = {"any": "content", "@timestamp": timestamp}
+
+        with self.patch_documents_property(document=test_event):
+            preprocessing_config = {
+                "preprocessing": {
+                    "log_arrival_time_target_field": "arrival_time",
+                    "log_arrival_timedelta": {
+                        "target_field": "log_arrival_timedelta",
+                        "reference_field": "@timestamp",
+                    },
+                }
+            }
+            connector_config = deepcopy(self.CONFIG)
+            connector_config.update(preprocessing_config)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+
+            connector._get_event = mock.MagicMock(return_value=(test_event, None, None))
+
+            assert connector.get_next(0.01) is None
+            assert len(connector.event_backlog.backlog) == 1
+
+            failed_event = list(connector.event_backlog.backlog)[0]
+            assert len(failed_event.errors) == 1
+            assert failed_event.errors[0].message == expected_error_message
+
+            connector.shut_down()
+
     def test_preprocessing_enriches_by_env_variable(self):
         return_value = ({"any": "content"}, None, None)
 
