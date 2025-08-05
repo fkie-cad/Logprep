@@ -319,12 +319,12 @@ class Input(Connector):
         """
 
         # Step 1: Remove ACKED events before acknowledging new ones
-        self.event_backlog.unregister(state_type=EventStateType.ACKED)
+        self.event_backlog.unregister(state_type=EventStateType.ACKED)  # type: ignore[union-attr]
 
         # Step 2: Acknowledge all remaining DELIVERED events so that subsequent
         #         processing steps can handle their new ACKED state,
         #         e.g., for responding to HTTP requests.
-        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):
+        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):  # type: ignore[union-attr]
             event.state.next_state()
 
     @property
