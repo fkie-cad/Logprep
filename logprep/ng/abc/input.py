@@ -311,6 +311,22 @@ class Input(Connector):
 
         self.event_backlog = SetEventBacklog()
 
+    def acknowledge(self) -> None:
+        """Acknowledge all delivered events, so Input Connector can return final ACK state.
+
+        As side effect, all older events with state ACKED has to be removed from `event_backlog`
+        before acknowledging new ones.
+        """
+
+        # Step 1: Remove ACKED events before acknowledging new ones
+        self.event_backlog.unregister(state_type=EventStateType.ACKED)
+
+        # Step 2: Acknowledge all remaining DELIVERED events so that subsequent
+        #         processing steps can handle their new ACKED state,
+        #         e.g., for responding to HTTP requests.
+        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):
+            event.state.next_state()
+
     @property
     def _add_hmac(self) -> bool:
         """Check and return if a hmac should be added or not."""
@@ -472,6 +488,7 @@ class Input(Connector):
         )
 
         self.event_backlog.register(events=[log_event])  # type: ignore[union-attr]
+        log_event.state.next_state()
         return log_event
 
     def batch_finished_callback(self) -> None:
