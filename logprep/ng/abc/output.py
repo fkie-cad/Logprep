@@ -79,7 +79,6 @@ class Output(Connector):
     def __init__(self, name: str, configuration: "Connector.Config"):
         super().__init__(name, configuration)
         self.input_connector = None
-        self.lock = threading.Lock()
 
     @abstractmethod
     def store(self, event: Event) -> None:
@@ -87,7 +86,7 @@ class Output(Connector):
 
         Parameters
         ----------
-        event : dict
+        event : Event
            Processed log event that will be stored.
         """
 
@@ -97,7 +96,7 @@ class Output(Connector):
 
         Parameters
         ----------
-        event : dict
+        event : Event
            Processed log event that will be stored.
         target : str
             Custom target for the event.
