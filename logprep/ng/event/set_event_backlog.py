@@ -74,3 +74,21 @@ class SetEventBacklog(EventBacklog):
         """
 
         return {event for event in self.backlog if event.state.current_state is state_type}
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the SetEventBacklog instance.
+
+        This representation includes the class name and the number of events currently in the backlog.
+        """
+
+        return f"{self.__class__.__name__}(events_count={len(self.backlog)})"
+
+    def __str__(self) -> str:
+        """
+        Returns a string representation of the SetEventBacklog instance.
+
+        This representation includes the class name and the number of events currently in the backlog.
+        """
+
+        return repr(self)

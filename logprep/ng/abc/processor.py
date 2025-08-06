@@ -161,12 +161,10 @@ class Processor(Component):
             if self._event is None:
                 raise error
             self._event.errors.append(error)  # is needed to prevent wrapping it in itself
-            event.clear()
         except Exception as error:  # pylint: disable=broad-except
             if self._event is None:
                 raise error
             self._event.errors.append(ProcessingCriticalError(str(error), rule))
-            event.clear()
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:

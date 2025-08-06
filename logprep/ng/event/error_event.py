@@ -1,5 +1,6 @@
 """Concrete Error Event implementation"""
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -27,13 +28,13 @@ class ErrorEvent(Event):
             An optional initial EventState. Defaults to a new EventState() if not provided.
         """
         now = datetime.now(timezone.utc).isoformat()
-        original = log_event.original
-        event_bytes = str(log_event.data).encode("utf-8")
+        original = log_event.original.decode("utf-8")
+        event = json.dumps(log_event.data)
         data: dict[str, Any] = {
             "@timestamp": now,
             "reason": str(reason),
             "original": original,
-            "event": event_bytes,
+            "event": event,
         }
 
         super().__init__(data=data, state=state)
