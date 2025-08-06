@@ -897,7 +897,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
             ("invalid", "Invalid isoformat string: 'invalid'"),
         ],
     )
-    def test_pipeline_preprocessing_raises_criticalinputerror_on_timeparser_error(
+    def test_pipeline_preprocessing_produces_criticalinputerror_on_timeparser(
         self, timestamp, expected_error_message
     ):
         test_event = {"any": "content", "@timestamp": timestamp}
@@ -930,7 +930,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
 
             connector.shut_down()
 
-    def test_preprocessing_enriches_by_env_variable(self):
+    def test_pipeline_preprocessing_timeparser_invalid_timestamp(self):
         return_value = ({"any": "content"}, None, None)
 
         with self.patch_documents_property(document=return_value):
