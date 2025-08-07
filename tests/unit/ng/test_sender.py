@@ -174,6 +174,7 @@ class TestSender:
             mock_store.side_effect = Exception("Simulated delivery error")
             next(sender)
         assert "Simulated delivery error" in caplog.text
+        assert "state=failed" in caplog.text
 
     def test_get_error_event(self, pipeline, opensearch_output):
         sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
