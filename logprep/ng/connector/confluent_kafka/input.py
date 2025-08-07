@@ -32,7 +32,7 @@ import os
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
-from typing import Any, Literal, Optional, Union
+from typing import Any, Optional, Union
 
 import msgspec
 from attrs import define, field, validators
