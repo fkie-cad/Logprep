@@ -75,7 +75,7 @@ class Sender(Iterator):
             self._error_output.store(error_event)
             self._wait_for_error_output_delivery(error_event)
         except Exception as error:  # pylint: disable=broad-except
-            error_event.errors.append(str(error))
+            error_event.data["reason"] = str(error)
             logger.error("Can't deliver to error output: %s", error_event)
 
     @timeout(seconds=ERROR_OUTPUT_TIMEOUT, error_message="Error output delivery timed out.")

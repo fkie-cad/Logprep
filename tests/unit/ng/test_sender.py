@@ -164,14 +164,16 @@ class TestSender:
         self, opensearch_output, error_output, caplog
     ):
         caplog.set_level("ERROR")
+        event = LogEvent({"message": "Test message"}, original=b"", state=EventStateType.FAILED)
         sender = Sender(
-            pipeline=Pipeline(iter([]), []),
+            pipeline=iter([event]),
             outputs=[opensearch_output],
             error_output=error_output,
         )
-        event = LogEvent({"message": "Test message"}, original=b"", state=EventStateType.FAILED)
-
-        assert False
+        with mock.patch.object(sender._error_output, "store") as mock_store:
+            mock_store.side_effect = Exception("Simulated delivery error")
+            next(sender)
+        assert "Simulated delivery error" in caplog.text
 
     def test_get_error_event(self, pipeline, opensearch_output):
         sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
