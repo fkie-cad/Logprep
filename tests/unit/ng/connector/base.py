@@ -88,6 +88,23 @@ class BaseInputTestCase(BaseConnectorTestCase):
     def test_is_input_instance(self):
         assert isinstance(self.object, Input)
 
+    def test_acknowledge_called_once_in_get_next(self):
+        with mock.patch("logprep.ng.abc.input.Input.acknowledge") as mock_acknowledge:
+            connector_config = deepcopy(self.CONFIG)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+
+            return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
+
+            with mock.patch.object(connector, "_get_event", return_value=return_value):
+                _ = connector.get_next(0.01)
+
+            mock_acknowledge.assert_called_once()
+
+            connector.shut_down()
+
     def test_add_hmac_returns_true_if_hmac_options(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(

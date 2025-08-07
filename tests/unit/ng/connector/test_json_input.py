@@ -1032,3 +1032,21 @@ class TestJsonInput(BaseInputTestCase):
             assert connector.metrics.number_of_processed_events == 0
 
             connector.shut_down()
+
+    def test_acknowledge_called_once_in_get_next(self):
+        return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
+
+        with self.patch_documents_property(document=return_value):
+            with mock.patch("logprep.ng.abc.input.Input.acknowledge") as mock_acknowledge:
+                connector_config = copy.deepcopy(self.CONFIG)
+                connector = Factory.create({"test connector": connector_config})
+                connector._wait_for_health = mock.MagicMock()
+                connector.pipeline_index = 1
+                connector.setup()
+
+                with mock.patch.object(connector, "_get_event", return_value=return_value):
+                    _ = connector.get_next(0.01)
+
+                mock_acknowledge.assert_called_once()
+
+                connector.shut_down()
