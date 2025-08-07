@@ -1,8 +1,10 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=redefined-slots-in-subclass
 # pylint: disable=too-few-public-methods
 # pylint: disable=protected-access
+# pylint: disable=unnecessary-dunder-call
 
 import pickle
 from typing import Any

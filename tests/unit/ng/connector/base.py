@@ -1,18 +1,20 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
 # pylint: disable=unnecessary-dunder-call
+# pylint: disable=too-many-lines
+# pylint: disable=unused-argument
+
+
 import base64
 import json
 import os
 import re
-import sys
 import zlib
 from copy import deepcopy
 from logging import getLogger
 from unittest import mock
-
-import pytest
 
 from logprep.abc.connector import Connector
 from logprep.factory import Factory

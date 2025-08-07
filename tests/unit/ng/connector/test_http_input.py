@@ -1,7 +1,8 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-# pylint: disable=
+# pylint: disable=too-many-public-methods
 
 import gzip
 import json

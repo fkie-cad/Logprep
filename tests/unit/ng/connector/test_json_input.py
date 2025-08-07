@@ -1,7 +1,17 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
-import copy
+# pylint: disable=unnecessary-lambda-assignment
+# pylint: disable=unnecessary-dunder-call
+# pylint: disable=line-too-long
+
+import base64
+import json
+import os
+import re
+import zlib
+from copy import deepcopy
 from itertools import cycle
 from unittest import mock
 

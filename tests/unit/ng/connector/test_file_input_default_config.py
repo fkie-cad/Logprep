@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
@@ -5,6 +6,8 @@
 # pylint: disable=function-redefined
 # pylint: disable=unnecessary-dunder-call
 # pylint: disable=broad-except
+# pylint: disable=consider-using-with
+
 import os
 import tempfile
 import threading

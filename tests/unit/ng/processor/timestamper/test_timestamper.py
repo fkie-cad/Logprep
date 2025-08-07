@@ -1,4 +1,8 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+
 import re
 
 import pytest
