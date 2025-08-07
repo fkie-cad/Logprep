@@ -950,6 +950,8 @@ class TestJsonInput(BaseInputTestCase):
                 expected_error_message="not a dict",
             )
 
+            connector.shut_down()
+
     def test_repeat_documents_repeats_documents(self):
         class CycledPopList:
             def __init__(self, iterable):
@@ -976,6 +978,8 @@ class TestJsonInput(BaseInputTestCase):
                     event = connector.get_next(self.timeout)
                     assert event.data.get("order") == order % 3
 
+            connector.shut_down()
+
     @pytest.mark.skip(reason="not implemented")
     def test_setup_calls_wait_for_health(self):
         pass
@@ -998,3 +1002,33 @@ class TestJsonInput(BaseInputTestCase):
                 next(json_input_iterator)
 
             json_input_connector.shut_down()
+
+    def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
+        with self.patch_documents_property(document={}):
+            connector_config = copy.deepcopy(self.CONFIG)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+
+            connector.metrics.number_of_processed_events = 0
+            connector._get_event = mock.MagicMock(return_value=(None, None, None))
+            connector.get_next(0.01)
+            assert connector.metrics.number_of_processed_events == 0
+
+            connector.shut_down()
+
+    def test_get_next_does_not_count_number_of_processed_events_if_event_is_none(self):
+        with self.patch_documents_property(document={}):
+            connector_config = copy.deepcopy(self.CONFIG)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+
+            connector.metrics.number_of_processed_events = 0
+            connector._get_event = mock.MagicMock(return_value=(None, None, None))
+            connector.get_next(0.01)
+            assert connector.metrics.number_of_processed_events == 0
+
+            connector.shut_down()

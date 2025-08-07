@@ -20,8 +20,14 @@ class TestDummyInput(BaseInputTestCase):
     CONFIG = {"type": "ng_dummy_input", "documents": []}
 
     def test_fails_with_disconnected_error_if_input_was_empty(self):
+        config = copy.deepcopy(self.CONFIG)
+        connector = Factory.create({"Test Instance Name": config})
+        connector.setup()
+
         with pytest.raises(SourceDisconnectedWarning):
-            self.object.get_next(self.timeout)
+            connector.get_next(self.timeout)
+
+        connector.shut_down()
 
     def test_returns_documents_in_order_provided(self):
         config = copy.deepcopy(self.CONFIG)

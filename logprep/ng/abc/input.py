@@ -318,12 +318,8 @@ class Input(Connector):
         before acknowledging new ones.
         """
 
-        # Step 1: Remove ACKED events before acknowledging new ones
         self.event_backlog.unregister(state_type=EventStateType.ACKED)  # type: ignore[union-attr]
 
-        # Step 2: Acknowledge all remaining DELIVERED events so that subsequent
-        #         processing steps can handle their new ACKED state,
-        #         e.g., for responding to HTTP requests.
         for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):  # type: ignore[union-attr]
             event.state.next_state()
 
@@ -442,6 +438,10 @@ class Input(Connector):
             Input log data.
         """
 
+        # Note: Removes ACKED events from event_backlog and updates DELIVERED event states to ACKED.
+        #       This could potentially be moved to a periodic background task.
+        self.acknowledge()
+
         event: dict | None = None
         raw_event: bytearray | None = None
         metadata: dict | None = None
@@ -489,6 +489,7 @@ class Input(Connector):
 
         self.event_backlog.register(events=[log_event])  # type: ignore[union-attr]
         log_event.state.next_state()
+
         return log_event
 
     def batch_finished_callback(self) -> None:
