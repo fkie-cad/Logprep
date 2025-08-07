@@ -1,7 +1,10 @@
-# pylint: disable=protected-access
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
-# pylint: disable=unused-argument
+# pylint: disable=protected-access
+# pylint: disable=line-too-long
 # pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+
 import re
 from copy import deepcopy
 

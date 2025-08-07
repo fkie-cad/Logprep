@@ -1,9 +1,12 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-arguments
+# pylint: disable=line-too-long
+
 import copy
 import re
 from unittest import mock

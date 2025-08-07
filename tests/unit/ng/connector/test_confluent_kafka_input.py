@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=wrong-import-position
@@ -16,17 +17,14 @@ from confluent_kafka import (  # type: ignore
     KafkaException,
 )
 
-from logprep.abc.connector import Connector
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.input import (
-    CriticalInputError,
     CriticalInputParsingError,
     FatalInputError,
     InputWarning,
 )
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
-from logprep.ng.event.event_state import EventStateType
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
 )

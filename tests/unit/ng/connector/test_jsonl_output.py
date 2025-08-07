@@ -1,6 +1,9 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+# pylint: disable=line-too-long
+
 import copy
 import tempfile
 from unittest import mock

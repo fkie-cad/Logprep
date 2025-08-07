@@ -1,5 +1,7 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
+# pylint: disable=useless-option-value
+
 from copy import deepcopy
 
 from logprep.factory import Factory

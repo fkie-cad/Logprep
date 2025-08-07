@@ -1,7 +1,13 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
-# pylint: disable=no-member
 # pylint: disable=protected-access
+# pylint: disable=line-too-long
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=too-few-public-methods
 # pylint: disable=too-many-statements
+# pylint: disable=too-many-lines
+
 import copy
 import hashlib
 import os

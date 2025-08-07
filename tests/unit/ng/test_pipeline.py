@@ -1,4 +1,7 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
+# pylint: disable=line-too-long
+
 from typing import Iterator
 from unittest import mock
 

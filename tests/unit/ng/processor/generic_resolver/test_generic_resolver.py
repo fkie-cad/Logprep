@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
+
 from collections import OrderedDict
 from copy import deepcopy
 
@@ -449,7 +450,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_src_and_dest_field_and_conflict_match(self, caplog):
+    def test_resolve_dotted_src_and_dest_field_and_conflict_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
