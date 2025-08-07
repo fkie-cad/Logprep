@@ -87,7 +87,7 @@ class Output(Connector):
 
         Parameters
         ----------
-        event : dict
+        event : Event
            Processed log event that will be stored.
         """
 
@@ -97,7 +97,7 @@ class Output(Connector):
 
         Parameters
         ----------
-        event : dict
+        event : Event
            Processed log event that will be stored.
         target : str
             Custom target for the event.

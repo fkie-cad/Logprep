@@ -12,7 +12,7 @@ from collections.abc import Iterator
 from copy import deepcopy
 from functools import cached_property, partial
 from hmac import HMAC
-from typing import Literal, Optional, Self
+from typing import Optional, Self
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
@@ -144,12 +144,12 @@ class InputIterator(Iterator):
 
         return self
 
-    def __next__(self) -> dict | None:
+    def __next__(self) -> LogEvent | None:
         """Return the next event in the Input Connector within the configured timeout.
 
         Returns
         -------
-        dict
+        LogEvent | None
             The next event retrieved from the underlying data source.
         """
 
