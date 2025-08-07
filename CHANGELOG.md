@@ -10,16 +10,6 @@
 
 * Add `event_backlog` to the abstract input interface.
 * Register event in the backlog and return the registered event object.
-
-### Bugfix
-
-
-### Breaking
-
-### Features
-
-### Improvements
-
 * make `processors` handle Event class based objects
 * add an EventBacklog class hierarchies
 * implement an iterator interface to Input connectors
