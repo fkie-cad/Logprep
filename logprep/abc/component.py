@@ -7,7 +7,7 @@ import sys
 import time
 from abc import ABC
 from functools import cached_property
-from typing import Callable, Literal
+from typing import Callable
 
 import msgspec
 from attr import define, field, validators
@@ -59,7 +59,6 @@ class Component(ABC):
 
     # instance attributes
     name: str
-    pipeline_index: int | None
     _config: Config
 
     # class attributes
