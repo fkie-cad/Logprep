@@ -1005,7 +1005,7 @@ class TestJsonInput(BaseInputTestCase):
 
     def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
         with self.patch_documents_property(document={}):
-            connector_config = copy.deepcopy(self.CONFIG)
+            connector_config = deepcopy(self.CONFIG)
             connector = Factory.create({"test connector": connector_config})
             connector._wait_for_health = mock.MagicMock()
             connector.pipeline_index = 1
@@ -1020,7 +1020,7 @@ class TestJsonInput(BaseInputTestCase):
 
     def test_get_next_does_not_count_number_of_processed_events_if_event_is_none(self):
         with self.patch_documents_property(document={}):
-            connector_config = copy.deepcopy(self.CONFIG)
+            connector_config = deepcopy(self.CONFIG)
             connector = Factory.create({"test connector": connector_config})
             connector._wait_for_health = mock.MagicMock()
             connector.pipeline_index = 1
@@ -1038,7 +1038,7 @@ class TestJsonInput(BaseInputTestCase):
 
         with self.patch_documents_property(document=return_value):
             with mock.patch("logprep.ng.abc.input.Input.acknowledge") as mock_acknowledge:
-                connector_config = copy.deepcopy(self.CONFIG)
+                connector_config = deepcopy(self.CONFIG)
                 connector = Factory.create({"test connector": connector_config})
                 connector._wait_for_health = mock.MagicMock()
                 connector.pipeline_index = 1
