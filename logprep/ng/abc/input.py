@@ -441,8 +441,6 @@ class Input(Connector):
             Input log data.
         """
 
-        # Note: Removes ACKED events from event_backlog and updates DELIVERED event states to ACKED.
-        #       This could potentially be moved to a periodic background task.
         self.acknowledge()
 
         event: dict | None = None
