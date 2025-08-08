@@ -318,9 +318,12 @@ class Input(Connector):
         before acknowledging new ones.
         """
 
-        self.event_backlog.unregister(state_type=EventStateType.ACKED)  # type: ignore[union-attr]
+        if self.event_backlog is None:
+            return
 
-        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):  # type: ignore[union-attr]
+        self.event_backlog.unregister(state_type=EventStateType.ACKED)
+
+        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):
             event.state.next_state()
 
     @property
