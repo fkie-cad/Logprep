@@ -59,8 +59,6 @@ class TestJsonInput(BaseInputTestCase):
 
             assert connector._documents == return_value
 
-            connector.shut_down()
-
     def test_get_next_returns_event(self):
         return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
 
@@ -75,8 +73,6 @@ class TestJsonInput(BaseInputTestCase):
                 event = connector.get_next(0.01)
                 assert isinstance(event, LogEvent)
 
-            connector.shut_down()
-
     def test_get_next_returns_document(self):
         return_value = [{"message": "test_message"}]
 
@@ -90,8 +86,6 @@ class TestJsonInput(BaseInputTestCase):
             document = connector.get_next(self.timeout)
             assert document.data == expected
 
-            connector.shut_down()
-
     def test_get_next_returns_multiple_documents(self):
         return_value = [{"order": 0}, {"order": 1}]
 
@@ -104,8 +98,6 @@ class TestJsonInput(BaseInputTestCase):
             assert {"order": 0} == event.data
             event = connector.get_next(self.timeout)
             assert {"order": 1} == event.data
-
-            connector.shut_down()
 
     def test_get_next_with_hmac_of_raw_message(self):
         return_value = {"message": "with_content"}
@@ -151,8 +143,6 @@ class TestJsonInput(BaseInputTestCase):
                 decoded_message.decode("utf-8")
             ), "The hmac base massage was not correctly encoded and compressed. "
 
-            connector.shut_down()
-
     def test_get_next_with_hmac_of_non_existing_subfield(self):
         return_value = {"message": {"with_subfield": "content"}}
 
@@ -190,8 +180,6 @@ class TestJsonInput(BaseInputTestCase):
             assert len(failed_event.errors) == 1
             assert isinstance(failed_event.errors[0], CriticalInputError)
             assert failed_event.errors[0].message == expected_error_message
-
-            connector.shut_down()
 
     def test_get_next_with_hmac_of_subfield(self):
         return_value = {"message": {"with_subfield": "content"}}
@@ -237,8 +225,6 @@ class TestJsonInput(BaseInputTestCase):
             assert return_value["message"]["with_subfield"] == decoded_message.decode(
                 "utf-8"
             ), "The hmac base massage was not correctly encoded and compressed. "
-
-            connector.shut_down()
 
     def test_get_next_with_hmac_result_in_dotted_subfield(self):
         return_value = {"message": "with_content"}
@@ -289,8 +275,6 @@ class TestJsonInput(BaseInputTestCase):
                 decoded_message.decode("utf-8")
             ), "The hmac base massage was not correctly encoded and compressed. "
 
-            connector.shut_down()
-
     def test_get_next_with_hmac_result_in_already_existing_subfield(self):
         test_event = {"message": {"with_subfield": "content"}}
 
@@ -334,8 +318,6 @@ class TestJsonInput(BaseInputTestCase):
             assert isinstance(failed_event.errors[0], CriticalInputError)
             assert failed_event.errors[0].message == expected_error_message
 
-            connector.shut_down()
-
     def test_get_next_without_hmac(self):
         return_value = {"message": "with_content"}
 
@@ -352,8 +334,6 @@ class TestJsonInput(BaseInputTestCase):
             )
             connector_next_msg = connector.get_next(1)
             assert connector_next_msg == LogEvent(data=return_value, original=b"")
-
-            connector.shut_down()
 
     def test_preprocessing_version_info_is_added_if_configured(self):
         return_value = {"any": "content"}
@@ -376,8 +356,6 @@ class TestJsonInput(BaseInputTestCase):
             result = connector.get_next(0.01)
             assert result.data.get("version_info", {}).get("logprep") == "3.3.0"
             assert result.data.get("version_info", {}).get("configuration") == "unset"
-
-            connector.shut_down()
 
     def test_pipeline_preprocessing_does_not_add_versions_if_target_field_exists_already(self):
         test_event = {"any": "content", "version_info": "something random"}
@@ -414,8 +392,6 @@ class TestJsonInput(BaseInputTestCase):
             assert isinstance(failed_event.errors[0], CriticalInputError)
             assert failed_event.errors[0].message == expected_error_message
 
-            connector.shut_down()
-
     def test_pipeline_preprocessing_only_version_information(self):
         test_event = {"any": "content", "version_info": "something random"}
 
@@ -451,8 +427,6 @@ class TestJsonInput(BaseInputTestCase):
             assert isinstance(failed_event.errors[0], CriticalInputError)
             assert failed_event.errors[0].message == expected_error_message
 
-            connector.shut_down()
-
     def test_connector_metrics_counts_processed_events(self):
         return_value = ({"event:": "test_event"}, None, None)
 
@@ -469,8 +443,6 @@ class TestJsonInput(BaseInputTestCase):
                 connector.get_next(0.01)
 
             assert connector.metrics.number_of_processed_events == 1
-
-            connector.shut_down()
 
     def test_get_next_adds_timestamp_if_configured(self):
         return_value = ({"any": "content"}, None, None)
@@ -497,8 +469,6 @@ class TestJsonInput(BaseInputTestCase):
             assert (
                 TimeParser.now() - TimeParser.from_string(result.data[target_field])
             ).total_seconds() > 0
-
-            connector.shut_down()
 
     def test_pipeline_preprocessing_does_not_add_log_arrival_time_if_target_field_exists_already(
         self,
@@ -536,8 +506,6 @@ class TestJsonInput(BaseInputTestCase):
             assert isinstance(failed_event.errors[0], CriticalInputError)
             assert failed_event.errors[0].message == expected_error_message
 
-            connector.shut_down()
-
     def test_pipeline_preprocessing_add_log_arrival_time_if_target_parent_field_exists_already_and_is_dict(
         self,
     ):
@@ -563,8 +531,6 @@ class TestJsonInput(BaseInputTestCase):
                 r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|([+-]\d{2}:\d{2})$)"
             )
             assert re.search(iso8601_regex, time_value)
-
-            connector.shut_down()
 
     def test_pipeline_preprocessing_add_log_arrival_time_if_target_parent_field_exists_already_and_not_dict(
         self,
@@ -593,8 +559,6 @@ class TestJsonInput(BaseInputTestCase):
             assert re.search(iso8601_regex, time_value)
             original_event = event.get_dotted_field_value("event.@original")
             assert original_event == "does not matter"
-
-            connector.shut_down()
 
     def test_pipeline_preprocessing_adds_timestamp_delta_if_configured(self):
         return_value = (
@@ -629,8 +593,6 @@ class TestJsonInput(BaseInputTestCase):
             assert target_field in result.data
             assert isinstance(result.data[target_field], float)
 
-            connector.shut_down()
-
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_reference_field_not_found(
         self,
     ):
@@ -657,8 +619,6 @@ class TestJsonInput(BaseInputTestCase):
             assert "arrival_time" in result.data
             assert "log_arrival_timedelta" not in result.data
 
-            connector.shut_down()
-
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_not_configured(self):
         return_value = ({"any": "content"}, None, None)
 
@@ -677,8 +637,6 @@ class TestJsonInput(BaseInputTestCase):
             connector._get_event = mock.MagicMock(return_value=return_value)
             result = connector.get_next(0.01)
             assert "arrival_time" in result.data
-
-            connector.shut_down()
 
     def test_add_full_event_to_target_field_with_string_format(self):
         return_value = ({"any": "content"}, None, None)
@@ -703,8 +661,6 @@ class TestJsonInput(BaseInputTestCase):
             expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
             assert result.data == expected, f"{expected} is not the same as {result.data}"
 
-            connector.shut_down()
-
     def test_add_full_event_to_targetfield_with_same_name(self):
         return_value = ({"any": "content"}, None, None)
 
@@ -727,8 +683,6 @@ class TestJsonInput(BaseInputTestCase):
             result = connector.get_next(0.01)
             expected = {"any": {"content": '"{\\"any\\":\\"content\\"}"'}}
             assert result.data == expected, f"{expected} is not the same as {result.data}"
-
-            connector.shut_down()
 
     def test_add_full_event_to_targetfield_vs_version_info_target(self):
         return_value = ({"any": "content"}, None, None)
@@ -757,8 +711,6 @@ class TestJsonInput(BaseInputTestCase):
             }
             assert result.data == expected, f"{expected} is not the same as {result.data}"
 
-            connector.shut_down()
-
     def test_add_full_event_to_target_field_with_dict_format(self):
         return_value = ({"any": "content"}, None, None)
 
@@ -781,8 +733,6 @@ class TestJsonInput(BaseInputTestCase):
             result = connector.get_next(0.01)
             expected = {"event": {"original": {"any": "content"}}}
             assert result.data == expected, f"{expected} is not the same as {result.data}"
-
-            connector.shut_down()
 
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_log_arrival_timestamp_not(
         self,
@@ -807,8 +757,6 @@ class TestJsonInput(BaseInputTestCase):
             connector._get_event = mock.MagicMock(return_value=return_value)
             result = connector.get_next(0.01)
             assert result.data == {"any": "content"}
-
-            connector.shut_down()
 
     @pytest.mark.parametrize(
         ["timestamp", "expected_error_message"],
@@ -848,8 +796,6 @@ class TestJsonInput(BaseInputTestCase):
             assert len(failed_event.errors) == 1
             assert failed_event.errors[0].message == expected_error_message
 
-            connector.shut_down()
-
     def test_preprocessing_enriches_by_multiple_env_variables(self):
         return_value = ({"any": "content"}, None, None)
 
@@ -878,8 +824,6 @@ class TestJsonInput(BaseInputTestCase):
                 "enriched_field2": "test_value_bar",
             }
 
-            connector.shut_down()
-
     def test_get_next_counts_number_of_processed_events(self):
         return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
 
@@ -894,8 +838,6 @@ class TestJsonInput(BaseInputTestCase):
             connector.get_next(0.01)
 
             assert connector.metrics.number_of_processed_events == 1
-
-            connector.shut_down()
 
     def test_get_next_has_time_measurement(self):
         return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
@@ -914,8 +856,6 @@ class TestJsonInput(BaseInputTestCase):
             # asserts entering context manager in metrics.metrics.Metric.measure_time
             mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
 
-            connector.shut_down()
-
     def test_raises_exception_if_not_a_dict(self):
         return_value = ["no dict"]
 
@@ -930,8 +870,6 @@ class TestJsonInput(BaseInputTestCase):
                 connector=connector,
                 expected_error_message="not a dict",
             )
-
-            connector.shut_down()
 
     def test_raises_exception_if_one_element_is_not_a_dict(self):
         return_value = [{"order": 0}, "not a dict", {"order": 1}]
@@ -949,8 +887,6 @@ class TestJsonInput(BaseInputTestCase):
                 connector=connector,
                 expected_error_message="not a dict",
             )
-
-            connector.shut_down()
 
     def test_repeat_documents_repeats_documents(self):
         class CycledPopList:
@@ -978,8 +914,6 @@ class TestJsonInput(BaseInputTestCase):
                     event = connector.get_next(self.timeout)
                     assert event.data.get("order") == order % 3
 
-            connector.shut_down()
-
     @pytest.mark.skip(reason="not implemented")
     def test_setup_calls_wait_for_health(self):
         pass
@@ -1001,8 +935,6 @@ class TestJsonInput(BaseInputTestCase):
             with pytest.raises(SourceDisconnectedWarning):
                 next(json_input_iterator)
 
-            json_input_connector.shut_down()
-
     def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
         with self.patch_documents_property(document={}):
             connector_config = deepcopy(self.CONFIG)
@@ -1016,8 +948,6 @@ class TestJsonInput(BaseInputTestCase):
             connector.get_next(0.01)
             assert connector.metrics.number_of_processed_events == 0
 
-            connector.shut_down()
-
     def test_get_next_does_not_count_number_of_processed_events_if_event_is_none(self):
         with self.patch_documents_property(document={}):
             connector_config = deepcopy(self.CONFIG)
@@ -1030,8 +960,6 @@ class TestJsonInput(BaseInputTestCase):
             connector._get_event = mock.MagicMock(return_value=(None, None, None))
             connector.get_next(0.01)
             assert connector.metrics.number_of_processed_events == 0
-
-            connector.shut_down()
 
     def test_acknowledge_called_once_in_get_next(self):
         return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
@@ -1048,5 +976,3 @@ class TestJsonInput(BaseInputTestCase):
                     _ = connector.get_next(0.01)
 
                 mock_acknowledge.assert_called_once()
-
-                connector.shut_down()
