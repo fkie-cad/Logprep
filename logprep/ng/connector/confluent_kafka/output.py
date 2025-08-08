@@ -324,7 +324,7 @@ class ConfluentKafkaOutput(Output):
         """Check the health of kafka producer."""
         try:
             metadata = self._admin.list_topics(timeout=self._config.health_timeout)
-            if not self._config.topic in metadata.topics:
+            if self._config.topic not in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self._config.topic)
                 return False
         except KafkaException as error:

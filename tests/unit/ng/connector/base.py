@@ -88,6 +88,23 @@ class BaseInputTestCase(BaseConnectorTestCase):
     def test_is_input_instance(self):
         assert isinstance(self.object, Input)
 
+    def test_acknowledge_called_once_in_get_next(self):
+        with mock.patch("logprep.ng.abc.input.Input.acknowledge") as mock_acknowledge:
+            connector_config = deepcopy(self.CONFIG)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+
+            return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
+
+            with mock.patch.object(connector, "_get_event", return_value=return_value):
+                _ = connector.get_next(0.01)
+
+            mock_acknowledge.assert_called_once()
+
+            connector.shut_down()
+
     def test_add_hmac_returns_true_if_hmac_options(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(
@@ -523,10 +540,18 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector.shut_down()
 
     def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
-        self.object.metrics.number_of_processed_events = 0
-        self.object._get_event = mock.MagicMock(return_value=(None, None, None))
-        self.object.get_next(0.01)
-        assert self.object.metrics.number_of_processed_events == 0
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config})
+        connector._wait_for_health = mock.MagicMock()
+        connector.pipeline_index = 1
+        connector.setup()
+
+        connector.metrics.number_of_processed_events = 0
+        connector._get_event = mock.MagicMock(return_value=(None, None, None))
+        connector.get_next(0.01)
+        assert connector.metrics.number_of_processed_events == 0
+
+        connector.shut_down()
 
     def test_get_next_adds_timestamp_if_configured(self):
         preprocessing_config = {
@@ -914,10 +939,18 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector.shut_down()
 
     def test_get_next_does_not_count_number_of_processed_events_if_event_is_none(self):
-        self.object.metrics.number_of_processed_events = 0
-        self.object._get_event = mock.MagicMock(return_value=(None, None, None))
-        self.object.get_next(0.01)
-        assert self.object.metrics.number_of_processed_events == 0
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config})
+        connector._wait_for_health = mock.MagicMock()
+        connector.pipeline_index = 1
+        connector.setup()
+
+        connector.metrics.number_of_processed_events = 0
+        connector._get_event = mock.MagicMock(return_value=(None, None, None))
+        connector.get_next(0.01)
+        assert connector.metrics.number_of_processed_events == 0
+
+        connector.shut_down()
 
     def test_get_next_has_time_measurement(self):
         connector_config = deepcopy(self.CONFIG)

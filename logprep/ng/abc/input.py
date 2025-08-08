@@ -264,15 +264,9 @@ class Input(Connector):
             },
         )
 
-    def __init__(
-        self,
-        name: str,
-        configuration: "Input.Config",
-        pipeline_index: int | None = None,
-    ) -> None:
-        self.event_backlog: EventBacklog | None = None
-
-        super().__init__(name, configuration, pipeline_index)
+    def __init__(self, name: str, configuration: "Input.Config") -> None:
+        self.event_backlog: EventBacklog = SetEventBacklog()
+        super().__init__(name, configuration)
 
     def __call__(self, *, timeout: float) -> InputIterator:
         """Create and return a new input iterator with the specified timeout.
@@ -299,17 +293,17 @@ class Input(Connector):
 
         return InputIterator(self, timeout)
 
-    def setup(self):
-        """Initialize the input connector.
+    def acknowledge(self) -> None:
+        """Acknowledge all delivered events, so Input Connector can return final ACK state.
 
-        This method sets the event backlog to an instance of `SetEventBacklog`.
-        You can override this to configure a different event backlog type,
-        depending on the available configuration settings.
+        As side effect, all older events with state ACKED has to be removed from `event_backlog`
+        before acknowledging new ones.
         """
 
-        super().setup()
+        self.event_backlog.unregister(state_type=EventStateType.ACKED)
 
-        self.event_backlog = SetEventBacklog()
+        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):
+            event.state.next_state()
 
     @property
     def _add_hmac(self) -> bool:
@@ -409,7 +403,7 @@ class Input(Connector):
         error_log_event.errors.append(error)
         error_log_event.state.current_state = EventStateType.FAILED
 
-        self.event_backlog.register(events=[error_log_event])  # type: ignore[union-attr]
+        self.event_backlog.register(events=[error_log_event])
 
     @Metric.measure_time()
     def get_next(self, timeout: float) -> LogEvent | None:
@@ -425,6 +419,8 @@ class Input(Connector):
         input : LogEvent, None
             Input log data.
         """
+
+        self.acknowledge()
 
         event: dict | None = None
         raw_event: bytearray | None = None
@@ -471,7 +467,9 @@ class Input(Connector):
             metadata=metadata,
         )
 
-        self.event_backlog.register(events=[log_event])  # type: ignore[union-attr]
+        self.event_backlog.register(events=[log_event])
+        log_event.state.next_state()
+
         return log_event
 
     def batch_finished_callback(self) -> None:

@@ -20,8 +20,12 @@ class TestDummyInput(BaseInputTestCase):
     CONFIG = {"type": "ng_dummy_input", "documents": []}
 
     def test_fails_with_disconnected_error_if_input_was_empty(self):
+        config = copy.deepcopy(self.CONFIG)
+        connector = Factory.create({"Test Instance Name": config})
+        connector.setup()
+
         with pytest.raises(SourceDisconnectedWarning):
-            self.object.get_next(self.timeout)
+            connector.get_next(self.timeout)
 
     def test_returns_documents_in_order_provided(self):
         config = copy.deepcopy(self.CONFIG)
@@ -33,8 +37,6 @@ class TestDummyInput(BaseInputTestCase):
         for order in range(0, 3):
             event = connector.get_next(self.timeout)
             assert event.data.get("order") == order
-
-        connector.shut_down()
 
     def test_raises_exceptions_instead_of_returning_them_in_document(self):
         config = copy.deepcopy(self.CONFIG)
@@ -51,8 +53,6 @@ class TestDummyInput(BaseInputTestCase):
 
         event = connector.get_next(self.timeout)
         assert event.data.get("order") == 1
-
-        connector.shut_down()
 
     def test_raises_exceptions_instead_of_returning_them(self):
         config = copy.deepcopy(self.CONFIG)
@@ -73,8 +73,6 @@ class TestDummyInput(BaseInputTestCase):
             event = connector.get_next(self.timeout)
             assert event.data.get("order") == order % 3
 
-        connector.shut_down()
-
     def test_dummy_input_iterator(self):
         config = copy.deepcopy(self.CONFIG)
         config["repeat_documents"] = False
@@ -89,5 +87,3 @@ class TestDummyInput(BaseInputTestCase):
             assert next(dummy_input_iterator).data == {"order": 1}
             assert next(dummy_input_iterator).data == {"order": 2}
             assert next(dummy_input_iterator) is None
-
-        dummy_input_connector.shut_down()

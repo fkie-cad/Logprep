@@ -72,6 +72,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
         input_config = deepcopy(self.CONFIG)
         kafka_input = Factory.create({"test": input_config})
+        kafka_input._wait_for_health = mock.MagicMock()
+        kafka_input.setup()
 
         event = kafka_input.get_next(1)
         assert event is None
@@ -408,11 +410,16 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_input.shut_down()
 
     def test_raises_fatal_input_error_if_poll_raises_runtime_error(self):
-        with mock.patch.object(self.object, "_consumer") as mock_consumer:
+        input_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test": input_config})
+        connector._wait_for_health = mock.MagicMock()
+        connector.setup()
+
+        with mock.patch.object(connector, "_consumer") as mock_consumer:
             mock_consumer.poll.side_effect = RuntimeError("test error")
 
             with pytest.raises(FatalInputError, match="test error"):
-                self.object.get_next(0.01)
+                connector.get_next(0.01)
 
     def test_raises_value_error_if_mandatory_parameters_not_set(self):
         config = deepcopy(self.CONFIG)
