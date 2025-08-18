@@ -577,13 +577,27 @@ class Configuration:
 
     """
     profile_pipelines: bool = field(default=False, eq=False)
-    """Start the profiler to profile the pipeline. Defaults to :code:`False`."""
+    """Start the profiler to profile the pipeline. Defaults to :code:`False`.
+    This can be used to profile logprep in near production environments to inspect performance
+    bottlenecks.
+    """
     print_auto_test_stack_trace: bool = field(default=False, eq=False)
     """Print stack trace when auto test fails. Defaults to :code:`False`."""
     error_backlog_size: int = field(
         validator=validators.instance_of(int), default=DEFAULT_MESSAGE_BACKLOG_SIZE, eq=False
     )
-    """Size of the error backlog. Defaults to :code:`15000`."""
+    """Size of the error backlog. Defaults to :code:`15000`.
+
+    .. security-best-practice::
+       :title: Error Backlog Size
+       :location: config.error_backlog_size
+       :suggested-value: <= 15000
+
+       Depending on your environment ensure that this value adheres to your overall
+       system resource limits. This can lead to OOM (Out Of Memory) errors if the backlog
+       grows too large in failure situations. You have to reserve memory for this backlog to avoid
+       DOS (Denial of Service) attacks by sending failing logs.
+    """
 
     _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 
