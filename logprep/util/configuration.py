@@ -350,8 +350,8 @@ class LoggerConfig:
        :location: config.logger.level
        :suggested-value: INFO
 
-         The log level of the root logger should be set to :code:`INFO` or higher in production environments
-         to avoid exposing sensitive information in the logs.
+         The log level of the root logger should be set to :code:`INFO` or higher
+         in production environments to avoid exposing sensitive information in the logs.
     """
     format: str = field(default="", validator=(validators.instance_of(str)), eq=False)
     """The format of the log message as supported by the :code:`LogprepFormatter`.
@@ -443,8 +443,8 @@ class Configuration:
     )
     """It is optionally possible to set a version to your configuration file which
     can be printed via :code:`logprep run --version config/pipeline.yml`.
-    This has no effect on the execution of logprep and is merely used for documentation purposes.
-    Defaults to :code:`unset`."""
+    This has no effect on the execution of logprep but is used as hook for reloading
+    the configuration. Defaults to :code:`unset`."""
     config_refresh_interval: Optional[int] = field(
         validator=validators.instance_of((int, type(None))), default=None, eq=False
     )
@@ -471,7 +471,7 @@ class Configuration:
 
        In case a new configuration could not be retrieved successfully and the
        :code:`config_refresh_interval` is already reduced automatically to 5 seconds it should be
-       noted that this could lead to a blocking behavior or an significant reduction in performance
+       noted that this could lead to a blocking behavior or a significant reduction in performance
        as logprep is often retrying to reload the configuration.
        Because of that ensure that the configuration endpoint is always available.
     """
@@ -483,7 +483,20 @@ class Configuration:
         validator=validators.instance_of(int), default=DEFAULT_RESTART_COUNT, eq=False
     )
     """Number of restarts before logprep exits. Defaults to :code:`5`.
-    If this value is set to a negative number, logprep will always restart immediately."""
+    If this value is set to a negative number, logprep will always restart immediately.
+
+    .. security-best-practice::
+       :title: Restart Counter
+       :location: config.restart_count
+       :suggested-value: > 0
+
+       The restart counter should be set to a value greater than 0 to ensure that logprep
+       exits gracefully in case of repeated failures. This ensures that resources are released
+       properly and any necessary cleanup is performed. Additionally the process will exit with
+       an exit code unequal 0 to indicate that an error occurred. This is especially useful if you
+       use an external orchestrator like k8s or systemd to manage the logprep process to get
+       notified about failures via their respective monitoring and alerting systems.
+    """
     timeout: float = field(
         validator=(validators.instance_of(float), validators.gt(0)), default=5.0, eq=False
     )
