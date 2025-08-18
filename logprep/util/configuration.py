@@ -21,6 +21,13 @@ You can pass multiple configuration files via valid file paths or urls.
    If using multiple files ensure that all can be loaded safely and that all endpoints (if using
    http resources) are accessible.
 
+.. security-best-practice::
+   :title: Configuration - Authenticity and Integrity
+
+   Ensure that all configuration files are retrieved from trusted sources and have not been
+   tampered with. Use :code:`tls` to encrypt the transmission of configuration files and use authentication
+   described in :code:`Authentication for HTTP Getters` to ensure confidentiality and integrity.
+
 Configuration File Structure
 ----------------------------
 

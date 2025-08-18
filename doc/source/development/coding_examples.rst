@@ -18,3 +18,14 @@ Processor Case Examples
    notebooks/processor_examples/string_splitter.ipynb
    notebooks/processor_examples/timestamper.ipynb
    notebooks/processor_examples/timestamp_differ.ipynb
+   notebooks/pseudonymization/pseudo_tools.ipynb
+   notebooks/new_architecture_examples/1_event_metadata.ipynb
+   notebooks/new_architecture_examples/10_pipeline.ipynb
+   notebooks/new_architecture_examples/2_event_state.ipynb
+   notebooks/new_architecture_examples/3_event_class.ipynb
+   notebooks/new_architecture_examples/4_further_event_classes.ipynb
+   notebooks/new_architecture_examples/5_event_backlog.ipynb
+   notebooks/new_architecture_examples/6_opensearch_output.ipynb
+   notebooks/new_architecture_examples/7_confluentkafka_output.ipynb
+   notebooks/new_architecture_examples/8_processors.ipynb
+   notebooks/new_architecture_examples/9_confluentkafka_input.ipynb
