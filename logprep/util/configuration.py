@@ -132,7 +132,7 @@ with :code:`LOGPREP_`, :code:`GITHUB_`, :code:`PYTEST_` or
 variable names are: :code:`["LOGPREP_LIST"]`, as it is already used internally.
 
 .. security-best-practice::
-   :title: Configuration Environment Variables
+   :title: Configuration - Environment Variables
 
    As it is possible to replace all configuration options with environment variables it is
    recommended to use these especially for sensitive information like usernames, password, secrets
@@ -353,7 +353,7 @@ class LoggerConfig:
     """The log level of the root logger. Defaults to :code:`INFO`.
 
     .. security-best-practice::
-       :title: Logprep Log-Level
+       :title: Configuration - Log-Level
        :location: config.logger.level
        :suggested-value: INFO
 
@@ -463,7 +463,7 @@ class Configuration:
     Defaults to :code:`None`, which means that the configuration will not be refreshed.
 
     .. security-best-practice::
-       :title: Configuration Refresh Interval
+       :title: Configuration - Refresh Interval
        :location: config.config_refresh_interval
        :suggested-value: <= 300
 
@@ -493,7 +493,7 @@ class Configuration:
     If this value is set to a negative number, logprep will always restart immediately.
 
     .. security-best-practice::
-       :title: Restart Counter
+       :title: Configuration - Restart Counter
        :location: config.restart_count
        :suggested-value: > 0
 
@@ -564,7 +564,7 @@ class Configuration:
     For further information see the `uvicorn documentation <https://www.uvicorn.org/settings/>`_.
 
     .. security-best-practice::
-       :title: Metrics Configuration
+       :title: Configuration - Metrics Configuration
        :location: config.metrics.uvicorn_config
        :suggested-value: metrics.uvicorn_config.access_log: true, metrics.uvicorn_config.server_header: false, metrics.uvicorn_config.data_header: false
 
@@ -596,7 +596,7 @@ class Configuration:
     """Size of the error backlog. Defaults to :code:`15000`.
 
     .. security-best-practice::
-       :title: Error Backlog Size
+       :title: Configuration - Error Backlog Size
        :location: config.error_backlog_size
        :suggested-value: <= 15000
 

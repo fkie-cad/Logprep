@@ -36,7 +36,7 @@ from enum import IntEnum
 from functools import cached_property
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
-from typing import Optional, Any
+from typing import Any, Optional
 from urllib.parse import urlsplit
 
 from attr import define, field, validators
@@ -76,7 +76,14 @@ class DomainResolver(Processor):
             validator=validators.optional(validators.instance_of(float)),
             converter=float,
         )
-        """Timeout for resolving of domains."""
+        """Timeout for resolving of domains.
+
+        .. security-best-practice::
+           :title: Processor - Domain Resolver Timeout
+
+           Ensure to set this to a reasonable value to avoid DOS attacks by malicious domains in
+           your logs. The default is set to 0.5 seconds.
+        """
         max_cached_domains: int = field(validator=validators.instance_of(int))
         """The maximum number of cached domains. One cache entry requires ~250 Byte, thus 10
         million elements would require about 2.3 GB RAM. The cache is not persisted. Restarting

@@ -257,9 +257,10 @@ class ConfluentKafkaInput(Input):
             :template: defaults-renderer.tmpl
 
         .. security-best-practice::
-           :title: Kafka Consumer Authentication and Encryption
+           :title: Kafka Input Consumer Authentication and Encryption
 
-           Kafka authentication is a critical aspect of securing your data pipeline. Ensure that you have the following configurations in place:
+           Kafka authentication is a critical aspect of securing your data pipeline.
+           Ensure that you have the following configurations in place:
 
            - Use SSL/mTLS encryption for data in transit.
            - Configure SASL or mTLS authentication for your Kafka clients.
