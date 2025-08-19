@@ -12,7 +12,7 @@ package-dir = { "logprep" = "logprep" }
 packages = ["logprep"]
 
 [tool.setuptools_scm]
-fallback_version = "unset"
+fallback_version = "0.0.0"
 
 [[tool.setuptools-rust.ext-modules]]
 # Private Rust extension module to be nested into the Python package
