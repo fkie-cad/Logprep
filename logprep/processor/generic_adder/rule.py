@@ -23,7 +23,7 @@ value :code:`some added value` is being added.
     description: '...'
 
 Alternatively, the additional field :code:`generic_adder.add_from_file` can be added.
-It contains the path to a file with a YML file that contains a dictionary of field names and
+It contains the path or url to a file with a YML file that contains a dictionary of field names and
 values that should be added to the document.
 Instead of a path, a list of paths can be used to add multiple files.
 All of those files must exist.
@@ -117,10 +117,24 @@ class GenericAdderRule(FieldManagerRule):
             factory=list,
             eq=False,
         )
-        """Contains the path to a file with a YML file that contains a dictionary of field names
+        """Contains the path or url to YML file that contains a dictionary of field names
         and values that should be added to the document.
         Instead of a path, a list of paths can be used to add multiple files.
-        All of those files must exist. For string format see :ref:`getters`"""
+        All of those files must exist. For string format see :ref:`getters`
+
+        .. security-best-practice::
+           :title: Processor - Generic Adder Add From File Memory Consumption
+
+           Be aware that all values of the remote file were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption.
+
+        .. security-best-practice::
+           :title: Processor - Generic Adder Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
+        """
         only_first_existing_file: bool = field(
             validator=validators.instance_of(bool), default=False, eq=False
         )
