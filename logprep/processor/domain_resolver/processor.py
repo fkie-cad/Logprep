@@ -87,13 +87,21 @@ class DomainResolver(Processor):
         max_cached_domains: int = field(validator=validators.instance_of(int))
         """The maximum number of cached domains. One cache entry requires ~250 Byte, thus 10
         million elements would require about 2.3 GB RAM. The cache is not persisted. Restarting
-        Logprep does therefore clear the cache."""
+        Logprep does therefore clear the cache.
+
+        .. security-best-practice::
+           :title: Processor - Domain Resolver Max Cached Domains
+
+           Ensure to set this to a reasonable value to avoid excessive memory usage
+           and OOM situations by the domain resolver cache.
+
+        """
         max_caching_days: int = field(validator=validators.instance_of(int))
         """Number of days a domains is cached after the last time it appeared.
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
         repeatedly) and the load on subsequent components (i.e. Logstash or Opensearch).
         Setting the caching days to Null deactivates the caching. In case the cache size has been
-        exceeded (see `domain_resolver.max_cached_domains`),the oldest cached pseudonyms will
+        exceeded (see `domain_resolver.max_cached_domains`),the oldest cached resolved domains will
         be discarded first.Thus, it is possible that a domain is re-added to the cache before
         max_caching_days has elapsed if it was discarded due to the size limit."""
         hash_salt: str = field(validator=validators.instance_of(str))
