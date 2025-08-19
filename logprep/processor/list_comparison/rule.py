@@ -100,7 +100,7 @@ class ListComparisonRule(FieldManagerRule):
         return list_search_base_path
 
     def init_list_comparison(self, list_search_base_path: Optional[str] = None):
-        """init method for list_comparision lists"""
+        """init method for list_comparison lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         if list_search_base_path.startswith("http"):
             for list_path in self._config.list_file_paths:

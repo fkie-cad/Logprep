@@ -83,6 +83,19 @@ class PreDetector(Processor):
         If a checked IP is covered by an IP and a network in the dictionary
         (i.e. IP 127.0.0.1 and network 127.0.0.0/24 when checking 127.0.0.1),
         then the expiration date of the IP is being used.
+
+        .. security-best-practice::
+           :title: Processor - PreDetector alert_ip_list_path Memory Consumption
+
+           Be aware that all values of the remote file were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - PreDetector alert_ip_list_path Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
         """
 
     rule_class = PreDetectorRule

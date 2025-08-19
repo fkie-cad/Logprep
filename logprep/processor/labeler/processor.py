@@ -41,7 +41,7 @@ class Labeler(Processor):
     class Config(Processor.Config):
         """Labeler Configurations"""
 
-        schema: str = field(validator=(validators.instance_of(str)))
+        schema: str = field(validator=validators.instance_of(str))
         """Path to a labeling schema file. For string format see :ref:`getters`.
 
         .. security-best-practice::
