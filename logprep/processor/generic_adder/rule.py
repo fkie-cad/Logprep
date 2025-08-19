@@ -126,7 +126,8 @@ class GenericAdderRule(FieldManagerRule):
            :title: Processor - Generic Adder Add From File Memory Consumption
 
            Be aware that all values of the remote file were loaded into memory. Consider to avoid
-           dynamic increasing lists without setting limits for Memory consumption.
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
 
         .. security-best-practice::
            :title: Processor - Generic Adder Authenticity and Integrity
