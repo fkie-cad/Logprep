@@ -661,6 +661,34 @@ class TestJsonInput(BaseInputTestCase):
             expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
             assert result.data == expected, f"{expected} is not the same as {result.data}"
 
+    def test_add_full_event_to_target_field_with_dict_format_2(self):
+        return_value = ({"any": "content"}, None, None)
+
+        with self.patch_documents_property(document=return_value):
+            preprocessing_config = {
+                "preprocessing": {
+                    "add_full_event_to_target_field": {
+                        "format": "str",
+                        "target_field": "event.original",
+                        "clear_event":  False,
+                    },
+                }
+            }
+            connector_config = deepcopy(self.CONFIG)
+            connector_config.update(preprocessing_config)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+            connector._get_event = mock.MagicMock(return_value=return_value)
+            result = connector.get_next(0.01)
+
+
+        expected = {'any': 'content', 'event': {'original': '"{\\"any\\":\\"content\\"}"'}}
+        assert result.data == expected, f"{expected} is not the same as {result.data}"
+
+        connector.shut_down()   
+
     def test_add_full_event_to_targetfield_with_same_name(self):
         return_value = ({"any": "content"}, None, None)
 
