@@ -57,7 +57,21 @@ class GeoipEnricher(FieldManager):
             The file will be downloaded or copied and cached.
             For valid URI formats see :ref:`getters`
             This product includes GeoLite2 data created by MaxMind, available from
-            https://www.maxmind.com."""
+            https://www.maxmind.com.
+
+        .. security-best-practice::
+           :title: Processor - GeoIP Enricher Database Memory Consumption
+
+           Be aware that all values of the remote file were loaded into memory.
+           Avoid loading a large database via http to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - GeoIP Enricher Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded database.
+
+            """
 
     __slots__ = []
 
