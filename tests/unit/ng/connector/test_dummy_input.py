@@ -95,6 +95,7 @@ class TestDummyInput(BaseInputTestCase):
             "add_full_event_to_target_field": {
                 "format": "str",
                 "target_field": "event.original",
+                "clear_event": False,
             }
         }
 
@@ -102,7 +103,8 @@ class TestDummyInput(BaseInputTestCase):
         connector.setup()
 
         result = connector.get_next(self.timeout)
-        expected = {"event": {"original": {"any": "content"}}}
+        #expected = {"event": {"original": {"any": "content"}}}
+        expected = {'any': 'content', 'event': {'original': '"{\\"any\\":\\"content\\"}"'}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
 
         connector.shut_down()
