@@ -518,7 +518,8 @@ class Input(Connector):
             complete_event = self._decoder.decode(raw_event.decode("utf-8"))
         else:
             complete_event = json.dumps(raw_event.decode("utf-8"))
-        if target["clear_event"] == True: 
+        clear_event = target.get("clear_event", True)
+        if clear_event: 
             event_dict.clear()
         add_fields_to(
             event_dict, fields={target["target_field"]: complete_event}, overwrite_target=True
