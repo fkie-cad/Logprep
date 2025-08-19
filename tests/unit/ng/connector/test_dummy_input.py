@@ -88,7 +88,7 @@ class TestDummyInput(BaseInputTestCase):
             assert next(dummy_input_iterator).data == {"order": 2}
             assert next(dummy_input_iterator) is None
 
-    def test_add_full_event_to_target_field_with_dict_format(self):
+    def test_add_full_event_to_target_field(self):
         config = copy.deepcopy(self.CONFIG)
         config["documents"] = [{"any": "content"}]
         config["preprocessing"] = {

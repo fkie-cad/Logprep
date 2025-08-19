@@ -661,7 +661,7 @@ class TestJsonInput(BaseInputTestCase):
             expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
             assert result.data == expected, f"{expected} is not the same as {result.data}"
 
-    def test_add_full_event_to_target_field_with_dict_format_2(self):
+    def test_add_full_event_to_target_field_2(self):
         return_value = ({"any": "content"}, None, None)
 
         with self.patch_documents_property(document=return_value):
