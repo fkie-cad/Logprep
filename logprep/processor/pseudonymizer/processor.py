@@ -5,17 +5,6 @@ Pseudonymizer
 The :code:`pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
 privacy regulations can be adhered to.
 
-.. security-best-practice::
-   :title: Processor - Pseudonymizer
-
-   The :code:`pseudonymizer` works with two public keys for different roles.
-   It is suggested to ensure that two different keys are being used such that the separation of the
-   roles can be maintained.
-
-   It is suggested to use the :code:`GCM` mode for encryption as it decouples the key length of the
-   depseudo and analyst keys. This leads to additional 152 bytes of overhead for the encryption
-   compared to the :code:`CTR` mode encrypter.
-
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
@@ -98,12 +87,21 @@ class Pseudonymizer(FieldManager):
         """
         Path to the public key of an analyst. For string format see :ref:`getters`.
 
-        * /var/git/analyst_pub.pem"""
+        .. security-best-practice::
+           :title: Processor - Pseudonymizer pubkey analyst Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+        """
         pubkey_depseudo: str = field(validator=validators.instance_of(str))
         """
         Path to the public key for depseudonymization. For string format see :ref:`getters`.
 
-        * /var/git/depseudo_pub.pem
+        .. security-best-practice::
+           :title: Processor - Pseudonymizer pubkey depseudo Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
         """
         hash_salt: str = field(validator=validators.instance_of(str))
         """A salt that is used for hashing."""
@@ -112,7 +110,18 @@ class Pseudonymizer(FieldManager):
         Path to a file (for string format see :ref:`getters`) with a regex mapping for
         pseudonymization, i.e.:
 
-        * /var/git/logprep-rules/pseudonymizer_rules/regex_mapping.json
+        .. security-best-practice::
+           :title: Processor - Pseudonymizer regex mapping Memory Consumption
+
+           Be aware that all values of the remote file were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - Pseudonymizer regex mapping Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
         """
         max_cached_pseudonyms: int = field(
             validator=(validators.instance_of(int), validators.gt(0))
@@ -125,17 +134,42 @@ class Pseudonymizer(FieldManager):
         repeatedly) and the load on subsequent components (i.e. Logstash or Opensearch).
         In case the cache size has been exceeded, the least recently used
         entry is deleted. Has to be greater than 0.
+
+        .. security-best-practice::
+           :title: Processor - Pseudonymizer max_cached_pseudonyms
+
+           Ensure to set this to a reasonable value to avoid excessive memory usage
+           and OOM situations by the domain resolver cache.
+
         """
         max_cached_pseudonymized_urls: int = field(
             validator=(validators.instance_of(int), validators.gt(0)), default=10000
         )
         """The maximum number of cached pseudonymized urls. Default is 10000.
-        Behaves similarly to the max_cached_pseudonyms. Has to be greater than 0."""
+        Behaves similarly to the max_cached_pseudonyms. Has to be greater than 0.
+
+        .. security-best-practice::
+           :title: Processor - Pseudonymizer max_cached_pseudonymized_urls
+
+           Ensure to set this to a reasonable value to avoid excessive memory usage
+           and OOM situations by the domain resolver cache.
+
+        """
         mode: str = field(
             validator=(validators.instance_of(str), validators.in_(("GCM", "CTR"))), default="GCM"
         )
         """Optional mode of operation for the encryption. Can be either 'GCM' or 'CTR'.
         Default is 'GCM'.
+
+        .. security-best-practice::
+           :title: Processor - Pseudonymizer
+           The :code:`pseudonymizer` works with two public keys for different roles.
+           It is suggested to ensure that two different keys are being used such that
+           the separation of the roles can be maintained.
+           It is suggested to use the :code:`GCM` mode for encryption as it decouples
+           the key length of the depseudo and analyst keys.
+           This leads to additional 152 bytes of overhead for the encryption
+           compared to the :code:`CTR` mode encrypter.
         """
 
     @define(kw_only=True)
