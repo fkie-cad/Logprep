@@ -107,15 +107,8 @@ class TemplateReplacer(FieldManager):
             self._perform_replacement(event, replacement, rule)
 
     def _get_replacement_value(self, field_values: list) -> str | None:
-        replacement = self._mapping
-        for dotted_field_value in field_values:
-            value = str(dotted_field_value)
-            replacement = replacement.get(value, None)
-            if replacement is None:
-                return None
-            if isinstance(replacement, str):
-                return replacement
-        return None
+        dotted_field = ".".join((str(value) for value in field_values))
+        return get_dotted_field_value(self._mapping, dotted_field)
 
     def _perform_replacement(self, event: dict, replacement: str, rule: TemplateReplacerRule):
         """Replace the target value, but not its parent fields.
