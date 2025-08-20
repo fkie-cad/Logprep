@@ -103,7 +103,7 @@ class TestDummyInput(BaseInputTestCase):
         connector.setup()
 
         result = connector.get_next(self.timeout)
-        expected = {'any': 'content', 'event': {'original': '"{\\"any\\":\\"content\\"}"'}}
+        expected = {"any": "content", "event": {"original": '"{\\"any\\":\\"content\\"}"'}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
 
         connector.shut_down()

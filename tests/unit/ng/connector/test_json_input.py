@@ -670,7 +670,7 @@ class TestJsonInput(BaseInputTestCase):
                     "add_full_event_to_target_field": {
                         "format": "str",
                         "target_field": "event.original",
-                        "clear_event":  False,
+                        "clear_event": False,
                     },
                 }
             }
@@ -683,11 +683,10 @@ class TestJsonInput(BaseInputTestCase):
             connector._get_event = mock.MagicMock(return_value=return_value)
             result = connector.get_next(0.01)
 
-
-        expected = {'any': 'content', 'event': {'original': '"{\\"any\\":\\"content\\"}"'}}
+        expected = {"any": "content", "event": {"original": '"{\\"any\\":\\"content\\"}"'}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
 
-        connector.shut_down()   
+        connector.shut_down()
 
     def test_add_full_event_to_targetfield_with_same_name(self):
         return_value = ({"any": "content"}, None, None)
