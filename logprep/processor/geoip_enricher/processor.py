@@ -73,8 +73,6 @@ class GeoipEnricher(FieldManager):
 
             """
 
-    __slots__ = []
-
     rule_class = GeoipEnricherRule
 
     @cached_property

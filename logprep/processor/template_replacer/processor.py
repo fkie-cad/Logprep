@@ -32,7 +32,7 @@ Processor Configuration
 .. automodule:: logprep.processor.template_replacer.rule
 """
 
-from typing import Any, List, Optional
+from typing import Any, List
 
 from attr import define, field, validators
 
@@ -106,11 +106,11 @@ class TemplateReplacer(FieldManager):
         if replacement is not None:
             self._perform_replacement(event, replacement, rule)
 
-    def _get_replacement_value(self, field_values: list) -> Optional[str]:
-        replacement = self._mapping
+    def _get_replacement_value(self, field_values: list) -> str | None:
+        mapping = self._mapping
         for dotted_field_value in field_values:
             value = str(dotted_field_value)
-            replacement = replacement.get(value, None)
+            replacement = mapping.get(value, None)
             if replacement is None:
                 return None
         return replacement

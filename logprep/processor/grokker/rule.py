@@ -154,7 +154,7 @@ class GrokkerRule(DissectorRule):
     def _set_convert_actions(self):
         pass
 
-    def set_mapping_actions(self, custom_patterns_dir: str = None) -> None:
+    def set_mapping_actions(self, custom_patterns_dir: str | None = None) -> None:
         """sets the mapping actions"""
         custom_patterns_dir = "" if custom_patterns_dir is None else custom_patterns_dir
 
@@ -170,7 +170,7 @@ class GrokkerRule(DissectorRule):
         except re.error as error:
             raise InvalidRuleDefinitionError(
                 f"The resolved grok pattern '{error.pattern}' is not valid"
-            )
+            ) from error
 
         # to ensure no string splitting is done during processing for target fields:
         for _, grok in self.actions.items():
