@@ -60,6 +60,20 @@ class TemplateReplacer(FieldManager):
         """
         Path to a YML file (for path format see :ref:`getters`) with a list of replacements in the
         format `%{provider_name}-%{event_id}: %{new_message}`.
+
+        .. security-best-practice::
+           :title: Processor - TemplateReplacer template Memory Consumption
+
+           Be aware that all values of the remote file were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - TemplateReplacer template Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
         """
 
         pattern: dict = field(validator=validators.instance_of(dict))
