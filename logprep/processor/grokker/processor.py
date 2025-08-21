@@ -60,6 +60,18 @@ class Grokker(FieldManager):
         """(Optional) A directory or URI to load patterns from. All files in all subdirectories
         will be loaded recursively. If an uri is given, the target file has to be a zip file with a
         directory structure in it.
+
+        .. security-best-practice::
+           :title: Processor - Grokker Custom Patterns Directory Memory Consumption
+
+           Be aware that all values of the remote zip were loaded into memory. Reserve memory for
+           this and avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - Grokker Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
         """
 
     def _apply_rules(self, event: dict, rule: GrokkerRule):

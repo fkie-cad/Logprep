@@ -21,6 +21,13 @@ You can pass multiple configuration files via valid file paths or urls.
    If using multiple files ensure that all can be loaded safely and that all endpoints (if using
    http resources) are accessible.
 
+.. security-best-practice::
+   :title: Configuration - Authenticity and Integrity
+
+   Ensure that all configuration files are retrieved from trusted sources and have not been
+   tampered with. Use :code:`tls` to encrypt the transmission of configuration files and use authentication
+   described in :code:`Authentication for HTTP Getters` to ensure confidentiality and integrity.
+
 Configuration File Structure
 ----------------------------
 
@@ -125,7 +132,7 @@ with :code:`LOGPREP_`, :code:`GITHUB_`, :code:`PYTEST_` or
 variable names are: :code:`["LOGPREP_LIST"]`, as it is already used internally.
 
 .. security-best-practice::
-   :title: Configuration Environment Variables
+   :title: Configuration - Environment Variables
 
    As it is possible to replace all configuration options with environment variables it is
    recommended to use these especially for sensitive information like usernames, password, secrets
@@ -346,12 +353,12 @@ class LoggerConfig:
     """The log level of the root logger. Defaults to :code:`INFO`.
 
     .. security-best-practice::
-       :title: Logprep Log-Level
+       :title: Configuration - Log-Level
        :location: config.logger.level
        :suggested-value: INFO
 
-         The log level of the root logger should be set to :code:`INFO` or higher in production environments
-         to avoid exposing sensitive information in the logs.
+         The log level of the root logger should be set to :code:`INFO` or higher
+         in production environments to avoid exposing sensitive information in the logs.
     """
     format: str = field(default="", validator=(validators.instance_of(str)), eq=False)
     """The format of the log message as supported by the :code:`LogprepFormatter`.
@@ -443,8 +450,8 @@ class Configuration:
     )
     """It is optionally possible to set a version to your configuration file which
     can be printed via :code:`logprep run --version config/pipeline.yml`.
-    This has no effect on the execution of logprep and is merely used for documentation purposes.
-    Defaults to :code:`unset`."""
+    This has no effect on the execution of logprep but is used as hook for reloading
+    the configuration. Defaults to :code:`unset`."""
     config_refresh_interval: Optional[int] = field(
         validator=validators.instance_of((int, type(None))), default=None, eq=False
     )
@@ -456,7 +463,7 @@ class Configuration:
     Defaults to :code:`None`, which means that the configuration will not be refreshed.
 
     .. security-best-practice::
-       :title: Configuration Refresh Interval
+       :title: Configuration - Refresh Interval
        :location: config.config_refresh_interval
        :suggested-value: <= 300
 
@@ -471,7 +478,7 @@ class Configuration:
 
        In case a new configuration could not be retrieved successfully and the
        :code:`config_refresh_interval` is already reduced automatically to 5 seconds it should be
-       noted that this could lead to a blocking behavior or an significant reduction in performance
+       noted that this could lead to a blocking behavior or a significant reduction in performance
        as logprep is often retrying to reload the configuration.
        Because of that ensure that the configuration endpoint is always available.
     """
@@ -483,7 +490,20 @@ class Configuration:
         validator=validators.instance_of(int), default=DEFAULT_RESTART_COUNT, eq=False
     )
     """Number of restarts before logprep exits. Defaults to :code:`5`.
-    If this value is set to a negative number, logprep will always restart immediately."""
+    If this value is set to a negative number, logprep will always restart immediately.
+
+    .. security-best-practice::
+       :title: Configuration - Restart Counter
+       :location: config.restart_count
+       :suggested-value: > 0
+
+       The restart counter should be set to a value greater than 0 to ensure that logprep
+       exits gracefully in case of repeated failures. This ensures that resources are released
+       properly and any necessary cleanup is performed. Additionally the process will exit with
+       an exit code unequal 0 to indicate that an error occurred. This is especially useful if you
+       use an external orchestrator like k8s or systemd to manage the logprep process to get
+       notified about failures via their respective monitoring and alerting systems.
+    """
     timeout: float = field(
         validator=(validators.instance_of(float), validators.gt(0)), default=5.0, eq=False
     )
@@ -544,7 +564,7 @@ class Configuration:
     For further information see the `uvicorn documentation <https://www.uvicorn.org/settings/>`_.
 
     .. security-best-practice::
-       :title: Metrics Configuration
+       :title: Configuration - Metrics Configuration
        :location: config.metrics.uvicorn_config
        :suggested-value: metrics.uvicorn_config.access_log: true, metrics.uvicorn_config.server_header: false, metrics.uvicorn_config.data_header: false
 
@@ -564,13 +584,27 @@ class Configuration:
 
     """
     profile_pipelines: bool = field(default=False, eq=False)
-    """Start the profiler to profile the pipeline. Defaults to :code:`False`."""
+    """Start the profiler to profile the pipeline. Defaults to :code:`False`.
+    This can be used to profile logprep in near production environments to inspect performance
+    bottlenecks.
+    """
     print_auto_test_stack_trace: bool = field(default=False, eq=False)
     """Print stack trace when auto test fails. Defaults to :code:`False`."""
     error_backlog_size: int = field(
         validator=validators.instance_of(int), default=DEFAULT_MESSAGE_BACKLOG_SIZE, eq=False
     )
-    """Size of the error backlog. Defaults to :code:`15000`."""
+    """Size of the error backlog. Defaults to :code:`15000`.
+
+    .. security-best-practice::
+       :title: Configuration - Error Backlog Size
+       :location: config.error_backlog_size
+       :suggested-value: <= 15000
+
+       Depending on your environment ensure that this value adheres to your overall
+       system resource limits. This can lead to OOM (Out Of Memory) errors if the backlog
+       grows too large in failure situations. You have to reserve memory for this backlog to avoid
+       DOS (Denial of Service) attacks by sending failing logs.
+    """
 
     _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 

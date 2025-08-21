@@ -32,7 +32,7 @@ Processor Configuration
 .. automodule:: logprep.processor.template_replacer.rule
 """
 
-from typing import Any, List, Optional
+from typing import Any, List
 
 from attr import define, field, validators
 
@@ -60,6 +60,20 @@ class TemplateReplacer(FieldManager):
         """
         Path to a YML file (for path format see :ref:`getters`) with a list of replacements in the
         format `%{provider_name}-%{event_id}: %{new_message}`.
+
+        .. security-best-practice::
+           :title: Processor - TemplateReplacer template Memory Consumption
+
+           Be aware that all values of the remote file were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - TemplateReplacer template Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
         """
 
         pattern: dict = field(validator=validators.instance_of(dict))
@@ -92,14 +106,9 @@ class TemplateReplacer(FieldManager):
         if replacement is not None:
             self._perform_replacement(event, replacement, rule)
 
-    def _get_replacement_value(self, field_values: list) -> Optional[str]:
-        replacement = self._mapping
-        for dotted_field_value in field_values:
-            value = str(dotted_field_value)
-            replacement = replacement.get(value, None)
-            if replacement is None:
-                return None
-        return replacement
+    def _get_replacement_value(self, field_values: list) -> str | None:
+        dotted_field = ".".join((str(value) for value in field_values))
+        return get_dotted_field_value(self._mapping, dotted_field)
 
     def _perform_replacement(self, event: dict, replacement: str, rule: TemplateReplacerRule):
         """Replace the target value, but not its parent fields.

@@ -133,7 +133,22 @@ class GenericResolverRule(FieldManagerRule):
         with a resolve list and a `pattern` key with
         a regex pattern which can be used to resolve values.
         The resolve list in the file at :code:`path` is then used in conjunction with
-        the regex pattern in :code:`pattern`."""
+        the regex pattern in :code:`pattern`.
+
+        .. security-best-practice::
+           :title: Processor - Generic Resolver Resolve From File Memory Consumption
+
+           Be aware that all values of the remote file were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - Generic Resolver Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
+        """
         ignore_case: Optional[str] = field(validator=validators.instance_of(bool), default=False)
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 

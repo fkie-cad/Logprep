@@ -183,6 +183,15 @@ class ConfluentKafkaOutput(Output):
         .. datatemplate:import-module:: logprep.connector.confluent_kafka.output
             :template: defaults-renderer.tmpl
 
+        .. security-best-practice::
+           :title: Kafka Output Producer Authentication and Encryption
+
+           Kafka authentication is a critical aspect of securing your data pipeline.
+           Ensure that you have the following configurations in place:
+
+           - Use SSL/mTLS encryption for data in transit.
+           - Configure SASL or mTLS authentication for your Kafka clients.
+           - Regularly rotate your Kafka credentials and secrets.
         """
 
     @property

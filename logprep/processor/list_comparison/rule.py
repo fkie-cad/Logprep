@@ -64,7 +64,22 @@ class ListComparisonRule(FieldManagerRule):
         list_file_paths: List[str] = field(
             validator=validators.deep_iterable(member_validator=validators.instance_of(str))
         )
-        """List of files. For string format see :ref:`getters`."""
+        """List of files. For string format see :ref:`getters`.
+
+        .. security-best-practice::
+           :title: Processor - List Comparison list file paths Memory Consumption
+
+           Be aware that all values of the remote files were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - List Comparison list file paths Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
+        """
         list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
         """Base Path from where to find relative files from :code:`list_file_paths`.
         You can also pass a template with keys from environment,
@@ -85,7 +100,7 @@ class ListComparisonRule(FieldManagerRule):
         return list_search_base_path
 
     def init_list_comparison(self, list_search_base_path: Optional[str] = None):
-        """init method for list_comparision lists"""
+        """init method for list_comparison lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         if list_search_base_path.startswith("http"):
             for list_path in self._config.list_file_paths:

@@ -41,8 +41,23 @@ class Labeler(Processor):
     class Config(Processor.Config):
         """Labeler Configurations"""
 
-        schema: str = field(validator=(validators.instance_of(str)))
-        """Path to a labeling schema file. For string format see :ref:`getters`."""
+        schema: str = field(validator=validators.instance_of(str))
+        """Path to a labeling schema file. For string format see :ref:`getters`.
+
+        .. security-best-practice::
+           :title: Processor - Labeler Schema File Memory Consumption
+
+           Be aware that all values of the remote file were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - Labeler Schema File Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
+        """
         include_parent_labels: Optional[bool] = field(
             default=False, validator=validators.optional(validator=validators.instance_of(bool))
         )

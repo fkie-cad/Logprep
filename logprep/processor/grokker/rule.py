@@ -124,6 +124,12 @@ class GrokkerRule(DissectorRule):
         When writing patterns it is advised to be careful as the underlying regex can become complex
         fast. If the execution and the resolving of the pattern takes more than one second a
         matching timeout will be raised.
+
+        .. security-best-practice::
+           :title: Processor - Grokker DOS (Denial of Service) via Backreferences
+
+           Avoid using backreferences in grok patterns, as they can lead to excessive memory consumption
+           and potential denial of service attacks.
         """
         patterns: dict = field(
             validator=[
@@ -148,7 +154,7 @@ class GrokkerRule(DissectorRule):
     def _set_convert_actions(self):
         pass
 
-    def set_mapping_actions(self, custom_patterns_dir: str = None) -> None:
+    def set_mapping_actions(self, custom_patterns_dir: str | None = None) -> None:
         """sets the mapping actions"""
         custom_patterns_dir = "" if custom_patterns_dir is None else custom_patterns_dir
 
@@ -164,7 +170,7 @@ class GrokkerRule(DissectorRule):
         except re.error as error:
             raise InvalidRuleDefinitionError(
                 f"The resolved grok pattern '{error.pattern}' is not valid"
-            )
+            ) from error
 
         # to ensure no string splitting is done during processing for target fields:
         for _, grok in self.actions.items():

@@ -114,13 +114,13 @@ dev = [
 ]
 
 doc = [
-  "sphinx<8.2.0",
+  "sphinx>=8.2.0",
   "sphinx_rtd_theme",
   "sphinxcontrib.datatemplates",
   "sphinxcontrib-mermaid",
   "sphinx-copybutton",
-  "nbsphinx",
-  "ipython",
+  "nbsphinx>=0.9",
+  "ipython>=8.7",
   "openpyxl",
 ]
 

@@ -47,7 +47,15 @@ class GenericResolver(FieldManager):
             validator=validators.optional(validators.instance_of(int)), default=0
         )
         """(Optional) Size of cache for results when resolving form a list.
-        The cache can be disabled by setting it this option to :code:`0`."""
+        The cache can be disabled by setting it this option to :code:`0`.
+
+        .. security-best-practice::
+           :title: Processor - Generic Resolver Max Cached Entries
+
+           Ensure to set this to a reasonable value to avoid excessive memory usage
+           and OOM situations by the generic resolver cache.
+
+        """
         cache_metrics_interval: Optional[int] = field(
             validator=validators.optional(validators.instance_of(int)), default=1
         )
@@ -167,6 +175,7 @@ class GenericResolver(FieldManager):
         for pattern, content in rule.compiled_resolve_list:
             if pattern.search(source_field_value):
                 return content
+        return None
 
     def _update_cache_metrics(self):
         if self.max_cache_entries <= 0:
