@@ -692,6 +692,8 @@ class BaseInputTestCase(BaseConnectorTestCase):
         expected = {"any": "content", "event": {"original": '"{\\"any\\":\\"content\\"}"'}}
         assert result == expected, f"{expected} is not the same as {result}"
 
+        connector.shut_down()
+
 
 class BaseOutputTestCase(BaseConnectorTestCase):
     def test_is_output_instance(self):
