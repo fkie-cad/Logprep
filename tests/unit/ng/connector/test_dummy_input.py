@@ -87,23 +87,3 @@ class TestDummyInput(BaseInputTestCase):
             assert next(dummy_input_iterator).data == {"order": 1}
             assert next(dummy_input_iterator).data == {"order": 2}
             assert next(dummy_input_iterator) is None
-
-    def test_add_full_event_to_target_field(self):
-        config = copy.deepcopy(self.CONFIG)
-        config["documents"] = [{"any": "content"}]
-        config["preprocessing"] = {
-            "add_full_event_to_target_field": {
-                "format": "str",
-                "target_field": "event.original",
-                "clear_event": False,
-            }
-        }
-
-        connector = Factory.create({"test connector": config})
-        connector.setup()
-
-        result = connector.get_next(self.timeout)
-        expected = {"any": "content", "event": {"original": '"{\\"any\\":\\"content\\"}"'}}
-        assert result.data == expected, f"{expected} is not the same as {result.data}"
-
-        connector.shut_down()

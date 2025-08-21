@@ -22,6 +22,9 @@ class TestJsonInput(BaseInputTestCase):
 
     parse_function = "logprep.connector.json.input.parse_json"
 
+    def test_add_full_event_to_target_field_without_clear(self):
+        super().test_add_full_event_to_target_field_without_clear()
+
     @mock.patch(parse_function)
     def test_documents_returns(self, mock_parse):
         return_value = [{"message": "test_message"}]
