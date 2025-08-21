@@ -114,7 +114,7 @@ class FullEventConfig:
     The default ist :code:`str`, which results in escaped json string"""
     target_field: str = field(validator=validators.instance_of(str), default="event.original")
     """Defines the fieldname which the event should be written to"""
-    clear_event: bool = field(validator=validators.instance_of(bool), default=False)
+    clear_event: bool = field(validator=validators.instance_of(bool), default=True)
     """Defines if raw event should be the only field."""
 
 

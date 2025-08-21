@@ -990,6 +990,32 @@ class BaseInputTestCase(BaseConnectorTestCase):
             assert next(input_iterator) == {"valid": "json_3"}
             assert next(input_iterator) is None
 
+    def test_add_full_event_to_target_field_without_clear(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "str",
+                    "target_field": "event.original",
+                    "clear_event": False,
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        connector._wait_for_health = mock.MagicMock()
+        connector.pipeline_index = 1
+        connector.setup()
+
+        return_value = ({"any": "content"}, None, None)
+
+        connector._get_event = mock.MagicMock(return_value=return_value)
+        result = connector.get_next(0.01)
+        expected = {"any": "content", "event": {"original": '"{\\"any\\":\\"content\\"}"'}}
+        assert result.data == expected, f"{expected} is not the same as {result.data}"
+
+        connector.shut_down()
+
 
 class BaseOutputTestCase(BaseConnectorTestCase):
     def test_is_output_instance(self):
