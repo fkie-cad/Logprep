@@ -5,6 +5,7 @@
 ### Breaking
 
 ### Features
+* add `clear_event` field to `add_full_event_to_target_field`
 
 ### Improvements
 

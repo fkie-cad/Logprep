@@ -211,6 +211,8 @@ class Input(Connector):
               This can be achived by using the :code:`log_arrival_time_target_field` preprocessor.
             - :code:`target_field` - specifies the field to which the event should be written to.
               the default is :code:`event.original`
+            - :code:`clear_event` - specifies if the singular field should be the only field or appended.
+              the default is :code: `True`
         """
 
         _version_information: dict = field(
