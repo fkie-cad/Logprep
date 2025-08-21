@@ -1,14 +1,20 @@
 ## Upcoming Changes
 
-## next release
+### Breaking
 
+### Features
+
+### Improvements
+
+### Bugfix
+
+## 17.0.2
 ### Breaking
 
 ### Features
 * add `clear_event` field to `add_full_event_to_target_field`
 
 ### Improvements
-
 * add `acknowledge()` functionality (state change of events and deleting from backlog)
 * add `event_backlog` to the abstract input interface.
 * register event in the backlog and return the registered event object.
@@ -23,7 +29,6 @@
 * add new class `Pipeline` to ng module
 
 ### Bugfix
-
 * fix auto-rule tester getting stuck due to logging
 
 ## 17.0.1
