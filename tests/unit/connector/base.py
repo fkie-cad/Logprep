@@ -673,6 +673,27 @@ class BaseInputTestCase(BaseConnectorTestCase):
         # asserts entering context manager in metrics.metrics.Metric.measure_time
         mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
 
+    def test_add_full_event_to_target_field_without_clear(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "add_full_event_to_target_field": {
+                    "format": "str",
+                    "target_field": "event.original",
+                    "clear_event": False,
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config})
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result = connector.get_next(0.01)
+        expected = {"any": "content", "event": {"original": '"{\\"any\\":\\"content\\"}"'}}
+        assert result == expected, f"{expected} is not the same as {result}"
+
+        connector.shut_down()
+
 
 class BaseOutputTestCase(BaseConnectorTestCase):
     def test_is_output_instance(self):

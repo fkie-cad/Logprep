@@ -114,6 +114,8 @@ class FullEventConfig:
     The default ist :code:`str`, which results in escaped json string"""
     target_field: str = field(validator=validators.instance_of(str), default="event.original")
     """Defines the fieldname which the event should be written to"""
+    clear_event: bool = field(validator=validators.instance_of(bool), default=True)
+    """Defines if raw event should be the only field."""
 
 
 class InputIterator(Iterator):
@@ -254,6 +256,8 @@ class Input(Connector):
               This can be achieved by using the :code:`log_arrival_time_target_field` preprocessor.
             - :code:`target_field` - specifies the field to which the event should be written to.
               the default is :code:`event.original`
+            - :code:`clear_event` - specifies if the singular field should be the only field or appended.
+              the default is :code: `True`
         """
 
         _version_information: dict = field(
@@ -516,7 +520,9 @@ class Input(Connector):
             complete_event = self._decoder.decode(raw_event.decode("utf-8"))
         else:
             complete_event = json.dumps(raw_event.decode("utf-8"))
-        event_dict.clear()
+        clear_event = target.get("clear_event", True)
+        if clear_event:
+            event_dict.clear()
         add_fields_to(
             event_dict, fields={target["target_field"]: complete_event}, overwrite_target=True
         )

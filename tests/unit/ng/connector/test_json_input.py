@@ -976,3 +976,28 @@ class TestJsonInput(BaseInputTestCase):
                     _ = connector.get_next(0.01)
 
                 mock_acknowledge.assert_called_once()
+
+    def test_add_full_event_to_target_field_without_clear(self):
+        return_value = ({"any": "content"}, None, None)
+
+        with self.patch_documents_property(document=return_value):
+            preprocessing_config = {
+                "preprocessing": {
+                    "add_full_event_to_target_field": {
+                        "format": "str",
+                        "target_field": "event.original",
+                    },
+                }
+            }
+            connector_config = deepcopy(self.CONFIG)
+            connector_config.update(preprocessing_config)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+            connector._get_event = mock.MagicMock(return_value=return_value)
+            result = connector.get_next(0.01)
+            expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
+            assert result.data == expected, f"{expected} is not the same as {result.data}"
+
+        connector.shut_down()
