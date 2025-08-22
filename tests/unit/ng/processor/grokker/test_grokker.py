@@ -11,8 +11,8 @@ from unittest import mock
 
 import pytest
 
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.util.getter import GetterFactory
 from tests.unit.ng.processor.base import BaseProcessorTestCase

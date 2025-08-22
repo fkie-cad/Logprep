@@ -27,7 +27,7 @@ Processor Configuration
 .. automodule:: logprep.processor.selective_extractor.rule
 """
 
-from logprep.ng.event.filtered_event import FilteredEvent
+from logprep.event.filtered_event import FilteredEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.util.helper import add_fields_to, get_source_fields_dict

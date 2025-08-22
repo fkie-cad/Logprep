@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 from unittest import mock
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.event.log_event import LogEvent
 from logprep.ng.processor.dropper.processor import Dropper
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 

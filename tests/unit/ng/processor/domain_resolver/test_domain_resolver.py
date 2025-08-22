@@ -5,8 +5,8 @@ from multiprocessing import context
 from pathlib import Path
 from unittest import mock
 
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
 from logprep.ng.processor.domain_resolver.processor import ResolveStatus
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase

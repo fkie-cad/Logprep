@@ -17,11 +17,11 @@ from logging import getLogger
 from unittest import mock
 
 from logprep.abc.connector import Connector
+from logprep.event.event_state import EventStateType
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
 from logprep.ng.abc.input import CriticalInputError, Input
 from logprep.ng.abc.output import Output
-from logprep.ng.event.event_state import EventStateType
-from logprep.ng.event.log_event import LogEvent
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase

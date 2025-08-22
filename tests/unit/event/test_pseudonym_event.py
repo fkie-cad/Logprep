@@ -4,10 +4,10 @@
 # pylint: disable=redefined-slots-in-subclass
 
 
-from logprep.ng.abc.event import Event
-from logprep.ng.event.event_state import EventState, EventStateType
-from logprep.ng.event.pseudonym_event import PseudonymEvent
-from tests.unit.ng.event.test_event import TestEventClass
+from logprep.abc.event import Event
+from logprep.event.event_state import EventState, EventStateType
+from logprep.event.pseudonym_event import PseudonymEvent
+from tests.unit.event.test_event import TestEventClass
 
 
 class DummyEvent(Event):

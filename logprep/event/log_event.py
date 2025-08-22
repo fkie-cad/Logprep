@@ -3,8 +3,8 @@
 from functools import partial
 from typing import Any
 
-from logprep.ng.abc.event import Event, EventMetadata
-from logprep.ng.event.event_state import EventState, EventStateType
+from logprep.abc.event import Event, EventMetadata
+from logprep.event.event_state import EventState, EventStateType
 
 
 class LogEvent(Event):

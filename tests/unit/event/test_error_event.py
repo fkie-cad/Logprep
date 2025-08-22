@@ -5,11 +5,11 @@
 # pylint: disable=attribute-defined-outside-init
 
 
-from logprep.ng.abc.event import Event
-from logprep.ng.event.error_event import ErrorEvent
-from logprep.ng.event.event_state import EventStateType
-from logprep.ng.event.log_event import LogEvent
-from tests.unit.ng.event.test_event import TestEventClass
+from logprep.abc.event import Event
+from logprep.event.error_event import ErrorEvent
+from logprep.event.event_state import EventStateType
+from logprep.event.log_event import LogEvent
+from tests.unit.event.test_event import TestEventClass
 
 
 class DummyEvent(Event):

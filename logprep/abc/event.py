@@ -5,7 +5,7 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
 
-from logprep.ng.event.event_state import EventState, EventStateType
+from logprep.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
     add_fields_to,
     get_dotted_field_value,
@@ -13,7 +13,7 @@ from logprep.util.helper import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from logprep.processor.base.rule import Rule
+    pass
 
 
 class EventMetadata(ABC):

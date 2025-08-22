@@ -40,9 +40,9 @@ from attrs import define, field, validators
 from opensearchpy import OpenSearchException, helpers
 from opensearchpy.serializer import JSONSerializer
 
+from logprep.abc.event import Event
 from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
-from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import Output
 
 logger = logging.getLogger("OpenSearchOutput")

@@ -10,8 +10,8 @@
 
 from unittest import mock
 
-from logprep.ng.event.event_state import EventStateType
-from logprep.ng.event.log_event import LogEvent
+from logprep.event.event_state import EventStateType
+from logprep.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
 

@@ -9,8 +9,8 @@ import copy
 import pytest
 from pytest import raises
 
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule

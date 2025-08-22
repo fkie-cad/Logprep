@@ -16,10 +16,10 @@ from opensearchpy import OpenSearchException as SearchException
 from opensearchpy import helpers
 
 from logprep.abc.component import Component
+from logprep.event.event_state import EventStateType
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
 from logprep.ng.connector.opensearch.output import BulkError
-from logprep.ng.event.event_state import EventStateType
-from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
 helpers.parallel_bulk = mock.MagicMock()

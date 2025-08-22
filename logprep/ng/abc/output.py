@@ -10,8 +10,8 @@ from typing import Any, Callable
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
+from logprep.abc.event import Event
 from logprep.abc.exceptions import LogprepException
-from logprep.ng.abc.event import Event
 
 
 class OutputError(LogprepException):

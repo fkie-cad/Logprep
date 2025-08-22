@@ -3,8 +3,8 @@
 import uuid
 from unittest import mock
 
-from logprep.ng.event.filtered_event import FilteredEvent
-from logprep.ng.event.log_event import LogEvent
+from logprep.event.filtered_event import FilteredEvent
+from logprep.event.log_event import LogEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 

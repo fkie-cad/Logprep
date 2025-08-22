@@ -12,11 +12,11 @@ from unittest import mock
 import pytest
 from confluent_kafka.error import KafkaException  # type: ignore
 
+from logprep.event.event_state import EventStateType
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.output import FatalOutputError
-from logprep.ng.event.event_state import EventStateType
-from logprep.ng.event.log_event import LogEvent
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
 )

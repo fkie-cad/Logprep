@@ -9,7 +9,7 @@ import re
 
 import pytest
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.event.log_event import LogEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 test_cases = [

@@ -18,7 +18,7 @@ Example
 import sys
 from pprint import pprint
 
-from logprep.ng.abc.event import Event
+from logprep.abc.event import Event
 from logprep.ng.abc.output import Output
 
 

@@ -52,9 +52,9 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
+from logprep.event.pseudonym_event import PseudonymEvent
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.ng.event.pseudonym_event import PseudonymEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.getter import GetterFactory

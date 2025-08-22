@@ -18,12 +18,12 @@ from zoneinfo import ZoneInfo
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
+from logprep.abc.event import EventBacklog
 from logprep.abc.exceptions import LogprepException
+from logprep.event.event_state import EventStateType
+from logprep.event.log_event import LogEvent
+from logprep.event.set_event_backlog import SetEventBacklog
 from logprep.metrics.metrics import Metric
-from logprep.ng.abc.event import EventBacklog
-from logprep.ng.event.event_state import EventStateType
-from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.helper import add_fields_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser, TimeParserException

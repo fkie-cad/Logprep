@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, Type
 from attrs import define, field, validators
 
 from logprep.abc.component import Component
+from logprep.event.log_event import LogEvent
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
-from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
 from logprep.util.rule_loader import RuleLoader

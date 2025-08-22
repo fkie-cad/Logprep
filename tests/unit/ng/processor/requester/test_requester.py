@@ -12,7 +12,7 @@ import responses
 from requests import ConnectTimeout, HTTPError
 from responses import matchers
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.event.log_event import LogEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 test_cases = [

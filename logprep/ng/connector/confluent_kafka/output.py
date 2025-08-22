@@ -33,8 +33,8 @@ from attrs import define, field, validators
 from confluent_kafka import KafkaException, Message, Producer  # type: ignore
 from confluent_kafka.admin import AdminClient
 
+from logprep.abc.event import Event
 from logprep.metrics.metrics import GaugeMetric, Metric
-from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import FatalOutputError, Output
 from logprep.util.validators import keys_in_validator
 

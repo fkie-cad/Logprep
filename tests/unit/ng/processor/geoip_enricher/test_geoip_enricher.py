@@ -21,8 +21,8 @@ import pytest
 import responses
 from geoip2.errors import AddressNotFoundError
 
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 

@@ -3,8 +3,8 @@ from copy import deepcopy
 
 import pytest
 
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
 from logprep.ng.processor.template_replacer.processor import TemplateReplacerError
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase

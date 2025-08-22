@@ -7,7 +7,7 @@ import re
 
 import pytest
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.event.log_event import LogEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 

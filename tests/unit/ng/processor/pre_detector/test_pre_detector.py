@@ -5,8 +5,8 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.sre_event import SreEvent
+from logprep.event.log_event import LogEvent
+from logprep.event.sre_event import SreEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 

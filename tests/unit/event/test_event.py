@@ -12,8 +12,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from logprep.ng.abc.event import Event
-from logprep.ng.event.event_state import EventState, EventStateType
+from logprep.abc.event import Event
+from logprep.event.event_state import EventState, EventStateType
 
 
 class DummyEvent(Event):
@@ -240,7 +240,7 @@ class TestEventClass:
         fields = {"key": "value"}
         rule = MagicMock()
 
-        with patch("logprep.ng.abc.event.add_fields_to") as mock_add:
+        with patch("logprep.abc.event.add_fields_to") as mock_add:
             dummy.add_fields_to(fields, rule, merge_with_target=True, overwrite_target=True)
             mock_add.assert_called_once()
 
@@ -248,7 +248,7 @@ class TestEventClass:
         dummy = DummyEvent({"user": {"id": 42}})
         field = "id"
 
-        with patch("logprep.ng.abc.event.get_dotted_field_value") as mock_get:
+        with patch("logprep.abc.event.get_dotted_field_value") as mock_get:
             dummy.get_dotted_field_value(field)
             mock_get.assert_called_once()
 
@@ -256,7 +256,7 @@ class TestEventClass:
         dummy = DummyEvent({"user": {"id": 42}})
         field = "user"
 
-        with patch("logprep.ng.abc.event.pop_dotted_field_value") as mock_pop:
+        with patch("logprep.abc.event.pop_dotted_field_value") as mock_pop:
             dummy.pop_dotted_field_value(field)
             mock_pop.assert_called_once()
 

@@ -7,7 +7,7 @@ from unittest import mock
 
 from dateutil.tz import tzoffset, tzutc  # type: ignore
 
-from logprep.ng.event.log_event import LogEvent
+from logprep.event.log_event import LogEvent
 from logprep.ng.processor.datetime_extractor.processor import DatetimeExtractor
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase

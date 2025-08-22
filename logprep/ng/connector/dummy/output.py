@@ -22,9 +22,9 @@ from typing import TYPE_CHECKING, List
 from attr import define, field
 from attrs import validators
 
-from logprep.ng.abc.event import Event
+from logprep.abc.event import Event
+from logprep.event.log_event import LogEvent
 from logprep.ng.abc.output import Output
-from logprep.ng.event.log_event import LogEvent
 
 if TYPE_CHECKING:
     from logprep.abc.connector import Connector  # pragma: no cover

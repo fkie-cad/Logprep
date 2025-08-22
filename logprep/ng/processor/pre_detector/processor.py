@@ -33,8 +33,8 @@ from uuid import uuid4
 
 from attr import define, field, validators
 
+from logprep.event.sre_event import SreEvent
 from logprep.ng.abc.processor import Processor
-from logprep.ng.event.sre_event import SreEvent
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule

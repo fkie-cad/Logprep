@@ -9,8 +9,8 @@
 from copy import deepcopy
 from unittest import mock
 
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
-from logprep.ng.event.log_event import LogEvent
 from logprep.processor.clusterer.rule import ClustererRule
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 

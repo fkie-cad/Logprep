@@ -15,11 +15,11 @@ import responses
 from attrs import asdict
 from ruamel.yaml import YAML
 
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.ng.abc.processor import Processor
-from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
     ProcessingCriticalError,

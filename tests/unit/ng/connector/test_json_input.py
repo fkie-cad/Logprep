@@ -17,10 +17,10 @@ from unittest import mock
 
 import pytest
 
+from logprep.event.event_state import EventStateType
+from logprep.event.log_event import LogEvent
 from logprep.factory import Factory
 from logprep.ng.abc.input import CriticalInputError, SourceDisconnectedWarning
-from logprep.ng.event.event_state import EventStateType
-from logprep.ng.event.log_event import LogEvent
 from logprep.util.time import TimeParser
 from tests.unit.ng.connector.base import BaseInputTestCase
 

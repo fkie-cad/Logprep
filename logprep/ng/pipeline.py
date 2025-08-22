@@ -4,15 +4,15 @@ from collections.abc import Iterator
 from itertools import islice
 from typing import Generator
 
+from logprep.event.log_event import LogEvent
 from logprep.ng.abc.processor import Processor
-from logprep.ng.event.log_event import LogEvent
 
 
 class Pipeline(Iterator):
     """Pipeline class to process events through a series of processors.
     Examples:
-        >>> from logprep.ng.event.log_event import LogEvent
-        >>> from logprep.ng.abc.event import Event
+        >>> from logprep.event.log_event import LogEvent
+        >>> from logprep.abc.event import Event
         >>> class MockProcessor:
         ...     def process(self, event: LogEvent) -> None:
         ...         event.data["processed"] = True

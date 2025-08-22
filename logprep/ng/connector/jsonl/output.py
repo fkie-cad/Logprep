@@ -22,7 +22,7 @@ import json
 
 from attrs import define, field, validators
 
-from logprep.ng.abc.event import Event
+from logprep.abc.event import Event
 from logprep.ng.abc.output import Output
 
 

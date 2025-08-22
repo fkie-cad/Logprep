@@ -2,8 +2,8 @@
 
 from typing import Iterable
 
-from logprep.ng.abc.event import Event, EventBacklog
-from logprep.ng.event.event_state import EventStateType
+from logprep.abc.event import Event, EventBacklog
+from logprep.event.event_state import EventStateType
 
 
 class SetEventBacklog(EventBacklog):

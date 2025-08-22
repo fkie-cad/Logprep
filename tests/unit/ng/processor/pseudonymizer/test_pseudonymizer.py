@@ -14,10 +14,10 @@ from copy import deepcopy
 
 import pytest
 
+from logprep.event.log_event import LogEvent
+from logprep.event.pseudonym_event import PseudonymEvent
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.pseudonym_event import PseudonymEvent
 from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
