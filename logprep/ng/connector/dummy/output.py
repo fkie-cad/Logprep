@@ -71,18 +71,18 @@ class DummyOutput(Output):
 
     def __init__(self, name: str, configuration: "Connector.Config"):
         super().__init__(name, configuration)
-        self.events = []
+        self.events: list[LogEvent] = []
         self.failed_events = []
         self.shut_down_called_count = 0
         self._exceptions = configuration.exceptions
 
     @Output._handle_errors
-    def store(self, event: Event) -> None:
+    def store(self, event: LogEvent) -> None:
         """Store the document in the output destination.
 
         Parameters
         ----------
-        document : dict
+        event: Event
            Processed log event that will be stored.
         """
         if self._config.do_nothing:

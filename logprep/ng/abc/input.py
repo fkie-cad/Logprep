@@ -12,13 +12,13 @@ from collections.abc import Iterator
 from copy import deepcopy
 from functools import cached_property, partial
 from hmac import HMAC
-from typing import Optional, Self
+from typing import Optional, Self, cast
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
-from logprep.abc.event import EventBacklog
+from logprep.abc.event import EventBacklog, EventMetadata
 from logprep.abc.exceptions import LogprepException
 from logprep.event.event_state import EventStateType
 from logprep.event.log_event import LogEvent
@@ -304,9 +304,11 @@ class Input(Connector):
         before acknowledging new ones.
         """
 
-        self.event_backlog.unregister(state_type=EventStateType.ACKED)
+        self.event_backlog.unregister(state_type=cast(EventStateType, EventStateType.ACKED))
 
-        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):
+        for event in self.event_backlog.get(
+            state_type=cast(EventStateType, EventStateType.DELIVERED)
+        ):
             event.state.next_state()
 
     @property
@@ -394,7 +396,7 @@ class Input(Connector):
         self,
         event: dict | None,
         raw_event: bytes | None,
-        metadata: dict | None,
+        metadata: EventMetadata | None,
         error: Exception,
     ) -> None:
         """Helper method to register the failed event to event backlog."""
@@ -405,7 +407,7 @@ class Input(Connector):
             metadata=metadata,
         )
         error_log_event.errors.append(error)
-        error_log_event.state.current_state = EventStateType.FAILED
+        error_log_event.state.current_state = cast(EventStateType, EventStateType.FAILED)
 
         self.event_backlog.register(events=[error_log_event])
 
@@ -428,7 +430,7 @@ class Input(Connector):
 
         event: dict | None = None
         raw_event: bytearray | None = None
-        metadata: dict | None = None
+        metadata: EventMetadata | None = None
 
         try:
             event, raw_event, metadata = self._get_event(timeout)

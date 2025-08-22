@@ -3,7 +3,7 @@
 """abstract module for event"""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Union, cast
 
 from logprep.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
@@ -13,7 +13,7 @@ from logprep.util.helper import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    pass
+    from logprep.processor.base.rule import Rule
 
 
 class EventMetadata(ABC):
@@ -234,13 +234,13 @@ class ExtraDataEvent(Event):
         ----------
         data : dict[str, str]
             The main data payload for the SRE event.
-        state : EventStateType
+        state : EventStateType | EventStateType | None
             The state of the SRE event.
         outputs : Iterable[str]
             The collection of output connector names associated with the SRE event
         """
         self.outputs = outputs
-        state = state if state is not None else EventStateType.PROCESSED
+        state = state if state is not None else cast(EventStateType, EventStateType.PROCESSED)
         super().__init__(data=data, state=state)
 
 
