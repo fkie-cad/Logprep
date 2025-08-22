@@ -1,6 +1,6 @@
 """Concrete Sre Event implementation"""
 
-from logprep.ng.abc.event import ExtraDataEvent
+from logprep.abc.event import ExtraDataEvent
 
 
 class FilteredEvent(ExtraDataEvent):

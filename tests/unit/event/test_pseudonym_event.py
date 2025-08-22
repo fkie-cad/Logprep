@@ -7,7 +7,7 @@
 from logprep.ng.abc.event import Event
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.ng.event.pseudonym_event import PseudonymEvent
-from tests.unit.ng.event.test_event import TestEventClass
+from tests.unit.event.test_event import TestEventClass
 
 
 class DummyEvent(Event):
