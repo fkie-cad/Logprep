@@ -985,8 +985,38 @@ class TestJsonInput(BaseInputTestCase):
             expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
             assert result.data == expected, f"{expected} is not the same as {result.data}"
 
-    def test_acknowledge_events(self, ack_cases):
+    @pytest.mark.parametrize(
+        "states, new_size, expected_message",
+        [
+            (
+                (EventStateType.ACKED, EventStateType.PROCESSING),
+                2,
+                "expecting: 1*ACKED will be removed from backlog",
+            ),
+            (
+                (EventStateType.ACKED, EventStateType.PROCESSING, EventStateType.ACKED),
+                2,
+                "expecting: 2*ACKED will be removed from backlog",
+            ),
+            (
+                (EventStateType.PROCESSING, EventStateType.PROCESSING),
+                3,
+                "expecting: no event state will be changed",
+            ),
+            (
+                (EventStateType.DELIVERED, EventStateType.DELIVERED),
+                3,
+                "expecting: 2*DELIVERED should switch to ACKED (both events)",
+            ),
+        ],
+    )
+    def test_acknowledge_events(self, states, new_size, expected_message):
         with self.patch_documents_property(document={}):
+            backlog = {
+                LogEvent(data={"message": f"msg {i + 1}"}, original=b"", state=s)
+                for i, s in enumerate(states, start=1)
+            }
+            initial_size = len(backlog)
             connector_config = deepcopy(self.CONFIG)
             connector = Factory.create({"test connector": connector_config})
             connector._wait_for_health = mock.MagicMock()
@@ -994,7 +1024,7 @@ class TestJsonInput(BaseInputTestCase):
             connector.setup()
 
             set_event_backlog = SetEventBacklog()
-            set_event_backlog.backlog = ack_cases["backlog"]
+            set_event_backlog.backlog = backlog
 
             with (
                 mock.patch.object(connector, "event_backlog", new=set_event_backlog),
@@ -1004,10 +1034,8 @@ class TestJsonInput(BaseInputTestCase):
                     return_value=({"message": "another test message"}, b"", None),
                 ),
             ):
-                assert len(connector.event_backlog.backlog) == ack_cases["initial_size"], ack_cases[
-                    "expected_message"
-                ]
+                assert len(connector.event_backlog.backlog) == initial_size, expected_message
                 _ = connector.get_next(0.01)
-                assert len(connector.event_backlog.backlog) == ack_cases["new_size"], ack_cases[
-                    "expected_message"
-                ]
+                assert len(connector.event_backlog.backlog) == new_size, expected_message
+
+            connector.shut_down()
