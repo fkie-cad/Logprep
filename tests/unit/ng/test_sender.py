@@ -187,7 +187,7 @@ class TestSender:
         assert "Error during sending to error output" in caplog.text
         assert "ErrorEvent" in caplog.text
         assert "state=failed" in caplog.text
-        assert "b\"{'message': 'Test message'}\"" in caplog.text
+        assert '{"message": "Test message"}' in caplog.text
 
     def test_iter_handles_errors_during_sending_to_error_output(
         self, opensearch_output, error_output, caplog
@@ -216,7 +216,7 @@ class TestSender:
         assert "Error during sending to error output" in caplog.text
         assert "ErrorEvent" in caplog.text
         assert "state=failed" in caplog.text
-        assert "b\"{'message': 'Test message'}\"" in caplog.text
+        assert '{"message": "Test message"}' in caplog.text
 
     def test_get_error_event(self, pipeline, opensearch_output):
         sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
@@ -227,7 +227,7 @@ class TestSender:
         assert isinstance(error_event, ErrorEvent)
         assert error_event.data["@timestamp"] is not None
         assert error_event.data["reason"] == "Unknown error"
-        assert error_event.data["original"] == b"the event"
+        assert error_event.data["original"] == "the event"
         assert error_event.state.current_state == EventStateType.PROCESSED
 
     def test_get_error_event_with_error_list(self, pipeline, opensearch_output):
@@ -244,7 +244,7 @@ class TestSender:
             error_event.data["reason"]
             == "Error during processing: (ValueError('Error 1'), TypeError('Error 2'))"
         )
-        assert error_event.data["original"] == b"the event"
+        assert error_event.data["original"] == "the event"
         assert error_event.state.current_state == EventStateType.PROCESSED
 
     def test_sender_sets_message_backlog_size(self):
@@ -254,5 +254,22 @@ class TestSender:
         sender = Sender(pipeline=iter([]), outputs=[output_mock], error_output=None)
         assert sender.batch_size == 6666
 
-    def test_sender_handles_errors_during_sending_extra_data(self):
-        assert False
+    def test_sender_handles_failed_extra_data(self, opensearch_output, error_output):
+        sre_event = SreEvent({"sre": "data"}, outputs=[{"opensearch": "sre_topic"}])
+        sre_event.state.current_state = EventStateType.FAILED
+        log_event = LogEvent(
+            data={"message": "Test message"}, original=b"the event", state=EventStateType.PROCESSED
+        )
+        log_event.extra_data.append(sre_event)
+        sender = Sender(
+            pipeline=iter([log_event]),
+            outputs=[opensearch_output],
+            error_output=error_output,
+        )
+        with mock.patch.object(sender, "_send_extra_data"):
+            error_event = next(sender)
+        assert sre_event.state == EventStateType.FAILED
+        assert log_event.state == EventStateType.FAILED
+        assert isinstance(error_event, ErrorEvent)
+        assert error_event.state == EventStateType.DELIVERED
+        assert "not all extra_data events are DELIVERED" in error_event.data["reason"]
