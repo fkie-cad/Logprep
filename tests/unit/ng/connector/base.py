@@ -1018,9 +1018,13 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 return_value=({"message": "another test message"}, b"", None),
             ),
         ):
-            assert len(connector.event_backlog.backlog) == ack_cases["initial_size"]
+            assert len(connector.event_backlog.backlog) == ack_cases["initial_size"], ack_cases[
+                "expected_message"
+            ]
             _ = connector.get_next(0.01)
-            assert len(connector.event_backlog.backlog) == ack_cases["new_size"]
+            assert len(connector.event_backlog.backlog) == ack_cases["new_size"], ack_cases[
+                "expected_message"
+            ]
 
         connector.shut_down()
 
