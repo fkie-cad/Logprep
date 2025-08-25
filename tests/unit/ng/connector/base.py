@@ -89,53 +89,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
     def test_is_input_instance(self):
         assert isinstance(self.object, Input)
 
-    def test_acknowledge_events(self):
-        connector_config = deepcopy(self.CONFIG)
-        connector = Factory.create({"test connector": connector_config})
-        connector._wait_for_health = mock.MagicMock()
-        connector.pipeline_index = 1
-        connector.setup()
-
-        set_event_backlog = SetEventBacklog()
-        set_event_backlog.backlog = {
-            LogEvent(data={"message": "test message 1"}, original=b"", state=EventStateType.ACKED),
-            LogEvent(
-                data={"message": "test message 2"}, original=b"", state=EventStateType.PROCESSING
-            ),
-        }
-
-        with (
-            mock.patch.object(connector, "event_backlog", new=set_event_backlog),
-            mock.patch.object(
-                connector, "_get_event", return_value=({"message": f"test message 3"}, b"", None)
-            ),
-        ):
-            assert len(connector.event_backlog.backlog) == 2
-            _ = connector.get_next(0.01)
-            assert len(connector.event_backlog.backlog) == 2
-
-        connector.shut_down()
-
-    def test_add_full_event_to_target_field_without_clear(self):
-        preprocessing_config = {
-            "preprocessing": {
-                "add_full_event_to_target_field": {
-                    "format": "str",
-                    "target_field": "event.original",
-                },
-            }
-        }
-        connector_config = deepcopy(self.CONFIG)
-        connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config})
-        connector._wait_for_health = mock.MagicMock()
-        connector.pipeline_index = 1
-        connector.setup()
-        connector._get_event = mock.MagicMock(return_value=return_value)
-        result = connector.get_next(0.01)
-        expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
-        assert result.data == expected, f"{expected} is not the same as {result.data}"
-
     def test_add_hmac_returns_true_if_hmac_options(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(
@@ -1044,6 +997,30 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         expected = {"any": "content", "event": {"original": '"{\\"any\\":\\"content\\"}"'}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
+
+        connector.shut_down()
+
+    def test_acknowledge_events(self, ack_cases):
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config})
+        connector._wait_for_health = mock.MagicMock()
+        connector.pipeline_index = 1
+        connector.setup()
+
+        set_event_backlog = SetEventBacklog()
+        set_event_backlog.backlog = ack_cases["backlog"]
+
+        with (
+            mock.patch.object(connector, "event_backlog", new=set_event_backlog),
+            mock.patch.object(
+                connector,
+                "_get_event",
+                return_value=({"message": "another test message"}, b"", None),
+            ),
+        ):
+            assert len(connector.event_backlog.backlog) == ack_cases["initial_size"]
+            _ = connector.get_next(0.01)
+            assert len(connector.event_backlog.backlog) == ack_cases["new_size"]
 
         connector.shut_down()
 

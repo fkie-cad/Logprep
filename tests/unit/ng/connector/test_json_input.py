@@ -962,74 +962,6 @@ class TestJsonInput(BaseInputTestCase):
             connector.get_next(0.01)
             assert connector.metrics.number_of_processed_events == 0
 
-    def test_acknowledge_events(self):
-        with self.patch_documents_property(document={}):
-            connector_config = deepcopy(self.CONFIG)
-            connector = Factory.create({"test connector": connector_config})
-            connector._wait_for_health = mock.MagicMock()
-            connector.pipeline_index = 1
-            connector.setup()
-
-            set_event_backlog = SetEventBacklog()
-            set_event_backlog.backlog = {
-                LogEvent(
-                    data={"message": "test message 1"}, original=b"", state=EventStateType.DELIVERED
-                ),
-                LogEvent(
-                    data={"message": "test message 2"},
-                    original=b"",
-                    state=EventStateType.PROCESSING,
-                ),
-            }
-
-            with (
-                mock.patch.object(connector, "event_backlog", new=set_event_backlog),
-                mock.patch.object(
-                    connector,
-                    "_get_event",
-                    return_value=({"message": f"test message 3"}, b"", None),
-                ),
-            ):
-                assert len(connector.event_backlog.backlog) == 2
-                _ = connector.get_next(0.01)
-                assert len(connector.event_backlog.backlog) == 3
-
-            connector.shut_down()
-
-    def test_acknowledge_remove_acked_events(self):
-        with self.patch_documents_property(document={}):
-            connector_config = deepcopy(self.CONFIG)
-            connector = Factory.create({"test connector": connector_config})
-            connector._wait_for_health = mock.MagicMock()
-            connector.pipeline_index = 1
-            connector.setup()
-
-            set_event_backlog = SetEventBacklog()
-            set_event_backlog.backlog = {
-                LogEvent(
-                    data={"message": "test message 1"}, original=b"", state=EventStateType.ACKED
-                ),
-                LogEvent(
-                    data={"message": "test message 2"},
-                    original=b"",
-                    state=EventStateType.PROCESSING,
-                ),
-            }
-
-            with (
-                mock.patch.object(connector, "event_backlog", new=set_event_backlog),
-                mock.patch.object(
-                    connector,
-                    "_get_event",
-                    return_value=({"message": f"test message 3"}, b"", None),
-                ),
-            ):
-                assert len(connector.event_backlog.backlog) == 2
-                _ = connector.get_next(0.01)
-                assert len(connector.event_backlog.backlog) == 2
-
-            connector.shut_down()
-
     def test_add_full_event_to_target_field_without_clear(self):
         return_value = ({"any": "content"}, None, None)
 
@@ -1053,4 +985,25 @@ class TestJsonInput(BaseInputTestCase):
             expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
             assert result.data == expected, f"{expected} is not the same as {result.data}"
 
-        connector.shut_down()
+    def test_acknowledge_events(self, ack_cases):
+        with self.patch_documents_property(document={}):
+            connector_config = deepcopy(self.CONFIG)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+
+            set_event_backlog = SetEventBacklog()
+            set_event_backlog.backlog = ack_cases["backlog"]
+
+            with (
+                mock.patch.object(connector, "event_backlog", new=set_event_backlog),
+                mock.patch.object(
+                    connector,
+                    "_get_event",
+                    return_value=({"message": "another test message"}, b"", None),
+                ),
+            ):
+                assert len(connector.event_backlog.backlog) == ack_cases["initial_size"]
+                _ = connector.get_next(0.01)
+                assert len(connector.event_backlog.backlog) == ack_cases["new_size"]
