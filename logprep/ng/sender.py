@@ -61,24 +61,28 @@ class Sender(Iterator):
             self.batch += list(islice(self._events, self.batch_size))
             if not self.batch:
                 break
-            for event in filter(lambda x: x.state == EventStateType.PROCESSED, self.batch):
-                self._send_processed(event)
-            for output in self._outputs.values():
-                output.flush()
+            self._send_and_flush_processed_events()
             if self._error_output:
-                error_events = [
-                    self._send_failed(event)
-                    for event in self.batch
-                    if event.state == EventStateType.FAILED
-                ]
-                self._error_output.flush()
-                failed_error_events = [
-                    event for event in error_events if event.state == EventStateType.FAILED
-                ]
-                for error_event in failed_error_events:
-                    logger.error("Error during sending to error output: %s", error_event)
+                self._send_and_flush_failed_events()
 
             yield from self.batch
+
+    def _send_and_flush_failed_events(self):
+        error_events = [
+            self._send_failed(event) for event in self.batch if event.state == EventStateType.FAILED
+        ]
+        self._error_output.flush()
+        failed_error_events = [
+            event for event in error_events if event.state == EventStateType.FAILED
+        ]
+        for error_event in failed_error_events:
+            logger.error("Error during sending to error output: %s", error_event)
+
+    def _send_and_flush_processed_events(self):
+        for event in filter(lambda x: x.state == EventStateType.PROCESSED, self.batch):
+            self._send_processed(event)
+        for output in self._outputs.values():
+            output.flush()
 
     def _send_extra_data(self, event: LogEvent) -> None:
         extra_data_events: list[ExtraDataEvent] = event.extra_data
