@@ -21,6 +21,7 @@ from logprep.factory import Factory
 from logprep.ng.abc.input import CriticalInputError, SourceDisconnectedWarning
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.util.time import TimeParser
 from tests.unit.ng.connector.base import BaseInputTestCase
 
@@ -961,22 +962,6 @@ class TestJsonInput(BaseInputTestCase):
             connector.get_next(0.01)
             assert connector.metrics.number_of_processed_events == 0
 
-    def test_acknowledge_called_once_in_get_next(self):
-        return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
-
-        with self.patch_documents_property(document=return_value):
-            with mock.patch("logprep.ng.abc.input.Input.acknowledge") as mock_acknowledge:
-                connector_config = deepcopy(self.CONFIG)
-                connector = Factory.create({"test connector": connector_config})
-                connector._wait_for_health = mock.MagicMock()
-                connector.pipeline_index = 1
-                connector.setup()
-
-                with mock.patch.object(connector, "_get_event", return_value=return_value):
-                    _ = connector.get_next(0.01)
-
-                mock_acknowledge.assert_called_once()
-
     def test_add_full_event_to_target_field_without_clear(self):
         return_value = ({"any": "content"}, None, None)
 
@@ -1000,4 +985,57 @@ class TestJsonInput(BaseInputTestCase):
             expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
             assert result.data == expected, f"{expected} is not the same as {result.data}"
 
-        connector.shut_down()
+    @pytest.mark.parametrize(
+        "states, new_size, expected_message",
+        [
+            (
+                (EventStateType.ACKED, EventStateType.PROCESSING),
+                2,
+                "expecting: 1*ACKED will be removed from backlog",
+            ),
+            (
+                (EventStateType.ACKED, EventStateType.PROCESSING, EventStateType.ACKED),
+                2,
+                "expecting: 2*ACKED will be removed from backlog",
+            ),
+            (
+                (EventStateType.PROCESSING, EventStateType.PROCESSING),
+                3,
+                "expecting: no event state will be changed",
+            ),
+            (
+                (EventStateType.DELIVERED, EventStateType.DELIVERED),
+                3,
+                "expecting: 2*DELIVERED should switch to ACKED (both events)",
+            ),
+        ],
+    )
+    def test_acknowledge_events(self, states, new_size, expected_message):
+        with self.patch_documents_property(document={}):
+            backlog = {
+                LogEvent(data={"message": f"msg {i + 1}"}, original=b"", state=s)
+                for i, s in enumerate(states, start=1)
+            }
+            initial_size = len(backlog)
+            connector_config = deepcopy(self.CONFIG)
+            connector = Factory.create({"test connector": connector_config})
+            connector._wait_for_health = mock.MagicMock()
+            connector.pipeline_index = 1
+            connector.setup()
+
+            set_event_backlog = SetEventBacklog()
+            set_event_backlog.backlog = backlog
+
+            with (
+                mock.patch.object(connector, "event_backlog", new=set_event_backlog),
+                mock.patch.object(
+                    connector,
+                    "_get_event",
+                    return_value=({"message": "another test message"}, b"", None),
+                ),
+            ):
+                assert len(connector.event_backlog.backlog) == initial_size, expected_message
+                _ = connector.get_next(0.01)
+                assert len(connector.event_backlog.backlog) == new_size, expected_message
+
+            connector.shut_down()

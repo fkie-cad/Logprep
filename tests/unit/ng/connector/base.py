@@ -16,12 +16,15 @@ from copy import deepcopy
 from logging import getLogger
 from unittest import mock
 
+import pytest
+
 from logprep.abc.connector import Connector
 from logprep.factory import Factory
-from logprep.ng.abc.input import CriticalInputError, Input
+from logprep.ng.abc.input import CriticalInputError, Input, InputIterator
 from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase
@@ -85,25 +88,14 @@ class BaseInputTestCase(BaseConnectorTestCase):
 
         connector.shut_down()
 
+    def test_inputiterator_iter_is_self(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config})
+        input_iterator = InputIterator(input_connector=connector, timeout=0.01)
+        assert input_iterator is iter(input_iterator)
+
     def test_is_input_instance(self):
         assert isinstance(self.object, Input)
-
-    def test_acknowledge_called_once_in_get_next(self):
-        with mock.patch("logprep.ng.abc.input.Input.acknowledge") as mock_acknowledge:
-            connector_config = deepcopy(self.CONFIG)
-            connector = Factory.create({"test connector": connector_config})
-            connector._wait_for_health = mock.MagicMock()
-            connector.pipeline_index = 1
-            connector.setup()
-
-            return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
-
-            with mock.patch.object(connector, "_get_event", return_value=return_value):
-                _ = connector.get_next(0.01)
-
-            mock_acknowledge.assert_called_once()
-
-            connector.shut_down()
 
     def test_add_hmac_returns_true_if_hmac_options(self):
         connector_config = deepcopy(self.CONFIG)
@@ -1013,6 +1005,60 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         expected = {"any": "content", "event": {"original": '"{\\"any\\":\\"content\\"}"'}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
+
+        connector.shut_down()
+
+    @pytest.mark.parametrize(
+        "states, new_size, expected_message",
+        [
+            (
+                (EventStateType.ACKED, EventStateType.PROCESSING),
+                2,
+                "expecting: 1*ACKED will be removed from backlog",
+            ),
+            (
+                (EventStateType.ACKED, EventStateType.PROCESSING, EventStateType.ACKED),
+                2,
+                "expecting: 2*ACKED will be removed from backlog",
+            ),
+            (
+                (EventStateType.PROCESSING, EventStateType.PROCESSING),
+                3,
+                "expecting: no event state will be changed",
+            ),
+            (
+                (EventStateType.DELIVERED, EventStateType.DELIVERED),
+                3,
+                "expecting: 2*DELIVERED should switch to ACKED (both events)",
+            ),
+        ],
+    )
+    def test_acknowledge_events(self, states, new_size, expected_message):
+        backlog = {
+            LogEvent(data={"message": f"msg {i + 1}"}, original=b"", state=s)
+            for i, s in enumerate(states, start=1)
+        }
+        initial_size = len(backlog)
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config})
+        connector._wait_for_health = mock.MagicMock()
+        connector.pipeline_index = 1
+        connector.setup()
+
+        set_event_backlog = SetEventBacklog()
+        set_event_backlog.backlog = backlog
+
+        with (
+            mock.patch.object(connector, "event_backlog", new=set_event_backlog),
+            mock.patch.object(
+                connector,
+                "_get_event",
+                return_value=({"message": "another test message"}, b"", None),
+            ),
+        ):
+            assert len(connector.event_backlog.backlog) == initial_size, expected_message
+            _ = connector.get_next(0.01)
+            assert len(connector.event_backlog.backlog) == new_size, expected_message
 
         connector.shut_down()
 
