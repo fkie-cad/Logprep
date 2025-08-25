@@ -17,6 +17,7 @@ from logprep.abc.connector import Connector
 from logprep.abc.input import CriticalInputError, Input
 from logprep.abc.output import Output
 from logprep.factory import Factory
+from logprep.ng.abc.input import InputIterator
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase
@@ -47,6 +48,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
         self.object._get_event = mock.MagicMock(return_value=return_value)
         event = self.object.get_next(0.01)
         assert isinstance(event, dict)
+
+    def test_inputiterator_iter_is_self(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config})
+        input_iterator = InputIterator(input_connector=connector, timeout=0.01)
+        assert input_iterator is iter(input_iterator)
 
     def test_add_hmac_returns_true_if_hmac_options(self):
         connector_config = deepcopy(self.CONFIG)
