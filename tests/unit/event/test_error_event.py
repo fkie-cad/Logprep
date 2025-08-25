@@ -5,6 +5,8 @@
 # pylint: disable=attribute-defined-outside-init
 
 
+import json
+
 from logprep.ng.abc.event import Event
 from logprep.ng.event.error_event import ErrorEvent
 from logprep.ng.event.event_state import EventStateType
@@ -36,12 +38,12 @@ class TestErrorEvents(TestEventClass):
         error_event = ErrorEvent(log_event=self.log_event, reason=ValueError("Some value is wrong"))
 
         assert isinstance(error_event.data["@timestamp"], str)
-        assert error_event.data["original"] == b"raw"
-        assert isinstance(error_event.data["event"], bytes)
-        assert error_event.data["event"] == b"{'foo': 'bar'}"
+        assert error_event.data["original"] == "raw"
+        assert isinstance(error_event.data["event"], str)
+        assert error_event.data["event"] == '{"foo": "bar"}'
         assert isinstance(error_event.data["reason"], str)
         assert error_event.data["reason"] == "Some value is wrong"
-        assert error_event.data["event"] == str(self.log_event.data).encode("utf-8")
+        assert error_event.data["event"] == json.dumps(self.log_event.data)
 
     def test_error_event_preserves_state_on_init(self):
         state = EventStateType.STORED_IN_OUTPUT

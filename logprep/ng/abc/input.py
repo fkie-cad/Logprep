@@ -146,12 +146,12 @@ class InputIterator(Iterator):
 
         return self
 
-    def __next__(self) -> dict | None:
+    def __next__(self) -> LogEvent | None:
         """Return the next event in the Input Connector within the configured timeout.
 
         Returns
         -------
-        dict
+        LogEvent | None
             The next event retrieved from the underlying data source.
         """
 
