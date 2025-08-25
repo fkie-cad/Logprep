@@ -20,7 +20,7 @@ import pytest
 
 from logprep.abc.connector import Connector
 from logprep.factory import Factory
-from logprep.ng.abc.input import CriticalInputError, Input
+from logprep.ng.abc.input import CriticalInputError, Input, InputIterator
 from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
@@ -87,6 +87,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
             assert isinstance(event, LogEvent)
 
         connector.shut_down()
+
+    def test_inputiterator_iter_is_self(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector = Factory.create({"test connector": connector_config})
+        input_iterator = InputIterator(input_connector=connector, timeout=0.01)
+        assert input_iterator is iter(input_iterator)
 
     def test_is_input_instance(self):
         assert isinstance(self.object, Input)
