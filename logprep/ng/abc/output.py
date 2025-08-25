@@ -2,7 +2,6 @@
 New output endpoint types are created by implementing it.
 """
 
-import threading
 from abc import abstractmethod
 from copy import deepcopy
 from typing import Any, Callable
@@ -12,6 +11,7 @@ from attrs import define, field, validators
 from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.event import Event
+from logprep.ng.event.event_state import EventStateType
 
 
 class OutputError(LogprepException):
@@ -120,7 +120,7 @@ class Output(Connector):
             except Exception as e:  # pylint: disable=broad-except
                 event.errors.append(e)
                 self.metrics.number_of_errors += 1
-                event.state.next_state(success=False)
+                event.state.current_state = EventStateType.FAILED
 
         return wrapper
 
