@@ -10,7 +10,7 @@ import pytest
 from logprep.ng.abc.event import Event
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.ng.event.log_event import LogEvent
-from tests.unit.event.test_event import TestEventClass
+from tests.unit.ng.event.test_event import TestEventClass
 
 
 class DummyEvent(Event):
