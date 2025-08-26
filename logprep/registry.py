@@ -12,7 +12,6 @@ from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.console.output import ConsoleOutput
 from logprep.connector.dummy.input import DummyInput
 from logprep.connector.dummy.output import DummyOutput
-from logprep.connector.file.input import FileInput
 from logprep.connector.http.input import HttpInput
 from logprep.connector.http.output import HttpOutput
 from logprep.connector.json.input import JsonInput
@@ -31,7 +30,6 @@ from logprep.ng.connector.confluent_kafka.output import (
 from logprep.ng.connector.console.output import ConsoleOutput as NgConsoleOutput
 from logprep.ng.connector.dummy.input import DummyInput as NgDummyInput
 from logprep.ng.connector.dummy.output import DummyOutput as NgDummyOutput
-from logprep.ng.connector.file.input import FileInput as NgFileInput
 from logprep.ng.connector.http.input import HttpInput as NgHttpInput
 from logprep.ng.connector.json.input import JsonInput as NgJsonInput
 from logprep.ng.connector.jsonl.output import JsonlOutput as NgJsonlOutput
@@ -183,7 +181,6 @@ class Registry:
         # Connectors
         "json_input": JsonInput,
         "jsonl_input": JsonlInput,
-        "file_input": FileInput,
         "dummy_input": DummyInput,
         "dummy_output": DummyOutput,
         "confluentkafka_input": ConfluentKafkaInput,
@@ -200,7 +197,6 @@ class Registry:
         "ng_confluentkafka_input": NgConfluentKafkaInput,
         "ng_dummy_input": NgDummyInput,
         "ng_json_input": NgJsonInput,
-        "ng_file_input": NgFileInput,
         "ng_dummy_output": NgDummyOutput,
         "ng_console_output": NgConsoleOutput,
         "ng_jsonl_output": NgJsonlOutput,

@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* remove `file_input` connector
+
 ### Bugfix
 
 ## 17.0.2
