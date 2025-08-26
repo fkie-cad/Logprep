@@ -57,7 +57,9 @@ def get_error_output_mock():
 
 
 @pytest.fixture(name="pipeline")
-def get_pipeline_mock(input_connector, processors):
+def get_pipeline_mock(
+    input_connector,
+):
     """Create a mock for the Pipeline class."""
     return Pipeline(input_connector, processors)
 
@@ -125,12 +127,19 @@ def get_logprep_config():
 
 
 class TestRunner:
-    def setup_method(self, sender):
-        self.runner = Runner(sender=sender)
-
-    def test_runner_initializes(self):
-        assert isinstance(self.runner, Runner)
 
     def test_from_configuration(self, configuration):
         runner = Runner.from_configuration(configuration)
         assert isinstance(runner, Runner)
+        assert isinstance(runner.sender, Sender)
+
+    def test_stop_injects_sentinel(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        runner.stop()
+        assert runner.should_exit is True
+
+    def test_run_stops_on_sentinel(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        runner.stop()
+        runner.run()
+        assert runner.should_exit is True
