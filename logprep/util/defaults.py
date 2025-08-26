@@ -51,7 +51,7 @@ DEFAULT_LOG_CONFIG: dict = {
         },
     },
     "loggers": {
-        "root": {"level": "INFO", "handlers": ["queue"]},
+        "root": {"level": "INFO", "handlers": ["console"]},
         "console": {"handlers": ["console"]},
         "filelock": {"level": "ERROR"},
         "urllib3.connectionpool": {"level": "ERROR"},
