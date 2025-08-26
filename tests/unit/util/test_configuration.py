@@ -1321,7 +1321,7 @@ metrics:
             """
 input:
   stdin:
-    type: jsol_input
+    type: jsonl_input
     documents_path: tests/testdata/input_logdata/kafka_raw_event.jsonl
     start: end
     watch_file: true
