@@ -15,6 +15,7 @@ def get_config():
     config_dict = {
         "version": "1",
         "process_count": 1,
+        "restart_count": -1,
         "timeout": 0.1,
         "profile_pipelines": False,
         "config_refresh_interval": 5,
