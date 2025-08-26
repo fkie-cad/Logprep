@@ -4,6 +4,8 @@
 
 ### Features
 
+* implement first prototype of ng logprep runner
+
 ### Improvements
 
 ### Bugfix
