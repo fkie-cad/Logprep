@@ -132,12 +132,9 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     config.config_refresh_interval = 300
     config.metrics = {"enabled": True, "port": 8003}
     config.input = {
-        "fileinput": {
-            "type": "file_input",
-            "logfile_path": str(input_file_path),
-            "start": "begin",
-            "interval": 1,
-            "watch_file": True,
+        "jsonl_input": {
+            "type": "jsonl_input",
+            "documents_path": "tests/testdata/acceptance/expected_result/labeled_win_event_log.jsonl",
         }
     }
     config.output = {
@@ -174,24 +171,24 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
     response.raise_for_status()
     metrics = response.text
     expected_metrics = [
-        r"logprep_number_of_processed_events_total\{component=\"input\",description=\"FileInput \(fileinput\)\",name=\"fileinput\",type=\"file_input\"}",
+        r"logprep_number_of_processed_events_total\{component=\"input\",description=\"JsonlInput \(jsonl_input\)\",name=\"jsonl_input\",type=\"jsonl_input\"}",
         r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=\".+\",type\=\".+\"}",
         r"logprep_number_of_processed_events_total\{component=\"output\",description=\".+\",name=\"kafka\",type=\"console_output\"}",
         r"logprep_number_of_processed_events_total\{component=\"output\",description=\".+\",name=\"second_output\",type=\"console_output\"}",
         r"logprep_number_of_warnings_total{component=\"rule\",description=\"id:.+\",name=\".+\",type=\".+\"}",
-        r"logprep_number_of_warnings_total{component=\"input\",description=\".+\",name=\"fileinput\",type=\"file_input\"}",
+        r"logprep_number_of_warnings_total{component=\"input\",description=\".+\",name=\"jsonl_input\",type=\"jsonl_input\"}",
         r"logprep_number_of_warnings_total{component=\"output\",description=\".+\",name=\"kafka\",type=\"console_output\"}",
         r"logprep_number_of_warnings_total{component=\"output\",description=\".+\",name=\"second_output\",type=\"console_output\"}",
         r"logprep_number_of_errors_total{component=\"rule\",description=\"id:.+\",name=\".+\",type=\".+\"}",
-        r"logprep_number_of_errors_total{component=\"input\",description=\".+\",name=\"fileinput\",type=\"file_input\"}",
+        r"logprep_number_of_errors_total{component=\"input\",description=\".+\",name=\"jsonl_input\",type=\"jsonl_input\"}",
         r"logprep_number_of_errors_total{component=\"output\",description=\".+\",name=\"kafka\",type=\"console_output\"}",
         r"logprep_number_of_errors_total{component=\"output\",description=\".+\",name=\"second_output\",type=\"console_output\"}",
         r"logprep_processing_time_per_event_sum{component=\"rule\",description=\"id:.+\",name=\".+\",type=\".+\"}",
         r"logprep_processing_time_per_event_count{component=\"rule\",description=\"id:.+\",name=\".+\",type=\".+\"}",
         r"logprep_processing_time_per_event_bucket{component=\"rule\",description=\"id:.+\",name=\".+\",type=\".+\"}",
-        r"logprep_processing_time_per_event_sum{component=\"input\",description=\".+\",name=\"fileinput\",type=\"file_input\"}",
-        r"logprep_processing_time_per_event_count{component=\"input\",description=\".+\",name=\"fileinput\",type=\"file_input\"}",
-        r"logprep_processing_time_per_event_bucket{component=\"input\",description=\".+\",name=\"fileinput\",type=\"file_input\"}",
+        r"logprep_processing_time_per_event_sum{component=\"input\",description=\".+\",name=\"jsonl_input\",type=\"jsonl_input\"}",
+        r"logprep_processing_time_per_event_count{component=\"input\",description=\".+\",name=\"jsonl_input\",type=\"jsonl_input\"}",
+        r"logprep_processing_time_per_event_bucket{component=\"input\",description=\".+\",name=\"jsonl_input\",type=\"jsonl_input\"}",
         r"logprep_processing_time_per_event_sum{component=\"output\",description=\".+\",name=\"kafka\",type=\"console_output\"}",
         r"logprep_processing_time_per_event_count{component=\"output\",description=\".+\",name=\"kafka\",type=\"console_output\"}",
         r"logprep_processing_time_per_event_bucket{component=\"output\",description=\".+\",name=\"kafka\",type=\"console_output\"}",

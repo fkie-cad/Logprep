@@ -1,5 +1,4 @@
 # pylint: disable=missing-docstring
-import tempfile
 
 import pytest
 from ruamel.yaml import YAML
@@ -12,7 +11,6 @@ yaml = YAML(typ="safe", pure=True)
 
 @pytest.fixture(name="config")
 def get_config():
-    input_file = tempfile.mkstemp(suffix=".input.log")[1]
 
     config_dict = {
         "version": "1",
@@ -23,12 +21,9 @@ def get_config():
         "metrics": {"enabled": False},
         "pipeline": [],
         "input": {
-            "file_input": {
-                "type": "file_input",
-                "logfile_path": input_file,
-                "start": "begin",
-                "interval": 1,
-                "watch_file": True,
+            "dummy_input": {
+                "type": "jsonl_input",
+                "documents_path": "tests/testdata/acceptance/expected_result/labeled_win_event_log.jsonl",
             }
         },
         "output": {
