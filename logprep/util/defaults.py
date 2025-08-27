@@ -45,10 +45,6 @@ DEFAULT_LOG_CONFIG: dict = {
             "formatter": "logprep",
             "stream": "ext://sys.stdout",
         },
-        "queue": {
-            "class": "logging.handlers.QueueHandler",
-            "queue": "ext://logprep.util.logging.logqueue",
-        },
     },
     "loggers": {
         "root": {"level": "INFO", "handlers": ["console"]},
