@@ -2,10 +2,9 @@
 
 import logging
 from collections.abc import Iterator
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from itertools import islice
-from multiprocessing import get_context
 from typing import Generator
 
 from logprep.ng.abc.processor import Processor
@@ -68,18 +67,13 @@ class Pipeline(Iterator):
 
     def __iter__(self) -> Generator[LogEvent, None, None]:
         """Iterate over processed events."""
-        context = get_context(method="spawn")
         events = self._events
         while True:
             batch = list(islice(events, 2500))
             if not batch:
                 break
-            # batch = ["random string" for _ in range(2500)]
-            with ProcessPoolExecutor(
-                max_workers=self._process_count, mp_context=context
-            ) as executor:
-                results = executor.map(partial(_process_event, processors=["dissector"]), batch)
-                yield from results
+            with ThreadPoolExecutor(max_workers=self._process_count) as executor:
+                yield from executor.map(partial(_process_event, processors=self._processors), batch)
 
     def __next__(self):
         """
