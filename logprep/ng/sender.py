@@ -47,7 +47,7 @@ class Sender(Iterator):
             logger.error("Error during sending to error output: %s", event)
         return event
 
-    def __iter__(self) -> Generator[LogEvent, None, None]:
+    def __iter__(self) -> Generator[LogEvent | ErrorEvent, None, None]:
         """Iterate over processed events."""
         while True:
             self.batch.clear()
