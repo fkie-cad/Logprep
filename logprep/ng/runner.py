@@ -16,8 +16,6 @@ logger = logging.getLogger("Runner")
 class Runner:
     """Class responsible for running the log processing pipeline."""
 
-    should_exit: bool = False
-
     instance: "Runner | None" = None
 
     def __new__(cls, sender: Sender) -> "Runner":
@@ -27,13 +25,16 @@ class Runner:
 
     def __init__(self, sender: Sender) -> None:
         self.sender = sender
+        self._input_connector = None
 
     @classmethod
     def from_configuration(cls, configuration: Configuration) -> "Runner":
         """Factory method to build the Runner"""
-        input_connector = Factory.create(configuration.input) if configuration.input else None
+        cls._input_connector = Factory.create(configuration.input) if configuration.input else None
         timeout = configuration.timeout
-        input_iterator = iter([]) if input_connector is None else input_connector(timeout=timeout)
+        input_iterator = (
+            iter([]) if cls._input_connector is None else cls._input_connector(timeout=timeout)
+        )
         output_connectors = [
             Factory.create({output_name: output})
             for output_name, output in configuration.output.items()
@@ -52,6 +53,8 @@ class Runner:
         )
         sender = Sender(pipeline=pipeline, outputs=output_connectors, error_output=error_output)
         sender.setup()
+        if cls._input_connector:
+            cls._input_connector.setup()
         runner = cls(sender)
         atexit.register(runner.shut_down)
         return runner
@@ -61,12 +64,10 @@ class Runner:
         logger.debug("start log processing")
         sender = self.sender
         while 1:
-            if self.should_exit:
-                break
+            logger.debug("iterating, sender: %s", next(sender))
             for event in sender:
                 logger.debug("processed event: %s", event)
-                if self.should_exit:
-                    break
+        logger.debug("end log processing")
 
     def shut_down(self):
         """Shut down the log processing pipeline."""

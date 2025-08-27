@@ -115,16 +115,18 @@ class Sender(Iterator):
 
     def shut_down(self) -> None:
         """Shutdown all outputs gracefully."""
-        for output in self._all_outputs:
-            if output:
-                output.shut_down()
+        for _, output in self._outputs.items():
+            output.shut_down()
+        if self._error_output:
+            self._error_output.shut_down()
         logger.debug("All outputs have been shut down.")
         self.pipeline.shut_down()
 
     def setup(self) -> None:
         """Setup all outputs."""
-        for output in self._all_outputs:
-            if output:
-                output.setup()
+        for _, output in self._outputs.items():
+            output.setup()
+        if self._error_output:
+            self._error_output.setup()
         logger.debug("All outputs have been set up.")
         self.pipeline.setup()

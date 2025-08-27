@@ -590,6 +590,7 @@ class ConfluentKafkaInput(Input):
 
     def setup(self) -> None:
         """Set the component up."""
+        logger.debug("Setting up Kafka consumer for topic: %s", self._config.topic)
         try:
             self._consumer.subscribe(
                 [self._config.topic],
@@ -598,5 +599,7 @@ class ConfluentKafkaInput(Input):
                 on_lost=self._lost_callback,
             )
             super().setup()
+            logger.info("%s - subscribed to topic: %s", self.describe(), self._config.topic)
         except KafkaException as error:
+            logger.error("Could not setup kafka consumer: %s", error)
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
