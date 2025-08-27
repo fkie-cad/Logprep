@@ -133,6 +133,9 @@ class TestRunner:
         assert isinstance(runner, Runner)
         assert isinstance(runner.sender, Sender)
 
+    def test_from_configuration_runs_setup(self, configuration):
+        assert False
+
     def test_stop_injects_sentinel(self, configuration):
         runner = Runner.from_configuration(configuration)
         runner.stop()

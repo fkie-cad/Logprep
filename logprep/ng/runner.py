@@ -2,6 +2,7 @@
 Runner module
 """
 
+import atexit
 import logging
 
 from logprep.factory import Factory
@@ -15,7 +16,14 @@ logger = logging.getLogger("Runner")
 class Runner:
     """Class responsible for running the log processing pipeline."""
 
-    should_exit = False
+    should_exit: bool = False
+
+    instance: "Runner | None" = None
+
+    def __new__(cls, sender: Sender) -> "Runner":
+        if cls.instance is None:
+            cls.instance = super().__new__(cls)
+        return cls.instance
 
     def __init__(self, sender: Sender) -> None:
         self.sender = sender
@@ -36,13 +44,17 @@ class Runner:
         processors = [
             Factory.create(processor_config) for processor_config in configuration.pipeline
         ]
+
         pipeline = Pipeline(
             input_connector=input_iterator,
             processors=processors,
             process_count=configuration.process_count,
         )
         sender = Sender(pipeline=pipeline, outputs=output_connectors, error_output=error_output)
-        return cls(sender)
+        sender.setup()
+        runner = cls(sender)
+        atexit.register(runner.shut_down)
+        return runner
 
     def run(self) -> None:
         """Run the log processing pipeline."""
@@ -56,5 +68,10 @@ class Runner:
                 if self.should_exit:
                     break
 
+    def shut_down(self):
+        """Shut down the log processing pipeline."""
+        self.sender.shut_down()
+
     def stop(self) -> None:
-        self.should_exit = True
+        """Stop the log processing pipeline."""
+        raise SystemExit(0)
