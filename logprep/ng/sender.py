@@ -62,9 +62,7 @@ class Sender(Iterator):
             yield from self.batch
 
     def _send_and_flush_failed_events(self):
-        error_events = [
-            self._send_failed(event) for event in self.batch if event.state == EventStateType.FAILED
-        ]
+        error_events = (event for event in self.batch if event.state == EventStateType.FAILED)
         self._error_output.flush()
         failed_error_events = [
             event for event in error_events if event.state == EventStateType.FAILED
