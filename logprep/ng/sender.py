@@ -31,17 +31,10 @@ class Sender(Iterator):
         self._outputs = {output.name: output for output in outputs}
         self._default_output = [output for output in outputs if output.default][0]
         self._error_output = error_output
-        self._all_outputs = (
-            (*self._outputs.values(), self._error_output)
-            if error_output is not None
-            else self._outputs.values()
-        )
-        self.batch_size = 10
-        if hasattr(self._default_output._config, "message_backlog_size"):
-            self.batch_size = self._default_output._config.message_backlog_size
+        self.batch_size = getattr(self._default_output._config, "message_backlog_size", 10)
         self.batch: list[LogEvent] = []
 
-    def __next__(self) -> LogEvent:
+    def __next__(self) -> LogEvent | ErrorEvent:
         event = next(self._events)
         if event.state == EventStateType.PROCESSED:
             self._send_processed(event)
