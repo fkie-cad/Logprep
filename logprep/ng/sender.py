@@ -27,6 +27,7 @@ class Sender(Iterator):
     """Sender class to handle sending events to configured outputs."""
 
     def __init__(self, pipeline: Pipeline, outputs: list[Output], error_output: Output) -> None:
+        self.pipeline = pipeline
         self._events = (event for event in pipeline if event is not None and event.data)
         self._outputs = {output.name: output for output in outputs}
         self._default_output = [output for output in outputs if output.default][0]
@@ -111,3 +112,19 @@ class Sender(Iterator):
             else Exception("Unknown error")
         )
         return ErrorEvent(log_event=event, reason=reason, state=EventStateType.PROCESSED)
+
+    def shut_down(self) -> None:
+        """Shutdown all outputs gracefully."""
+        for output in self._all_outputs:
+            if output:
+                output.shut_down()
+        logger.debug("All outputs have been shut down.")
+        self.pipeline.shut_down()
+
+    def setup(self) -> None:
+        """Setup all outputs."""
+        for output in self._all_outputs:
+            if output:
+                output.setup()
+        logger.debug("All outputs have been set up.")
+        self.pipeline.setup()

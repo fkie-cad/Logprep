@@ -125,14 +125,14 @@ output:
       statistics.interval.ms: "60000"
 
 error_output:
-  kafka:
+  kafka_error_output:
     type: ng_confluentkafka_output
     topic: errors
     flush_timeout: 300
     send_timeout: 0
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
-      compression.type: ng_none
+      compression.type: none
       statistics.interval.ms: "60000"
       queue.buffering.max.messages: "10"
       queue.buffering.max.kbytes: "1024"

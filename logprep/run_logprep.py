@@ -57,9 +57,9 @@ def cli() -> None:
     Logprep allows to collect, process and forward log messages from various data sources.
     Log messages are being read and written by so-called connectors.
     """
-    if "pytest" not in sys.modules:  # needed for not blocking tests
-        signal.signal(signal.SIGTERM, signal_handler)
-        signal.signal(signal.SIGINT, signal_handler)
+    # if "pytest" not in sys.modules:  # needed for not blocking tests
+    #     signal.signal(signal.SIGTERM, signal_handler)
+    #     signal.signal(signal.SIGINT, signal_handler)
 
 
 @cli.command(short_help="Run logprep to process log messages", epilog=EPILOG_STR)
@@ -127,10 +127,12 @@ def run_ng(configs: tuple[str], version=None) -> None:
     runner = None
     try:
         runner = NGRunner.from_configuration(configuration)
+        signal.signal(signal.SIGTERM, signal_handler_ng)
+        signal.signal(signal.SIGINT, signal_handler_ng)
         logger.debug("Configuration loaded")
         runner.run()
     except SystemExit as error:
-        logger.error(f"Error during setup: error code {error.code}")
+        logger.debug(f"Exit received with code {error.code}")
         sys.exit(error.code)
     # pylint: disable=broad-except
     except Exception as error:
@@ -376,8 +378,16 @@ pseudo.add_command(cmd=depseudonymize.depseudonymize, name="depseudonymize")
 
 def signal_handler(__: int, _) -> None:
     """Handle signals for stopping the runner and reloading the configuration."""
-    Runner.get_runner(Configuration()).stop()
-    NGRunner.should_exit = True
+    logger.debug("Received termination signal, shutting down...")
+    if Runner.get_runner(Configuration()):
+        Runner.get_runner(Configuration()).stop()
+
+
+def signal_handler_ng(__: int, _) -> None:
+    """Handle signals for stopping the NG runner."""
+    logger.debug("Received termination signal, shutting down NG runner...")
+    if NGRunner.instance:
+        NGRunner.instance.stop()
 
 
 if __name__ == "__main__":

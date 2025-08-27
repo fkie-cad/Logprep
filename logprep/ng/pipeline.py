@@ -1,11 +1,14 @@
 """pipeline module for processing events through a series of processors."""
 
+import logging
 from collections.abc import Iterator
 from itertools import islice
 from typing import Generator
 
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.log_event import LogEvent
+
+logger = logging.getLogger("Pipeline")
 
 
 class Pipeline(Iterator):
@@ -85,3 +88,15 @@ class Pipeline(Iterator):
         else:
             event.state.next_state(success=False)
         return event
+
+    def shut_down(self) -> None:
+        """Shutdown the pipeline gracefully."""
+        for processor in self._processors:
+            processor.shut_down()
+        logger.debug("Pipeline has been shut down.")
+
+    def setup(self) -> None:
+        """Setup the pipeline components."""
+        for processor in self._processors:
+            processor.setup()
+        logger.debug("Pipeline has been set up.")
