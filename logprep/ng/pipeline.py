@@ -2,13 +2,30 @@
 
 import logging
 from collections.abc import Iterator
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 from itertools import islice
+from multiprocessing import get_context
 from typing import Generator
 
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.log_event import LogEvent
 
 logger = logging.getLogger("Pipeline")
+
+
+def _process_event(event: LogEvent, processors: list[Processor]) -> LogEvent:
+    """process all processors for one event"""
+    event.state.next_state()
+    for processor in processors:
+        if not event.data:
+            break
+        processor.process(event)
+    if not event.errors:
+        event.state.next_state(success=True)
+    else:
+        event.state.next_state(success=False)
+    return event
 
 
 class Pipeline(Iterator):
@@ -45,18 +62,24 @@ class Pipeline(Iterator):
         processors: list[Processor],
         process_count: int = 10,
     ) -> None:
-        self._input = input_connector
         self._processors = processors
         self._process_count = process_count
+        self._events = (event for event in input_connector if event is not None and event.data)
 
     def __iter__(self) -> Generator[LogEvent, None, None]:
         """Iterate over processed events."""
+        context = get_context(method="spawn")
+        events = self._events
         while True:
-            events = (event for event in self._input if event is not None and event.data)
-            batch = list(islice(events, self._process_count))
+            batch = list(islice(events, 2500))
             if not batch:
                 break
-            yield from map(self._process_event, batch)
+            # batch = ["random string" for _ in range(2500)]
+            with ProcessPoolExecutor(
+                max_workers=self._process_count, mp_context=context
+            ) as executor:
+                results = executor.map(partial(_process_event, processors=["dissector"]), batch)
+                yield from results
 
     def __next__(self):
         """
@@ -70,24 +93,11 @@ class Pipeline(Iterator):
         iterator-compliant by design.
         """
         try:
-            while (next_event := next(self._input)) is None or not next_event.data:
+            while next_event := next(self._events):
                 continue
         except StopIteration:
             return None
-        return self._process_event(next_event)
-
-    def _process_event(self, event: LogEvent) -> LogEvent:
-        """process all processors for one event"""
-        event.state.next_state()
-        for processor in self._processors:
-            if not event.data:
-                break
-            processor.process(event)
-        if not event.errors:
-            event.state.next_state(success=True)
-        else:
-            event.state.next_state(success=False)
-        return event
+        return _process_event(next_event, self._processors)
 
     def shut_down(self) -> None:
         """Shutdown the pipeline gracefully."""
