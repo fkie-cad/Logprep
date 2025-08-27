@@ -69,7 +69,7 @@ class Pipeline(Iterator):
         """Iterate over processed events."""
         events = self._events
         while True:
-            batch = list(islice(events, 2500))
+            batch = list(islice(events, 100))
             if not batch:
                 break
             with ThreadPoolExecutor(max_workers=self._process_count) as executor:
