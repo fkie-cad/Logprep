@@ -284,3 +284,23 @@ class TestSender:
         with mock.patch.object(error_output, "setup") as mock_setup:
             sender.setup()
         mock_setup.assert_called_once()
+
+    def test_shut_down_calls_output_shut_down(self, opensearch_output, pipeline):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
+        with mock.patch.object(opensearch_output, "shut_down") as mock_shut_down:
+            sender.shut_down()
+        mock_shut_down.assert_called_once()
+
+    def test_shut_down_calls_pipeline_shut_down(self, opensearch_output, pipeline):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
+        with mock.patch.object(pipeline, "shut_down") as mock_shut_down:
+            sender.shut_down()
+        mock_shut_down.assert_called_once()
+
+    def test_shut_down_calls_error_output_shut_down(
+        self, opensearch_output, pipeline, error_output
+    ):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=error_output)
+        with mock.patch.object(error_output, "shut_down") as mock_shut_down:
+            sender.shut_down()
+        mock_shut_down.assert_called_once()

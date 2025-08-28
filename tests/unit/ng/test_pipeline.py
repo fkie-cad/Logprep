@@ -139,3 +139,17 @@ class TestPipeline:
                 assert processed_events[0].data == {}
                 assert processors[0].process.call_count == 3
                 assert processors[1].process.call_count == 0
+
+    def test_setup_calls_processor_setups(self, input_connector):
+        processors = [mock.MagicMock() for _ in range(5)]
+        pipeline = Pipeline(input_connector, processors)
+        pipeline.setup()
+        for processor in processors:
+            processor.setup.assert_called_once()
+
+    def test_shut_down_calls_processor_shut_down(self, input_connector):
+        processors = [mock.MagicMock() for _ in range(5)]
+        pipeline = Pipeline(input_connector, processors)
+        pipeline.shut_down()
+        for processor in processors:
+            processor.shut_down.assert_called_once()
