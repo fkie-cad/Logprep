@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+from logging.handlers import QueueListener
 from unittest import mock
 
 import pytest
@@ -107,3 +108,10 @@ class TestRunner:
         with mock.patch.object(runner, "log_handler") as mock_log_handler:
             runner.shut_down()
             mock_log_handler.stop.assert_called_once()
+
+    @mock.patch("logging.getLogger")
+    def test_init_setups_logging(self, mock_get_logger):
+        runner = Runner(mock.MagicMock())
+        mock_get_logger.assert_called_once_with("console")
+        assert isinstance(runner.log_handler, QueueListener)
+        assert len(runner.log_handler.handlers) == 1
