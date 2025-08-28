@@ -73,7 +73,7 @@ class Runner:
         runner.setup()
         return runner
 
-    def setup(self):
+    def setup(self) -> None:
         """Setup the runner and its components."""
         self.sender.setup()
         if self._input_connector:
@@ -89,7 +89,7 @@ class Runner:
                 logger.debug("processed event: %s", event)
         logger.debug("end log processing")
 
-    def shut_down(self):
+    def shut_down(self) -> None:
         """Shut down the log processing pipeline."""
         self.sender.shut_down()
         logger.info("Runner shut down complete.")
@@ -100,7 +100,7 @@ class Runner:
         logger.info("Stopping runner and exiting...")
         raise SystemExit(0)
 
-    def _setup_logging(self):
+    def _setup_logging(self) -> None:
         console_logger = logging.getLogger("console")
         if console_logger.handlers:
             console_handler = console_logger.handlers.pop()  # last handler is console

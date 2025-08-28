@@ -85,6 +85,12 @@ class TestRunner:
             runner.setup()
             mock_sender_setup.assert_called_once()
 
+    def test_setup_calls_input_connector_setup(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch.object(runner._input_connector, "setup") as mock_input_setup:
+            runner.setup()
+            mock_input_setup.assert_called_once()
+
     def test_stop_raises_system_exit(self, configuration):
         runner = Runner.from_configuration(configuration)
         with pytest.raises(SystemExit, match="0"):
