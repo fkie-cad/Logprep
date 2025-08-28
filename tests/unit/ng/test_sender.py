@@ -248,15 +248,13 @@ class TestSender:
 
     def test_sender_sets_message_backlog_size(self):
         output_mock = mock.MagicMock()
-        output_mock._config = mock.MagicMock()
-        output_mock._config.message_backlog_size = 6666
-        sender = Sender(pipeline=iter([]), outputs=[output_mock], error_output=None)
-        assert sender.batch_size == 6666
+        sender = Sender(
+            pipeline=iter([]), outputs=[output_mock], error_output=None, process_count=623
+        )
+        assert sender.batch_size == 623
 
-    def test_sender_uses_batch_size(self):
+    def test_sender_uses_process_count(self):
         output_mock = mock.MagicMock()
-        output_mock._config = mock.MagicMock()
-        output_mock._config.message_backlog_size = 666
         sender = Sender(
             pipeline=iter(
                 [
@@ -268,6 +266,7 @@ class TestSender:
             ),
             outputs=[output_mock],
             error_output=None,
+            process_count=666,
         )
         mock_batch = []
 
@@ -301,3 +300,21 @@ class TestSender:
         assert isinstance(error_event, ErrorEvent)
         assert error_event.state == EventStateType.DELIVERED
         assert "not all extra_data events are DELIVERED" in error_event.data["reason"]
+
+    def test_setup_calls_output_setup(self, opensearch_output, pipeline):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
+        with mock.patch.object(opensearch_output, "setup") as mock_setup:
+            sender.setup()
+        mock_setup.assert_called_once()
+
+    def test_setup_calls_pipeline_setup(self, opensearch_output, pipeline):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
+        with mock.patch.object(pipeline, "setup") as mock_setup:
+            sender.setup()
+        mock_setup.assert_called_once()
+
+    def test_setup_calls_error_output_setup(self, opensearch_output, pipeline, error_output):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=error_output)
+        with mock.patch.object(error_output, "setup") as mock_setup:
+            sender.setup()
+        mock_setup.assert_called_once()
