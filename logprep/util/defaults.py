@@ -67,6 +67,3 @@ DEFAULT_HEALTH_STATE = False  # unhealthy
 DEFAULT_HEALTH_TIMEOUT = 1  # seconds
 
 RULE_FILE_EXTENSIONS = {".yml", ".yaml", ".json"}
-
-ERROR_OUTPUT_TIMEOUT = 2
-"""Timeout for error output delivery in seconds."""
