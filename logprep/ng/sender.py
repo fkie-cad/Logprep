@@ -26,13 +26,19 @@ class LogprepExceptionGroup(ExceptionGroup):
 class Sender(Iterator):
     """Sender class to handle sending events to configured outputs."""
 
-    def __init__(self, pipeline: Pipeline, outputs: list[Output], error_output: Output) -> None:
+    def __init__(
+        self,
+        pipeline: Pipeline,
+        outputs: list[Output],
+        error_output: Output,
+        process_count: int = 2,
+    ) -> None:
         self.pipeline = pipeline
         self._events = (event for event in pipeline if event is not None and event.data)
         self._outputs = {output.name: output for output in outputs}
         self._default_output = [output for output in outputs if output.default][0]
         self._error_output = error_output
-        self.batch_size = getattr(self._default_output._config, "message_backlog_size", 10)
+        self.batch_size = process_count
         self.batch: list[LogEvent] = []
 
     def __next__(self) -> LogEvent | ErrorEvent:
@@ -62,7 +68,9 @@ class Sender(Iterator):
             yield from self.batch
 
     def _send_and_flush_failed_events(self):
-        error_events = (event for event in self.batch if event.state == EventStateType.FAILED)
+        error_events = [
+            self._send_failed(event) for event in self.batch if event.state == EventStateType.FAILED
+        ]
         self._error_output.flush()
         failed_error_events = [
             event for event in error_events if event.state == EventStateType.FAILED
