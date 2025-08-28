@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
+from unittest import mock
+
 import pytest
 
 from logprep.factory import Factory
@@ -139,13 +141,14 @@ class TestRunner:
     def test_from_configuration_runs_setup(self, configuration):
         assert False
 
-    def test_stop_injects_sentinel(self, configuration):
+    def test_stop_raises_system_exit(self, configuration):
         runner = Runner.from_configuration(configuration)
-        runner.stop()
-        assert runner.should_exit is True
+        with pytest.raises(SystemExit, match="0"):
+            runner.stop()
 
-    def test_run_stops_on_sentinel(self, configuration):
-        runner = Runner.from_configuration(configuration)
-        runner.stop()
-        runner.run()
-        assert runner.should_exit is True
+    def test_stop_calls_shutdown(self, configuration):
+        with mock.patch("logprep.ng.runner.Runner.shut_down") as mock_shutdown:
+            runner = Runner.from_configuration(configuration)
+            with pytest.raises(SystemExit, match="0"):
+                runner.stop()
+        mock_shutdown.assert_called_once()

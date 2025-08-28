@@ -52,13 +52,19 @@ class Runner:
         processors = [
             Factory.create(processor_config) for processor_config in configuration.pipeline
         ]
+        process_count = configuration.process_count
 
         pipeline = Pipeline(
             input_connector=input_iterator,
             processors=processors,
-            process_count=configuration.process_count,
+            process_count=process_count,
         )
-        sender = Sender(pipeline=pipeline, outputs=output_connectors, error_output=error_output)
+        sender = Sender(
+            pipeline=pipeline,
+            outputs=output_connectors,
+            error_output=error_output,
+            process_count=process_count,
+        )
         sender.setup()
         if cls._input_connector:
             cls._input_connector.setup()
@@ -78,7 +84,9 @@ class Runner:
     def shut_down(self):
         """Shut down the log processing pipeline."""
         self.sender.shut_down()
+        logger.info("Runner shut down complete.")
 
     def stop(self) -> None:
         """Stop the log processing pipeline."""
+        logger.info("Stopping runner and exiting...")
         raise SystemExit(0)

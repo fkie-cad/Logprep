@@ -59,7 +59,7 @@ class Pipeline(Iterator):
         self,
         input_connector: Iterator[LogEvent],
         processors: list[Processor],
-        process_count: int = 10,
+        process_count: int = 2,
     ) -> None:
         self._processors = processors
         self._process_count = process_count
@@ -68,12 +68,14 @@ class Pipeline(Iterator):
     def __iter__(self) -> Generator[LogEvent, None, None]:
         """Iterate over processed events."""
         events = self._events
+        process_count = self._process_count
+        processors = self._processors
         while True:
-            batch = list(islice(events, 100))
+            batch = list(islice(events, process_count))
             if not batch:
                 break
-            with ThreadPoolExecutor(max_workers=self._process_count) as executor:
-                yield from executor.map(partial(_process_event, processors=self._processors), batch)
+            with ThreadPoolExecutor(max_workers=process_count) as executor:
+                yield from executor.map(partial(_process_event, processors=processors), batch)
 
     def __next__(self):
         """
