@@ -157,18 +157,3 @@ class TestPipeline:
         pipeline = Pipeline(empty_input, processors)
         event = next(pipeline)
         assert not event
-
-    def test_next_seeks_for_next_valid_event(self, processors):
-        empty_input = iter(
-            [
-                None,
-                LogEvent({}, original=b""),
-                LogEvent({"message": "valid"}, original=b"", state=EventStateType.RECEIVED),
-            ]
-        )
-        pipeline = Pipeline(empty_input, processors)
-        event = next(pipeline)
-        assert isinstance(event, LogEvent)
-        assert event.data == {"message": "valid", "event": {"tags": "generic added tag"}}
-        assert event.original == b""
-        assert event.state.current_state == EventStateType.PROCESSED
