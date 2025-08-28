@@ -259,12 +259,13 @@ class TestSender:
             error_output=error_output,
         )
         with mock.patch.object(sender, "_send_extra_data"):
-            results = list(sender)
+            _ = list(sender)
         assert sre_event.state == EventStateType.FAILED
         assert log_event.state == EventStateType.FAILED
-        # assert isinstance(error_event, ErrorEvent)
-        # assert error_event.state == EventStateType.DELIVERED
-        # assert "not all extra_data events are DELIVERED" in error_event.data["reason"]
+        error_event = error_output.events[0]
+        assert isinstance(error_event, ErrorEvent)
+        assert error_event.state == EventStateType.DELIVERED
+        assert "not all extra_data events are DELIVERED" in error_event.data["reason"]
 
     def test_setup_calls_output_setup(self, opensearch_output, pipeline):
         sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
