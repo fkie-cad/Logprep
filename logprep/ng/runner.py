@@ -69,11 +69,15 @@ class Runner:
             error_output=error_output,
             process_count=process_count,
         )
-        sender.setup()
-        if cls._input_connector:
-            cls._input_connector.setup()
         runner = cls(sender)
+        runner.setup()
         return runner
+
+    def setup(self):
+        """Setup the runner and its components."""
+        self.sender.setup()
+        if self._input_connector:
+            self._input_connector.setup()
 
     def run(self) -> None:
         """Run the log processing pipeline."""
