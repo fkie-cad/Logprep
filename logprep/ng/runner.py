@@ -4,6 +4,7 @@ Runner module
 
 import atexit
 import logging
+from logging.handlers import QueueListener
 from typing import Iterator
 
 from logprep.factory import Factory
@@ -12,6 +13,7 @@ from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
 from logprep.ng.sender import Sender
 from logprep.util.configuration import Configuration
+from logprep.util.logging import logqueue
 
 logger = logging.getLogger("Runner")
 
@@ -31,6 +33,7 @@ class Runner:
     def __init__(self, sender: Sender) -> None:
         self.sender = sender
         atexit.register(self.shut_down)
+        self._setup_logging()
 
     @classmethod
     def from_configuration(cls, configuration: Configuration) -> "Runner":
@@ -85,8 +88,16 @@ class Runner:
         """Shut down the log processing pipeline."""
         self.sender.shut_down()
         logger.info("Runner shut down complete.")
+        self.log_handler.stop()
 
     def stop(self) -> None:
         """Stop the log processing pipeline."""
         logger.info("Stopping runner and exiting...")
         raise SystemExit(0)
+
+    def _setup_logging(self):
+        console_logger = logging.getLogger("console")
+        if console_logger.handlers:
+            console_handler = console_logger.handlers.pop()  # last handler is console
+            self.log_handler = QueueListener(logqueue, console_handler)
+            self.log_handler.start()
