@@ -26,6 +26,7 @@ class Runner:
     _input_connector: Input | None = None
 
     def __new__(cls, sender: Sender) -> "Runner":
+        """Create a new Runner singleton."""
         if cls.instance is None:
             cls.instance = super().__new__(cls)
         return cls.instance
@@ -37,7 +38,7 @@ class Runner:
 
     @classmethod
     def from_configuration(cls, configuration: Configuration) -> "Runner":
-        """Factory method to build the Runner"""
+        """Factory method to build and setup the Runner and its components"""
         input_iterator: Iterator = iter([])
         cls._input_connector = Factory.create(configuration.input) if configuration.input else None
         if cls._input_connector is not None:
