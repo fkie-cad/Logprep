@@ -146,9 +146,14 @@ class TestRunner:
         with pytest.raises(SystemExit, match="0"):
             runner.stop()
 
-    def test_stop_calls_shutdown(self, configuration):
-        with mock.patch("logprep.ng.runner.Runner.shut_down") as mock_shutdown:
-            runner = Runner.from_configuration(configuration)
-            with pytest.raises(SystemExit, match="0"):
-                runner.stop()
-        mock_shutdown.assert_called_once()
+    def test_shutdown_is_registered_at_exit(self, configuration):
+        with mock.patch("atexit.register") as mock_atexit:
+            Runner.from_configuration(configuration)
+            mock_atexit.assert_called_once()
+
+    @mock.patch("logging.getLogger")
+    def test_shutdown_stops_logger(self, _, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch.object(runner, "log_handler") as mock_log_handler:
+            runner.shut_down()
+            mock_log_handler.stop.assert_called_once()
