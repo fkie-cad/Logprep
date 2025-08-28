@@ -3,6 +3,7 @@
 import pytest
 
 from logprep.factory import Factory
+from logprep.ng.abc.event import EventBacklog
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.pipeline import Pipeline
@@ -108,6 +109,7 @@ def get_logprep_config():
                 }
             },
         ],
+        "input": {"file": {"type": "ng_dummy_input", "documents": []}},
         "output": {
             "kafka": {
                 "type": "ng_dummy_output",
@@ -132,6 +134,7 @@ class TestRunner:
         runner = Runner.from_configuration(configuration)
         assert isinstance(runner, Runner)
         assert isinstance(runner.sender, Sender)
+        assert isinstance(runner._input_connector.event_backlog, EventBacklog)
 
     def test_from_configuration_runs_setup(self, configuration):
         assert False
