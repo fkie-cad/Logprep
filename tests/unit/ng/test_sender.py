@@ -114,7 +114,6 @@ class TestSender:
 
     def test_sender_initialization(self, pipeline, opensearch_output):
         sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
-        assert sender
         assert isinstance(sender._events, Generator)
         assert sender._outputs == {opensearch_output.name: opensearch_output}
         assert sender._error_output is None
@@ -253,6 +252,35 @@ class TestSender:
         output_mock._config.message_backlog_size = 6666
         sender = Sender(pipeline=iter([]), outputs=[output_mock], error_output=None)
         assert sender.batch_size == 6666
+
+    def test_sender_uses_batch_size(self):
+        output_mock = mock.MagicMock()
+        output_mock._config = mock.MagicMock()
+        output_mock._config.message_backlog_size = 666
+        sender = Sender(
+            pipeline=iter(
+                [
+                    LogEvent(
+                        {"message": f"Log message {i}"}, original=b"", state=EventStateType.RECEIVED
+                    )
+                    for i in range(6666)
+                ]
+            ),
+            outputs=[output_mock],
+            error_output=None,
+        )
+        mock_batch = []
+
+        def mock_send_and_flush_side_effect(*args):
+            mock_batch.clear()
+            mock_batch.extend(sender.batch)
+            raise Exception("Stop iteration for test")  # pylint: disable=broad-exception-raised
+
+        with mock.patch.object(sender, "_send_and_flush_processed_events") as mock_send_and_flush:
+            mock_send_and_flush.side_effect = mock_send_and_flush_side_effect
+            with pytest.raises(Exception, match="Stop iteration for test"):
+                list(sender)
+        assert len(mock_batch) == 666
 
     def test_sender_handles_failed_extra_data(self, opensearch_output, error_output):
         sre_event = SreEvent({"sre": "data"}, outputs=[{"opensearch": "sre_topic"}])
