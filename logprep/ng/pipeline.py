@@ -42,11 +42,55 @@ def _process_event_in_worker(event: LogEvent) -> LogEvent:
 class Pipeline(Iterator):
     """Pipeline class to process events through a series of processors.
 
-    The `use_multiprocessing` flag controls whether events are processed in parallel
-    using Python's multiprocessing module with the "spawn" start method.
+    The `Pipeline` pulls events from an input connector and processes them
+    sequentially or in parallel, depending on the `use_multiprocessing` flag.
 
-        False: Single-threaded mode (sequential processing, useful for debugging)
-        True: Multiprocessing mode using "spawn" for process creation (default)
+    Parameters
+    ----------
+    input_connector : Iterator[LogEvent]
+        Source iterator providing the input events.
+    processors : list[Processor]
+        List of processors applied to each event in sequence.
+    process_count : int, default=10
+        - If `use_multiprocessing` is False:
+          Defines the batch size of events processed in one iteration step.
+        - If `use_multiprocessing` is True:
+          Defines the number of worker processes spawned for parallel processing.
+    use_multiprocessing : bool, default=False
+        Controls whether events are processed sequentially (False)
+        or in parallel using Python's multiprocessing module with the
+        "spawn" start method (True).
+
+    Notes
+    -----
+    - Sequential mode is useful for debugging or low-volume processing.
+    - Multiprocessing mode allows parallel event processing,
+      where each worker executes the same configured set of processors.
+
+    Examples
+    --------
+    >>> from logprep.ng.event.log_event import LogEvent
+    >>> from logprep.ng.abc.event import Event
+    >>> class MockProcessor:
+    ...     def process(self, event: LogEvent) -> None:
+    ...         event.data["processed"] = True
+    ...
+    >>> # Create test events
+    >>> events = [
+    ...     LogEvent({"message": "test1"}, original=b""),
+    ...     LogEvent({"message": "test2"}, original=b"")
+    ... ]
+    >>> processors = [MockProcessor()]
+    >>>
+    >>> # Create and run pipeline
+    >>> pipeline = Pipeline(iter(events), processors)
+    >>> processed_events = list(pipeline)
+    >>> len(processed_events)
+    2
+    >>> processed_events[0].data["processed"]
+    True
+    >>> processed_events[1].data["message"]
+    'test2'
     """
 
     def __init__(
