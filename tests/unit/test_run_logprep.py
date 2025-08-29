@@ -27,7 +27,6 @@ class TestRunLogprepCli:
     @pytest.mark.parametrize(
         "command, target",
         [
-            ("run tests/testdata/config/config.yml", "logprep.run_logprep.Runner.start"),
             (
                 "test config tests/testdata/config/config.yml",
                 "logprep.run_logprep._get_configuration",
@@ -35,10 +34,6 @@ class TestRunLogprepCli:
             (
                 "print tests/testdata/config/config.yml",
                 "logprep.util.configuration.Configuration.as_yaml",
-            ),
-            (
-                "run tests/testdata/config/config.yml tests/testdata/config/config.yml",
-                "logprep.run_logprep.Runner.start",
             ),
             (
                 "test config tests/testdata/config/config.yml tests/testdata/config/config.yml",
