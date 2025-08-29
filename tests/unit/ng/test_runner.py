@@ -8,7 +8,7 @@ import pytest
 
 from logprep.ng.abc.event import EventBacklog
 from logprep.ng.runner import Runner
-from logprep.ng.sender import Sender
+from logprep.ng.sender import LogprepReloadException, Sender
 from logprep.util.configuration import Configuration
 
 
@@ -115,3 +115,45 @@ class TestRunner:
         mock_get_logger.assert_called_once_with("console")
         assert isinstance(runner.log_handler, QueueListener)
         assert len(runner.log_handler.handlers) == 1
+
+    def test_reload_calls_sender_shut_down(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch.object(runner.sender, "shut_down") as mock_sender_shut_down:
+            runner.reload()
+            mock_sender_shut_down.assert_called_once()
+
+    def test_reload_starts_new_sender(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        old_sender = runner.sender
+        runner.reload()
+        assert runner.sender is not old_sender
+
+    def test_reload_setups_sender(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        new_sender = mock.MagicMock()
+        with mock.patch.object(Runner, "get_sender", return_value=new_sender):
+            runner.reload()
+        new_sender.setup.assert_called_once()
+
+    def test_reload_setups_new_input(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch.object(Runner, "get_sender", return_value=mock.MagicMock()):
+            with mock.patch.object(runner._input_connector, "setup") as mock_input_setup:
+                runner.reload()
+                mock_input_setup.assert_called_once()
+
+    def test_reload_schedules_new_config_refresh_job(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch(
+            "logprep.util.configuration.Configuration.schedule_config_refresh"
+        ) as mock_schedule:
+            runner.reload()
+            mock_schedule.assert_called_once()
+
+    def test_run_calls_reload_on_reload_exception(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch.object(runner, "_process_events", side_effect=LogprepReloadException()):
+            with mock.patch.object(runner, "reload") as mock_reload:
+                mock_reload.side_effect = SystemExit(666)
+                with pytest.raises(SystemExit, match="666"):
+                    runner.run()
