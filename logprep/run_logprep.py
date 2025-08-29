@@ -127,8 +127,9 @@ def run_ng(configs: tuple[str], version=None) -> None:
     runner = None
     try:
         runner = NGRunner.from_configuration(configuration)
-        signal.signal(signal.SIGTERM, signal_handler_ng)
-        signal.signal(signal.SIGINT, signal_handler_ng)
+        if "pytest" not in sys.modules:  # needed for not blocking tests
+            signal.signal(signal.SIGTERM, signal_handler_ng)
+            signal.signal(signal.SIGINT, signal_handler_ng)
         logger.debug("Configuration loaded")
         runner.run()
     except SystemExit as error:
