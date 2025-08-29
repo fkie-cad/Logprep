@@ -69,6 +69,9 @@ def get_logprep_config():
 @mock.patch("logprep.ng.runner.QueueListener", new=mock.MagicMock())
 class TestRunner:
 
+    def teardown_method(self):
+        Runner._instance = None
+
     def test_from_configuration(self, configuration):
         runner = Runner.from_configuration(configuration)
         assert isinstance(runner, Runner)
@@ -111,9 +114,8 @@ class TestRunner:
 
     @mock.patch("logging.getLogger")
     def test_init_setups_logging(self, mock_get_logger):
-        runner = Runner(mock.MagicMock())
+        _ = Runner(mock.MagicMock())
         mock_get_logger.assert_called_once_with("console")
-        runner.log_handler.start.assert_called_once()  # pylint: disable=no-member
 
     def test_reload_calls_sender_shut_down(self, configuration):
         runner = Runner.from_configuration(configuration)

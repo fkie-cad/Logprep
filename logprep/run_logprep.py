@@ -387,8 +387,8 @@ def signal_handler(__: int, _) -> None:
 def signal_handler_ng(__: int, _) -> None:
     """Handle signals for stopping the NG runner."""
     logger.debug("Received termination signal, shutting down NG runner...")
-    if NGRunner.instance:
-        NGRunner.instance.stop()
+    if NGRunner._instance:
+        NGRunner._instance.stop()
 
 
 if __name__ == "__main__":
