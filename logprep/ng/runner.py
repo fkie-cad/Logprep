@@ -9,9 +9,10 @@ from typing import Iterator
 
 from logprep.factory import Factory
 from logprep.ng.abc.input import Input
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
-from logprep.ng.sender import Sender
+from logprep.ng.sender import LogprepReloadException, Sender
 from logprep.util.configuration import Configuration
 from logprep.util.logging import logqueue
 
@@ -24,6 +25,10 @@ class Runner:
     instance: "Runner | None" = None
 
     _input_connector: Input | None = None
+
+    _configuration: Configuration
+
+    _config_version: str
 
     def __new__(cls, sender: Sender) -> "Runner":
         """Create a new Runner singleton."""
@@ -39,6 +44,16 @@ class Runner:
     @classmethod
     def from_configuration(cls, configuration: Configuration) -> "Runner":
         """Factory method to build and setup the Runner and its components"""
+        sender = cls.get_sender(configuration)
+        runner = cls(sender)
+        runner._configuration = configuration
+        runner._config_version = configuration.version
+        runner.setup()
+        return runner
+
+    @classmethod
+    def get_sender(cls, configuration) -> Sender:
+        """Create the sender for the log processing pipeline."""
         input_iterator: Iterator = iter([])
         cls._input_connector = Factory.create(configuration.input) if configuration.input else None
         if cls._input_connector is not None:
@@ -69,25 +84,40 @@ class Runner:
             error_output=error_output,
             process_count=process_count,
         )
-        runner = cls(sender)
-        runner.setup()
-        return runner
+        return sender
+
+    def run(self) -> None:
+        """Run the log processing pipeline."""
+
+        self._configuration.schedule_config_refresh()
+        while 1:
+            try:
+                self._process_events()
+            except LogprepReloadException:
+                self.reload()
+
+        logger.debug("end log processing")
+
+    def _process_events(self) -> None:
+        logger.debug("start log processing")
+        sender = self.sender
+        configuration = self._configuration
+        config_version = configuration.version
+        for event in sender:
+            if event.state == EventStateType.FAILED:
+                logger.error("event failed: %s", event)
+            else:
+                logger.debug("event processed: %s", event.state)
+
+            configuration.refresh()
+            if configuration.version != config_version:
+                raise LogprepReloadException("Configuration change detected, reloading...")
 
     def setup(self) -> None:
         """Setup the runner and its components."""
         self.sender.setup()
         if self._input_connector:
             self._input_connector.setup()
-
-    def run(self) -> None:
-        """Run the log processing pipeline."""
-        logger.debug("start log processing")
-        sender = self.sender
-        while 1:
-            logger.debug("iterating, sender: %s", next(sender))
-            for event in sender:
-                logger.debug("processed event: %s", event)
-        logger.debug("end log processing")
 
     def shut_down(self) -> None:
         """Shut down the log processing pipeline."""
@@ -106,3 +136,15 @@ class Runner:
             console_handler = console_logger.handlers.pop()  # last handler is console
             self.log_handler = QueueListener(logqueue, console_handler)
             self.log_handler.start()
+
+    def reload(self) -> None:
+        """Reload the log processing pipeline."""
+        logger.debug("Reloading log processing pipeline...")
+        self._config_version = self._configuration.version
+        self.sender.shut_down()
+        self.sender = Runner.get_sender(self._configuration)
+        self.sender.setup()
+        if self._input_connector:
+            self._input_connector.setup()
+        self._configuration.schedule_config_refresh()
+        logger.debug("Finished reloading log processing pipeline.")

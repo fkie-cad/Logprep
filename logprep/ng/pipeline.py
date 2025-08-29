@@ -2,7 +2,6 @@
 
 import logging
 from collections.abc import Iterator
-from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from itertools import islice
 from typing import Generator
@@ -24,6 +23,7 @@ def _process_event(event: LogEvent, processors: list[Processor]) -> LogEvent:
         event.state.next_state(success=True)
     else:
         event.state.next_state(success=False)
+        logger.error("event failed: %s with errors: %s", event, event.errors)
     return event
 
 
@@ -74,8 +74,7 @@ class Pipeline(Iterator):
             batch = list(islice(events, process_count))
             if not batch:
                 break
-            with ThreadPoolExecutor(max_workers=process_count) as executor:
-                yield from executor.map(partial(_process_event, processors=processors), batch)
+            yield from map(partial(_process_event, processors=processors), batch)
 
     def __next__(self):
         raise NotImplementedError("Use iteration to get processed events.")
