@@ -108,9 +108,15 @@ class TestRunner:
     @mock.patch("logging.getLogger")
     def test_shutdown_stops_logger(self, _, configuration):
         runner = Runner.from_configuration(configuration)
-        with mock.patch.object(runner, "log_handler") as mock_log_handler:
+        with mock.patch.object(runner, "_log_handler") as mock_log_handler:
             runner.shut_down()
             mock_log_handler.stop.assert_called_once()
+
+    def test_shut_down_calls_input_connector_shut_down(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch.object(runner._input_connector, "shut_down") as mock_input_shut_down:
+            runner.shut_down()
+            mock_input_shut_down.assert_called_once()
 
     @mock.patch("logging.getLogger")
     def test_init_setups_logging(self, mock_get_logger):
