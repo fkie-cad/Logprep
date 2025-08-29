@@ -54,7 +54,7 @@ class Pipeline(Iterator):
         input_connector: Iterator[LogEvent],
         processors: list[Processor],
         process_count: int = 10,
-        use_multiprocessing: bool = True,
+        use_multiprocessing: bool = False,
     ) -> None:
         self._input = input_connector
         self._processors = processors
