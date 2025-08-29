@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
-from logging.handlers import QueueListener
 from unittest import mock
 
 import pytest
@@ -67,6 +66,7 @@ def get_logprep_config():
     return Configuration(**config_dict)
 
 
+@mock.patch("logprep.ng.runner.QueueListener", new=mock.MagicMock())
 class TestRunner:
 
     def test_from_configuration(self, configuration):
@@ -113,8 +113,7 @@ class TestRunner:
     def test_init_setups_logging(self, mock_get_logger):
         runner = Runner(mock.MagicMock())
         mock_get_logger.assert_called_once_with("console")
-        assert isinstance(runner.log_handler, QueueListener)
-        assert len(runner.log_handler.handlers) == 1
+        runner.log_handler.start.assert_called_once()  # pylint: disable=no-member
 
     def test_reload_calls_sender_shut_down(self, configuration):
         runner = Runner.from_configuration(configuration)
