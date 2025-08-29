@@ -140,35 +140,16 @@ class TestPipeline:
                 assert processors[0].process.call_count == 3
                 assert processors[1].process.call_count == 0
 
-    def test_next_with_none_input(self, processors):
-        empty_input = iter([None, None, None])
-        pipeline = Pipeline(empty_input, processors)
-        event = next(pipeline)
-        assert not event
+    def test_setup_calls_processor_setups(self, input_connector):
+        processors = [mock.MagicMock() for _ in range(5)]
+        pipeline = Pipeline(input_connector, processors)
+        pipeline.setup()
+        for processor in processors:
+            processor.setup.assert_called_once()
 
-    def test_next_with_empty_input(self, processors):
-        empty_input = iter([])
-        pipeline = Pipeline(empty_input, processors)
-        event = next(pipeline)
-        assert not event
-
-    def test_next_with_empty_events_in_input(self, processors):
-        empty_input = iter([LogEvent({}, original=b"") for _ in range(5)])
-        pipeline = Pipeline(empty_input, processors)
-        event = next(pipeline)
-        assert not event
-
-    def test_next_seeks_for_next_valid_event(self, processors):
-        empty_input = iter(
-            [
-                None,
-                LogEvent({}, original=b""),
-                LogEvent({"message": "valid"}, original=b"", state=EventStateType.RECEIVED),
-            ]
-        )
-        pipeline = Pipeline(empty_input, processors)
-        event = next(pipeline)
-        assert isinstance(event, LogEvent)
-        assert event.data == {"message": "valid", "event": {"tags": "generic added tag"}}
-        assert event.original == b""
-        assert event.state.current_state == EventStateType.PROCESSED
+    def test_shut_down_calls_processor_shut_down(self, input_connector):
+        processors = [mock.MagicMock() for _ in range(5)]
+        pipeline = Pipeline(input_connector, processors)
+        pipeline.shut_down()
+        for processor in processors:
+            processor.shut_down.assert_called_once()

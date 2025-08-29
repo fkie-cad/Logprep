@@ -10,11 +10,12 @@ import warnings
 import click
 
 from logprep.generator.factory import ControllerFactory
+from logprep.ng.runner import Runner as NGRunner
 from logprep.runner import Runner
 from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.context_managers import logqueue_listener, disable_loggers
+from logprep.util.context_managers import disable_loggers, logqueue_listener
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
@@ -89,6 +90,50 @@ def run(configs: tuple[str], version=None) -> None:
         runner.start()
     except SystemExit as error:
         logger.error(f"Error during setup: error code {error.code}")
+        sys.exit(error.code)
+    # pylint: disable=broad-except
+    except Exception as error:
+        if os.environ.get("DEBUG", False):
+            logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
+        else:
+            logger.critical(f"A critical error occurred: {error}")
+        if runner:
+            runner.stop()
+        sys.exit(EXITCODES.ERROR)
+    # pylint: enable=broad-except
+
+
+@cli.command(short_help="Run logprep ng to process log messages", epilog=EPILOG_STR)
+@click.argument("configs", nargs=-1, required=False)
+@click.option(
+    "--version",
+    is_flag=True,
+    default=False,
+    help="Print version and exit (includes also config version)",
+)
+def run_ng(configs: tuple[str], version=None) -> None:
+    """
+    Run Logprep with the given configuration.
+
+    CONFIG is a path to configuration file (filepath or URL).
+    """
+    configuration = _get_configuration(configs)
+    if version:
+        _print_version(configuration)
+    for version in get_versions_string(configuration).split("\n"):
+        logger.info(version)
+    logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
+    logger.debug(f"Config path: {configs}")
+    runner = None
+    try:
+        runner = NGRunner.from_configuration(configuration)
+        if "pytest" not in sys.modules:  # needed for not blocking tests
+            signal.signal(signal.SIGTERM, signal_handler_ng)
+            signal.signal(signal.SIGINT, signal_handler_ng)
+        logger.debug("Configuration loaded")
+        runner.run()
+    except SystemExit as error:
+        logger.debug(f"Exit received with code {error.code}")
         sys.exit(error.code)
     # pylint: disable=broad-except
     except Exception as error:
@@ -334,7 +379,16 @@ pseudo.add_command(cmd=depseudonymize.depseudonymize, name="depseudonymize")
 
 def signal_handler(__: int, _) -> None:
     """Handle signals for stopping the runner and reloading the configuration."""
-    Runner.get_runner(Configuration()).stop()
+    logger.debug("Received termination signal, shutting down...")
+    if Runner.get_runner(Configuration()):
+        Runner.get_runner(Configuration()).stop()
+
+
+def signal_handler_ng(__: int, _) -> None:
+    """Handle signals for stopping the NG runner."""
+    logger.debug("Received termination signal, shutting down NG runner...")
+    if NGRunner._instance:
+        NGRunner._instance.stop()
 
 
 if __name__ == "__main__":

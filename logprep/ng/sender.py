@@ -23,15 +23,28 @@ class LogprepExceptionGroup(ExceptionGroup):
         return f"{self.message}: {self.exceptions}"
 
 
+class LogprepReloadException(Exception):
+    """Exception raised when the log processing pipeline needs to be reloaded."""
+
+    pass
+
+
 class Sender(Iterator):
     """Sender class to handle sending events to configured outputs."""
 
-    def __init__(self, pipeline: Pipeline, outputs: list[Output], error_output: Output) -> None:
+    def __init__(
+        self,
+        pipeline: Pipeline,
+        outputs: list[Output],
+        error_output: Output,
+        process_count: int = 2,
+    ) -> None:
+        self.pipeline = pipeline
         self._events = (event for event in pipeline if event is not None and event.data)
         self._outputs = {output.name: output for output in outputs}
         self._default_output = [output for output in outputs if output.default][0]
         self._error_output = error_output
-        self.batch_size = getattr(self._default_output._config, "message_backlog_size", 10)
+        self.batch_size = process_count
         self.batch: list[LogEvent] = []
 
     def __next__(self) -> LogEvent | ErrorEvent:
@@ -111,3 +124,21 @@ class Sender(Iterator):
             else Exception("Unknown error")
         )
         return ErrorEvent(log_event=event, reason=reason, state=EventStateType.PROCESSED)
+
+    def shut_down(self) -> None:
+        """Shutdown all outputs gracefully."""
+        for _, output in self._outputs.items():
+            output.shut_down()
+        if self._error_output:
+            self._error_output.shut_down()
+        logger.debug("All outputs have been shut down.")
+        self.pipeline.shut_down()
+
+    def setup(self) -> None:
+        """Setup all outputs."""
+        for _, output in self._outputs.items():
+            output.setup()
+        if self._error_output:
+            self._error_output.setup()
+        logger.debug("All outputs have been set up.")
+        self.pipeline.setup()

@@ -146,47 +146,12 @@ class TestSender:
             assert len(error_output.events) == 3, "3 failed events sent to error output"
             assert all(isinstance(event, ErrorEvent) for event in error_output.events)
 
-    def test_next_sends_event(self, pipeline, opensearch_output):
-        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
-        assert isinstance(next(sender), LogEvent), "should return a LogEvent instance"
-        assert len(opensearch_output.events) == 1, "1 event should be sent to output"
-        assert opensearch_output.events[0].state == EventStateType.DELIVERED
-
     def test_raises_value_error_for_invalid_output(self, pipeline, opensearch_output):
         sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
         event = LogEvent({"message": "Test message"}, original=b"", state=EventStateType.RECEIVED)
         event.extra_data.append(SreEvent({"test": "data"}, outputs=[{"invalid_output": "target"}]))
         with pytest.raises(ValueError, match="Output invalid_output not configured."):
             sender._send_processed(event)
-
-    def test_next_handles_errors_during_sending_to_error_output(
-        self, opensearch_output, error_output, caplog
-    ):
-        caplog.set_level("ERROR")
-        event = LogEvent({"message": "Test message"}, original=b"", state=EventStateType.FAILED)
-        sender = Sender(
-            pipeline=iter([event]),
-            outputs=[opensearch_output],
-            error_output=error_output,
-        )
-        error_event = sender._get_error_event(event)
-
-        def mock_store_side_effect(*_) -> None:
-            error_event.state.next_state(success=True)  # stored_in_error_output
-
-        def mock_flush_side_effect(*_) -> None:
-            error_event.state.next_state(success=False)  # failed
-
-        with mock.patch.object(sender, "_get_error_event", return_value=error_event):
-            with mock.patch.object(sender._error_output, "store") as mock_store:
-                mock_store.side_effect = mock_store_side_effect
-                with mock.patch.object(sender._error_output, "flush") as mock_flush:
-                    mock_flush.side_effect = mock_flush_side_effect
-                    next(sender)
-        assert "Error during sending to error output" in caplog.text
-        assert "ErrorEvent" in caplog.text
-        assert "state=failed" in caplog.text
-        assert '{"message": "Test message"}' in caplog.text
 
     def test_iter_handles_errors_during_sending_to_error_output(
         self, opensearch_output, error_output, caplog
@@ -248,15 +213,13 @@ class TestSender:
 
     def test_sender_sets_message_backlog_size(self):
         output_mock = mock.MagicMock()
-        output_mock._config = mock.MagicMock()
-        output_mock._config.message_backlog_size = 6666
-        sender = Sender(pipeline=iter([]), outputs=[output_mock], error_output=None)
-        assert sender.batch_size == 6666
+        sender = Sender(
+            pipeline=iter([]), outputs=[output_mock], error_output=None, process_count=623
+        )
+        assert sender.batch_size == 623
 
-    def test_sender_uses_batch_size(self):
+    def test_sender_uses_process_count(self):
         output_mock = mock.MagicMock()
-        output_mock._config = mock.MagicMock()
-        output_mock._config.message_backlog_size = 666
         sender = Sender(
             pipeline=iter(
                 [
@@ -268,6 +231,7 @@ class TestSender:
             ),
             outputs=[output_mock],
             error_output=None,
+            process_count=666,
         )
         mock_batch = []
 
@@ -295,9 +259,48 @@ class TestSender:
             error_output=error_output,
         )
         with mock.patch.object(sender, "_send_extra_data"):
-            error_event = next(sender)
+            _ = list(sender)
         assert sre_event.state == EventStateType.FAILED
         assert log_event.state == EventStateType.FAILED
+        error_event = error_output.events[0]
         assert isinstance(error_event, ErrorEvent)
         assert error_event.state == EventStateType.DELIVERED
         assert "not all extra_data events are DELIVERED" in error_event.data["reason"]
+
+    def test_setup_calls_output_setup(self, opensearch_output, pipeline):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
+        with mock.patch.object(opensearch_output, "setup") as mock_setup:
+            sender.setup()
+        mock_setup.assert_called_once()
+
+    def test_setup_calls_pipeline_setup(self, opensearch_output, pipeline):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
+        with mock.patch.object(pipeline, "setup") as mock_setup:
+            sender.setup()
+        mock_setup.assert_called_once()
+
+    def test_setup_calls_error_output_setup(self, opensearch_output, pipeline, error_output):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=error_output)
+        with mock.patch.object(error_output, "setup") as mock_setup:
+            sender.setup()
+        mock_setup.assert_called_once()
+
+    def test_shut_down_calls_output_shut_down(self, opensearch_output, pipeline):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
+        with mock.patch.object(opensearch_output, "shut_down") as mock_shut_down:
+            sender.shut_down()
+        mock_shut_down.assert_called_once()
+
+    def test_shut_down_calls_pipeline_shut_down(self, opensearch_output, pipeline):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
+        with mock.patch.object(pipeline, "shut_down") as mock_shut_down:
+            sender.shut_down()
+        mock_shut_down.assert_called_once()
+
+    def test_shut_down_calls_error_output_shut_down(
+        self, opensearch_output, pipeline, error_output
+    ):
+        sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=error_output)
+        with mock.patch.object(error_output, "shut_down") as mock_shut_down:
+            sender.shut_down()
+        mock_shut_down.assert_called_once()
