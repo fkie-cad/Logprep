@@ -57,9 +57,9 @@ def cli() -> None:
     Logprep allows to collect, process and forward log messages from various data sources.
     Log messages are being read and written by so-called connectors.
     """
-    # if "pytest" not in sys.modules:  # needed for not blocking tests
-    #     signal.signal(signal.SIGTERM, signal_handler)
-    #     signal.signal(signal.SIGINT, signal_handler)
+    if "pytest" not in sys.modules:  # needed for not blocking tests
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
 
 
 @cli.command(short_help="Run logprep to process log messages", epilog=EPILOG_STR)
