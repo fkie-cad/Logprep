@@ -2,6 +2,7 @@
 New output endpoint types are created by implementing it.
 """
 
+import threading
 from abc import abstractmethod
 from copy import deepcopy
 from typing import Any, Optional
@@ -77,6 +78,7 @@ class Output(Connector):
     def __init__(self, name: str, configuration: "Connector.Config"):
         super().__init__(name, configuration)
         self.input_connector = None
+        self._lock = threading.Lock()
 
     @abstractmethod
     def store(self, document: dict) -> Optional[bool]:
