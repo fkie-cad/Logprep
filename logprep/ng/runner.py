@@ -30,6 +30,8 @@ class Runner:
 
     _config_version: str
 
+    _log_handler: QueueListener | None = None
+
     def __new__(cls, sender: Sender) -> "Runner":
         """Create a new Runner singleton."""
         if cls._instance is None:
@@ -123,7 +125,10 @@ class Runner:
         """Shut down the log processing pipeline."""
         self.sender.shut_down()
         logger.info("Runner shut down complete.")
-        self.log_handler.stop()
+        if self._input_connector:
+            self._input_connector.shut_down()
+        if self._log_handler:
+            self._log_handler.stop()
 
     def stop(self) -> None:
         """Stop the log processing pipeline."""
@@ -134,8 +139,8 @@ class Runner:
         console_logger = logging.getLogger("console")
         if console_logger.handlers:
             console_handler = console_logger.handlers.pop()  # last handler is console
-            self.log_handler = QueueListener(logqueue, console_handler)
-            self.log_handler.start()
+            self._log_handler = QueueListener(logqueue, console_handler)
+            self._log_handler.start()
 
     def reload(self) -> None:
         """Reload the log processing pipeline."""
