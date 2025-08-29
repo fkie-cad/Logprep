@@ -17,15 +17,14 @@ from logprep.factory_error import InvalidConfigurationError
 from logprep.ng.abc.output import FatalOutputError
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
-from tests.unit.connector.test_confluent_kafka_common import (
-    CommonConfluentKafkaTestCase,
-)
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
 KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 
-class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):
+@mock.patch("confluent_kafka.Consumer", new=mock.MagicMock())
+@mock.patch("confluent_kafka.Producer", new=mock.MagicMock())
+class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     CONFIG = {
         "type": "ng_confluentkafka_output",
@@ -53,6 +52,11 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
     ]
+
+    def setup_method(self):
+        super().setup_method()
+        self.object._producer = mock.MagicMock()
+        self.object._admin = mock.MagicMock()
 
     @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer", return_value="The Producer")
     def test_producer_property_instantiates_kafka_producer(self, _):
