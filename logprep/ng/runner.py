@@ -22,7 +22,7 @@ logger = logging.getLogger("Runner")
 class Runner:
     """Class responsible for running the log processing pipeline."""
 
-    instance: "Runner | None" = None
+    _instance: "Runner | None" = None
 
     _input_connector: Input | None = None
 
@@ -32,9 +32,9 @@ class Runner:
 
     def __new__(cls, sender: Sender) -> "Runner":
         """Create a new Runner singleton."""
-        if cls.instance is None:
-            cls.instance = super().__new__(cls)
-        return cls.instance
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(self, sender: Sender) -> None:
         self.sender = sender
