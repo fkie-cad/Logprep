@@ -57,6 +57,18 @@ def _initialize_processors_for_mp() -> None:
     ]
 
 
+def _mp_process_event(event: LogEvent) -> LogEvent:
+    """Multiprocessing-safe processing of a single event using global _PROCESSORS."""
+
+    event.state.next_state()
+    for processor in _PROCESSORS:
+        if not event.data:
+            break
+        processor.process(event)
+    event.state.next_state(success=not event.errors)
+    return event
+
+
 class Pipeline(Iterator):
     """Pipeline class to process events through a series of processors.
         use_multiprocessing : bool, default=True
@@ -111,7 +123,7 @@ class Pipeline(Iterator):
         input_connector: Iterator[LogEvent],
         processors: list[Processor],
         process_count: int = 10,
-        use_multiprocessing: bool = True,
+        use_multiprocessing: bool = False,
     ) -> None:
         self._input = input_connector
         self._processors = processors
@@ -121,7 +133,8 @@ class Pipeline(Iterator):
         self._pool = None
 
         if self._use_mp:
-            mp.set_start_method("spawn", force=True)
+            if not mp.get_start_method(allow_none=True):
+                mp.set_start_method("spawn", force=True)
 
             _prepare_processor_configs_for_multiprocessing(self._processors)
             self._ctx = mp.get_context("spawn")
@@ -138,7 +151,7 @@ class Pipeline(Iterator):
 
         return self._pool
 
-    def _shutdown_pool(self) -> None:
+    def shut_down(self) -> None:
         """Close & join the cached Pool if it exists."""
         if self._pool is not None:
             try:
@@ -150,12 +163,20 @@ class Pipeline(Iterator):
     def __iter__(self) -> Generator[LogEvent, None, None]:
         """Iterate over processed events."""
 
-        while _CONSUME_ENDLESS:
-            events = (event for event in self._input if event is not None and event.data)
-            batch = list(islice(events, self._process_count))
-            if not batch:
-                break
-            yield from map(self._process_event, batch)
+        if self._use_mp:
+            while _CONSUME_ENDLESS:
+                events = (event for event in self._input if event is not None and event.data)
+                batch = list(islice(events, self._process_count))
+                if not batch:
+                    break
+                yield from self._pool.map(_mp_process_event, batch)
+        else:
+            while _CONSUME_ENDLESS:
+                events = (event for event in self._input if event is not None and event.data)
+                batch = list(islice(events, self._process_count))
+                if not batch:
+                    break
+                yield from map(self._process_event, batch)
 
     def __next__(self):
         """
@@ -172,7 +193,11 @@ class Pipeline(Iterator):
                 continue
         except StopIteration:
             return None
-        return self._process_event(next_event)
+
+        if self._use_mp:
+            return self._pool.map(_mp_process_event, [next_event])[0]
+        else:
+            return self._process_event(next_event)
 
     def _process_event(self, event: LogEvent) -> LogEvent:
         """process all processors for one event"""
