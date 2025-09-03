@@ -1,6 +1,8 @@
 """Pipeline module for processing events through a series of processors."""
 
 import multiprocessing as mp
+import os
+import traceback
 from collections.abc import Iterator
 from itertools import islice
 from typing import Generator
@@ -13,60 +15,34 @@ from logprep.ng.event.log_event import LogEvent
 
 _CONSUME_ENDLESS = True
 _PROCESSORS: list[Processor] | None = None
-_PROCESSOR_CONFIGS: list[tuple[str, dict]] | None = None
 
 
-def _prepare_processor_configs_for_multiprocessing(processors: list[Processor]) -> None:
-    """Helper function that updates the processor configs as preparation for multiprocessing."""
-
-    global _PROCESSOR_CONFIGS
-
-    if _PROCESSOR_CONFIGS is None:
-        _PROCESSOR_CONFIGS = []
-    else:
-        _PROCESSOR_CONFIGS.clear()
-
-    _PROCESSOR_CONFIGS = [
-        (processor.name, attrs.asdict(processor._config)) for processor in processors
-    ]
-
-
-def _initialize_processors_for_mp() -> None:
-    """
-    Initialize processors for use in multiprocessing workers.
-
-    This function populates the global `_PROCESSORS` singleton based on
-    the stored `_PROCESSOR_CONFIGS`. It ensures that each spawned process
-    can reuse the same initialized processors instead of rebuilding them
-    from scratch.
-
-    Raises:
-        ValueError: If `_PROCESSOR_CONFIGS` has not been initialized.
-    """
+def _initialize_processors_for_mp(processor_configs: list[dict]) -> None:
+    """Initialize processors for use in multiprocessing workers."""
 
     global _PROCESSORS
-
-    if _PROCESSOR_CONFIGS is None:
-        raise ValueError("No processor configurations found for multiprocessing.")
 
     if _PROCESSORS is not None:
         return
 
-    _PROCESSORS = [
-        Factory.create(configuration={name: config}) for name, config in _PROCESSOR_CONFIGS
-    ]
+    _PROCESSORS = [Factory.create(configuration={name: cfg}) for (name, cfg) in processor_configs]
 
 
 def _mp_process_event(event: LogEvent) -> LogEvent:
     """Multiprocessing-safe processing of a single event using global _PROCESSORS."""
 
-    event.state.next_state()
-    for processor in _PROCESSORS:
-        if not event.data:
-            break
-        processor.process(event)
-    event.state.next_state(success=not event.errors)
-    return event
+    try:
+        event.state.next_state()
+        for processor in _PROCESSORS:
+            if not event.data:
+                break
+            processor.process(event)
+        event.state.next_state(success=not event.errors)
+        return event
+    except Exception as e:
+        msg = f"[Worker PID {os.getpid()}] Exception:\n{traceback.format_exc()}\n"
+        os.write(2, msg.encode())
+        raise e
 
 
 class Pipeline(Iterator):
@@ -128,16 +104,20 @@ class Pipeline(Iterator):
         self._input = input_connector
         self._processors = processors
         self._process_count = process_count
+
         self._use_mp = use_multiprocessing
         self._ctx = None
         self._pool = None
+        self._processor_configs = None
 
         if self._use_mp:
             if not mp.get_start_method(allow_none=True):
                 mp.set_start_method("spawn", force=True)
 
-            _prepare_processor_configs_for_multiprocessing(self._processors)
             self._ctx = mp.get_context("spawn")
+            self._processor_configs = [
+                (processor.name, attrs.asdict(processor._config)) for processor in processors
+            ]
             self._pool = self._ensure_pool()
 
     def _ensure_pool(self):
@@ -147,6 +127,7 @@ class Pipeline(Iterator):
             self._pool = self._ctx.Pool(
                 processes=self._process_count,
                 initializer=_initialize_processors_for_mp,
+                initargs=(self._processor_configs,),
             )
 
         return self._pool

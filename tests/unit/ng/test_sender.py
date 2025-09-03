@@ -106,7 +106,9 @@ def get_error_output_mock():
 @pytest.fixture(name="pipeline")
 def get_pipeline_mock(input_connector, processors):
     """Create a mock for the Pipeline class."""
-    return Pipeline(input_connector, processors)
+    pipeline = Pipeline(input_connector, processors, use_multiprocessing=True)
+    yield pipeline
+    pipeline.shut_down()
 
 
 class TestSender:
