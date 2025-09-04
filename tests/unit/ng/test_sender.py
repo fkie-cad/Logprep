@@ -106,6 +106,14 @@ def get_error_output_mock():
 @pytest.fixture(name="pipeline")
 def get_pipeline_mock(input_connector, processors):
     """Create a mock for the Pipeline class."""
+    pipeline = Pipeline(input_connector, processors, use_multiprocessing=False)
+    yield pipeline
+    pipeline.shut_down()
+
+
+@pytest.fixture(name="mp_pipeline")
+def get_mp_pipeline_mock(input_connector, processors):
+    """Create a mock for the Pipeline class."""
     pipeline = Pipeline(input_connector, processors, use_multiprocessing=True)
     yield pipeline
     pipeline.shut_down()
@@ -303,3 +311,85 @@ class TestSender:
         assert isinstance(error_event, ErrorEvent)
         assert error_event.state == EventStateType.DELIVERED
         assert "not all extra_data events are DELIVERED" in error_event.data["reason"]
+
+
+class TestSenderUsingMPPipeline:
+    """Test the Sender class using mp pipeline"""
+
+    def test_sender_initialization(self, mp_pipeline, opensearch_output):
+        sender = Sender(pipeline=mp_pipeline, outputs=[opensearch_output], error_output=None)
+        assert isinstance(sender._events, Generator)
+        assert sender._outputs == {opensearch_output.name: opensearch_output}
+        assert sender._error_output is None
+        assert sender._default_output == opensearch_output, "Default output should be the first one"
+
+    def test_sender_sends_events_and_extra_data_to_output(
+        self, mp_pipeline, opensearch_output, kafka_output
+    ):
+        sender = Sender(
+            pipeline=mp_pipeline, outputs=[opensearch_output, kafka_output], error_output=None
+        )
+        events = list(sender)
+        assert len(events) == 3
+        assert len(opensearch_output.events) == 3, "3 log events "
+        assert len(kafka_output.events) == 1, "1 extra data event"
+        assert all(event.state == EventStateType.DELIVERED for event in opensearch_output.events)
+        assert all(event.state == EventStateType.DELIVERED for event in kafka_output.events)
+
+    def test_sender_sends_failed_events_to_error_output(
+        self, mp_pipeline, opensearch_output, error_output, kafka_output
+    ):
+        sender = Sender(
+            pipeline=mp_pipeline,
+            outputs=[opensearch_output, kafka_output],
+            error_output=error_output,
+        )
+        with mock.patch.object(mp_pipeline._processors[0], "_apply_rules") as mock_process:
+            mock_process.side_effect = Exception("Processing error")
+            events = list(sender)
+            assert len(events) == 3
+            assert len(opensearch_output.events) == 0, "no events delivered"
+            assert len(error_output.events) == 3, "3 failed events sent to error output"
+            assert all(isinstance(event, ErrorEvent) for event in error_output.events)
+
+    def test_next_sends_event(self, mp_pipeline, opensearch_output):
+        sender = Sender(pipeline=mp_pipeline, outputs=[opensearch_output], error_output=None)
+        assert isinstance(next(sender), LogEvent), "should return a LogEvent instance"
+        assert len(opensearch_output.events) == 1, "1 event should be sent to output"
+        assert opensearch_output.events[0].state == EventStateType.DELIVERED
+
+    def test_raises_value_error_for_invalid_output(self, mp_pipeline, opensearch_output):
+        sender = Sender(pipeline=mp_pipeline, outputs=[opensearch_output], error_output=None)
+        event = LogEvent({"message": "Test message"}, original=b"", state=EventStateType.RECEIVED)
+        event.extra_data.append(SreEvent({"test": "data"}, outputs=[{"invalid_output": "target"}]))
+        with pytest.raises(ValueError, match="Output invalid_output not configured."):
+            sender._send_processed(event)
+
+    def test_get_error_event(self, mp_pipeline, opensearch_output):
+        sender = Sender(pipeline=mp_pipeline, outputs=[opensearch_output], error_output=None)
+        event = LogEvent(
+            {"message": "Test message"}, original=b"the event", state=EventStateType.FAILED
+        )
+        error_event = sender._get_error_event(event)
+        assert isinstance(error_event, ErrorEvent)
+        assert error_event.data["@timestamp"] is not None
+        assert error_event.data["reason"] == "Unknown error"
+        assert error_event.data["original"] == "the event"
+        assert error_event.state.current_state == EventStateType.PROCESSED
+
+    def test_get_error_event_with_error_list(self, mp_pipeline, opensearch_output):
+        sender = Sender(pipeline=mp_pipeline, outputs=[opensearch_output], error_output=None)
+        event = LogEvent(
+            {"message": "Test message"}, original=b"the event", state=EventStateType.FAILED
+        )
+        event.errors.append(ValueError("Error 1"))
+        event.errors.append(TypeError("Error 2"))
+        error_event = sender._get_error_event(event)
+        assert isinstance(error_event, ErrorEvent)
+        assert error_event.data["@timestamp"] is not None
+        assert (
+            error_event.data["reason"]
+            == "Error during processing: (ValueError('Error 1'), TypeError('Error 2'))"
+        )
+        assert error_event.data["original"] == "the event"
+        assert error_event.state.current_state == EventStateType.PROCESSED

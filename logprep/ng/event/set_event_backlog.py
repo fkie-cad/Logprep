@@ -21,6 +21,25 @@ class SetEventBacklog(EventBacklog):
 
         self.backlog: set[Event] = set()
 
+    def update_events(self, events: list[Event]) -> None:
+        """
+        Updates the corresponding events in the backlog.
+
+        Currently, this method only updates the `state.current_state` and `data` of the matching event.
+        Events are matched by identity or equality (`__eq__` implementation).
+
+        Parameters
+        ----------
+        event : Event
+            The event instance whose state should be used to update the matching backlog entry.
+        """
+
+        for event in events:
+            for backlog_event in self.backlog:
+                if event == backlog_event:
+                    backlog_event.state.current_state = event.state.current_state
+                    backlog_event.data = event.data
+
     def register(self, events: Iterable[Event]) -> None:
         """
         Register one or more events by adding them to the internal backlog set.

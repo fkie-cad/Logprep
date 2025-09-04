@@ -10,6 +10,7 @@ from typing import Generator
 import attrs
 
 from logprep.factory import Factory
+from logprep.ng.abc.input import Input
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.log_event import LogEvent
 
@@ -54,8 +55,8 @@ class Pipeline(Iterator):
 
     Parameters
     ----------
-    input_connector : Iterator[LogEvent]
-        Source iterator providing the input events.
+    input_connector : Input
+        Source input connector, providing an iterator to get input events.
     processors : list[Processor]
         List of processors applied to each event in sequence.
     process_count : int, default=10
@@ -96,7 +97,7 @@ class Pipeline(Iterator):
 
     def __init__(
         self,
-        input_connector: Iterator[LogEvent],
+        input_connector: Input,
         processors: list[Processor],
         process_count: int = 10,
         use_multiprocessing: bool = False,
@@ -150,7 +151,23 @@ class Pipeline(Iterator):
                 batch = list(islice(events, self._process_count))
                 if not batch:
                     break
-                yield from self._pool.map(_mp_process_event, batch)
+
+                # TODO: following steps are necessary here:
+                # 1. collect returning events
+                processed_events = self._pool.map(_mp_process_event, batch)
+
+                # 2. update processed_events in event backlog, to reflect modified object data
+                # -> one possible solution COULD be:
+                #  2.1. get input from input_connector or pass input to pipeline instead of an input iterator
+                #  2.2. implement `update_events(events: list[Event])` method in input connectors
+                #  2.3. update processed event data in backlog by
+                #        calling `input.update_events(processed_events)`
+
+                # e.g.: self._input.update_events(processed_events)
+                self.input_connector.update_backlog_events(processed_events)
+
+                # 3. yield events
+                yield from processed_events
         else:
             while _CONSUME_ENDLESS:
                 events = (event for event in self._input if event is not None and event.data)
@@ -176,7 +193,7 @@ class Pipeline(Iterator):
             return None
 
         if self._use_mp:
-            return self._pool.map(_mp_process_event, [next_event])[0]
+            return self._pool.map(_mp_process_event, [next_event])
         else:
             return self._process_event(next_event)
 

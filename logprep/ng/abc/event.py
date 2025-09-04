@@ -290,6 +290,17 @@ class EventBacklog(ABC):
             setattr(cls, "unregister", guarded_unregister)
 
     @abstractmethod
+    def update_events(self, events: list[Event]) -> None:
+        """
+        Updates the corresponding events in the backlog.
+
+        Parameters
+        ----------
+        events : list[Event]
+            The event instances whose data should be used to update the matching backlog entry.
+        """
+
+    @abstractmethod
     def register(self, events: Iterable[Event]) -> None:
         """
         Register one or more events to the backlog.

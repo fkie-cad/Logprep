@@ -297,6 +297,11 @@ class Input(Connector):
 
         return InputIterator(self, timeout)
 
+    def update_backlog_events(self, processed_events: list[LogEvent]) -> None:
+        """..."""
+
+        self.event_backlog.update_events(processed_events)
+
     def acknowledge(self) -> None:
         """Acknowledge all delivered events, so Input Connector can return final ACK state.
 
