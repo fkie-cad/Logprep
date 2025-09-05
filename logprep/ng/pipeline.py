@@ -152,21 +152,9 @@ class Pipeline(Iterator):
                 if not batch:
                     break
 
-                # TODO: following steps are necessary here:
-                # 1. collect returning events
                 processed_events = self._pool.map(_mp_process_event, batch)
+                self._input.update_backlog_events(processed_events)
 
-                # 2. update processed_events in event backlog, to reflect modified object data
-                # -> one possible solution COULD be:
-                #  2.1. get input from input_connector or pass input to pipeline instead of an input iterator
-                #  2.2. implement `update_events(events: list[Event])` method in input connectors
-                #  2.3. update processed event data in backlog by
-                #        calling `input.update_events(processed_events)`
-
-                # e.g.: self._input.update_events(processed_events)
-                self.input_connector.update_backlog_events(processed_events)
-
-                # 3. yield events
                 yield from processed_events
         else:
             while _CONSUME_ENDLESS:
@@ -192,10 +180,7 @@ class Pipeline(Iterator):
         except StopIteration:
             return None
 
-        if self._use_mp:
-            return self._pool.map(_mp_process_event, [next_event])
-        else:
-            return self._process_event(next_event)
+        return self._process_event(next_event)
 
     def _process_event(self, event: LogEvent) -> LogEvent:
         """process all processors for one event"""
