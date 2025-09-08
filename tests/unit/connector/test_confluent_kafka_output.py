@@ -6,6 +6,8 @@
 
 import json
 from copy import deepcopy
+from pathlib import Path
+from socket import getfqdn
 from unittest import mock
 
 import pytest
@@ -14,15 +16,15 @@ from confluent_kafka.error import KafkaException  # type: ignore
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
+from logprep.util.helper import get_dotted_field_value
 from tests.unit.connector.base import BaseOutputTestCase
-from tests.unit.connector.test_confluent_kafka_common import (
-    CommonConfluentKafkaTestCase,
-)
 
 KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 
-class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):
+@mock.patch("confluent_kafka.Consumer", new=mock.MagicMock())
+@mock.patch("confluent_kafka.Producer", new=mock.MagicMock())
+class TestConfluentKafkaOutput(BaseOutputTestCase):
 
     CONFIG = {
         "type": "confluentkafka_output",
@@ -51,8 +53,58 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "logprep_number_of_errors",
     ]
 
+    def setup_method(self):
+        super().setup_method()
+        self.object._producer = mock.MagicMock()
+        self.object._admin = mock.MagicMock()
+
+    def test_client_id_is_set_to_hostname(self):
+        self.object.setup()
+        assert self.object._kafka_config.get("client.id") == getfqdn()
+
+    def test_create_fails_for_unknown_option(self):
+        kafka_config = deepcopy(self.CONFIG)
+        kafka_config.update({"unknown_option": "bad value"})
+        with pytest.raises(TypeError, match=r"unexpected keyword argument"):
+            _ = Factory.create({"test connector": kafka_config})
+
+    def test_error_callback_logs_error(self):
+        self.object.metrics.number_of_errors = 0
+        with mock.patch("logging.Logger.error") as mock_error:
+            test_error = Exception("test error")
+            self.object._error_callback(test_error)
+            mock_error.assert_called()
+            mock_error.assert_called_with("%s: %s", self.object.describe(), test_error)
+        assert self.object.metrics.number_of_errors == 1
+
+    def test_stats_callback_sets_metric_object_attributes(self):
+        librdkafka_metrics = tuple(
+            filter(lambda x: x.startswith("librdkafka"), self.expected_metrics)
+        )
+        for metric in librdkafka_metrics:
+            setattr(self.object.metrics, metric, 0)
+
+        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        self.object._stats_callback(json_string)
+        stats_dict = json.loads(json_string)
+        for metric in librdkafka_metrics:
+            metric_name = metric.replace("librdkafka_", "").replace("cgrp_", "cgrp.")
+            metric_value = get_dotted_field_value(stats_dict, metric_name)
+            assert getattr(self.object.metrics, metric) == metric_value, metric
+
+    def test_stats_set_age_metric_explicitly(self):
+        self.object.metrics.librdkafka_age = 0
+        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        self.object._stats_callback(json_string)
+        assert self.object.metrics.librdkafka_age == 1337
+
+    def test_kafka_config_is_immutable(self):
+        self.object.setup()
+        with pytest.raises(TypeError):
+            self.object._config.kafka_config["client.id"] = "test"
+
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
-    def test_producer_property_instanciates_kafka_producer(self, _):
+    def test_producer_property_instantiates_kafka_producer(self, _):
         kafka_output = Factory.create({"test connector": self.CONFIG})
         assert kafka_output._producer == "The Producer"
 

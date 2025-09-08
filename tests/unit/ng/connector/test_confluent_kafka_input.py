@@ -5,17 +5,16 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 
+import json
+import os
 import re
 import socket
 from copy import deepcopy
+from pathlib import Path
 from unittest import mock
 
 import pytest
-from confluent_kafka import (  # type: ignore
-    OFFSET_BEGINNING,
-    KafkaError,
-    KafkaException,
-)
+from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException  # type: ignore
 
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
@@ -24,16 +23,17 @@ from logprep.ng.abc.input import (
     FatalInputError,
     InputWarning,
 )
+from logprep.ng.connector.confluent_kafka.input import logger
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
-from tests.unit.connector.test_confluent_kafka_common import (
-    CommonConfluentKafkaTestCase,
-)
+from logprep.util.helper import get_dotted_field_value
 from tests.unit.ng.connector.base import BaseInputTestCase
 
 KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 
-class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
+@mock.patch("confluent_kafka.Consumer", new=mock.MagicMock())
+@mock.patch("confluent_kafka.Producer", new=mock.MagicMock())
+class TestConfluentKafkaInput(BaseInputTestCase):
     CONFIG = {
         "type": "ng_confluentkafka_input",
         "kafka_config": {"bootstrap.servers": "testserver:9092", "group.id": "testgroup"},
@@ -63,6 +63,56 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
     ]
+
+    def setup_method(self):
+        super().setup_method()
+        self.object._consumer = mock.MagicMock()
+        self.object._admin = mock.MagicMock()
+
+    def test_client_id_is_set_to_hostname(self):
+        self.object.setup()
+        assert self.object._kafka_config.get("client.id") == socket.getfqdn()
+
+    def test_create_fails_for_unknown_option(self):
+        kafka_config = deepcopy(self.CONFIG)
+        kafka_config.update({"unknown_option": "bad value"})
+        with pytest.raises(TypeError, match=r"unexpected keyword argument"):
+            _ = Factory.create({"test connector": kafka_config})
+
+    def test_error_callback_logs_error(self):
+        self.object.metrics.number_of_errors = 0
+        with mock.patch("logging.Logger.error") as mock_error:
+            test_error = Exception("test error")
+            self.object._error_callback(test_error)
+            mock_error.assert_called()
+            mock_error.assert_called_with("%s: %s", self.object.describe(), test_error)
+        assert self.object.metrics.number_of_errors == 1
+
+    def test_stats_callback_sets_metric_objetc_attributes(self):
+        librdkafka_metrics = tuple(
+            filter(lambda x: x.startswith("librdkafka"), self.expected_metrics)
+        )
+        for metric in librdkafka_metrics:
+            setattr(self.object.metrics, metric, 0)
+
+        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        self.object._stats_callback(json_string)
+        stats_dict = json.loads(json_string)
+        for metric in librdkafka_metrics:
+            metric_name = metric.replace("librdkafka_", "").replace("cgrp_", "cgrp.")
+            metric_value = get_dotted_field_value(stats_dict, metric_name)
+            assert getattr(self.object.metrics, metric) == metric_value, metric
+
+    def test_stats_set_age_metric_explicitly(self):
+        self.object.metrics.librdkafka_age = 0
+        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        self.object._stats_callback(json_string)
+        assert self.object.metrics.librdkafka_age == 1337
+
+    def test_kafka_config_is_immutable(self):
+        self.object.setup()
+        with pytest.raises(TypeError):
+            self.object._config.kafka_config["client.id"] = "test"
 
     @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
     def test_get_next_returns_none_if_no_records(self, mock_consumer_cls):
@@ -337,21 +387,26 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_add.assert_called_with(*call_args)
 
     def test_default_config_is_injected(self):
-        with mock.patch(
-            "logprep.ng.connector.confluent_kafka.input.Consumer", autospec=True
-        ) as mock_consumer:
-            input_config = deepcopy(self.CONFIG)
-            kafka_input = Factory.create({"test": input_config})
+        kafka_input = Factory.create({"kafka_input": self.CONFIG})
+        injected_config = {
+            "enable.auto.offset.store": "false",
+            "enable.auto.commit": "true",
+            "client.id": socket.getfqdn(),
+            "auto.offset.reset": "earliest",
+            "session.timeout.ms": "6000",
+            "statistics.interval.ms": "30000",
+            "bootstrap.servers": "testserver:9092",
+            "group.id": "testgroup",
+            "group.instance.id": f"{socket.getfqdn().strip('.')}-PipelineNone-pid{os.getpid()}",
+            "logger": logger,
+            "on_commit": kafka_input._commit_callback,
+            "stats_cb": kafka_input._stats_callback,
+            "error_cb": kafka_input._error_callback,
+        }
 
+        with mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer") as mock_consumer:
             _ = kafka_input._consumer
-
-            mock_consumer.assert_called()
-
-            called_args = mock_consumer.call_args[0][0]
-            assert called_args.get("bootstrap.servers") == "testserver:9092"
-            assert called_args.get("enable.auto.offset.store") == "false"
-
-            kafka_input.shut_down()
+            mock_consumer.assert_called_with(injected_config)
 
     def test_auto_offset_store_and_auto_commit_are_managed_by_connector(self):
         with mock.patch(
@@ -538,13 +593,14 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             mock_error.assert_called()
 
     def test_health_counts_metrics_on_kafka_exception(self):
-        with mock.patch.object(self.object, "_consumer") as mock_consumer:
+        kafka_input = Factory.create({"kafka_input": self.CONFIG})
+        kafka_input.metrics.number_of_errors = 0
+
+        with mock.patch.object(kafka_input, "_consumer") as mock_consumer:
             mock_consumer.list_topics.side_effect = KafkaException("test error")
 
-            self.object.metrics.number_of_errors = 0
-
-            assert not self.object.health()
-            assert self.object.metrics.number_of_errors == 1
+            assert not kafka_input.health()
+            assert kafka_input.metrics.number_of_errors == 1
 
     @pytest.mark.parametrize(
         ["kafka_config_update", "expected_admin_client_config"],
