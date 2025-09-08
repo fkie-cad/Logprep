@@ -77,7 +77,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
             mock_error.assert_called_with("%s: %s", self.object.describe(), test_error)
         assert self.object.metrics.number_of_errors == 1
 
-    def test_stats_callback_sets_metric_objetc_attributes(self):
+    def test_stats_callback_sets_metric_object_attributes(self):
         librdkafka_metrics = tuple(
             filter(lambda x: x.startswith("librdkafka"), self.expected_metrics)
         )
@@ -104,7 +104,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
             self.object._config.kafka_config["client.id"] = "test"
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
-    def test_producer_property_instanciates_kafka_producer(self, _):
+    def test_producer_property_instantiates_kafka_producer(self, _):
         kafka_output = Factory.create({"test connector": self.CONFIG})
         assert kafka_output._producer == "The Producer"
 

@@ -5,6 +5,7 @@
 # pylint: disable=attribute-defined-outside-init
 import builtins
 import json
+import os
 import re
 import socket
 from copy import deepcopy
@@ -20,6 +21,7 @@ from logprep.abc.input import (
     FatalInputError,
     InputWarning,
 )
+from logprep.connector.confluent_kafka.input import logger
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.util.helper import get_dotted_field_value
@@ -312,25 +314,27 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         call_args = 666, {"description": "topic: test_input_raw - partition: 99"}
         mock_add.assert_called_with(*call_args)
 
-    # @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    # def test_default_config_is_injected(self, mock_consumer):
-    #     injected_config = {
-    #         "enable.auto.offset.store": "false",
-    #         "enable.auto.commit": "true",
-    #         "client.id": socket.getfqdn(),
-    #         "auto.offset.reset": "earliest",
-    #         "session.timeout.ms": "6000",
-    #         "statistics.interval.ms": "30000",
-    #         "bootstrap.servers": "testserver:9092",
-    #         "group.id": "testgroup",
-    #         "group.instance.id": f"{socket.getfqdn().strip('.')}-PipelineNone-pid{os.getpid()}",
-    #         "logger": logger,
-    #         "on_commit": self.object._commit_callback,
-    #         "stats_cb": self.object._stats_callback,
-    #         "error_cb": self.object._error_callback,
-    #     }
-    #     _ = self.object._consumer
-    #     mock_consumer.assert_called_with(injected_config)
+    def test_default_config_is_injected(self):
+        kafka_input = Factory.create({"kafka_input": self.CONFIG})
+        injected_config = {
+            "enable.auto.offset.store": "false",
+            "enable.auto.commit": "true",
+            "client.id": socket.getfqdn(),
+            "auto.offset.reset": "earliest",
+            "session.timeout.ms": "6000",
+            "statistics.interval.ms": "30000",
+            "bootstrap.servers": "testserver:9092",
+            "group.id": "testgroup",
+            "group.instance.id": f"{socket.getfqdn().strip('.')}-PipelineNone-pid{os.getpid()}",
+            "logger": logger,
+            "on_commit": kafka_input._commit_callback,
+            "stats_cb": kafka_input._stats_callback,
+            "error_cb": kafka_input._error_callback,
+        }
+
+        with mock.patch("logprep.connector.confluent_kafka.input.Consumer") as mock_consumer:
+            _ = kafka_input._consumer
+            mock_consumer.assert_called_with(injected_config)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_auto_offset_store_and_auto_commit_are_managed_by_connector(self, mock_consumer):
