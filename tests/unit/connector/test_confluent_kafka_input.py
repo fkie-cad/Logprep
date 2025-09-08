@@ -498,14 +498,15 @@ class TestConfluentKafkaInput(BaseInputTestCase):
 
         mock_error.assert_called()
 
-    # def test_health_counts_metrics_on_kafka_exception(self):
-    #     self.object.metrics.number_of_errors = 0
+    def test_health_counts_metrics_on_kafka_exception(self):
+        kafka_input = Factory.create({"kafka_input": self.CONFIG})
+        kafka_input.metrics.number_of_errors = 0
 
-    #     with mock.patch.object(self.object, "_consumer") as mock_consumer:
-    #         mock_consumer.list_topics.side_effect = KafkaException("test error")
+        with mock.patch.object(kafka_input, "_consumer") as mock_consumer:
+            mock_consumer.list_topics.side_effect = KafkaException("test error")
 
-    #         assert not self.object.health()
-    #         assert self.object.metrics.number_of_errors == 1
+            assert not kafka_input.health()
+            assert kafka_input.metrics.number_of_errors == 1
 
     @pytest.mark.parametrize(
         ["kafka_config_update", "expected_admin_client_config"],
