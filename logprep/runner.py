@@ -1,14 +1,15 @@
 """This module contains the logprep runner and is responsible for signal handling."""
 
 # pylint: disable=logging-fstring-interpolation
-
 import atexit
 import logging
 import sys
+import threading
 from importlib.metadata import version
 from typing import Generator
 
 from attrs import define, field
+from schedule import Scheduler
 
 from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
@@ -83,6 +84,9 @@ class Runner:
         self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._logger = logging.getLogger("Runner")
         self._manager = PipelineManager(configuration)
+        if self._logger.isEnabledFor(logging.DEBUG):
+            self._scheduler = Scheduler()
+            self._scheduler.every(10).seconds.do(self.show_threads)
 
     def start(self) -> None:
         """Start processing.
@@ -102,8 +106,16 @@ class Runner:
         if self._manager:
             self._manager.stop()
 
+    def show_threads(self) -> None:
+        """Show all threads (for debugging purposes)"""
+        for thread in threading.enumerate():
+            self._logger.debug(
+                f"Thread: {thread.name} (ID: {thread.ident}), daemon: {thread.daemon}, alive: {thread.is_alive()}, native: {thread.native_id}"
+            )
+
     def _iterate(self) -> None:
         for _ in self._keep_iterating():
+            self._scheduler.run_pending()
             if self._exit_received:
                 break
             self._configuration.refresh()
@@ -122,6 +134,7 @@ class Runner:
         """Stop the logprep runner. Is called by the signal handler
         in run_logprep.py."""
         self._exit_received = True
+        # dump_all_stacks()
 
     def _keep_iterating(self) -> Generator:
         """Indicates whether the runner should keep iterating."""

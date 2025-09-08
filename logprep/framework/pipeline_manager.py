@@ -2,9 +2,7 @@
 
 # pylint: disable=logging-fstring-interpolation
 import logging
-import logging.handlers
 import multiprocessing
-import multiprocessing.managers
 import multiprocessing.queues
 import random
 import sys
@@ -324,6 +322,7 @@ class PipelineManager:
         logger.info("Shutdown complete")
         if self.loghandler is not None:
             self.loghandler.stop()
+        logqueue.close()
 
     def start(self):
         """Start processing."""

@@ -9,7 +9,6 @@ They can be multi-processed.
 
 import itertools
 import logging
-import logging.handlers
 import multiprocessing
 
 # pylint: disable=logging-fstring-interpolation
@@ -341,6 +340,7 @@ class Pipeline:
         if isinstance(self._input.messages, multiprocessing.queues.Queue):
             while self._input.messages.qsize():
                 self.process_pipeline()
+            self._input.messages.close()
 
     def stop(self) -> None:
         """Stop processing processors in the Pipeline."""

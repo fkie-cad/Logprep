@@ -551,6 +551,7 @@ class HttpInput(Input):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
         if self.http_server is None:
             return
+        self.messages.close()
         self.http_server.shut_down()
 
     @cached_property
