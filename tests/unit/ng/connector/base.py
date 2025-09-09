@@ -78,15 +78,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
 
         with mock.patch.object(connector, "_get_event", return_value=return_value):
             event = connector.get_next(0.01)
             assert isinstance(event, LogEvent)
-
-        connector.shut_down()
 
     def test_inputiterator_iter_is_self(self):
         connector_config = deepcopy(self.CONFIG)
@@ -112,7 +109,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         )
         connector = Factory.create({"test connector": connector_config})
         assert connector._add_hmac is True
-        connector.shut_down()
 
     def test_add_hmac_to_adds_hmac(self):
         connector_config = deepcopy(self.CONFIG)
@@ -137,8 +133,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert (
             processed_event.get("Hmac").get("compressed_base64") == "eJwrSS0uUchNLS5OTE8FAB8fBMY="
         )
-
-        connector.shut_down()
 
     def test_add_hmac_to_adds_hmac_even_if_no_raw_message_was_given(self):
         connector_config = deepcopy(self.CONFIG)
@@ -165,8 +159,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
             calculated_compression == "eJyrVspNLS5OTE9VslIqSS0uUYBxawF+Fwll"
         ), f"Wrong compression: {calculated_compression}"
 
-        connector.shut_down()
-
     def test_get_next_with_hmac_of_raw_message(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(
@@ -183,7 +175,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = {"message": "with_content"}
 
@@ -210,8 +201,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
             decoded_message.decode("utf-8")
         ), "The hmac base massage was not correctly encoded and compressed. "
 
-        connector.shut_down()
-
     def test_get_next_with_hmac_of_subfield(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(
@@ -228,7 +217,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = {"message": {"with_subfield": "content"}}
 
@@ -256,8 +244,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
             "utf-8"
         ), "The hmac base massage was not correctly encoded and compressed. "
 
-        connector.shut_down()
-
     def test_get_next_with_hmac_of_non_existing_subfield(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(
@@ -274,7 +260,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = {"message": {"with_subfield": "content"}}
 
@@ -295,8 +280,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert isinstance(failed_event.errors[0], CriticalInputError)
         assert failed_event.errors[0].message == expected_error_message
 
-        connector.shut_down()
-
     def test_get_next_with_hmac_result_in_dotted_subfield(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(
@@ -313,7 +296,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = {"message": "with_content"}
 
@@ -346,8 +328,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
             decoded_message.decode("utf-8")
         ), "The hmac base massage was not correctly encoded and compressed. "
 
-        connector.shut_down()
-
     def test_get_next_with_hmac_result_in_already_existing_subfield(self):
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(
@@ -364,7 +344,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         test_event = {"message": {"with_subfield": "content"}}
 
@@ -390,15 +369,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert isinstance(failed_event.errors[0], CriticalInputError)
         assert failed_event.errors[0].message == expected_error_message
 
-        connector.shut_down()
-
     def test_get_next_without_hmac(self):
         connector_config = deepcopy(self.CONFIG)
         assert not connector_config.get("preprocessing", {}).get("hmac")
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = {"message": "with_content"}
 
@@ -408,8 +384,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         )
         connector_next_msg = connector.get_next(1)
         assert connector_next_msg == LogEvent(data=return_value, original=b"")
-
-        connector.shut_down()
 
     def test_preprocessing_version_info_is_added_if_configured(self):
         preprocessing_config = {
@@ -424,7 +398,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = {"any": "content"}
 
@@ -432,8 +405,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         assert result.data.get("version_info", {}).get("logprep") == "3.3.0"
         assert result.data.get("version_info", {}).get("configuration") == "unset"
-
-        connector.shut_down()
 
     def test_pipeline_preprocessing_does_not_add_versions_if_target_field_exists_already(self):
         preprocessing_config = {
@@ -447,7 +418,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         test_event = {"any": "content", "version_info": "something random"}
 
@@ -469,8 +439,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert len(failed_event.errors) == 1
         assert isinstance(failed_event.errors[0], CriticalInputError)
         assert failed_event.errors[0].message == expected_error_message
-
-        connector.shut_down()
 
     def test_pipeline_preprocessing_only_version_information(self):
         preprocessing_config = {
@@ -483,7 +451,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         test_event = {"any": "content", "version_info": "something random"}
 
@@ -506,8 +473,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert isinstance(failed_event.errors[0], CriticalInputError)
         assert failed_event.errors[0].message == expected_error_message
 
-        connector.shut_down()
-
     def test_get_raw_event_is_callable(self):
         # should be overwritten for special implementation
         result = self.object._get_raw_event(0.001)
@@ -518,7 +483,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"event:": "test_event"}, None, None)
 
@@ -529,21 +493,16 @@ class BaseInputTestCase(BaseConnectorTestCase):
 
         assert connector.metrics.number_of_processed_events == 1
 
-        connector.shut_down()
-
     def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         connector.metrics.number_of_processed_events = 0
         connector._get_event = mock.MagicMock(return_value=(None, None, None))
         connector.get_next(0.01)
         assert connector.metrics.number_of_processed_events == 0
-
-        connector.shut_down()
 
     def test_get_next_adds_timestamp_if_configured(self):
         preprocessing_config = {
@@ -556,7 +515,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
@@ -571,8 +529,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
             TimeParser.now() - TimeParser.from_string(result.data[target_field])
         ).total_seconds() > 0
 
-        connector.shut_down()
-
     def test_pipeline_preprocessing_does_not_add_log_arrival_time_if_target_field_exists_already(
         self,
     ):
@@ -586,7 +542,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         test_event = {"any": "content", "arrival_time": "does not matter"}
 
@@ -609,8 +564,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert isinstance(failed_event.errors[0], CriticalInputError)
         assert failed_event.errors[0].message == expected_error_message
 
-        connector.shut_down()
-
     def test_pipeline_preprocessing_add_log_arrival_time_if_target_parent_field_exists_already_and_is_dict(
         self,
     ):
@@ -624,7 +577,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = {"any": "content", "event": {"does not": "matter"}}
 
@@ -636,8 +588,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
             r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|([+-]\d{2}:\d{2})$)"
         )
         assert re.search(iso8601_regex, time_value)
-
-        connector.shut_down()
 
     def test_pipeline_preprocessing_add_log_arrival_time_if_target_parent_field_exists_already_and_not_dict(
         self,
@@ -652,7 +602,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = {"any": "content", "event": "does not matter"}
 
@@ -666,8 +615,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert re.search(iso8601_regex, time_value)
         original_event = get_dotted_field_value(event.data, "event.@original")
         assert original_event == "does not matter"
-
-        connector.shut_down()
 
     def test_pipeline_preprocessing_adds_timestamp_delta_if_configured(self):
         preprocessing_config = {
@@ -684,7 +631,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = (
             {"any": "content", "@timestamp": "1999-09-09T09:09:09.448319+02:00"},
@@ -701,8 +647,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         )
         assert target_field in result.data
         assert isinstance(result.data[target_field], float)
-
-        connector.shut_down()
 
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_reference_field_not_found(
         self,
@@ -721,7 +665,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
@@ -729,8 +672,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         assert "arrival_time" in result.data
         assert "log_arrival_timedelta" not in result.data
-
-        connector.shut_down()
 
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_not_configured(self):
         preprocessing_config = {
@@ -743,15 +684,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
         connector._get_event = mock.MagicMock(return_value=return_value)
         result = connector.get_next(0.01)
         assert "arrival_time" in result.data
-
-        connector.shut_down()
 
     def test_add_full_event_to_target_field_with_string_format(self):
         preprocessing_config = {
@@ -767,7 +705,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
@@ -775,8 +712,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         expected = {"event": {"original": '"{\\"any\\":\\"content\\"}"'}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
-
-        connector.shut_down()
 
     def test_add_full_event_to_targetfield_with_same_name(self):
         preprocessing_config = {
@@ -792,7 +727,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
@@ -800,8 +734,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         expected = {"any": {"content": '"{\\"any\\":\\"content\\"}"'}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
-
-        connector.shut_down()
 
     def test_add_full_event_to_targetfield_vs_version_info_target(self):
         preprocessing_config = {
@@ -818,7 +750,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
@@ -829,8 +760,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
             "version_info": {"logprep": "", "configuration": ""},
         }
         assert result.data == expected, f"{expected} is not the same as {result.data}"
-
-        connector.shut_down()
 
     def test_add_full_event_to_target_field_with_dict_format(self):
         preprocessing_config = {
@@ -846,7 +775,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
@@ -854,8 +782,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         expected = {"event": {"original": {"any": "content"}}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
-
-        connector.shut_down()
 
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_log_arrival_timestamp_not(
         self,
@@ -873,15 +799,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
         connector._get_event = mock.MagicMock(return_value=return_value)
         result = connector.get_next(0.01)
         assert result.data == {"any": "content"}
-
-        connector.shut_down()
 
     def test_preprocessing_enriches_by_multiple_env_variables(self):
         preprocessing_config = {
@@ -897,7 +820,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
@@ -911,14 +833,11 @@ class BaseInputTestCase(BaseConnectorTestCase):
             "enriched_field2": "test_value_bar",
         }
 
-        connector.shut_down()
-
     def test_get_next_counts_number_of_processed_events(self):
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
 
@@ -928,28 +847,22 @@ class BaseInputTestCase(BaseConnectorTestCase):
 
         assert connector.metrics.number_of_processed_events == 1
 
-        connector.shut_down()
-
     def test_get_next_does_not_count_number_of_processed_events_if_event_is_none(self):
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         connector.metrics.number_of_processed_events = 0
         connector._get_event = mock.MagicMock(return_value=(None, None, None))
         connector.get_next(0.01)
         assert connector.metrics.number_of_processed_events == 0
 
-        connector.shut_down()
-
     def test_get_next_has_time_measurement(self):
         connector_config = deepcopy(self.CONFIG)
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"message": "test message"}, b'{"message": "test message"}', None)
 
@@ -960,8 +873,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert isinstance(connector.metrics.processing_time_per_event, mock.MagicMock)
         # asserts entering context manager in metrics.metrics.Metric.measure_time
         mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
-
-        connector.shut_down()
 
     def test_input_iterator(self):
         batch_events = [
@@ -997,7 +908,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         return_value = ({"any": "content"}, None, None)
 
@@ -1005,8 +915,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result = connector.get_next(0.01)
         expected = {"any": "content", "event": {"original": '"{\\"any\\":\\"content\\"}"'}}
         assert result.data == expected, f"{expected} is not the same as {result.data}"
-
-        connector.shut_down()
 
     @pytest.mark.parametrize(
         "states, new_size, expected_message",
@@ -1043,7 +951,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector = Factory.create({"test connector": connector_config})
         connector._wait_for_health = mock.MagicMock()
         connector.pipeline_index = 1
-        connector.setup()
 
         set_event_backlog = SetEventBacklog()
         set_event_backlog.backlog = backlog
@@ -1059,8 +966,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
             assert len(connector.event_backlog.backlog) == initial_size, expected_message
             _ = connector.get_next(0.01)
             assert len(connector.event_backlog.backlog) == new_size, expected_message
-
-        connector.shut_down()
 
 
 class BaseOutputTestCase(BaseConnectorTestCase):
@@ -1185,5 +1090,5 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         with mock.patch(
             f"{self.object.__module__}.{self.object.__class__.__name__}.flush"
         ) as mock_flush:
-            self.object.shut_down()
+            se
             mock_flush.assert_called_once()
