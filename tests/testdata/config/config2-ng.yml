@@ -1,0 +1,9 @@
+version: 1
+process_count: 3
+timeout: 0.1
+
+pipeline:
+  - expected_dissector:
+      type: ng_dissector
+      rules:
+        - tests/testdata/unit/dissector/rules/
