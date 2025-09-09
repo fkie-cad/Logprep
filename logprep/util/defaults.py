@@ -60,6 +60,31 @@ DEFAULT_LOG_CONFIG: dict = {
     "filters": {},
     "disable_existing_loggers": False,
 }
+DEFAULT_NG_LOG_CONFIG: dict = {
+    "version": 1,
+    "formatters": {
+        "logprep": {
+            "class": "logprep.util.logging.LogprepFormatter",
+            "format": DEFAULT_LOG_FORMAT,
+            "datefmt": DEFAULT_LOG_DATE_FORMAT,
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "logprep",
+            "stream": "ext://sys.stdout",
+        }
+    },
+    "loggers": {
+        "root": {"level": "INFO", "handlers": ["console"]},
+        "filelock": {"level": "ERROR"},
+        "urllib3.connectionpool": {"level": "ERROR"},
+        "opensearch": {"level": "ERROR"},
+    },
+    "filters": {},
+    "disable_existing_loggers": False,
+}
 ENV_NAME_LOGPREP_CREDENTIALS_FILE = "LOGPREP_CREDENTIALS_FILE"
 
 DEFAULT_HEALTH_STATE = False  # unhealthy

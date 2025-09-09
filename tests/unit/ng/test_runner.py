@@ -70,7 +70,7 @@ def get_logprep_config():
 class TestRunner:
 
     def teardown_method(self):
-        Runner._instance = None
+        Runner.instance = None
 
     def test_from_configuration(self, configuration):
         runner = Runner.from_configuration(configuration)
@@ -99,11 +99,6 @@ class TestRunner:
         runner = Runner.from_configuration(configuration)
         with pytest.raises(SystemExit, match="0"):
             runner.stop()
-
-    def test_shutdown_is_registered_at_exit(self, configuration):
-        with mock.patch("atexit.register") as mock_atexit:
-            Runner.from_configuration(configuration)
-            mock_atexit.assert_called_once()
 
     @mock.patch("logging.getLogger")
     def test_shutdown_stops_logger(self, _, configuration):

@@ -2,18 +2,20 @@
 Runner module
 """
 
-import atexit
 import logging
 from logging.handlers import QueueListener
+from queue import Queue
 from typing import Iterator
 
 from logprep.factory import Factory
 from logprep.ng.abc.input import Input
+from logprep.ng.connector.http.input import HttpInput
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
 from logprep.ng.sender import LogprepReloadException, Sender
 from logprep.util.configuration import Configuration
+from logprep.util.defaults import DEFAULT_MESSAGE_BACKLOG_SIZE
 from logprep.util.logging import logqueue
 
 logger = logging.getLogger("Runner")
@@ -22,7 +24,7 @@ logger = logging.getLogger("Runner")
 class Runner:
     """Class responsible for running the log processing pipeline."""
 
-    _instance: "Runner | None" = None
+    instance: "Runner | None" = None
 
     _input_connector: Input | None = None
 
@@ -34,13 +36,12 @@ class Runner:
 
     def __new__(cls, sender: Sender) -> "Runner":
         """Create a new Runner singleton."""
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+        if cls.instance is None:
+            cls.instance = super().__new__(cls)
+        return cls.instance
 
     def __init__(self, sender: Sender) -> None:
         self.sender = sender
-        atexit.register(self.shut_down)
         self._setup_logging()
 
     @classmethod
@@ -119,6 +120,9 @@ class Runner:
         """Setup the runner and its components."""
         self.sender.setup()
         if self._input_connector:
+            input_type = self._input_connector._config.type  # pylint: disable=protected-access
+            if "http_input" in input_type:
+                self._set_http_input_queue()
             self._input_connector.setup()
 
     def shut_down(self) -> None:
@@ -133,6 +137,7 @@ class Runner:
     def stop(self) -> None:
         """Stop the log processing pipeline."""
         logger.info("Stopping runner and exiting...")
+        self.shut_down()
         raise SystemExit(0)
 
     def _setup_logging(self) -> None:
@@ -153,3 +158,18 @@ class Runner:
             self._input_connector.setup()
         self._configuration.schedule_config_refresh()
         logger.debug("Finished reloading log processing pipeline.")
+
+    def _set_http_input_queue(self):
+        """
+        this workaround has to be done because the queue size is not configurable
+        after initialization and the queue has to be shared between the multiple processes
+        """
+        input_config = list(self._configuration.input.values())
+        input_config = input_config[0] if input_config else {}
+        is_http_input = input_config.get("type") == "http_input"
+        if not is_http_input and HttpInput.messages is not None:
+            return
+        message_backlog_size = input_config.get(
+            "message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE
+        )
+        HttpInput.messages = Queue(maxsize=message_backlog_size)

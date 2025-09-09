@@ -133,6 +133,7 @@ Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
 
 [project.scripts]
 logprep = "logprep.run_logprep:cli"
+logprep-ng = "logprep.run_ng:cli"
 
 [tool.black]
 line-length = 100

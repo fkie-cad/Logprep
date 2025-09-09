@@ -84,8 +84,8 @@ class Runner:
         self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._logger = logging.getLogger("Runner")
         self._manager = PipelineManager(configuration)
+        self._scheduler = Scheduler()
         if self._logger.isEnabledFor(logging.DEBUG):
-            self._scheduler = Scheduler()
             self._scheduler.every(10).seconds.do(self.show_threads)
 
     def start(self) -> None:
