@@ -334,9 +334,7 @@ pseudo.add_command(cmd=depseudonymize.depseudonymize, name="depseudonymize")
 
 def signal_handler(__: int, _) -> None:
     """Handle signals for stopping the runner and reloading the configuration."""
-    logger.debug("Received termination signal, shutting down...")
-    if Runner.get_runner(Configuration()):
-        Runner.get_runner(Configuration()).stop()
+    Runner.get_runner(Configuration()).stop()
 
 
 if __name__ == "__main__":

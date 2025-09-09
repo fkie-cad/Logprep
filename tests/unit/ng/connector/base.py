@@ -1090,5 +1090,5 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         with mock.patch(
             f"{self.object.__module__}.{self.object.__class__.__name__}.flush"
         ) as mock_flush:
-            se
+            self.object.shut_down()
             mock_flush.assert_called_once()

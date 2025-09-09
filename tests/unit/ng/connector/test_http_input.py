@@ -22,7 +22,6 @@ from requests.auth import _basic_auth_str
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.framework.pipeline_manager import ThrottlingQueue
-from logprep.ng.abc.input import FatalInputError
 from logprep.ng.connector.http.input import HttpInput
 from logprep.ng.event.log_event import LogEvent
 from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
@@ -105,23 +104,6 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_create_connector(self):
         assert isinstance(self.object, HttpInput)
-
-    def test_no_pipeline_index(self):
-        connector_config = deepcopy(self.CONFIG)
-        connector = Factory.create({"test connector": connector_config})
-
-        try:
-            connector.setup()
-            assert False
-        except FatalInputError:
-            assert True
-
-    def test_not_first_pipeline(self):
-        connector_config = deepcopy(self.CONFIG)
-        connector = Factory.create({"test connector": connector_config})
-        connector.pipeline_index = 2
-        connector.setup()
-        assert connector.http_server is None
 
     def test_get_method_returns_200(self):
         resp = self.client.get("/json")

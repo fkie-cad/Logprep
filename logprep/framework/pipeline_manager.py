@@ -322,7 +322,6 @@ class PipelineManager:
         logger.info("Shutdown complete")
         if self.loghandler is not None:
             self.loghandler.stop()
-        logqueue.close()
 
     def start(self):
         """Start processing."""
