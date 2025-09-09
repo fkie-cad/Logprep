@@ -186,6 +186,10 @@ follow_imports = "skip"
 follow_imports_for_stubs = "True"
 
 [[tool.mypy.overrides]]
+module = ["logprep.framework.pipeline_manager.*"]
+disable_error_code = "attr-defined"
+
+[[tool.mypy.overrides]]
 module = ["joblib.*", "boto3.*", "botocore.*"]
 follow_untyped_imports = true
 
