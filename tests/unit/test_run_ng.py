@@ -87,29 +87,30 @@ class TestRunLogprepNGCli:
         assert "configuration version:   no configuration found" in result.output
 
     def test_run_version_arg_prints_logprep_version_with_config_version(self):
-        args = ["run", "--version", "tests/testdata/config/config.yml"]
+        args = ["run", "--version", "tests/testdata/config/config-ng.yml"]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
         assert f"logprep version:         {version('logprep')}" in result.output
         assert (
-            "configuration version:   1, file://tests/testdata/config/config.yml" in result.output
+            "configuration version:   1, file://tests/testdata/config/config-ng.yml"
+            in result.output
         )
 
     def test_run_version_arg_prints_logprep_version_without_config_value(self):
-        args = ["run", "--version", "tests/testdata/config/config2.yml"]
+        args = ["run", "--version", "tests/testdata/config/config2-ng.yml"]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
         assert f"logprep version:         {version('logprep')}" in result.output
         assert (
-            "configuration version:   alternative, file://tests/testdata/config/config2.yml"
+            "configuration version:   alternative, file://tests/testdata/config/config2-ng.yml"
             in result.output
         )
 
     @responses.activate
     def test_run_version_arg_prints_with_http_config(self):
-        config_path = "tests/testdata/config/config.yml"
+        config_path = "tests/testdata/config/config-ng.yml"
         responses.add(
             responses.GET,
             f"http://localhost:32000/{config_path}",
@@ -124,7 +125,7 @@ class TestRunLogprepNGCli:
 
     @responses.activate
     def test_run_version_arg_prints_with_http_config_without_exposing_secret_data(self):
-        config_path = "tests/testdata/config/config.yml"
+        config_path = "tests/testdata/config/config-ng.yml"
         mock_env = {
             "LOGPREP_CONFIG_AUTH_USERNAME": "username",
             "LOGPREP_CONFIG_AUTH_PASSWORD": "password",

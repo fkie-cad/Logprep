@@ -41,10 +41,6 @@ class TestRunLogprepCli:
                 "logprep.run_logprep.Runner.start",
             ),
             (
-                "test config tests/testdata/config/config.yml tests/testdata/config/config.yml",
-                "logprep.run_logprep._get_configuration",
-            ),
-            (
                 "print tests/testdata/config/config.yml tests/testdata/config/config.yml",
                 "logprep.util.configuration.Configuration.as_yaml",
             ),
