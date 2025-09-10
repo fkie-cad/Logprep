@@ -8,7 +8,7 @@ import sys
 import click
 
 from logprep.ng.runner import Runner
-from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import EXITCODES
 from logprep.util.helper import get_versions_string
 from logprep.util.tag_yaml_loader import init_yaml_loader_tags

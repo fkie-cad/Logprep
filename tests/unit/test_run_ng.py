@@ -13,9 +13,9 @@ from click.testing import CliRunner
 
 from logprep import run_ng
 from logprep.ng.runner import Runner
+from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
+from logprep.ng.util.defaults import EXITCODES
 from logprep.run_ng import cli
-from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.defaults import EXITCODES
 
 
 class TestRunLogprepNGCli:
@@ -164,14 +164,14 @@ class TestRunLogprepNGCli:
         mock_runner.stop.assert_called()
 
     def test_logprep_exits_on_invalid_configuration(self):
-        with mock.patch("logprep.util.configuration.Configuration._verify") as mock_verify:
+        with mock.patch("logprep.ng.util.configuration.Configuration._verify") as mock_verify:
             mock_verify.side_effect = InvalidConfigurationError("test error")
             config_path = "tests/testdata/config/config.yml"
             result = self.cli_runner.invoke(cli, ["run", config_path])
             assert result.exit_code == EXITCODES.CONFIGURATION_ERROR.value
 
     def test_logprep_exits_on_any_exception_during_verify(self):
-        with mock.patch("logprep.util.configuration.Configuration._verify") as mock_verify:
+        with mock.patch("logprep.ng.util.configuration.Configuration._verify") as mock_verify:
             mock_verify.side_effect = Exception
             config_path = "tests/testdata/config/config.yml"
             result = self.cli_runner.invoke(cli, ["run", config_path])

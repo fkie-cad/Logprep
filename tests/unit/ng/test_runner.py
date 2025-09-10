@@ -66,7 +66,6 @@ def get_logprep_config():
     return Configuration(**config_dict)
 
 
-@mock.patch("logprep.ng.runner.QueueListener", new=mock.MagicMock())
 class TestRunner:
 
     def teardown_method(self):
@@ -99,13 +98,6 @@ class TestRunner:
         runner = Runner.from_configuration(configuration)
         with pytest.raises(SystemExit, match="0"):
             runner.stop()
-
-    @mock.patch("logging.getLogger")
-    def test_shutdown_stops_logger(self, _, configuration):
-        runner = Runner.from_configuration(configuration)
-        with mock.patch.object(runner, "_log_handler") as mock_log_handler:
-            runner.shut_down()
-            mock_log_handler.stop.assert_called_once()
 
     def test_shut_down_calls_input_connector_shut_down(self, configuration):
         runner = Runner.from_configuration(configuration)

@@ -8,7 +8,6 @@ import logging.config
 import multiprocessing
 import os
 import warnings
-from logging.handlers import QueueListener
 from typing import Iterator
 
 from attrs import asdict
@@ -21,9 +20,8 @@ from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
 from logprep.ng.sender import LogprepReloadException, Sender
-from logprep.util.configuration import Configuration
-from logprep.util.defaults import DEFAULT_LOG_CONFIG, DEFAULT_MESSAGE_BACKLOG_SIZE
-from logprep.util.logging import logqueue
+from logprep.ng.util.configuration import Configuration
+from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG, DEFAULT_MESSAGE_BACKLOG_SIZE
 
 logger = logging.getLogger("Runner")
 
@@ -38,8 +36,6 @@ class Runner:
     _configuration: Configuration
 
     _config_version: str
-
-    _log_handler: QueueListener | None = None
 
     def __new__(cls, sender: Sender) -> "Runner":
         """Create a new Runner singleton."""
@@ -137,8 +133,6 @@ class Runner:
         logger.info("Runner shut down complete.")
         if self._input_connector:
             self._input_connector.shut_down()
-        if self._log_handler:
-            self._log_handler.stop()
 
     def stop(self) -> None:
         """Stop the log processing pipeline."""
@@ -157,11 +151,6 @@ class Runner:
         log_config = DEFAULT_LOG_CONFIG | asdict(self._configuration.logger)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
         logging.config.dictConfig(log_config)
-        console_logger = logging.getLogger("console")
-        if console_logger.handlers:
-            console_handler = console_logger.handlers.pop()  # last handler is console
-            self._log_handler = QueueListener(logqueue, console_handler)
-            self._log_handler.start()
 
     def reload(self) -> None:
         """Reload the log processing pipeline."""
