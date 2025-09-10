@@ -2,12 +2,19 @@
 Runner module
 """
 
+import json
 import logging
+import logging.config
+import multiprocessing
+import os
+import warnings
 from logging.handlers import QueueListener
-from queue import Queue
 from typing import Iterator
 
+from attrs import asdict
+
 from logprep.factory import Factory
+from logprep.framework.pipeline_manager import ThrottlingQueue
 from logprep.ng.abc.input import Input
 from logprep.ng.connector.http.input import HttpInput
 from logprep.ng.event.event_state import EventStateType
@@ -15,7 +22,7 @@ from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
 from logprep.ng.sender import LogprepReloadException, Sender
 from logprep.util.configuration import Configuration
-from logprep.util.defaults import DEFAULT_MESSAGE_BACKLOG_SIZE
+from logprep.util.defaults import DEFAULT_LOG_CONFIG, DEFAULT_MESSAGE_BACKLOG_SIZE
 from logprep.util.logging import logqueue
 
 logger = logging.getLogger("Runner")
@@ -42,7 +49,6 @@ class Runner:
 
     def __init__(self, sender: Sender) -> None:
         self.sender = sender
-        self._setup_logging()
 
     @classmethod
     def from_configuration(cls, configuration: Configuration) -> "Runner":
@@ -140,7 +146,17 @@ class Runner:
         self.shut_down()
         raise SystemExit(0)
 
-    def _setup_logging(self) -> None:
+    def setup_logging(self) -> None:
+        """Setup the logging configuration.
+        is called in the :code:`logprep.run_logprep` module.
+        We have to write the configuration to the environment variable :code:`LOGPREP_LOG_CONFIG` to
+        make it available for the uvicorn server in :code:'logprep.util.http'.
+        """
+        warnings.simplefilter("always", DeprecationWarning)
+        logging.captureWarnings(True)
+        log_config = DEFAULT_LOG_CONFIG | asdict(self._configuration.logger)
+        os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
+        logging.config.dictConfig(log_config)
         console_logger = logging.getLogger("console")
         if console_logger.handlers:
             console_handler = console_logger.handlers.pop()  # last handler is console
@@ -172,4 +188,6 @@ class Runner:
         message_backlog_size = input_config.get(
             "message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE
         )
-        HttpInput.messages = Queue(maxsize=message_backlog_size)
+        HttpInput.messages = ThrottlingQueue(
+            ctx=multiprocessing.get_context("spawn"), maxsize=message_backlog_size
+        )

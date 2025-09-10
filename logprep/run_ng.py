@@ -1,26 +1,22 @@
 # pylint: disable=logging-fstring-interpolation
 """This module can be used to start the logprep."""
 import logging
-import logging.config
 import os
 import signal
 import sys
-import warnings
 
 import click
 
 from logprep.ng.runner import Runner
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
+from logprep.util.defaults import EXITCODES
 from logprep.util.helper import get_versions_string
 from logprep.util.tag_yaml_loader import init_yaml_loader_tags
 
-warnings.simplefilter("always", DeprecationWarning)
-logging.captureWarnings(True)
-logging.config.dictConfig(DEFAULT_LOG_CONFIG)
-logger = logging.getLogger("logprep")
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 init_yaml_loader_tags("safe", "rt")
+
+logger = logging.getLogger("root")
 
 
 def _print_version(config: "Configuration") -> None:
@@ -31,7 +27,6 @@ def _print_version(config: "Configuration") -> None:
 def _get_configuration(config_paths: tuple[str]) -> Configuration:
     try:
         config = Configuration.from_sources(config_paths)
-        config.logger.setup_logging()
         logger.info("Log level set to '%s'", config.logger.level)
         return config
     except InvalidConfigurationError as error:
@@ -66,15 +61,15 @@ def run(configs: tuple[str], version=None) -> None:
     CONFIG is a path to configuration file (filepath or URL).
     """
     configuration = _get_configuration(configs)
+    runner = Runner.from_configuration(configuration)
+    runner.setup_logging()
     if version:
         _print_version(configuration)
     for version in get_versions_string(configuration).split("\n"):
         logger.info(version)
     logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
     logger.debug(f"Config path: {configs}")
-    runner = None
     try:
-        runner = Runner.from_configuration(configuration)
         if "pytest" not in sys.modules:  # needed for not blocking tests
             signal.signal(signal.SIGTERM, signal_handler)
             signal.signal(signal.SIGINT, signal_handler)

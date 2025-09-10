@@ -60,6 +60,7 @@ DEFAULT_LOG_CONFIG: dict = {
     "filters": {},
     "disable_existing_loggers": False,
 }
+
 DEFAULT_NG_LOG_CONFIG: dict = {
     "version": 1,
     "formatters": {
@@ -85,6 +86,7 @@ DEFAULT_NG_LOG_CONFIG: dict = {
     "filters": {},
     "disable_existing_loggers": False,
 }
+
 ENV_NAME_LOGPREP_CREDENTIALS_FILE = "LOGPREP_CREDENTIALS_FILE"
 
 DEFAULT_HEALTH_STATE = False  # unhealthy

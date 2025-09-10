@@ -196,7 +196,6 @@ import os
 from copy import deepcopy
 from importlib.metadata import version
 from itertools import chain
-from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
@@ -414,16 +413,6 @@ class LoggerConfig:
             self._set_loggers_levels()
         self.loggers = {**DEFAULT_LOG_CONFIG["loggers"] | self.loggers}
         self.loggers.get("root", {}).update({"level": self.level})
-
-    def setup_logging(self) -> None:
-        """Setup the logging configuration.
-        is called in the :code:`logprep.run_logprep` module.
-        We have to write the configuration to the environment variable :code:`LOGPREP_LOG_CONFIG` to
-        make it available for the uvicorn server in :code:'logprep.util.http'.
-        """
-        log_config = asdict(self)
-        os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
-        dictConfig(log_config)
 
     def _set_loggers_levels(self) -> None:
         """sets the loggers levels to the default or to the given level."""
