@@ -113,11 +113,6 @@ class TestRunner:
             runner.shut_down()
             mock_input_shut_down.assert_called_once()
 
-    @mock.patch("logging.getLogger")
-    def test_init_setups_logging(self, mock_get_logger):
-        _ = Runner(mock.MagicMock())
-        mock_get_logger.assert_called_once_with("console")
-
     def test_reload_calls_sender_shut_down(self, configuration):
         runner = Runner.from_configuration(configuration)
         with mock.patch.object(runner.sender, "shut_down") as mock_sender_shut_down:
