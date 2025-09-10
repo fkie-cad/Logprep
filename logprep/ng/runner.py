@@ -94,6 +94,12 @@ class Runner:
     def run(self) -> None:
         """Run the log processing pipeline."""
 
+        # TODO:
+        # * blocking behavior ?
+        # * increase test coverage
+        # * integration tests
+        # * add documentation
+
         self._configuration.schedule_config_refresh()
         while 1:
             try:

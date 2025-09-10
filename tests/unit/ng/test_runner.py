@@ -8,12 +8,13 @@ import pytest
 from logprep.ng.abc.event import EventBacklog
 from logprep.ng.runner import Runner
 from logprep.ng.sender import LogprepReloadException, Sender
-from logprep.util.configuration import Configuration
+from logprep.ng.util.configuration import Configuration
 
 
 @pytest.fixture(name="configuration")
 def get_logprep_config():
     config_dict = {
+        "process_count": 2,
         "pipeline": [
             {
                 "processor_0": {
@@ -134,7 +135,7 @@ class TestRunner:
     def test_reload_schedules_new_config_refresh_job(self, configuration):
         runner = Runner.from_configuration(configuration)
         with mock.patch(
-            "logprep.util.configuration.Configuration.schedule_config_refresh"
+            "logprep.ng.util.configuration.Configuration.schedule_config_refresh"
         ) as mock_schedule:
             runner.reload()
             mock_schedule.assert_called_once()
@@ -146,3 +147,61 @@ class TestRunner:
                 mock_reload.side_effect = SystemExit(666)
                 with pytest.raises(SystemExit, match="666"):
                     runner.run()
+
+    def test_process_events_iterates_sender(self, configuration, caplog):
+        caplog.set_level("DEBUG")
+        runner = Runner(mock.MagicMock())
+        runner._configuration = configuration
+        runner.sender = [
+            mock.MagicMock(),
+            mock.MagicMock(),
+            mock.MagicMock(),
+            mock.MagicMock(),
+        ]
+
+        assert runner
+
+        runner._process_events()
+
+        assert len(caplog.text.splitlines()) == 5, "all events processed plus start log"
+        assert "event processed" in caplog.text
+
+    def test_process_events_refreshes_configuration(self):
+        runner = Runner(mock.MagicMock())
+        runner._configuration = mock.MagicMock()
+        runner.sender = [
+            mock.MagicMock(),
+            mock.MagicMock(),
+            mock.MagicMock(),
+            mock.MagicMock(),
+        ]
+
+        assert runner
+
+        runner._process_events()
+        runner._configuration.refresh.assert_called()
+        assert runner._configuration.refresh.call_count == 4
+
+    def test_process_events_raises_reload_exception_on_config_change(self):
+        runner = Runner(mock.MagicMock())
+        runner._configuration = mock.MagicMock()
+
+        runner.sender = [
+            mock.MagicMock(),
+            mock.MagicMock(),
+            mock.MagicMock(),
+            mock.MagicMock(),
+        ]
+
+        assert runner
+
+        def side_effect():
+            if runner.sender[1].state.__eq__.call_count == 1:
+                runner._configuration.version = "not version"
+
+        runner._configuration.refresh.side_effect = side_effect
+
+        with pytest.raises(LogprepReloadException):
+            runner._process_events()
+
+        assert runner._configuration.refresh.call_count == 2, "stops after config change"
