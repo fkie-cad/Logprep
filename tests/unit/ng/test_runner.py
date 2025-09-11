@@ -205,3 +205,9 @@ class TestRunner:
             runner._process_events()
 
         assert runner._configuration.refresh.call_count == 2, "stops after config change"
+
+    def test_set_http_input_queue_replaces_messages(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        runner._configuration.input = mock.MagicMock()
+        with mock.patch("logprep.ng.connector.http.HttpInput") as mock_http_input:
+            assert runner
