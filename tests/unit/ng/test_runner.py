@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import os
 from unittest import mock
 
 import pytest
@@ -206,8 +207,26 @@ class TestRunner:
 
         assert runner._configuration.refresh.call_count == 2, "stops after config change"
 
-    def test_set_http_input_queue_replaces_messages(self, configuration):
+    def test_setup_logging_emits_env(self, configuration):
         runner = Runner.from_configuration(configuration)
-        runner._configuration.input = mock.MagicMock()
-        with mock.patch("logprep.ng.connector.http.HttpInput") as mock_http_input:
-            assert runner
+        assert not os.environ.get("LOGPREP_LOG_CONFIG")
+        runner.setup_logging()
+        assert os.environ.get("LOGPREP_LOG_CONFIG")
+
+    def test_setup_logging_calls_dict_config(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch("logging.config.dictConfig") as mock_dict_config:
+            runner.setup_logging()
+            mock_dict_config.assert_called_once()
+
+    def test_setup_logging_captures_warnings(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch("logging.captureWarnings") as mock_capture_warnings:
+            runner.setup_logging()
+            mock_capture_warnings.assert_called_once_with(True)
+
+    def test_setup_logging_sets_filter(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        with mock.patch("warnings.simplefilter") as mock_simplefilter:
+            runner.setup_logging()
+            mock_simplefilter.assert_called_once_with("always", DeprecationWarning)

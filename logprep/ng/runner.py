@@ -5,7 +5,6 @@ Runner module
 import json
 import logging
 import logging.config
-import multiprocessing
 import os
 import warnings
 from typing import Iterator
@@ -13,15 +12,13 @@ from typing import Iterator
 from attrs import asdict
 
 from logprep.factory import Factory
-from logprep.framework.pipeline_manager import ThrottlingQueue
 from logprep.ng.abc.input import Input
-from logprep.ng.connector.http.input import HttpInput
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
 from logprep.ng.sender import LogprepReloadException, Sender
 from logprep.ng.util.configuration import Configuration
-from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG, DEFAULT_MESSAGE_BACKLOG_SIZE
+from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 
 logger = logging.getLogger("Runner")
 
@@ -128,9 +125,6 @@ class Runner:
         """Setup the runner and its components."""
         self.sender.setup()
         if self._input_connector:
-            input_type = self._input_connector._config.type  # pylint: disable=protected-access
-            if "http_input" in input_type:
-                self._set_http_input_queue()
             self._input_connector.setup()
 
     def shut_down(self) -> None:
@@ -169,20 +163,3 @@ class Runner:
             self._input_connector.setup()
         self._configuration.schedule_config_refresh()
         logger.debug("Finished reloading log processing pipeline.")
-
-    def _set_http_input_queue(self):
-        """
-        this workaround has to be done because the queue size is not configurable
-        after initialization and the queue has to be shared between the multiple processes
-        """
-        input_config = list(self._configuration.input.values())
-        input_config = input_config[0] if input_config else {}
-        is_http_input = input_config.get("type") == "http_input"
-        if not is_http_input and HttpInput.messages is not None:
-            return
-        message_backlog_size = input_config.get(
-            "message_backlog_size", DEFAULT_MESSAGE_BACKLOG_SIZE
-        )
-        HttpInput.messages = ThrottlingQueue(
-            ctx=multiprocessing.get_context("spawn"), maxsize=message_backlog_size
-        )
