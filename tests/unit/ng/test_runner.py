@@ -97,10 +97,10 @@ class TestRunner:
             runner.setup()
             mock_input_setup.assert_called_once()
 
-    def test_stop_raises_system_exit(self, configuration):
-        runner = Runner.from_configuration(configuration)
-        with pytest.raises(SystemExit, match="0"):
-            runner.stop()
+    def test_stop_does_not_raise(self):
+        runner = Runner(mock.MagicMock())
+        runner.stop()
+        runner.sender.stop.assert_called_once()
 
     def test_shut_down_calls_input_connector_shut_down(self, configuration):
         runner = Runner.from_configuration(configuration)
@@ -152,31 +152,34 @@ class TestRunner:
 
     def test_process_events_iterates_sender(self, configuration, caplog):
         caplog.set_level("DEBUG")
-        runner = Runner(mock.MagicMock())
-        runner._configuration = configuration
-        runner.sender = [
+        sender = mock.MagicMock()
+        sender.__iter__.return_value = [
             mock.MagicMock(),
             mock.MagicMock(),
             mock.MagicMock(),
             mock.MagicMock(),
         ]
+        runner = Runner(sender)
+        runner._configuration = configuration
+        runner.sender = sender
 
         assert runner
 
         runner._process_events()
 
-        assert len(caplog.text.splitlines()) == 5, "all events processed plus start log"
+        assert len(caplog.text.splitlines()) == 7, "all events processed plus start and end logs"
         assert "event processed" in caplog.text
 
     def test_process_events_refreshes_configuration(self):
-        runner = Runner(mock.MagicMock())
-        runner._configuration = mock.MagicMock()
-        runner.sender = [
+        sender = mock.MagicMock()
+        sender.__iter__.return_value = [
             mock.MagicMock(),
             mock.MagicMock(),
             mock.MagicMock(),
             mock.MagicMock(),
         ]
+        runner = Runner(sender)
+        runner._configuration = mock.MagicMock()
 
         assert runner
 
@@ -210,16 +213,19 @@ class TestRunner:
 
     def test_process_events_logs_failed_event_on_debug(self, caplog):
         caplog.set_level("DEBUG")
-        runner = Runner(mock.MagicMock())
-        runner._configuration = mock.MagicMock()
-
-        runner.sender = [
+        sender = mock.MagicMock()
+        failing_event = mock.MagicMock()
+        failing_event.state = EventStateType.FAILED
+        sender.__iter__.return_value = [
             mock.MagicMock(),
-            mock.MagicMock(),
+            failing_event,
             mock.MagicMock(),
             mock.MagicMock(),
         ]
-        runner.sender[1].state.__eq__.return_value = EventStateType.FAILED
+
+        runner = Runner(sender)
+        runner._configuration = mock.MagicMock()
+
         assert runner
         runner._process_events()
         assert "event failed" in caplog.text, "one event failed"
