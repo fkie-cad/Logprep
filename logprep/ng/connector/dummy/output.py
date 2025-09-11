@@ -17,6 +17,7 @@ Example
         type: dummy_output
 """
 
+import logging
 from typing import TYPE_CHECKING, List
 
 from attr import define, field
@@ -28,6 +29,8 @@ from logprep.ng.event.log_event import LogEvent
 
 if TYPE_CHECKING:
     from logprep.abc.connector import Connector  # pragma: no cover
+
+logger = logging.getLogger("DummyOutput")
 
 
 class DummyOutput(Output):
@@ -106,3 +109,5 @@ class DummyOutput(Output):
 
     def flush(self):
         """Flush not implemented because it has not backlog."""
+        logger.debug("DummyOutput flushed %s events", len(self.events))
+        self.events.clear()
