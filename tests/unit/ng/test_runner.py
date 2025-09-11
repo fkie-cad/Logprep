@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 
 from logprep.ng.abc.event import EventBacklog
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.runner import Runner
 from logprep.ng.sender import LogprepReloadException, Sender
 from logprep.ng.util.configuration import Configuration
@@ -206,6 +207,23 @@ class TestRunner:
             runner._process_events()
 
         assert runner._configuration.refresh.call_count == 2, "stops after config change"
+
+    def test_process_events_logs_failed_event_on_debug(self, caplog):
+        caplog.set_level("DEBUG")
+        runner = Runner(mock.MagicMock())
+        runner._configuration = mock.MagicMock()
+
+        runner.sender = [
+            mock.MagicMock(),
+            mock.MagicMock(),
+            mock.MagicMock(),
+            mock.MagicMock(),
+        ]
+        runner.sender[1].state.__eq__.return_value = EventStateType.FAILED
+        assert runner
+        runner._process_events()
+        assert "event failed" in caplog.text, "one event failed"
+        assert "event processed" in caplog.text, "other events processed"
 
     def test_setup_logging_emits_env(self, configuration):
         runner = Runner.from_configuration(configuration)

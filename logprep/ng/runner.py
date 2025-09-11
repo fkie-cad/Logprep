@@ -93,7 +93,6 @@ class Runner:
 
         # TODO:
         # * blocking behavior ?
-        # * increase test coverage
         # * integration tests
         # * add documentation
 
