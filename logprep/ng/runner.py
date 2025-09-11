@@ -46,6 +46,7 @@ class Runner:
 
     def __init__(self, sender: Sender) -> None:
         self.sender = sender
+        self.should_exit = False
 
     @classmethod
     def from_configuration(cls, configuration: Configuration) -> "Runner":
@@ -102,12 +103,14 @@ class Runner:
 
         self._configuration.schedule_config_refresh()
         while 1:
+            if self.should_exit:
+                logger.debug("Runner exiting")
+                break
             try:
                 logger.debug("Runner processing loop")
                 self._process_events()
             except LogprepReloadException:
                 self.reload()
-
         logger.debug("end log processing")
 
     def _process_events(self) -> None:
@@ -125,6 +128,8 @@ class Runner:
                 logger.error("event failed: %s", event)
             else:
                 logger.debug("event processed: %s", event.state)
+        logger.debug("finished log processing")
+        self.shut_down()
 
     def setup(self) -> None:
         """Setup the runner and its components."""
@@ -135,15 +140,16 @@ class Runner:
     def shut_down(self) -> None:
         """Shut down the log processing pipeline."""
         self.sender.shut_down()
-        logger.info("Runner shut down complete.")
         if self._input_connector:
             self._input_connector.shut_down()
+        logger.info("Runner shut down complete.")
 
     def stop(self) -> None:
         """Stop the log processing pipeline."""
         logger.info("Stopping runner and exiting...")
-        self.shut_down()
-        raise SystemExit(0)
+        self.sender.stop()
+        self.should_exit = True
+        # raise SystemExit(0)
 
     def setup_logging(self) -> None:
         """Setup the logging configuration.

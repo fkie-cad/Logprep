@@ -157,8 +157,13 @@ class InputIterator(Iterator):
         LogEvent | None
             The next event retrieved from the underlying data source.
         """
-        logger.debug("InputIterator fetching next event with timeout %s", self.timeout)
-        return self.input_connector.get_next(timeout=self.timeout)
+        event = self.input_connector.get_next(timeout=self.timeout)
+        logger.debug(
+            "InputIterator fetching next event with timeout %s, is None: %s",
+            self.timeout,
+            event is None,
+        )
+        return event
 
 
 class Input(Connector):
@@ -426,9 +431,7 @@ class Input(Connector):
         input : LogEvent, None
             Input log data.
         """
-
         self.acknowledge()
-
         event: dict | None = None
         raw_event: bytearray | None = None
         metadata: dict | None = None

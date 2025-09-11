@@ -1,8 +1,8 @@
 version: 2
-process_count: 5
-timeout: 1.0
+process_count: 500
+timeout: 5.0
 restart_count: 2
-config_refresh_interval: 5
+config_refresh_interval: 300
 error_backlog_size: 1500000
 logger:
   level: INFO
@@ -110,7 +110,7 @@ output:
       - 127.0.0.1:9200
     default_index: processed
     default_op_type: create
-    message_backlog_size: 2500
+    message_backlog_size: 7000
     timeout: 10000
     flush_timeout: 60
     user: admin

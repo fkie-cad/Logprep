@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-from typing import Generator
 from unittest import mock
 
 import pytest
@@ -114,7 +113,7 @@ class TestSender:
 
     def test_sender_initialization(self, pipeline, opensearch_output):
         sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
-        assert isinstance(sender._events, Generator)
+        assert isinstance(sender.pipeline, Pipeline)
         assert sender._outputs == {opensearch_output.name: opensearch_output}
         assert sender._error_output is None
         assert sender._default_output == opensearch_output, "Default output should be the first one"

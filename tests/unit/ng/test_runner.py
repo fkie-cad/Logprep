@@ -206,7 +206,7 @@ class TestRunner:
         with pytest.raises(LogprepReloadException):
             runner._process_events()
 
-        assert runner._configuration.refresh.call_count == 2, "stops after config change"
+        assert runner._configuration.refresh.call_count == 3, "stops after config change"
 
     def test_process_events_logs_failed_event_on_debug(self, caplog):
         caplog.set_level("DEBUG")

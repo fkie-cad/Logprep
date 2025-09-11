@@ -112,7 +112,7 @@ class TestPipeline:
         empty_input = iter([None, None, None])
         pipeline = Pipeline(empty_input, processors)
         processed_events = list(pipeline)
-        assert not processed_events
+        assert processed_events == [None, None, None]
 
     def test_process_pipeline_empty_input(self, processors):
         empty_input = iter([])
@@ -124,7 +124,7 @@ class TestPipeline:
         empty_input = iter([LogEvent({}, original=b"") for _ in range(5)])
         pipeline = Pipeline(empty_input, processors)
         processed_events = list(pipeline)
-        assert not processed_events
+        assert processed_events == [None for _ in range(5)]
 
     def test_empty_documents_are_not_forwarded_to_other_processors(
         self, input_connector, processors

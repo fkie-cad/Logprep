@@ -3,7 +3,6 @@
 import logging
 from collections.abc import Iterator
 from functools import partial
-from itertools import islice
 from typing import Generator
 
 from logprep.ng.abc.processor import Processor
@@ -14,8 +13,8 @@ logger = logging.getLogger("Pipeline")
 
 def _process_event(event: LogEvent | None, processors: list[Processor]) -> LogEvent:
     """process all processors for one event"""
-    if event is None:
-        return event
+    if event is None or not event.data:
+        return None
     event.state.next_state()
     for processor in processors:
         if not event.data:
@@ -65,17 +64,11 @@ class Pipeline(Iterator):
     ) -> None:
         self._processors = processors
         self._process_count = process_count
-        self._events = (event for event in input_connector)
+        self._input_connector = input_connector
 
     def __iter__(self) -> Generator[LogEvent | None, None, None]:
         """Iterate over processed events."""
-        events = self._events
-        process_count = self._process_count
-        processors = self._processors
-        while True:
-            logger.debug("Pipeline iterating")
-            batch = list(islice(events, process_count))
-            yield from map(partial(_process_event, processors=processors), batch)
+        yield from map(partial(_process_event, processors=self._processors), self._input_connector)
 
     def __next__(self):
         raise NotImplementedError("Use iteration to get processed events.")
