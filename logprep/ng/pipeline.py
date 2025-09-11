@@ -12,8 +12,10 @@ from logprep.ng.event.log_event import LogEvent
 logger = logging.getLogger("Pipeline")
 
 
-def _process_event(event: LogEvent, processors: list[Processor]) -> LogEvent:
+def _process_event(event: LogEvent | None, processors: list[Processor]) -> LogEvent:
     """process all processors for one event"""
+    if event is None:
+        return event
     event.state.next_state()
     for processor in processors:
         if not event.data:
@@ -63,17 +65,18 @@ class Pipeline(Iterator):
     ) -> None:
         self._processors = processors
         self._process_count = process_count
-        self._events = (event for event in input_connector if event is not None and event.data)
+        self._events = (event for event in input_connector)
 
-    def __iter__(self) -> Generator[LogEvent, None, None]:
+    def __iter__(self) -> Generator[LogEvent | None, None, None]:
         """Iterate over processed events."""
         events = self._events
         process_count = self._process_count
         processors = self._processors
         while True:
+            logger.debug("Pipeline iterating")
             batch = list(islice(events, process_count))
             if not batch:
-                break
+                yield from (None for _ in range(process_count))
             yield from map(partial(_process_event, processors=processors), batch)
 
     def __next__(self):

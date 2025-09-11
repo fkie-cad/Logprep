@@ -34,7 +34,6 @@ class Sender(Iterator):
         process_count: int = 2,
     ) -> None:
         self.pipeline = pipeline
-        self._events = (event for event in pipeline if event is not None and event.data)
         self._outputs = {output.name: output for output in outputs}
         self._default_output = [output for output in outputs if output.default][0]
         self._error_output = error_output
@@ -42,7 +41,7 @@ class Sender(Iterator):
         self.batch: list[LogEvent] = []
 
     def __next__(self) -> LogEvent | ErrorEvent:
-        event = next(self._events)
+        event = next(self.pipeline)
         if event.state == EventStateType.PROCESSED:
             self._send_processed(event)
             for output in self._outputs.values():
@@ -57,20 +56,23 @@ class Sender(Iterator):
     def __iter__(self) -> Generator[LogEvent | ErrorEvent, None, None]:
         """Iterate over processed events."""
         while True:
+            logger.debug("Sender iterating")
             self.batch.clear()
-            self.batch += list(islice(self._events, self.batch_size))
-            if not self.batch:
-                break
+            self.batch += list(islice(self.pipeline, self.batch_size))
             self._send_and_flush_processed_events()
             if self._error_output:
                 self._send_and_flush_failed_events()
 
             yield from self.batch
 
-    def _send_and_flush_failed_events(self):
+    def _send_and_flush_failed_events(self) -> None:
         error_events = [
-            self._send_failed(event) for event in self.batch if event.state == EventStateType.FAILED
+            self._send_failed(event)
+            for event in self.batch
+            if event is not None and event.state == EventStateType.FAILED
         ]
+        if not error_events:
+            return
         self._error_output.flush()
         failed_error_events = [
             event for event in error_events if event.state == EventStateType.FAILED
@@ -79,8 +81,13 @@ class Sender(Iterator):
             logger.error("Error during sending to error output: %s", error_event)
 
     def _send_and_flush_processed_events(self):
-        for event in filter(lambda x: x.state == EventStateType.PROCESSED, self.batch):
+        processed_events = [
             self._send_processed(event)
+            for event in self.batch
+            if event is not None and event.state == EventStateType.PROCESSED
+        ]
+        if not processed_events:
+            return
         for output in self._outputs.values():
             output.flush()
 

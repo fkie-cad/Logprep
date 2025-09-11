@@ -103,6 +103,7 @@ class Runner:
         self._configuration.schedule_config_refresh()
         while 1:
             try:
+                logger.debug("Runner processing loop")
                 self._process_events()
             except LogprepReloadException:
                 self.reload()
@@ -115,14 +116,15 @@ class Runner:
         configuration = self._configuration
         config_version = configuration.version
         for event in sender:
+            configuration.refresh()
+            if configuration.version != config_version:
+                raise LogprepReloadException("Configuration change detected, reloading...")
+            if event is None:
+                continue
             if event.state == EventStateType.FAILED:
                 logger.error("event failed: %s", event)
             else:
                 logger.debug("event processed: %s", event.state)
-
-            configuration.refresh()
-            if configuration.version != config_version:
-                raise LogprepReloadException("Configuration change detected, reloading...")
 
     def setup(self) -> None:
         """Setup the runner and its components."""
