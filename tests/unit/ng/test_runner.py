@@ -8,8 +8,8 @@ import pytest
 
 from logprep.ng.abc.event import EventBacklog
 from logprep.ng.event.event_state import EventStateType
-from logprep.ng.runner import Runner
-from logprep.ng.sender import LogprepReloadException, Sender
+from logprep.ng.runner import LogprepReloadException, Runner
+from logprep.ng.sender import Sender
 from logprep.ng.util.configuration import Configuration
 
 

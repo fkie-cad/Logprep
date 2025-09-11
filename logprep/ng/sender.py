@@ -23,12 +23,6 @@ class LogprepExceptionGroup(ExceptionGroup):
         return f"{self.message}: {self.exceptions}"
 
 
-class LogprepReloadException(Exception):
-    """Exception raised when the log processing pipeline needs to be reloaded."""
-
-    pass
-
-
 class Sender(Iterator):
     """Sender class to handle sending events to configured outputs."""
 
