@@ -75,8 +75,6 @@ class Pipeline(Iterator):
         while True:
             logger.debug("Pipeline iterating")
             batch = list(islice(events, process_count))
-            if not batch:
-                yield from (None for _ in range(process_count))
             yield from map(partial(_process_event, processors=processors), batch)
 
     def __next__(self):
