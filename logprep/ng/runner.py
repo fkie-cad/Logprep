@@ -97,9 +97,7 @@ class Runner:
         """Run the log processing pipeline."""
 
         # TODO:
-        # * blocking behavior ?
         # * integration tests
-        # * add documentation
 
         self._configuration.schedule_config_refresh()
         while 1:
