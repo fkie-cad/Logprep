@@ -121,9 +121,25 @@ class TestSender:
     def test_sender_sends_events_and_extra_data_to_output(
         self, pipeline, opensearch_output, kafka_output
     ):
+        opensearch_output.flush = mock.MagicMock()
+        kafka_output.flush = mock.MagicMock()
+
         sender = Sender(
-            pipeline=pipeline, outputs=[opensearch_output, kafka_output], error_output=None
+            pipeline=pipeline,
+            outputs=[opensearch_output, kafka_output],
+            error_output=None,
         )
+
+        error_output_mock = mock.MagicMock()
+
+        def side_effect():
+            if len(sender._error_output.mock_calls) > 3:
+                sender.stop()
+            return False
+
+        error_output_mock.__bool__.side_effect = side_effect
+        sender._error_output = error_output_mock
+
         events = list(sender)
         assert len(events) == 3
         assert len(opensearch_output.events) == 3, "3 log events "
