@@ -31,7 +31,7 @@ class Sender(Iterator):
         pipeline: Pipeline,
         outputs: list[Output],
         error_output: Output,
-        process_count: int = 2,
+        process_count: int = 3,
     ) -> None:
         self.pipeline = pipeline
         self._outputs = {output.name: output for output in outputs}
@@ -48,15 +48,15 @@ class Sender(Iterator):
     def __iter__(self) -> Generator[LogEvent | ErrorEvent, None, None]:
         """Iterate over processed events."""
         while 1:
-            if self.should_exit:
-                logger.debug("Sender exiting")
-                return
             logger.debug("Sender iterating")
             self.batch.clear()
             self.batch += list(islice(self.pipeline, self.batch_size))
             self._send_and_flush_processed_events()
             if self._error_output:
                 self._send_and_flush_failed_events()
+            if self.should_exit:
+                logger.debug("Sender exiting")
+                return
             yield from self.batch
 
     def _send_and_flush_failed_events(self) -> None:

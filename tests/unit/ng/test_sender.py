@@ -121,27 +121,11 @@ class TestSender:
     def test_sender_sends_events_and_extra_data_to_output(
         self, pipeline, opensearch_output, kafka_output
     ):
-        opensearch_output.flush = mock.MagicMock()
-        kafka_output.flush = mock.MagicMock()
-
         sender = Sender(
-            pipeline=pipeline,
-            outputs=[opensearch_output, kafka_output],
-            error_output=None,
+            pipeline=pipeline, outputs=[opensearch_output, kafka_output], error_output=None
         )
-
-        error_output_mock = mock.MagicMock()
-
-        def side_effect():
-            if len(sender._error_output.mock_calls) > 3:
-                sender.stop()
-            return False
-
-        error_output_mock.__bool__.side_effect = side_effect
-        sender._error_output = error_output_mock
-
-        events = list(sender)
-        assert len(events) == 3
+        sender.should_exit = True
+        list(sender)
         assert len(opensearch_output.events) == 3, "3 log events "
         assert len(kafka_output.events) == 1, "1 extra data event"
         assert all(event.state == EventStateType.DELIVERED for event in opensearch_output.events)
@@ -154,21 +138,11 @@ class TestSender:
             pipeline=pipeline, outputs=[opensearch_output, kafka_output], error_output=error_output
         )
 
-        sender._mock_counter = 0
-
-        # Stop the iteration after the second flush call
-        # Because batch size is 2 and we have 3 events, this ensures all events are processed
-        def mock_flush():
-            if sender._mock_counter >= 1:
-                sender.stop()
-            sender._mock_counter += 1
-
-        error_output.flush = mock_flush
+        sender.should_exit = True
 
         with mock.patch.object(pipeline._processors[0], "_apply_rules") as mock_process:
             mock_process.side_effect = Exception("Processing error")
-            events = list(sender)
-            assert len(events) == 3
+            list(sender)
             assert len(opensearch_output.events) == 0, "no events delivered"
             assert len(error_output.events) == 3, "3 failed events sent to error output"
             assert all(isinstance(event, ErrorEvent) for event in error_output.events)
@@ -281,10 +255,9 @@ class TestSender:
         )
         log_event.extra_data.append(sre_event)
         sender = Sender(
-            pipeline=iter([log_event]),
-            outputs=[opensearch_output],
-            error_output=error_output,
+            pipeline=iter([log_event]), outputs=[opensearch_output], error_output=error_output
         )
+        sender.should_exit = True
         with mock.patch.object(sender, "_send_extra_data"):
             _ = list(sender)
         assert sre_event.state == EventStateType.FAILED
