@@ -153,6 +153,18 @@ class TestSender:
         sender = Sender(
             pipeline=pipeline, outputs=[opensearch_output, kafka_output], error_output=error_output
         )
+
+        sender._mock_counter = 0
+
+        # Stop the iteration after the second flush call
+        # Because batch size is 2 and we have 3 events, this ensures all events are processed
+        def mock_flush():
+            if sender._mock_counter >= 1:
+                sender.stop()
+            sender._mock_counter += 1
+
+        error_output.flush = mock_flush
+
         with mock.patch.object(pipeline._processors[0], "_apply_rules") as mock_process:
             mock_process.side_effect = Exception("Processing error")
             events = list(sender)
