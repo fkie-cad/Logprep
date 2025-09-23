@@ -10,6 +10,7 @@
 * make config reload detect changes in http getters.
 * make list comparison processor be refreshable with http getter
 * make generic adder processor be refreshable with http getter
+* make generic resolver processor be refreshable with http getter
 
 ### Improvements
 

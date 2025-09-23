@@ -53,6 +53,35 @@ since :code:`ignore_case` is set to true.
         .*Hello.*: Greeting
       ignore_case: true
 
+It is furthermore possible to resolve into dictionaries. In the following example
+:code:`{"to_resolve": "Hello!"}` would be resolved to :code:`{"resolved": {"Greeting": "Hello"}}`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        .*Hello.*: {"Greeting": "Hello"}
+
+Resolved dictionaries can be merged into existing dictionaries. In the following example
+:code:`{"to": {"resolve": "Hello!"}}` would be resolved to
+:code:`{"to": {"Greeting": "Hello", "resolve": "Hello!"}}`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to.resolve: to
+      resolve_list:
+        .*Hello.*: {"Greeting": "Hello"}
+
 In the following example :code:`to_resolve` will be checked by the
 regex pattern :code:`\d*(?P<mapping>[a-z]+)\d*` and the list in :code:`path/to/resolve_mapping.yml`
 will be used to add new fields.
@@ -90,7 +119,7 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional, List, Tuple, Union
 
 from attrs import define, field, validators
 
@@ -124,7 +153,7 @@ class GenericResolverRule(FieldManagerRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.in_(["path", "pattern"]),
-                    value_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(Union[str, int]),
                 ),
             ],
             factory=dict,
@@ -152,28 +181,43 @@ class GenericResolverRule(FieldManagerRule):
         ignore_case: Optional[str] = field(validator=validators.instance_of(bool), default=False)
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
+        @property
+        def _file_path(self) -> str:
+            """Returns the file path"""
+            return self.resolve_from_file.get("path")
+
         def __attrs_post_init__(self):
-            if self.resolve_from_file:
-                file_path = self.resolve_from_file["path"]
-                if "?P<mapping>" not in self.resolve_from_file["pattern"]:
-                    raise InvalidConfigurationError(
-                        f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
-                    )
-                if not Path(file_path).is_file():
-                    raise InvalidConfigurationError(
-                        f"Additions file '{file_path}' not found! (Rule ID: '{self.id}')",
-                    )
-                add_dict = GetterFactory.from_string(file_path).get_yaml()
-                if not isinstance(add_dict, dict) or not all(
-                    isinstance(value, str) for value in add_dict.values()
-                ):
-                    raise InvalidConfigurationError(
-                        f"Additions file '{file_path}' must be a dictionary "
-                        f"with string values! (Rule ID: '{self.id}')",
-                    )
-                if self.ignore_case:
-                    add_dict = {key.upper(): value for key, value in add_dict.items()}
-                self.resolve_from_file["additions"] = add_dict
+            if self._file_path:
+                GetterFactory.from_string(self._file_path).add_callback(self._add_from_path)
+                self._add_from_path()
+
+        def _add_from_path(self):
+            self._raise_if_pattern_is_invalid()
+            self._raise_if_file_does_not_exist()
+            additions = GetterFactory.from_string(self._file_path).get_yaml()
+            self._raise_if_additions_are_invalid(additions)
+            if self.ignore_case:
+                additions = {key.upper(): value for key, value in additions.items()}
+            self.resolve_from_file["additions"] = additions
+
+        def _raise_if_pattern_is_invalid(self):
+            if "?P<mapping>" not in self.resolve_from_file["pattern"]:
+                raise InvalidConfigurationError(
+                    f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
+                )
+
+        def _raise_if_file_does_not_exist(self):
+            if not (self._file_path.startswith("http") or Path(self._file_path).is_file()):
+                raise InvalidConfigurationError(
+                    f"Additions file '{self._file_path}' not found! (Rule ID: '{self.id}')",
+                )
+
+        def _raise_if_additions_are_invalid(self, additions: dict):
+            if not isinstance(additions, dict):
+                raise InvalidConfigurationError(
+                    f"Additions file '{self._file_path}' must be a dictionary "
+                    f"with string values! (Rule ID: '{self.id}')",
+                )
 
     @property
     def field_mapping(self) -> dict:
