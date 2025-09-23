@@ -100,7 +100,7 @@ class Runner:
         # * integration tests
 
         self._configuration.schedule_config_refresh()
-        while 1:
+        while True:
             if self.should_exit:
                 logger.debug("Runner exiting")
                 break
