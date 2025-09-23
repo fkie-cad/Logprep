@@ -8,6 +8,7 @@
 * cache http getter results by utilising the etag header.
 * add per-target (i.e. `localhost:1234/foo`) callbacks to http getters that are called when getters are refreshed with new data.
 * make config reload detect changes in http getters.
+* make list comparison processor be refreshable with http getter
 
 ### Improvements
 

@@ -90,6 +90,7 @@ class ListComparisonRule(FieldManagerRule):
 
     def __init__(self, filter_rule: FilterExpression, config: dict, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
+        self._config: ListComparisonRule.Config = self._config
         self._compare_sets = {}
 
     def _get_list_search_base_path(self, list_search_base_path):
@@ -103,15 +104,25 @@ class ListComparisonRule(FieldManagerRule):
         """init method for list_comparison lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         if list_search_base_path.startswith("http"):
-            for list_path in self._config.list_file_paths:
-                list_search_base_path_resolved = Template(list_search_base_path).substitute(
-                    {**os.environ, **{"LOGPREP_LIST": list_path}}
-                )
-                content = GetterFactory.from_string(list_search_base_path_resolved).get()
-                compare_elements = content.splitlines()
-                file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
-                self._compare_sets.update({list_path: set(file_elem_tuples)})
-            return
+            self._init_list_comparison_from_http(list_search_base_path)
+        else:
+            self._init_list_comparison_from_local_file(list_search_base_path)
+
+    def _init_list_comparison_from_http(self, list_search_base_path):
+        for list_path in self._config.list_file_paths:
+            list_search_base_path_resolved = Template(list_search_base_path).substitute(
+                {**os.environ, **{"LOGPREP_LIST": list_path}}
+            )
+            http_getter = GetterFactory.from_string(list_search_base_path_resolved)
+            self._update_compare_sets_via_http(http_getter, list_path)
+            http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
+
+    def _update_compare_sets_via_http(self, http_getter, list_path):
+        compare_elements = http_getter.get().splitlines()
+        file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
+        self._compare_sets.update({list_path: set(file_elem_tuples)})
+
+    def _init_list_comparison_from_local_file(self, list_search_base_path):
         absolute_list_paths = [
             list_path for list_path in self._config.list_file_paths if list_path.startswith("/")
         ]
