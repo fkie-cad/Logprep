@@ -685,6 +685,14 @@ class Configuration:
         self._set_version_info_metric()
         self._set_config_refresh_interval(self.config_refresh_interval)
 
+    def __eq__(self, other: "Configuration"):
+        if self.version != other.version:
+            return False
+        if self.as_dict() == other.as_dict():
+            return True
+        else:
+            return False
+
     @property
     def _metric_labels(self) -> dict[str, str]:
         labels = {
@@ -841,15 +849,19 @@ class Configuration:
             new_config = Configuration.from_sources(self.config_paths)
             if self._config_failure:
                 logger.info("Config refresh recovered from failing source")
-            self._config_failure = False
-            if new_config == self:
-                logger.info(
-                    "Configuration version didn't change. Continue running with current version."
-                )
-                self._set_config_refresh_interval(new_config.config_refresh_interval)
+                self.config_refresh_interval = new_config.config_refresh_interval
+                self._config_failure = False
                 return
+
+            changed_variable_values = self._check_if_variabl_values_changed(new_config)
+
             if new_config.config_refresh_interval is None:
                 new_config.config_refresh_interval = self.config_refresh_interval
+
+            if new_config == self and changed_variable_values:
+                logger.info("Configuration didn't change. Continue running with current version.")
+                return
+
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
             self._set_version_info_metric()
@@ -870,6 +882,28 @@ class Configuration:
         if errors:
             logger.error("Failed to reload configuration: %s", errors)
             self._metrics.number_of_config_refresh_failures += 1
+
+    def _check_if_variabl_values_changed(self, new_config):
+        def get_variable_values(value, variable_values: list = None):
+            if variable_values is None:
+                variable_values = []
+
+            if isinstance(value, dict):
+                for val in value.values():
+                    get_variable_values(val, variable_values)
+            elif isinstance(value, (list, tuple, set)):
+                for val in value:
+                    get_variable_values(val, variable_values)
+            elif isinstance(value, str):
+                if value.startswith(("http://", "https://", "file://")):
+                    variable_values.append(value)
+
+        new_values = []
+        get_variable_values(new_config.as_dict(), new_values)
+        old_values = []
+        get_variable_values(self.as_dict(), old_values)
+        changed_variable_values = new_values == old_values
+        return changed_variable_values
 
     def _set_config_refresh_interval(self, config_refresh_interval: int | None) -> None:
         if config_refresh_interval is None:

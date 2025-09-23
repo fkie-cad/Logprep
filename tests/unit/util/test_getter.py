@@ -18,7 +18,7 @@ from responses.registries import OrderedRegistry
 from ruamel.yaml import YAML
 
 from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
-from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
+from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE, ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
@@ -27,6 +27,12 @@ from logprep.util.getter import (
 )
 
 yaml = YAML(pure=True, typ="safe")
+
+
+@pytest.fixture(autouse=True)
+def fixture_clear_getter_cache():
+    getter = HttpGetter(protocol="http", target="anything")
+    getter._shared.clear()
 
 
 class TestGetterFactory:
@@ -298,18 +304,17 @@ second_dict:
 
 
 class TestHttpGetter:
-
     def test_factory_returns_http_getter_for_http(self):
-        http_getter = GetterFactory.from_string("http://testfile.json")
+        http_getter: HttpGetter = GetterFactory.from_string("http://testfile.json")
         assert isinstance(http_getter, HttpGetter)
 
     def test_factory_returns_http_getter_for_https(self):
-        http_getter = GetterFactory.from_string("https://testfile.json")
+        http_getter: HttpGetter = GetterFactory.from_string("https://testfile.json")
         assert isinstance(http_getter, HttpGetter)
 
     @responses.activate
     def test_get_returns_json_parsable_from_plaintext(self):
-        http_getter = GetterFactory.from_string(
+        http_getter: HttpGetter = GetterFactory.from_string(
             "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/unit/tree_config.json"
         )
         resp_text = Path("tests/testdata/unit/tree_config.json").read_text()
@@ -323,7 +328,7 @@ class TestHttpGetter:
 
     @responses.activate
     def test_get_returns_yaml_parsable_from_plaintext(self):
-        http_getter = GetterFactory.from_string(
+        http_getter: HttpGetter = GetterFactory.from_string(
             "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/config/config.yml"
         )
         resp_text = Path("tests/testdata/config/config.yml").read_text()
@@ -347,7 +352,7 @@ class TestHttpGetter:
             resp_text,
             {"User-Agent": f"Logprep version {logprep_version}"},
         )
-        http_getter = GetterFactory.from_string("https://the-target/file")
+        http_getter: HttpGetter = GetterFactory.from_string("https://the-target/file")
         http_getter.get()
 
     def test_raises_on_try_to_set_credentials_from_url_string(self):
@@ -366,7 +371,7 @@ class TestHttpGetter:
         responses.get("https://does-not-matter/bar", status=502)  # 2nd retry
         responses.get("https://does-not-matter/bar", status=500)  # 3rd retry and exception
         responses.get("https://does-not-matter/bar", status=200)  # works again
-        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        http_getter: HttpGetter = GetterFactory.from_string("https://does-not-matter/bar")
         with pytest.raises(requests.exceptions.RequestException, match="Max retries exceed"):
             http_getter.get()
         http_getter.get()
@@ -377,11 +382,11 @@ class TestHttpGetter:
         responses.get("https://does-not-matter/bar", status=500)  # 1st retry
         responses.get("https://does-not-matter/bar", status=502)  # 2nd retry
         responses.get("https://does-not-matter/bar", status=200)  # works again
-        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        http_getter: HttpGetter = GetterFactory.from_string("https://does-not-matter/bar")
         http_getter.get()
 
     def test_credentials_returns_credential_object_if_no_credentials(self):
-        http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+        http_getter: HttpGetter = GetterFactory.from_string("https://does-not-matter/bar")
         assert isinstance(http_getter.credentials, Credentials)
 
     def test_credentials_returns_credentials_if_set(self, tmp_path):
@@ -398,7 +403,7 @@ class TestHttpGetter:
         with mock.patch.dict(
             "os.environ", {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
         ):
-            http_getter = GetterFactory.from_string("https://does-not-matter/bar")
+            http_getter: HttpGetter = GetterFactory.from_string("https://does-not-matter/bar")
             assert isinstance(http_getter.credentials, Credentials)
 
     @responses.activate
@@ -433,7 +438,7 @@ class TestHttpGetter:
         with mock.patch.dict(
             "os.environ", {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
         ):
-            http_getter = GetterFactory.from_string(f"https://{domain}/bar")
+            http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
             return_content = http_getter.get_json()
             assert return_content == {"key": "the cooooontent"}
             responses.assert_call_count("https://the.krass.endpoint/token", 1)
@@ -471,8 +476,8 @@ class TestHttpGetter:
         with mock.patch.dict(
             "os.environ", {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
         ):
-            http_getter = GetterFactory.from_string(f"https://{domain}/bar")
-            return_content = http_getter.get_json()
+            http_getter: HttpGetter = GetterFactory.from_string(f"https://{domain}/bar")
+            http_getter.get_json()
             return_content = http_getter.get_json()
             assert return_content == {"key": "the cooooontent"}
             responses.assert_call_count("https://the.krass.endpoint/token", 1)
@@ -516,9 +521,9 @@ class TestHttpGetter:
             responses.assert_call_count("https://the.krass.endpoint/token", 1)
             responses.assert_call_count(f"https://{domain}/bar", 1)
             # expire token
-            http_getter._credentials_registry.get(f"https://{domain}")._token.expiry_time = (
-                datetime.now() - timedelta(seconds=3600)
-            )
+            http_getter._credentials_registry.get(
+                f"https://{domain}"
+            )._token.expiry_time = datetime.now() - timedelta(seconds=3600)
             return_content = http_getter.get_json()
 
     @responses.activate
@@ -672,3 +677,595 @@ class TestHttpGetter:
             session = http_getter._credentials_registry.get(f"https://{domain}")._session
             assert session.cert == ("path/to/cert", "path/to/key")
             assert session.verify == "path/to/ca/cert"
+
+    @responses.activate
+    def test_get_raw_always_requests_if_no_refresh_timer_was_set(self, tmp_path):
+        url = f"https://{uuid.uuid4()}/bar"
+        mock_response_1 = {"key": "the content 1"}
+        mock_response_2 = {"key": "the content 2"}
+        responses.add(responses.GET, url, json=mock_response_1)
+        responses.add(responses.GET, url, json=mock_response_2)
+        http_getter: HttpGetter = GetterFactory.from_string(url)
+
+        assert http_getter.cache is None
+        return_content_1 = http_getter.get_json()
+        assert self._get_cache_as_json(http_getter) == return_content_1
+        return_content_2 = http_getter.get_json()
+        assert self._get_cache_as_json(http_getter) == return_content_2
+        assert return_content_1 == mock_response_1
+        assert return_content_2 == mock_response_2
+        responses.assert_call_count(url, 2)
+
+    @responses.activate
+    def test_get_raw_always_requests_if_refresh_timer_is_zero(self, tmp_path):
+        target = f"{uuid.uuid4()}"
+        url = f"https://{target}"
+
+        mock_response_1 = {"key": "the content 1"}
+        mock_response_2 = {"key": "the content 2"}
+        responses.add(responses.GET, url, json=mock_response_1)
+        responses.add(responses.GET, url, json=mock_response_2)
+
+        getter_file_content = {target: {"refresh_interval": 0}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(url)
+            assert http_getter.cache is None
+            return_content_1 = http_getter.get_json()
+            assert self._get_cache_as_json(http_getter) == return_content_1
+            return_content_2 = http_getter.get_json()
+            assert self._get_cache_as_json(http_getter) == return_content_2
+            assert return_content_1 == mock_response_1
+            assert return_content_2 == mock_response_2
+            responses.assert_call_count(url, 2)
+
+    @responses.activate
+    def test_get_raw_raises_exception_if_refresh_interval_is_negative(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+
+        getter_file_content = {target: {"refresh_interval": -1}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            with pytest.raises(ValueError, match=r"'refresh_interval' must be >= 0: -1"):
+                GetterFactory.from_string(url)
+
+    @responses.activate
+    def test_get_raw_sets_cache_before_job_runs_if_cache_is_not_initialized(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+        responses.add(responses.GET, url, json={"key": "the content"})
+
+        getter_file_content = {target: {"refresh_interval": 100}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(url)
+            assert len(http_getter.scheduler.jobs) == 1
+            assert http_getter.scheduler.jobs[0].interval == 100
+
+            assert http_getter.cache is None
+            return_content_1 = http_getter.get_json()
+            assert self._get_cache_as_json(http_getter) == return_content_1
+            assert return_content_1 == {"key": "the content"}
+            responses.assert_call_count(url, 1)
+
+    @responses.activate
+    def test_getter_from_dict_twice_with_refresh_timer_updates_cache_once_with_json(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+        responses.add(responses.GET, url, json={"key": "the content 1"})
+        responses.add(responses.GET, url, json={"key": "the content 2"})
+
+        getter_file_content = {target: {"refresh_interval": 1}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(url)
+
+            assert len(http_getter.scheduler.jobs) == 1
+            assert http_getter.scheduler.jobs[0].interval == 1
+
+            assert http_getter.cache is None
+            return_content_1 = http_getter.get_json()
+            http_getter.scheduler.run_all()
+            return_content_2 = http_getter.get_json()
+            assert return_content_1 == {"key": "the content 1"}
+            assert return_content_2 == {"key": "the content 2"}
+            assert self._get_cache_as_json(http_getter) == return_content_2
+            responses.assert_call_count(url, 2)
+
+    @responses.activate
+    def test_getter_from_dict_twice_with_refresh_timer_updates_cache_once_with_yaml(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+        responses.add(responses.GET, url, json={"key": "the content 1"})
+        responses.add(responses.GET, url, json={"key": "the content 2"})
+
+        getter_file_content = {target: {"refresh_interval": 1}}
+        http_getter_conf: Path = tmp_path / "http_getter.yaml"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(url)
+
+            assert len(http_getter.scheduler.jobs) == 1
+            assert http_getter.scheduler.jobs[0].interval == 1
+
+            assert http_getter.cache is None
+            return_content_1 = http_getter.get_json()
+            http_getter.scheduler.run_all()
+            return_content_2 = http_getter.get_json()
+            assert return_content_1 == {"key": "the content 1"}
+            assert return_content_2 == {"key": "the content 2"}
+            assert self._get_cache_as_json(http_getter) == return_content_2
+            responses.assert_call_count(url, 2)
+
+    @responses.activate
+    def test_getter_from_dict_three_times_with_refresh_timer_updates_cache_once(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+        responses.add(responses.GET, url, json={"key": "the content 1"})
+        responses.add(responses.GET, url, json={"key": "the content 2"})
+        responses.add(responses.GET, url, json={"key": "the content 3"})
+
+        getter_file_content = {target: {"refresh_interval": 1}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(url)
+            assert len(http_getter.scheduler.jobs) == 1
+            assert http_getter.scheduler.jobs[0].interval == 1
+
+            assert http_getter.cache is None
+            return_content_1 = http_getter.get_json()
+            http_getter.scheduler.run_all()
+            return_content_2 = http_getter.get_json()
+            return_content_3 = http_getter.get_json()
+            assert return_content_1 == {"key": "the content 1"}
+            assert return_content_2 == {"key": "the content 2"}
+            assert return_content_3 == {"key": "the content 2"}
+            assert self._get_cache_as_json(http_getter) == return_content_2
+            responses.assert_call_count(url, 2)
+
+    @responses.activate
+    def test_getter_from_dict_three_times_with_refresh_timer_updates_cache_twice(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+        responses.add(responses.GET, url, json={"key": "the content 1"})
+        responses.add(responses.GET, url, json={"key": "the content 2"})
+        responses.add(responses.GET, url, json={"key": "the content 3"})
+
+        getter_file_content = {target: {"refresh_interval": 1}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(url)
+            assert len(http_getter.scheduler.jobs) == 1
+            assert http_getter.scheduler.jobs[0].interval == 1
+
+            assert http_getter.cache is None
+            return_content_1 = http_getter.get_json()
+            http_getter.scheduler.run_all()
+            return_content_2 = http_getter.get_json()
+            http_getter.scheduler.run_all()
+            return_content_3 = http_getter.get_json()
+            assert return_content_1 == {"key": "the content 1"}
+            assert return_content_2 == {"key": "the content 2"}
+            assert return_content_3 == {"key": "the content 3"}
+            assert self._get_cache_as_json(http_getter) == return_content_3
+            responses.assert_call_count(url, 3)
+
+    @responses.activate
+    def test_getter_two_getters_with_different_urls_have_different_targets(self, tmp_path):
+        target_1 = f"{uuid.uuid4()}/bar"
+        url_1 = f"https://{target_1}"
+
+        target_2 = f"{uuid.uuid4()}/bar"
+        url_2 = f"https://{target_2}"
+
+        http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
+        http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
+
+        assert http_getter_1.target == target_1
+        assert http_getter_2.target == target_2
+
+    @responses.activate
+    def test_getter_from_dict_with_two_getters_same_url_refresh_updates_cache(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+        responses.add(responses.GET, url, json={"key": "the content 1"})
+        responses.add(responses.GET, url, json={"key": "the content 2"})
+
+        getter_file_content = {target: {"refresh_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter_1: HttpGetter = GetterFactory.from_string(url)
+            http_getter_2: HttpGetter = GetterFactory.from_string(url)
+
+            assert len(http_getter_1.scheduler.jobs) == 1
+            assert http_getter_1.scheduler.jobs[0].interval == 10
+
+            assert http_getter_1.cache is None
+            assert http_getter_2.cache is None
+
+            return_content_1 = http_getter_1.get_json()
+            http_getter_1.scheduler.run_all()
+            return_content_2 = http_getter_2.get_json()
+
+            assert self._get_cache_as_json(http_getter_1) == return_content_2
+            assert self._get_cache_as_json(http_getter_2) == return_content_2
+
+            assert return_content_1 == {"key": "the content 1"}
+            assert return_content_2 == {"key": "the content 2"}
+
+            responses.assert_call_count(url, 2)
+
+    @responses.activate
+    def test_getter_from_dict_with_two_getters_different_url_schedules_separately(self, tmp_path):
+        target_1 = f"{uuid.uuid4()}/bar"
+        url_1 = f"https://{target_1}"
+        responses.add(responses.GET, url_1, json={"key": "the content 1"})
+        responses.add(responses.GET, url_1, json={"key": "the content 2"})
+
+        target_2 = f"{uuid.uuid4()}/bar"
+        url_2 = f"https://{target_2}"
+        responses.add(responses.GET, url_2, json={"key": "the content 3"})
+        responses.add(responses.GET, url_2, json={"key": "the content 4"})
+
+        getter_file_content = {
+            target_1: {"refresh_interval": 10},
+            target_2: {"refresh_interval": 10},
+        }
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
+            http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
+
+            assert http_getter_1.cache is None
+            assert http_getter_2.cache is None
+
+            return_content_1_1 = http_getter_1.get_json()
+            assert self._get_cache_as_json(http_getter_1) == return_content_1_1
+            http_getter_1.scheduler.run_all()
+            return_content_1_2 = http_getter_1.get_json()
+            assert self._get_cache_as_json(http_getter_1) == return_content_1_2
+
+            return_content_2_1 = http_getter_2.get_json()
+            assert self._get_cache_as_json(http_getter_2) == return_content_2_1
+            http_getter_2.scheduler.run_all()
+            return_content_2_2 = http_getter_2.get_json()
+            assert self._get_cache_as_json(http_getter_2) == return_content_2_2
+
+            assert return_content_1_1 == {"key": "the content 1"}
+            assert return_content_1_2 == {"key": "the content 2"}
+            assert return_content_2_1 == {"key": "the content 3"}
+            assert return_content_2_2 == {"key": "the content 4"}
+
+            responses.assert_call_count(url_1, 2)
+
+    @responses.activate
+    def test_getter_etags_with_same_target(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+        responses.add(
+            responses.GET,
+            url,
+            json={"key": "the content 1"},
+            headers={"Content-Type": "application/json", "etag": "1"},
+            status=200,
+        )
+        responses.add(responses.GET, url, headers={"etag": "1"}, status=304)
+        responses.add(
+            responses.GET,
+            url,
+            json={"key": "the content 2"},
+            headers={"Content-Type": "application/json", "etag": "2"},
+            status=200,
+        )
+
+        getter_file_content = {target: {"refresh_interval": 0}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(url)
+            assert http_getter.etag is None
+            response = http_getter.get_json()
+            assert http_getter.etag == "1"
+            assert response == {"key": "the content 1"}
+
+            response = http_getter.get_json()
+            assert http_getter.etag == "1"
+            assert response == {"key": "the content 1"}
+
+            response = http_getter.get_json()
+            assert http_getter.etag == "2"
+            assert response == {"key": "the content 2"}
+
+    @responses.activate
+    def test_getter_etags_with_different_targets(self, tmp_path):
+        target_1 = f"{uuid.uuid4()}/bar"
+        url_1 = f"https://{target_1}"
+        target_2 = f"{uuid.uuid4()}/bar"
+        url_2 = f"https://{target_2}"
+
+        config = {
+            "json": {"key": "the content 1"},
+            "headers": {"Content-Type": "application/json", "etag": "1"},
+            "status": 200,
+        }
+        responses.add(responses.GET, url_1, **config)
+        responses.add(responses.GET, url_2, **config)
+
+        config = {"headers": {"etag": "1"}, "status": 304}
+        responses.add(responses.GET, url_1, **config)
+        responses.add(responses.GET, url_2, **config)
+
+        config = {
+            "json": {"key": "the content 2"},
+            "headers": {"Content-Type": "application/json", "etag": "2"},
+            "status": 200,
+        }
+        responses.add(responses.GET, url_1, **config)
+        responses.add(responses.GET, url_2, **config)
+
+        getter_file_content = {target_1: {"refresh_interval": 0}, target_2: {"refresh_interval": 0}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
+            http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
+
+            assert http_getter_1.etag is None
+            assert http_getter_1.get_json() == {"key": "the content 1"}
+            assert http_getter_1.etag == "1"
+
+            assert http_getter_2.etag is None
+            assert http_getter_2.get_json() == {"key": "the content 1"}
+            assert http_getter_2.etag == "1"
+
+            assert http_getter_1.get_json() == {"key": "the content 1"}
+            assert http_getter_1.etag == "1"
+
+            assert http_getter_2.get_json() == {"key": "the content 1"}
+            assert http_getter_2.etag == "1"
+
+            assert http_getter_1.get_json() == {"key": "the content 2"}
+            assert http_getter_1.etag == "2"
+
+            assert http_getter_2.get_json() == {"key": "the content 2"}
+            assert http_getter_2.etag == "2"
+
+    @responses.activate
+    def test_getter_etags_with_refresh_interval(self, tmp_path):
+        target = f"{uuid.uuid4()}/bar"
+        url = f"https://{target}"
+
+        responses.add(
+            responses.GET,
+            url,
+            json={"key": "the content 1"},
+            headers={"Content-Type": "application/json", "etag": "1"},
+            status=200,
+        )
+        responses.add(responses.GET, url, headers={"etag": "1"}, status=304)
+        responses.add(
+            responses.GET,
+            url,
+            json={"key": "the content 2"},
+            headers={"Content-Type": "application/json", "etag": "2"},
+            status=200,
+        )
+
+        getter_file_content = {target: {"refresh_interval": 100}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(url)
+            assert http_getter.etag is None
+            response = http_getter.get_json()
+            assert http_getter.etag == "1"
+            assert response == {"key": "the content 1"}
+
+            response = http_getter.get_json()
+            assert http_getter.etag == "1"
+            assert response == {"key": "the content 1"}
+
+            response = http_getter.get_json()
+            assert http_getter.etag == "1"
+            assert response == {"key": "the content 1"}
+
+    @responses.activate
+    def test_getter_with_parameters(self, tmp_path):
+        target_1 = f"{uuid.uuid4()}/bar"
+        url_1 = f"https://{target_1}"
+        responses.add(responses.GET, url_1, json={"key": "the content 1"})
+        responses.add(responses.GET, url_1, json={"key": "the content 2"})
+
+        target_2 = f"{uuid.uuid4()}/bar?foo=123&bar=asd"
+        url_2 = f"https://{target_2}"
+        responses.add(responses.GET, url_2, json={"key": "the content 3"})
+        responses.add(responses.GET, url_2, json={"key": "the content 4"})
+
+        getter_file_content = {
+            target_1: {"refresh_interval": 10},
+            target_2: {"refresh_interval": 10},
+        }
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
+            http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
+
+            assert http_getter_1.cache is None
+            assert http_getter_2.cache is None
+
+            return_content_1_1 = http_getter_1.get_json()
+            assert self._get_cache_as_json(http_getter_1) == return_content_1_1
+            http_getter_1.scheduler.run_all()
+            return_content_1_2 = http_getter_1.get_json()
+            assert self._get_cache_as_json(http_getter_1) == return_content_1_2
+
+            return_content_2_1 = http_getter_2.get_json()
+            assert self._get_cache_as_json(http_getter_2) == return_content_2_1
+            http_getter_2.scheduler.run_all()
+            return_content_2_2 = http_getter_2.get_json()
+            assert self._get_cache_as_json(http_getter_2) == return_content_2_2
+
+            assert return_content_1_1 == {"key": "the content 1"}
+            assert return_content_1_2 == {"key": "the content 2"}
+            assert return_content_2_1 == {"key": "the content 3"}
+            assert return_content_2_2 == {"key": "the content 4"}
+
+            responses.assert_call_count(url_1, 2)
+
+    @responses.activate
+    def test_getter_refresh(self, tmp_path):
+        target_ref_1 = f"{uuid.uuid4()}/bar"
+        target_ref_2 = f"{uuid.uuid4()}/bar"
+        target_no_ref = f"{uuid.uuid4()}/bar"
+        url_ref_1 = f"https://{target_ref_1}"
+        url_ref_2 = f"https://{target_ref_2}"
+        url_no_ref_3 = f"https://{target_no_ref}"
+
+        getter_file_content = {
+            target_ref_1: {"refresh_interval": 10},
+            target_ref_2: {"refresh_interval": 10},
+            target_no_ref: {"refresh_interval": 0},
+        }
+
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            GetterFactory.from_string(url_ref_1)
+            GetterFactory.from_string(url_ref_1)
+            GetterFactory.from_string(url_ref_2)
+            GetterFactory.from_string(url_no_ref_3)
+            GetterFactory.from_string("http://no_refresh")
+
+            with mock.patch("logprep.util.getter.Scheduler.run_pending") as mock_run_pending:
+                HttpGetter.refresh()
+                assert mock_run_pending.call_count == 2
+
+    @responses.activate
+    def test_getter_callbacks(self, tmp_path):
+        target_1 = f"{uuid.uuid4()}/bar"
+        url_1 = f"https://{target_1}"
+        responses.add(responses.GET, url_1, json={"key": "the content 1"})
+        responses.add(responses.GET, url_1, json={"key": "the content 2"})
+        responses.add(responses.GET, url_1, json={"key": "the content 3"})
+
+        target_2 = f"{uuid.uuid4()}/bar"
+        url_2 = f"https://{target_2}"
+        responses.add(responses.GET, url_2, json={"key": "the content 4"})
+        responses.add(responses.GET, url_2, json={"key": "the content 5"})
+
+        getter_file_content = {
+            target_1: {"refresh_interval": 10},
+            target_2: {"refresh_interval": 10}
+        }
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
+            http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
+
+            self._callback_value = 0
+
+            def callback(foo, bar, keyword1=0):
+                self._callback_value += foo + bar + keyword1
+
+            http_getter_1.add_callback(callback, 1, 2, keyword1=3)
+
+            http_getter_1.get_json()
+            assert self._callback_value == 0
+            http_getter_1.scheduler.run_all()
+            assert self._callback_value == 6
+            http_getter_1.get_json()
+            assert self._callback_value == 6
+            http_getter_1.scheduler.run_all()
+            http_getter_1.get_json()
+            assert self._callback_value == 12
+
+            http_getter_2.get_json()
+            assert self._callback_value == 12
+            http_getter_2.scheduler.run_all()
+            http_getter_2.get_json()
+            assert self._callback_value == 12
+            http_getter_2.add_callback(callback, 1, 0, keyword1=1)
+            http_getter_2.scheduler.run_all()
+            http_getter_2.get_json()
+            assert self._callback_value == 14
+
+    @responses.activate
+    def test_getter_callbacks_for_target(self, tmp_path):
+        target_1 = f"{uuid.uuid4()}/bar"
+        url_1 = f"https://{target_1}"
+        responses.add(responses.GET, url_1, json={"key": "the content 1"})
+        responses.add(responses.GET, url_1, json={"key": "the content 2"})
+        responses.add(responses.GET, url_1, json={"key": "the content 3"})
+
+        target_2 = f"{uuid.uuid4()}/bar"
+        url_2 = f"https://{target_2}"
+        responses.add(responses.GET, url_2, json={"key": "the content 4"})
+        responses.add(responses.GET, url_2, json={"key": "the content 5"})
+
+        getter_file_content = {
+            target_1: {"refresh_interval": 10},
+            target_2: {"refresh_interval": 10}
+        }
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
+            http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
+
+            self._callback_value = 0
+
+            def callback(foo, bar, keyword1=0):
+                self._callback_value += foo + bar + keyword1
+
+            HttpGetter.add_callback_for_target(target_1, callback, 1, 2, keyword1=3)
+
+            http_getter_1.get_json()
+            assert self._callback_value == 0
+            http_getter_1.scheduler.run_all()
+            assert self._callback_value == 6
+            http_getter_1.get_json()
+            assert self._callback_value == 6
+            http_getter_1.scheduler.run_all()
+            http_getter_1.get_json()
+            assert self._callback_value == 12
+
+            http_getter_2.get_json()
+            assert self._callback_value == 12
+            http_getter_2.scheduler.run_all()
+            http_getter_2.get_json()
+            assert self._callback_value == 12
+            HttpGetter.add_callback_for_target(target_2, callback, 1, 0, keyword1=1)
+            http_getter_2.scheduler.run_all()
+            http_getter_2.get_json()
+            assert self._callback_value == 14
+
+    @staticmethod
+    def _get_cache_as_json(http_getter: HttpGetter) -> dict:
+        return json.loads(http_getter.cache.decode())

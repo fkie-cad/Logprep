@@ -43,6 +43,7 @@ from logprep.factory import Factory
 from logprep.metrics.metrics import CounterMetric, HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.configuration import Configuration
+from logprep.util.getter import refresh_getters
 from logprep.util.pipeline_profiler import PipelineProfiler
 
 
@@ -280,6 +281,7 @@ class Pipeline:
     def process_pipeline(self) -> PipelineResult | None:
         """Retrieve next event, process event with full pipeline and store or return results"""
         Component.run_pending_tasks()
+        refresh_getters()
         event = self._input.get_next(self._timeout)
         if not event:
             return
