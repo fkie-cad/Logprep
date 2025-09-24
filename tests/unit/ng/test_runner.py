@@ -249,3 +249,24 @@ class TestRunner:
         with mock.patch("warnings.simplefilter") as mock_simplefilter:
             runner.setup_logging()
             mock_simplefilter.assert_called_once_with("always", DeprecationWarning)
+
+    def test_stop_method(self, configuration):
+        runner = Runner.from_configuration(configuration)
+        runner.stop()
+        runner.run()
+
+        assert runner.should_exit
+
+    def test_process_none_event(self, configuration):
+        sender = mock.MagicMock()
+        sender.__iter__.return_value = [
+            None,
+        ]
+
+        runner = Runner(sender)
+        runner._configuration = mock.MagicMock()
+        runner._configuration.refresh = mock.MagicMock()
+
+        runner._process_events()
+
+        assert runner._configuration.refresh.call_count == 1
