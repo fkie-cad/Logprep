@@ -685,7 +685,9 @@ class Configuration:
         self._set_version_info_metric()
         self._set_config_refresh_interval(self.config_refresh_interval)
 
-    def __eq__(self, other: "Configuration"):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Configuration):
+            return NotImplemented
         if self.version != other.version:
             return False
         if self.as_dict() == other.as_dict():
@@ -734,6 +736,8 @@ class Configuration:
                 config_dict = config_getter.get_json()
             except (json.JSONDecodeError, ValueError):
                 config_dict = config_getter.get_yaml()
+            if not isinstance(config_dict, dict):
+                raise TypeError(f"Configuration must be of type dictionary")
             config = Configuration(**(config_dict | {"getter": config_getter}))
         except TypeError as error:
             raise InvalidConfigurationError(
@@ -853,7 +857,7 @@ class Configuration:
                 self._config_failure = False
                 return
 
-            changed_variable_values = self._check_if_variabl_values_changed(new_config)
+            changed_variable_values = self._check_if_variable_values_changed(new_config)
 
             if new_config.config_refresh_interval is None:
                 new_config.config_refresh_interval = self.config_refresh_interval
@@ -883,8 +887,8 @@ class Configuration:
             logger.error("Failed to reload configuration: %s", errors)
             self._metrics.number_of_config_refresh_failures += 1
 
-    def _check_if_variabl_values_changed(self, new_config):
-        def get_variable_values(value, variable_values: list = None):
+    def _check_if_variable_values_changed(self, new_config):
+        def get_variable_values(value, variable_values: list | None = None):
             if variable_values is None:
                 variable_values = []
 

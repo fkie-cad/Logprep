@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 
 import requests
 from attrs import define, field, validators
+from requests import Response
 from schedule import Scheduler
 from starlette import status
 
@@ -59,11 +60,11 @@ class GetterFactory:
         if protocol is None:
             protocol = "file"
         if protocol == "file":
-            return FileGetter(protocol=protocol, target=target)
+            return FileGetter(protocol=protocol, target=target)  # type: ignore
         if protocol == "http":
-            return HttpGetter(protocol=protocol, target=target)
+            return HttpGetter(protocol=protocol, target=target)  # type: ignore
         if protocol == "https":
-            return HttpGetter(protocol=protocol, target=target)
+            return HttpGetter(protocol=protocol, target=target)  # type: ignore
         raise GetterNotFoundError(f"No getter for protocol '{protocol}'")
 
     @staticmethod
@@ -102,13 +103,13 @@ class FileGetter(Getter):
 class DataSharedPerTarget:
     """Contains data that is shared for getters with the same target"""
 
-    cache: bytes = None
+    cache: bytes | None = None
 
-    scheduler: Scheduler = None
+    scheduler: Scheduler | None = None
 
-    refresh_interval: int = None
+    refresh_interval: int | None = None
 
-    etag: str = None
+    etag: str | None = None
 
     callbacks: list = []
 
@@ -173,7 +174,7 @@ class HttpGetter(Getter):
         """Returns the shared data for current target"""
         if self.target not in HttpGetter._shared:
             self.shared = DataSharedPerTarget()
-        return HttpGetter._shared.get(self.target)
+        return HttpGetter._shared[self.target]
 
     @shared.setter
     def shared(self, value: DataSharedPerTarget) -> None:
@@ -196,7 +197,7 @@ class HttpGetter(Getter):
         return f"{self.protocol}://{self.target}"
 
     @property
-    def etag(self) -> str:
+    def etag(self) -> str | None:
         """Returns the etag for the current target"""
         return self.shared.etag
 
@@ -206,7 +207,7 @@ class HttpGetter(Getter):
         self.shared.etag = value
 
     @property
-    def cache(self) -> bytes:
+    def cache(self) -> bytes | None:
         """Returns the cache for the current target"""
         return self.shared.cache
 
@@ -283,6 +284,8 @@ class HttpGetter(Getter):
                 self._update_cache()
         else:
             self._update_cache()
+        if self.cache is None:
+            raise ValueError("Cache is empty")
         return self.cache
 
     def _refresh(self) -> None:
@@ -293,10 +296,13 @@ class HttpGetter(Getter):
             callback["function"](*callback["args"], **callback["kwargs"])
 
     def _update_cache(self) -> bool:
-        self.cache, not_modified = self._get_raw()
+        response = self._do_request()
+        not_modified: bool = response.status_code == status.HTTP_304_NOT_MODIFIED
+        if not not_modified:
+            self.cache = response.content
         return not_modified
 
-    def _get_raw(self) -> tuple[bytes, bool]:
+    def _do_request(self) -> Response:
         """Gets the content from a http server via an uri"""
         domain = urlparse(self.url).netloc
         scheme = urlparse(self.url).scheme
@@ -326,10 +332,7 @@ class HttpGetter(Getter):
         if "etag" in resp.headers:
             self.etag = resp.headers.get("etag")
 
-        not_modified: bool = resp.status_code == status.HTTP_304_NOT_MODIFIED
-        if not_modified:
-            return self.cache, not_modified
-        return resp.content, not_modified
+        return resp
 
     @classmethod
     def refresh(cls):

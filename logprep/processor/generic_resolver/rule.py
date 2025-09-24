@@ -182,7 +182,7 @@ class GenericResolverRule(FieldManagerRule):
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
         @property
-        def _file_path(self) -> str:
+        def _file_path(self):
             """Returns the file path"""
             return self.resolve_from_file.get("path")
 
