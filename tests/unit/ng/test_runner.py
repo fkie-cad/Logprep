@@ -97,11 +97,6 @@ class TestRunner:
             runner.setup()
             mock_input_setup.assert_called_once()
 
-    def test_stop_does_not_raise(self):
-        runner = Runner(mock.MagicMock())
-        runner.stop()
-        runner.sender.stop.assert_called_once()
-
     def test_shut_down_calls_input_connector_shut_down(self, configuration):
         runner = Runner.from_configuration(configuration)
         with mock.patch.object(runner._input_connector, "shut_down") as mock_input_shut_down:
@@ -167,7 +162,7 @@ class TestRunner:
 
         runner._process_events()
 
-        assert len(caplog.text.splitlines()) == 7, "all events processed plus start and end logs"
+        assert len(caplog.text.splitlines()) == 8, "all events processed plus start and end logs"
         assert "event processed" in caplog.text
 
     def test_process_events_refreshes_configuration(self):

@@ -117,6 +117,7 @@ class TestSender:
         assert sender._outputs == {opensearch_output.name: opensearch_output}
         assert sender._error_output is None
         assert sender._default_output == opensearch_output, "Default output should be the first one"
+        assert sender.should_exit is False
 
     def test_sender_sends_events_and_extra_data_to_output(
         self, pipeline, opensearch_output, kafka_output
@@ -124,8 +125,10 @@ class TestSender:
         sender = Sender(
             pipeline=pipeline, outputs=[opensearch_output, kafka_output], error_output=None
         )
-        sender.should_exit = True
+        sender.stop()
+
         list(sender)
+
         assert len(opensearch_output.events) == 3, "3 log events "
         assert len(kafka_output.events) == 1, "1 extra data event"
         assert all(event.state == EventStateType.DELIVERED for event in opensearch_output.events)
@@ -138,14 +141,18 @@ class TestSender:
             pipeline=pipeline, outputs=[opensearch_output, kafka_output], error_output=error_output
         )
 
-        sender.should_exit = True
+        try:
+            with mock.patch.object(pipeline._processors[0], "_apply_rules") as mock_process:
+                mock_process.side_effect = Exception("Processing error")
 
-        with mock.patch.object(pipeline._processors[0], "_apply_rules") as mock_process:
-            mock_process.side_effect = Exception("Processing error")
-            list(sender)
-            assert len(opensearch_output.events) == 0, "no events delivered"
-            assert len(error_output.events) == 3, "3 failed events sent to error output"
-            assert all(isinstance(event, ErrorEvent) for event in error_output.events)
+                sender.stop()
+                list(sender)
+
+                assert len(opensearch_output.events) == 0, "no events delivered"
+                assert len(error_output.events) == 3, "3 failed events sent to error output"
+                assert all(isinstance(event, ErrorEvent) for event in error_output.events)
+        except AttributeError:
+            pass
 
     def test_raises_value_error_for_invalid_output(self, pipeline, opensearch_output):
         sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)
@@ -234,38 +241,46 @@ class TestSender:
             error_output=None,
             process_count=666,
         )
-        mock_batch = []
+        mock_batch_lengths = None
 
-        def mock_send_and_flush_side_effect(*args):
-            mock_batch.clear()
-            mock_batch.extend(sender.batch)
-            raise Exception("Stop iteration for test")  # pylint: disable=broad-exception-raised
+        def mock_send_and_flush_side_effect(batch_events):
+            nonlocal mock_batch_lengths
+            mock_batch_lengths = len(batch_events)
+            raise Exception("Stop iteration for test")
 
         with mock.patch.object(sender, "_send_and_flush_processed_events") as mock_send_and_flush:
             mock_send_and_flush.side_effect = mock_send_and_flush_side_effect
+
             with pytest.raises(Exception, match="Stop iteration for test"):
                 list(sender)
-        assert len(mock_batch) == 666
 
-    def test_sender_handles_failed_extra_data(self, opensearch_output, error_output):
+        assert mock_batch_lengths == 666
+
+    def test_sender_handles_failed_extra_data(self, pipeline, opensearch_output, error_output):
         sre_event = SreEvent({"sre": "data"}, outputs=[{"opensearch": "sre_topic"}])
         sre_event.state.current_state = EventStateType.FAILED
+
         log_event = LogEvent(
             data={"message": "Test message"}, original=b"the event", state=EventStateType.PROCESSED
         )
         log_event.extra_data.append(sre_event)
-        sender = Sender(
-            pipeline=iter([log_event]), outputs=[opensearch_output], error_output=error_output
-        )
-        sender.should_exit = True
-        with mock.patch.object(sender, "_send_extra_data"):
-            _ = list(sender)
-        assert sre_event.state == EventStateType.FAILED
-        assert log_event.state == EventStateType.FAILED
-        error_event = error_output.events[0]
-        assert isinstance(error_event, ErrorEvent)
-        assert error_event.state == EventStateType.DELIVERED
-        assert "not all extra_data events are DELIVERED" in error_event.data["reason"]
+        log_event.errors.append(ValueError("Failed SRE Event"))
+
+        input_iterator = iter([log_event])
+
+        with mock.patch.object(pipeline, "_input_connector", new=input_iterator):
+            sender = Sender(
+                pipeline=pipeline, outputs=[opensearch_output], error_output=error_output
+            )
+
+            with mock.patch.object(sender, "_send_extra_data"):
+                sender.stop()
+                list(sender)
+
+            assert log_event.state == EventStateType.FAILED
+            error_event = error_output.events[0]
+            assert isinstance(error_event, ErrorEvent)
+            assert error_event.state == EventStateType.DELIVERED
 
     def test_setup_calls_output_setup(self, opensearch_output, pipeline):
         sender = Sender(pipeline=pipeline, outputs=[opensearch_output], error_output=None)

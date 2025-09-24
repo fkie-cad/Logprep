@@ -103,6 +103,7 @@ class Runner:
         while True:
             if self.should_exit:
                 logger.debug("Runner exiting")
+                self.shut_down()
                 break
             try:
                 logger.debug("Runner processing loop")
@@ -137,6 +138,8 @@ class Runner:
 
     def shut_down(self) -> None:
         """Shut down the log processing pipeline."""
+
+        self.stop()
         self.sender.shut_down()
         if self._input_connector:
             self._input_connector.shut_down()
@@ -145,9 +148,7 @@ class Runner:
     def stop(self) -> None:
         """Stop the log processing pipeline."""
         logger.info("Stopping runner and exiting...")
-        self.sender.stop()
         self.should_exit = True
-        # raise SystemExit(0)
 
     def setup_logging(self) -> None:
         """Setup the logging configuration.
@@ -172,3 +173,4 @@ class Runner:
             self._input_connector.setup()
         self._configuration.schedule_config_refresh()
         logger.debug("Finished reloading log processing pipeline.")
+        self.should_exit = False

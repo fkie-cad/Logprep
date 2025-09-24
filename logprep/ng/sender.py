@@ -38,7 +38,6 @@ class Sender(Iterator):
         self._default_output = [output for output in outputs if output.default][0]
         self._error_output = error_output
         self.batch_size = process_count
-        self.batch: list[LogEvent] = []
         self.should_exit = False
 
     def __next__(self) -> LogEvent | ErrorEvent:
@@ -47,22 +46,22 @@ class Sender(Iterator):
 
     def __iter__(self) -> Generator[LogEvent | ErrorEvent, None, None]:
         """Iterate over processed events."""
-        while 1:
+        while True:
             logger.debug("Sender iterating")
-            self.batch.clear()
-            self.batch += list(islice(self.pipeline, self.batch_size))
-            self._send_and_flush_processed_events()
+            batch = list(islice(self.pipeline, self.batch_size))
+            self._send_and_flush_processed_events(batch_events=batch)
             if self._error_output:
-                self._send_and_flush_failed_events()
+                self._send_and_flush_failed_events(batch_events=batch)
             if self.should_exit:
                 logger.debug("Sender exiting")
+                self.shut_down()
                 return
-            yield from self.batch
+            yield from batch
 
-    def _send_and_flush_failed_events(self) -> None:
+    def _send_and_flush_failed_events(self, batch_events: list[LogEvent]) -> None:
         error_events = [
             self._send_failed(event)
-            for event in self.batch
+            for event in batch_events
             if event is not None and event.state == EventStateType.FAILED
         ]
         if not error_events:
@@ -74,10 +73,10 @@ class Sender(Iterator):
         for error_event in failed_error_events:
             logger.error("Error during sending to error output: %s", error_event)
 
-    def _send_and_flush_processed_events(self):
+    def _send_and_flush_processed_events(self, batch_events: list[LogEvent]) -> None:
         processed_events = [
             self._send_processed(event)
-            for event in self.batch
+            for event in batch_events
             if event is not None and event.state == EventStateType.PROCESSED
         ]
         if not processed_events:
@@ -122,11 +121,14 @@ class Sender(Iterator):
 
     def shut_down(self) -> None:
         """Shutdown all outputs gracefully."""
+
+        self.stop()
         for _, output in self._outputs.items():
             output.shut_down()
         if self._error_output:
             self._error_output.shut_down()
         logger.debug("All outputs have been shut down.")
+
         self.pipeline.shut_down()
 
     def setup(self) -> None:
@@ -139,6 +141,12 @@ class Sender(Iterator):
         self.pipeline.setup()
 
     def stop(self) -> None:
-        """Signal the sender to stop iterating and exit gracefully."""
+        """Request the sender to stop iteration.
+
+        Calling stop() sets the should_exit flag. The sender will finish processing
+        the current batch and exit on the next iteration (i.e., the next next() call).
+        If you need to enforce an immediate stop, use shut_down() instead.
+        """
+
         self.should_exit = True
         logger.debug("Sender stop signal received.")
