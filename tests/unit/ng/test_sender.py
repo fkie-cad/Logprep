@@ -219,6 +219,23 @@ class TestSender:
         assert error_event.data["original"] == "the event"
         assert error_event.state.current_state == EventStateType.PROCESSED
 
+    def test_sender_next_raises_not_implemented_error(self):
+        output_mock = mock.MagicMock()
+        sender = Sender(
+            pipeline=iter([]), outputs=[output_mock], error_output=None, process_count=623
+        )
+
+        with pytest.raises(NotImplementedError):
+            next(sender)
+
+    def test_send_and_flush_failed_events_early_exiting_with_empty_error_list(self):
+        output_mock = mock.MagicMock()
+        sender = Sender(
+            pipeline=iter([]), outputs=[output_mock], error_output=None, process_count=623
+        )
+
+        sender._send_and_flush_failed_events(batch_events=[])
+
     def test_sender_sets_message_backlog_size(self):
         output_mock = mock.MagicMock()
         sender = Sender(
