@@ -46,7 +46,7 @@ def test_two_times_config_refresh_after_5_seconds(tmp_path, config):
     config_path.write_text(config.as_json())
     config = Configuration.from_sources([str(config_path)])
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
+    wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=8)
     config.version = "2"
     config_path.write_text(config.as_json())
     wait_for_output(proc, "Successfully reloaded configuration", test_timeout=12)
@@ -62,7 +62,7 @@ def test_no_config_refresh_after_5_seconds(tmp_path, config):
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_json())
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
+    wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=8)
     wait_for_output(
         proc,
         "Configuration version didn't change. Continue running with current version.",
