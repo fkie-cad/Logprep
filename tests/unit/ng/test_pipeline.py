@@ -75,6 +75,12 @@ class TestPipeline:
         assert isinstance(pipeline, Pipeline)
         assert isinstance(pipeline, Iterator)
 
+    def test_pipeline_next_raises_not_implemented_error(self, input_connector, processors):
+        pipeline = Pipeline(input_connector, processors)
+
+        with pytest.raises(NotImplementedError):
+            next(pipeline)
+
     def test_process_pipeline_success(self, input_connector, processors):
         processed_events = list(Pipeline(input_connector, processors))
 
