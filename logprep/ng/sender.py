@@ -127,9 +127,10 @@ class Sender(Iterator):
             output.shut_down()
         if self._error_output:
             self._error_output.shut_down()
-        logger.debug("All outputs have been shut down.")
+        logger.info("All outputs have been shut down.")
 
         self.pipeline.shut_down()
+        logger.info("Sender has been shut down.")
 
     def setup(self) -> None:
         """Setup all outputs."""
@@ -137,7 +138,7 @@ class Sender(Iterator):
             output.setup()
         if self._error_output:
             self._error_output.setup()
-        logger.debug("All outputs have been set up.")
+        logger.info("All outputs have been set up.")
         self.pipeline.setup()
 
     def stop(self) -> None:
@@ -149,4 +150,4 @@ class Sender(Iterator):
         """
 
         self.should_exit = True
-        logger.debug("Sender stop signal received.")
+        logger.info("Sender stop signal received.")

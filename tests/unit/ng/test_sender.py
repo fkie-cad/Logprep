@@ -243,7 +243,7 @@ class TestSender:
         )
         assert sender.batch_size == 623
 
-    def test_sender_uses_process_count(self):
+    def test_sender_respects_process_count(self):
         output_mock = mock.MagicMock()
         sender = Sender(
             pipeline=iter(
@@ -269,6 +269,37 @@ class TestSender:
             mock_send_and_flush.side_effect = mock_send_and_flush_side_effect
 
             with pytest.raises(Exception, match="Stop iteration for test"):
+                list(sender)
+
+        assert mock_batch_lengths == 666
+
+    def test_sender_respects_process_count_even_if_stopped(self):
+        output_mock = mock.MagicMock()
+        sender = Sender(
+            pipeline=iter(
+                [
+                    LogEvent(
+                        {"message": f"Log message {i}"}, original=b"", state=EventStateType.RECEIVED
+                    )
+                    for i in range(6666)
+                ]
+            ),
+            outputs=[output_mock],
+            error_output=None,
+            process_count=666,
+        )
+        mock_batch_lengths = None
+
+        def mock_send_and_flush_side_effect(batch_events):
+            nonlocal mock_batch_lengths
+            mock_batch_lengths = len(batch_events)
+            raise Exception("Stop iteration for test")
+
+        with mock.patch.object(sender, "_send_and_flush_processed_events") as mock_send_and_flush:
+            mock_send_and_flush.side_effect = mock_send_and_flush_side_effect
+
+            with pytest.raises(Exception, match="Stop iteration for test"):
+                sender.stop()
                 list(sender)
 
         assert mock_batch_lengths == 666

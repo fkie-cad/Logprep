@@ -77,10 +77,12 @@ class Pipeline(Iterator):
         """Shutdown the pipeline gracefully."""
         for processor in self._processors:
             processor.shut_down()
-        logger.debug("Pipeline has been shut down.")
+
+        logger.info("All processors has been shut down.")
+        logger.info("Pipeline has been shut down.")
 
     def setup(self) -> None:
         """Setup the pipeline components."""
         for processor in self._processors:
             processor.setup()
-        logger.debug("Pipeline has been set up.")
+        logger.info("Pipeline has been set up.")

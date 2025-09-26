@@ -164,7 +164,7 @@ class Runner:
 
     def reload(self) -> None:
         """Reload the log processing pipeline."""
-        logger.debug("Reloading log processing pipeline...")
+        logger.info("Reloading log processing pipeline...")
         self._config_version = self._configuration.version
         self.sender.shut_down()
         self.sender = Runner.get_sender(self._configuration)
@@ -172,5 +172,5 @@ class Runner:
         if self._input_connector:
             self._input_connector.setup()
         self._configuration.schedule_config_refresh()
-        logger.debug("Finished reloading log processing pipeline.")
+        logger.info("Finished reloading log processing pipeline.")
         self.should_exit = False
