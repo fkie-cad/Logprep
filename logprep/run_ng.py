@@ -61,7 +61,8 @@ def run(configs: tuple[str], version=None) -> None:
     CONFIG is a path to configuration file (filepath or URL).
     """
     configuration = _get_configuration(configs)
-    runner = Runner.from_configuration(configuration)
+    # runner = Runner.from_configuration(configuration)
+    runner = Runner(configuration)
     runner.setup_logging()
     if version:
         _print_version(configuration)

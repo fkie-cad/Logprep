@@ -7,12 +7,13 @@ import logging
 import logging.config
 import os
 import warnings
-from typing import Iterator
+from typing import Iterator, cast
 
 from attrs import asdict
 
 from logprep.factory import Factory
 from logprep.ng.abc.input import Input
+from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
@@ -23,130 +24,252 @@ from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 logger = logging.getLogger("Runner")
 
 
-class LogprepReloadException(Exception):
-    """Exception raised when the log processing pipeline needs to be reloaded."""
-
-
 class Runner:
-    """Class responsible for running the log processing pipeline."""
+    """Class, a singleton runner, responsible for running the log processing pipeline."""
 
     instance: "Runner | None" = None
 
-    _input_connector: Input | None = None
+    # _input_connector: Input | None = None
 
-    _configuration: Configuration
+    # _configuration: Configuration
 
-    _config_version: str
+    # _config_version: str
 
     def __new__(cls, sender: Sender) -> "Runner":
         """Create a new Runner singleton."""
+
         if cls.instance is None:
             cls.instance = super().__new__(cls)
+
         return cls.instance
 
-    def __init__(self, sender: Sender) -> None:
-        self.sender = sender
-        self.should_exit = False
+    def __init__(self, configuration: Configuration) -> None:
+        """Initialize the runner from the given `configuration`.
 
-    @classmethod
-    def from_configuration(cls, configuration: Configuration) -> "Runner":
-        """Factory method to build and setup the Runner and its components"""
-        sender = cls.get_sender(configuration)
-        runner = cls(sender)
-        runner._configuration = configuration
-        runner._config_version = configuration.version
-        runner.setup()
-        return runner
+        Component wiring is deferred to `setup()` to preserve the required init order.
+        """
 
-    @classmethod
-    def get_sender(cls, configuration) -> Sender:
-        """Create the sender for the log processing pipeline."""
-        input_iterator: Iterator = iter([])
-        cls._input_connector = Factory.create(configuration.input) if configuration.input else None
-        if cls._input_connector is not None:
-            event_backlog = SetEventBacklog()
-            cls._input_connector.event_backlog = event_backlog
-            timeout = configuration.timeout
-            input_iterator = cls._input_connector(timeout=timeout)
-        output_connectors = [
+        self.configuration = configuration
+        self._running_config_version = configuration.version
+
+        # Initialized in `setup()`; updated by runner logic thereafter.
+        self.should_exit = None
+        self.input_connector = None
+        self.output_connector = None
+        self.error_output = None
+        self.processors = None
+        self.pipeline = None
+        self.sender = None
+
+        self.setup()
+
+    def _initialize_and_setup_input_connectors(self):
+        self.input_connector = (
+            Factory.create(self.configuration.input) if self.configuration.input else None
+        )
+        if self.input_connector is not None:
+            self.input_connector.event_backlog = SetEventBacklog()
+            self.input_connector.setup()
+
+    def _initialize_and_setup_output_connectors(self):
+        self.output_connectors = [
             Factory.create({output_name: output})
-            for output_name, output in configuration.output.items()
+            for output_name, output in self.configuration.output.items()
         ]
-        error_output = (
-            Factory.create(configuration.error_output) if configuration.error_output else None
-        )
-        processors = [
-            Factory.create(processor_config) for processor_config in configuration.pipeline
-        ]
-        process_count = configuration.process_count
 
-        pipeline = Pipeline(
-            input_connector=input_iterator,
-            processors=processors,
-            process_count=process_count,
+        for i, output_connector in enumerate(self.output_connectors):
+            if output_connector is not None:
+                output_connector.setup()
+            else:
+                logger.warning(
+                    f"Could not setup one of the output connectors ({i}/{len(self.output_connectors)})."
+                )
+
+    def _initialize_and_setup_error_output(self):
+        self.error_output = (
+            Factory.create(self.configuration.error_output)
+            if self.configuration.error_output
+            else None
         )
-        sender = Sender(
-            pipeline=pipeline,
-            outputs=output_connectors,
-            error_output=error_output,
-            process_count=process_count,
+
+        if self.error_output is not None:
+            self.error_output.setup()
+
+    def _initialize_and_setup_processors(self):
+        self.processors = [
+            Factory.create(processor_config) for processor_config in self.configuration.pipeline
+        ]
+        for i, processor in enumerate(self.processors):
+            if processor is not None:
+                processor.setup()
+            else:
+                logger.warning(
+                    f"Could not setup one of the processors ({i}/{len(self.output_connectors)})."
+                )
+
+    def _initialize_and_setup_pipeline(self):
+        self.pipeline = Pipeline(
+            input_connector=iter(self.input_connector),
+            processors=self.processors,
+            process_count=self.configuration.process_count,
         )
-        return sender
+        self.pipeline.setup()
+
+    def _initialize_and_setup_sender(self):
+        self.sender = Sender(
+            pipeline=self.pipeline,
+            outputs=cast(list[Output], self.output_connectors),
+            error_output=self.error_output,
+            process_count=self.configuration.process_count,
+        )
+        self.sender.setup()
+
+    # def __init__(self, sender: Sender) -> None:
+    #    self.sender = sender
+    #    self.should_exit = False
+
+    # @classmethod
+    # def from_configuration(cls, configuration: Configuration) -> "Runner":
+    #    """Factory method to build and setup the Runner and its components"""
+    #    sender = cls.get_sender(configuration)
+    #    runner = cls(sender)
+    #    runner._configuration = configuration
+    #    runner._config_version = configuration.version
+    #    runner.setup()
+    #    return runner
+
+    # @classmethod
+    # def get_sender(cls, configuration) -> Sender:
+    #    """Create the sender for the log processing pipeline."""
+    #    input_iterator: Iterator = iter([])
+    #    cls._input_connector = Factory.create(configuration.input) if configuration.input else None
+    #    if cls._input_connector is not None:
+    #        event_backlog = SetEventBacklog()
+    #        cls._input_connector.event_backlog = event_backlog
+    #        timeout = configuration.timeout
+    #        input_iterator = cls._input_connector(timeout=timeout)
+    #    output_connectors = [
+    #        Factory.create({output_name: output})
+    #        for output_name, output in configuration.output.items()
+    #    ]
+    #    error_output = (
+    #        Factory.create(configuration.error_output) if configuration.error_output else None
+    #    )
+    #    processors = [
+    #        Factory.create(processor_config) for processor_config in configuration.pipeline
+    #    ]
+    #    process_count = configuration.process_count
+
+    #    pipeline = Pipeline(
+    #        input_connector=input_iterator,
+    #        processors=processors,
+    #        process_count=process_count,
+    #    )
+    #    sender = Sender(
+    #        pipeline=pipeline,
+    #        outputs=output_connectors,
+    #        error_output=error_output,
+    #        process_count=process_count,
+    #    )
+    #    return sender
 
     def run(self) -> None:
-        """Run the log processing pipeline."""
+        """Cli function to run the log processing pipeline."""
 
         # TODO:
         # * integration tests
 
-        self._configuration.schedule_config_refresh()
+        self.configuration.schedule_config_refresh()
+
         while True:
             if self.should_exit:
-                logger.debug("Runner exiting")
-                self.shut_down()
+                logger.debug("Runner exiting.")
                 break
-            try:
-                logger.debug("Runner processing loop")
-                self._process_events()
-            except LogprepReloadException:
+
+            logger.debug("Runner processing loop.")
+
+            logger.debug("Check configuration change before processing a batch of events.")
+            self.configuration.refresh()
+
+            if self.configuration.version != self._running_config_version:
                 self.reload()
-        logger.debug("end log processing")
+
+            logger.debug("Process next batch of events.")
+            self._process_events()
+
+        self.shut_down()
+        logger.debug("End log processing.")
 
     def _process_events(self) -> None:
-        logger.debug("start log processing")
-        sender = self.sender
-        configuration = self._configuration
-        config_version = configuration.version
-        for event in sender:
-            configuration.refresh()
-            if configuration.version != config_version:
-                raise LogprepReloadException("Configuration change detected, reloading...")
+        """Process a batch of events got from sender iterator."""
+
+        logger.debug("Start log processing.")
+
+        logger.debug(f"Get batch of events from sender ({self.sender.batch_size=}).")
+        for event in self.sender:
             if event is None:
                 continue
+
             if event.state == EventStateType.FAILED:
                 logger.error("event failed: %s", event)
             else:
                 logger.debug("event processed: %s", event.state)
-        logger.debug("finished log processing")
-        self.shut_down()
+
+        logger.debug("Finished processing batch of events.")
 
     def setup(self) -> None:
-        """Setup the runner and its components."""
-        self.sender.setup()
-        if self._input_connector:
-            self._input_connector.setup()
+        """Set up the runner, its components, and required runner attributes.
+
+        Note:
+            Keep the order of `_initialize_...` calls, and ensure that certain
+            runner attributes are set correctly to maintain the expected logic.
+        """
+
+        self.should_exit = False
+
+        # init and setup components in order:
+        self._initialize_and_setup_input_connectors()
+        self._initialize_and_setup_output_connectors()
+        self._initialize_and_setup_error_output()
+        self._initialize_and_setup_processors()
+        self._initialize_and_setup_sender()
 
     def shut_down(self) -> None:
-        """Shut down the log processing pipeline."""
+        """Shut down the log processing pipeline.
 
-        self.stop()
+        Note:
+            Keep the order of `...shut_down()` calls, and ensure that certain
+            runner attributes are set correctly to maintain the expected logic.
+        """
+
+        self.should_exit = True
+
+        # shutdowns in reversed order of setup():
         self.sender.shut_down()
-        if self._input_connector:
-            self._input_connector.shut_down()
+
+        if self.error_output is not None:
+            self.error_output.shut_down()
+
+        for processor in self.processors:
+            if processor is not None:
+                processor.shut_down()
+
+        for output_connector in self.output_connectors:
+            if output_connector is not None:
+                output_connector.shut_down()
+
+        for processor in self.processors:
+            if processor is not None:
+                processor.shut_down()
+
+        if self.input_connector is not None:
+            self.input_connector.shut_down()
+
         logger.info("Runner shut down complete.")
 
     def stop(self) -> None:
-        """Stop the log processing pipeline."""
+        """Cli function to stop the log processing pipeline."""
+
         logger.info("Stopping runner and exiting...")
         self.should_exit = True
 
@@ -156,21 +279,21 @@ class Runner:
         We have to write the configuration to the environment variable :code:`LOGPREP_LOG_CONFIG` to
         make it available for the uvicorn server in :code:'logprep.util.http'.
         """
+
         warnings.simplefilter("always", DeprecationWarning)
         logging.captureWarnings(True)
-        log_config = DEFAULT_LOG_CONFIG | asdict(self._configuration.logger)
+        log_config = DEFAULT_LOG_CONFIG | asdict(self.configuration.logger)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
         logging.config.dictConfig(log_config)
 
     def reload(self) -> None:
         """Reload the log processing pipeline."""
+
         logger.info("Reloading log processing pipeline...")
-        self._config_version = self._configuration.version
-        self.sender.shut_down()
-        self.sender = Runner.get_sender(self._configuration)
-        self.sender.setup()
-        if self._input_connector:
-            self._input_connector.setup()
-        self._configuration.schedule_config_refresh()
+
+        self.shut_down()
+        self.setup()
+
+        self._running_config_version = self.configuration.version
+        self.configuration.schedule_config_refresh()
         logger.info("Finished reloading log processing pipeline.")
-        self.should_exit = False
