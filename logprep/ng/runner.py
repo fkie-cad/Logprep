@@ -7,12 +7,11 @@ import logging
 import logging.config
 import os
 import warnings
-from typing import Iterator, cast
+from typing import cast
 
 from attrs import asdict
 
 from logprep.factory import Factory
-from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.set_event_backlog import SetEventBacklog
@@ -70,6 +69,8 @@ class Runner:
         if self.input_connector is not None:
             self.input_connector.event_backlog = SetEventBacklog()
             self.input_connector.setup()
+        else:
+            logger.warning("No input connector configured.")
 
     def _initialize_and_setup_output_connectors(self):
         self.output_connectors = [
@@ -85,7 +86,7 @@ class Runner:
                     f"Could not setup one of the output connectors ({i}/{len(self.output_connectors)})."
                 )
 
-    def _initialize_and_setup_error_output(self):
+    def _initialize_and_setup_error_outputs(self):
         self.error_output = (
             Factory.create(self.configuration.error_output)
             if self.configuration.error_output
@@ -94,11 +95,17 @@ class Runner:
 
         if self.error_output is not None:
             self.error_output.setup()
+        else:
+            logger.warning("No error output configured.")
 
     def _initialize_and_setup_processors(self):
         self.processors = [
             Factory.create(processor_config) for processor_config in self.configuration.pipeline
         ]
+
+        if not self.processors:
+            logger.warning("No processor configured.")
+
         for i, processor in enumerate(self.processors):
             if processor is not None:
                 processor.setup()
@@ -108,8 +115,9 @@ class Runner:
                 )
 
     def _initialize_and_setup_pipeline(self):
+        input_iterator = self.input_connector(timeout=self.configuration.timeout)
         self.pipeline = Pipeline(
-            input_connector=iter(self.input_connector),
+            input_connector=input_iterator,
             processors=self.processors,
             process_count=self.configuration.process_count,
         )
@@ -230,8 +238,9 @@ class Runner:
         # init and setup components in order:
         self._initialize_and_setup_input_connectors()
         self._initialize_and_setup_output_connectors()
-        self._initialize_and_setup_error_output()
+        self._initialize_and_setup_error_outputs()
         self._initialize_and_setup_processors()
+        self._initialize_and_setup_pipeline()
         self._initialize_and_setup_sender()
 
     def shut_down(self) -> None:
@@ -246,6 +255,7 @@ class Runner:
 
         # shutdowns in reversed order of setup():
         self.sender.shut_down()
+        self.pipeline.shut_down()
 
         if self.error_output is not None:
             self.error_output.shut_down()

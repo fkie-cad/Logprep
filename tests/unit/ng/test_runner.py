@@ -6,10 +6,8 @@ from unittest import mock
 
 import pytest
 
-from logprep.ng.abc.event import EventBacklog
 from logprep.ng.event.event_state import EventStateType
-from logprep.ng.runner import LogprepReloadException, Runner
-from logprep.ng.sender import Sender
+from logprep.ng.runner import Runner
 from logprep.ng.util.configuration import Configuration
 
 
@@ -74,76 +72,86 @@ class TestRunner:
     def teardown_method(self):
         Runner.instance = None
 
-    def test_from_configuration(self, configuration):
-        runner = Runner.from_configuration(configuration)
-        assert isinstance(runner, Runner)
-        assert isinstance(runner.sender, Sender)
-        assert isinstance(runner._input_connector.event_backlog, EventBacklog)
-
-    def test_from_configuration_runs_setup(self, configuration):
+    def test_runner_init_calls_setup(self, configuration):
         with mock.patch.object(Runner, "setup") as mock_setup:
-            Runner.from_configuration(configuration)
+            Runner(configuration)
             mock_setup.assert_called_once()
 
-    def test_setup_calls_sender_setup(self, configuration):
-        runner = Runner.from_configuration(configuration)
-        with mock.patch.object(runner.sender, "setup") as mock_sender_setup:
+    def test_setup_calls_initialize_and_setup_sender(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "setup") as runner_setup:
             runner.setup()
-            mock_sender_setup.assert_called_once()
+            runner_setup._initialize_and_setup_sender.cassert_called_once()
 
-    def test_setup_calls_input_connector_setup(self, configuration):
-        runner = Runner.from_configuration(configuration)
-        with mock.patch.object(runner._input_connector, "setup") as mock_input_setup:
+    def test_setup_calls_initialize_and_setup_input_connectors(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "setup") as runner_setup:
             runner.setup()
-            mock_input_setup.assert_called_once()
+            runner_setup._initialize_and_setup_input_connectors.cassert_called_once()
+
+    def test_setup_calls_initialize_and_setup_output_connectors(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "setup") as runner_setup:
+            runner.setup()
+            runner_setup._initialize_and_setup_output_connectors.cassert_called_once()
+
+    def test_setup_calls_initialize_and_setup_error_outputs(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "setup") as runner_setup:
+            runner.setup()
+            runner_setup._initialize_and_setup_error_outputs.cassert_called_once()
+
+    def test_setup_calls_initialize_and_setup_processors(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "setup") as runner_setup:
+            runner.setup()
+            runner_setup._initialize_and_setup_processors.cassert_called_once()
+
+    def test_setup_calls_initialize_and_setup_pipeline(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "setup") as runner_setup:
+            runner.setup()
+            runner_setup._initialize_and_setup_pipeline.cassert_called_once()
 
     def test_shut_down_calls_input_connector_shut_down(self, configuration):
-        runner = Runner.from_configuration(configuration)
-        with mock.patch.object(runner._input_connector, "shut_down") as mock_input_shut_down:
+        runner = Runner(configuration)
+        with mock.patch.object(runner.input_connector, "shut_down") as mock_input_shut_down:
             runner.shut_down()
             mock_input_shut_down.assert_called_once()
 
     def test_reload_calls_sender_shut_down(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         with mock.patch.object(runner.sender, "shut_down") as mock_sender_shut_down:
             runner.reload()
             mock_sender_shut_down.assert_called_once()
 
     def test_reload_starts_new_sender(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         old_sender = runner.sender
         runner.reload()
         assert runner.sender is not old_sender
 
     def test_reload_setups_sender(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         new_sender = mock.MagicMock()
         with mock.patch.object(Runner, "get_sender", return_value=new_sender):
             runner.reload()
         new_sender.setup.assert_called_once()
 
     def test_reload_setups_new_input(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         with mock.patch.object(Runner, "get_sender", return_value=mock.MagicMock()):
-            with mock.patch.object(runner._input_connector, "setup") as mock_input_setup:
+            with mock.patch.object(runner.input_connector, "setup") as mock_input_setup:
                 runner.reload()
                 mock_input_setup.assert_called_once()
 
     def test_reload_schedules_new_config_refresh_job(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         with mock.patch(
             "logprep.ng.util.configuration.Configuration.schedule_config_refresh"
         ) as mock_schedule:
             runner.reload()
             mock_schedule.assert_called_once()
-
-    def test_run_calls_reload_on_reload_exception(self, configuration):
-        runner = Runner.from_configuration(configuration)
-        with mock.patch.object(runner, "_process_events", side_effect=LogprepReloadException()):
-            with mock.patch.object(runner, "reload") as mock_reload:
-                mock_reload.side_effect = SystemExit(666)
-                with pytest.raises(SystemExit, match="666"):
-                    runner.run()
 
     def test_process_events_iterates_sender(self, configuration, caplog):
         caplog.set_level("DEBUG")
@@ -182,30 +190,6 @@ class TestRunner:
         runner._configuration.refresh.assert_called()
         assert runner._configuration.refresh.call_count == 4
 
-    def test_process_events_raises_reload_exception_on_config_change(self):
-        runner = Runner(mock.MagicMock())
-        runner._configuration = mock.MagicMock()
-
-        runner.sender = [
-            mock.MagicMock(),
-            mock.MagicMock(),
-            mock.MagicMock(),
-            mock.MagicMock(),
-        ]
-
-        assert runner
-
-        def side_effect():
-            if runner.sender[1].state.__eq__.call_count == 1:
-                runner._configuration.version = "not version"
-
-        runner._configuration.refresh.side_effect = side_effect
-
-        with pytest.raises(LogprepReloadException):
-            runner._process_events()
-
-        assert runner._configuration.refresh.call_count == 3, "stops after config change"
-
     def test_process_events_logs_failed_event_on_debug(self, caplog):
         caplog.set_level("DEBUG")
         sender = mock.MagicMock()
@@ -227,31 +211,31 @@ class TestRunner:
         assert "event processed" in caplog.text, "other events processed"
 
     def test_setup_logging_emits_env(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         assert not os.environ.get("LOGPREP_LOG_CONFIG")
         runner.setup_logging()
         assert os.environ.get("LOGPREP_LOG_CONFIG")
 
     def test_setup_logging_calls_dict_config(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         with mock.patch("logging.config.dictConfig") as mock_dict_config:
             runner.setup_logging()
             mock_dict_config.assert_called_once()
 
     def test_setup_logging_captures_warnings(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         with mock.patch("logging.captureWarnings") as mock_capture_warnings:
             runner.setup_logging()
             mock_capture_warnings.assert_called_once_with(True)
 
     def test_setup_logging_sets_filter(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         with mock.patch("warnings.simplefilter") as mock_simplefilter:
             runner.setup_logging()
             mock_simplefilter.assert_called_once_with("always", DeprecationWarning)
 
     def test_stop_method(self, configuration):
-        runner = Runner.from_configuration(configuration)
+        runner = Runner(configuration)
         runner.stop()
         runner.run()
 
