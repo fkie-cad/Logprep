@@ -19,7 +19,6 @@ from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
 from logprep.ng.sender import Sender
-from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 
 logger = logging.getLogger("Runner")

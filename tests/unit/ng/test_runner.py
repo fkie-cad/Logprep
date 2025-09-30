@@ -290,6 +290,7 @@ class TestRunner:
         ]
 
         runner = Runner(configuration)
+        runner.sender = sender
 
         with mock.patch.object(Configuration, "refresh", autospec=True) as mock_refresh:
             mock_refresh.side_effect = lambda _: setattr(runner, "should_exit", True)
