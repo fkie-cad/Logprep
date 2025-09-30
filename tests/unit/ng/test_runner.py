@@ -1,7 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
-import logging
+
 import os
 from unittest import mock
 

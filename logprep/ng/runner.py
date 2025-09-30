@@ -47,7 +47,7 @@ class Runner:
         # Initialized in `setup()`; updated by runner logic thereafter.
         self.should_exit: bool | None = None
         self.input_connector: Input | None = None
-        self.output_connector: Output | None = None
+        self.output_connectors: Output | None = None
         self.error_output: Output | None = None
         self.processors: list[Processor] | None = None
         self.pipeline: Pipeline | None = None
@@ -130,55 +130,6 @@ class Runner:
             process_count=self.configuration.process_count,
         )
         self.sender.setup()
-
-    # def __init__(self, sender: Sender) -> None:
-    #    self.sender = sender
-    #    self.should_exit = False
-
-    # @classmethod
-    # def from_configuration(cls, configuration: Configuration) -> "Runner":
-    #    """Factory method to build and setup the Runner and its components"""
-    #    sender = cls.get_sender(configuration)
-    #    runner = cls(sender)
-    #    runner._configuration = configuration
-    #    runner._config_version = configuration.version
-    #    runner.setup()
-    #    return runner
-
-    # @classmethod
-    # def get_sender(cls, configuration) -> Sender:
-    #    """Create the sender for the log processing pipeline."""
-    #    input_iterator: Iterator = iter([])
-    #    cls._input_connector = Factory.create(configuration.input) if configuration.input else None
-    #    if cls._input_connector is not None:
-    #        event_backlog = SetEventBacklog()
-    #        cls._input_connector.event_backlog = event_backlog
-    #        timeout = configuration.timeout
-    #        input_iterator = cls._input_connector(timeout=timeout)
-    #    output_connectors = [
-    #        Factory.create({output_name: output})
-    #        for output_name, output in configuration.output.items()
-    #    ]
-    #    error_output = (
-    #        Factory.create(configuration.error_output) if configuration.error_output else None
-    #    )
-    #    processors = [
-    #        Factory.create(processor_config) for processor_config in configuration.pipeline
-    #    ]
-    #    process_count = configuration.process_count
-
-    #    pipeline = Pipeline(
-    #        input_connector=input_iterator,
-    #        processors=processors,
-    #        process_count=process_count,
-    #    )
-    #    sender = Sender(
-    #        pipeline=pipeline,
-    #        outputs=output_connectors,
-    #        error_output=error_output,
-    #        process_count=process_count,
-    #    )
-    #    return sender
 
     def run(self) -> None:
         """Cli function to run the log processing pipeline."""
