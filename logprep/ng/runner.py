@@ -12,7 +12,9 @@ from typing import cast
 from attrs import asdict
 
 from logprep.factory import Factory
+from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
+from logprep.ng.abc.processor import Processor
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
@@ -26,13 +28,13 @@ logger = logging.getLogger("Runner")
 class Runner:
     """Class, a singleton runner, responsible for running the log processing pipeline."""
 
-    __instance: "Runner | None" = None
+    instance: "Runner | None" = None
 
     def __new__(cls, *args, **kwargs):
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
+        if cls.instance is None:
+            cls.instance = super().__new__(cls)
 
-        return cls.__instance
+        return cls.instance
 
     def __init__(self, configuration) -> None:
         """Initialize the runner from the given `configuration`.
@@ -44,13 +46,13 @@ class Runner:
         self._running_config_version = configuration.version
 
         # Initialized in `setup()`; updated by runner logic thereafter.
-        self.should_exit = None
-        self.input_connector = None
-        self.output_connector = None
-        self.error_output = None
-        self.processors = None
-        self.pipeline = None
-        self.sender = None
+        self.should_exit: bool | None = None
+        self.input_connector: Input | None = None
+        self.output_connector: Output | None = None
+        self.error_output: Output | None = None
+        self.processors: list[Processor] | None = None
+        self.pipeline: Pipeline | None = None
+        self.sender: Sender | None = None
 
         self.setup()
 
@@ -209,6 +211,9 @@ class Runner:
     def _process_events(self) -> None:
         """Process a batch of events got from sender iterator."""
 
+        if not self.sender:
+            return
+
         logger.debug("Start log processing.")
 
         logger.debug(f"Get batch of events from sender ({self.sender.batch_size=}).")
@@ -252,23 +257,23 @@ class Runner:
         self.should_exit = True
 
         # shutdowns in reversed order of setup():
-        self.sender.shut_down()
-        self.pipeline.shut_down()
+        if self.sender is not None:
+            self.sender.shut_down()
+
+        if self.pipeline is not None:
+            self.pipeline.shut_down()
+
+        if self.processors is not None:
+            for processor in self.processors:
+                if processor is not None:
+                    processor.shut_down()
 
         if self.error_output is not None:
             self.error_output.shut_down()
 
-        for processor in self.processors:
-            if processor is not None:
-                processor.shut_down()
-
         for output_connector in self.output_connectors:
             if output_connector is not None:
                 output_connector.shut_down()
-
-        for processor in self.processors:
-            if processor is not None:
-                processor.shut_down()
 
         if self.input_connector is not None:
             self.input_connector.shut_down()

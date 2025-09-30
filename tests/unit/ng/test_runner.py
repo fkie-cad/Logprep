@@ -243,11 +243,14 @@ class TestRunner:
                 mock.MagicMock(),
             ]
 
-            runner._process_events()
+            with caplog.at_level("DEBUG", logger="Runner"):
+                runner._process_events()
 
-        messages = [rec.getMessage().lower() for rec in caplog.records]
-        assert any("event failed" in msg for msg in messages)
-        assert any("event processed" in msg for msg in messages)
+                runner_logs = [
+                    rec.getMessage().lower() for rec in caplog.records if rec.name == "Runner"
+                ]
+                assert any("event failed" in msg for msg in runner_logs)
+                assert any("event processed" in msg for msg in runner_logs)
 
     def test_setup_logging_emits_env(self, configuration):
         runner = Runner(configuration)
