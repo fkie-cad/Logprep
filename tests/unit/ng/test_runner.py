@@ -134,7 +134,7 @@ class TestRunner:
 
     def test_shut_down_calls_output_connector_shut_down(self, configuration):
         runner = Runner(configuration)
-        with mock.patch.object(runner, "output_connector") as mock_output_connector:
+        with mock.patch.object(runner, "output_connectors") as mock_output_connector:
             runner.shut_down()
             mock_output_connector.shut_down.cassert_called_once()
 

@@ -47,7 +47,7 @@ class Runner:
         # Initialized in `setup()`; updated by runner logic thereafter.
         self.should_exit: bool | None = None
         self.input_connector: Input | None = None
-        self.output_connectors: Output | None = None
+        self.output_connectors: list[Output] | None = None
         self.error_output: Output | None = None
         self.processors: list[Processor] | None = None
         self.pipeline: Pipeline | None = None
@@ -104,7 +104,7 @@ class Runner:
                 processor.setup()
             else:
                 logger.warning(
-                    f"Could not setup one of the processors ({i}/{len(self.output_connectors)})."
+                    f"Could not setup one of the processors ({i}/{len(self.processors)})."
                 )
 
     def _initialize_and_setup_pipeline(self):
@@ -221,9 +221,10 @@ class Runner:
         if self.error_output is not None:
             self.error_output.shut_down()
 
-        for output_connector in self.output_connectors:
-            if output_connector is not None:
-                output_connector.shut_down()
+        if self.output_connectors is not None:
+            for output_connector in self.output_connectors:
+                if output_connector is not None:
+                    output_connector.shut_down()
 
         if self.input_connector is not None:
             self.input_connector.shut_down()
