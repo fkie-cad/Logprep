@@ -52,11 +52,11 @@ class TestRunLogprepNGCli:
     def test_cli_run_starts_runner_with_config(self):
         config_file_path = ("tests/testdata/config/config-ng.yml",)
         expected_config = Configuration.from_sources(config_file_path)
-        with mock.patch.object(Runner, "from_configuration") as mock_from_config:
+        with mock.patch("logprep.run_ng.Runner") as mock_runner:
             args = ["run", *config_file_path]
             result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
-        mock_from_config.assert_called_with(expected_config)
+        mock_runner.assert_called_with(expected_config)
 
     def test_cli_run_starts_runner_with_multiple_configs(self):
         config_file_path = (
@@ -67,11 +67,11 @@ class TestRunLogprepNGCli:
         processor_name, processor_config = expected_config.pipeline[-1].popitem()
         assert processor_name == "expected_dissector"
         assert processor_config["type"] == "ng_dissector"
-        with mock.patch.object(Runner, "from_configuration") as mock_from_config:
+        with mock.patch("logprep.run_ng.Runner") as mock_runner:
             args = ["run", *config_file_path]
             result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
-        mock_from_config.assert_called_with(expected_config)
+        mock_runner.assert_called_with(expected_config)
 
     def test_exits_after_getter_error_for_not_existing_protocol(self, caplog):
         args = ["run", "almighty_protocol://tests/testdata/config/config.yml"]
