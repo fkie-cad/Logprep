@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import logging
 import os
 from unittest import mock
 
@@ -63,12 +64,24 @@ def get_logprep_config():
                 "type": "ng_dummy_output",
             }
         },
+        "logger": {
+            "version": 1,
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stdout",
+                }
+            },
+            "loggers": {
+                "Runner": {"level": "DEBUG", "handlers": ["console"], "propagate": True},
+                "root": {"level": "DEBUG", "handlers": ["console"]},
+            },
+        },
     }
     return Configuration(**config_dict)
 
 
 class TestRunner:
-
     def teardown_method(self):
         Runner.instance = None
 
@@ -115,9 +128,33 @@ class TestRunner:
 
     def test_shut_down_calls_input_connector_shut_down(self, configuration):
         runner = Runner(configuration)
-        with mock.patch.object(runner.input_connector, "shut_down") as mock_input_shut_down:
+        with mock.patch.object(runner, "input_connector") as mock_input_connector:
             runner.shut_down()
-            mock_input_shut_down.assert_called_once()
+            mock_input_connector.shut_down.cassert_called_once()
+
+    def test_shut_down_calls_output_connector_shut_down(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "output_connector") as mock_output_connector:
+            runner.shut_down()
+            mock_output_connector.shut_down.cassert_called_once()
+
+    def test_shut_down_calls_error_output_shut_down(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "error_output") as mock_error_output:
+            runner.shut_down()
+            mock_error_output.shut_down.cassert_called_once()
+
+    def test_shut_down_calls_processors_shut_down(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "processors") as mock_processors:
+            runner.shut_down()
+            assert mock_processors.call_count == len(runner.processors)
+
+    def test_shut_down_calls_pipeline_shut_down(self, configuration):
+        runner = Runner(configuration)
+        with mock.patch.object(runner, "pipeline") as mock_pipeline:
+            runner.shut_down()
+            mock_pipeline.shut_down.cassert_called_once()
 
     def test_reload_calls_sender_shut_down(self, configuration):
         runner = Runner(configuration)
@@ -131,19 +168,16 @@ class TestRunner:
         runner.reload()
         assert runner.sender is not old_sender
 
-    def test_reload_setups_sender(self, configuration):
-        runner = Runner(configuration)
-        new_sender = mock.MagicMock()
-        with mock.patch.object(Runner, "get_sender", return_value=new_sender):
-            runner.reload()
-        new_sender.setup.assert_called_once()
-
     def test_reload_setups_new_input(self, configuration):
         runner = Runner(configuration)
-        with mock.patch.object(Runner, "get_sender", return_value=mock.MagicMock()):
-            with mock.patch.object(runner.input_connector, "setup") as mock_input_setup:
-                runner.reload()
-                mock_input_setup.assert_called_once()
+        runner_input_connector = runner.input_connector
+
+        with mock.patch.object(
+            runner, "_initialize_and_setup_input_connectors"
+        ) as mock_init_input_connectors:
+            runner.reload()
+            assert runner.input_connector is runner_input_connector
+            mock_init_input_connectors.assert_called_once()
 
     def test_reload_schedules_new_config_refresh_job(self, configuration):
         runner = Runner(configuration)
@@ -153,8 +187,9 @@ class TestRunner:
             runner.reload()
             mock_schedule.assert_called_once()
 
-    def test_process_events_iterates_sender(self, configuration, caplog):
+    def test_process_events_iterates_sender(self, caplog, configuration):
         caplog.set_level("DEBUG")
+
         sender = mock.MagicMock()
         sender.__iter__.return_value = [
             mock.MagicMock(),
@@ -162,18 +197,17 @@ class TestRunner:
             mock.MagicMock(),
             mock.MagicMock(),
         ]
-        runner = Runner(sender)
-        runner._configuration = configuration
+        runner = Runner(configuration)
         runner.sender = sender
 
         assert runner
 
         runner._process_events()
 
-        assert len(caplog.text.splitlines()) == 8, "all events processed plus start and end logs"
+        assert len(caplog.text.splitlines()) == 25, "all events processed plus start and end logs"
         assert "event processed" in caplog.text
 
-    def test_process_events_refreshes_configuration(self):
+    def test_run_refreshes_configuration(self, configuration):
         sender = mock.MagicMock()
         sender.__iter__.return_value = [
             mock.MagicMock(),
@@ -181,34 +215,39 @@ class TestRunner:
             mock.MagicMock(),
             mock.MagicMock(),
         ]
-        runner = Runner(sender)
-        runner._configuration = mock.MagicMock()
-
+        runner = Runner(configuration)
+        runner.sender = sender
+        runner._process_events = mock.MagicMock()
         assert runner
 
-        runner._process_events()
-        runner._configuration.refresh.assert_called()
-        assert runner._configuration.refresh.call_count == 4
+        configuration.version = "set"
 
-    def test_process_events_logs_failed_event_on_debug(self, caplog):
+        with mock.patch.object(Configuration, "refresh", autospec=True) as mock_refresh:
+            mock_refresh.side_effect = lambda _: setattr(runner, "should_exit", True)
+
+            runner.run()
+            mock_refresh.assert_called_with(configuration)
+            assert mock_refresh.call_count == 2
+
+    def test_process_events_logs_failed_event_on_debug(self, caplog, configuration):
         caplog.set_level("DEBUG")
-        sender = mock.MagicMock()
         failing_event = mock.MagicMock()
         failing_event.state = EventStateType.FAILED
-        sender.__iter__.return_value = [
-            mock.MagicMock(),
-            failing_event,
-            mock.MagicMock(),
-            mock.MagicMock(),
-        ]
 
-        runner = Runner(sender)
-        runner._configuration = mock.MagicMock()
+        runner = Runner(configuration)
 
-        assert runner
-        runner._process_events()
-        assert "event failed" in caplog.text, "one event failed"
-        assert "event processed" in caplog.text, "other events processed"
+        with mock.patch.object(runner, "sender") as mock_sender:
+            mock_sender.__iter__.return_value = [
+                mock.MagicMock(),
+                failing_event,
+                mock.MagicMock(),
+            ]
+
+            runner._process_events()
+
+        messages = [rec.getMessage().lower() for rec in caplog.records]
+        assert any("event failed" in msg for msg in messages)
+        assert any("event processed" in msg for msg in messages)
 
     def test_setup_logging_emits_env(self, configuration):
         runner = Runner(configuration)
@@ -247,10 +286,11 @@ class TestRunner:
             None,
         ]
 
-        runner = Runner(sender)
-        runner._configuration = mock.MagicMock()
-        runner._configuration.refresh = mock.MagicMock()
+        runner = Runner(configuration)
 
-        runner._process_events()
+        with mock.patch.object(Configuration, "refresh", autospec=True) as mock_refresh:
+            mock_refresh.side_effect = lambda _: setattr(runner, "should_exit", True)
 
-        assert runner._configuration.refresh.call_count == 1
+            runner.run()
+            mock_refresh.assert_called_with(configuration)
+            assert mock_refresh.call_count == 1

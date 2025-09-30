@@ -26,23 +26,15 @@ logger = logging.getLogger("Runner")
 class Runner:
     """Class, a singleton runner, responsible for running the log processing pipeline."""
 
-    instance: "Runner | None" = None
+    __instance: "Runner | None" = None
 
-    # _input_connector: Input | None = None
+    def __new__(cls, *args, **kwargs):
+        if cls.__instance is None:
+            cls.__instance = super().__new__(cls)
 
-    # _configuration: Configuration
+        return cls.__instance
 
-    # _config_version: str
-
-    def __new__(cls, sender: Sender) -> "Runner":
-        """Create a new Runner singleton."""
-
-        if cls.instance is None:
-            cls.instance = super().__new__(cls)
-
-        return cls.instance
-
-    def __init__(self, configuration: Configuration) -> None:
+    def __init__(self, configuration) -> None:
         """Initialize the runner from the given `configuration`.
 
         Component wiring is deferred to `setup()` to preserve the required init order.
@@ -115,6 +107,12 @@ class Runner:
                 )
 
     def _initialize_and_setup_pipeline(self):
+        if self.input_connector is None:
+            logger.debug("Runner._initialize_and_setup_pipeline: No input connector configured.")
+            raise AttributeError(
+                "No input connector configured. Pipeline needs a configured input connector."
+            )
+
         input_iterator = self.input_connector(timeout=self.configuration.timeout)
         self.pipeline = Pipeline(
             input_connector=input_iterator,
