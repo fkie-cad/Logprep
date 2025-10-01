@@ -36,6 +36,3 @@ output:
     type: ng_dummy_output
   kafka:
     type: ng_dummy_output
-error_output:
-  kafka:
-    type: ng_dummy_output

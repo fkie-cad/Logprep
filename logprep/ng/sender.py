@@ -30,7 +30,7 @@ class Sender(Iterator):
         self,
         pipeline: Pipeline,
         outputs: list[Output],
-        error_output: Output,
+        error_output: Output | None = None,
         process_count: int = 3,
     ) -> None:
         self.pipeline = pipeline

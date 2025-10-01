@@ -148,7 +148,7 @@ class Runner:
         )
 
         if error_output is None:
-            raise AttributeError("No error output configured.")
+            raise logger.warning("No error output configured.")
 
         return Sender(
             pipeline=self._initialize_pipeline(),
