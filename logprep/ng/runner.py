@@ -223,7 +223,7 @@ class Runner:
         """Shut down runner components, and required runner attributes."""
 
         self.should_exit = True
-        self.sender.shut_down()
+        cast(Sender, self.sender).shut_down()
         self.sender = None
 
         logger.info("Runner shut down complete.")
