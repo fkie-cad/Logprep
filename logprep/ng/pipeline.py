@@ -58,24 +58,24 @@ class Pipeline(Iterator):
 
     def __init__(
         self,
-        input_connector: Iterator[LogEvent],
+        log_events_iter: Iterator[LogEvent],
         processors: list[Processor],
-        process_count: int = 2,
     ) -> None:
-        self._processors = processors
-        self._process_count = process_count
-        self._input_connector = input_connector
+        self.processors = processors
+        self.log_events_iter = log_events_iter
 
     def __iter__(self) -> Generator[LogEvent | None, None, None]:
         """Iterate over processed events."""
-        yield from map(partial(_process_event, processors=self._processors), self._input_connector)
+
+        yield from map(partial(_process_event, processors=self.processors), self.log_events_iter)
 
     def __next__(self):
         raise NotImplementedError("Use iteration to get processed events.")
 
     def shut_down(self) -> None:
         """Shutdown the pipeline gracefully."""
-        for processor in self._processors:
+
+        for processor in self.processors:
             processor.shut_down()
 
         logger.info("All processors has been shut down.")
@@ -83,6 +83,8 @@ class Pipeline(Iterator):
 
     def setup(self) -> None:
         """Setup the pipeline components."""
-        for processor in self._processors:
+
+        for processor in self.processors:
             processor.setup()
+
         logger.info("Pipeline has been set up.")

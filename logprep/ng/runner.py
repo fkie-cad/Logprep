@@ -19,6 +19,7 @@ from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
 from logprep.ng.sender import Sender
+from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 
 logger = logging.getLogger("Runner")
@@ -35,7 +36,7 @@ class Runner:
 
         return cls.instance
 
-    def __init__(self, configuration) -> None:
+    def __init__(self, configuration: Configuration) -> None:
         """Initialize the runner from the given `configuration`.
 
         Component wiring is deferred to `setup()` to preserve the required init order.
@@ -44,95 +45,126 @@ class Runner:
         self.configuration = configuration
         self._running_config_version = configuration.version
 
-        # Initialized in `setup()`; updated by runner logic thereafter.
+        # Initialized in `setup()`; updated by runner logic thereafter:
         self.should_exit: bool | None = None
-        self.input_connector: Input | None = None
-        self.output_connectors: list[Output] | None = None
-        self.error_output: Output | None = None
-        self.processors: list[Processor] | None = None
-        self.pipeline: Pipeline | None = None
         self.sender: Sender | None = None
 
         self.setup()
 
-    def _initialize_and_setup_input_connectors(self):
-        self.input_connector = (
+    def _initialize_pipeline(self) -> Pipeline:
+        """Initialize the pipeline from the given `configuration`.
+
+        This method performs the following tasks:
+
+        - Creates components based on the configuration:
+          - input connector
+          - processors
+
+        - Sets up the input connector:
+          - attaches an event backlog
+          - calls its `setup()` method
+          - initializes its iterator with the configured timeout
+
+        - Validates that:
+          - an input connector is configured
+          - all processors are properly configured
+
+        - Instantiates the `Pipeline` with:
+          - the input connector iterator
+          - the list of processors
+
+        Returns
+        -------
+        Pipeline
+            The instantiated pipeline instance (not yet set up).
+        """
+
+        input_connector = (
             Factory.create(self.configuration.input) if self.configuration.input else None
         )
-        if self.input_connector is not None:
-            self.input_connector.event_backlog = SetEventBacklog()
-            self.input_connector.setup()
-        else:
-            logger.warning("No input connector configured.")
 
-    def _initialize_and_setup_output_connectors(self):
-        self.output_connectors = [
+        if input_connector is not None:
+            input_connector.event_backlog = SetEventBacklog()
+            input_connector.setup()
+        else:
+            raise AttributeError("No input connector configured.")
+
+        input_iterator = input_connector(timeout=self.configuration.timeout)
+        processors = [
+            Factory.create(processor_config) for processor_config in self.configuration.pipeline
+        ]
+
+        for i, processor in enumerate(processors):
+            if processor is None:
+                raise AttributeError(
+                    f"One of the processors is not configured ({i}/{len(processors)})."
+                )
+
+        return Pipeline(
+            log_events_iter=input_iterator,
+            processors=cast(list[Processor], processors),
+        )
+
+    def _initialize_sender(self) -> Sender:
+        """Initialize the sender from the given `configuration`.
+
+        This method performs the following tasks:
+
+        - Creates components based on the configuration:
+          - output connectors
+          - error output
+
+        - Validates that:
+          - all output connectors are configured
+          - an error output is available
+
+        - Instantiates the `Sender` with:
+          - the initialized pipeline
+          - configured outputs
+          - configured error output
+          - process count from configuration
+
+        Returns
+        -------
+        Sender
+            The instantiated sender instance (not yet set up).
+        """
+
+        output_connectors = [
             Factory.create({output_name: output})
             for output_name, output in self.configuration.output.items()
         ]
 
-        for i, output_connector in enumerate(self.output_connectors):
-            if output_connector is not None:
-                output_connector.setup()
-            else:
-                logger.warning(
-                    f"Could not setup one of the output connectors ({i}/{len(self.output_connectors)})."
+        for i, output_connector in enumerate(output_connectors):
+            if output_connector is None:
+                raise AttributeError(
+                    f"One of the output_connectors is not configured ({i}/{len(output_connectors)})."
                 )
 
-    def _initialize_and_setup_error_outputs(self):
-        self.error_output = (
+        error_output = (
             Factory.create(self.configuration.error_output)
             if self.configuration.error_output
             else None
         )
 
-        if self.error_output is not None:
-            self.error_output.setup()
-        else:
-            logger.warning("No error output configured.")
+        if error_output is None:
+            raise AttributeError("No error output configured.")
 
-    def _initialize_and_setup_processors(self):
-        self.processors = [
-            Factory.create(processor_config) for processor_config in self.configuration.pipeline
-        ]
-
-        if not self.processors:
-            logger.warning("No processor configured.")
-
-        for i, processor in enumerate(self.processors):
-            if processor is not None:
-                processor.setup()
-            else:
-                logger.warning(
-                    f"Could not setup one of the processors ({i}/{len(self.processors)})."
-                )
-
-    def _initialize_and_setup_pipeline(self):
-        if self.input_connector is None:
-            logger.debug("Runner._initialize_and_setup_pipeline: No input connector configured.")
-            raise AttributeError(
-                "No input connector configured. Pipeline needs a configured input connector."
-            )
-
-        input_iterator = self.input_connector(timeout=self.configuration.timeout)
-        self.pipeline = Pipeline(
-            input_connector=input_iterator,
-            processors=self.processors,
+        return Sender(
+            pipeline=self._initialize_pipeline(),
+            outputs=cast(list[Output], output_connectors),
+            error_output=cast(Output, error_output),
             process_count=self.configuration.process_count,
         )
-        self.pipeline.setup()
-
-    def _initialize_and_setup_sender(self):
-        self.sender = Sender(
-            pipeline=self.pipeline,
-            outputs=cast(list[Output], self.output_connectors),
-            error_output=self.error_output,
-            process_count=self.configuration.process_count,
-        )
-        self.sender.setup()
 
     def run(self) -> None:
-        """Cli function to run the log processing pipeline."""
+        """Run the runner and continuously process events until stopped.
+
+        This method starts the main processing loop, refreshes the configuration
+        if needed, processes event batches, and only exits once `stop()` has been
+        called (setting `should_exit` to True). At the end, it shuts down all
+        components gracefully.
+        """
 
         # TODO:
         # * integration tests
@@ -179,60 +211,29 @@ class Runner:
         logger.debug("Finished processing batch of events.")
 
     def setup(self) -> None:
-        """Set up the runner, its components, and required runner attributes.
+        """Set up the runner, its components, and required runner attributes."""
 
-        Note:
-            Keep the order of `_initialize_...` calls, and ensure that certain
-            runner attributes are set correctly to maintain the expected logic.
-        """
-
+        self.sender = self._initialize_sender()
+        self.sender.setup()
         self.should_exit = False
 
-        # init and setup components in order:
-        self._initialize_and_setup_input_connectors()
-        self._initialize_and_setup_output_connectors()
-        self._initialize_and_setup_error_outputs()
-        self._initialize_and_setup_processors()
-        self._initialize_and_setup_pipeline()
-        self._initialize_and_setup_sender()
+        logger.info("Runner set up complete.")
 
     def shut_down(self) -> None:
-        """Shut down the log processing pipeline.
-
-        Note:
-            Keep the order of `...shut_down()` calls, and ensure that certain
-            runner attributes are set correctly to maintain the expected logic.
-        """
+        """Shut down runner components, and required runner attributes."""
 
         self.should_exit = True
-
-        # shutdowns in reversed order of setup():
-        if self.sender is not None:
-            self.sender.shut_down()
-
-        if self.pipeline is not None:
-            self.pipeline.shut_down()
-
-        if self.processors is not None:
-            for processor in self.processors:
-                if processor is not None:
-                    processor.shut_down()
-
-        if self.error_output is not None:
-            self.error_output.shut_down()
-
-        if self.output_connectors is not None:
-            for output_connector in self.output_connectors:
-                if output_connector is not None:
-                    output_connector.shut_down()
-
-        if self.input_connector is not None:
-            self.input_connector.shut_down()
+        self.sender.shut_down()
+        self.sender = None
 
         logger.info("Runner shut down complete.")
 
     def stop(self) -> None:
-        """Cli function to stop the log processing pipeline."""
+        """Stop the runner and signal the underlying processing pipeline to exit.
+
+        This method sets the `should_exit` flag to True, which will cause the
+        runner and its components to stop gracefully.
+        """
 
         logger.info("Stopping runner and exiting...")
         self.should_exit = True

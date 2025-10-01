@@ -8,7 +8,9 @@ from unittest import mock
 import pytest
 
 from logprep.ng.event.event_state import EventStateType
+from logprep.ng.pipeline import Pipeline
 from logprep.ng.runner import Runner
+from logprep.ng.sender import Sender
 from logprep.ng.util.configuration import Configuration
 
 
@@ -96,65 +98,23 @@ class TestRunner:
             runner.setup()
             runner_setup._initialize_and_setup_sender.cassert_called_once()
 
-    def test_setup_calls_initialize_and_setup_input_connectors(self, configuration):
-        runner = Runner(configuration)
-        with mock.patch.object(runner, "setup") as runner_setup:
-            runner.setup()
-            runner_setup._initialize_and_setup_input_connectors.cassert_called_once()
-
-    def test_setup_calls_initialize_and_setup_output_connectors(self, configuration):
-        runner = Runner(configuration)
-        with mock.patch.object(runner, "setup") as runner_setup:
-            runner.setup()
-            runner_setup._initialize_and_setup_output_connectors.cassert_called_once()
-
-    def test_setup_calls_initialize_and_setup_error_outputs(self, configuration):
-        runner = Runner(configuration)
-        with mock.patch.object(runner, "setup") as runner_setup:
-            runner.setup()
-            runner_setup._initialize_and_setup_error_outputs.cassert_called_once()
-
-    def test_setup_calls_initialize_and_setup_processors(self, configuration):
-        runner = Runner(configuration)
-        with mock.patch.object(runner, "setup") as runner_setup:
-            runner.setup()
-            runner_setup._initialize_and_setup_processors.cassert_called_once()
-
     def test_setup_calls_initialize_and_setup_pipeline(self, configuration):
         runner = Runner(configuration)
         with mock.patch.object(runner, "setup") as runner_setup:
             runner.setup()
             runner_setup._initialize_and_setup_pipeline.cassert_called_once()
 
-    def test_shut_down_calls_input_connector_shut_down(self, configuration):
+    def test_initialize_sender(self, configuration):
         runner = Runner(configuration)
-        with mock.patch.object(runner, "input_connector") as mock_input_connector:
-            runner.shut_down()
-            mock_input_connector.shut_down.cassert_called_once()
+        sender = runner._initialize_sender()
 
-    def test_shut_down_calls_output_connector_shut_down(self, configuration):
-        runner = Runner(configuration)
-        with mock.patch.object(runner, "output_connectors") as mock_output_connector:
-            runner.shut_down()
-            mock_output_connector.shut_down.cassert_called_once()
+        assert isinstance(sender, Sender)
 
-    def test_shut_down_calls_error_output_shut_down(self, configuration):
+    def test_initialize_pipeline(self, configuration):
         runner = Runner(configuration)
-        with mock.patch.object(runner, "error_output") as mock_error_output:
-            runner.shut_down()
-            mock_error_output.shut_down.cassert_called_once()
+        pipeline = runner._initialize_pipeline()
 
-    def test_shut_down_calls_processors_shut_down(self, configuration):
-        runner = Runner(configuration)
-        with mock.patch.object(runner, "processors") as mock_processors:
-            runner.shut_down()
-            assert mock_processors.call_count == len(runner.processors)
-
-    def test_shut_down_calls_pipeline_shut_down(self, configuration):
-        runner = Runner(configuration)
-        with mock.patch.object(runner, "pipeline") as mock_pipeline:
-            runner.shut_down()
-            mock_pipeline.shut_down.cassert_called_once()
+        assert isinstance(pipeline, Pipeline)
 
     def test_reload_calls_sender_shut_down(self, configuration):
         runner = Runner(configuration)
@@ -167,17 +127,6 @@ class TestRunner:
         old_sender = runner.sender
         runner.reload()
         assert runner.sender is not old_sender
-
-    def test_reload_setups_new_input(self, configuration):
-        runner = Runner(configuration)
-        runner_input_connector = runner.input_connector
-
-        with mock.patch.object(
-            runner, "_initialize_and_setup_input_connectors"
-        ) as mock_init_input_connectors:
-            runner.reload()
-            assert runner.input_connector is runner_input_connector
-            mock_init_input_connectors.assert_called_once()
 
     def test_reload_schedules_new_config_refresh_job(self, configuration):
         runner = Runner(configuration)
@@ -204,7 +153,7 @@ class TestRunner:
 
         runner._process_events()
 
-        assert len(caplog.text.splitlines()) == 25, "all events processed plus start and end logs"
+        assert len(caplog.text.splitlines()) == 18, "all events processed plus start and end logs"
         assert "event processed" in caplog.text
 
     def test_run_refreshes_configuration(self, configuration):

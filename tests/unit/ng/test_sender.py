@@ -142,7 +142,7 @@ class TestSender:
         )
 
         try:
-            with mock.patch.object(pipeline._processors[0], "_apply_rules") as mock_process:
+            with mock.patch.object(pipeline.processors[0], "_apply_rules") as mock_process:
                 mock_process.side_effect = Exception("Processing error")
 
                 sender.stop()
@@ -316,7 +316,7 @@ class TestSender:
 
         input_iterator = iter([log_event])
 
-        with mock.patch.object(pipeline, "_input_connector", new=input_iterator):
+        with mock.patch.object(pipeline, "log_events_iter", new=input_iterator):
             sender = Sender(
                 pipeline=pipeline, outputs=[opensearch_output], error_output=error_output
             )
