@@ -141,19 +141,19 @@ class Runner:
                     f"One of the output_connectors is not configured ({i}/{len(output_connectors)})."
                 )
 
-        error_output = (
+        error_output: Output | None = (
             Factory.create(self.configuration.error_output)
             if self.configuration.error_output
             else None
         )
 
         if error_output is None:
-            raise logger.warning("No error output configured.")
+            logger.warning("No error output configured.")
 
         return Sender(
             pipeline=self._initialize_pipeline(),
             outputs=cast(list[Output], output_connectors),
-            error_output=cast(Output, error_output),
+            error_output=error_output,
             process_count=self.configuration.process_count,
         )
 
