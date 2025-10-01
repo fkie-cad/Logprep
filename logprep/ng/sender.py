@@ -66,7 +66,8 @@ class Sender(Iterator):
         ]
         if not error_events:
             return
-        self._error_output.flush()
+
+        self._error_output.flush()  # type: ignore[union-attr]
         failed_error_events = [
             event for event in error_events if event.state == EventStateType.FAILED
         ]
@@ -104,8 +105,9 @@ class Sender(Iterator):
         """Send the event to the error output.
         If event can't be sent, it will be logged as an error.
         """
+
         error_event = self._get_error_event(event)
-        self._error_output.store(error_event)
+        self._error_output.store(error_event)  # type: ignore[union-attr]
         return error_event
 
     def _get_error_event(self, event: LogEvent) -> ErrorEvent:
