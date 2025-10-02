@@ -198,7 +198,7 @@ class Runner:
 
         logger.debug("Start log processing.")
 
-        logger.debug(f"Get batch of events from sender ({self.sender.batch_size=}).")
+        logger.debug("Get batch of events from sender (batch_size=%r).", self.sender.batch_size)
         for event in self.sender:
             if event is None:
                 continue
