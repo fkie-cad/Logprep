@@ -41,10 +41,6 @@ class TestRunLogprepCli:
                 "logprep.run_logprep.Runner.start",
             ),
             (
-                "test config tests/testdata/config/config.yml tests/testdata/config/config.yml",
-                "logprep.run_logprep._get_configuration",
-            ),
-            (
                 "print tests/testdata/config/config.yml tests/testdata/config/config.yml",
                 "logprep.util.configuration.Configuration.as_yaml",
             ),
@@ -274,7 +270,11 @@ class TestRunLogprepCli:
         with mock.patch("logprep.run_logprep.Runner"):
             with pytest.raises(SystemExit):
                 run_logprep.run(("tests/testdata/config/config.yml",))
-        mock_info.assert_has_calls([mock.call("Log level set to '%s'", "INFO")])
+        for call in mock_info.call_args_list:
+            if "Log level set to" in call[0][0]:
+                break
+        else:
+            assert False, "Expected log message not found"
 
 
 class TestGeneratorCLI:

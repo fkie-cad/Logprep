@@ -26,54 +26,62 @@ class LogprepExceptionGroup(ExceptionGroup):
 class Sender(Iterator):
     """Sender class to handle sending events to configured outputs."""
 
-    def __init__(self, pipeline: Pipeline, outputs: list[Output], error_output: Output) -> None:
-        self._events = (event for event in pipeline if event is not None and event.data)
+    def __init__(
+        self,
+        pipeline: Pipeline,
+        outputs: list[Output],
+        error_output: Output | None = None,
+        process_count: int = 3,
+    ) -> None:
+        self.pipeline = pipeline
         self._outputs = {output.name: output for output in outputs}
         self._default_output = [output for output in outputs if output.default][0]
         self._error_output = error_output
-        self.batch_size = getattr(self._default_output._config, "message_backlog_size", 10)
-        self.batch: list[LogEvent] = []
+        self.batch_size = process_count
+        self.should_exit = False
 
     def __next__(self) -> LogEvent | ErrorEvent:
-        event = next(self._events)
-        if event.state == EventStateType.PROCESSED:
-            self._send_processed(event)
-            for output in self._outputs.values():
-                output.flush()
-        if self._error_output and event.state == EventStateType.FAILED:
-            event = self._send_failed(event)
-            self._error_output.flush()
-        if isinstance(event, ErrorEvent) and event.state == EventStateType.FAILED:
-            logger.error("Error during sending to error output: %s", event)
-        return event
+        """not implemented, use iter()"""
+        raise NotImplementedError("Use iter() to get events from the Sender.")
 
     def __iter__(self) -> Generator[LogEvent | ErrorEvent, None, None]:
         """Iterate over processed events."""
         while True:
-            self.batch.clear()
-            self.batch += list(islice(self._events, self.batch_size))
-            if not self.batch:
-                break
-            self._send_and_flush_processed_events()
+            logger.debug("Sender iterating")
+            batch = list(islice(self.pipeline, self.batch_size))
+            self._send_and_flush_processed_events(batch_events=batch)
             if self._error_output:
-                self._send_and_flush_failed_events()
+                self._send_and_flush_failed_events(batch_events=batch)
+            if self.should_exit:
+                logger.debug("Sender exiting")
+                self.shut_down()
+                return
+            yield from batch
 
-            yield from self.batch
-
-    def _send_and_flush_failed_events(self):
+    def _send_and_flush_failed_events(self, batch_events: list[LogEvent]) -> None:
         error_events = [
-            self._send_failed(event) for event in self.batch if event.state == EventStateType.FAILED
+            self._send_failed(event)
+            for event in batch_events
+            if event is not None and event.state == EventStateType.FAILED
         ]
-        self._error_output.flush()
+        if not error_events:
+            return
+
+        self._error_output.flush()  # type: ignore[union-attr]
         failed_error_events = [
             event for event in error_events if event.state == EventStateType.FAILED
         ]
         for error_event in failed_error_events:
             logger.error("Error during sending to error output: %s", error_event)
 
-    def _send_and_flush_processed_events(self):
-        for event in filter(lambda x: x.state == EventStateType.PROCESSED, self.batch):
+    def _send_and_flush_processed_events(self, batch_events: list[LogEvent]) -> None:
+        processed_events = [
             self._send_processed(event)
+            for event in batch_events
+            if event is not None and event.state == EventStateType.PROCESSED
+        ]
+        if not processed_events:
+            return
         for output in self._outputs.values():
             output.flush()
 
@@ -97,8 +105,9 @@ class Sender(Iterator):
         """Send the event to the error output.
         If event can't be sent, it will be logged as an error.
         """
+
         error_event = self._get_error_event(event)
-        self._error_output.store(error_event)
+        self._error_output.store(error_event)  # type: ignore[union-attr]
         return error_event
 
     def _get_error_event(self, event: LogEvent) -> ErrorEvent:
@@ -111,3 +120,36 @@ class Sender(Iterator):
             else Exception("Unknown error")
         )
         return ErrorEvent(log_event=event, reason=reason, state=EventStateType.PROCESSED)
+
+    def shut_down(self) -> None:
+        """Shutdown all outputs gracefully."""
+
+        self.stop()
+        for _, output in self._outputs.items():
+            output.shut_down()
+        if self._error_output:
+            self._error_output.shut_down()
+        logger.info("All outputs have been shut down.")
+
+        self.pipeline.shut_down()
+        logger.info("Sender has been shut down.")
+
+    def setup(self) -> None:
+        """Setup all outputs."""
+        for _, output in self._outputs.items():
+            output.setup()
+        if self._error_output:
+            self._error_output.setup()
+        logger.info("All outputs have been set up.")
+        self.pipeline.setup()
+
+    def stop(self) -> None:
+        """Request the sender to stop iteration.
+
+        Calling stop() sets the should_exit flag. The sender will finish processing
+        the current batch and exit on the next iteration (i.e., the next next() call).
+        If you need to enforce an immediate stop, use shut_down() instead.
+        """
+
+        self.should_exit = True
+        logger.info("Sender stop signal received.")

@@ -15,6 +15,34 @@ To get help on the different parameters use:
 
     logprep --help
 
+Running logprep-ng
+==================
+
+Logprep-ng is the next generation of logprep and is still in an experimental state.
+To execute logprep-ng, use the following command:
+
+.. code-block:: bash
+
+    logprep-ng run $CONFIG
+
+Where :code:`$CONFIG` is the path or a url to a configuration file (see :ref:`configuration`).
+This command starts the logprep-ng processing pipeline with the specified configuration and options.
+
+Common usage examples:
+
+.. code-block:: bash
+
+    # Run with default configuration
+    logprep-ng run
+
+    # Run with custom configuration file
+    logprep-ng run /path/to/config.yml
+
+Available options can be viewed using:
+
+.. code-block:: bash
+
+    logprep-ng run --help
 
 Event Generation
 ----------------

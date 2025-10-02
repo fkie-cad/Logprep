@@ -4,6 +4,7 @@
 
 ### Features
 
+* implement first prototype of ng logprep runner
 * make http getters periodically refresh if configured in file path defined by environment variable `LOGPREP_GETTER_CONFIG`.
 * cache http getter results by utilising the etag header.
 * add per-target (i.e. `localhost:1234/foo`) callbacks to http getters that are called when getters are refreshed with new data.

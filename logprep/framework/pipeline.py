@@ -9,7 +9,6 @@ They can be multi-processed.
 
 import itertools
 import logging
-import logging.handlers
 import multiprocessing
 
 # pylint: disable=logging-fstring-interpolation

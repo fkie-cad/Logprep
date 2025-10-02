@@ -1,0 +1,15 @@
+version: alternative
+process_count: 3
+timeout: 0.1
+pipeline:
+  - expected_dissector:
+      type: ng_dissector
+      rules:
+        - tests/testdata/unit/dissector/rules/
+input:
+  kafka:
+    type: ng_dummy_input
+    documents: []
+output:
+  kafka_output:
+    type: ng_dummy_output

@@ -44,15 +44,10 @@ DEFAULT_LOG_CONFIG: dict = {
             "class": "logging.StreamHandler",
             "formatter": "logprep",
             "stream": "ext://sys.stdout",
-        },
-        "queue": {
-            "class": "logging.handlers.QueueHandler",
-            "queue": "ext://logprep.util.logging.logqueue",
-        },
+        }
     },
     "loggers": {
-        "root": {"level": "INFO", "handlers": ["queue"]},
-        "console": {"handlers": ["console"]},
+        "root": {"level": "INFO", "handlers": ["console"]},
         "filelock": {"level": "ERROR"},
         "urllib3.connectionpool": {"level": "ERROR"},
         "opensearch": {"level": "ERROR"},
@@ -62,8 +57,6 @@ DEFAULT_LOG_CONFIG: dict = {
 }
 
 ENV_NAME_LOGPREP_CREDENTIALS_FILE = "LOGPREP_CREDENTIALS_FILE"
-
-ENV_NAME_LOGPREP_GETTER_CONFIG = "LOGPREP_GETTER_CONFIG"
 
 DEFAULT_HEALTH_STATE = False  # unhealthy
 
