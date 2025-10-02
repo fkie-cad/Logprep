@@ -158,13 +158,12 @@ class GenericResolver(FieldManager):
 
     def _find_content_of_first_matching_pattern(self, rule, source_field_value):
         if rule.resolve_from_file:
-            replacements = rule.resolve_from_file["additions"]
             matches = rule.pattern.match(source_field_value)
             if matches:
                 mapping = matches.group("mapping")
                 if rule.ignore_case:
                     mapping = mapping.upper()
-                content = replacements.get(mapping)
+                content = rule.additions.get(mapping)
                 if content:
                     return content
         return self._get_lru_cached_value_from_list(rule, source_field_value)

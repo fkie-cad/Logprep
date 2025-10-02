@@ -244,11 +244,11 @@ class TestGenericResolverRule:
         with patch.dict("os.environ", mock_env):
             scheduler = HttpGetter(protocol="http", target=target).scheduler
             rule = GenericResolverRule.create_from_dict(rule_definition)
-            assert rule.resolve_from_file["additions"] == from_http_1
+            assert rule.additions == from_http_1
             HttpGetter.refresh()
-            assert rule.resolve_from_file["additions"] == from_http_1
+            assert rule.additions == from_http_1
             scheduler.run_all()
-            assert rule.resolve_from_file["additions"] == from_http_2
-            assert rule.resolve_from_file["additions"] == from_http_2
+            assert rule.additions == from_http_2
+            assert rule.additions == from_http_2
             scheduler.run_all()
-            assert rule.resolve_from_file["additions"] == from_http_3
+            assert rule.additions == from_http_3
