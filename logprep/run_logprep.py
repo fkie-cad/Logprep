@@ -14,7 +14,7 @@ from logprep.runner import Runner
 from logprep.util.ansi import Fore
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.context_managers import logqueue_listener, disable_loggers
+from logprep.util.context_managers import disable_loggers, logqueue_listener
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
@@ -41,8 +41,7 @@ def _get_configuration(config_paths: tuple[str]) -> Configuration:
         config = Configuration.from_sources(config_paths)
         config.logger.setup_logging()
         logger = logging.getLogger("root")  # pylint: disable=redefined-outer-name
-        with logqueue_listener("console"):
-            logger.info("Log level set to '%s'", logging.getLevelName(logger.level))
+        logger.info("Log level set to '%s'", logging.getLevelName(logger.level))
         return config
     except InvalidConfigurationError as error:
         console_logger.error("InvalidConfigurationError: %s", error)
@@ -117,7 +116,8 @@ def test_config(configs: tuple[str]) -> None:
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    _get_configuration(configs)
+    with logqueue_listener("console"):
+        _get_configuration(configs)
     print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
 
 
@@ -161,7 +161,8 @@ def test_rules(configs: tuple[str]) -> None:
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    _get_configuration(configs)
+    with logqueue_listener("console"):
+        _get_configuration(configs)
     for config in configs:
         tester = AutoRuleTester(config)
         with disable_loggers():

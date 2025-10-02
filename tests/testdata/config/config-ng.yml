@@ -1,0 +1,38 @@
+version: 1
+process_count: 3
+timeout: 0.1
+pipeline:
+  - dissector:
+      type: ng_dissector
+      rules:
+        - tests/testdata/unit/dissector/rules/
+  - calculatorname:
+      type: ng_calculator
+      rules:
+        - tests/testdata/unit/calculator/rules
+  - labelername:
+      type: ng_labeler
+      schema: tests/testdata/unit/labeler/schemas/schema3.json
+      include_parent_labels: true
+      rules:
+        - tests/testdata/unit/labeler/rules/
+  - pseudonymizer:
+      type: ng_pseudonymizer
+      pubkey_analyst: tests/testdata/unit/pseudonymizer/example_analyst_pub.pem
+      pubkey_depseudo: tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem
+      regex_mapping: tests/testdata/unit/pseudonymizer/regex_mapping.yml
+      hash_salt: a_secret_tasty_ingredient
+      outputs:
+        - kafka_output: pseudonyms
+      rules:
+        - tests/testdata/unit/pseudonymizer/rules/
+      max_cached_pseudonyms: 1000000
+input:
+  kafka_input:
+    type: ng_dummy_input
+    documents: []
+output:
+  kafka_output:
+    type: ng_dummy_output
+  kafka:
+    type: ng_dummy_output

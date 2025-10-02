@@ -1,11 +1,31 @@
 """pipeline module for processing events through a series of processors."""
 
+import logging
 from collections.abc import Iterator
-from itertools import islice
+from functools import partial
 from typing import Generator
 
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.log_event import LogEvent
+
+logger = logging.getLogger("Pipeline")
+
+
+def _process_event(event: LogEvent | None, processors: list[Processor]) -> LogEvent:
+    """process all processors for one event"""
+    if event is None or not event.data:
+        return None
+    event.state.next_state()
+    for processor in processors:
+        if not event.data:
+            break
+        processor.process(event)
+    if not event.errors:
+        event.state.next_state(success=True)
+    else:
+        event.state.next_state(success=False)
+        logger.error("event failed: %s with errors: %s", event, event.errors)
+    return event
 
 
 class Pipeline(Iterator):
@@ -38,50 +58,33 @@ class Pipeline(Iterator):
 
     def __init__(
         self,
-        input_connector: Iterator[LogEvent],
+        log_events_iter: Iterator[LogEvent],
         processors: list[Processor],
-        process_count: int = 10,
     ) -> None:
-        self._input = input_connector
-        self._processors = processors
-        self._process_count = process_count
+        self.processors = processors
+        self.log_events_iter = log_events_iter
 
-    def __iter__(self) -> Generator[LogEvent, None, None]:
+    def __iter__(self) -> Generator[LogEvent | None, None, None]:
         """Iterate over processed events."""
-        while True:
-            events = (event for event in self._input if event is not None and event.data)
-            batch = list(islice(events, self._process_count))
-            if not batch:
-                break
-            yield from map(self._process_event, batch)
+
+        yield from map(partial(_process_event, processors=self.processors), self.log_events_iter)
 
     def __next__(self):
-        """
-        Return the next processed event or None if no valid event is found.
+        raise NotImplementedError("Use iteration to get processed events.")
 
-        This method intentionally deviates from the standard Python iterator protocol.
-        Normally, __next__() must raise StopIteration to signal that there are no more
-        items. In this Pipeline, __next__() instead returns None when no valid event
-        is available. This design allows callers to check for "no event" without
-        handling StopIteration explicitly, but means the method is not strictly
-        iterator-compliant by design.
-        """
-        try:
-            while (next_event := next(self._input)) is None or not next_event.data:
-                continue
-        except StopIteration:
-            return None
-        return self._process_event(next_event)
+    def shut_down(self) -> None:
+        """Shutdown the pipeline gracefully."""
 
-    def _process_event(self, event: LogEvent) -> LogEvent:
-        """process all processors for one event"""
-        event.state.next_state()
-        for processor in self._processors:
-            if not event.data:
-                break
-            processor.process(event)
-        if not event.errors:
-            event.state.next_state(success=True)
-        else:
-            event.state.next_state(success=False)
-        return event
+        for processor in self.processors:
+            processor.shut_down()
+
+        logger.info("All processors has been shut down.")
+        logger.info("Pipeline has been shut down.")
+
+    def setup(self) -> None:
+        """Setup the pipeline components."""
+
+        for processor in self.processors:
+            processor.setup()
+
+        logger.info("Pipeline has been set up.")

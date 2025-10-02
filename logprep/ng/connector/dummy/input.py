@@ -52,7 +52,6 @@ class DummyInput(Input):
             if not self._config.repeat_documents:
                 raise SourceDisconnectedWarning(self, "no documents left")
             del self.__dict__["_documents"]
-
         document = self._documents.pop(0)
 
         if (document.__class__ == type) and issubclass(document, Exception):

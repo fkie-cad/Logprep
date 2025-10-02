@@ -5,6 +5,7 @@ New input endpoint types are created by implementing it.
 import base64
 import hashlib
 import json
+import logging
 import os
 import zlib
 from abc import abstractmethod
@@ -28,6 +29,8 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.helper import add_fields_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser, TimeParserException
 from logprep.util.validators import dict_structure_validator
+
+logger = logging.getLogger("Input")
 
 
 class InputError(LogprepException):
@@ -154,8 +157,13 @@ class InputIterator(Iterator):
         LogEvent | None
             The next event retrieved from the underlying data source.
         """
-
-        return self.input_connector.get_next(timeout=self.timeout)
+        event = self.input_connector.get_next(timeout=self.timeout)
+        logger.debug(
+            "InputIterator fetching next event with timeout %s, is None: %s",
+            self.timeout,
+            event is None,
+        )
+        return event
 
 
 class Input(Connector):
@@ -423,9 +431,7 @@ class Input(Connector):
         input : LogEvent, None
             Input log data.
         """
-
         self.acknowledge()
-
         event: dict | None = None
         raw_event: bytearray | None = None
         metadata: dict | None = None

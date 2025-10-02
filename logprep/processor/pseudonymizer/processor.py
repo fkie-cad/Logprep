@@ -163,6 +163,7 @@ class Pseudonymizer(FieldManager):
 
         .. security-best-practice::
            :title: Processor - Pseudonymizer
+
            The :code:`pseudonymizer` works with two public keys for different roles.
            It is suggested to ensure that two different keys are being used such that
            the separation of the roles can be maintained.

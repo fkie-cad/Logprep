@@ -86,7 +86,9 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         and run thread with uvicorn+falcon http server and wait
         until it is up (started)"""
         self.server = uvicorn.Server(self.uvicorn_config)
-        self.thread = threading.Thread(daemon=self.daemon, target=self.server.run)
+        self.thread = threading.Thread(
+            daemon=self.daemon, target=self.server.run, name=self._logger_name
+        )
         self.thread.start()
         while not self.server.started:
             continue

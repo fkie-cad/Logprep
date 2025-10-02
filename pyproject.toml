@@ -133,6 +133,7 @@ Changelog = "https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md"
 
 [project.scripts]
 logprep = "logprep.run_logprep:cli"
+logprep-ng = "logprep.run_ng:cli"
 
 [tool.black]
 line-length = 100
@@ -183,6 +184,10 @@ defining-attr-methods="__init__,__new__,setUp"
 exclude = "tests/.*"
 follow_imports = "skip"
 follow_imports_for_stubs = "True"
+
+[[tool.mypy.overrides]]
+module = ["logprep.framework.pipeline_manager.*"]
+disable_error_code = "attr-defined"
 
 [[tool.mypy.overrides]]
 module = ["joblib.*", "boto3.*", "botocore.*"]

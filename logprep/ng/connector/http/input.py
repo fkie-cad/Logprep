@@ -105,13 +105,15 @@ from logprep.connector.http.input import (
 )
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
-from logprep.ng.abc.input import FatalInputError, Input
+from logprep.ng.abc.input import Input
 from logprep.util import http, rstr
 from logprep.util.credentials import CredentialsFactory
 
 
 class HttpInput(Input):
     """Connector to accept log messages as http post requests"""
+
+    pipeline_index: int = 1
 
     @define(kw_only=True)
     class Metrics(Input.Metrics):
@@ -260,18 +262,9 @@ class HttpInput(Input):
         self.http_server: http.ThreadingHTTPServer | None = None
 
     def setup(self) -> None:
-        """setup starts the actual functionality of this connector.
-        By checking against pipeline_index we're assuring this connector
-        only runs a single time for multiple processes.
-        """
+        """setup starts the actual functionality of this connector."""
 
         super().setup()
-        if self.pipeline_index is None:
-            raise FatalInputError(self, "Necessary instance attribute `pipeline_index` is not set.")
-        # Start HTTP Input only when in first process
-        if self.pipeline_index != 1:
-            return
-
         endpoints_config = {}
         collect_meta = self._config.collect_meta
         metafield_name = self._config.metafield_name
