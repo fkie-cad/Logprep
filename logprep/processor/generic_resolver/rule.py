@@ -122,6 +122,7 @@ from pathlib import Path
 from typing import Optional, List, Tuple, Union
 
 from attrs import define, field, validators
+from ruamel.yaml.error import YAMLError
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -197,11 +198,18 @@ class GenericResolverRule(FieldManagerRule):
         def _add_from_path(self):
             self._raise_if_pattern_is_invalid()
             self._raise_if_file_does_not_exist()
-            additions = GetterFactory.from_string(self._file_path).get_yaml()
+            additions = self._get_additions()
             self._raise_if_additions_are_invalid(additions)
             if self.ignore_case:
                 additions = {key.upper(): value for key, value in additions.items()}
             self.additions = additions
+
+        def _get_additions(self) -> dict:
+            try:
+                additions = GetterFactory.from_string(self._file_path).get_yaml()
+            except YAMLError:
+                additions = GetterFactory.from_string(self._file_path).get_json()
+            return additions
 
         def _raise_if_pattern_is_invalid(self):
             if "?P<mapping>" not in self.resolve_from_file["pattern"]:
