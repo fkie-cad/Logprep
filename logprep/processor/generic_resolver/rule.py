@@ -209,6 +209,10 @@ class GenericResolverRule(FieldManagerRule):
                 additions = GetterFactory.from_string(self._file_path).get_yaml()
             except YAMLError:
                 additions = GetterFactory.from_string(self._file_path).get_json()
+            if not isinstance(additions, dict):
+                raise InvalidConfigurationError(
+                    f"Additions file '{self._file_path}' is not a dictionary"
+                )
             return additions
 
         def _raise_if_pattern_is_invalid(self):

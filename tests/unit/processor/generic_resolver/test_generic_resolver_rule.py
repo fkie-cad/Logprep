@@ -198,6 +198,20 @@ class TestGenericResolverRule:
                 InvalidConfigurationError,
                 "Additions file 'foo' not found",
             ),
+            (
+                {
+                    "filter": "to.resolve",
+                    "generic_resolver": {
+                        "field_mapping": {"to.resolve": "resolved"},
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping_list.yml",
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                    },
+                },
+                InvalidConfigurationError,
+                r"Additions file '.+resolve_mapping_list\.yml' is not a dictionary",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):

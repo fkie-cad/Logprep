@@ -297,11 +297,13 @@ class HttpGetter(Getter):
                 if self.cache is None:
                     raise error
                 self._log_cache_warning(error)
+        if self.cache is None:
+            raise ValueError(f"Cache is empty for http getter with url '{self.url}'")
         return self.cache
 
     def _log_cache_warning(self, error: Exception):
         self._logger.warning(
-            f"Not updating HTTP getter cache with url '{self.url} due to: %s", error
+            f"Not updating HTTP getter cache with url '{self.url}' due to: %s", error
         )
 
     def _refresh(self) -> None:
