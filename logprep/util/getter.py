@@ -3,6 +3,7 @@ They are returned by the GetterFactory.
 """
 
 import json
+import logging
 import os
 import re
 from collections import defaultdict
@@ -13,8 +14,8 @@ from typing import Tuple, ClassVar
 from urllib.parse import urlparse
 
 import requests
-from attrs import define, field, validators
 from requests import Response
+from attrs import define, field, validators
 from schedule import Scheduler
 from starlette import status  # type: ignore
 
@@ -151,6 +152,8 @@ class HttpGetter(Getter):
 
     _shared: ClassVar[dict[str, DataSharedPerTarget]] = {}
 
+    _logger = logging.getLogger("console")
+
     def __attrs_post_init__(self):
         user_agent = f"Logprep version {version('logprep')}"
         self._headers |= {"User-Agent": user_agent}
@@ -283,18 +286,32 @@ class HttpGetter(Getter):
         if self._refresh_interval > 0 and self.scheduler:
             self.scheduler.run_pending()
             if self.cache is None:
-                self._update_cache()
+                try:
+                    self._update_cache()
+                except requests.exceptions.RequestException as error:
+                    raise error
         else:
-            self._update_cache()
-        if self.cache is None:
-            raise ValueError("Cache is empty")
+            try:
+                self._update_cache()
+            except requests.exceptions.RequestException as error:
+                if self.cache is None:
+                    raise error
+                self._log_cache_warning(error)
         return self.cache
+
+    def _log_cache_warning(self, error: Exception):
+        self._logger.warning(f"Not updating HTTP getter cache with url '{self.url} due to: %s",
+                             error)
 
     def _refresh(self) -> None:
         if self.shared.refreshing:
             return
         self.shared.refreshing = True
-        not_modified = self._update_cache()
+        try:
+            not_modified = self._update_cache()
+        except requests.exceptions.RequestException as error:
+            self._log_cache_warning(error)
+            not_modified = True
         if not_modified:
             self.shared.refreshing = False
             return
@@ -307,6 +324,8 @@ class HttpGetter(Getter):
         not_modified: bool = response.status_code == status.HTTP_304_NOT_MODIFIED
         if not not_modified:
             self.cache = response.content
+        if self.cache is None:
+            raise ValueError("HTTP getter cache is empty")
         return not_modified
 
     def _do_request(self) -> Response:

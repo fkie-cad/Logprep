@@ -1040,7 +1040,13 @@ class Configuration:
                 processor = Factory.create(deepcopy(processor_config))
                 processor.setup()
                 self._verify_rules(processor)
-            except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
+            except (
+                FactoryError,
+                TypeError,
+                ValueError,
+                InvalidRuleDefinitionError,
+                RequestException,
+            ) as error:
                 errors.append(error)
             except FileNotFoundError as error:
                 errors.append(InvalidConfigurationError(f"File not found: {error.filename}"))
