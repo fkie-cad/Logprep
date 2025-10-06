@@ -300,8 +300,9 @@ class HttpGetter(Getter):
         return self.cache
 
     def _log_cache_warning(self, error: Exception):
-        self._logger.warning(f"Not updating HTTP getter cache with url '{self.url} due to: %s",
-                             error)
+        self._logger.warning(
+            f"Not updating HTTP getter cache with url '{self.url} due to: %s", error
+        )
 
     def _refresh(self) -> None:
         if self.shared.refreshing:
