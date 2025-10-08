@@ -50,7 +50,11 @@ spec:
               containerPort: {{ .Values.input.uvicorn_config.port }}
             {{- end }}
           command:
+          {{- if .Values.useNg }}
+            - logprep-ng
+          {{- else }}
             - logprep
+          {{- end  }}
             - run
             {{- range $key, $value := .Values.configurations }}
             - {{ $value.name }}

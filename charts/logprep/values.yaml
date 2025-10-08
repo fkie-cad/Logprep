@@ -56,6 +56,9 @@ secrets: {}
 #
 environment: []
 
+# Use new generation Logprep
+useNg: false
+
 # Boolean to signal to use affinity to avoid deploying multiple instances of the
 # pod on the same node
 affinity: false
