@@ -74,21 +74,26 @@ class IPAlerter:
 
     def is_in_alerts_list(self, rule: PreDetectorRule, event: dict) -> bool:
         """Check if IP is in alerts list and if the alert has expired."""
-        in_alerts = False
         for field in rule.ip_fields:
-            ip_string = get_dotted_field_value(event, field)
-            if ip_string in self._single_alert_ips:
-                in_alerts = self._single_is_not_expired(ip_string)
-                continue
+            ips = get_dotted_field_value(event, field)
+            ips = ips if isinstance(ips, list) else [ips]
+            for ip_string in ips:
+                in_alert_ip_list = self._ip_is_in_alert_list(ip_string)
+                if in_alert_ip_list:
+                    return in_alert_ip_list
+        return False
 
-            try:
-                ip_address_object = ip_address(ip_string)
-            except ValueError:
-                continue
+    def _ip_is_in_alert_list(self, ip_string: str) -> bool:
+        if ip_string in self._single_alert_ips:
+            return self._single_is_not_expired(ip_string)
 
-            for network in self._alert_network:
-                if ip_address_object in network:
-                    in_alerts = self._network_is_not_expired(network)
-                    break
+        try:
+            ip_address_object = ip_address(ip_string)
+        except ValueError:
+            return False
 
-        return in_alerts
+        for network in self._alert_network:
+            if ip_address_object in network:
+                return self._network_is_not_expired(network)
+
+        return False
