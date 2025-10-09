@@ -5,6 +5,8 @@
 ### Features
 
 * implement first prototype of ng logprep runner
+* list comparison processor can now also match fields that contain lists in documents
+* list comparison processor can now also match IPs with networks
 
 ### Improvements
 
