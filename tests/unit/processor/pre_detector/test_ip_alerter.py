@@ -1,7 +1,11 @@
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
 # pylint: disable=protected-access
 # pylint: disable=wrong-import-position
+# pylint: disable=unused-argument
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=too-many-arguments
+
+
 from ipaddress import IPv4Network
 
 import pytest
