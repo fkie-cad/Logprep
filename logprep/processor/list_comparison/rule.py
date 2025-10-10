@@ -42,6 +42,7 @@ target field :code:`List_comparison.example`.
 """
 
 import os.path
+from ipaddress import ip_network
 from string import Template
 from typing import List, Optional
 
@@ -56,6 +57,8 @@ class ListComparisonRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     _compare_sets: dict
+    _ip_network_compare_sets: dict
+    _compare_set_keys: list[str]
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
@@ -91,6 +94,8 @@ class ListComparisonRule(FieldManagerRule):
     def __init__(self, filter_rule: FilterExpression, config: dict, processor_name: str):
         super().__init__(filter_rule, config, processor_name)
         self._compare_sets = {}
+        self._ip_network_compare_sets = {}
+        self._compare_set_keys = []
 
     def _get_list_search_base_path(self, list_search_base_path):
         if list_search_base_path is None:
@@ -127,9 +132,34 @@ class ListComparisonRule(FieldManagerRule):
             content = GetterFactory.from_string(list_path).get()
             compare_elements = content.splitlines()
             file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
+            string_elements = []
+            network_elements = []
+            for elem in file_elem_tuples:
+                if "/" in elem:
+                    try:
+                        network_elements.append(ip_network(elem))
+                    except ValueError:
+                        string_elements.append(elem)
+                else:
+                    string_elements.append(elem)
             filename = os.path.basename(list_path)
-            self._compare_sets.update({filename: set(file_elem_tuples)})
+            if string_elements:
+                self._compare_sets.update({filename: set(string_elements)})
+            if network_elements:
+                self._ip_network_compare_sets.update({filename: set(network_elements)})
+
+        compare_keys = list(self._compare_sets.keys())
+        network_compare_keys = list(self._ip_network_compare_sets.keys())
+        self._compare_set_keys = list(set(compare_keys + network_compare_keys))
 
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
         return self._compare_sets
+
+    @property
+    def network_compare_sets(self) -> dict:  # pylint: disable=missing-docstring
+        return self._ip_network_compare_sets
+
+    @property
+    def compare_set_keys(self) -> list[str]:  # pylint: disable=missing-docstring
+        return self._compare_set_keys
