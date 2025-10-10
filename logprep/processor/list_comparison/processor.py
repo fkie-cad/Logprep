@@ -25,6 +25,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.list_comparison.rule
 """
+
 from ipaddress import ip_address
 
 from attr import define, field, validators
