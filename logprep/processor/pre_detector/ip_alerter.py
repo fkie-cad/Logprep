@@ -78,9 +78,8 @@ class IPAlerter:
             ips = get_dotted_field_value(event, field)
             ips = ips if isinstance(ips, list) else [ips]
             for ip_string in ips:
-                in_alert_ip_list = self._ip_is_in_alert_list(ip_string)
-                if in_alert_ip_list:
-                    return in_alert_ip_list
+                if self._ip_is_in_alert_list(ip_string):
+                    return True
         return False
 
     def _ip_is_in_alert_list(self, ip_string: str) -> bool:
