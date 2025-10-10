@@ -1,7 +1,11 @@
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
 # pylint: disable=protected-access
 # pylint: disable=wrong-import-position
+# pylint: disable=unused-argument
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=too-many-arguments
+
+
 from ipaddress import IPv4Network
 
 import pytest
@@ -51,7 +55,7 @@ def fixture_rule_with_fields():
                 "mitre": [],
                 "case_condition": "does not care",
             },
-            "ip_fields": ["ip_field"],
+            "ip_fields": ["ip_field", "ip_field_2"],
         }
     )
 
@@ -134,3 +138,67 @@ class TestIPAlerter:
     def test_field_does_not_exist(self, ip_alerter, rule_with_fields):
         event = {}
         assert not ip_alerter.is_in_alerts_list(rule_with_fields, event)
+
+    @pytest.mark.parametrize(
+        "test_case, event, success",
+        [
+            ("empty list", {"ip_field": []}, False),
+            ("matches exact", {"ip_field": ["127.0.0.1"]}, True),
+            ("matches network", {"ip_field": ["127.0.123.1"]}, True),
+            ("no match", {"ip_field": ["111.111.111.111"]}, False),
+            ("expired", {"ip_field": ["13.12.12.12"]}, False),
+            ("first matches", {"ip_field": ["127.0.123.1", "111.111.111.111"]}, True),
+            ("last matches", {"ip_field": ["111.111.111.111", "127.0.123.1"]}, True),
+            (
+                "middle matches network and last is expired",
+                {"ip_field": ["111.111.111.111", "127.0.123.1", "13.12.12.12"]},
+                True,
+            ),
+            (
+                "first field matches network and last is expired",
+                {"ip_field": ["127.0.123.1"], "ip_field_2": ["111.111.111.111"]},
+                True,
+            ),
+            (
+                "second field matches network and last is expired",
+                {"ip_field": ["111.111.111.111"], "ip_field_2": ["127.0.123.1"]},
+                True,
+            ),
+        ],
+    )
+    def test_ips_from_list_in_alerts_succeeds(
+        self, ip_alerter, rule_with_fields, test_case, event, success
+    ):
+        assert ip_alerter.is_in_alerts_list(rule_with_fields, event) is success
+
+    @pytest.mark.parametrize(
+        "test_case, event, expired",
+        [
+            (
+                "source is list with matching and expired succeeds",
+                {"ip_field": ["13.12.12.13", "222.222.222.222"]},
+                "222.222.222.222",
+            ),
+            (
+                "source is list with expired and matching succeeds",
+                {"ip_field": ["222.222.222.222", "13.12.12.13"]},
+                "222.222.222.222",
+            ),
+            (
+                "source is list with matching and expired network succeeds",
+                {"ip_field": ["127.0.0.2", "222.222.222.0/24"]},
+                "222.222.222.0/24",
+            ),
+            (
+                "source is list with expired and matching network succeeds",
+                {"ip_field": ["222.222.222.0/24", "127.0.0.2"]},
+                "222.222.222.0/24",
+            ),
+        ],
+    )
+    def test_ips_from_list_and_ip_expires_during_processing_succeeds(
+        self, ip_alerter, rule_with_fields, test_case, event, expired
+    ):
+        ip_alerter._alert_ips_map[expired] = "1900-08-31T16:47+00:00"
+        ip_alerter._single_alert_ips.add(expired)
+        assert ip_alerter.is_in_alerts_list(rule_with_fields, event)

@@ -58,3 +58,20 @@ class TestDummyInput(BaseInputTestCase):
         for order in range(0, 9):
             event = connector.get_next(self.timeout)
             assert event.get("order") == order % 3
+
+    def test_repeated_documents_are_not_affected_by_previous_changes(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["repeat_documents"] = True
+        config["documents"] = [{"foo": 1, "bar": {"baz": 2}}]
+        connector = Factory.create(configuration={"Test Instance Name": config})
+
+        event = connector.get_next(self.timeout)
+        assert event["foo"] == 1
+        assert event["bar"]["baz"] == 2
+
+        event["foo"] = 3
+        event["bar"]["baz"] = 4
+
+        event = connector.get_next(self.timeout)
+        assert event["foo"] == 1
+        assert event["bar"]["baz"] == 2
