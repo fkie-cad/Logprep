@@ -15,9 +15,9 @@ class IPAlerter:
     """Used to get if an IP is in an alert list and if the IP alert has expired."""
 
     def __init__(self, alert_ip_lists_path: Union[List[str], str]):
-        self._alert_ips_map = {}
-        self._single_alert_ips = set()
-        self._alert_network = set()
+        self._alert_ips_map: dict[str, str] = {}
+        self._single_alert_ips: set[str] = set()
+        self._alert_network: set[IPv4Network] = set()
 
         if isinstance(alert_ip_lists_path, str):
             alert_ip_lists_path = [alert_ip_lists_path]
