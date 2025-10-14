@@ -89,7 +89,7 @@ class TestAutoRuleTester:
     ):
         processor_name = "pre_detector"
         rules_pn = {"pre_detector": {"type": "pre_detector", "rules": []}}
-        root = "tests/testdata/auto_tests/pre_detector/rules"
+        root = "tests/testdata/auto_tests/pre_detector/auto_rule_test_idx"
 
         if does_exit:
             with pytest.raises(SystemExit):
