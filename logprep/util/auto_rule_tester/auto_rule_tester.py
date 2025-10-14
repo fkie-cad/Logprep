@@ -666,6 +666,7 @@ class AutoRuleTester:
                 processor_name == "pre_detector"
                 and not all(d.get("target_rule_idx") is not None for d in rule_tests)
                 and len(rule_tests) > 1
+                and len(multi_rule) > 1
             ):
                 self._pd_extra.color_based_print(
                     f"- Not all dictionaries in {file_path} "

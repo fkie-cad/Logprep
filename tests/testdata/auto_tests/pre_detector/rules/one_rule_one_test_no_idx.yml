@@ -1,0 +1,9 @@
+filter: some_field
+pre_detector:
+  id: TEST_RULE_ID_OR_OT_NI
+  title: SOME_TEST_RULE
+  severity: critical
+  mitre: []
+  case_condition: directly
+sigma_fields: true
+description: Test-rule with matching auto-test
