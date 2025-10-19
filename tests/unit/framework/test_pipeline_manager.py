@@ -703,3 +703,15 @@ class TestOutputQueueListener:
             f"[Error Event] Couldn't enqueue error item due to: TestException | Item: '{event}'"
         )
         mock_error.assert_called_with(expected_error_log)
+
+    def test_listen_calls_run_pending_tasks(self):
+        target = "store"
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        with mock.patch("logprep.abc.component.Component.run_pending_tasks") as mock_run_tasks:
+            listener = OutputQueueListener(queue, target, output_config)
+            listener.queue.put("test")
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_run_tasks.assert_called()
