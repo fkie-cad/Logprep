@@ -118,6 +118,7 @@ class OutputQueueListener:
         component = self.get_output_instance()
         target = getattr(component, self.target)
         while 1:
+            Component.run_pending_tasks()
             item = self.queue.get()
             if item == 1:
                 continue
