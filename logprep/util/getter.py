@@ -270,14 +270,10 @@ class HttpGetter(Getter):
     def _get_refresh_interval(self) -> int:
         """Get refresh interval from a configuration file"""
         if ENV_NAME_LOGPREP_GETTER_CONFIG in os.environ:
-            getter_file_path = Path(os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG))
+            getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
             if getter_file_path is None:
                 return 0
-            with getter_file_path.open("r", encoding="utf8") as getter_file:
-                if getter_file_path.suffix in [".yml", ".yaml"]:
-                    getters_config = yaml.load(getter_file)
-                elif getter_file_path.suffix == ".json":
-                    getters_config = json.load(getter_file)
+            getters_config = GetterFactory.from_string(getter_file_path).get_dict()
             return getters_config.get(self.target, {}).get("refresh_interval", 0)
         return 0
 

@@ -9,7 +9,7 @@ from string import Template
 from typing import Dict, List, Union
 
 from attrs import define, field, validators
-from ruamel.yaml import YAML
+from ruamel.yaml import YAML, YAMLError
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -92,6 +92,27 @@ class Getter(ABC):
     def get_json(self) -> Union[Dict, List]:
         """gets and parses the raw content to json"""
         return json.loads(self.get())
+
+    def get_collection(self) -> Union[Dict, List]:
+        """gets and parses the raw content to yaml or json if yaml fails"""
+        try:
+            return self.get_yaml()
+        except YAMLError:
+            return self.get_json()
+
+    def get_dict(self) -> Union[Dict, List]:
+        """gets dict and fails otherwise"""
+        result = self.get_collection()
+        if not isinstance(result, dict):
+            raise ValueError("Value is not a dictionary")
+        return result
+
+    def get_list(self) -> Union[Dict, List]:
+        """gets list and fails otherwise"""
+        result = self.get_collection()
+        if not isinstance(result, list):
+            raise ValueError("Value is not a list")
+        return result
 
     def get_jsonl(self) -> List:
         """gets and parses the raw content to jsonl"""

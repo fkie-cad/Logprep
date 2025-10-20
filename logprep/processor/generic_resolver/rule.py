@@ -199,19 +199,16 @@ class GenericResolverRule(FieldManagerRule):
             self._raise_if_pattern_is_invalid()
             self._raise_if_file_does_not_exist()
             additions = self._get_additions()
-            self._raise_if_additions_are_invalid(additions)
             if self.ignore_case:
                 additions = {key.upper(): value for key, value in additions.items()}
             self.additions = additions
 
         def _get_additions(self) -> dict:
             try:
-                additions = GetterFactory.from_string(self._file_path).get_yaml()
-            except YAMLError:
-                additions = GetterFactory.from_string(self._file_path).get_json()
-            if not isinstance(additions, dict):
+                additions = GetterFactory.from_string(self._file_path).get_dict()
+            except ValueError as error:
                 raise InvalidConfigurationError(
-                    f"Additions file '{self._file_path}' is not a dictionary"
+                    f"Error loading additions from '{self._file_path}': {error}"
                 )
             return additions
 
@@ -227,12 +224,6 @@ class GenericResolverRule(FieldManagerRule):
                     f"Additions file '{self._file_path}' not found! (Rule ID: '{self.id}')",
                 )
 
-        def _raise_if_additions_are_invalid(self, additions: dict):
-            if not isinstance(additions, dict):
-                raise InvalidConfigurationError(
-                    f"Additions file '{self._file_path}' must be a dictionary "
-                    f"with string values! (Rule ID: '{self.id}')",
-                )
 
     @property
     def field_mapping(self) -> dict:

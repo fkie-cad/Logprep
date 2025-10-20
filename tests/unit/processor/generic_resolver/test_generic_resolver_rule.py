@@ -210,7 +210,8 @@ class TestGenericResolverRule:
                     },
                 },
                 InvalidConfigurationError,
-                r"Additions file '.+resolve_mapping_list\.yml' is not a dictionary",
+                r"Error loading additions from '.+resolve_mapping_list\.yml': "
+                r"Value is not a dictionary",
             ),
         ],
     )
