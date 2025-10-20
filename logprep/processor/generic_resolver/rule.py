@@ -122,11 +122,10 @@ from pathlib import Path
 from typing import Optional, List, Tuple, Union
 
 from attrs import define, field, validators
-from ruamel.yaml.error import YAMLError
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import GetterFactory
+from logprep.util.getter import GetterFactory, RefreshableGetter
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -192,7 +191,9 @@ class GenericResolverRule(FieldManagerRule):
 
         def __attrs_post_init__(self):
             if self._file_path:
-                GetterFactory.from_string(self._file_path).add_callback(self._add_from_path)
+                getter = GetterFactory.from_string(self._file_path)
+                if isinstance(getter, RefreshableGetter):
+                    getter.add_callback(self._add_from_path)
                 self._add_from_path()
 
         def _add_from_path(self):
@@ -223,7 +224,6 @@ class GenericResolverRule(FieldManagerRule):
                 raise InvalidConfigurationError(
                     f"Additions file '{self._file_path}' not found! (Rule ID: '{self.id}')",
                 )
-
 
     @property
     def field_mapping(self) -> dict:
