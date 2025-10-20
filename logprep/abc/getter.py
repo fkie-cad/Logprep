@@ -100,14 +100,14 @@ class Getter(ABC):
         except YAMLError:
             return self.get_json()
 
-    def get_dict(self) -> Union[Dict, List]:
+    def get_dict(self) -> dict:
         """gets dict and fails otherwise"""
         result = self.get_collection()
         if not isinstance(result, dict):
             raise ValueError("Value is not a dictionary")
         return result
 
-    def get_list(self) -> Union[Dict, List]:
+    def get_list(self) -> list:
         """gets list and fails otherwise"""
         result = self.get_collection()
         if not isinstance(result, list):

@@ -125,7 +125,7 @@ from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import GetterFactory, RefreshableGetter
+from logprep.util.getter import GetterFactory
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -191,9 +191,7 @@ class GenericResolverRule(FieldManagerRule):
 
         def __attrs_post_init__(self):
             if self._file_path:
-                getter = GetterFactory.from_string(self._file_path)
-                if isinstance(getter, RefreshableGetter):
-                    getter.add_callback(self._add_from_path)
+                GetterFactory.from_string(self._file_path).add_callback(self._add_from_path)
                 self._add_from_path()
 
         def _add_from_path(self):
