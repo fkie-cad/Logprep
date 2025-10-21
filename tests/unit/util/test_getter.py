@@ -36,7 +36,7 @@ def fixture_clear_getter_cache():
 
 
 class TestGetterFactory:
-    def test_raises_if_getter_not_implemeted(self):
+    def test_raises_if_getter_not_implemented(self):
         with pytest.raises(GetterNotFoundError):
             GetterFactory.from_string("not_exist://my/file")
 
