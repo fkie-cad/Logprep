@@ -182,11 +182,10 @@ class Runner:
             self._process_events()
 
         self.shut_down()
-        self.__input_connector.acknowledge()
+        input_connector = cast(Input, self.__input_connector)
+        input_connector.acknowledge()
 
-        len_delivered_events = len(
-            self.__input_connector.event_backlog.get(EventStateType.DELIVERED)
-        )
+        len_delivered_events = len(input_connector.event_backlog.get(EventStateType.DELIVERED))
         if len_delivered_events:
             logger.error(
                 f"Input connector has {len_delivered_events} non-acked events event_backlog."
@@ -198,8 +197,10 @@ class Runner:
         """Process a batch of events got from sender iterator."""
 
         logger.debug("Start log processing.")
-        logger.debug("Get batch of events from sender (batch_size=%r).", self.sender.batch_size)
-        for event in self.sender:
+
+        sender = cast(Sender, self.sender)
+        logger.debug(f"Get batch of events from sender (batch_size={sender.batch_size}).")
+        for event in sender:
             if event is None:
                 continue
 
