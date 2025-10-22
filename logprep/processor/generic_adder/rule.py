@@ -84,7 +84,7 @@ from attrs import define, field, validators
 
 from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import GetterFactory
+from logprep.util.getter import GetterFactory, RefreshableGetter
 
 
 class GenericAdderRule(FieldManagerRule):
@@ -156,7 +156,9 @@ class GenericAdderRule(FieldManagerRule):
             self._base_add = copy.deepcopy(self.add)
 
             for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
-                GetterFactory.from_string(add_file).add_callback(self._refresh_add)
+                getter = GetterFactory.from_string(add_file)
+                if isinstance(getter, RefreshableGetter):
+                    getter.add_callback(self._refresh_add)
 
             if self.add_from_file:
                 self._add_from_path()
