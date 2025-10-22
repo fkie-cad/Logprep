@@ -17,6 +17,7 @@ Example
         type: dummy_output
 """
 
+import logging
 from typing import TYPE_CHECKING, List
 
 from attr import define, field
@@ -26,6 +27,9 @@ from logprep.abc.output import Output
 
 if TYPE_CHECKING:
     from logprep.abc.connector import Connector  # pragma: no cover
+
+
+logger = logging.getLogger("DummyOutput")
 
 
 class DummyOutput(Output):
@@ -47,6 +51,9 @@ class DummyOutput(Output):
             default=[],
         )
 
+        timeout: int = field(validator=validators.instance_of(int), default=500)
+        """(Optional) Timeout for the connection (default is 500ms)."""
+
     events: list
     failed_events: list
     setup_called_count: int
@@ -67,6 +74,8 @@ class DummyOutput(Output):
         self.failed_events = []
         self.shut_down_called_count = 0
         self._exceptions = configuration.exceptions
+        flush_timeout = self._config.timeout
+        self._schedule_task(task=self._flush, seconds=flush_timeout)
 
     def store(self, document: dict):
         """Store the document in the output destination.
@@ -88,6 +97,9 @@ class DummyOutput(Output):
     def store_custom(self, document: dict, target: str):
         """Store additional data in a custom location inside the output destination."""
         self.store(document)
+
+    def _flush(self):
+        logger.debug("Flushing DummyOutput '%s' with %d events", self.name, len(self.events))
 
     def shut_down(self):
         self.shut_down_called_count += 1

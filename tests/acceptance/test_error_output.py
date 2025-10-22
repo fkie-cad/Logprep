@@ -105,3 +105,29 @@ def test_error_output_errors_are_logged_if_error_output_has_an_error(
         forbidden_outputs=[],
     )
     stop_logprep(proc)
+
+
+def test_error_output_flushes_if_timeout_is_reached(tmp_path, config: Configuration):
+    error_output_name = "dummy_error_output"
+    config.input = {
+        "dummy": {
+            "type": "dummy_input",
+            "documents": [{"something": "yeah"}],
+        }
+    }
+    config.logger = {
+        "level": "DEBUG",
+    }
+    config.error_output = {error_output_name: {"type": "dummy_output", "timeout": 1}}
+    config.error_backlog_size = 10000
+    config.output.update({"kafka": {"type": "dummy_output", "default": False}})
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml(), encoding="utf-8")
+    proc = start_logprep(config_path)
+    wait_for_output(
+        proc,
+        rf".*Flushing DummyOutput '{error_output_name}' with [0-2] events.*",
+        test_timeout=30,
+        forbidden_outputs=[],
+    )
+    stop_logprep(proc)
