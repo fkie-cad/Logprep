@@ -234,7 +234,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert processor._rule_tree.tree_config.priority_dict == tree_config.get("priority_dict")
 
     @responses.activate
-    def test_raises_http_error(self):
+    def test_raises_http_error_raises_getter_error(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
