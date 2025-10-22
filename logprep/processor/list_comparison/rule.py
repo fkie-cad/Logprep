@@ -93,7 +93,7 @@ class ListComparisonRule(FieldManagerRule):
         self._config: ListComparisonRule.Config = self._config
         self._compare_sets = {}
 
-    def _get_list_search_base_path(self, list_search_base_path) -> str:
+    def _get_list_search_base_path(self, list_search_base_path: str | None) -> str:
         if list_search_base_path is None:
             return self._config.list_search_base_path
         if self._config.list_search_base_path > list_search_base_path:

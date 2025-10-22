@@ -223,7 +223,7 @@ class RefreshableGetter(Getter, ABC):
             getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
             if getter_file_path == self.target and self.protocol == "file":
                 return 0
-            getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()
+            getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()  # type: ignore
             return getters_config.get(self.target, {}).get("refresh_interval", 0)
         return 0
 
@@ -247,7 +247,7 @@ class RefreshableGetter(Getter, ABC):
     def _update_cache(self) -> bool:
         """Update the cache of the current http getter"""
         content, was_modified = self._get_from_target()
-        if was_modified:
+        if was_modified and content is not None:
             self.cache = content
         if self.cache is None:
             raise ValueError(f"{type(self).__name__} cache is empty")
