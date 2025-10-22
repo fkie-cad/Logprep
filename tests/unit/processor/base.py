@@ -10,7 +10,6 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-from requests.exceptions import HTTPError
 import responses
 from attrs import asdict
 from ruamel.yaml import YAML
@@ -25,7 +24,7 @@ from logprep.processor.base.exceptions import (
 )
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
-from logprep.util.getter import HttpGetter
+from logprep.util.getter import HttpGetter, RefreshableGetterError
 from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -240,7 +239,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
         HttpGetter._shared.clear()
-        with pytest.raises(HTTPError):
+        with pytest.raises(RefreshableGetterError, match="404"):
             Factory.create({"test instance": config})
 
     @pytest.mark.parametrize(

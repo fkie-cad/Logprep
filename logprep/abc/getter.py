@@ -132,14 +132,3 @@ class Getter(ABC):
         str
             The raw serialized content.
         """
-
-    def add_callback(self, fnc, *args, **kwargs):
-        """Add callbacks to call when getter refreshes with new data"""
-
-    @classmethod
-    def add_callback_for_target(cls, target, fnc, *args, **kwargs):
-        """Add callbacks to call when getter with given target refreshes with new data"""
-
-    @classmethod
-    def refresh(cls):
-        """Run all pending getter schedulers"""

@@ -733,7 +733,7 @@ class Configuration:
             except (json.JSONDecodeError, ValueError):
                 config_dict = config_getter.get_yaml()
             if not isinstance(config_dict, dict):
-                raise TypeError(f"Configuration must be of type dictionary")
+                raise TypeError("Configuration must be of type dictionary")
             config = Configuration(**(config_dict | {"getter": config_getter}))
         except TypeError as error:
             raise InvalidConfigurationError(

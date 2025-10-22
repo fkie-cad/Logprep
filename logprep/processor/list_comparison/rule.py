@@ -49,7 +49,7 @@ from attrs import define, field, validators
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import GetterFactory
+from logprep.util.getter import GetterFactory, HttpGetter
 
 
 class ListComparisonRule(FieldManagerRule):
@@ -108,21 +108,23 @@ class ListComparisonRule(FieldManagerRule):
         else:
             self._init_list_comparison_from_local_file(list_search_base_path)
 
-    def _init_list_comparison_from_http(self, list_search_base_path):
+    def _init_list_comparison_from_http(self, list_search_base_path: str):
         for list_path in self._config.list_file_paths:
             list_search_base_path_resolved = Template(list_search_base_path).substitute(
                 {**os.environ, **{"LOGPREP_LIST": list_path}}
             )
             http_getter = GetterFactory.from_string(list_search_base_path_resolved)
+            if not isinstance(http_getter, HttpGetter):
+                raise TypeError(f"The target {list_search_base_path_resolved} must be a url")
             self._update_compare_sets_via_http(http_getter, list_path)
             http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
 
-    def _update_compare_sets_via_http(self, http_getter, list_path):
+    def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str):
         compare_elements = http_getter.get().splitlines()
         file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
         self._compare_sets.update({list_path: set(file_elem_tuples)})
 
-    def _init_list_comparison_from_local_file(self, list_search_base_path):
+    def _init_list_comparison_from_local_file(self, list_search_base_path: str):
         absolute_list_paths = [
             list_path for list_path in self._config.list_file_paths if list_path.startswith("/")
         ]
