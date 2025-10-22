@@ -17,7 +17,6 @@ import requests
 from requests import Response
 from attrs import define, field, validators
 from schedule import Scheduler
-from starlette import status  # type: ignore
 
 from logprep.abc.exceptions import LogprepException
 from logprep.abc.getter import Getter, yaml
@@ -320,7 +319,7 @@ class HttpGetter(Getter):
 
     def _update_cache(self) -> bool:
         response = self._do_request()
-        not_modified: bool = response.status_code == status.HTTP_304_NOT_MODIFIED
+        not_modified: bool = response.status_code == 304
         if not not_modified:
             self.cache = response.content
         if self.cache is None:

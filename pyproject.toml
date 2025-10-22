@@ -89,8 +89,7 @@ dependencies = [
   "tabulate",
   "falcon>=3.1.3",
   "uvloop",
-  "httptools",
-  "starlette"
+  "httptools"
 ]
 
 [project.optional-dependencies]
