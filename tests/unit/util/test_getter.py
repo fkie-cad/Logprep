@@ -534,9 +534,9 @@ class TestHttpGetter:
             responses.assert_call_count("https://the.krass.endpoint/token", 1)
             responses.assert_call_count(f"https://{domain}/bar", 1)
             # expire token
-            http_getter._credentials_registry.get(
-                f"https://{domain}"
-            )._token.expiry_time = datetime.now() - timedelta(seconds=3600)
+            http_getter._credentials_registry.get(f"https://{domain}")._token.expiry_time = (
+                datetime.now() - timedelta(seconds=3600)
+            )
             return_content = http_getter.get_json()
 
     @responses.activate
