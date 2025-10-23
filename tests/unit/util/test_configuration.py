@@ -1029,7 +1029,7 @@ output:
             ),
             (
                 "document is not a valid json or yaml",
-                "logprep.util.getter.FileGetter.get_yaml",
+                "logprep.util.getter.FileGetter.get_dict",
                 ScannerError,
                 "Invalid yaml or json file:",
             ),

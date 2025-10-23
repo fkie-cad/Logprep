@@ -725,12 +725,7 @@ class Configuration:
         """
         try:
             config_getter = GetterFactory.from_string(config_path)
-            try:
-                config_dict = config_getter.get_json()
-            except (json.JSONDecodeError, ValueError):
-                config_dict = config_getter.get_yaml()
-            if not isinstance(config_dict, dict):
-                raise TypeError("Configuration must be of type dictionary")
+            config_dict = config_getter.get_dict()
             config = Configuration(**(config_dict | {"getter": config_getter}))
         except TypeError as error:
             raise InvalidConfigurationError(
