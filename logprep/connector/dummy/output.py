@@ -52,7 +52,7 @@ class DummyOutput(Output):
         )
 
         timeout: int = field(validator=validators.instance_of(int), default=500)
-        """(Optional) Timeout for the connection (default is 500ms)."""
+        """(Optional) Timeout for the connection (default is 500s)."""
 
     events: list
     failed_events: list
