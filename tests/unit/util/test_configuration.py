@@ -1029,7 +1029,7 @@ output:
             ),
             (
                 "document is not a valid json or yaml",
-                "logprep.util.getter.FileGetter.get_yaml",
+                "logprep.util.getter.FileGetter.get_dict",
                 ScannerError,
                 "Invalid yaml or json file:",
             ),
@@ -1405,6 +1405,55 @@ output:
         assert "Configuration version didn't change." in caplog.text
         assert "Config refresh interval is set to:" not in caplog.text
         assert config.config_refresh_interval == 10, "should not be changed to None"
+
+    @responses.activate
+    def test_log_config_refresh_interval_if_variables_change(self, config_path, tmp_path, caplog):
+        caplog.set_level("INFO")
+        config = Configuration.from_sources([str(config_path)])
+
+        config.config_refresh_interval = 10
+
+        # Set to variable value
+        for processor in config.pipeline:
+            if "pseudonymizer" in processor:
+                processor["pseudonymizer"]["regex_mapping"] = "http://127.0.0.1:8000"
+                break
+
+        responses.get(
+            "http://127.0.0.1:8000",
+            json={
+                "RE_WHOLE_FIELD": ".",
+                "RE_DOMAIN_BACKSLASH_USERNAME": ".",
+                "RE_IP4_COLON_PORT": ".",
+                "RE_ALL_NO_CAP": ".",
+            },
+        )
+
+        config_path.write_text(config.as_yaml())
+        config.reload()  # Reload with newly added variable value
+        assert "Successfully reloaded configuration" in caplog.text
+
+        caplog.clear()
+        config.reload()  # Reload with unchanged variable value
+        assert "Configuration version didn't change." in caplog.text
+
+        responses.get(
+            "http://127.0.0.1:8000",
+            json={
+                "RE_WHOLE_FIELD": ".CHANGED",
+                "RE_DOMAIN_BACKSLASH_USERNAME": ".",
+                "RE_IP4_COLON_PORT": ".",
+                "RE_ALL_NO_CAP": ".",
+            },
+        )
+
+        config.reload()  # Reload with changed variable value
+        assert "Successfully reloaded configuration" in caplog.text
+
+        config = Configuration.from_sources([str(config_path)])  # Load with existing variable value
+        caplog.clear()
+        config.reload()  # Reload with unchanged variable value
+        assert "Configuration version didn't change." in caplog.text
 
 
 class TestInvalidConfigurationErrors:

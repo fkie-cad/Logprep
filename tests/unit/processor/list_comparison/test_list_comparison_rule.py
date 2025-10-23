@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
+from unittest import mock
 
 import pytest
 
@@ -101,3 +102,21 @@ class TestListComparisonRule:
         assert rule.compare_sets is not None
         assert isinstance(rule.compare_sets, dict)
         assert len(rule.compare_sets.keys()) > 0
+
+    @mock.patch(
+        "logprep.processor.list_comparison.rule.GetterFactory.from_string",
+        return_value=mock.MagicMock(),
+    )
+    def test_expects_refreshable_getter(self, _):
+        rule_definition = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+        }
+        rule = ListComparisonRule.create_from_dict(rule_definition)
+        url = "http://something"
+        with pytest.raises(TypeError, match=f"The target {url} must be a url"):
+            rule._init_list_comparison_from_http(url)

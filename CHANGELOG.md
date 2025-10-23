@@ -6,6 +6,14 @@
 
 * implement first prototype of ng logprep runner
 * ip alerter can now also match fields that contain lists of IPs in documents
+* make http getters periodically refresh if configured in file path defined by environment variable `LOGPREP_GETTER_CONFIG`.
+* cache http getter results by utilising the etag header.
+* add per-target (i.e. `localhost:1234/foo`) callbacks to http getters that are called when getters are refreshed with new data.
+* make config reload detect changes in http getters.
+* make list comparison processor be refreshable with http getter
+* make generic adder processor be refreshable with http getter
+* make generic resolver processor be refreshable with http getter
+* add option for refreshable getters to return default values if no value could be obtained
 
 ### Improvements
 
