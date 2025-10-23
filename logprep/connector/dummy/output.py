@@ -74,8 +74,7 @@ class DummyOutput(Output):
         self.failed_events = []
         self.shut_down_called_count = 0
         self._exceptions = configuration.exceptions
-        flush_timeout = self._config.timeout
-        self._schedule_task(task=self._flush, seconds=flush_timeout)
+        self._schedule_task(task=self._flush, seconds=self._config.timeout)
 
     def store(self, document: dict):
         """Store the document in the output destination.
