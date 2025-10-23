@@ -224,7 +224,7 @@ from logprep.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
     MIN_CONFIG_REFRESH_INTERVAL,
 )
-from logprep.util.getter import GetterFactory, GetterNotFoundError
+from logprep.util.getter import GetterFactory, GetterNotFoundError, RefreshableGetterError
 from logprep.util.rule_loader import RuleLoader
 
 logger = logging.getLogger("Config")
@@ -965,7 +965,13 @@ class Configuration:
             try:
                 processor_definition_with_rules = self._load_rule_definitions(processor_definition)
                 pipeline_with_loaded_rules.append(processor_definition_with_rules)
-            except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
+            except (
+                FactoryError,
+                TypeError,
+                ValueError,
+                InvalidRuleDefinitionError,
+                RefreshableGetterError,
+            ) as error:
                 errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
@@ -1036,7 +1042,7 @@ class Configuration:
                 TypeError,
                 ValueError,
                 InvalidRuleDefinitionError,
-                RequestException,
+                RefreshableGetterError,
             ) as error:
                 errors.append(error)
             except FileNotFoundError as error:

@@ -7,6 +7,7 @@ import os
 import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from functools import cached_property
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
@@ -102,6 +103,9 @@ class DataSharedPerTarget:
 
     refresh_interval: int | None = None
     """Interval after which getters attempt to obtain the resource again"""
+
+    default_return_value: bytes | None = None
+    """Default value to be returned if defined in the configuration"""
 
     callbacks: list = []
     """Callbacks called after a resource has changed and was successfully obtained"""
@@ -201,6 +205,13 @@ class RefreshableGetter(Getter, ABC):
         """Sets the refresh interval for the current target"""
         self.shared.refresh_interval = value
 
+    @cached_property
+    def _default_return_value(self) -> bytes | None:
+        """Configured default value to be returned if no value could be retrieved"""
+        if self.shared.default_return_value is None:
+            self.shared.default_return_value = self._get_default_return_value()
+        return self.shared.default_return_value
+
     def add_callback(self, fnc, *args, **kwargs):
         """Add callbacks to call when http getter refreshes with new data"""
         if self.target not in self._callbacks:
@@ -226,6 +237,19 @@ class RefreshableGetter(Getter, ABC):
             getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()  # type: ignore
             return getters_config.get(self.target, {}).get("refresh_interval", 0)
         return 0
+
+    def _get_default_return_value(self) -> bytes | None:
+        """Get default return value from a configuration file"""
+        if ENV_NAME_LOGPREP_GETTER_CONFIG in os.environ:
+            getter_file_path = os.environ.get(ENV_NAME_LOGPREP_GETTER_CONFIG)
+            if getter_file_path == self.target and self.protocol == "file":
+                return None
+            getters_config = FileGetter(protocol="file", target=getter_file_path).get_dict()  # type: ignore
+            default_return_value = getters_config.get(self.target, {}).get("default_return_value")
+            if default_return_value is None:
+                return None
+            return default_return_value.encode("utf-8")
+        return None
 
     def _refresh(self) -> None:
         """Refresh the current http getter"""
@@ -257,6 +281,12 @@ class RefreshableGetter(Getter, ABC):
     def _get_from_target(self) -> tuple[bytes | None, bool]:
         """Get value from target and return if it changed or not since it was last obtained"""
 
+    def _handle_cache_error(self, error: RefreshableGetterError | ValueError):
+        """Return default value if it was configured else raise error"""
+        if self._default_return_value is None:
+            raise error
+        self.cache = self._default_return_value
+
     def _log_cache_warning(self, error: Exception):
         self._logger.warning(
             f"Not updating {type(self).__name__} cache with URI '{self.uri}' due to: %s", error
@@ -270,13 +300,14 @@ class RefreshableGetter(Getter, ABC):
                 try:
                     self._update_cache()
                 except RefreshableGetterError as error:
-                    raise error
+                    self._handle_cache_error(error)
+                    self._log_cache_warning(error)
         else:
             try:
                 self._update_cache()
             except RefreshableGetterError as error:
                 if self.cache is None:
-                    raise error
+                    self._handle_cache_error(error)
                 self._log_cache_warning(error)
         if self.cache is None:
             raise ValueError(f"Cache is empty for {type(self).__name__} with URI '{self.uri}'")

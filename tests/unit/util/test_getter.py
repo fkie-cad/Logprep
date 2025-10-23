@@ -1411,3 +1411,48 @@ class TestHttpGetter:
         http_getter: HttpGetter = GetterFactory.from_string(url)
         with pytest.raises(ValueError, match=f"Cache is empty for HttpGetter with URI '{url}'"):
             http_getter.get_raw()
+
+    def test_get_default_value_only_if_target_not_getter_config(self, tmp_path):
+        target = "something"
+        url = f"http://{target}"
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps({target: {"default_return_value": "something"}}))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter: HttpGetter = GetterFactory.from_string(url)
+            assert http_getter._get_default_return_value() == b"something"
+            http_getter.protocol = "file"
+            http_getter.target = str(http_getter_conf)
+            assert http_getter._get_default_return_value() is None
+
+    def test_getter_with_default(self, tmp_path):
+        target_ref_no_default = f"{uuid.uuid4()}/bar"
+        target_ref_default = f"{uuid.uuid4()}/bar"
+        target_no_ref_no_default = f"{uuid.uuid4()}/bar"
+        target_no_ref_default = f"{uuid.uuid4()}/bar"
+        url_ref_no_default = f"https://{target_ref_no_default}"
+        url_ref_default = f"https://{target_ref_default}"
+        url_no_ref_no_default = f"https://{target_no_ref_no_default}"
+        url_no_ref_default = f"https://{target_no_ref_default}"
+
+        getter_file_content = {
+            target_ref_no_default: {"refresh_interval": 10},
+            target_ref_default: {"refresh_interval": 10, "default_return_value": '{"foo": "bar"}'},
+            target_no_ref_no_default: {},
+            target_no_ref_default: {"default_return_value": '{"foo": "bar"}'},
+        }
+
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            ref_no_default = GetterFactory.from_string(url_ref_no_default)
+            ref_default = GetterFactory.from_string(url_ref_default)
+            no_ref_no_default = GetterFactory.from_string(url_no_ref_no_default)
+            no_ref_default = GetterFactory.from_string(url_no_ref_default)
+
+            with pytest.raises(RefreshableGetterError):
+                ref_no_default.get()
+                no_ref_no_default.get()
+            assert ref_default.get_json() == {"foo": "bar"}
+            assert no_ref_default.get_json() == {"foo": "bar"}
