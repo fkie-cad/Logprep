@@ -247,3 +247,17 @@ class TestRunner:
             runner.run()
             mock_refresh.assert_called_with(configuration)
             assert mock_refresh.call_count == 1
+
+    def test_shut_down_calls_input_connector_acknowledge(self, configuration):
+        runner = Runner(configuration)
+
+        with mock.patch.object(runner._input_connector, "acknowledge") as mock_ack:
+            runner.shut_down()
+            mock_ack.assert_called_once()
+
+    def test_reload_calls_input_connector_acknowledge(self, configuration):
+        runner = Runner(configuration)
+
+        with mock.patch.object(runner._input_connector, "acknowledge") as mock_ack:
+            runner.reload()
+            mock_ack.assert_called_once()

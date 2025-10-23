@@ -44,6 +44,7 @@ class Runner:
 
         self.configuration = configuration
         self._running_config_version = configuration.version
+        self._input_connector: Input | None = None
 
         # Initialized in `setup()`; updated by runner logic thereafter:
         self.should_exit: bool | None = None
@@ -79,26 +80,15 @@ class Runner:
             The instantiated pipeline instance (not yet set up).
         """
 
-        input_connector = (
-            Factory.create(self.configuration.input) if self.configuration.input else None
+        self._input_connector = cast(Input, Factory.create(self.configuration.input))
+        self._input_connector.event_backlog = SetEventBacklog()
+        self._input_connector.setup()
+
+        input_iterator = self._input_connector(timeout=self.configuration.timeout)
+        processors = cast(
+            list[Processor],
+            [Factory.create(processor_config) for processor_config in self.configuration.pipeline],
         )
-
-        if input_connector is not None:
-            input_connector.event_backlog = SetEventBacklog()
-            input_connector.setup()
-        else:
-            raise AttributeError("No input connector configured.")
-
-        input_iterator = input_connector(timeout=self.configuration.timeout)
-        processors = [
-            Factory.create(processor_config) for processor_config in self.configuration.pipeline
-        ]
-
-        for i, processor in enumerate(processors):
-            if processor is None:
-                raise AttributeError(
-                    f"One of the processors is not configured ({i}/{len(processors)})."
-                )
 
         return Pipeline(
             log_events_iter=input_iterator,
@@ -130,16 +120,13 @@ class Runner:
             The instantiated sender instance (not yet set up).
         """
 
-        output_connectors = [
-            Factory.create({output_name: output})
-            for output_name, output in self.configuration.output.items()
-        ]
-
-        for i, output_connector in enumerate(output_connectors):
-            if output_connector is None:
-                raise AttributeError(
-                    f"One of the output_connectors is not configured ({i}/{len(output_connectors)})."
-                )
+        output_connectors = cast(
+            list[Output],
+            [
+                Factory.create({output_name: output})
+                for output_name, output in self.configuration.output.items()
+            ],
+        )
 
         error_output: Output | None = (
             Factory.create(self.configuration.error_output)
@@ -193,13 +180,11 @@ class Runner:
     def _process_events(self) -> None:
         """Process a batch of events got from sender iterator."""
 
-        if not self.sender:
-            return
-
         logger.debug("Start log processing.")
 
-        logger.debug("Get batch of events from sender (batch_size=%r).", self.sender.batch_size)
-        for event in self.sender:
+        sender = cast(Sender, self.sender)
+        logger.debug(f"Get batch of events from sender (batch_size={sender.batch_size}).")
+        for event in sender:
             if event is None:
                 continue
 
@@ -225,6 +210,15 @@ class Runner:
         self.should_exit = True
         cast(Sender, self.sender).shut_down()
         self.sender = None
+
+        input_connector = cast(Input, self._input_connector)
+        input_connector.acknowledge()
+
+        len_delivered_events = len(input_connector.event_backlog.get(EventStateType.DELIVERED))
+        if len_delivered_events:
+            logger.error(
+                f"Input connector has {len_delivered_events} non-acked events in event_backlog."
+            )
 
         logger.info("Runner shut down complete.")
 
