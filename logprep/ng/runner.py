@@ -44,7 +44,7 @@ class Runner:
 
         self.configuration = configuration
         self._running_config_version = configuration.version
-        self.__input_connector: Input | None = None
+        self._input_connector: Input | None = None
 
         # Initialized in `setup()`; updated by runner logic thereafter:
         self.should_exit: bool | None = None
@@ -80,22 +80,15 @@ class Runner:
             The instantiated pipeline instance (not yet set up).
         """
 
-        input_connector = cast(
-            Input, Factory.create(self.configuration.input) if self.configuration.input else None
-        )
+        self._input_connector = cast(Input, Factory.create(self.configuration.input))
+        self._input_connector.event_backlog = SetEventBacklog()
+        self._input_connector.setup()
 
-        input_connector.event_backlog = SetEventBacklog()
-        input_connector.setup()
-
-        input_iterator = input_connector(timeout=self.configuration.timeout)
+        input_iterator = self._input_connector(timeout=self.configuration.timeout)
         processors = cast(
             list[Processor],
             [Factory.create(processor_config) for processor_config in self.configuration.pipeline],
         )
-
-        # Has to hold the reference to the current input_connector,
-        #    will be used in stopping process of the runner
-        self.__input_connector = input_connector
 
         return Pipeline(
             log_events_iter=input_iterator,
@@ -182,15 +175,6 @@ class Runner:
             self._process_events()
 
         self.shut_down()
-        input_connector = cast(Input, self.__input_connector)
-        input_connector.acknowledge()
-
-        len_delivered_events = len(input_connector.event_backlog.get(EventStateType.DELIVERED))
-        if len_delivered_events:
-            logger.error(
-                f"Input connector has {len_delivered_events} non-acked events event_backlog."
-            )
-
         logger.debug("End log processing.")
 
     def _process_events(self) -> None:
@@ -226,6 +210,15 @@ class Runner:
         self.should_exit = True
         cast(Sender, self.sender).shut_down()
         self.sender = None
+
+        input_connector = cast(Input, self._input_connector)
+        input_connector.acknowledge()
+
+        len_delivered_events = len(input_connector.event_backlog.get(EventStateType.DELIVERED))
+        if len_delivered_events:
+            logger.error(
+                f"Input connector has {len_delivered_events} non-acked events in event_backlog."
+            )
 
         logger.info("Runner shut down complete.")
 
