@@ -1,0 +1,22 @@
+[
+  {
+    "target_rule_idx": 0,
+    "raw": {
+      "some_field": "doesnt_matter"
+    },
+    "processed": {
+      "some_field": "doesnt_matter",
+      "pre_detection_id|re": "%{UUID}"
+    }
+  },
+  {
+    "target_rule_idx": 1,
+    "raw": {
+      "some_field": "doesnt_matter_2"
+    },
+    "processed": {
+      "some_field": "doesnt_matter_2",
+      "pre_detection_id|re": "%{UUID}"
+    }
+  }
+]
