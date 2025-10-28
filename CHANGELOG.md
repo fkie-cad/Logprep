@@ -4,12 +4,21 @@
 
 ### Features
 
+### Improvements
+
+### Bugfix
+
+## 17.0.3
+### Breaking
+
+### Features
 * implement first prototype of ng logprep runner
 * ip alerter can now also match fields that contain lists of IPs in documents
 
 ### Improvements
 
 ### Bugfix
+* fix error-output not flushing as scheduled
 
 ## 17.0.2
 ### Breaking
