@@ -156,7 +156,9 @@ class GenericResolver(FieldManager):
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
-    def _find_content_of_first_matching_pattern(self, rule, source_field_value):
+    def _find_content_of_first_matching_pattern(
+        self, rule: GenericResolverRule, source_field_value: str
+    ) -> str | None:
         if rule.resolve_from_file:
             matches = rule.pattern.match(source_field_value)
             if matches:
