@@ -210,7 +210,7 @@ class GenericResolverRule(FieldManagerRule):
             except ValueError as error:
                 raise InvalidConfigurationError(
                     f"Error loading additions from '{self._file_path}': {error}"
-                )
+                ) from error
             return additions
 
         def _raise_if_pattern_is_invalid(self):
