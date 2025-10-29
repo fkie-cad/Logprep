@@ -1374,22 +1374,6 @@ class TestHttpGetter:
             http_getter: HttpGetter = GetterFactory.from_string(f"http://{target}")
             with pytest.raises(RefreshableGetterError, match="Test"):
                 http_getter.get_raw()
-        assert False
-
-    @mock.patch(
-        "logprep.util.getter.HttpGetter._update_cache", side_effect=RefreshableGetterError("Test")
-    )
-    def test_get_raw_raises_refreshable_getter_error_from_update_cache(self, _, tmp_path):
-        target = "something"
-        getter_file_content = {target: {"refresh_interval": 10}}
-
-        http_getter_conf: Path = tmp_path / "http_getter.json"
-        http_getter_conf.write_text(json.dumps(getter_file_content))
-        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
-        with mock.patch.dict("os.environ", mock_env):
-            http_getter: HttpGetter = GetterFactory.from_string(f"http://{target}")
-            with pytest.raises(RefreshableGetterError, match="Test"):
-                http_getter.get_raw()
 
     @mock.patch(
         "logprep.util.getter.HttpGetter._update_cache", side_effect=RefreshableGetterError("Test")
