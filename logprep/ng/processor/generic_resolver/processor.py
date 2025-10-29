@@ -138,12 +138,16 @@ class GenericResolver(FieldManager):
             current_content = get_dotted_field_value(event, target_field)
             if isinstance(current_content, list) and content in current_content:
                 continue
-            if rule.merge_with_target and current_content is None:
-                content = [content]
             try:
                 add_fields_to(
                     event,
-                    fields={target_field: content},
+                    fields={
+                        target_field: (
+                            [content]
+                            if rule.merge_with_target and current_content is None
+                            else content
+                        )
+                    },
                     rule=rule,
                     merge_with_target=rule.merge_with_target,
                     overwrite_target=rule.overwrite_target,

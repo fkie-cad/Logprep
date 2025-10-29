@@ -120,7 +120,7 @@ class GenericResolver(FieldManager):
             return self._resolve_value_from_list
         return lru_cache(maxsize=self.max_cache_entries)(self._resolve_value_from_list)
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: GenericResolverRule) -> None:
         """Apply the given rule to the current event"""
         source_field_values = [
             get_dotted_field_value(event, source_field)
@@ -138,12 +138,16 @@ class GenericResolver(FieldManager):
             current_content = get_dotted_field_value(event, target_field)
             if isinstance(current_content, list) and content in current_content:
                 continue
-            if rule.merge_with_target and current_content is None:
-                content = [content]
             try:
                 add_fields_to(
                     event,
-                    fields={target_field: content},
+                    fields={
+                        target_field: (
+                            [content]
+                            if rule.merge_with_target and current_content is None
+                            else content
+                        )
+                    },
                     rule=rule,
                     merge_with_target=rule.merge_with_target,
                     overwrite_target=rule.overwrite_target,
