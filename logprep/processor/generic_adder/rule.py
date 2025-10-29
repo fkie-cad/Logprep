@@ -30,6 +30,8 @@ All of those files must exist.
 If a list is used, it is possible to tell the generic adder to only use the first existing
 file by setting :code:`generic_adder.only_first_existing_file: true`.
 In that case, only one file must exist.
+Additions from :code:`generic_adder.add` and :code:`generic_adder.add_from_file` are
+combined.
 
 In the following example a dictionary with field names and values is loaded from the file
 at :code:`PATH_TO_FILE_WITH_LIST`.
@@ -144,7 +146,7 @@ class GenericAdderRule(FieldManagerRule):
         In that case, only one file must exist."""
 
         _base_add: dict = field(default={}, eq=False)
-        """Stores original add fields for future refreshes of getters"""
+        """Stores original add fields (as provided in the config) for future refreshes of getters"""
 
         # pylint: enable=anomalous-backslash-in-string
 
