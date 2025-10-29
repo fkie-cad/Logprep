@@ -880,22 +880,22 @@ class Configuration:
 
     @staticmethod
     def _get_variable_values(config_dict: "Configuration") -> list:
-        def get_variable_values(value, variable_values: list | None = None):
+        def collect_variable_values(value, variable_values: list | None = None):
             if variable_values is None:
                 variable_values = []
 
             if isinstance(value, dict):
                 for val in value.values():
-                    get_variable_values(val, variable_values)
+                    collect_variable_values(val, variable_values)
             elif isinstance(value, (list, tuple, set)):
                 for val in value:
-                    get_variable_values(val, variable_values)
+                    collect_variable_values(val, variable_values)
             elif isinstance(value, str):
                 if value.startswith(("http://", "https://", "file://")):
                     variable_values.append(GetterFactory.from_string(value).get_json())
 
         variable_values_res: list = []
-        get_variable_values(config_dict.as_dict(), variable_values_res)
+        collect_variable_values(config_dict.as_dict(), variable_values_res)
         return variable_values_res
 
     def _set_config_refresh_interval(self, config_refresh_interval: int | None) -> None:
