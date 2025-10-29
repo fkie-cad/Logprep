@@ -846,9 +846,7 @@ class Configuration:
             self._config_failure = False
             new_variable_values = self._get_variable_values(new_config)
             if new_config == self and self._current_variable_values == new_variable_values:
-                logger.info(
-                    "Configuration version didn't change. Continue running with current version."
-                )
+                logger.info("Configuration didn't change.")
                 self._set_config_refresh_interval(new_config.config_refresh_interval)
                 return
             self._current_variable_values = new_variable_values

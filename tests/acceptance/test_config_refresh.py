@@ -63,9 +63,5 @@ def test_no_config_refresh_after_5_seconds(tmp_path, config):
     config_path.write_text(config.as_json())
     proc = start_logprep(config_path)
     wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=8)
-    wait_for_output(
-        proc,
-        "Configuration version didn't change. Continue running with current version.",
-        test_timeout=7,
-    )
+    wait_for_output(proc, "Configuration didn't change.", test_timeout=7)
     stop_logprep(proc)

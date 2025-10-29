@@ -843,9 +843,7 @@ class Configuration:
                 logger.info("Config refresh recovered from failing source")
             self._config_failure = False
             if new_config == self:
-                logger.info(
-                    "Configuration version didn't change. Continue running with current version."
-                )
+                logger.info("Configuration didn't change.")
                 self._set_config_refresh_interval(new_config.config_refresh_interval)
                 return
             if new_config.config_refresh_interval is None:

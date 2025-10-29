@@ -721,7 +721,7 @@ output:
         config_path.write_text(config.as_yaml())
         config.process_count = 2
         config.reload()
-        assert "Configuration version didn't change." in caplog.text
+        assert "Configuration didn't change." in caplog.text
         assert config.process_count == 2
         assert config._metrics.number_of_config_refreshes == 0, "no config refresh"
         assert config._metrics.number_of_config_refresh_failures == 0, "no config refresh failure"
@@ -1392,7 +1392,7 @@ output:
         config = Configuration.from_sources([str(config_path)])
         config.config_refresh_interval = 10
         config.reload()
-        assert "Configuration version didn't change." in caplog.text
+        assert "Configuration didn't change." in caplog.text
         assert "Config refresh interval is set to:" not in caplog.text
 
     def test_config_refresh_interval_cant_be_set_to_none(self, config_path, caplog):
@@ -1402,7 +1402,7 @@ output:
         config_path.write_text(config.as_yaml())
         config.config_refresh_interval = 10
         config.reload()
-        assert "Configuration version didn't change." in caplog.text
+        assert "Configuration didn't change." in caplog.text
         assert "Config refresh interval is set to:" not in caplog.text
         assert config.config_refresh_interval == 10, "should not be changed to None"
 
@@ -1435,7 +1435,7 @@ output:
 
         caplog.clear()
         config.reload()  # Reload with unchanged variable value
-        assert "Configuration version didn't change." in caplog.text
+        assert "Configuration didn't change." in caplog.text
 
         responses.get(
             "http://127.0.0.1:8000",
@@ -1453,7 +1453,7 @@ output:
         config = Configuration.from_sources([str(config_path)])  # Load with existing variable value
         caplog.clear()
         config.reload()  # Reload with unchanged variable value
-        assert "Configuration version didn't change." in caplog.text
+        assert "Configuration didn't change." in caplog.text
 
 
 class TestInvalidConfigurationErrors:
