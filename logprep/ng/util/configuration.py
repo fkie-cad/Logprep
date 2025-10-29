@@ -722,10 +722,7 @@ class Configuration:
         """
         try:
             config_getter = GetterFactory.from_string(config_path)
-            try:
-                config_dict = config_getter.get_json()
-            except (json.JSONDecodeError, ValueError):
-                config_dict = config_getter.get_yaml()
+            config_dict = config_getter.get_dict()
             config = Configuration(**(config_dict | {"getter": config_getter}))
         except TypeError as error:
             raise InvalidConfigurationError(
