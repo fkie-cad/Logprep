@@ -41,7 +41,7 @@ services:
     networks:
       - opensearch
   kafka:
-    image: bitnami/kafka:3.9
+    image: bitnamilegacy/kafka:3.9
     container_name: kafka
     hostname: kafka
     ports:
@@ -76,7 +76,7 @@ services:
     networks:
       - kafka
   kafka-exporter:
-    image: bitnami/kafka-exporter
+    image: bitnamilegacy/kafka-exporter-archived
     container_name: kafkaexporter
     command: ["--kafka.server=kafka:9092"]
     ports:
@@ -112,7 +112,7 @@ services:
       - run
       - /home/logprep/examples/exampledata/config/pipeline.yml
   grafana:
-    image: bitnami/grafana:latest
+    image: bitnamilegacy/grafana:latest
     container_name: grafana
     ports:
       - "3000:3000"
@@ -122,7 +122,7 @@ services:
     networks:
       - prometheus
   prometheus:
-    image: bitnami/prometheus:latest
+    image: bitnamilegacy/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -157,7 +157,7 @@ services:
       - ../../examples/exampledata/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../../examples/exampledata/config/nginx/mtls.conf.d:/etc/nginx/conf.d:ro
   keycloak:
-    image: bitnami/keycloak:latest
+    image: bitnamilegacy/keycloak:latest
     container_name: keycloak
     ports:
       - "8080:8080"
@@ -180,7 +180,7 @@ services:
     networks:
       - keycloak
   keycloak_db:
-    image: bitnami/postgresql:latest
+    image: bitnamilegacy/postgresql:latest
     container_name: keycloak_db
     expose:
       - 5432
