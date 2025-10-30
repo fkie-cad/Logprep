@@ -103,7 +103,7 @@ class GenericAdderRule(FieldManagerRule):
         add: dict = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of((str, bool, list, int, float, type(None))),
+                value_validator=validators.instance_of((str, bool, list, int, float)),
             ),
             default={},
         )

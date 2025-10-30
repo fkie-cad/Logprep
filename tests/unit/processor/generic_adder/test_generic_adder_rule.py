@@ -118,7 +118,6 @@ class TestGenericAdderRule:
             "getter_float": 123.0,
             "getter_bool": True,
             "getter_string": "test-1",
-            "getter_none": None,
         }
 
         from_http_2 = {
