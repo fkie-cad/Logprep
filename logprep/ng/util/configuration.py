@@ -722,10 +722,7 @@ class Configuration:
         """
         try:
             config_getter = GetterFactory.from_string(config_path)
-            try:
-                config_dict = config_getter.get_json()
-            except (json.JSONDecodeError, ValueError):
-                config_dict = config_getter.get_yaml()
+            config_dict = config_getter.get_dict()
             config = Configuration(**(config_dict | {"getter": config_getter}))
         except TypeError as error:
             raise InvalidConfigurationError(
@@ -843,9 +840,7 @@ class Configuration:
                 logger.info("Config refresh recovered from failing source")
             self._config_failure = False
             if new_config == self:
-                logger.info(
-                    "Configuration version didn't change. Continue running with current version."
-                )
+                logger.info("Configuration didn't change.")
                 self._set_config_refresh_interval(new_config.config_refresh_interval)
                 return
             if new_config.config_refresh_interval is None:

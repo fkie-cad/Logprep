@@ -19,6 +19,7 @@ from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
 from logprep.util.defaults import DEFAULT_MESSAGE_BACKLOG_SIZE, EXITCODES
+from logprep.util.getter import refresh_getters
 from logprep.util.logging import LogprepMPQueueListener, logqueue
 
 logger = logging.getLogger("Manager")
@@ -115,6 +116,7 @@ class OutputQueueListener:
         return output
 
     def _listen(self):
+        refresh_getters()
         component = self.get_output_instance()
         target = getattr(component, self.target)
         while 1:

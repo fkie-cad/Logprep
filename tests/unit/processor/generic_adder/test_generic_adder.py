@@ -227,6 +227,39 @@ class TestGenericAdder(BaseProcessorTestCase):
             {"extend_generic_test": "Test"},
             {"extend_generic_test": "Test", "some_added_field": ["some value"]},
         ),
+        (
+            "Add bool value",
+            {
+                "filter": "*",
+                "generic_adder": {"add": {"bool_field": True}},
+            },
+            {"bool_value_test": "Test"},
+            {"bool_value_test": "Test", "bool_field": True},
+        ),
+        (
+            "Add string value",
+            {
+                "filter": "*",
+                "generic_adder": {"add": {"string_field": "123"}},
+            },
+            {"string_value_test": "Test"},
+            {"string_value_test": "Test", "string_field": "123"},
+        ),
+        (
+            "Add integer value",
+            {
+                "filter": "*",
+                "generic_adder": {"add": {"integer_field": 123}},
+            },
+            {"integer_value_test": "Test"},
+            {"integer_value_test": "Test", "integer_field": 123},
+        ),
+        (
+            "Add float value",
+            {"filter": "*", "generic_adder": {"add": {"float_field": 12.3}}},
+            {"float_value_test": "Test"},
+            {"float_value_test": "Test", "float_field": 12.3},
+        ),
     ]
 
     failure_test_cases = [  # testcase, rule, event, expected, error_message

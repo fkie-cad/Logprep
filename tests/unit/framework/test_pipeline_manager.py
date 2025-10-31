@@ -565,6 +565,18 @@ class TestOutputQueueListener:
             listener._listen()
         mock_run_tasks.assert_called()
 
+    def test_listen_calls_getter_refresh(self):
+        output_config = {"random_name": {"type": "dummy_output"}}
+        queue = ThrottlingQueue(multiprocessing.get_context(), 100)
+        queue.empty = mock.MagicMock(return_value=True)
+        with mock.patch(
+            "logprep.framework.pipeline_manager.refresh_getters"
+        ) as mock_refresh_getters:
+            listener = OutputQueueListener(queue, "store", output_config)
+            listener.queue.put(listener.sentinel)
+            listener._listen()
+        mock_refresh_getters.assert_called_once()
+
     def test_listen_creates_component(self):
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
