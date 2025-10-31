@@ -1406,7 +1406,9 @@ output:
         assert config.config_refresh_interval == 10, "should not be changed to None"
 
     @responses.activate
-    def test_log_config_refresh_interval_change_independent_of_config_changes(self, config_path, tmp_path, caplog):
+    def test_log_config_refresh_interval_change_independent_of_config_changes(
+        self, config_path, tmp_path, caplog
+    ):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
 
