@@ -117,3 +117,9 @@ class TestRunner:
                 runner.start()
             mock_manager.reload.assert_called_once()
         assert runner._config_version == "new_version"
+
+    def test_iteration_refreshes_getters(self, runner):
+        with mock.patch("logprep.runner.refresh_getters") as mock_refresh_getters:
+            runner._exit_received = True
+            runner.start()
+            mock_refresh_getters.assert_called_once()
