@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Bugfix
+
+## 17.0.3
+### Breaking
+
+### Features
 * implement first prototype of ng logprep runner
 * ip alerter can now also match fields that contain lists of IPs in documents
 * make http getters periodically refresh if configured in file path defined by environment variable `LOGPREP_GETTER_CONFIG`.
@@ -17,6 +25,7 @@
 ### Improvements
 
 ### Bugfix
+* fix error-output not flushing as scheduled
 
 ## 17.0.2
 ### Breaking
