@@ -711,20 +711,19 @@ output:
         assert config._scheduler.jobs, "not cancelled job"
         assert config.config_refresh_interval == 60, "should be None"
 
-    def test_reload_does_not_reload_but_logs_info_on_same_config(self, config_path, caplog):
+    def test_reload_always_reloads(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
         config._metrics.number_of_config_refreshes = 0
         config._metrics.number_of_config_refresh_failures = 0
-        # set process_count to a different value and save it assert that it is not reloaded
         config.process_count = 99
         config_path.write_text(config.as_yaml())
         config.process_count = 2
         config.reload()
-        assert "Configuration didn't change." in caplog.text
-        assert config.process_count == 2
-        assert config._metrics.number_of_config_refreshes == 0, "no config refresh"
-        assert config._metrics.number_of_config_refresh_failures == 0, "no config refresh failure"
+        assert "Successfully reloaded configuration" in caplog.text
+        assert config.process_count == 99
+        assert config._metrics.number_of_config_refreshes == 1, "config refresh"
+        assert config._metrics.number_of_config_refresh_failures == 0, "config refresh failure"
 
     def test_reload_logs_error_on_invalid_config(self, config_path, caplog):
         config = Configuration.from_sources([str(config_path)])
@@ -1387,13 +1386,13 @@ output:
             )
         )
 
-    def test_log_config_refresh_interval_only_if_it_change(self, config_path, caplog):
+    def test_always_log_config_refresh_interval(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
         config.config_refresh_interval = 10
         config.reload()
-        assert "Configuration didn't change." in caplog.text
-        assert "Config refresh interval is set to:" not in caplog.text
+        assert "Successfully reloaded configuration" in caplog.text
+        assert "Config refresh interval is set to:" in caplog.text
 
     def test_config_refresh_interval_cant_be_set_to_none(self, config_path, caplog):
         caplog.set_level("INFO")
@@ -1402,12 +1401,12 @@ output:
         config_path.write_text(config.as_yaml())
         config.config_refresh_interval = 10
         config.reload()
-        assert "Configuration didn't change." in caplog.text
-        assert "Config refresh interval is set to:" not in caplog.text
+        assert "Successfully reloaded configuration" in caplog.text
+        assert "Config refresh interval is set to: 10 seconds" in caplog.text
         assert config.config_refresh_interval == 10, "should not be changed to None"
 
     @responses.activate
-    def test_log_config_refresh_interval_if_variables_change(self, config_path, tmp_path, caplog):
+    def test_log_config_refresh_interval_change_independent_of_config_changes(self, config_path, tmp_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
 
@@ -1435,7 +1434,7 @@ output:
 
         caplog.clear()
         config.reload()  # Reload with unchanged variable value
-        assert "Configuration didn't change." in caplog.text
+        assert "Successfully reloaded configuration" in caplog.text
 
         responses.get(
             "http://127.0.0.1:8000",
@@ -1453,7 +1452,7 @@ output:
         config = Configuration.from_sources([str(config_path)])  # Load with existing variable value
         caplog.clear()
         config.reload()  # Reload with unchanged variable value
-        assert "Configuration didn't change." in caplog.text
+        assert "Successfully reloaded configuration" in caplog.text
 
 
 class TestInvalidConfigurationErrors:
