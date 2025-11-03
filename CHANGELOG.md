@@ -5,6 +5,7 @@
 ### Features
 
 ### Improvements
+* add new test to validate that per-logger log levels correctly override the global log level in LoggerConfig
 
 ### Bugfix
 
