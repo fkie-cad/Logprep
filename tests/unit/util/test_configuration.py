@@ -1543,3 +1543,51 @@ class TestLoggerConfig:
             "queue",
         ], "should be default"
         assert config.loggers.get("opensearch").get("level") == "ERROR", "should be default"
+
+    @pytest.mark.parametrize(
+        "kwargs, expected_loglevels",
+        [
+            (
+                {
+                    "level": "DEBUG",
+                    "loggers": {
+                        "logprep": {"level": "DEBUG"},
+                        "opensearch": {"level": "DEBUG"},
+                        "kafka": {"level": "DEBUG"},
+                    },
+                },
+                {
+                    "level": "DEBUG",
+                    "loggers": {
+                        "logprep": "DEBUG",
+                        "opensearch": "DEBUG",
+                        "kafka": "DEBUG",
+                    },
+                },
+            ),
+            (
+                {
+                    "level": "DEBUG",
+                    "loggers": {
+                        "logprep": {"level": "ERROR"},
+                        "opensearch": {"level": "INFO"},
+                        "kafka": {"level": "DEBUG"},
+                    },
+                },
+                {
+                    "level": "DEBUG",
+                    "loggers": {
+                        "logprep": "ERROR",
+                        "opensearch": "INFO",
+                        "kafka": "DEBUG",
+                    },
+                },
+            ),
+        ],
+    )
+    def test_individual_loglevels_override_global_setting(self, kwargs, expected_loglevels):
+        config = LoggerConfig(**kwargs)
+        assert config.level == expected_loglevels["level"]
+
+        for component, loglevel in expected_loglevels["loggers"].items():
+            assert config.loggers.get(component).get("level") == loglevel
