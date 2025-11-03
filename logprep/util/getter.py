@@ -121,7 +121,7 @@ class DataSharedPerTarget:
 class RefreshableGetter(Getter, ABC):
     """Interface for getters that refresh their value periodically"""
 
-    _logger = logging.getLogger("console")
+    _logger = logging.getLogger("RefreshableGetter")
 
     @property
     @abstractmethod
