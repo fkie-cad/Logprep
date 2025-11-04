@@ -94,14 +94,14 @@ class Getter(ABC):
         return json.loads(self.get())
 
     def get_collection(self) -> Union[Dict, List]:
-        """gets and parses the raw content to yaml or json if yaml fails"""
+        """Gets and parses the raw content to yaml or json if yaml fails"""
         try:
             return self.get_yaml()
         except YAMLError:
             return self.get_json()
 
     def get_dict(self) -> dict:
-        """gets dict and fails otherwise"""
+        """Gets dict and fails otherwise"""
         result = self.get_collection()
         if not isinstance(result, dict):
             raise ValueError("Value is not a dictionary")
