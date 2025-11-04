@@ -69,11 +69,11 @@ class GetterFactory:
         if protocol is None:
             protocol = "file"
         if protocol == "file":
-            return FileGetter(protocol=protocol, target=target)
+            return FileGetter(protocol=protocol, target=target)  # type: ignore
         if protocol == "http":
-            return HttpGetter(protocol=protocol, target=target)
+            return HttpGetter(protocol=protocol, target=target)  # type: ignore
         if protocol == "https":
-            return HttpGetter(protocol=protocol, target=target)
+            return HttpGetter(protocol=protocol, target=target)  # type: ignore
         raise GetterNotFoundError(f"No getter for protocol '{protocol}'")
 
     @staticmethod
