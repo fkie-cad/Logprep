@@ -123,10 +123,8 @@ class RefreshableGetter(Getter, ABC):
 
     _logger = logging.getLogger("RefreshableGetter")
 
-    @property
-    @abstractmethod
-    def _shared(self) -> dict[str, DataSharedPerTarget]:
-        """Dictionary to store DataSharedPerTarget objects per getter target"""
+    _shared: ClassVar[dict[str, DataSharedPerTarget]] = {}
+    """Dictionary to store DataSharedPerTarget objects per getter target"""
 
     def _init_scheduler(self):
         if self._refresh_interval < 0:
@@ -365,8 +363,6 @@ class HttpGetter(RefreshableGetter):
         :no-index:
     """
 
-    _shared: ClassVar[dict[str, DataSharedPerTarget]] = {}
-
     _credentials_registry: dict[str, Credentials] = {}
 
     _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
@@ -442,4 +438,4 @@ class HttpGetter(RefreshableGetter):
 
 def refresh_getters():
     """Refreshes all refreshable getters"""
-    HttpGetter.refresh()
+    RefreshableGetter.refresh()

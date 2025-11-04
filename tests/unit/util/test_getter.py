@@ -28,6 +28,7 @@ from logprep.util.getter import (
     HttpGetter,
     RefreshableGetterError,
     RefreshableGetter,
+    refresh_getters,
 )
 
 yaml = YAML(pure=True, typ="safe")
@@ -1440,3 +1441,28 @@ class TestHttpGetter:
                 no_ref_no_default.get()
             assert ref_default.get_json() == {"foo": "bar"}
             assert no_ref_default.get_json() == {"foo": "bar"}
+
+    @responses.activate
+    def test_refresh_getters(self, tmp_path):
+        target_1 = "the-target-1"
+        target_2 = "the-target-2"
+        url_1 = f"https://{target_1}"
+        url_2 = f"https://{target_2}"
+        getter_file_content = {
+            target_1: {"refresh_interval": 10},
+            target_2: {"refresh_interval": 10},
+        }
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter_1: HttpGetter = GetterFactory.from_string(url_1)
+            http_getter_2: HttpGetter = GetterFactory.from_string(url_2)
+        with mock.patch.object(http_getter_1.scheduler, "run_pending") as mock_run_pending:
+            mock_run_pending.assert_not_called()
+            refresh_getters()
+            mock_run_pending.assert_called_once()
+        with mock.patch.object(http_getter_2.scheduler, "run_pending") as mock_run_pending:
+            mock_run_pending.assert_not_called()
+            refresh_getters()
+            mock_run_pending.assert_called_once()
