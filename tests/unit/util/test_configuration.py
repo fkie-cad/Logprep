@@ -909,16 +909,25 @@ output:
         assert config.version == "1", "version should be 1"
         config_path.unlink()  # causes FileNotFoundError
         config.reload()
-        assert "Failed to load configuration" in caplog.text
+        assert caplog.text.count("Failed to load configuration") == 1
         assert config.config_refresh_interval == 5, "set minimum refresh interval to 5"
         config.config_refresh_interval = 8  # to write original config
         config_path.write_text(config.as_yaml())
         config.config_refresh_interval = 5
         config.reload()
-        assert "Config refresh recovered from failing source" in caplog.text
-        assert "Config refresh interval is set to: 8 seconds" in caplog.text
+        assert caplog.text.count("Failed to load configuration") == 1
+        assert caplog.text.count("Config refresh recovered from failing source") == 1
+        assert caplog.text.count("Config refresh interval is set to: 8 seconds") == 2
         assert config.config_refresh_interval == 8, "refresh interval should be reset to origin"
-        assert config._metrics.number_of_config_refreshes == 0, "no refresh after recovering"
+        assert config._metrics.number_of_config_refreshes == 1, "refresh after recovering"
+        assert config._metrics.number_of_config_refresh_failures == 1, "config refresh failure"
+
+        config.reload()
+        assert caplog.text.count("Failed to load configuration") == 1
+        assert caplog.text.count("Config refresh recovered from failing source") == 1
+        assert caplog.text.count("Config refresh interval is set to: 8 seconds") == 4
+        assert config.config_refresh_interval == 8, "refresh interval should be reset to origin"
+        assert config._metrics.number_of_config_refreshes == 2, "refresh after recovering"
         assert config._metrics.number_of_config_refresh_failures == 1, "config refresh failure"
 
     def test_as_dict_returns_config(self):
