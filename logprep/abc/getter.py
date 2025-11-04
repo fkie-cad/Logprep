@@ -108,14 +108,14 @@ class Getter(ABC):
         return result
 
     def get_list(self) -> list:
-        """gets list and fails otherwise"""
+        """Gets list and fails otherwise"""
         result = self.get_collection()
         if not isinstance(result, list):
             raise ValueError("Value is not a list")
         return result
 
     def get_jsonl(self) -> List:
-        """gets and parses the raw content to jsonl"""
+        """Gets and parses the raw content to jsonl"""
         parsed_events = []
         for json_string in self.get().splitlines():
             if json_string.strip() != "":

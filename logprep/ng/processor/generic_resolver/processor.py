@@ -46,14 +46,14 @@ class GenericResolver(FieldManager):
         max_cache_entries: Optional[int] = field(
             validator=validators.optional(validators.instance_of(int)), default=0
         )
-        """(Optional) Size of cache for results when resolving form a list.
-        The cache can be disabled by setting it this option to :code:`0`.
+        """(Optional) Size of cache for results when resolving from a list.
+        The cache can be disabled by setting this option to :code:`0`.
 
         .. security-best-practice::
            :title: Processor - Generic Resolver Max Cached Entries
 
            Ensure to set this to a reasonable value to avoid excessive memory usage
-           and OOM situations by the generic resolver cache.
+           and OOM situations caused by the generic resolver cache.
 
         """
         cache_metrics_interval: Optional[int] = field(
