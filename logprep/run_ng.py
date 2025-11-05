@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 import sys
+from multiprocessing import set_start_method
 
 import click
 
@@ -15,6 +16,7 @@ from logprep.util.tag_yaml_loader import init_yaml_loader_tags
 
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 init_yaml_loader_tags("safe", "rt")
+set_start_method('fork')
 
 logger = logging.getLogger("root")
 

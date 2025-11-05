@@ -28,6 +28,7 @@ logging.config.dictConfig(DEFAULT_LOG_CONFIG)
 logger = logging.getLogger("logprep")
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 init_yaml_loader_tags("safe", "rt")
+set_start_method('fork') 
 
 
 def _print_version(config: "Configuration") -> None:
@@ -75,7 +76,6 @@ def run(configs: tuple[str], version=None) -> None:
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    set_start_method('fork', force=True)
     configuration = _get_configuration(configs)
     if version:
         _print_version(configuration)
