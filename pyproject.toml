@@ -24,7 +24,7 @@ binding = "PyO3"    # Default value, can be omitted
 [project]
 name = "logprep"
 description = "Logprep allows to collect, process and forward log messages from various data sources."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 readme = "README.md"
 dynamic = ["version"]
 license = { file = "LICENSE" }
@@ -37,9 +37,9 @@ classifiers = [
 
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 
   "Operating System :: POSIX :: Linux",
 
@@ -137,7 +137,7 @@ logprep-ng = "logprep.run_ng:cli"
 
 [tool.black]
 line-length = 100
-target-version = ['py310', 'py311', 'py312']
+target-version = ['py312', 'py313', 'py314']
 extend-exclude = '''
 # A regex preceded with ^/ will apply only to files and directories
 # in the root of the project.
@@ -150,7 +150,7 @@ extend-exclude = '''
 profile = "black"
 
 [tool.cibuildwheel]
-build = "cp310-* cp311-* cp312-*"
+build = "cp312-* cp313-* cp314-*"
 skip = "*pp* *i686-unknown-linux-musl*"
 
 [tool.cibuildwheel.linux]

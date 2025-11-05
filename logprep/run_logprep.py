@@ -6,6 +6,7 @@ import os
 import signal
 import sys
 import warnings
+from multiprocessing import set_start_method
 
 import click
 
@@ -74,6 +75,7 @@ def run(configs: tuple[str], version=None) -> None:
 
     CONFIG is a path to configuration file (filepath or URL).
     """
+    set_start_method('fork', force=True)
     configuration = _get_configuration(configs)
     if version:
         _print_version(configuration)

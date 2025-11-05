@@ -6,7 +6,7 @@ replicas: 1
 image:
   registry: ghcr.io
   repository: fkie-cad/logprep
-  tag: py3.11-stable
+  tag: py3.12-stable
   pullPolicy: Always
 
 # The pod resources

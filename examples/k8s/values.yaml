@@ -1,6 +1,6 @@
 connector:
   image:
-    tag: py3.11-latest
+    tag: py3.12-latest
   replicas: 1
   resources:
     limits:
@@ -62,7 +62,7 @@ kafka:
 
 logprep:
   image:
-    tag: py3.11-latest
+    tag: py3.12-latest
   input:
     type: confluentkafka_input
     topic: consumer
