@@ -2,11 +2,11 @@
 """This module can be used to start the logprep."""
 import logging
 import logging.config
+from multiprocessing import set_start_method
 import os
 import signal
 import sys
 import warnings
-from multiprocessing import set_start_method
 
 import click
 
@@ -28,8 +28,8 @@ logging.config.dictConfig(DEFAULT_LOG_CONFIG)
 logger = logging.getLogger("logprep")
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 init_yaml_loader_tags("safe", "rt")
-set_start_method('fork') 
 
+set_start_method("fork", True)
 
 def _print_version(config: "Configuration") -> None:
     print(get_versions_string(config))
