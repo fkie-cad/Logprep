@@ -224,7 +224,7 @@ from logprep.ng.util.defaults import (
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
-from logprep.util.getter import GetterFactory, GetterNotFoundError
+from logprep.util.getter import GetterFactory, GetterNotFoundError, RefreshableGetterError
 from logprep.util.rule_loader import RuleLoader
 
 logger = logging.getLogger("Config")
@@ -836,13 +836,6 @@ class Configuration:
         errors: List[Exception] = []
         try:
             new_config = Configuration.from_sources(self.config_paths)
-            if self._config_failure:
-                logger.info("Config refresh recovered from failing source")
-            self._config_failure = False
-            if new_config == self:
-                logger.info("Configuration didn't change.")
-                self._set_config_refresh_interval(new_config.config_refresh_interval)
-                return
             if new_config.config_refresh_interval is None:
                 new_config.config_refresh_interval = self.config_refresh_interval
             self._configs = new_config._configs  # pylint: disable=protected-access
@@ -851,6 +844,9 @@ class Configuration:
             self.pipeline = new_config.pipeline
             self._metrics.number_of_config_refreshes += 1
             logger.info("Successfully reloaded configuration")
+            if self._config_failure:
+                logger.info("Config refresh recovered from failing source")
+                self._config_failure = False
             logger.info("Configuration version: %s", self.version)
             self._set_config_refresh_interval(new_config.config_refresh_interval)
         except ConfigGetterException as error:
@@ -933,7 +929,13 @@ class Configuration:
             try:
                 processor_definition_with_rules = self._load_rule_definitions(processor_definition)
                 pipeline_with_loaded_rules.append(processor_definition_with_rules)
-            except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
+            except (
+                FactoryError,
+                TypeError,
+                ValueError,
+                InvalidRuleDefinitionError,
+                RefreshableGetterError,
+            ) as error:
                 errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
@@ -999,7 +1001,13 @@ class Configuration:
                 processor = Factory.create(deepcopy(processor_config))
                 processor.setup()
                 self._verify_rules(processor)
-            except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
+            except (
+                FactoryError,
+                TypeError,
+                ValueError,
+                InvalidRuleDefinitionError,
+                RefreshableGetterError,
+            ) as error:
                 errors.append(error)
             except FileNotFoundError as error:
                 errors.append(InvalidConfigurationError(f"File not found: {error.filename}"))
