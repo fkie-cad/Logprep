@@ -13,6 +13,7 @@ basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(me
 logger = getLogger("Logprep-Test")
 set_start_method("fork", force=True)
 
+
 @pytest.fixture(name="config")
 def get_config() -> Configuration:
     pipeline = [

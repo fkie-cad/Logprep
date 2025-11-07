@@ -21,6 +21,7 @@ logger = logging.getLogger("Logprep-Test")
 
 set_start_method("fork", force=True)
 
+
 @pytest.fixture(name="config")
 def fixture_config_template():
     pipeline = [

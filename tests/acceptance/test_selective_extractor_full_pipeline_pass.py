@@ -9,6 +9,7 @@ from tests.acceptance.util import get_default_logprep_config, get_test_output
 
 set_start_method("fork", force=True)
 
+
 @pytest.fixture(name="config")
 def config_fixture():
     pipeline = [
