@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 from logging import DEBUG, basicConfig, getLogger
+from multiprocessing import set_start_method
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from tests.acceptance.util import get_default_logprep_config, get_test_output
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
-
+set_start_method("fork", force=True)
 
 @pytest.fixture(name="config")
 def get_config() -> Configuration:
