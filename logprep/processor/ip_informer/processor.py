@@ -27,6 +27,7 @@ import ipaddress
 from functools import partial
 from itertools import chain
 from typing import Iterable
+import typing
 
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
@@ -64,7 +65,7 @@ class IpInformer(FieldManager):
         str_elements = filter(lambda x: isinstance(x, str), source_field_values)
         return chain(*list_elements, str_elements)
 
-    def _ip_properties(self, ip_address: str, rule: IpInformerRule) -> dict[str, any]:
+    def _ip_properties(self, ip_address: str, rule: IpInformerRule) -> dict[str, typing.Any]:
         try:
             ip_address_res = ipaddress.ip_address(ip_address)
         except ValueError as error:
