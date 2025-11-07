@@ -4,6 +4,7 @@
 # pylint: disable=unspecified-encoding
 # pylint: disable=protected-access
 import json
+import sys
 import uuid
 from datetime import datetime, timedelta
 from importlib.metadata import version
@@ -188,7 +189,17 @@ class TestFileGetter:
         file_getter = GetterFactory.from_string("/my/file")
         with mock.patch("pathlib.Path.open", mock.mock_open(read_data=b"my content")) as mock_open:
             content = file_getter.get_raw()
-            mock_open.assert_called_with(mode="rb")
+            # Python version depending: In Python 3.14, the buffering parameter was added to open() calls in pathlib.Path.read_bytes()
+            # 0x = Hex
+            # 03 = 3 | Python 3
+            # 0e = 14 | version 14
+            # 00 = 0 | micro 0
+            # 0 = 0 | release level
+            # 0 = 0 | release serial
+            if sys.hexversion >= 0x030e0000:
+                mock_open.assert_called_with(mode="rb", buffering=0)
+            else:
+                mock_open.assert_called_with(mode="rb")
             assert content == b"my content"
 
     @pytest.mark.parametrize(
