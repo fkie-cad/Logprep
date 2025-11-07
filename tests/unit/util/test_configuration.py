@@ -1416,7 +1416,7 @@ output:
 
     @responses.activate
     def test_log_config_refresh_interval_change_independent_of_config_changes(
-        self, config_path, tmp_path, caplog
+        self, config_path, caplog
     ):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])

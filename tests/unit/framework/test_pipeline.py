@@ -554,7 +554,7 @@ class TestPipeline(ConfigurationForTests):
             self.pipeline.process_pipeline()
         mock_task.assert_called()
 
-    def test_process_pipeline_refreshed_http_getters(self, _, tmp_path):
+    def test_process_pipeline_refreshed_http_getters(self, _):
         self.pipeline._get_event = mock.MagicMock()
         self.pipeline._store_event = mock.MagicMock()
         self.pipeline.process_event = mock.MagicMock()

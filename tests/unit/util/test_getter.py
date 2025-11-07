@@ -692,7 +692,7 @@ class TestHttpGetter:
             assert session.verify == "path/to/ca/cert"
 
     @responses.activate
-    def test_get_raw_always_requests_if_no_refresh_timer_was_set(self, tmp_path):
+    def test_get_raw_always_requests_if_no_refresh_timer_was_set(self):
         url = f"https://{uuid.uuid4()}/bar"
         mock_response_1 = {"key": "the content 1"}
         mock_response_2 = {"key": "the content 2"}
@@ -878,7 +878,7 @@ class TestHttpGetter:
             responses.assert_call_count(url, 3)
 
     @responses.activate
-    def test_getter_two_getters_with_different_urls_have_different_targets(self, tmp_path):
+    def test_getter_two_getters_with_different_urls_have_different_targets(self):
         target_1 = f"{uuid.uuid4()}/bar"
         url_1 = f"https://{target_1}"
 
@@ -1379,9 +1379,7 @@ class TestHttpGetter:
     @mock.patch(
         "logprep.util.getter.HttpGetter._update_cache", side_effect=RefreshableGetterError("Test")
     )
-    def test_get_raw_without_interval_logs_warning_on_error_with_empty_cache(
-        self, _, tmp_path, caplog
-    ):
+    def test_get_raw_without_interval_logs_warning_on_error_with_empty_cache(self, _, caplog):
         caplog.set_level("WARNING")
         target = "something"
         http_getter: HttpGetter = GetterFactory.from_string(f"http://{target}")
@@ -1390,7 +1388,7 @@ class TestHttpGetter:
         assert re.search(r"Not updating .+ cache with URI .+", caplog.text)
 
     @mock.patch("logprep.util.getter.HttpGetter._update_cache")
-    def test_get_raw_without_interval_logs_warning_on_empty_cache(self, _, tmp_path):
+    def test_get_raw_without_interval_logs_warning_on_empty_cache(self, _):
         target = "something"
         url = f"http://{target}"
         http_getter: HttpGetter = GetterFactory.from_string(url)
