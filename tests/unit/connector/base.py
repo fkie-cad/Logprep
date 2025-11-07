@@ -586,7 +586,11 @@ class BaseInputTestCase(BaseConnectorTestCase):
         ["timestamp", "expected_error_message", "message"],
         [
             # Python version depending: "out of range" = <py3.14 | "year must be in 1..9999" = >=py3.14
-            ("0000-00-00 00:00:00", "(out of range)|(year must be in 1..9999)", "Timestamp is out of range"),
+            (
+                "0000-00-00 00:00:00",
+                "(out of range)|(year must be in 1..9999)",
+                "Timestamp is out of range",
+            ),
             ("invalid", "Invalid isoformat", "Timestamp is invalid"),
         ],
     )

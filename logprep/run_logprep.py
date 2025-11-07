@@ -31,6 +31,7 @@ init_yaml_loader_tags("safe", "rt")
 
 set_start_method("fork", True)
 
+
 def _print_version(config: "Configuration") -> None:
     print(get_versions_string(config))
     sys.exit(EXITCODES.SUCCESS)

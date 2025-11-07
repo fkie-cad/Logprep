@@ -196,7 +196,7 @@ class TestFileGetter:
             # 00 = 0 | micro 0
             # 0 = 0 | release level
             # 0 = 0 | release serial
-            if sys.hexversion >= 0x030e0000:
+            if sys.hexversion >= 0x030E0000:
                 mock_open.assert_called_with(mode="rb", buffering=0)
             else:
                 mock_open.assert_called_with(mode="rb")

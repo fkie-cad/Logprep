@@ -70,18 +70,17 @@ def get_ip_property_names(cls):
 
     # Python version depending: in 3.14+ max_prefixlen and version are now constants hanging off of either IPv4Address or IPv6Address
     # making them not appear in dir(cls) as properties anymore. So we add them manually here.
-    constants = [
-        "max_prefixlen",
-        "version"
-    ]
+    constants = ["max_prefixlen", "version"]
     properties = [
         prop_name
         # we have to remove the property `packed` because it is not json serializable, as well as max_prefixlen and version because they are constants
-        for prop_name in filter(lambda x: x not in ("packed", "ipv6_mapped", "max_prefixlen", "version"), dir(cls))
+        for prop_name in filter(
+            lambda x: x not in ("packed", "ipv6_mapped", "max_prefixlen", "version"), dir(cls)
+        )
         if isinstance(getattr(cls, prop_name), property)
     ]
 
-    return [*constants, *properties] 
+    return [*constants, *properties]
 
 
 IP_PROPERTIES = [*get_ip_property_names(IPv4Address), *get_ip_property_names(IPv6Address)]

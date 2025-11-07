@@ -79,4 +79,6 @@ class IpInformer(FieldManager):
                 prop_name: getattr(ip_address_res, prop_name)
                 for prop_name in get_ip_property_names(ip_address_res.__class__)
             }
-        return {prop_name: getattr(ip_address_res, prop_name, False) for prop_name in rule.properties}
+        return {
+            prop_name: getattr(ip_address_res, prop_name, False) for prop_name in rule.properties
+        }
