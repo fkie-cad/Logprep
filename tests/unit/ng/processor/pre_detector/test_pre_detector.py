@@ -1,9 +1,11 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
+# pylint: disable=duplicate-code
 import re
 from copy import deepcopy
 
 import pytest
+from deepdiff import DeepDiff
 
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.sre_event import SreEvent
@@ -25,18 +27,15 @@ class TestPreDetector(BaseProcessorTestCase):
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         expected = deepcopy(document)
         expected_detection_results = [
-            (
-                {
-                    "id": "RULE_ONE_ID",
-                    "title": "RULE_ONE",
-                    "severity": "critical",
-                    "mitre": ["attack.test1", "attack.test2"],
-                    "case_condition": "directly",
-                    "description": "Test rule one",
-                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            )
+            {
+                "id": "RULE_ONE_ID",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+                "description": "Test rule one",
+                "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+            },
         ]
         event = LogEvent(document, original=b"")
         event = self.object.process(event)
@@ -50,18 +49,15 @@ class TestPreDetector(BaseProcessorTestCase):
         expected = deepcopy(document)
         event = LogEvent(document, original=b"")
         expected_detection_results = [
-            (
-                {
-                    "case_condition": "directly",
-                    "description": "Test rule four",
-                    "id": "RULE_FOUR_ID",
-                    "mitre": ["attack.test1", "attack.test2"],
-                    "rule_filter": '(A:"*bar*" AND NOT ((A:"foo*" AND A:"*baz")))',
-                    "severity": "critical",
-                    "title": "RULE_FOUR",
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            )
+            {
+                "case_condition": "directly",
+                "description": "Test rule four",
+                "id": "RULE_FOUR_ID",
+                "mitre": ["attack.test1", "attack.test2"],
+                "rule_filter": '(A:"*bar*" AND NOT ((A:"foo*" AND A:"*baz")))',
+                "severity": "critical",
+                "title": "RULE_FOUR",
+            },
         ]
         event = self.object.process(event)
         _ = event.extra_data[0]
@@ -79,19 +75,16 @@ class TestPreDetector(BaseProcessorTestCase):
         }
         expected = deepcopy(document)
         expected_detection_results = [
-            (
-                {
-                    "id": "RULE_ONE_ID",
-                    "title": "RULE_ONE",
-                    "severity": "critical",
-                    "mitre": ["attack.test1", "attack.test2"],
-                    "case_condition": "directly",
-                    "host": {"name": "Test hostname"},
-                    "description": "Test rule one",
-                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            )
+            {
+                "id": "RULE_ONE_ID",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+                "host": {"name": "Test hostname"},
+                "description": "Test rule one",
+                "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+            },
         ]
         event = LogEvent(document, original=b"")
         event = self.object.process(event)
@@ -101,18 +94,15 @@ class TestPreDetector(BaseProcessorTestCase):
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         expected = deepcopy(document)
         expected_detection_results = [
-            (
-                {
-                    "id": "RULE_ONE_ID",
-                    "title": "RULE_ONE",
-                    "severity": "critical",
-                    "mitre": ["attack.test1", "attack.test2"],
-                    "case_condition": "directly",
-                    "description": "Test rule one",
-                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            )
+            {
+                "id": "RULE_ONE_ID",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+                "description": "Test rule one",
+                "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+            },
         ]
 
         document["pre_detection_id"] = "11fdfc1f-8e00-476e-b88f-753d92af989c"
@@ -124,19 +114,16 @@ class TestPreDetector(BaseProcessorTestCase):
         document = {"tags": "test", "process": {"program": "test"}, "message": "test1*xyz"}
         expected = deepcopy(document)
         expected_detection_results = [
-            (
-                {
-                    "id": "RULE_TWO_ID",
-                    "title": "RULE_TWO",
-                    "severity": "critical",
-                    "mitre": [],
-                    "case_condition": "directly",
-                    "description": "Test rule two",
-                    "rule_filter": '(tags:"test" AND process.program:"test" AND '
-                    '(message:"test1*xyz" OR message:"test2*xyz"))',
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            )
+            {
+                "id": "RULE_TWO_ID",
+                "title": "RULE_TWO",
+                "severity": "critical",
+                "mitre": [],
+                "case_condition": "directly",
+                "description": "Test rule two",
+                "rule_filter": '(tags:"test" AND process.program:"test" AND '
+                '(message:"test1*xyz" OR message:"test2*xyz"))',
+            },
         ]
         event = LogEvent(document, original=b"")
         event = self.object.process(event)
@@ -146,19 +133,16 @@ class TestPreDetector(BaseProcessorTestCase):
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Xxyz"}
         expected = deepcopy(document)
         expected_detection_results = [
-            (
-                {
-                    "id": "RULE_THREE_ID",
-                    "title": "RULE_THREE",
-                    "severity": "critical",
-                    "mitre": [],
-                    "case_condition": "directly",
-                    "description": "Test rule three",
-                    "rule_filter": '(tags:"test2" AND process.program:"test" AND '
-                    '(message:"test1*xyz" OR message:"test2?xyz"))',
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            )
+            {
+                "id": "RULE_THREE_ID",
+                "title": "RULE_THREE",
+                "severity": "critical",
+                "mitre": [],
+                "case_condition": "directly",
+                "description": "Test rule three",
+                "rule_filter": '(tags:"test2" AND process.program:"test" AND '
+                '(message:"test1*xyz" OR message:"test2?xyz"))',
+            },
         ]
         event = LogEvent(document, original=b"")
         event = self.object.process(event)
@@ -168,30 +152,24 @@ class TestPreDetector(BaseProcessorTestCase):
         document = {"first_match": "something", "second_match": "something"}
         expected = deepcopy(document)
         expected_detection_results = [
-            (
-                {
-                    "case_condition": "directly",
-                    "id": "RULE_TWO_ID",
-                    "mitre": ["attack.test2", "attack.test4"],
-                    "description": "Test two rules two",
-                    "rule_filter": '"second_match": *',
-                    "severity": "suspicious",
-                    "title": "RULE_TWO",
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            ),
-            (
-                {
-                    "case_condition": "directly",
-                    "id": "RULE_ONE_ID",
-                    "mitre": ["attack.test1", "attack.test2"],
-                    "description": "Test two rules one",
-                    "rule_filter": '"first_match": *',
-                    "severity": "critical",
-                    "title": "RULE_ONE",
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            ),
+            {
+                "case_condition": "directly",
+                "id": "RULE_ONE_ID",
+                "mitre": ["attack.test1", "attack.test2"],
+                "description": "Test two rules one",
+                "rule_filter": '"first_match": *',
+                "severity": "critical",
+                "title": "RULE_ONE",
+            },
+            {
+                "case_condition": "directly",
+                "id": "RULE_TWO_ID",
+                "mitre": ["attack.test2", "attack.test4"],
+                "description": "Test two rules two",
+                "rule_filter": '"second_match": *',
+                "severity": "suspicious",
+                "title": "RULE_TWO",
+            },
         ]
         event = LogEvent(document, original=b"")
         event = self.object.process(event)
@@ -275,18 +253,15 @@ class TestPreDetector(BaseProcessorTestCase):
         document = {"tags": "test", "process": {"program": "test"}, "message": "TEST2*xyz"}
         expected = deepcopy(document)
         expected_detection_results = [
-            (
-                {
-                    "id": "RULE_TWO_ID",
-                    "title": "RULE_TWO",
-                    "severity": "critical",
-                    "mitre": [],
-                    "case_condition": "directly",
-                    "description": "Test rule two",
-                    "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            )
+            {
+                "id": "RULE_TWO_ID",
+                "title": "RULE_TWO",
+                "severity": "critical",
+                "mitre": [],
+                "case_condition": "directly",
+                "description": "Test rule two",
+                "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
+            },
         ]
         event = LogEvent(document, original=b"")
         event = self.object.process(event)
@@ -296,18 +271,15 @@ class TestPreDetector(BaseProcessorTestCase):
         document = {"tags": "test", "process": {"program": "test"}, "message": ["TEST2*xyz"]}
         expected = deepcopy(document)
         expected_detection_results = [
-            (
-                {
-                    "id": "RULE_TWO_ID",
-                    "title": "RULE_TWO",
-                    "severity": "critical",
-                    "mitre": [],
-                    "case_condition": "directly",
-                    "description": "Test rule two",
-                    "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            )
+            {
+                "id": "RULE_TWO_ID",
+                "title": "RULE_TWO",
+                "severity": "critical",
+                "mitre": [],
+                "case_condition": "directly",
+                "description": "Test rule two",
+                "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
+            },
         ]
         event = LogEvent(document, original=b"")
         event = self.object.process(event)
@@ -331,14 +303,16 @@ class TestPreDetector(BaseProcessorTestCase):
             assert result_pre_detection_id is not None
             assert pre_detection_id == result_pre_detection_id
 
-        sorted_detection_results = sorted(
-            [(frozenset(sre_event.data), sre_event.outputs) for sre_event in event.extra_data]
-        )
-        sorted_expected_detection_results = sorted(
-            [(frozenset(result[0]), result[1]) for result in expected_detection_results]
-        )
+        for detection_result, expected_detection_result in zip(
+            detection_results, expected_detection_results
+        ):
+            diff = DeepDiff(
+                detection_result,
+                expected_detection_result,
+                exclude_paths=["root['id']", "root['rule_filter']"],
+            )
 
-        assert sorted_detection_results == sorted_expected_detection_results
+            assert not diff
 
     def test_adds_timestamp_to_extra_data_if_provided_by_event(self):
         rule = {
@@ -501,3 +475,188 @@ class TestPreDetector(BaseProcessorTestCase):
         assert (
             "rule_filter" not in self.object.rules[0].detection_data
         ), "rule_filter should not be in detection data"
+
+    @pytest.mark.parametrize(
+        "extra_rule_config, event_data, expected_extra_fields_in_output",
+        [
+            pytest.param(
+                {},
+                {
+                    "host": {"name": "Test hostname"},
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {"host": {"name": "Test hostname"}},
+                id="optional with default host.name",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": set()},
+                {
+                    "host": {"name": "Test hostname"},
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {},
+                id="empty set is allowed",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": []},
+                {
+                    "host": {"name": "Test hostname"},
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {},
+                id="empty list is allowed",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": ["custom", "winlog.custom"]},
+                {
+                    "host": {"name": "Test hostname"},
+                    "custom": "test toplevel",
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                        "custom": "test nested",
+                    },
+                },
+                {"custom": "test toplevel", "winlog": {"custom": "test nested"}},
+                id="copy plain and nested field with list",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": {"custom", "winlog.custom"}},
+                {
+                    "host": {"name": "Test hostname"},
+                    "custom": "test toplevel",
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                        "custom": "test nested",
+                    },
+                },
+                {"custom": "test toplevel", "winlog": {"custom": "test nested"}},
+                id="copy plain and nested field with set",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": {"int", "float", "str", "dict", "list"}},
+                {
+                    "dict": {"name": "Test hostname"},
+                    "list": [1, 2, 3],
+                    "str": "test toplevel",
+                    "int": 123,
+                    "float": 12.0,
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                        "custom": "test nested",
+                    },
+                },
+                {
+                    "dict": {"name": "Test hostname"},
+                    "list": [1, 2, 3],
+                    "str": "test toplevel",
+                    "int": 123,
+                    "float": 12.0,
+                },
+                id="copy fields with different types",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": {"host.name", "custom"}},
+                {
+                    "host": {"name": None},
+                    "custom": 0,
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {
+                    "host": {"name": None},
+                    "custom": 0,
+                },
+                id="None-valued fields not skipped",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": {"host.name", "custom"}},
+                {
+                    "host": {"name": "Test hostname"},
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {"host": {"name": "Test hostname"}},
+                id="missing fields skipped",
+            ),
+        ],
+    )
+    def test_copy_fields_to_detection_event_matrix(
+        self, extra_rule_config: dict, event_data: dict, expected_extra_fields_in_output: dict
+    ):
+        self._load_rule(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    **extra_rule_config,
+                },
+                "description": "Test rule one",
+            }
+        )
+        expected_detection_results = [
+            {
+                "id": "RULE_ONE_ID",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1", "attack.test2"],
+                "case_condition": "directly",
+                "description": "Test rule one",
+                "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+                **expected_extra_fields_in_output,
+            },
+        ]
+        event = LogEvent(event_data, original=b"")
+        event = self.object.process(event)
+        self._assert_equality_of_results(event, event_data, expected_detection_results)
+
+    @pytest.mark.parametrize(
+        "field_name",
+        [
+            "rule_filter",
+            "description",
+            "pre_detection_id",
+            "id",
+            "title",
+            "severity",
+            "mitre",
+            "case_condition",
+            "link",
+        ],
+    )
+    def test_copy_fields_to_detection_event_fails_on_illegal_fields(self, field_name: str):
+        with pytest.raises(ValueError, match="Illegal fields") as exc_info:
+            self._load_rule(
+                {
+                    "filter": "*",
+                    "pre_detector": {
+                        "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["attack.test1", "attack.test2"],
+                        "case_condition": "directly",
+                        "copy_fields_to_detection_event": {field_name},
+                    },
+                    "description": "Test rule one",
+                }
+            )
+        assert exc_info is not None

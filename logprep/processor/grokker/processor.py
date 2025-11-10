@@ -31,6 +31,7 @@ Processor Configuration
 
 import logging
 import re
+import tempfile
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -106,16 +107,18 @@ class Grokker(FieldManager):
         if not matches:
             raise ProcessingWarning("no grok pattern matched", rule, event)
 
-    def setup(self):
+    def setup(self) -> None:
         """Loads the action mapping. Has to be called before processing"""
         super().setup()
         custom_patterns_dir = self._config.custom_patterns_dir
         if re.search(r"http(s)?:\/\/.*?\.zip", custom_patterns_dir):
-            patterns_tmp_path = Path("/tmp/grok_patterns")
-            self._download_zip_file(source_file=custom_patterns_dir, target_dir=patterns_tmp_path)
-            for rule in self.rules:
-                rule.set_mapping_actions(patterns_tmp_path)
-            return
+            with tempfile.TemporaryDirectory("grok") as patterns_tmp_path:
+                self._download_zip_file(
+                    source_file=custom_patterns_dir, target_dir=Path(patterns_tmp_path)
+                )
+                for rule in self.rules:
+                    rule.set_mapping_actions(patterns_tmp_path)
+                return
         if custom_patterns_dir:
             for rule in self.rules:
                 rule.set_mapping_actions(custom_patterns_dir)
@@ -124,11 +127,9 @@ class Grokker(FieldManager):
             rule.set_mapping_actions()
 
     def _download_zip_file(self, source_file: str, target_dir: Path):
-        if not target_dir.exists():
-            logger.debug("start grok pattern download...")
-            archive = Path(f"{target_dir}.zip")
-            archive.touch()
-            archive.write_bytes(GetterFactory.from_string(source_file).get_raw())
+        logger.debug("start grok pattern download...")
+        with tempfile.TemporaryFile("wb+") as archive:
+            archive.write(GetterFactory.from_string(source_file).get_raw())
             logger.debug("finished grok pattern download.")
-            with ZipFile(str(archive), mode="r") as zip_file:
+            with ZipFile(archive, mode="r") as zip_file:
                 zip_file.extractall(target_dir)

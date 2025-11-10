@@ -3,7 +3,7 @@
 import logging
 import os
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Type
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Type, cast
 
 from attrs import define, field, validators
 
@@ -105,26 +105,42 @@ class Processor(Component):
     __slots__ = [
         "_event",
         "_rule_tree",
-        "result",
+        "_result",
         "_bypass_rule_tree",
     ]
 
-    rule_class: ClassVar["Type[Rule] | None"] = None
+    rule_class: ClassVar[Type["Rule"] | None] = None
     _event: dict
     _rule_tree: RuleTree
     _strategy = None
     _bypass_rule_tree: bool
-    result: ProcessorResult | None
+    _result: ProcessorResult | None
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
         self._rule_tree = RuleTree(config=self._config.tree_config)
         self.load_rules(rules_targets=self._config.rules)
-        self.result = None
+        self._result = None
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
             logger.debug("Bypassing rule tree for processor %s", self.name)
+
+    @property
+    def result(self) -> ProcessorResult:
+        """Returns the current result object which is guaranteed to be non-None
+        during processing of an event.
+
+        Returns
+        -------
+        ProcessorResult
+            The current result to be modified in-place
+        """
+        return cast(ProcessorResult, self._result)
+
+    @result.setter
+    def result(self, value: ProcessorResult):
+        self._result = value
 
     @property
     def rules(self):
@@ -161,7 +177,7 @@ class Processor(Component):
             extra data and a list of target outputs.
 
         """
-        self.result = ProcessorResult(processor_name=self.name, event=event)  # type: ignore
+        self._result = ProcessorResult(processor_name=self.name, event=event)  # type: ignore
         logger.debug("%s processing event %s", self.describe(), event)
         if self._bypass_rule_tree:
             self._process_all_rules(event)

@@ -121,25 +121,44 @@ standard values if not explicitly set.
 """
 
 from functools import cached_property
+from types import MappingProxyType
 from typing import Optional, Union
 from zoneinfo import ZoneInfo
 
-from attrs import asdict, define, field, validators
+from attrs import asdict, define, field, fields, validators
 
 from logprep.processor.base.rule import Rule
+
+SPECIAL_FIELD_TYPES = {
+    *Rule.special_field_types,
+    "source_format",
+    "source_timezone",
+    "target_timezone",
+    "timestamp_field",
+    "failure_tags",
+    "copy_fields_to_detection_event",
+}
+
+
+def _validate_copy_fields_to_detection_event(config: "PreDetectorRule.Config", _, value: set[str]):
+    field_names_set_by_processor = {"rule_filter", "description", "pre_detection_id"}
+
+    rule_config_field_names = set(f.name for f in fields(type(config)))
+    field_names_set_by_rule = rule_config_field_names - SPECIAL_FIELD_TYPES
+
+    illegal_field_names = field_names_set_by_processor | field_names_set_by_rule
+
+    if value & illegal_field_names:
+        raise ValueError(
+            f"Illegal fields specified for `copy_fields_to_detection_event`. "
+            f"Fields ({', '.join(value & illegal_field_names)}) are not allowed. "
+        )
 
 
 class PreDetectorRule(Rule):
     """Check if documents match a filter."""
 
-    special_field_types = {
-        *Rule.special_field_types,
-        "source_format",
-        "source_timezone",
-        "target_timezone",
-        "timestamp_field",
-        "failure_tags",
-    }
+    special_field_types = SPECIAL_FIELD_TYPES
 
     @define(kw_only=True)
     class Config(Rule.Config):  # pylint: disable=too-many-instance-attributes
@@ -168,7 +187,7 @@ class PreDetectorRule(Rule):
             validator=validators.optional(validators.instance_of(str)), default=None
         )
         """A link to the rule if applicable."""
-        source_format: list = field(
+        source_format: str = field(
             validator=validators.instance_of(str),
             default="ISO8601",
         )
@@ -187,6 +206,28 @@ class PreDetectorRule(Rule):
             validator=validators.instance_of(list), default=["pre_detector_failure"]
         )
         """ tags to be added if processing of the rule fails"""
+        copy_fields_to_detection_event: set[str] = field(
+            validator=[
+                validators.deep_iterable(
+                    member_validator=validators.instance_of(str),
+                    iterable_validator=validators.or_(
+                        validators.instance_of(set), validators.instance_of(list)
+                    ),
+                ),
+                _validate_copy_fields_to_detection_event,
+            ],
+            converter=set,
+            default={"host.name"},
+        )
+        """
+        Field (names) from the triggering event to be added to the detection events.
+        Defaults to ["host.name"] for downwards compatibility reasons.
+        """
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return self._config
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PreDetectorRule):
@@ -200,36 +241,40 @@ class PreDetectorRule(Rule):
 
     # pylint: disable=C0111
     @cached_property
-    def detection_data(self) -> dict:
+    def detection_data(self) -> MappingProxyType:
         detection_data = asdict(
-            self._config, filter=lambda attribute, _: attribute.name not in self.special_field_types
+            self.config, filter=lambda attribute, _: attribute.name not in self.special_field_types
         )
-        if self._config.link is None:
+        if self.config.link is None:
             del detection_data["link"]
-        return detection_data
+        return MappingProxyType(detection_data)
 
     @property
     def ip_fields(self) -> list:
-        return self._config.ip_fields
+        return self.config.ip_fields
 
     @property
     def description(self) -> str:
-        return self._config.description
+        return self.config.description
 
     @property
     def source_format(self) -> str:
-        return self._config.source_format
+        return self.config.source_format
 
     @property
     def target_timezone(self) -> str:
-        return self._config.target_timezone
+        return self.config.target_timezone
 
     @property
     def source_timezone(self) -> str:
-        return self._config.source_timezone
+        return self.config.source_timezone
 
     @property
     def timestamp_field(self) -> str:
-        return self._config.timestamp_field
+        return self.config.timestamp_field
+
+    @property
+    def copy_fields_to_detection_event(self) -> set[str]:
+        return self.config.copy_fields_to_detection_event
 
     # pylint: enable=C0111

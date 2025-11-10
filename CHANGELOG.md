@@ -1,9 +1,11 @@
 ## Upcoming Changes
 
 ### Breaking
+* pre detector events now also include host.name if the field value is None
 
 ### Features
 * add support for python 3.14
+* allow pre-detector to copy a configurable list of fields from log to detection event
 
 ### Improvements
 * add workflow to partially run & check the compose example
@@ -15,6 +17,7 @@
 * fix docker-compose and k8s example setups
 * fix handling of non-string values (e.g. int) as replacement argument for `generic_resolver`
 * fix documentation for `generic_resolver` rule `append_to_list -> merge_with_target` option
+* fix grokker using a fixed directory for downloaded patterns, potentially leading to conflicts between processes
 
 ## 17.0.3
 ### Breaking

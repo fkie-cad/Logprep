@@ -109,7 +109,7 @@ dev = [
   "asgiref",
   "pytest-asyncio",
   "pre-commit",
-  "mypy",
+  "mypy>=1.18.2",
   "types-requests",
   "psutil",
   "types-psutil",
