@@ -30,7 +30,6 @@ EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 init_yaml_loader_tags("safe", "rt")
 
 
-
 def _print_version(config: "Configuration") -> None:
     print(get_versions_string(config))
     sys.exit(EXITCODES.SUCCESS)
