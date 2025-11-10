@@ -11,11 +11,11 @@ logger:
   loggers:
     "py.warnings": { "level": "ERROR" }
     "Runner": { "level": "DEBUG" }
-    "Processor": { "level": "ERROR" }
+    "Processor": { "level": "DEBUG" }
     "Exporter": { "level": "ERROR" }
     "uvicorn": { "level": "ERROR" }
     "uvicorn.access": { "level": "ERROR" }
-    "OpenSearchOutput": { "level": "ERROR" }
+    "OpenSearchOutput": { "level": "DEBUG" }
 metrics:
   enabled: true
   port: 8001

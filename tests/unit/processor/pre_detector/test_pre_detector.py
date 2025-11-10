@@ -92,6 +92,32 @@ class TestPreDetector(BaseProcessorTestCase):
             document, expected, detection_results.data, expected_detection_results
         )
 
+    def test_perform_successful_pre_detection_without_host_name(self):
+        document = {
+            # "host": {"name": "Test hostname"},
+            "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
+        }
+        expected = deepcopy(document)
+        expected_detection_results = [
+            (
+                {
+                    "id": "RULE_ONE_ID",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    # "host": {"name": "Test hostname"},
+                    "description": "Test rule one",
+                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+                },
+                ({"kafka": "pre_detector_alerts"},),
+            )
+        ]
+        detection_results = self.object.process(document)
+        self._assert_equality_of_results(
+            document, expected, detection_results.data, expected_detection_results
+        )
+
     def test_perform_successful_pre_detection_with_same_existing_pre_detection(self):
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         expected = deepcopy(document)
@@ -464,3 +490,157 @@ class TestPreDetector(BaseProcessorTestCase):
         assert "tags" in document
         assert "_pre_detector_failure" in document["tags"]
         assert "_pre_detector_timeparsing_failure" in document["tags"]
+
+    def test_perform_successful_pre_detection_with_custom_field_copied(self):
+        self._load_rule(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    "copy_fields_to_detector_event": {"custom", "winlog.custom"},
+                },
+                "description": "Test rule one",
+            }
+        )
+        document = {
+            "host": {"name": "Test hostname"},
+            "custom": "test toplevel",
+            "winlog": {
+                "event_id": 123,
+                "event_data": {"ServiceName": "VERY BAD"},
+                "custom": "test nested",
+            },
+        }
+        expected = deepcopy(document)
+        expected_detection_results = [
+            (
+                {
+                    "id": "RULE_ONE_ID",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    "description": "Test rule one",
+                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+                    "custom": "test toplevel",
+                    "winlog": {"custom": "test nested"},
+                },
+                ({"kafka": "pre_detector_alerts"},),
+            )
+        ]
+        detection_results = self.object.process(document)
+        self._assert_equality_of_results(
+            document, expected, detection_results.data, expected_detection_results
+        )
+
+    def test_perform_successful_pre_detection_with_nothing_extra_copied(self):
+        self._load_rule(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    "copy_fields_to_detector_event": set(),
+                },
+                "description": "Test rule one",
+            }
+        )
+        document = {
+            "host": {"name": "Test hostname"},
+            "custom": "test toplevel",
+            "winlog": {
+                "event_id": 123,
+                "event_data": {"ServiceName": "VERY BAD"},
+                "custom": "test nested",
+            },
+        }
+        expected = deepcopy(document)
+        expected_detection_results = [
+            (
+                {
+                    "id": "RULE_ONE_ID",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    "description": "Test rule one",
+                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+                },
+                ({"kafka": "pre_detector_alerts"},),
+            )
+        ]
+        detection_results = self.object.process(document)
+        self._assert_equality_of_results(
+            document, expected, detection_results.data, expected_detection_results
+        )
+
+    def test_copy_fields_to_detector_event_validation_supports_lists(self):
+        self._load_rule(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    "copy_fields_to_detector_event": ["host.name"],
+                },
+                "description": "Test rule one",
+            }
+        )
+
+    def test_copy_fields_to_detector_event_validation_supports_sets(self):
+        self._load_rule(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    "copy_fields_to_detector_event": {"host.name"},
+                },
+                "description": "Test rule one",
+            }
+        )
+
+    @pytest.mark.parametrize(
+        "field_name",
+        [
+            "rule_filter",
+            "description",
+            "pre_detection_id",
+            "id",
+            "title",
+            "severity",
+            "mitre",
+            "case_condition",
+            "link",
+        ],
+    )
+    def test_copy_fields_to_detector_event_fails_on_illegal_fields(self, field_name: str):
+        with pytest.raises(ValueError, match="Illegal fields") as exc_info:
+            self._load_rule(
+                {
+                    "filter": "*",
+                    "pre_detector": {
+                        "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["attack.test1", "attack.test2"],
+                        "case_condition": "directly",
+                        "copy_fields_to_detector_event": {field_name},
+                    },
+                    "description": "Test rule one",
+                }
+            )
+        assert exc_info is not None
