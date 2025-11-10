@@ -47,13 +47,13 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
     @mock.patch("logprep.ng.connector.jsonl.output.JsonlOutput._write_json")
     def test_write_document_to_file_on_store(self, _):
         self.object.store(self.event)
-        self.object._write_json.assert_called_with("/tmp/output.jsonl", self.event.data)
+        self.object._write_json.assert_called_with(self.CONFIG["output_file"], self.event.data)
 
     @mock.patch("logprep.ng.connector.jsonl.output.JsonlOutput._write_json")
     def test_write_document_to_file_on_store_custom(self, _):
         self.object.store_custom(self.event, target="whatever")
         self.object._write_json.assert_called_with(
-            self.object._config.output_file_custom, {"whatever": self.event.data}
+            self.CONFIG["output_file_custom"], {"whatever": self.event.data}
         )
 
     @mock.patch("logprep.ng.connector.jsonl.output.JsonlOutput._write_json")
@@ -62,8 +62,8 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
         self.object.store(LogEvent(self.event.data, original=b""))
         assert self.object._write_json.call_count == 2
         assert self.object._write_json.call_args_list == [
-            mock.call("/tmp/output.jsonl", {"message": "test message"}),
-            mock.call("/tmp/output.jsonl", {"message": "test message"}),
+            mock.call(self.CONFIG["output_file"], {"message": "test message"}),
+            mock.call(self.CONFIG["output_file"], {"message": "test message"}),
         ]
 
     @mock.patch("builtins.open")

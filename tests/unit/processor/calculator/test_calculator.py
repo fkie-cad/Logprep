@@ -332,7 +332,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "message": "This is a message",
             "tags": ["_calculator_failure"],
         },
-        r"ProcessingWarning.*Timer expired",
+        r"ProcessingWarning.*(Timer expired|ioctl timeout)",  # "STREAM ioctl timeout" for MacOS/darwin
     ),
 ]
 
