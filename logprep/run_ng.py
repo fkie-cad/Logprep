@@ -1,14 +1,13 @@
 # pylint: disable=logging-fstring-interpolation
 """This module can be used to start the logprep."""
 import logging
-from multiprocessing import set_start_method
 import os
 import signal
 import sys
+from multiprocessing import set_start_method
 
 import click
 
-from logprep.call_once import set_start_method_fork
 from logprep.ng.runner import Runner
 from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import EXITCODES
@@ -45,7 +44,7 @@ def cli() -> None:
     Log messages are being read and written by so-called connectors.
     """
 
-    set_start_method_fork()
+    set_start_method("fork", force=True)
 
     if "pytest" not in sys.modules:  # needed for not blocking tests
         signal.signal(signal.SIGTERM, signal_handler)

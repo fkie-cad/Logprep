@@ -1,8 +1,11 @@
-import pytest
+"""Global configuration and fixtures for all pytest-based tests"""
 
-from logprep.call_once import set_start_method_fork
+from multiprocessing import set_start_method
+
+import pytest
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_test_env():
-    set_start_method_fork()
+def configure_multiprocess_start_method():
+    """Sets the start method to 'fork' for all platforms and python versions"""
+    set_start_method("fork", force=True)
