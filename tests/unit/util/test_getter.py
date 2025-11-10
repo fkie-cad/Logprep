@@ -190,12 +190,7 @@ class TestFileGetter:
         with mock.patch("pathlib.Path.open", mock.mock_open(read_data=b"my content")) as mock_open:
             content = file_getter.get_raw()
             # Python version depending: In Python 3.14, the buffering parameter was added to open() calls in pathlib.Path.read_bytes()
-            # 0x = Hex
-            # 03 = 3 | Python 3
-            # 0e = 14 | version 14
-            # 00 = 0 | micro 0
-            # 0 = 0 | release level
-            # 0 = 0 | release serial
+            # pythonVersion >= 3.14.0 (https://docs.python.org/3/c-api/apiabiversion.html#bit-packing-macros)
             if sys.hexversion >= 0x030E0000:
                 mock_open.assert_called_with(mode="rb", buffering=0)
             else:

@@ -2,7 +2,6 @@
 """This module can be used to start the logprep."""
 import logging
 import logging.config
-from multiprocessing import set_start_method
 import os
 import signal
 import sys
@@ -10,6 +9,7 @@ import warnings
 
 import click
 
+from logprep.call_once import set_start_method_fork
 from logprep.generator.factory import ControllerFactory
 from logprep.runner import Runner
 from logprep.util.ansi import Fore
@@ -29,7 +29,6 @@ logger = logging.getLogger("logprep")
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 init_yaml_loader_tags("safe", "rt")
 
-set_start_method("fork", True)
 
 
 def _print_version(config: "Configuration") -> None:
@@ -58,6 +57,8 @@ def cli() -> None:
     Logprep allows to collect, process and forward log messages from various data sources.
     Log messages are being read and written by so-called connectors.
     """
+    set_start_method_fork()
+
     if "pytest" not in sys.modules:  # needed for not blocking tests
         signal.signal(signal.SIGTERM, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
