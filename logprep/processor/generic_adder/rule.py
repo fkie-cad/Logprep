@@ -174,7 +174,7 @@ class GenericAdderRule(FieldManagerRule):
                     missing_files.append(add_file)
                     continue
                 if isinstance(add_dict, dict) and all(
-                    isinstance(value, (str, bool, list, int, float, type(None)))
+                    isinstance(value, (str, bool, list, int, float))
                     for value in add_dict.values()
                 ):
                     self.add = {**self.add, **add_dict}
