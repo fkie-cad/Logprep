@@ -121,6 +121,7 @@ standard values if not explicitly set.
 """
 
 from functools import cached_property
+from types import MappingProxyType
 from typing import Optional, Union
 from zoneinfo import ZoneInfo
 
@@ -240,13 +241,13 @@ class PreDetectorRule(Rule):
 
     # pylint: disable=C0111
     @cached_property
-    def detection_data(self) -> dict:
+    def detection_data(self) -> MappingProxyType:
         detection_data = asdict(
             self.config, filter=lambda attribute, _: attribute.name not in self.special_field_types
         )
         if self.config.link is None:
             del detection_data["link"]
-        return detection_data
+        return MappingProxyType(detection_data)
 
     @property
     def ip_fields(self) -> list:

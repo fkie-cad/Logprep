@@ -150,14 +150,12 @@ class PreDetector(Processor):
     def _generate_detection_result(
         pre_detection_id: dict | list | str, event: dict, rule: PreDetectorRule
     ) -> dict:
-        detection_result = rule.detection_data
-        detection_result.update(
-            {
-                "rule_filter": rule.filter_str,
-                "description": rule.description,
-                "pre_detection_id": pre_detection_id,
-            }
-        )
+        detection_result = {
+            **rule.detection_data,
+            "rule_filter": rule.filter_str,
+            "description": rule.description,
+            "pre_detection_id": pre_detection_id,
+        }
         copy_fields_to_event(
             target_event=detection_result,
             source_event=event,
