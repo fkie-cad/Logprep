@@ -54,10 +54,11 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: 
     with run_logprep(config_path) as proc:
         wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
 
-        requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
+        requests.post(
+            "https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5
+        )
         time.sleep(0.5)
         assert "my message" in output_path.read_text()
-
 
 
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
@@ -70,7 +71,9 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, confi
     with run_logprep(config_path) as proc:
         wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
 
-        requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
+        requests.post(
+            "https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5
+        )
         time.sleep(0.5)
 
         assert "my message" in output_path.read_text()

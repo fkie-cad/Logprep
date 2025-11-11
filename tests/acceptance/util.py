@@ -9,17 +9,17 @@ import json
 import re
 import socketserver
 import subprocess
-from contextlib import contextmanager
 import sys
 import tempfile
 import threading
 import time
+from contextlib import contextmanager
 from copy import deepcopy
 from importlib import import_module
 from logging import DEBUG, basicConfig, getLogger
 from os import makedirs, path
 from pathlib import Path
-from typing import Generator
+from typing import Generator, Optional
 
 import psutil
 
@@ -119,7 +119,9 @@ def store_latest_test_output(target_output_identifier, output_of_test):
             latest_output.write(json.dumps(test_output_line) + "\n")
 
 
-def get_runner_outputs(patched_runner: Runner) -> list:
+def get_runner_outputs(
+    patched_runner: Runner,
+) -> tuple[Optional[list[dict]], Optional[list[dict]], Optional[list[dict]]]:
     # pylint: disable=protected-access
     """
     Extracts the outputs of a patched logprep runner.
@@ -189,7 +191,9 @@ def get_patched_runner(config_path):
     return runner
 
 
-def get_test_output(config_path: str) -> list[dict]:
+def get_test_output(
+    config_path: str,
+) -> tuple[Optional[list[dict]], Optional[list[dict]], Optional[list[dict]]]:
     patched_runner = get_patched_runner(config_path)
     return get_runner_outputs(patched_runner=patched_runner)
 
@@ -199,7 +203,7 @@ class SingleMessageConsumerJsonMock:
         self.record = json.dumps(record, separators=(",", ":"))
 
     # pylint: disable=unused-argument
-    def poll(self, timeout):
+    def poll(self, _):
         return RecordMock(self.record, None)
 
     # pylint: enable=unused-argument
@@ -250,6 +254,7 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
 
     return Configuration(**config_yml)
 
+
 def _start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
     if env is None:
         env = {}
@@ -273,7 +278,7 @@ def _stop_logprep(proc: subprocess.Popen) -> None:
 
     to_terminate: list[psutil.Process] = [main_process, *main_process.children(recursive=True)]
 
-    logger.debug(f"terminating pids [{", ".join([str(p.pid) for p in to_terminate])}]")
+    logger.debug("terminating pids [%s]", ", ".join([str(p.pid) for p in to_terminate]))
 
     for p in to_terminate:
         try:
@@ -284,7 +289,7 @@ def _stop_logprep(proc: subprocess.Popen) -> None:
 
     _, still_alive = psutil.wait_procs(to_terminate, timeout=5)
 
-    logger.debug(f"killing pids [{", ".join([str(p.pid) for p in still_alive])}]")
+    logger.debug("killing pids [%s]", ", ".join([str(p.pid) for p in still_alive]))
 
     for p in still_alive:
         try:
@@ -296,7 +301,9 @@ def _stop_logprep(proc: subprocess.Popen) -> None:
     _, still_alive = psutil.wait_procs(to_terminate, timeout=5)
 
     if still_alive:
-        logger.warning(f"failed to kill processes [{", ".join([str(p.pid) for p in still_alive])}]")
+        logger.warning(
+            "failed to kill processes [%s]", ", ".join([str(p.pid) for p in still_alive])
+        )
 
 
 @contextmanager
@@ -377,13 +384,13 @@ def convert_to_http_config(config: Configuration, endpoint) -> Configuration:
         for rule in value["rules"]:
             match rule:
                 case str():
-                    path = Path(rule)
-                    if path.is_file():
-                        rules.append(str(path))
-                    if path.is_dir():
+                    rule_path = Path(rule)
+                    if rule_path.is_file():
+                        rules.append(str(rule_path))
+                    if rule_path.is_dir():
                         files = (
                             str(p)
-                            for p in Path(path).glob("**/*")
+                            for p in Path(rule_path).glob("**/*")
                             if p.suffix in RULE_FILE_EXTENSIONS
                         )
                         rules.extend(files)

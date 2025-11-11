@@ -7,7 +7,6 @@ from logprep.util.configuration import Configuration
 from tests.acceptance.util import get_default_logprep_config, get_test_output
 
 
-
 @pytest.fixture(name="config")
 def config_fixture():
     pipeline = [

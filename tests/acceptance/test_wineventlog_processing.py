@@ -19,7 +19,6 @@ logging.basicConfig(
 logger = logging.getLogger("Logprep-Test")
 
 
-
 @pytest.fixture(name="config")
 def fixture_config_template():
     pipeline = [

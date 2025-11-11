@@ -95,7 +95,7 @@ dependencies = [
 [project.optional-dependencies]
 
 dev = [
-  "black",
+  "black>=25.9.0",
   "httpx",
   "isort",
   "pylint",
@@ -168,8 +168,8 @@ max-line-length=100
 [tool.pylint.BASIC]
 no-docstring-rgx="^test_|^.*TestCase|^_|^Test"
 
-["tool.pylint.MESAGES CONTROL"]
-disable="too-few-public-methods"
+[tool.pylint."MESAGES CONTROL"]
+disable="too-few-public-methods,unsupported-membership-test"
 
 [tool.pylint.DESIGN]
 min-public-methods=1
