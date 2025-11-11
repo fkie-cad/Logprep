@@ -4,7 +4,6 @@
 
 import tempfile
 from logging import DEBUG, basicConfig, getLogger
-from multiprocessing import set_start_method
 from pathlib import Path
 
 import pytest
@@ -14,7 +13,6 @@ from tests.acceptance.util import get_test_output
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
-set_start_method("fork", force=True)
 
 
 @pytest.fixture(name="configuration")

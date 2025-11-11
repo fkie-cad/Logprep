@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 import logging
 import os
-from multiprocessing import set_start_method
 
 import pytest
 
@@ -19,7 +18,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("Logprep-Test")
 
-set_start_method("fork", force=True)
 
 
 @pytest.fixture(name="config")

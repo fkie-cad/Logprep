@@ -9,6 +9,7 @@ import json
 import re
 import socketserver
 import subprocess
+from contextlib import contextmanager
 import sys
 import tempfile
 import threading
@@ -18,6 +19,7 @@ from importlib import import_module
 from logging import DEBUG, basicConfig, getLogger
 from os import makedirs, path
 from pathlib import Path
+from typing import Generator
 
 import psutil
 
@@ -248,8 +250,7 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
 
     return Configuration(**config_yml)
 
-
-def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
+def _start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
     if env is None:
         env = {}
     env.update({"PYTHONPATH": "."})
@@ -262,6 +263,49 @@ def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
         stderr=subprocess.STDOUT,
         close_fds=True,
     )
+
+
+def _stop_logprep(proc: subprocess.Popen) -> None:
+    if proc is None or not psutil.pid_exists(proc.pid):
+        return
+
+    main_process = psutil.Process(proc.pid)
+
+    to_terminate: list[psutil.Process] = [main_process, *main_process.children(recursive=True)]
+
+    logger.debug(f"terminating pids [{", ".join([str(p.pid) for p in to_terminate])}]")
+
+    for p in to_terminate:
+        try:
+            if p.is_running():
+                p.terminate()
+        except (psutil.NoSuchProcess, psutil.ZombieProcess):
+            pass
+
+    _, still_alive = psutil.wait_procs(to_terminate, timeout=5)
+
+    logger.debug(f"killing pids [{", ".join([str(p.pid) for p in still_alive])}]")
+
+    for p in still_alive:
+        try:
+            if p.is_running():
+                p.kill()
+        except (psutil.NoSuchProcess, psutil.ZombieProcess):
+            pass
+
+    _, still_alive = psutil.wait_procs(to_terminate, timeout=5)
+
+    if still_alive:
+        logger.warning(f"failed to kill processes [{", ".join([str(p.pid) for p in still_alive])}]")
+
+
+@contextmanager
+def run_logprep(config_path: str, env: dict = None) -> Generator[subprocess.Popen, None, None]:
+    process = _start_logprep(config_path, env)
+    try:
+        yield process
+    finally:
+        _stop_logprep(process)
 
 
 def wait_for_output(
@@ -286,31 +330,6 @@ def wait_for_output(
 
     wait_for_output_inner(proc, expected_output, forbidden_outputs)
     time.sleep(0.1)
-
-
-def stop_logprep(proc: subprocess.Popen) -> None:
-    if proc is None or not psutil.pid_exists(proc.pid):
-        return
-
-    try:
-        process = psutil.Process(proc.pid)
-        for p in process.children(recursive=True):
-            if p.is_running():
-                p.terminate()
-
-        process.wait(timeout=5)
-        process.terminate()
-        for p in process.children(recursive=True):
-            if p.is_running():
-                p.kill()
-
-        if process.is_running():
-            process.kill()
-
-    except (psutil.NoSuchProcess, psutil.ZombieProcess):
-        pass
-    except psutil.TimeoutExpired:
-        process.kill()
 
 
 def get_full_pipeline(exclude=None):

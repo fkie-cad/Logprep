@@ -8,8 +8,7 @@ import pytest
 from logprep.util.configuration import Configuration
 from tests.acceptance.util import (
     get_default_logprep_config,
-    start_logprep,
-    stop_logprep,
+    run_logprep,
     wait_for_output,
 )
 from tests.testdata.input_logdata.file_input_logs import test_initial_log_data
@@ -73,11 +72,10 @@ def test_file_input_accepts_message_for_single_pipeline(tmp_path, config: Config
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
     write_file(str(input_path), test_initial_log_data)
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Runner     INFO    : Startup complete")
-    wait_for_interval(4 * CHECK_INTERVAL)
-    assert test_initial_log_data[0] in output_path.read_text()
-    stop_logprep(proc)
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "Runner     INFO    : Startup complete")
+        wait_for_interval(4 * CHECK_INTERVAL)
+        assert test_initial_log_data[0] in output_path.read_text()
 
 
 def test_file_input_accepts_message_for_two_pipelines(tmp_path, config: Configuration):
@@ -89,8 +87,7 @@ def test_file_input_accepts_message_for_two_pipelines(tmp_path, config: Configur
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
     write_file(str(input_path), test_initial_log_data)
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Runner     INFO    : Startup complete")
-    wait_for_interval(4 * CHECK_INTERVAL)
-    assert test_initial_log_data[0] in output_path.read_text()
-    stop_logprep(proc)
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "Runner     INFO    : Startup complete")
+        wait_for_interval(4 * CHECK_INTERVAL)
+        assert test_initial_log_data[0] in output_path.read_text()
