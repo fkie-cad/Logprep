@@ -38,7 +38,12 @@ from logprep.ng.event.sre_event import SreEvent
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    HandleMissing,
+    add_fields_to,
+    copy_fields_to_event,
+    get_dotted_field_value,
+)
 from logprep.util.time import TimeParser, TimeParserException
 
 
@@ -92,7 +97,7 @@ class PreDetector(Processor):
     def _ip_alerter(self) -> IPAlerter:
         return IPAlerter(self._config.alert_ip_list_path)
 
-    def normalize_timestamp(self, rule: PreDetectorRule, timestamp: str) -> str:
+    def normalize_timestamp(self, rule: PreDetectorRule, timestamp: dict | list | str) -> str:
         """method for normalizing the timestamp"""
         try:
             parsed_datetime = TimeParser.parse_datetime(
@@ -101,7 +106,7 @@ class PreDetector(Processor):
             return (
                 parsed_datetime.astimezone(rule.target_timezone).isoformat().replace("+00:00", "Z")
             )
-        except TimeParserException as error:
+        except (TimeParserException, TypeError) as error:
             raise ProcessingWarning(
                 "Could not parse timestamp",
                 rule,
@@ -132,7 +137,7 @@ class PreDetector(Processor):
 
     @staticmethod
     def _generate_detection_result(
-        pre_detection_id: str, event: dict, rule: PreDetectorRule
+        pre_detection_id: dict | list | str, event: dict, rule: PreDetectorRule
     ) -> dict:
         detection_result = {
             **rule.detection_data,
@@ -140,7 +145,11 @@ class PreDetector(Processor):
             "description": rule.description,
             "pre_detection_id": pre_detection_id,
         }
-
-        if host_name := get_dotted_field_value(event, "host.name"):
-            detection_result.update({"host": {"name": host_name}})
+        copy_fields_to_event(
+            target_event=detection_result,
+            source_event=event,
+            dotted_field_names=rule.copy_fields_to_detector_event,
+            rule=rule,
+            handle_missing=HandleMissing.SKIP,
+        )
         return detection_result

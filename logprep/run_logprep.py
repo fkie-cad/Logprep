@@ -6,6 +6,7 @@ import os
 import signal
 import sys
 import warnings
+from multiprocessing import set_start_method
 
 import click
 
@@ -55,6 +56,8 @@ def cli() -> None:
     Logprep allows to collect, process and forward log messages from various data sources.
     Log messages are being read and written by so-called connectors.
     """
+    set_start_method("fork", force=True)
+
     if "pytest" not in sys.modules:  # needed for not blocking tests
         signal.signal(signal.SIGTERM, signal_handler)
         signal.signal(signal.SIGINT, signal_handler)
