@@ -4,8 +4,29 @@ Kubernetes Example Deployment
 For this example, we need a working kubernetes cluster. Here we will use minikube,
 but every other kubernetes environment should do the job.
 
-Setup Minikube
---------------
+Setup Minikube (MacOS)
+----------------------
+
+This tutorial assumes that you have `podman`, `minikube`,` `kubectl` and `helm` already installed.
+
+.. code-block:: bash
+    :caption: Add helm repositories
+
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+
+.. code-block:: bash
+    :caption: Configure and start minikube
+
+    minikube config set driver podman
+    minikube config set container-runtime cri-o
+
+    minikube config set cpus 8
+    minikube config set memory 16GB
+    minikube start
+    minikube addons enable ingress
+
+Setup Minikube (Linux)
+----------------------
 
 To install :code:`minikube`, :code:`helm` and :code:`kubectl` follow the instructions below.
 
@@ -21,7 +42,7 @@ with the following commands:
     :caption: Install minikube
 
     sudo curl -Lo /usr/local/bin/minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-    
+
     sudo chmod +x /usr/local/bin/minikube
 
 .. code-block:: bash
@@ -40,15 +61,16 @@ with the following commands:
     sudo chmod +x /usr/local/bin/helm
 
 .. code-block:: bash
-    :caption: add helm repositories
+    :caption: Add helm repositories
 
     helm repo add bitnami https://charts.bitnami.com/bitnami
 
 .. code-block:: bash
     :caption: Configure and start minikube
-    
+
     minikube config set driver docker
-    minikube config set cpus 16 
+
+    minikube config set cpus 8
     minikube config set memory 16GB
     minikube start
     minikube addons enable ingress
@@ -57,7 +79,7 @@ Deploy the example
 ------------------
 
 The following steps install the actual opensiem example on the minikube cluster.
-It will install 
+It will install
 
 At first you have to install the prometheus PodMonitor CRD:
 
@@ -85,25 +107,40 @@ Next you are ready to install the opensiem example using:
 Make the cluster locally resolvable:
 
 .. code-block:: bash
-    :caption: add hosts entry to resolve the cluster
+    :caption: Add hosts entry to resolve the cluster
 
+    # Linux
     echo "$( minikube ip ) connector.opensiem dashboards.opensiem grafana.opensiem" | sudo tee -a /etc/hosts
+
+    # MacOS
+    echo "127.0.0.1 connector.opensiem dashboards.opensiem grafana.opensiem" | sudo tee -a /etc/hosts
 
 Test the defined ingresses:
 
 .. code-block:: bash
     :caption: Test the opensiem example ingress
 
+    # MacOS, in a separate terminal and enter your sudo password
+    minikube tunnel
+
+    # Linux / MacOS; (might fail for MacOS)
     curl -v http://connector.opensiem/health
     curl -v http://dashboards.opensiem
+
+    # If host mapping fails for MacOS, try to expose services directly
+    # Each command has to run in a separate terminal (`minikube service --all`` can also be used)
+    minikube service --url opensiem-connector-http-input # -> uri for the connector
+    minikube service opensiem-opensearch-dashboards # -> opens a browser tab
+
 
 Test the opensiem connector:
 
 .. code-block:: bash
     :caption: Test the opensiem example connector
 
-    ❯ logprep generate http --input-dir ./examples/exampledata/input_logdata/ --target-url http://connector.opensiem --events 100 --batch-size 10
-    
+    # use the uri provided by `minikube service` above for the connector instead of connector.opensiem
+    $ logprep generate http --input-dir ./examples/exampledata/input_logdata/ --target-url http://connector.opensiem --events 100 --batch-size 10
+
     2024-07-17 11:15:35 301643 Generator  INFO    : Log level set to 'NOTSET'
     2024-07-17 11:15:35 301643 Generator  INFO    : Started Data Processing
     2024-07-17 11:15:35 301643 Input      INFO    : Reading input dataset and creating temporary event collections in: '/tmp/logprep_a51e1vh6'
@@ -128,7 +165,7 @@ Use local container images
 If you want to use local logprep container images, you can build the images with the following commands:
 
 .. code-block:: bash
-    :caption: switch docker context to minikube in bash
+    :caption: Switch docker context to minikube in bash
 
     eval $(minikube docker-env)
 
@@ -142,13 +179,13 @@ for powershell:
 Then build the logprep image with the following command:
 
 .. code-block:: bash
-    :caption: build this image using the Dockerfile in the root of the repository
+    :caption: Build this image using the Dockerfile in the root of the repository
 
     docker buildx build -t local/logprep:latest --build-arg PYTHON_VERSION=3.11 --build-arg LOGPREP_VERSION=dev .
 
 Then install the opensiem example using the local logprep image:
 
 .. code-block:: bash
-    :caption: use the local values file to deploy the opensiem example
+    :caption: Use the local values file to deploy the opensiem example
 
     helm install opensiem examples/k8s --values examples/k8s/values-dev.yaml

@@ -134,8 +134,10 @@ opensearch:
       tag: 3.2.0-debian-12-r0
   ingest:
     replicaCount: 1
+    resourcesPreset: "large" # "medium" lead to exit code 137 (OOM)
   master:
     replicaCount: 1
+    resourcesPreset: "large" # "medium" lead to exit code 137 (OOM)
   data:
     replicaCount: 1
   coordinating:
