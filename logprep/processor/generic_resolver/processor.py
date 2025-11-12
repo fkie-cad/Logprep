@@ -46,14 +46,14 @@ class GenericResolver(FieldManager):
         max_cache_entries: Optional[int] = field(
             validator=validators.optional(validators.instance_of(int)), default=0
         )
-        """(Optional) Size of cache for results when resolving form a list.
-        The cache can be disabled by setting it this option to :code:`0`.
+        """(Optional) Size of cache for results when resolving from a list.
+        The cache can be disabled by setting this option to :code:`0`.
 
         .. security-best-practice::
            :title: Processor - Generic Resolver Max Cached Entries
 
            Ensure to set this to a reasonable value to avoid excessive memory usage
-           and OOM situations by the generic resolver cache.
+           and OOM situations caused by the generic resolver cache.
 
         """
         cache_metrics_interval: Optional[int] = field(
@@ -120,7 +120,7 @@ class GenericResolver(FieldManager):
             return self._resolve_value_from_list
         return lru_cache(maxsize=self.max_cache_entries)(self._resolve_value_from_list)
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: GenericResolverRule) -> None:
         """Apply the given rule to the current event"""
         source_field_values = [
             get_dotted_field_value(event, source_field)
@@ -138,12 +138,16 @@ class GenericResolver(FieldManager):
             current_content = get_dotted_field_value(event, target_field)
             if isinstance(current_content, list) and content in current_content:
                 continue
-            if rule.merge_with_target and current_content is None:
-                content = [content]
             try:
                 add_fields_to(
                     event,
-                    fields={target_field: content},
+                    fields={
+                        target_field: (
+                            [content]
+                            if rule.merge_with_target and current_content is None
+                            else content
+                        )
+                    },
                     rule=rule,
                     merge_with_target=rule.merge_with_target,
                     overwrite_target=rule.overwrite_target,
@@ -156,15 +160,16 @@ class GenericResolver(FieldManager):
         if conflicting_fields:
             raise FieldExistsWarning(rule, event, conflicting_fields)
 
-    def _find_content_of_first_matching_pattern(self, rule, source_field_value):
+    def _find_content_of_first_matching_pattern(
+        self, rule: GenericResolverRule, source_field_value: str
+    ) -> str | None:
         if rule.resolve_from_file:
-            replacements = rule.resolve_from_file["additions"]
             matches = rule.pattern.match(source_field_value)
             if matches:
                 mapping = matches.group("mapping")
                 if rule.ignore_case:
                     mapping = mapping.upper()
-                content = replacements.get(mapping)
+                content = rule.additions.get(mapping)
                 if content:
                     return content
         return self._get_lru_cached_value_from_list(rule, source_field_value)

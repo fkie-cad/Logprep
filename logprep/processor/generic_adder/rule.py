@@ -30,6 +30,8 @@ All of those files must exist.
 If a list is used, it is possible to tell the generic adder to only use the first existing
 file by setting :code:`generic_adder.only_first_existing_file: true`.
 In that case, only one file must exist.
+Additions from :code:`generic_adder.add` and :code:`generic_adder.add_from_file` are
+combined.
 
 In the following example a dictionary with field names and values is loaded from the file
 at :code:`PATH_TO_FILE_WITH_LIST`.
@@ -79,12 +81,12 @@ In the following example two files are being used, but only the first existing f
 """
 # pylint: enable=anomalous-backslash-in-string
 
-
+import copy
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.getter import GetterFactory
+from logprep.util.getter import GetterFactory, RefreshableGetter
 
 
 class GenericAdderRule(FieldManagerRule):
@@ -101,7 +103,7 @@ class GenericAdderRule(FieldManagerRule):
         add: dict = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of((str, bool, list)),
+                value_validator=validators.instance_of((str, bool, list, int, float)),
             ),
             default={},
         )
@@ -143,11 +145,24 @@ class GenericAdderRule(FieldManagerRule):
         first existing file by setting :code:`generic_adder.only_first_existing_file: true`.
         In that case, only one file must exist."""
 
+        _base_add: dict = field(default={}, eq=False)
+        """Stores original add fields (as provided in the config) for future refreshes of getters"""
+
         # pylint: enable=anomalous-backslash-in-string
 
+        def _refresh_add(self):
+            self.add = copy.deepcopy(self._base_add)
+            self._add_from_path()
+
         def __attrs_post_init__(self):
+            self._base_add = copy.deepcopy(self.add)
+
             if self.add_from_file:
-                self._add_from_path()
+                for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
+                    getter = GetterFactory.from_string(add_file)
+                    if isinstance(getter, RefreshableGetter):
+                        getter.add_callback(self._refresh_add)
+                    self._add_from_path()
 
         def _add_from_path(self):
             """Reads add fields from file"""
@@ -159,7 +174,7 @@ class GenericAdderRule(FieldManagerRule):
                     missing_files.append(add_file)
                     continue
                 if isinstance(add_dict, dict) and all(
-                    isinstance(value, str) for value in add_dict.values()
+                    isinstance(value, (str, bool, list, int, float)) for value in add_dict.values()
                 ):
                     self.add = {**self.add, **add_dict}
                 else:

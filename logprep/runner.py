@@ -16,6 +16,7 @@ from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metrics import GaugeMetric
 from logprep.util.configuration import Configuration
 from logprep.util.defaults import EXITCODES
+from logprep.util.getter import refresh_getters
 
 
 class Runner:
@@ -115,6 +116,7 @@ class Runner:
 
     def _iterate(self) -> None:
         for _ in self._keep_iterating():
+            refresh_getters()
             self._scheduler.run_pending()
             if self._exit_received:
                 break
