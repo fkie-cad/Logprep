@@ -7,6 +7,7 @@
 ### Improvements
 
 ### Bugfix
+* fix docker-compose and k8s example setups
 
 ## 17.0.3
 ### Breaking
