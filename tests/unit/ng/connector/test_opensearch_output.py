@@ -311,3 +311,17 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert re.search("Failed to index document", str(error))
         assert re.search("503", str(error))
         assert re.search("Service Unavailable", str(error))
+
+    def test_thread_count_is_passed_to_client(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["thread_count"] = 42
+        self.object = Factory.create({"opensearch_output": config})
+
+        event = LogEvent({"field": "content"}, original=b"")
+
+        with mock.patch("opensearchpy.helpers.parallel_bulk") as mock_bulk:
+            mock_bulk.return_value = [(True, None)]
+            self.object.store(event)
+
+            mock_bulk.assert_called_once()
+            assert mock_bulk.call_args[1]["thread_count"] == 42

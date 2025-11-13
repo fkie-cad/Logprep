@@ -158,6 +158,20 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert error.value.message == "failed to index"
         assert error.value.raw_input == [{"errors": error_message, "event": event}]
 
+    def test_thread_count_is_passed_to_client(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["thread_count"] = 42
+        self.object = Factory.create({"opensearch_output": config})
+
+        helpers.parallel_bulk = mock.MagicMock(
+            return_value=[(True, None)],
+        )
+        self.object._message_backlog = [{"some": "event"}]
+        self.object._write_backlog()
+
+        helpers.parallel_bulk.assert_called_once()
+        assert helpers.parallel_bulk.call_args[1]["thread_count"] == 42
+
     def test_shut_down_clears_message_backlog(self):
         self.object._message_backlog = [{"some": "event"}]
         with mock.patch("logprep.connector.opensearch.output.OpensearchOutput._bulk"):

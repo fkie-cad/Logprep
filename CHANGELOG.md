@@ -8,6 +8,7 @@
 * add clarification to `config_refresh_interval` docstring about potential delay under high system load and non-strict timing behavior
 
 ### Bugfix
+* fix opensearch output not respecting thread_count config parameter
 * fix docker-compose and k8s example setups
 
 ## 17.0.3
