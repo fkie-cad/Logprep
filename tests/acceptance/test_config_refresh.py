@@ -55,7 +55,7 @@ def test_two_times_config_refresh_after_5_seconds(tmp_path, config):
         wait_for_output(proc, "Successfully reloaded configuration", test_timeout=20)
 
 
-def test_no_config_refresh_after_5_seconds(tmp_path, config):
+def test_config_refresh_after_5_seconds_without_change(tmp_path, config):
     config.config_refresh_interval = 5
     config.metrics = {"enabled": False}
     config_path = tmp_path / "generated_config.yml"

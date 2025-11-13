@@ -2,9 +2,16 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
-
+import json
 from collections import OrderedDict
 from copy import deepcopy
+from pathlib import Path
+from unittest.mock import patch
+
+import responses
+
+from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.getter import HttpGetter
 
 from logprep.factory import Factory
 from logprep.ng.event.log_event import LogEvent
@@ -93,6 +100,26 @@ class TestGenericResolver(BaseProcessorTestCase):
         self.object.process(log_event)
         assert log_event.data == expected
 
+    def test_resolve_not_dotted_field_no_conflict_no_match_case_sensitive(self):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        }
+
+        self._load_rule(rule)
+
+        expected = {"to_resolve": "something hello1"}
+
+        document = {"to_resolve": "something hello1"}
+        log_event = LogEvent(document, original=b"")
+
+        self.object.process(log_event)
+
+        assert document == expected
+
     def test_resolve_not_dotted_field_no_conflict_and_to_list_entries_match(
         self,
     ):
@@ -179,6 +206,55 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to_resolve": "ab"}
 
         log_event = LogEvent(document, original=b"")
+        self.object.process(log_event)
+
+        assert log_event.data == expected
+
+    def test_resolve_dotted_field_no_conflict_no_match_from_file_case_sensitive(
+        self,
+    ):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-zA-Z]+)\d*",
+                },
+                "resolve_list": {"FOO": "BAR"},
+            },
+        }
+        self._load_rule(rule)
+
+        expected = {"to_resolve": "Ab"}
+        document = {"to_resolve": "Ab"}
+        log_event = LogEvent(document, original=b"")
+
+        self.object.process(log_event)
+
+        assert document == expected
+
+    def test_resolve_dotted_field_no_conflict_match_from_file_case_insensitive(
+        self,
+    ):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-zA-Z]+)\d*",
+                },
+                "resolve_list": {"FOO": "BAR"},
+                "ignore_case": True,
+            },
+        }
+        self._load_rule(rule)
+
+        expected = {"to_resolve": "Ab", "resolved": "ab_server_type"}
+        document = {"to_resolve": "Ab"}
+        log_event = LogEvent(document, original=b"")
+
         self.object.process(log_event)
 
         assert log_event.data == expected
@@ -294,7 +370,30 @@ class TestGenericResolver(BaseProcessorTestCase):
         log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
-        assert log_event.data == expected
+    def test_resolve_dotted_field_to_list_match_from_file_and_list(
+        self,
+    ):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "merge_with_target": True,
+            },
+        }
+        self._load_rule(rule)
+
+        expected = {"to_resolve": "12ab34", "resolved": ["aa_server_type", "ab_server_type"]}
+
+        document = {"to_resolve": "12ab34", "resolved": ["aa_server_type"]}
+        log_event = LogEvent(document, original=b"")
+
+        self.object.process(log_event)
+
+        assert document == expected
 
     def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict(
         self,
@@ -348,12 +447,154 @@ class TestGenericResolver(BaseProcessorTestCase):
         }
 
         document = {"to_resolve": "12ab34", "other_to_resolve": "00de11"}
-
         log_event = LogEvent(document, original=b"")
+
         self.object.process(log_event)
         self.object.process(log_event)
 
-        assert log_event.data == expected
+        assert document == expected
+
+    def test_resolve_dotted_field_no_conflict_match_from_list_to_dict(
+        self,
+    ):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"resolved.foo": "resolved"},
+                "resolve_list": {"bar": {"baz": "test"}},
+                "merge_with_target": True,
+            },
+        }
+        self._load_rule(rule)
+
+        expected = {"to_resolve": "12ab34", "resolved": {"foo": "bar", "baz": "test"}}
+
+        document = {"to_resolve": "12ab34", "resolved": {"foo": "bar"}}
+        log_event = LogEvent(document, original=b"")
+
+        self.object.process(log_event)
+
+        assert document == expected
+
+    def test_resolve_dotted_field_conflict_match_from_list_to_dict(
+        self,
+    ):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {"12ab34": {"baz": "test"}},
+            },
+        }
+        self._load_rule(rule)
+
+        expected = {
+            "to_resolve": "12ab34",
+            "resolved": "foo",
+            "tags": ["_generic_resolver_failure"],
+        }
+
+        document = {"to_resolve": "12ab34", "resolved": "foo"}
+        log_event = LogEvent(document, original=b"")
+
+        self.object.process(log_event)
+
+        assert document == expected
+
+    def test_resolve_dotted_field_conflict_match_from_list_to_dict_with_overwrite(
+        self,
+    ):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {"12ab34": {"baz": "test"}},
+                "overwrite_target": True,
+            },
+        }
+        self._load_rule(rule)
+
+        expected = {
+            "to_resolve": "12ab34",
+            "resolved": {"baz": "test"},
+        }
+
+        document = {"to_resolve": "12ab34", "resolved": "foo"}
+        log_event = LogEvent(document, original=b"")
+
+        self.object.process(log_event)
+
+        assert document == expected
+
+    def test_resolve_dotted_field_no_conflict_match_from_file_to_dict(
+        self,
+    ):
+        rule = {
+            "filter": "foo.bar",
+            "generic_resolver": {
+                "field_mapping": {"foo.bar": "foo"},
+                "resolve_from_file": {
+                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_dict.yml",
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "merge_with_target": True,
+            },
+        }
+        self._load_rule(rule)
+
+        expected = {"foo": {"bar": "12ab34", "foo": "ab"}}
+        document = {"foo": {"bar": "12ab34"}}
+        log_event = LogEvent(document, original=b"")
+
+        self.object.process(log_event)
+
+        assert document == expected
+
+    @responses.activate
+    def test_resolve_from_http(self, tmp_path):
+        target = "localhost:123"
+        url = f"http://{target}"
+
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_from_file": {
+                    "path": url,
+                    "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                },
+                "overwrite_target": True,
+            },
+        }
+
+        responses.add(responses.GET, url, json={"ab": {"new1": "1"}})
+        responses.add(responses.GET, url, json={"ab": {"new1": "1", "new2": "2"}})
+
+        HttpGetter._shared.clear()
+
+        getter_file_content = {target: {"refresh_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with patch.dict("os.environ", mock_env):
+            scheduler = HttpGetter(protocol="http", target=target).scheduler
+            self._load_rule(rule)
+
+            expected_1 = {"to_resolve": "12ab34", "resolved": {"new1": "1"}}
+            expected_2 = {"to_resolve": "12ab34", "resolved": {"new1": "1", "new2": "2"}}
+            document = {"to_resolve": "12ab34"}
+            log_event = LogEvent(document, original=b"")
+
+            self.object.process(log_event)
+            assert document == expected_1
+
+            HttpGetter.refresh()  # Try refresh, but no time to update yet
+            self.object.process(log_event)
+            assert document == expected_1
+
+            scheduler.run_all()  # Force update
+            self.object.process(log_event)
+            assert document == expected_2
 
     def test_resolve_dotted_field_no_conflict_no_match(self):
         rule = {
@@ -450,7 +691,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_src_and_dest_field_and_conflict_match(self):
+    def test_resolve_dotted_src_and_dest_field_and_conflict_match(self, caplog):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -628,7 +869,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 0
 
-    def test_resolve_from_cache_with_update_interval_2(self):
+    def test_resolve_from_cache_with_update_interval(self):
         """The metrics are mocked and their values are the sum of previously added cache values,
         instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
