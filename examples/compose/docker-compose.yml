@@ -71,16 +71,15 @@ services:
       /opt/bitnami/scripts/kafka/run.sh"
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe",
-        ]
+        - "CMD-SHELL"
+        - "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe"
     networks:
       - kafka
   kafka-exporter:
     image: bitnamilegacy/kafka-exporter-archived
     container_name: kafkaexporter
-    command: ["--kafka.server=kafka:9091"]
+    command:
+      - "--kafka.server=kafka:9091"
     ports:
       - "9308:9308"
     depends_on:
@@ -106,9 +105,9 @@ services:
     network_mode: host
     depends_on:
       kafka:
-          condition: service_healthy
+        condition: service_healthy
       opensearch:
-          condition: service_started
+        condition: service_started
     volumes:
       - ../../examples/:/home/logprep/examples/
     tmpfs:
@@ -353,13 +352,11 @@ services:
       - ../../examples/exampledata/config/ucl/keycloak.example.json:/usr/share/nginx/html/assets/config/keycloak/config.json
     networks:
       - ucl
-
 volumes:
   opensearch-data:
   fda-db-volume:
   ucl-db-volume:
   keycloak-db-volume:
-
 networks:
   opensearch:
     ipam:
