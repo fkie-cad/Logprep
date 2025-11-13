@@ -41,7 +41,7 @@ services:
     networks:
       - opensearch
   kafka:
-    image: bitnami/kafka:3.9
+    image: bitnamilegacy/kafka:3.9
     container_name: kafka
     hostname: kafka
     ports:
@@ -53,8 +53,10 @@ services:
       - KAFKA_CFG_PROCESS_ROLES=broker,controller
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_BROKER_ID=1
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTER_SERVICE
+      - KAFKA_CFG_LISTENERS=INTER_SERVICE://:9091,HOST://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTER_SERVICE://kafka:9091,HOST://127.0.0.1:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTER_SERVICE:PLAINTEXT,HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@127.0.0.1:9093
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=false
@@ -69,16 +71,15 @@ services:
       /opt/bitnami/scripts/kafka/run.sh"
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe",
-        ]
+        - "CMD-SHELL"
+        - "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe"
     networks:
       - kafka
   kafka-exporter:
-    image: bitnami/kafka-exporter
+    image: bitnamilegacy/kafka-exporter-archived
     container_name: kafkaexporter
-    command: ["--kafka.server=kafka:9092"]
+    command:
+      - "--kafka.server=kafka:9091"
     ports:
       - "9308:9308"
     depends_on:
@@ -93,6 +94,8 @@ services:
       args:
         LOGPREP_VERSION: dev
         PYTHON_VERSION: "3.11"
+    environment:
+      PROMETHEUS_MULTIPROC_DIR: /tmp/logprep/prometheus_multiproc
     image: logprep
     container_name: logprep
     profiles:
@@ -101,8 +104,10 @@ services:
       - 8001
     network_mode: host
     depends_on:
-      - kafka
-      - opensearch
+      kafka:
+        condition: service_healthy
+      opensearch:
+        condition: service_started
     volumes:
       - ../../examples/:/home/logprep/examples/
     tmpfs:
@@ -112,7 +117,7 @@ services:
       - run
       - /home/logprep/examples/exampledata/config/pipeline.yml
   grafana:
-    image: bitnami/grafana:latest
+    image: bitnamilegacy/grafana:latest
     container_name: grafana
     ports:
       - "3000:3000"
@@ -122,7 +127,7 @@ services:
     networks:
       - prometheus
   prometheus:
-    image: bitnami/prometheus:latest
+    image: bitnamilegacy/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -157,7 +162,7 @@ services:
       - ../../examples/exampledata/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../../examples/exampledata/config/nginx/mtls.conf.d:/etc/nginx/conf.d:ro
   keycloak:
-    image: bitnami/keycloak:latest
+    image: bitnamilegacy/keycloak:latest
     container_name: keycloak
     ports:
       - "8080:8080"
@@ -180,7 +185,7 @@ services:
     networks:
       - keycloak
   keycloak_db:
-    image: bitnami/postgresql:latest
+    image: bitnamilegacy/postgresql:latest
     container_name: keycloak_db
     expose:
       - 5432
@@ -347,13 +352,11 @@ services:
       - ../../examples/exampledata/config/ucl/keycloak.example.json:/usr/share/nginx/html/assets/config/keycloak/config.json
     networks:
       - ucl
-
 volumes:
   opensearch-data:
   fda-db-volume:
   ucl-db-volume:
   keycloak-db-volume:
-
 networks:
   opensearch:
     ipam:

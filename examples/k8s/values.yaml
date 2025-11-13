@@ -1,3 +1,6 @@
+global:
+  security:
+    allowInsecureImages: true
 connector:
   image:
     tag: py3.11-latest
@@ -41,9 +44,12 @@ connector:
       statistics.interval.ms: "60000"
   ingress:
     enabled: true
-
 ## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/kafka/values.yaml`
 kafka:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/kafka
+    tag: 3.9
   listeners:
     client:
       protocol: PLAINTEXT
@@ -51,6 +57,10 @@ kafka:
     replicaCount: 3
   metrics:
     jmx:
+      image:
+        registry: docker.io
+        repository: bitnamilegacy/jmx-exporter
+        tag: 1.0.1-debian-12-r8
       enabled: true
   provisioning:
     enabled: true
@@ -59,7 +69,7 @@ kafka:
     topics:
       - name: consumer
       - name: producer
-
+      - name: errors
 logprep:
   image:
     tag: py3.11-latest
@@ -87,23 +97,52 @@ logprep:
     hosts:
       - opensiem-opensearch:9200
     default_index: processed
-    error_index: errors
+    default_op_type: create
     message_backlog_size: 10000
     timeout: 10000
     flush_timeout: 60
-    max_retries: 3
-    parallel_bulk: false
     user: admin
     secret: admin
+    desired_cluster_status:
+      - green
+      - yellow
+  error_output:
+    type: confluentkafka_output
+    topic: errors
+    flush_timeout: 300
+    send_timeout: 0
+    kafka_config:
+      bootstrap.servers: opensiem-kafka:9092
+      compression.type: none
+      statistics.interval.ms: "60000"
+      queue.buffering.max.messages: "10"
+      queue.buffering.max.kbytes: "1024"
+      queue.buffering.max.ms: "1000"
+      batch.size: "100"
+      request.required.acks: "-1"
 ## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/opensearch/values.yaml`
 opensearch:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/opensearch
+    tag: 3.2.0-debian-12-r0
   dashboards:
     enabled: true
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/opensearch-dashboards
+      tag: 3.2.0-debian-12-r0
   ingest:
     replicaCount: 1
+    resourcesPreset: "large" # "medium" lead to exit code 137 (OOM)
   master:
     replicaCount: 1
+    resourcesPreset: "large" # "medium" lead to exit code 137 (OOM)
   data:
     replicaCount: 1
   coordinating:
     replicaCount: 1
+  sysctlImage:
+    registry: docker.io
+    repository: bitnamilegacy/os-shell
+    tag: 12-debian-12-r51
