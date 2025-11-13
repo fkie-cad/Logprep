@@ -1,0 +1,96 @@
+name: Check Examples
+on: workflow_call
+jobs:
+  compose-setup:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        profile: ["logprep"]
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1.2.0
+        with:
+          version: latest
+      - name: Build images
+        working-directory: examples/compose
+        run: docker compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+        env: &compose-env
+          COMPOSE_PROFILES: ${{ matrix.profile }}
+      - name: Run Compose setup
+        working-directory: examples/compose
+        run: docker compose up -d
+        env: *compose-env
+      - name: Debug - show compose services
+        working-directory: examples/compose
+        run: docker compose ps
+      - name: Send test data to kafka
+        id: kafka_input
+        run: |
+          event_count=`cat $EVENT_DATA_SOURCE | jq -s length`
+          echo event_count=$event_count >> $GITHUB_OUTPUT
+          echo "Sending $event_count events to kafka"
+          (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) \
+            < $EVENT_DATA_SOURCE
+        env:
+          EVENT_DATA_SOURCE: examples/exampledata/input_logdata/logclass/test_input.jsonl
+      - name: Wait and check for processed events in logprep
+        id: wait_for_logprep_processed_logs
+        timeout-minutes: 1
+        working-directory: examples/compose
+        run: |
+          docker compose logs logprep --follow | grep -i  "Stored output in opensearch" -m 1 # stop after first match
+      - name: Debug - show logprep logs
+        if: failure() && steps.wait_for_logprep_processed_logs.outcome == 'failure'
+        working-directory: examples/compose
+        run: docker compose logs logprep
+      - name: Wait and check for processed events in opensearch
+        id: wait_for_opensearch_index
+        timeout-minutes: 2
+        working-directory: examples/compose
+        run: |
+          while true
+          do
+            echo "Checking for availability of index 'processed'"
+            if curl -X GET "http://localhost:9200/_list/indices" -s | grep 'processed'; then
+              break
+            fi
+            sleep 5
+          done
+          sleep 5
+      - name: Debug - show processed index in opensearch
+        if: failure() && steps.wait_for_opensearch_index.outcome == 'failure'
+        working-directory: examples/compose
+        run: |
+          echo "Indices:"
+          curl -X GET "http://localhost:9200/_list/indices" -s
+          echo "Index 'processed':"
+          curl -X GET "http://localhost:9200/processed/_search" | jq
+      - name: Query opensearch for events in index 'processed'
+        working-directory: examples/compose
+        id: opensearch_output
+        run: |
+          event_count=`curl -X GET "http://localhost:9200/processed/_count" -s | jq '.count'`
+          echo event_count=${event_count} >> $GITHUB_OUTPUT
+      - name: Check if all events were processed
+        working-directory: examples/compose
+        run: |
+          echo "Kafka: #events = ${{ steps.kafka_input.outputs.event_count }}"
+          echo "Opensearch: #events = ${{ steps.opensearch_output.outputs.event_count }}"
+          if ${{ steps.kafka_input.outputs.event_count == steps.opensearch_output.outputs.event_count }} \
+              && ${{ steps.kafka_input.outputs.event_count > 0 }} ; then
+            echo "Sanity check successful"
+            exit 0
+          else
+            echo "Sanity check failed"
+            exit 1
+          fi
+      - name: Stop Compose setup
+        working-directory: examples/compose
+        if: always()
+        run: docker compose down
+        env: *compose-env

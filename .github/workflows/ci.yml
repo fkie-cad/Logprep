@@ -40,3 +40,5 @@ jobs:
     with:
       build-version: dev
       tags: "${{ github.head_ref }}"
+  check-examples:
+    uses: ./.github/workflows/check-examples.yml

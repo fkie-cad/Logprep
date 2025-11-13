@@ -5,6 +5,7 @@
 ### Features
 
 ### Improvements
+* add workflow to partially run & check the compose example
 * add clarification to `config_refresh_interval` docstring about potential delay under high system load and non-strict timing behavior
 
 ### Bugfix
