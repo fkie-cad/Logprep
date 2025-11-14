@@ -71,6 +71,32 @@ class TestAutoRuleTester:
 
         assert rules_pn["dummy"]["rules"] == expected_rule_dict
 
+    @pytest.mark.parametrize(
+        "testcase, rule_path, does_exit",
+        [
+            ("one rule one test no idx", "one_rule_one_test_no_idx.yml", False),
+            ("one rule multiple test no idx", "one_rule_multiple_tests_no_idx.yml", False),
+            ("one rule one test idx", "one_rule_one_test_idx.yml", False),
+            ("one rule multiple test idx", "one_rule_multiple_tests_idx.yml", False),
+            ("one rule one test no idx", "multiple_rules_one_test_no_idx.yml", False),
+            ("one rule multiple test no idx", "multiple_rules_multiple_tests_no_idx.yml", True),
+            ("one rule one test idx", "multiple_rules_one_test_idx.yml", False),
+            ("one rule multiple test idx", "multiple_rules_multiple_tests_idx.yml", False),
+        ],
+    )
+    def test_get_multiple_rule_tests_without_target_rule_idx(
+        self, auto_rule_tester, testcase, rule_path, does_exit
+    ):
+        processor_name = "pre_detector"
+        rules_pn = {"pre_detector": {"type": "pre_detector", "rules": []}}
+        root = "tests/testdata/auto_tests/pre_detector/auto_rule_test_idx"
+
+        if does_exit:
+            with pytest.raises(SystemExit):
+                auto_rule_tester._get_rule_dict(rule_path, root, processor_name, rules_pn)
+        else:
+            auto_rule_tester._get_rule_dict(rule_path, root, processor_name, rules_pn)
+
     def test_get_rule_dict_target_rule_idx_not_found(self, auto_rule_tester):
         processor_name = "dummy"
         rules_pn = {"dummy": {"type": "dummy", "rules": []}}

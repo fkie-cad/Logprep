@@ -554,6 +554,15 @@ class TestPipeline(ConfigurationForTests):
             self.pipeline.process_pipeline()
         mock_task.assert_called()
 
+    def test_process_pipeline_refreshed_http_getters(self, _):
+        self.pipeline._get_event = mock.MagicMock()
+        self.pipeline._store_event = mock.MagicMock()
+        self.pipeline.process_event = mock.MagicMock()
+
+        with mock.patch("logprep.framework.pipeline.refresh_getters") as mock_getter_refresh:
+            self.pipeline.process_pipeline()
+            mock_getter_refresh.assert_called_once()
+
     def test_event_with_critical_input_parsing_error_is_stored_in_error_output(self, _):
         self.pipeline._setup()
         error = CriticalInputParsingError(self.pipeline._input, "test-error", "raw_input")

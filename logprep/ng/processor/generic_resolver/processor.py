@@ -46,8 +46,16 @@ class GenericResolver(FieldManager):
         max_cache_entries: Optional[int] = field(
             validator=validators.optional(validators.instance_of(int)), default=0
         )
-        """(Optional) Size of cache for results when resolving form a list.
-        The cache can be disabled by setting it this option to :code:`0`."""
+        """(Optional) Size of cache for results when resolving from a list.
+        The cache can be disabled by setting this option to :code:`0`.
+
+        .. security-best-practice::
+           :title: Processor - Generic Resolver Max Cached Entries
+
+           Ensure to set this to a reasonable value to avoid excessive memory usage
+           and OOM situations caused by the generic resolver cache.
+
+        """
         cache_metrics_interval: Optional[int] = field(
             validator=validators.optional(validators.instance_of(int)), default=1
         )
@@ -127,16 +135,19 @@ class GenericResolver(FieldManager):
             content = self._find_content_of_first_matching_pattern(rule, source_field_value)
             if not content:
                 continue
-            fields: dict = {target_field: content}
             current_content = get_dotted_field_value(event, target_field)
             if isinstance(current_content, list) and content in current_content:
                 continue
-            if rule.merge_with_target and current_content is None:
-                fields[target_field] = [content]
             try:
                 add_fields_to(
                     event,
-                    fields=fields,
+                    fields={
+                        target_field: (
+                            [content]
+                            if rule.merge_with_target and current_content is None
+                            else content
+                        )
+                    },
                     rule=rule,
                     merge_with_target=rule.merge_with_target,
                     overwrite_target=rule.overwrite_target,
@@ -153,13 +164,12 @@ class GenericResolver(FieldManager):
         self, rule: GenericResolverRule, source_field_value: str
     ) -> str | None:
         if rule.resolve_from_file:
-            replacements = rule.resolve_from_file["additions"]
             matches = rule.pattern.match(source_field_value)
             if matches:
                 mapping = matches.group("mapping")
                 if rule.ignore_case:
                     mapping = mapping.upper()
-                content = replacements.get(mapping)
+                content = rule.additions.get(mapping)
                 if content:
                     return content
         return self._get_lru_cached_value_from_list(rule, source_field_value)

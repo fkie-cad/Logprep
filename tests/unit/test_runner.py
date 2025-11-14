@@ -106,7 +106,7 @@ class TestRunner:
             with pytest.raises(SystemExit, match=str(EXITCODES.PIPELINE_ERROR.value)):
                 runner.start()
 
-    def test_runner_calls_reload_on_config_change(
+    def test_runner_calls_reload_on_config_version_change(
         self, runner: Runner, configuration: Configuration
     ):
         with mock.patch.object(runner, "_manager") as mock_manager:
@@ -117,3 +117,9 @@ class TestRunner:
                 runner.start()
             mock_manager.reload.assert_called_once()
         assert runner._config_version == "new_version"
+
+    def test_iteration_refreshes_getters(self, runner):
+        with mock.patch("logprep.runner.refresh_getters") as mock_refresh_getters:
+            runner._exit_received = True
+            runner.start()
+            mock_refresh_getters.assert_called_once()

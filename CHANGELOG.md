@@ -4,14 +4,32 @@
 
 ### Features
 
+### Improvements
+* add clarification to `config_refresh_interval` docstring about potential delay under high system load and non-strict timing behavior
+
+### Bugfix
+* fix docker-compose and k8s example setups
+
+## 17.0.3
+### Breaking
+
+### Features
 * implement first prototype of ng logprep runner
 * ip alerter can now also match fields that contain lists of IPs in documents
+* make http getters periodically refresh if configured in file path defined by environment variable `LOGPREP_GETTER_CONFIG`
+* cache http getter results by utilizing the etag header
+* add per-target (i.e. `localhost:1234/foo`) callbacks to http getters that are called when getters are refreshed with new data
+* make list comparison processor be refreshable with http getter
+* make generic adder processor be refreshable with http getter
+* make generic resolver processor be refreshable with http getter
+* add option for refreshable getters to return default values if no value could be obtained
 * list comparison processor can now also match fields that contain lists in documents
 * add network comparison processor that can match IPs with networks in CIDR notation
 
 ### Improvements
 
 ### Bugfix
+* fix error-output not flushing as scheduled
 
 ## 17.0.2
 ### Breaking
