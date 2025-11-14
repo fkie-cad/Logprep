@@ -54,7 +54,7 @@ class ListComparison(Processor):
         for rule in self.rules:
             rule.init_list_comparison(self._config.list_search_base_path)
 
-    def _apply_rules(self, event: dict, rule: ListComparisonRule) -> None:
+    def _apply_rules(self, event, rule):
         """
         Apply matching rule to given log event.
         In the process of doing so, add the result of comparing
@@ -81,14 +81,20 @@ class ListComparison(Processor):
         the result (key) and a list of filenames pertaining to said result (value).
         """
 
+        # get value that should be checked in the lists
         field_value = get_dotted_field_value(event, rule.source_fields[0])
+        value_list = field_value if isinstance(field_value, list) else [field_value]
 
-        list_matches = [
-            compare_list
-            for compare_list in rule.compare_sets
-            if field_value in rule.compare_sets[compare_list]
-        ]
+        # iterate over lists and check if element is in any
+        list_matches = []
+        for field_value in value_list:
+            for compare_list in rule.compare_sets:
+                if compare_list in list_matches:
+                    continue
+                if field_value in rule.compare_sets[compare_list]:
+                    list_matches.append(compare_list)
 
-        if not list_matches:
+        # if matching list was found return it, otherwise return all list names
+        if len(list_matches) == 0:
             return list(rule.compare_sets.keys()), "not_in_list"
         return list_matches, "in_list"

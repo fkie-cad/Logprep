@@ -1,7 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-from ipaddress import IPv4Network
-
 import pytest
 import responses
 
@@ -279,53 +277,25 @@ Hans
         processor.setup()
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
-    def test_list_comparison_loads_rule_with_networks(self):
-        rule_dict = {
-            "filter": "ip",
-            "list_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "network_results",
-                "list_file_paths": ["../lists/network_list.txt"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "list_comparison",
-            "rules": [],
-            "list_search_base_path": self.CONFIG["list_search_base_path"],
-        }
-        processor = Factory.create({"custom_lister": config})
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-        processor.setup()
-        assert processor.rules[0].compare_sets == {
-            "network_list.txt": {"127.0.0.1", "great_network"}
-        }
-        assert processor.rules[0].network_compare_sets == {
-            "network_list.txt": {IPv4Network("127.0.0.0/24")}
-        }
-
     def test_list_comparison_does_not_add_duplicates_from_list_source(self):
-        document = {"ip": ["127.0.0.1", "127.0.0.2"]}
+        document = {"users": ["Franz", "Alpha"]}
         expected = {
-            "ip": ["127.0.0.1", "127.0.0.2"],
-            "network_results": {
+            "users": ["Franz", "Alpha"],
+            "user_results": {
                 "in_list": [
-                    "network_list.txt",
-                    "ip_only_list.txt",
-                    "network_only_list.txt",
+                    "system_list.txt",
+                    "user_list.txt",
                 ]
             },
         }
         rule_dict = {
-            "filter": "ip",
+            "filter": "users",
             "list_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "network_results",
+                "source_fields": ["users"],
+                "target_field": "user_results",
                 "list_file_paths": [
-                    "../lists/network_list.txt",
-                    "../lists/network_only_list.txt",
-                    "../lists/ip_only_list.txt",
+                    "../lists/system_list.txt",
+                    "../lists/user_list.txt",
                 ],
             },
             "description": "",
@@ -336,29 +306,25 @@ Hans
         assert document == expected
 
     @pytest.mark.parametrize(
-        "testcase, ip, result",
+        "testcase, system, result",
         [
-            ("matching IP", "127.0.0.1", {"in_list": ["network_list.txt"]}),
-            ("matching network", "127.0.0.123", {"in_list": ["network_list.txt"]}),
-            ("matching string", "great_network", {"in_list": ["network_list.txt"]}),
-            ("not matching string", "bad_network", {"not_in_list": ["network_list.txt"]}),
-            ("not matching IP", "127.0.123.1", {"not_in_list": ["network_list.txt"]}),
-            ("not matching IP list", ["127.0.123.1"], {"not_in_list": ["network_list.txt"]}),
-            ("matching IP list", ["127.0.0.1"], {"in_list": ["network_list.txt"]}),
-            ("matching network list", ["127.0.0.123"], {"in_list": ["network_list.txt"]}),
-            ("not matching network list", ["127.0.123.1"], {"not_in_list": ["network_list.txt"]}),
-            ("matching from list", ["127.0.123.1", "127.0.0.1"], {"in_list": ["network_list.txt"]}),
+            ("string in list", "Alpha", {"in_list": ["system_list.txt"]}),
+            ("string not in list", "Omega", {"not_in_list": ["system_list.txt"]}),
+            ("list element in list", ["Alpha"], {"in_list": ["system_list.txt"]}),
+            ("list element not in list", ["Omega"], {"not_in_list": ["system_list.txt"]}),
+            ("one list element in list", ["Alpha", "Omega"], {"in_list": ["system_list.txt"]}),
+            ("multiple list elements in list", ["Alpha", "Beta"], {"in_list": ["system_list.txt"]}),
         ],
     )
-    def test_match_network_field(self, testcase, ip, result):
-        document = {"ip": ip}
-        expected = {"ip": ip, "network_results": result}
+    def test_match_list_field(self, testcase, system, result):
+        document = {"system": system}
+        expected = {"system": system, "system_results": result}
         rule_dict = {
-            "filter": "ip",
+            "filter": "system",
             "list_comparison": {
-                "source_fields": ["ip"],
-                "target_field": "network_results",
-                "list_file_paths": ["../lists/network_list.txt"],
+                "source_fields": ["system"],
+                "target_field": "system_results",
+                "list_file_paths": ["../lists/system_list.txt"],
             },
             "description": "",
         }

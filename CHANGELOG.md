@@ -7,7 +7,7 @@
 * implement first prototype of ng logprep runner
 * ip alerter can now also match fields that contain lists of IPs in documents
 * list comparison processor can now also match fields that contain lists in documents
-* list comparison processor can now also match IPs with networks
+* add network comparison processor that can match IPs with networks in CIDR notation
 
 ### Improvements
 

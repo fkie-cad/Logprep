@@ -1,0 +1,56 @@
+[
+  {
+    "filter": "ip1",
+    "network_comparison": {
+      "source_fields": [
+        "ip1"
+      ],
+      "target_field": "ip_results",
+      "list_file_paths": [
+        "../lists/ip_only_list.txt"
+      ]
+    },
+    "description": ""
+  },
+  {
+    "filter": "ip1 AND ip2",
+    "network_comparison": {
+      "source_fields": [
+        "ip2"
+      ],
+      "target_field": "ip1_and_ip2_results",
+      "list_file_paths": [
+        "../lists/ip_only_list.txt",
+        "../lists/network_only_list.txt"
+      ]
+    },
+    "description": ""
+  },
+  {
+    "filter": "ip",
+    "network_comparison": {
+      "source_fields": [
+        "ip.field"
+      ],
+      "target_field": "ip_results",
+      "list_file_paths": [
+        "../lists/network_only_list.txt",
+        "../lists/ip_only_list.txt"
+      ]
+    },
+    "description": ""
+  },
+  {
+    "filter": "event_id",
+    "network_comparison": {
+      "source_fields": [
+        "event_id"
+      ],
+      "target_field": "more.than.dotted.ip_results",
+      "list_file_paths": [
+        "../lists/network_list.txt"
+      ]
+    },
+    "description": ""
+  }
+]
