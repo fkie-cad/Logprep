@@ -6,6 +6,7 @@
 
 ### Improvements
 * add clarification to `config_refresh_interval` docstring about potential delay under high system load and non-strict timing behavior
+* mypy checks in the pull request workflow are now applied to the same directories as in the main workflow
 
 ### Bugfix
 * fix docker-compose and k8s example setups

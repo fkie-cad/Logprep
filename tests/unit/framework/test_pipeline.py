@@ -25,7 +25,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline, PipelineResult
+from logprep.framework.pipeline import Pipeline, PipelineResult  # type: ignore[attr-defined]
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
