@@ -1,4 +1,4 @@
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.13
 
 FROM registry-1.docker.io/library/python:${PYTHON_VERSION} AS base
 ARG LOGPREP_VERSION=latest

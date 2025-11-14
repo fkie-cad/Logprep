@@ -1,0 +1,15 @@
+dependencies:
+- name: logprep
+  repository: file://../../charts/logprep
+  version: 15.0.0
+- name: logprep
+  repository: file://../../charts/logprep
+  version: 15.0.0
+- name: kafka
+  repository: https://charts.bitnami.com/bitnami
+  version: 29.3.14
+- name: opensearch
+  repository: https://charts.bitnami.com/bitnami
+  version: 1.9.4
+digest: sha256:6b22a6fe16b4e4d2ab878300df677d2c2a64879a1e65ebba0abf208897e8042e
+generated: "2025-11-11T13:50:51.666860957Z"

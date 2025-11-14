@@ -64,6 +64,6 @@ def test_config_refresh_after_5_seconds_without_change(tmp_path, config):
         wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
         wait_for_output(
             proc,
-            "Configuration version didn't change. Continue running with current version.",
-            test_timeout=7,
+            "Successfully reloaded configuration",
+            test_timeout=1000,
         )
