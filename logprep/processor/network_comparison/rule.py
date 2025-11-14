@@ -47,6 +47,7 @@ from ipaddress import ip_network
 from typing import Optional
 
 from logprep.processor.list_comparison.rule import ListComparisonRule
+from logprep.util.getter import HttpGetter
 
 
 class NetworkComparisonRule(ListComparisonRule):
@@ -57,6 +58,13 @@ class NetworkComparisonRule(ListComparisonRule):
     def init_list_comparison(self, list_search_base_path: Optional[str] = None) -> None:
         """init method for list_comparison lists"""
         super().init_list_comparison(list_search_base_path)
+        self._convert_compare_sets_to_networks()
+
+    def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
+        super()._update_compare_sets_via_http(http_getter, list_path)
+        self._convert_compare_sets_to_networks()
+
+    def _convert_compare_sets_to_networks(self) -> None:
         network_comparison: dict = {}
         for list_name, compare_strings in self._compare_sets.items():
             if compare_strings:
