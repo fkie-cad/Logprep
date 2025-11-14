@@ -94,6 +94,8 @@ services:
       args:
         LOGPREP_VERSION: dev
         PYTHON_VERSION: "3.13"
+    environment:
+      PROMETHEUS_MULTIPROC_DIR: /tmp/logprep/prometheus_multiproc
     image: logprep
     container_name: logprep
     profiles:
