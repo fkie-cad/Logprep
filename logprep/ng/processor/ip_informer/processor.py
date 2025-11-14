@@ -66,15 +66,19 @@ class IpInformer(FieldManager):
 
     def _ip_properties(self, ip_address: str, rule: IpInformerRule) -> dict:
         try:
-            ip_address = ipaddress.ip_address(ip_address)
+            ip_address_res = ipaddress.ip_address(ip_address)
         except ValueError as error:
             self._processing_warnings.append(
                 (f"({self.name}): '{ip_address}' is not a valid IPAddress", error)
             )
+            return {}
+
         properties = rule.properties
         if "default" in properties:
             return {
-                prop_name: getattr(ip_address, prop_name)
-                for prop_name in get_ip_property_names(ip_address.__class__)
+                prop_name: getattr(ip_address_res, prop_name)
+                for prop_name in get_ip_property_names(ip_address_res.__class__)
             }
-        return {prop_name: getattr(ip_address, prop_name, False) for prop_name in rule.properties}
+        return {
+            prop_name: getattr(ip_address_res, prop_name, False) for prop_name in rule.properties
+        }

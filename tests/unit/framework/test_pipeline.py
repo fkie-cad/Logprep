@@ -505,10 +505,10 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input = original_create(input_config)
         self.pipeline._input.pipeline_index = 1
         self.pipeline._input.messages = mock.MagicMock(spec=multiprocessing.queues.Queue)
-        self.pipeline._input.messages.qsize = mock.MagicMock()
-        self.pipeline._input.messages.qsize.side_effect = [1, 0]  # Simulate one message
+        self.pipeline._input.messages.empty = mock.MagicMock()
+        self.pipeline._input.messages.empty.side_effect = [False, True]  # Simulate one message
         self.pipeline._shut_down()
-        assert self.pipeline._input.messages.get.call_count == 1, "ensure one messages are drained"
+        assert self.pipeline._input.messages.get.call_count == 1, "ensure one message is drained"
 
     def test_pipeline_raises_http_error_from_factory_create(self, _):
         with mock.patch("logprep.factory.Factory.create") as mock_create:

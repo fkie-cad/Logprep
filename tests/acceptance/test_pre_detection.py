@@ -10,8 +10,7 @@ from deepdiff import DeepDiff
 
 from tests.acceptance.util import (
     get_default_logprep_config,
-    start_logprep,
-    stop_logprep,
+    run_logprep,
     wait_for_output,
 )
 
@@ -45,9 +44,8 @@ def test_events_pre_detected_runs_without_error(tmp_path: Path):
     config.input["jsonl"]["documents_path"] = str(input_file_path)
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Startup complete")
-    stop_logprep(proc)
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "Startup complete")
 
 
 def test_events_pre_detected_correctly(tmp_path: Path):
@@ -58,9 +56,8 @@ def test_events_pre_detected_correctly(tmp_path: Path):
     output_path = Path(config.output["jsonl"]["output_file"])
     input_file_path = Path(config.input["jsonl"]["documents_path"])
 
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "no documents left")
-    stop_logprep(proc)
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "no documents left")
 
     assert output_path.read_text("utf8"), "output is not empty"
 
@@ -88,9 +85,8 @@ def test_events_pre_detected_return_no_extra_output(tmp_path: Path):
     config_path.write_text(config.as_yaml())
     input_tmp_path.write_text(json.dumps(list(input_data)[0]))
 
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "no documents left")
-    stop_logprep(proc)
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "no documents left")
 
     output_extra_path = Path(config.output["jsonl"]["output_file_custom"])
     assert not output_extra_path.read_text("utf8").strip()
@@ -109,9 +105,8 @@ def test_events_pre_detected_return_extra_output(data, tmp_path: Path):
     config_path.write_text(config.as_yaml())
     input_tmp_path.write_text(input_value)
 
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "no documents left")
-    stop_logprep(proc)
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "no documents left")
 
     output_extra_path = Path(config.output["jsonl"]["output_file_custom"])
     output_extra_data = map(json.loads, output_extra_path.read_text("utf8").splitlines())

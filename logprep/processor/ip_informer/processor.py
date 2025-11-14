@@ -27,6 +27,7 @@ import ipaddress
 from functools import partial
 from itertools import chain
 from typing import Iterable
+import typing
 
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
@@ -64,17 +65,21 @@ class IpInformer(FieldManager):
         str_elements = filter(lambda x: isinstance(x, str), source_field_values)
         return chain(*list_elements, str_elements)
 
-    def _ip_properties(self, ip_address: str, rule: IpInformerRule) -> dict[str, any]:
+    def _ip_properties(self, ip_address: str, rule: IpInformerRule) -> dict[str, typing.Any]:
         try:
-            ip_address = ipaddress.ip_address(ip_address)
+            ip_address_res = ipaddress.ip_address(ip_address)
         except ValueError as error:
             self._processing_warnings.append(
                 (f"({self.name}): '{ip_address}' is not a valid IPAddress", error)
             )
+            return {}
+
         properties = rule.properties
         if "default" in properties:
             return {
-                prop_name: getattr(ip_address, prop_name)
-                for prop_name in get_ip_property_names(ip_address.__class__)
+                prop_name: getattr(ip_address_res, prop_name)
+                for prop_name in get_ip_property_names(ip_address_res.__class__)
             }
-        return {prop_name: getattr(ip_address, prop_name, False) for prop_name in rule.properties}
+        return {
+            prop_name: getattr(ip_address_res, prop_name, False) for prop_name in rule.properties
+        }
