@@ -69,6 +69,9 @@ from logprep.ng.processor.labeler.processor import Labeler as NgLabeler
 from logprep.ng.processor.list_comparison.processor import (
     ListComparison as NgListComparison,
 )
+from logprep.ng.processor.network_comparison.processor import (
+    NetworkComparison as NgNetworkComparison,
+)
 from logprep.ng.processor.pre_detector.processor import PreDetector as NgPreDetector
 from logprep.ng.processor.pseudonymizer.processor import (
     Pseudonymizer as NgPseudonymizer,
@@ -108,6 +111,7 @@ from logprep.processor.ip_informer.processor import IpInformer
 from logprep.processor.key_checker.processor import KeyChecker
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.list_comparison.processor import ListComparison
+from logprep.processor.network_comparison.processor import NetworkComparison
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.processor.replacer.processor import Replacer
@@ -143,6 +147,7 @@ class Registry:
         "key_checker": KeyChecker,
         "labeler": Labeler,
         "list_comparison": ListComparison,
+        "network_comparison": NetworkComparison,
         "ng_amides": NgAmides,
         "ng_calculator": NGCalculator,
         "ng_clusterer": NgClusterer,
@@ -162,6 +167,7 @@ class Registry:
         "ng_key_checker": NgKeyChecker,
         "ng_labeler": NgLabeler,
         "ng_list_comparison": NgListComparison,
+        "ng_network_comparison": NgNetworkComparison,
         "ng_replacer": NgReplacer,
         "ng_requester": NgRequester,
         "ng_string_splitter": NgStringSplitter,

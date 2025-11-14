@@ -1,0 +1,15 @@
+[
+  {
+    "filter": "irrelevant",
+    "network_comparison": {
+      "source_fields": [
+        "ip2"
+      ],
+      "target_field": "ip_results",
+      "list_file_paths": [
+        "../lists/ip_only_list.txt"
+      ]
+    },
+    "description": ""
+  }
+]
