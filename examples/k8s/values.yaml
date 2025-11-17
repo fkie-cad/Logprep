@@ -3,7 +3,7 @@ global:
     allowInsecureImages: true
 connector:
   image:
-    tag: py3.13-latest
+    tag: py3.11-latest
   replicas: 1
   resources:
     limits:
@@ -72,7 +72,7 @@ kafka:
       - name: errors
 logprep:
   image:
-    tag: py3.13-latest
+    tag: py3.11-latest
   input:
     type: confluentkafka_input
     topic: consumer
