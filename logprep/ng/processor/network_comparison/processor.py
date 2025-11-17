@@ -11,7 +11,7 @@ Processor Configuration
 ..  code-block:: yaml
     :linenos:
 
-    - listcomparisonname:
+    - networkcomparisonname:
         type: ng_network_comparison
         rules:
             - tests/testdata/rules/rules

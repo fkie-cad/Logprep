@@ -11,7 +11,7 @@ Processor Configuration
 ..  code-block:: yaml
     :linenos:
 
-    - listcomparisonname:
+    - networkcomparisonname:
         type: network_comparison
         rules:
             - tests/testdata/rules/rules
