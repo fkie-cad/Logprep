@@ -9,6 +9,7 @@
 * mypy checks in the pull request workflow are now applied to the same directories as in the main workflow
 
 ### Bugfix
+* fix opensearch output not respecting thread_count config parameter
 * fix docker-compose and k8s example setups
 
 ## 17.0.3
