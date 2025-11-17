@@ -147,6 +147,11 @@ class OpensearchOutput(Output):
     _message_backlog: List
     """List of messages to be sent to Opensearch."""
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return self._config
+
     @cached_property
     def ssl_context(self) -> ssl.SSLContext:
         """Returns the ssl context
@@ -157,9 +162,7 @@ class OpensearchOutput(Output):
             The ssl context
         """
         return (
-            ssl.create_default_context(cafile=self._config.ca_cert)
-            if self._config.ca_cert
-            else None
+            ssl.create_default_context(cafile=self.config.ca_cert) if self.config.ca_cert else None
         )
 
     @property
@@ -171,7 +174,7 @@ class OpensearchOutput(Output):
         str
             the schema
         """
-        return "https" if self._config.ca_cert else "http"
+        return "https" if self.config.ca_cert else "http"
 
     @property
     def http_auth(self) -> tuple | None:
@@ -183,8 +186,8 @@ class OpensearchOutput(Output):
             the credentials in format (user, secret)
         """
         return (
-            (self._config.user, self._config.secret)
-            if self._config.user and self._config.secret
+            (self.config.user, self.config.secret)
+            if self.config.user and self.config.secret
             else None
         )
 
@@ -192,14 +195,14 @@ class OpensearchOutput(Output):
     def _search_context(self):
         """Returns the opensearch client."""
         return search.OpenSearch(
-            self._config.hosts,
+            self.config.hosts,
             scheme=self.schema,
             http_auth=self.http_auth,
             ssl_context=self.ssl_context,
             verify_certs=True,  # default is True, but we want to be explicit
-            timeout=self._config.timeout,
+            timeout=self.config.timeout,
             serializer=MSGPECSerializer(self),
-            max_retries=self._config.max_retries,
+            max_retries=self.config.max_retries,
             pool_maxsize=10,
             # default for connection pooling is 10 see:
             # https://github.com/opensearch-project/opensearch-py/blob/main/guides/connection_classes.md
@@ -212,7 +215,7 @@ class OpensearchOutput(Output):
 
     def setup(self):
         super().setup()
-        flush_timeout = self._config.flush_timeout
+        flush_timeout = self.config.flush_timeout
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
 
     def describe(self) -> str:
@@ -225,7 +228,7 @@ class OpensearchOutput(Output):
 
         """
         base_description = Output.describe(self)
-        return f"{base_description} - Opensearch Output: {self._config.hosts}"
+        return f"{base_description} - Opensearch Output: {self.config.hosts}"
 
     def store(self, document: dict) -> None:
         """Store a document in the index defined in the document or to the default index.
@@ -235,7 +238,7 @@ class OpensearchOutput(Output):
         document : dict
            Document to store.
         """
-        self.store_custom(document, document.get("_index", self._config.default_index))
+        self.store_custom(document, document.get("_index", self.config.default_index))
 
     def store_custom(self, document: dict, target: str) -> None:
         """Store document into backlog to be written into Opensearch with the target index.
@@ -249,7 +252,7 @@ class OpensearchOutput(Output):
             Index to store the document in.
         """
         document["_index"] = target
-        document["_op_type"] = document.get("_op_type", self._config.default_op_type)
+        document["_op_type"] = document.get("_op_type", self.config.default_op_type)
         self.metrics.number_of_processed_events += 1
         self._message_backlog.append(document)
         self._write_to_search_context()
@@ -260,7 +263,7 @@ class OpensearchOutput(Output):
         Writes documents in a bulk if the document buffer limit has been reached.
         This reduces connections to Opensearch and improves performance.
         """
-        if len(self._message_backlog) >= self._config.message_backlog_size:
+        if len(self._message_backlog) >= self.config.message_backlog_size:
             self._write_backlog()
 
     @Metric.measure_time()
@@ -284,9 +287,10 @@ class OpensearchOutput(Output):
         Uses the parallel_bulk function from the opensearchpy library.
         """
         kwargs = {
-            "max_chunk_bytes": self._config.max_chunk_bytes,
-            "chunk_size": self._config.chunk_size,
-            "queue_size": self._config.queue_size,
+            "max_chunk_bytes": self.config.max_chunk_bytes,
+            "chunk_size": self.config.chunk_size,
+            "queue_size": self.config.queue_size,
+            "thread_count": self.config.thread_count,
             "raise_on_error": False,
             "raise_on_exception": False,
         }
@@ -295,7 +299,7 @@ class OpensearchOutput(Output):
             success, item = result
             if success:
                 continue
-            error_result = item.get(self._config.default_op_type)
+            error_result = item.get(self.config.default_op_type)
             error = error_result.get("error", "Failed to index document")
             data = actions[index]
             failed.append({"errors": error, "event": data})
@@ -306,13 +310,13 @@ class OpensearchOutput(Output):
         """Check the health of the component."""
         try:
             resp = self._search_context.cluster.health(
-                params={"timeout": self._config.health_timeout}
+                params={"timeout": self.config.health_timeout}
             )
         except (OpenSearchException, ConnectionError) as error:
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return super().health() and resp.get("status") in self._config.desired_cluster_status
+        return super().health() and resp.get("status") in self.config.desired_cluster_status
 
     def shut_down(self):
         self._write_backlog()

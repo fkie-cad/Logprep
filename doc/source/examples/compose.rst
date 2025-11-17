@@ -118,7 +118,7 @@ These events can be added to Kafka with the following command:
 
 .. code-block:: bash
 
-  (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/logclass/test_input.jsonl
+  (docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < examples/exampledata/input_logdata/logclass/test_input.jsonl
 
 
 Once the events have been processed for the first time, the new indices *processed*, *sre*

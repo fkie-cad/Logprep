@@ -103,7 +103,7 @@ class TestRunner:
     ):
         with mock.patch.object(runner, "_manager") as mock_manager:
             mock_manager.restart_count = 5
-            with pytest.raises(SystemExit, match=str(EXITCODES.PIPELINE_ERROR.value)):
+            with pytest.raises(SystemExit, match=str(EXITCODES.PIPELINE_ERROR)):
                 runner.start()
 
     def test_runner_calls_reload_on_config_version_change(

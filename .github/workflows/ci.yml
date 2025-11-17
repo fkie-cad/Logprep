@@ -33,10 +33,12 @@ jobs:
   code-quality:
     uses: ./.github/workflows/code-quality.yml
     with:
-      path: "logprep/**/*.py"
+      path: "**/*.py"
   containerbuild:
     uses: ./.github/workflows/container-build.yml
     secrets: inherit
     with:
       build-version: dev
       tags: "${{ github.head_ref }}"
+  check-examples:
+    uses: ./.github/workflows/check-examples.yml
