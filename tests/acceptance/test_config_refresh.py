@@ -65,5 +65,5 @@ def test_config_refresh_after_5_seconds_without_change(tmp_path, config):
         wait_for_output(
             proc,
             "Successfully reloaded configuration",
-            test_timeout=1000,
+            test_timeout=10,
         )
