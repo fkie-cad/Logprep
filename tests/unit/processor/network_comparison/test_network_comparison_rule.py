@@ -136,3 +136,20 @@ class TestNetworkComparisonRule:
         assert len(rule.compare_sets.keys()) == list_count
         for string_values in rule.compare_sets.values():
             assert all(isinstance(value, IPv4Network) for value in string_values)
+
+    def test_rule_load_fails_if_network_invalid(self):
+        rule_definition = {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "network_results",
+                "list_file_paths": ["../lists/invalid_list.txt"],
+            },
+            "description": "",
+        }
+        rule = NetworkComparisonRule.create_from_dict(rule_definition)
+
+        with pytest.raises(
+            ValueError, match="'invalid_network' does not appear to be an IPv4 or IPv6 network"
+        ):
+            rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")

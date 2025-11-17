@@ -104,8 +104,5 @@ class NetworkComparisonRule(ListComparisonRule):
             if compare_strings:
                 network_comparison[list_name] = set()
                 for compare_string in compare_strings:
-                    try:
-                        network_comparison[list_name].add(ip_network(compare_string))
-                    except ValueError:
-                        pass
+                    network_comparison[list_name].add(ip_network(compare_string))
         self._compare_sets = network_comparison
