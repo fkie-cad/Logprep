@@ -78,6 +78,7 @@ class RecordMock:
     def value(self):
         if self.record_value is None:
             return None
+
         return self.record_value.encode("utf-8")
 
     def error(self):
@@ -121,7 +122,7 @@ def store_latest_test_output(target_output_identifier, output_of_test):
 
 def get_runner_outputs(
     patched_runner: Runner,
-) -> tuple[Optional[list[dict]], Optional[list[dict]], Optional[list[dict]]]:
+) -> tuple[Optional[list[dict]], Optional[list[dict]], Optional[list[dict]]] | list[None]:
     # pylint: disable=protected-access
     """
     Extracts the outputs of a patched logprep runner.
@@ -193,7 +194,7 @@ def get_patched_runner(config_path):
 
 def get_test_output(
     config_path: str,
-) -> tuple[Optional[list[dict]], Optional[list[dict]], Optional[list[dict]]]:
+) -> tuple[Optional[list[dict]], Optional[list[dict]], Optional[list[dict]]] | list[None]:
     patched_runner = get_patched_runner(config_path)
     return get_runner_outputs(patched_runner=patched_runner)
 
@@ -243,7 +244,9 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
     }
 
     if with_hmac:
-        input_config = config_yml.get("input").get("jsonl")
+        input = config_yml.get("input")
+        assert input
+        input_config = input.get("jsonl")
         input_config["preprocessing"] = {
             "hmac": {
                 "target": "<RAW_MSG>",
@@ -255,7 +258,7 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
     return Configuration(**config_yml)
 
 
-def _start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
+def _start_logprep(config_path: str, env: dict | None = None) -> subprocess.Popen:
     if env is None:
         env = {}
     env.update({"PYTHONPATH": "."})
@@ -307,7 +310,9 @@ def _stop_logprep(proc: subprocess.Popen) -> None:
 
 
 @contextmanager
-def run_logprep(config_path: str, env: dict = None) -> Generator[subprocess.Popen, None, None]:
+def run_logprep(
+    config_path: str, env: dict | None = None
+) -> Generator[subprocess.Popen, None, None]:
     process = _start_logprep(config_path, env)
     try:
         yield process

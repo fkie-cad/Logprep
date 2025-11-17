@@ -30,3 +30,4 @@ wheelhouse
 requirements.*
 .mypy_cache
 /scripts/
+.dmypy.json
