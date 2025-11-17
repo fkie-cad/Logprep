@@ -41,7 +41,9 @@ def fixture_clear_getter_cache():
 
 
 def _get_cache_as_json(refreshable_getter: RefreshableGetter) -> dict:
-    return json.loads(refreshable_getter.cache.decode())
+    if refreshable_getter.cache:
+        return json.loads(refreshable_getter.cache.decode())
+    raise ValueError("Cache is empty")
 
 
 class TestGetterFactory:
