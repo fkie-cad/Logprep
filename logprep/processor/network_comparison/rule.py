@@ -44,8 +44,11 @@ target field :code:`network_comparison.example`.
 """
 
 from ipaddress import ip_network
-from typing import Optional
+from typing import Optional, List
 
+from attrs import define, field, validators
+
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.getter import HttpGetter
 
@@ -54,6 +57,37 @@ class NetworkComparisonRule(ListComparisonRule):
     """Check if documents match a filter."""
 
     _compare_sets: dict
+
+    @define(kw_only=True)
+    class Config(FieldManagerRule.Config):
+        """RuleConfig for NetworkComparisonRule"""
+
+        list_file_paths: List[str] = field(
+            validator=validators.deep_iterable(member_validator=validators.instance_of(str))
+        )
+        """List of files. For string format see :ref:`getters`.
+
+        .. security-best-practice::
+           :title: Processor - Network Comparison list file paths Memory Consumption
+
+           Be aware that all values of the remote files were loaded into memory. Consider to avoid
+           dynamic increasing lists without setting limits for Memory consumption. Additionally
+           avoid loading large files all at once to avoid exceeding http body limits.
+
+        .. security-best-practice::
+           :title: Processor - Network Comparison list file paths Authenticity and Integrity
+
+           Consider to use TLS protocol with authentication via mTLS or Oauth to ensure
+           authenticity and integrity of the loaded values.
+
+        """
+        list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
+        """Base Path from where to find relative files from :code:`list_file_paths`.
+        You can also pass a template with keys from environment,
+        e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
+        will be filled by this processor. """
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
     def init_list_comparison(self, list_search_base_path: Optional[str] = None) -> None:
         """init method for list_comparison lists"""
