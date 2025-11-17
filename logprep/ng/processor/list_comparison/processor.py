@@ -98,9 +98,8 @@ class ListComparison(Processor):
             return list(rule.compare_sets.keys()), "not_in_list"
         return list_matches, "in_list"
 
-    @staticmethod
     def _get_lists_matching_with_values(
-        rule: ListComparisonRule, value_list: list, _: dict
+        self, rule: ListComparisonRule, value_list: list, _: dict
     ) -> list:
         """Iterate over string lists, check if element is in any."""
         list_matches = []
