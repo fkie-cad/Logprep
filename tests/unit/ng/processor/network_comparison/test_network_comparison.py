@@ -28,12 +28,11 @@ class TestNetworkComparison(BaseProcessorTestCase):
         super().setup_method()
         self.object.setup()
 
-    def test_non_ip_element_not_in_list(self):
+    def test_non_ip_element_has_fail_tag(self):
         document = {"ip1": "Franz"}
         log_event = LogEvent(document, original=b"")
-        expected = {"ip1": "Franz", "ip_results": {"not_in_list": ["ip_only_list.txt"]}}
         self.object.process(log_event)
-        assert log_event.data == expected
+        assert log_event.data.get("tags") == ["_network_comparison_failure"]
 
     def test_element_not_in_list(self):
         # Test if ip 1.2.34 is not in ip list
@@ -430,8 +429,6 @@ class TestNetworkComparison(BaseProcessorTestCase):
         [
             ("matching IP", "127.0.0.1", {"in_list": ["network_list.txt"]}),
             ("matching network", "127.0.0.123", {"in_list": ["network_list.txt"]}),
-            ("matching string not in list", "great_network", {"not_in_list": ["network_list.txt"]}),
-            ("not matching string", "bad_network", {"not_in_list": ["network_list.txt"]}),
             ("not matching IP", "127.0.123.1", {"not_in_list": ["network_list.txt"]}),
             ("not matching IP list", ["127.0.123.1"], {"not_in_list": ["network_list.txt"]}),
             ("matching IP list", ["127.0.0.1"], {"in_list": ["network_list.txt"]}),

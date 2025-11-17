@@ -92,14 +92,16 @@ class ListComparison(Processor):
             else [field_value_to_be_checked]
         )
 
-        list_matches = self._get_lists_matching_with_values(rule, value_list)
+        list_matches = self._get_lists_matching_with_values(rule, value_list, event)
 
         if len(list_matches) == 0:
             return list(rule.compare_sets.keys()), "not_in_list"
         return list_matches, "in_list"
 
-    @staticmethod
-    def _get_lists_matching_with_values(rule: ListComparisonRule, value_list: list) -> list:
+    def _get_lists_matching_with_values(
+        self, rule: ListComparisonRule, value_list: list, _: dict
+    ) -> list:
+        """Iterate over string lists, check if element is in any."""
         list_matches = []
         for value in value_list:
             for compare_list in rule.compare_sets:

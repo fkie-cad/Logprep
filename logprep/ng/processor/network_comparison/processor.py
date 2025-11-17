@@ -37,14 +37,16 @@ class NetworkComparison(ListComparison):
 
     rule_class = NetworkComparisonRule
 
-    @staticmethod
-    def _get_lists_matching_with_values(rule: NetworkComparisonRule, value_list: list) -> list:
+    def _get_lists_matching_with_values(
+        self, rule: NetworkComparisonRule, value_list: list, event: dict
+    ) -> list:
         """Iterate over network lists, check if element is in any."""
         list_matches: list = []
         for value in value_list:
             try:
                 ip_address_object = ip_address(value)
-            except ValueError:
+            except ValueError as error:
+                self._handle_warning_error(event, rule, error)
                 continue
 
             for compare_list in rule.compare_sets:
