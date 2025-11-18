@@ -23,6 +23,7 @@ from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration, MetricsConfig
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
 from logprep.util.logging import logqueue
+from logprep.util.queue import Queue
 from tests.testdata.metadata import path_to_config
 
 
@@ -630,7 +631,7 @@ class TestOutputQueueListener:
     def test_listen_drains_queue_on_shutdown(self):
         target = "store"
         output_config = {"random_name": {"type": "dummy_output"}}
-        queue = multiprocessing.Queue()
+        queue = Queue(ctx=multiprocessing.get_context())
         listener = OutputQueueListener(queue, target, output_config)
         listener.queue.put(listener.sentinel)
         listener.queue.put("test")

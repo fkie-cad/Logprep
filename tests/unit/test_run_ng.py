@@ -12,7 +12,6 @@ import responses
 from click.testing import CliRunner
 
 from logprep import run_ng
-from logprep.ng.runner import Runner
 from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
 from logprep.ng.util.defaults import EXITCODES
 from logprep.run_ng import cli

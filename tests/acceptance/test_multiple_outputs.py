@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from logprep.util.configuration import Configuration
-from tests.acceptance.util import start_logprep, stop_logprep, wait_for_output
+from tests.acceptance.util import run_logprep, wait_for_output
 
 CHECK_INTERVAL = 0.1
 
@@ -95,9 +95,8 @@ def test_full_pipeline_run_with_two_outputs(tmp_path: Path, config: Configuratio
     output_path_custom2 = Path(config.output["second_output"]["output_file_custom"])
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
-    proc = start_logprep(str(config_path))
-    wait_for_output(proc, "no documents left")
-    stop_logprep(proc)
+    with run_logprep(str(config_path)) as proc:
+        wait_for_output(proc, "no documents left")
     assert output_path1.read_text("utf8"), "output is not empty"
     assert output_path1.read_text("utf8") == output_path2.read_text(
         "utf8"
@@ -107,4 +106,3 @@ def test_full_pipeline_run_with_two_outputs(tmp_path: Path, config: Configuratio
         "utf8"
     ), "stored custom output not in output with name 'second_output'"
     assert not output_path_error.read_text("utf8"), "no errors in processing"
-    stop_logprep(proc)

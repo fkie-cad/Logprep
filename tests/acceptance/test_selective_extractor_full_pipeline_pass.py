@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+
 import pytest
 
 from logprep.util.configuration import Configuration

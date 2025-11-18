@@ -42,6 +42,7 @@
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true
     },
+    "black-formatter.importStrategy": "fromEnvironment",
     "cSpell.words": [
         "clusterable",
         "Clusterer",

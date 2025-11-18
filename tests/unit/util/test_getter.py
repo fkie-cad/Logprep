@@ -5,29 +5,34 @@
 # pylint: disable=protected-access
 import json
 import re
+import sys
 import uuid
 from datetime import datetime, timedelta
 from importlib.metadata import version
 from pathlib import Path
+from typing import Any, Dict, cast
 from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
 import responses
+from requests.exceptions import HTTPError
 from responses import matchers
 from responses.registries import OrderedRegistry
-from requests.exceptions import HTTPError
 from ruamel.yaml import YAML, YAMLError
 
 from logprep.util.credentials import Credentials, CredentialsEnvNotFoundError
-from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE, ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.defaults import (
+    ENV_NAME_LOGPREP_CREDENTIALS_FILE,
+    ENV_NAME_LOGPREP_GETTER_CONFIG,
+)
 from logprep.util.getter import (
     FileGetter,
     GetterFactory,
     GetterNotFoundError,
     HttpGetter,
-    RefreshableGetterError,
     RefreshableGetter,
+    RefreshableGetterError,
     refresh_getters,
 )
 
@@ -202,15 +207,18 @@ class TestFileGetter:
 
     def test_get_returns_content(self):
         file_getter = GetterFactory.from_string("/my/file")
-        with mock.patch("pathlib.Path.open", mock.mock_open(read_data=b"my content")) as _:
+        with mock.patch("pathlib.Path.open", mock.mock_open(read_data=b"my content")):
             content = file_getter.get()
             assert content == "my content"
 
     def test_get_returns_binary_content(self):
         file_getter = GetterFactory.from_string("/my/file")
-        with mock.patch("pathlib.Path.open", mock.mock_open(read_data=b"my content")) as mock_open:
+        with mock.patch(
+            "pathlib.Path.open", cast(MagicMock, mock.mock_open(read_data=b"my content"))
+        ) as mock_open:
             content = file_getter.get_raw()
-            mock_open.assert_called_with(mode="rb")
+            mock_open.assert_called_once()
+            assert mock_open.call_args.kwargs["mode"] == "rb"
             assert content == b"my content"
 
     @pytest.mark.parametrize(

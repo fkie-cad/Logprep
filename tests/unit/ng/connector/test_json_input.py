@@ -762,7 +762,8 @@ class TestJsonInput(BaseInputTestCase):
     @pytest.mark.parametrize(
         ["timestamp", "expected_error_message"],
         [
-            ("0000-00-00 00:00:00", "year 0 is out of range"),
+            # Python version depending: "year 0 is out of range" = <py3.14 | "year must be in 1..9999" = >=py3.14
+            ("0000-00-00 00:00:00", "(year 0 is out of range)|(year must be in 1..9999)"),
             ("invalid", "Invalid isoformat string: 'invalid'"),
         ],
     )
@@ -795,7 +796,7 @@ class TestJsonInput(BaseInputTestCase):
 
             failed_event = list(connector.event_backlog.backlog)[0]
             assert len(failed_event.errors) == 1
-            assert failed_event.errors[0].message == expected_error_message
+            assert re.match(expected_error_message, failed_event.errors[0].message)
 
     def test_preprocessing_enriches_by_multiple_env_variables(self):
         return_value = ({"any": "content"}, None, None)

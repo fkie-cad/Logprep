@@ -84,7 +84,7 @@ class TestFileInput(BaseInputTestCase):
     def test_offset_is_set_and_not_null(self):
         assert self.object._fileinfo_util.get_offset(self.object._config.logfile_path) != 0
 
-    def test_offset_is_set_and_not_null(self):
+    def test_fingerprint_is_set_and_not_null(self):
         assert self.object._fileinfo_util.get_fingerprint(self.object._config.logfile_path) != 0
 
     def test_init_filewatcher_util_dict_with_emtpy_dict(self):

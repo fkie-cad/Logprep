@@ -10,8 +10,7 @@ import requests
 from logprep.util.configuration import Configuration
 from tests.acceptance.util import (
     get_default_logprep_config,
-    start_logprep,
-    stop_logprep,
+    run_logprep,
     wait_for_output,
 )
 
@@ -52,13 +51,14 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path: Path, config: 
     config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
 
-    requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
-    time.sleep(0.5)
-    assert "my message" in output_path.read_text()
-    stop_logprep(proc)
+        requests.post(
+            "https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5
+        )
+        time.sleep(0.5)
+        assert "my message" in output_path.read_text()
 
 
 @pytest.mark.filterwarnings("ignore:Unverified HTTPS request is being made to host '127.0.0.1'")
@@ -68,10 +68,12 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, confi
     config.output = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_yaml())
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
 
-    requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
-    time.sleep(0.5)
-    assert "my message" in output_path.read_text()
-    stop_logprep(proc)
+        requests.post(
+            "https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5
+        )
+        time.sleep(0.5)
+
+        assert "my message" in output_path.read_text()
