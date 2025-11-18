@@ -1,10 +1,13 @@
-name: CI
+name: PR CI
 # only run tests for pull requests cause no file has to be changed without review
 # open -> open the pull request
 # synchronize -> push to branch of pull request
 on:
   pull_request:
     types: [opened, synchronize]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     uses: ./.github/workflows/testing.yml

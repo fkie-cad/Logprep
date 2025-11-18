@@ -1,4 +1,4 @@
-name: CI
+name: Main CI
 # ensures that main has our basic test and code quality
 on:
   push:
