@@ -12,7 +12,7 @@
 ### Bugfix
 * fix opensearch output not respecting thread_count config parameter
 * fix docker-compose and k8s example setups
-* fix handling of None String values as replacement argument for `generic_resolver`
+* fix handling of non-string values (e.g. int) as replacement argument for `generic_resolver`
 
 ## 17.0.3
 ### Breaking
