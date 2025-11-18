@@ -10,13 +10,12 @@ from unittest.mock import patch
 
 import responses
 
-from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter
-
 from logprep.factory import Factory
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.getter import HttpGetter
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
@@ -920,3 +919,27 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert self.object.metrics.new_results == 3
         assert self.object.metrics.cached_results == 3
         assert self.object.metrics.num_cache_entries == 3
+
+    def test_resolve_with_numeric_key(self):
+        event = {"event": {"code": 4625}}
+        expected = {
+            "event": {"code": 4625},
+            "event_description": "An account failed to log on.",
+        }
+        expected = LogEvent(expected, original=b"")
+        rule = {
+            "filter": "*",
+            "generic_resolver": {
+                "field_mapping": {"event.code": "event_description"},
+                "resolve_list": {
+                    "4624": "An account was successfully logged on.",
+                    "4625": "An account failed to log on.",
+                    "4634": "An account was logged off.",
+                },
+            },
+        }
+        self._load_rule(rule)
+        event = LogEvent(event, original=b"")
+        result = self.object.process(event)
+        assert not result.errors
+        assert event == expected

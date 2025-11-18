@@ -129,7 +129,7 @@ class GenericResolver(FieldManager):
         self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_field_values)
         conflicting_fields = []
         for source_field, target_field in rule.field_mapping.items():
-            source_field_value = get_dotted_field_value(event, source_field)
+            source_field_value = str(get_dotted_field_value(event, source_field))
             if source_field_value is None:
                 continue
             content = self._find_content_of_first_matching_pattern(rule, source_field_value)
