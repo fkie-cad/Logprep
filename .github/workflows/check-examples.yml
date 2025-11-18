@@ -4,6 +4,7 @@ jobs:
   compose-setup:
     runs-on: ubuntu-24.04
     strategy:
+      fail-fast: false
       matrix:
         profile: ["logprep"]
         python-version: ["3.11", "3.12", "3.13", "3.14"]

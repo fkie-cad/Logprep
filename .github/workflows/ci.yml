@@ -1,4 +1,4 @@
-name: CI
+name: PR CI
 # only run tests for pull requests cause no file has to be changed without review
 # open -> open the pull request
 # synchronize -> push to branch of pull request
