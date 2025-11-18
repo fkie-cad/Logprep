@@ -140,7 +140,7 @@ logprep-ng = "logprep.run_ng:cli"
 
 [tool.black]
 line-length = 100
-target-version = ['py312', 'py313', 'py314']
+target-version = ['py311', 'py312', 'py313', 'py314']
 extend-exclude = '''
 # A regex preceded with ^/ will apply only to files and directories
 # in the root of the project.
