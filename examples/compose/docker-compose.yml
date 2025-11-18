@@ -111,7 +111,7 @@ services:
     volumes:
       - ../../examples/:/home/logprep/examples/
     tmpfs:
-      - /tmp/logprep/prometheus_multiproc
+      - /tmp/logprep/prometheus_multiproc:mode=777
     entrypoint:
       - logprep
       - run
