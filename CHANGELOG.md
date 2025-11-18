@@ -3,7 +3,7 @@
 ### Breaking
 
 ### Features
-* Add support for python 3.14
+* add support for python 3.14
 
 ### Improvements
 * add workflow to partially run & check the compose example
