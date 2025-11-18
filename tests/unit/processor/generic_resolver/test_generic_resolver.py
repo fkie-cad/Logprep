@@ -888,7 +888,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         event = {"event": {"code": 4625}}
         expected = {
             "event": {"code": 4625},
-            "event_description": "An account was successfully logged on.",
+            "event_description": "An account failed to log on.",
         }
         rule = {
             "filter": "*",
