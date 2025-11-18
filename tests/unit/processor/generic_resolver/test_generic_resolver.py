@@ -905,3 +905,27 @@ class TestGenericResolver(BaseProcessorTestCase):
         result = self.object.process(event)
         assert not result.errors
         assert event == expected
+
+    def test_resolve_with_explicit_none_value(self):
+        event = {"event": {"code": None}}
+        expected = {
+            "event": {"code": None},
+            "tags": [
+                "_generic_resolver_missing_field_warning",
+            ],
+        }
+        rule = {
+            "filter": "*",
+            "generic_resolver": {
+                "field_mapping": {"event.code": "event_description"},
+                "resolve_list": {
+                    "4624": "An account was successfully logged on.",
+                    "4625": "An account failed to log on.",
+                    "4634": "An account was logged off.",
+                },
+            },
+        }
+        self._load_rule(rule)
+        result = self.object.process(event)
+        assert not result.errors
+        assert event == expected
