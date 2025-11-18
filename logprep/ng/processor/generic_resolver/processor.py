@@ -130,8 +130,6 @@ class GenericResolver(FieldManager):
         conflicting_fields = []
         for source_field, target_field in rule.field_mapping.items():
             source_field_value = str(get_dotted_field_value(event, source_field))
-            if source_field_value is None:
-                continue
             content = self._find_content_of_first_matching_pattern(rule, source_field_value)
             if not content:
                 continue
