@@ -5,6 +5,9 @@ name: PR CI
 on:
   pull_request:
     types: [opened, synchronize]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     uses: ./.github/workflows/testing.yml
