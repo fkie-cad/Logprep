@@ -9,11 +9,10 @@ from unittest.mock import patch
 import pytest
 import responses
 
-from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter
-
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.generic_resolver.rule import GenericResolverRule
+from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.getter import HttpGetter
 
 
 @pytest.fixture(name="rule_definition")
@@ -54,7 +53,7 @@ class TestGenericResolverRule:
                 True,
             ),
             (
-                "Should be equal cause without append_to_list, since default is the same",
+                "Should be equal cause without merge_with_target, since default is the same",
                 {
                     "filter": "message",
                     "generic_resolver": {
