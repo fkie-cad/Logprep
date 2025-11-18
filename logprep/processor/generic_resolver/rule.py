@@ -10,7 +10,7 @@ The parameters within :code:`generic_resolver` must be of the form
 resolve_list: {REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`.
 SOURCE_FIELD will be checked by the regex patterns REGEX_PATTERN_[0-N] and
 a new field DESTINATION_FIELD with the value ADDED_VALUE_[0-N] will be added if there is a match.
-Adding the option :code:`"append_to_list": True` makes the generic resolver write resolved values
+Adding the option :code:`"merge_with_target": True` makes the generic resolver write resolved values
 into a list so that multiple different values can be written into the same field.
 
 In the following example :code:`to_resolve` will be checked by the regex pattern :code:`.*Hello.*`.
@@ -119,7 +119,7 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import Optional, List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 from attrs import define, field, validators
 
