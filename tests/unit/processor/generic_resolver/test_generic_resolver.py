@@ -10,12 +10,11 @@ from unittest.mock import patch
 
 import responses
 
-from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
-from logprep.util.getter import HttpGetter
-
 from logprep.factory import Factory
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_resolver.processor import GenericResolver
+from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.getter import HttpGetter
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -884,3 +883,49 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert self.object.metrics.new_results == 3
         assert self.object.metrics.cached_results == 3
         assert self.object.metrics.num_cache_entries == 3
+
+    def test_resolve_with_numeric_key(self):
+        event = {"event": {"code": 4625}}
+        expected = {
+            "event": {"code": 4625},
+            "event_description": "An account failed to log on.",
+        }
+        rule = {
+            "filter": "*",
+            "generic_resolver": {
+                "field_mapping": {"event.code": "event_description"},
+                "resolve_list": {
+                    "4624": "An account was successfully logged on.",
+                    "4625": "An account failed to log on.",
+                    "4634": "An account was logged off.",
+                },
+            },
+        }
+        self._load_rule(rule)
+        result = self.object.process(event)
+        assert not result.errors
+        assert event == expected
+
+    def test_resolve_with_explicit_none_value(self):
+        event = {"event": {"code": None}}
+        expected = {
+            "event": {"code": None},
+            "tags": [
+                "_generic_resolver_missing_field_warning",
+            ],
+        }
+        rule = {
+            "filter": "*",
+            "generic_resolver": {
+                "field_mapping": {"event.code": "event_description"},
+                "resolve_list": {
+                    "4624": "An account was successfully logged on.",
+                    "4625": "An account failed to log on.",
+                    "4634": "An account was logged off.",
+                },
+            },
+        }
+        self._load_rule(rule)
+        result = self.object.process(event)
+        assert not result.errors
+        assert event == expected
