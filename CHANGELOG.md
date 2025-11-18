@@ -14,6 +14,7 @@
 * fix opensearch output not respecting thread_count config parameter
 * fix docker-compose and k8s example setups
 * fix handling of non-string values (e.g. int) as replacement argument for `generic_resolver`
+* fix documentation for `generic_resolver` rule `append_to_list -> merge_with_target` option
 
 ## 17.0.3
 ### Breaking
