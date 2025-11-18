@@ -26,6 +26,8 @@
 * make generic adder processor be refreshable with http getter
 * make generic resolver processor be refreshable with http getter
 * add option for refreshable getters to return default values if no value could be obtained
+* list comparison processor can now also match fields that contain lists in documents
+* add network comparison processor that can match IPs with networks in CIDR notation
 
 ### Improvements
 

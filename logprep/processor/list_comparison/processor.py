@@ -74,23 +74,39 @@ class ListComparison(Processor):
             fields = {f"{rule.target_field}.{comparison_key}": comparison_result}
             add_fields_to(event, fields, rule=rule, merge_with_target=True)
 
-    def _list_comparison(self, rule: ListComparisonRule, event: dict):
+    def _list_comparison(self, rule: ListComparisonRule, event: dict) -> tuple[list, str]:
+        """Check if field value violates block or allow list.
+
+        Returns
+        -------
+        tuple[list[str], str]
+            The result of the comparison, as well as a dictionary containing the result and a list
+            of filenames pertaining to said result.
+
         """
-        Check if field value violates block or allow list.
-        Returns the result of the comparison (res_key), as well as a dictionary containing
-        the result (key) and a list of filenames pertaining to said result (value).
-        """
 
-        # get value that should be checked in the lists
-        field_value = get_dotted_field_value(event, rule.source_fields[0])
+        field_value_to_be_checked = get_dotted_field_value(event, rule.source_fields[0])
+        value_list = (
+            field_value_to_be_checked
+            if isinstance(field_value_to_be_checked, list)
+            else [field_value_to_be_checked]
+        )
 
-        # iterate over lists and check if element is in any
-        list_matches = []
-        for compare_list in rule.compare_sets:
-            if field_value in rule.compare_sets[compare_list]:
-                list_matches.append(compare_list)
+        list_matches = self._get_lists_matching_with_values(rule, value_list, event)
 
-        # if matching list was found return it, otherwise return all list names
         if len(list_matches) == 0:
             return list(rule.compare_sets.keys()), "not_in_list"
         return list_matches, "in_list"
+
+    def _get_lists_matching_with_values(
+        self, rule: ListComparisonRule, value_list: list, _: dict
+    ) -> list:
+        """Iterate over string lists, check if element is in any."""
+        list_matches = []
+        for value in value_list:
+            for compare_list in rule.compare_sets:
+                if compare_list in list_matches:
+                    continue
+                if value in rule.compare_sets[compare_list]:
+                    list_matches.append(compare_list)
+        return list_matches

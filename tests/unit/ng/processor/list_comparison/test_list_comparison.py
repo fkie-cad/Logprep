@@ -1,11 +1,17 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import json
+from pathlib import Path
+from unittest import mock
 
+import pytest
 import responses
 
 from logprep.factory import Factory
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.getter import HttpGetter
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
@@ -288,3 +294,118 @@ Hans
         processor._rule_tree.add_rule(rule)
         processor.setup()
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+
+    @responses.activate
+    def test_list_comparison_loads_rule_using_http_and_updates_with_callback(self, tmp_path):
+        target = "localhost/tests/testdata/bad_users.list?ref=bla"
+        url = f"http://{target}"
+        responses.add(
+            responses.GET,
+            url,
+            """Franz
+Heinz
+Hans
+""",
+        )
+        responses.add(
+            responses.GET,
+            url,
+            """Franz
+Heinz
+""",
+        )
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
+        }
+
+        HttpGetter._shared.clear()
+
+        getter_file_content = {target: {"refresh_interval": 10}}
+        http_getter_conf: Path = tmp_path / "http_getter.json"
+        http_getter_conf.write_text(json.dumps(getter_file_content))
+        mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
+        with mock.patch.dict("os.environ", mock_env):
+            processor = Factory.create({"custom_lister": config})
+            rule = processor.rule_class.create_from_dict(rule_dict)
+            processor._rule_tree.add_rule(rule)
+            processor.setup()
+            assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+            assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
+            HttpGetter(target=target, protocol="http").scheduler.run_all()
+            assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz"}}
+
+    def test_list_comparison_does_not_add_duplicates_from_list_source(self):
+        document = {"users": ["Franz", "Alpha"]}
+        log_event = LogEvent(document, original=b"")
+        expected = {
+            "users": ["Franz", "Alpha"],
+            "user_results": {
+                "in_list": [
+                    "system_list.txt",
+                    "user_list.txt",
+                ]
+            },
+        }
+        rule_dict = {
+            "filter": "users",
+            "list_comparison": {
+                "source_fields": ["users"],
+                "target_field": "user_results",
+                "list_file_paths": [
+                    "../lists/system_list.txt",
+                    "../lists/user_list.txt",
+                ],
+            },
+            "description": "",
+        }
+        self._load_rule(rule_dict)
+        self.object.setup()
+        self.object.process(log_event)
+        assert document == expected
+
+    @pytest.mark.parametrize(
+        "testcase, system, result",
+        [
+            ("string in list", "Alpha", {"in_list": ["system_list.txt"]}),
+            ("string not in list", "Omega", {"not_in_list": ["system_list.txt"]}),
+            ("list element in list", ["Alpha"], {"in_list": ["system_list.txt"]}),
+            ("list element not in list", ["Omega"], {"not_in_list": ["system_list.txt"]}),
+            ("one list element in list", ["Alpha", "Omega"], {"in_list": ["system_list.txt"]}),
+            ("multiple list elements in list", ["Alpha", "Beta"], {"in_list": ["system_list.txt"]}),
+        ],
+    )
+    def test_match_list_field(self, testcase, system, result):
+        document = {"system": system}
+        log_event = LogEvent(document, original=b"")
+        expected = {"system": system, "system_results": result}
+        rule_dict = {
+            "filter": "system",
+            "list_comparison": {
+                "source_fields": ["system"],
+                "target_field": "system_results",
+                "list_file_paths": ["../lists/system_list.txt"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "ng_list_comparison",
+            "rules": [],
+            "list_search_base_path": self.CONFIG["list_search_base_path"],
+        }
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+        processor.process(log_event)
+        assert document == expected, testcase
