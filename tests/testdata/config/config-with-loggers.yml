@@ -48,8 +48,8 @@ output:
       bootstrap.servers: "127.0.0.1:9092"
       acks: "-1"
       compression.type: none
-    dummy_output:
-      type: dummy_output
+  dummy_output:
+    type: dummy_output
 logger:
   level: WARNING
   loggers:
