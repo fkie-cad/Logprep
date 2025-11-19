@@ -449,7 +449,9 @@ class LoggerConfig:
         """
 
         for logger_name, logger_config in self.loggers.items():
-            default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
+            default_logger_config = deepcopy(
+                DEFAULT_LOG_CONFIG.get("loggers", {}).get(logger_name, {})
+            )
             if "level" in logger_config:
                 default_logger_config.update({"level": logger_config["level"]})
             self.loggers[logger_name].update(default_logger_config)
