@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
 import json
+import logging
 import os
 import uuid
 from importlib.metadata import version
@@ -26,6 +27,7 @@ from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE
 from logprep.util.getter import FileGetter, GetterNotFoundError
 from tests.testdata.metadata import (
     path_to_config,
+    path_to_config_with_loggers,
     path_to_invalid_config,
     path_to_only_output_config,
 )
@@ -1558,3 +1560,17 @@ class TestLoggerConfig:
         config = LoggerConfig()
 
         assert config.loggers == expected_logger_configs["loggers"]
+
+    def test_config_loggers_resolve_effective_levels(self):
+        config = Configuration.from_sources([str(path_to_config_with_loggers)])
+        config.logger.setup_logging()
+
+        root_logger = logging.getLogger()
+        kafka_output_logger = logging.getLogger("KafkaOutput")
+        kafka_input_logger = logging.getLogger("KafkaInput")
+        dummy_output_logger = logging.getLogger("DummyOutput")
+
+        assert root_logger.getEffectiveLevel() == logging.WARNING
+        assert kafka_output_logger.getEffectiveLevel() == logging.DEBUG
+        assert kafka_input_logger.getEffectiveLevel() == logging.ERROR
+        assert dummy_output_logger.getEffectiveLevel() == logging.ERROR
