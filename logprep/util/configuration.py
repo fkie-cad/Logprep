@@ -428,7 +428,9 @@ class LoggerConfig:
     def _set_loggers_levels(self) -> None:
         """sets the loggers levels to the default or to the given level."""
         for logger_name, logger_config in self.loggers.items():
-            default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
+            default_logger_config = deepcopy(
+                DEFAULT_LOG_CONFIG.get("loggers", {}).get(logger_name, {})
+            )
             if "level" in logger_config:
                 default_logger_config.update({"level": logger_config["level"]})
             self.loggers[logger_name].update(default_logger_config)
@@ -460,8 +462,6 @@ class Configuration:
     If configured the configuration will only be reloaded if the configuration version changes.
     If http errors occurs on configuration reload `config_refresh_interval` is set to a quarter
     of the current `config_refresh_interval` until a minimum of 5 seconds is reached.
-    Note that under high system load, the refresh may be delayed and the configured interval
-    represents a best-effort target rather than an exact timing guarantee.
     Defaults to :code:`None`, which means that the configuration will not be refreshed.
 
     .. security-best-practice::
@@ -724,7 +724,10 @@ class Configuration:
         """
         try:
             config_getter = GetterFactory.from_string(config_path)
-            config_dict = config_getter.get_dict()
+            try:
+                config_dict = config_getter.get_json()
+            except (json.JSONDecodeError, ValueError):
+                config_dict = config_getter.get_yaml()
             config = Configuration(**(config_dict | {"getter": config_getter}))
         except TypeError as error:
             raise InvalidConfigurationError(
@@ -838,6 +841,15 @@ class Configuration:
         errors: List[Exception] = []
         try:
             new_config = Configuration.from_sources(self.config_paths)
+            if self._config_failure:
+                logger.info("Config refresh recovered from failing source")
+            self._config_failure = False
+            if new_config == self:
+                logger.info(
+                    "Configuration version didn't change. Continue running with current version."
+                )
+                self._set_config_refresh_interval(new_config.config_refresh_interval)
+                return
             if new_config.config_refresh_interval is None:
                 new_config.config_refresh_interval = self.config_refresh_interval
             self._configs = new_config._configs  # pylint: disable=protected-access
@@ -846,9 +858,6 @@ class Configuration:
             self.pipeline = new_config.pipeline
             self._metrics.number_of_config_refreshes += 1
             logger.info("Successfully reloaded configuration")
-            if self._config_failure:
-                logger.info("Config refresh recovered from failing source")
-                self._config_failure = False
             logger.info("Configuration version: %s", self.version)
             self._set_config_refresh_interval(new_config.config_refresh_interval)
         except ConfigGetterException as error:
@@ -931,13 +940,7 @@ class Configuration:
             try:
                 processor_definition_with_rules = self._load_rule_definitions(processor_definition)
                 pipeline_with_loaded_rules.append(processor_definition_with_rules)
-            except (
-                FactoryError,
-                TypeError,
-                ValueError,
-                InvalidRuleDefinitionError,
-                RefreshableGetterError,
-            ) as error:
+            except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
                 errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
@@ -1003,13 +1006,7 @@ class Configuration:
                 processor = Factory.create(deepcopy(processor_config))
                 processor.setup()
                 self._verify_rules(processor)
-            except (
-                FactoryError,
-                TypeError,
-                ValueError,
-                InvalidRuleDefinitionError,
-                RefreshableGetterError,
-            ) as error:
+            except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
                 errors.append(error)
             except FileNotFoundError as error:
                 errors.append(InvalidConfigurationError(f"File not found: {error.filename}"))

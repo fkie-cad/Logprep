@@ -11,6 +11,7 @@
 * add workflow to partially run & check the compose example
 * add clarification to `config_refresh_interval` docstring about potential delay under high system load and non-strict timing behavior
 * mypy checks in the pull request workflow are now applied to the same directories as in the main workflow
+* add new test to validate that per-logger log levels correctly override the global log level in LoggerConfig
 
 ### Bugfix
 * fix opensearch output not respecting thread_count config parameter
