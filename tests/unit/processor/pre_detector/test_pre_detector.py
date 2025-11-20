@@ -4,6 +4,7 @@ import re
 from copy import deepcopy
 
 import pytest
+from deepdiff import DeepDiff
 
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -92,6 +93,32 @@ class TestPreDetector(BaseProcessorTestCase):
             document, expected, detection_results.data, expected_detection_results
         )
 
+    def test_perform_successful_pre_detection_without_host_name(self):
+        document = {
+            # "host": {"name": "Test hostname"},
+            "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
+        }
+        expected = deepcopy(document)
+        expected_detection_results = [
+            (
+                {
+                    "id": "RULE_ONE_ID",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    # "host": {"name": "Test hostname"},
+                    "description": "Test rule one",
+                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+                },
+                ({"kafka": "pre_detector_alerts"},),
+            )
+        ]
+        detection_results = self.object.process(document)
+        self._assert_equality_of_results(
+            document, expected, detection_results.data, expected_detection_results
+        )
+
     def test_perform_successful_pre_detection_with_same_existing_pre_detection(self):
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         expected = deepcopy(document)
@@ -169,24 +196,24 @@ class TestPreDetector(BaseProcessorTestCase):
             (
                 {
                     "case_condition": "directly",
-                    "id": "RULE_TWO_ID",
-                    "mitre": ["attack.test2", "attack.test4"],
-                    "description": "Test two rules two",
-                    "rule_filter": '"second_match": *',
-                    "severity": "suspicious",
-                    "title": "RULE_TWO",
-                },
-                ({"kafka": "pre_detector_alerts"},),
-            ),
-            (
-                {
-                    "case_condition": "directly",
                     "id": "RULE_ONE_ID",
                     "mitre": ["attack.test1", "attack.test2"],
                     "description": "Test two rules one",
                     "rule_filter": '"first_match": *',
                     "severity": "critical",
                     "title": "RULE_ONE",
+                },
+                ({"kafka": "pre_detector_alerts"},),
+            ),
+            (
+                {
+                    "case_condition": "directly",
+                    "id": "RULE_TWO_ID",
+                    "mitre": ["attack.test2", "attack.test4"],
+                    "description": "Test two rules two",
+                    "rule_filter": '"second_match": *',
+                    "severity": "suspicious",
+                    "title": "RULE_TWO",
                 },
                 ({"kafka": "pre_detector_alerts"},),
             ),
@@ -319,14 +346,16 @@ class TestPreDetector(BaseProcessorTestCase):
             assert result_pre_detection_id is not None
             assert pre_detection_id == result_pre_detection_id
 
-        sorted_detection_results = sorted(
-            [(frozenset(result[0]), result[1]) for result in detection_results]
-        )
-        sorted_expected_detection_results = sorted(
-            [(frozenset(result[0]), result[1]) for result in expected_detection_results]
-        )
+        for detection_result, expected_detection_result in zip(
+            detection_results, expected_detection_results
+        ):
+            diff = DeepDiff(
+                detection_result,
+                expected_detection_result,
+                exclude_paths=["root[0]['id']", "root[0]['rule_filter']"],
+            )
 
-        assert sorted_detection_results == sorted_expected_detection_results
+            assert not diff
 
     def test_adds_timestamp_to_extra_data_if_provided_by_event(self):
         rule = {
@@ -464,3 +493,194 @@ class TestPreDetector(BaseProcessorTestCase):
         assert "tags" in document
         assert "_pre_detector_failure" in document["tags"]
         assert "_pre_detector_timeparsing_failure" in document["tags"]
+
+    @pytest.mark.parametrize(
+        "extra_rule_config, event_data, expected_extra_fields_in_output",
+        [
+            pytest.param(
+                {},
+                {
+                    "host": {"name": "Test hostname"},
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {"host": {"name": "Test hostname"}},
+                id="optional with default host.name",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": set()},
+                {
+                    "host": {"name": "Test hostname"},
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {},
+                id="empty set is allowed",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": []},
+                {
+                    "host": {"name": "Test hostname"},
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {},
+                id="empty list is allowed",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": ["custom", "winlog.custom"]},
+                {
+                    "host": {"name": "Test hostname"},
+                    "custom": "test toplevel",
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                        "custom": "test nested",
+                    },
+                },
+                {"custom": "test toplevel", "winlog": {"custom": "test nested"}},
+                id="copy plain and nested field with list",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": {"custom", "winlog.custom"}},
+                {
+                    "host": {"name": "Test hostname"},
+                    "custom": "test toplevel",
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                        "custom": "test nested",
+                    },
+                },
+                {"custom": "test toplevel", "winlog": {"custom": "test nested"}},
+                id="copy plain and nested field with set",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": {"int", "float", "str", "dict", "list"}},
+                {
+                    "dict": {"name": "Test hostname"},
+                    "list": [1, 2, 3],
+                    "str": "test toplevel",
+                    "int": 123,
+                    "float": 12.0,
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                        "custom": "test nested",
+                    },
+                },
+                {
+                    "dict": {"name": "Test hostname"},
+                    "list": [1, 2, 3],
+                    "str": "test toplevel",
+                    "int": 123,
+                    "float": 12.0,
+                },
+                id="copy fields with different types",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": {"host.name", "custom"}},
+                {
+                    "host": {"name": None},
+                    "custom": 0,
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {
+                    "host": {"name": None},
+                    "custom": 0,
+                },
+                id="None-valued fields not skipped",
+            ),
+            pytest.param(
+                {"copy_fields_to_detection_event": {"host.name", "custom"}},
+                {
+                    "host": {"name": "Test hostname"},
+                    "winlog": {
+                        "event_id": 123,
+                        "event_data": {"ServiceName": "VERY BAD"},
+                    },
+                },
+                {"host": {"name": "Test hostname"}},
+                id="missing fields skipped",
+            ),
+        ],
+    )
+    def test_copy_fields_to_detection_event_matrix(
+        self, extra_rule_config: dict, event_data: dict, expected_extra_fields_in_output: dict
+    ):
+        self._load_rule(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    **extra_rule_config,
+                },
+                "description": "Test rule one",
+            }
+        )
+        document = event_data
+        expected = deepcopy(document)
+        expected_detection_results = [
+            (
+                {
+                    "id": "RULE_ONE_ID",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    "description": "Test rule one",
+                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+                    **expected_extra_fields_in_output,
+                },
+                ({"kafka": "pre_detector_alerts"},),
+            )
+        ]
+        detection_results = self.object.process(document)
+        self._assert_equality_of_results(
+            document, expected, detection_results.data, expected_detection_results
+        )
+
+    @pytest.mark.parametrize(
+        "field_name",
+        [
+            "rule_filter",
+            "description",
+            "pre_detection_id",
+            "id",
+            "title",
+            "severity",
+            "mitre",
+            "case_condition",
+            "link",
+        ],
+    )
+    def test_copy_fields_to_detection_event_fails_on_illegal_fields(self, field_name: str):
+        with pytest.raises(ValueError, match="Illegal fields") as exc_info:
+            self._load_rule(
+                {
+                    "filter": "*",
+                    "pre_detector": {
+                        "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                        "title": "RULE_ONE",
+                        "severity": "critical",
+                        "mitre": ["attack.test1", "attack.test2"],
+                        "case_condition": "directly",
+                        "copy_fields_to_detection_event": {field_name},
+                    },
+                    "description": "Test rule one",
+                }
+            )
+        assert exc_info is not None

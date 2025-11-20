@@ -29,6 +29,11 @@ repos:
     hooks:
       - id: isort
         name: isort (python)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
+    hooks:
+      - id: mypy
+        additional_dependencies: [attrs]
   - repo: https://github.com/google/yamlfmt
     rev: v0.15.0
     hooks:

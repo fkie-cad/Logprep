@@ -29,6 +29,7 @@ Processor Configuration
 """
 
 from functools import cached_property
+from typing import cast
 from uuid import uuid4
 
 from attr import define, field, validators
@@ -38,7 +39,12 @@ from logprep.ng.event.sre_event import SreEvent
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    FieldValue,
+    add_fields_to,
+    copy_fields_to_event,
+    get_dotted_field_value,
+)
 from logprep.util.time import TimeParser, TimeParserException
 
 
@@ -92,16 +98,16 @@ class PreDetector(Processor):
     def _ip_alerter(self) -> IPAlerter:
         return IPAlerter(self._config.alert_ip_list_path)
 
-    def normalize_timestamp(self, rule: PreDetectorRule, timestamp: str) -> str:
+    def normalize_timestamp(self, rule: PreDetectorRule, timestamp: FieldValue) -> str:
         """method for normalizing the timestamp"""
         try:
             parsed_datetime = TimeParser.parse_datetime(
-                timestamp, rule.source_format, rule.source_timezone
+                cast(str, timestamp), rule.source_format, rule.source_timezone
             )
             return (
                 parsed_datetime.astimezone(rule.target_timezone).isoformat().replace("+00:00", "Z")
             )
-        except TimeParserException as error:
+        except (TimeParserException, TypeError) as error:
             raise ProcessingWarning(
                 "Could not parse timestamp",
                 rule,
@@ -132,7 +138,7 @@ class PreDetector(Processor):
 
     @staticmethod
     def _generate_detection_result(
-        pre_detection_id: str, event: dict, rule: PreDetectorRule
+        pre_detection_id: FieldValue, event: dict, rule: PreDetectorRule
     ) -> dict:
         detection_result = {
             **rule.detection_data,
@@ -140,7 +146,11 @@ class PreDetector(Processor):
             "description": rule.description,
             "pre_detection_id": pre_detection_id,
         }
-
-        if host_name := get_dotted_field_value(event, "host.name"):
-            detection_result.update({"host": {"name": host_name}})
+        copy_fields_to_event(
+            target_event=detection_result,
+            source_event=event,
+            dotted_field_names=rule.copy_fields_to_detection_event,
+            rule=rule,
+            skip_missing=True,
+        )
         return detection_result

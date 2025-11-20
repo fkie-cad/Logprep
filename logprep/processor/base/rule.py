@@ -230,13 +230,15 @@ class Rule:
         )
         """Number of errors that occurred while processing events"""
 
-    special_field_types = [
-        "regex_fields",
-        "sigma_fields",
-        "ip_fields",
-        "tests",
-        "tag_on_failure",
-    ]
+    special_field_types = frozenset(
+        (
+            "regex_fields",
+            "sigma_fields",
+            "ip_fields",
+            "tests",
+            "tag_on_failure",
+        )
+    )
 
     rule_type: str = ""
 
@@ -272,7 +274,7 @@ class Rule:
             raise InvalidRuleDefinitionError("config is not a Config class")
         if not config.tag_on_failure:
             config.tag_on_failure = [f"_{self.rule_type}_failure"]
-        self.__class__.__hash__ = Rule.__hash__
+        self.__class__.__hash__ = Rule.__hash__  # type: ignore
         self._processor_name = processor_name
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
@@ -287,10 +289,12 @@ class Rule:
         """create and return metrics object"""
         return self.Metrics(labels=self.metric_labels)
 
-    def __eq__(self, other: "Rule") -> bool:
-        return all([other.filter == self._filter, other._config == self._config])
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Rule):
+            return NotImplemented
+        return other.filter == self._filter and other._config == self._config
 
-    def __hash__(self) -> int:  # pylint: disable=function-redefined
+    def __hash__(self) -> int:
         return id(self)
 
     def __repr__(self) -> str:
@@ -366,7 +370,7 @@ class Rule:
         rule: dict, *extra_keys: str, optional_keys: Optional[Set[str]] = None
     ):
         optional_keys = optional_keys if optional_keys else set()
-        keys = [i for i in rule if i not in ["description"] + Rule.special_field_types]
+        keys = [i for i in rule if i not in {"description", *Rule.special_field_types}]
         required_keys = ["filter"] + list(extra_keys)
 
         if not keys or set(keys) != set(required_keys):
