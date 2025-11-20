@@ -274,7 +274,7 @@ class Rule:
             raise InvalidRuleDefinitionError("config is not a Config class")
         if not config.tag_on_failure:
             config.tag_on_failure = [f"_{self.rule_type}_failure"]
-        self.__class__.__hash__ = Rule.__hash__
+        self.__class__.__hash__ = Rule.__hash__  # type: ignore
         self._processor_name = processor_name
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
@@ -289,10 +289,12 @@ class Rule:
         """create and return metrics object"""
         return self.Metrics(labels=self.metric_labels)
 
-    def __eq__(self, other: "Rule") -> bool:
-        return all([other.filter == self._filter, other._config == self._config])
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Rule) and all(
+            [other.filter == self._filter, other._config == self._config]
+        )
 
-    def __hash__(self) -> int:  # pylint: disable=function-redefined
+    def __hash__(self) -> int:
         return id(self)
 
     def __repr__(self) -> str:
