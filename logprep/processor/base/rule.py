@@ -292,7 +292,7 @@ class Rule:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Rule):
             return NotImplemented
-        return all([other.filter == self._filter, other._config == self._config])
+        return other.filter == self._filter and other._config == self._config
 
     def __hash__(self) -> int:
         return id(self)
