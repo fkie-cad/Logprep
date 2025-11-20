@@ -314,12 +314,13 @@ class Processor(Component):
         return False
 
     def _write_target_field(self, event: dict, rule: "Rule", result: Any) -> None:
-        add_fields_to(
-            event,
-            fields={rule.target_field: result},
-            merge_with_target=getattr(rule, "merge_with_target", False),
-            overwrite_target=getattr(rule, "overwrite_target", False),
-        )
+        if hasattr(rule, "target_field"):
+            add_fields_to(
+                event,
+                fields={getattr(rule, "target_field"): result},
+                merge_with_target=getattr(rule, "merge_with_target", False),
+                overwrite_target=getattr(rule, "overwrite_target", False),
+            )
 
     def setup(self):
         super().setup()
