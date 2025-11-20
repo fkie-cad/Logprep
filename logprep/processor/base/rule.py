@@ -230,13 +230,15 @@ class Rule:
         )
         """Number of errors that occurred while processing events"""
 
-    special_field_types = [
-        "regex_fields",
-        "sigma_fields",
-        "ip_fields",
-        "tests",
-        "tag_on_failure",
-    ]
+    special_field_types = frozenset(
+        (
+            "regex_fields",
+            "sigma_fields",
+            "ip_fields",
+            "tests",
+            "tag_on_failure",
+        )
+    )
 
     rule_type: str = ""
 
@@ -366,7 +368,7 @@ class Rule:
         rule: dict, *extra_keys: str, optional_keys: Optional[Set[str]] = None
     ):
         optional_keys = optional_keys if optional_keys else set()
-        keys = [i for i in rule if i not in ["description"] + Rule.special_field_types]
+        keys = [i for i in rule if i not in {"description", *Rule.special_field_types}]
         required_keys = ["filter"] + list(extra_keys)
 
         if not keys or set(keys) != set(required_keys):

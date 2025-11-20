@@ -129,15 +129,17 @@ from attrs import asdict, define, field, fields, validators
 
 from logprep.processor.base.rule import Rule
 
-SPECIAL_FIELD_TYPES = {
-    *Rule.special_field_types,
-    "source_format",
-    "source_timezone",
-    "target_timezone",
-    "timestamp_field",
-    "failure_tags",
-    "copy_fields_to_detection_event",
-}
+SPECIAL_FIELD_TYPES = frozenset(
+    (
+        *Rule.special_field_types,
+        "source_format",
+        "source_timezone",
+        "target_timezone",
+        "timestamp_field",
+        "failure_tags",
+        "copy_fields_to_detection_event",
+    )
+)
 
 
 def _validate_copy_fields_to_detection_event(config: "PreDetectorRule.Config", _, value: set[str]):
