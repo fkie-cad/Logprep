@@ -3,12 +3,11 @@
 import itertools
 import re
 import sys
-import typing
 from enum import Enum, auto
 from functools import lru_cache, partial, reduce
 from importlib.metadata import version
 from os import remove
-from typing import TYPE_CHECKING, Callable, Iterable, Optional, TypeAlias, Union
+from typing import TYPE_CHECKING, Callable, Iterable, TypeAlias, Union, cast
 
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.ansi import AnsiBack, AnsiFore, Back, Fore
@@ -44,9 +43,7 @@ FieldValue: TypeAlias = Union[
 ]
 
 
-def color_print_line(
-    back: Optional[Union[str, AnsiBack]], fore: Optional[Union[str, AnsiBack]], message: str
-):
+def color_print_line(back: str | AnsiBack | None, fore: str | AnsiBack | None, message: str):
     """Print string with colors and reset the color afterwards."""
     color = ""
     if back:
@@ -57,7 +54,7 @@ def color_print_line(
     print(color + message + Fore.RESET + Back.RESET)
 
 
-def color_print_title(background: Union[str, AnsiBack], message: str):
+def color_print_title(background: str | AnsiBack, message: str):
     """Print dashed title line with black foreground colour and reset the color afterwards."""
     message = f"------ {message} ------"
     color_print_line(background, Fore.BLACK, message)
@@ -102,21 +99,23 @@ def _add_field_to(
     event: dict
         Original log-event that logprep is currently processing
     field: tuple
-        A key value pair describing the field that should be added. The key is the dotted subfield string indicating
-        the target. The value is the content that should be added to the named target. The content can be of type
-        str, float, int, list, dict.
+        A key value pair describing the field that should be added. The key is the dotted subfield string
+        indicating the target. The value is the content that should be added to the named target.
+        The content can be of type str, float, int, list, dict.
     rule: Rule
         A rule that initiated the field addition, is used for proper error handling.
     merge_with_target: bool, optional
-        Flag that determines whether the content should be merged with an existing target_field. Defaults to False.
+        Flag that determines whether the content should be merged with an existing target_field.
+        Defaults to False.
     overwrite_target: bool, optional
-        Flag that determines whether the target_field should be overwritten by content. Defaults to False.
+        Flag that determines whether the target_field should be overwritten by content.
+        Defaults to False.
 
     Raises
     ------
     FieldExistsWarning
-        If the target_field already exists and overwrite_target_field is False, or if extends_lists is True but
-        the existing field is not a list.
+        If the target_field already exists and overwrite_target_field is False,
+        or if extends_lists is True but the existing field is not a list.
     """
     if merge_with_target and overwrite_target:
         raise ValueError("Can't merge with and overwrite a target field at the same time")
@@ -156,8 +155,8 @@ def _add_field_to(
 
 def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
     """
-    Adds a field to an object, ignoring the FieldExistsWarning if the field already exists. Is only needed in the
-    add_batch_to map function. Without this, the map would terminate early.
+    Adds a field to an object, ignoring the FieldExistsWarning if the field already exists.
+    Is only needed in the add_batch_to map function. Without this, the map would terminate early.
 
     Parameters
     ----------
@@ -186,29 +185,33 @@ def add_fields_to(
     skip_none: bool = True,
 ) -> None:
     """
-    Handles the batch addition operation while raising a FieldExistsWarning with all unsuccessful targets.
+    Handles the batch addition operation while raising a FieldExistsWarning with
+    all unsuccessful targets.
 
     Parameters
     ----------
         event: dict
             The event object to which fields are to be added.
         fields: dict
-            A dict with key value pairs describing the fields that should be added. The key is the dotted subfield
-            string indicating the target. The value is the content that should be added to the named target. The
-            content can be of type: str, float, int, list, dict.
+            A dict with key value pairs describing the fields that should be added.
+            The key is the dotted subfield string indicating the target.
+            The value is the content that should be added to the named target.
+            The content can be of type: str, float, int, list, dict.
         rule: Rule, optional
             A rule that initiated the field addition, is used for proper error handling.
         merge_with_target: bool, optional
-            A boolean indicating whether to merge if the target field already exists. Defaults to False.
+            A boolean indicating whether to merge if the target field already exists.
+            Defaults to False.
         overwrite_target: bool, optional
-            A boolean indicating whether to overwrite the target field if it already exists. Defaults to False.
+            A boolean indicating whether to overwrite the target field if it already exists.
+            Defaults to False.
         skip_none: bool, optional
             A boolean indicating whether to filter out None-valued fields. Defaults to True.
 
     Raises
     ------
-        FieldExistsWarning: If there are targets to which the content could not be added due to field
-        existence restrictions.
+        FieldExistsWarning: If there are targets to which the content could not be added due to
+        field existence restrictions.
     """
     # filter out None values
     fields = {key: value for key, value in fields.items() if not skip_none or value is not None}
@@ -229,7 +232,7 @@ def add_fields_to(
         raise FieldExistsWarning(rule, event, unsuccessful_targets_resolved)
 
 
-def _get_slice_arg(slice_item) -> Optional[int]:
+def _get_slice_arg(slice_item) -> int | None:
     return int(slice_item) if slice_item else None
 
 
@@ -269,7 +272,7 @@ def _get_item(container: FieldValue, key: str) -> FieldValue:
         The key is not a valid slice or the container is neither a dict nor a list
     """
     try:
-        return dict.__getitem__(typing.cast(dict[str, FieldValue], container), key)
+        return dict.__getitem__(cast(dict[str, FieldValue], container), key)
     except TypeError:
         index_or_slice: slice | int
         if ":" in key:
@@ -277,7 +280,7 @@ def _get_item(container: FieldValue, key: str) -> FieldValue:
             index_or_slice = slice(*slice_args)
         else:
             index_or_slice = int(key)
-        return list.__getitem__(typing.cast(list[FieldValue], container), index_or_slice)
+        return list.__getitem__(cast(list[FieldValue], container), index_or_slice)
 
 
 def get_dotted_field_value(event: dict[str, FieldValue], dotted_field: str) -> FieldValue:
@@ -405,7 +408,7 @@ def get_dotted_field_list(dotted_field: str) -> list[str]:
     return dotted_field.split(".")
 
 
-def pop_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
+def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
     """
     Remove and return dotted field. Returns None is field does not exist.
 
