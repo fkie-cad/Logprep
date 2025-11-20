@@ -122,7 +122,7 @@ standard values if not explicitly set.
 
 from functools import cached_property
 from types import MappingProxyType
-from typing import Optional, Union
+from typing import cast
 from zoneinfo import ZoneInfo
 
 from attrs import asdict, define, field, fields, validators
@@ -181,11 +181,11 @@ class PreDetectorRule(Rule):
         which can be configured in the pipeline for the pre_detector.
         If this field was specified, then the rule will *only* trigger in case one of
         the IPs from the list is also available in the specified fields."""
-        sigma_fields: Union[list, bool] = field(
+        sigma_fields: list | bool = field(
             validator=validators.instance_of((list, bool)), factory=list
         )
         """tbd"""
-        link: Optional[str] = field(
+        link: str | None = field(
             validator=validators.optional(validators.instance_of(str)), default=None
         )
         """A link to the rule if applicable."""
@@ -229,7 +229,7 @@ class PreDetectorRule(Rule):
     @property
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
-        return self._config
+        return cast("PreDetectorRule.Config", self._config)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PreDetectorRule):

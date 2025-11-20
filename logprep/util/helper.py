@@ -86,7 +86,7 @@ def _add_and_not_overwrite_key(sub_dict, key):
 def _add_field_to(
     event: dict,
     field: tuple,
-    rule: "Rule",
+    rule: "Rule" | None,
     merge_with_target: bool = False,
     overwrite_target: bool = False,
 ) -> None:
@@ -179,7 +179,7 @@ def _add_field_to_silent_fail(*args, **kwargs) -> None | str:
 def add_fields_to(
     event: dict,
     fields: dict,
-    rule: "Rule" = None,
+    rule: "Rule" | None = None,
     merge_with_target: bool = False,
     overwrite_target: bool = False,
     skip_none: bool = True,
@@ -525,7 +525,7 @@ def copy_fields_to_event(
     skip_missing: bool = True,
     merge_with_target: bool = False,
     overwrite_target: bool = False,
-    rule: "Rule" = None,
+    rule: "Rule" | None = None,
 ) -> None:
     """
     Copies fields from source_event to target_event.

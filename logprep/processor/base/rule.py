@@ -290,9 +290,9 @@ class Rule:
         return self.Metrics(labels=self.metric_labels)
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, Rule) and all(
-            [other.filter == self._filter, other._config == self._config]
-        )
+        if not isinstance(other, Rule):
+            return NotImplemented
+        return all([other.filter == self._filter, other._config == self._config])
 
     def __hash__(self) -> int:
         return id(self)
