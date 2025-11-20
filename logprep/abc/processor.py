@@ -241,8 +241,8 @@ class Processor(Component):
             event.clear()
         if not hasattr(rule, "delete_source_fields"):
             return
-        if rule.delete_source_fields:
-            for dotted_field in rule.source_fields:
+        if getattr(rule, "delete_source_fields", False):
+            for dotted_field in getattr(rule, "source_fields", []):
                 pop_dotted_field_value(event, dotted_field)
 
     @abstractmethod
@@ -317,8 +317,8 @@ class Processor(Component):
         add_fields_to(
             event,
             fields={rule.target_field: result},
-            merge_with_target=rule.merge_with_target,
-            overwrite_target=rule.overwrite_target,
+            merge_with_target=getattr(rule, "merge_with_target", False),
+            overwrite_target=getattr(rule, "overwrite_target", False),
         )
 
     def setup(self):
