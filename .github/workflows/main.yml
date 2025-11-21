@@ -8,6 +8,7 @@ jobs:
     uses: ./.github/workflows/testing.yml
   code-quality:
     uses: ./.github/workflows/code-quality.yml
+    secrets: inherit
     with:
       path: "**/*.py"
   helm-charts:

@@ -35,6 +35,7 @@ jobs:
           make clean html
   code-quality:
     uses: ./.github/workflows/code-quality.yml
+    secrets: inherit
     with:
       path: "**/*.py"
   containerbuild:
