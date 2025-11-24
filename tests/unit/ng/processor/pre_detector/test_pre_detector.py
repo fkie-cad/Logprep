@@ -11,6 +11,22 @@ from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.sre_event import SreEvent
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
+DETECTION_EVENT_FIELDS = frozenset(
+    {
+        "rule_filter",
+        "description",
+        "pre_detection_id",
+        "id",
+        "title",
+        "severity",
+        "mitre",
+        "case_condition",
+        "link",
+        "creation_timestamp",
+    }
+)
+"""Static fields known to be written to the detection events by the processor"""
+
 
 class TestPreDetector(BaseProcessorTestCase):
     CONFIG = {
@@ -629,19 +645,32 @@ class TestPreDetector(BaseProcessorTestCase):
         event = self.object.process(event)
         self._assert_equality_of_results(event, event_data, expected_detection_results)
 
+    def test_detection_event_fields_is_correct(self):
+        event_data = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
+        self._load_rule(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    "link": "some-uri",
+                },
+                "description": "Test rule one",
+            }
+        )
+        event = LogEvent(event_data, original=b"")
+        event = self.object.process(event)
+        detection_event = event.extra_data[0].data
+        detection_event_keys = set(detection_event.keys())
+
+        assert detection_event_keys == DETECTION_EVENT_FIELDS
+
     @pytest.mark.parametrize(
         "field_name",
-        [
-            "rule_filter",
-            "description",
-            "pre_detection_id",
-            "id",
-            "title",
-            "severity",
-            "mitre",
-            "case_condition",
-            "link",
-        ],
+        DETECTION_EVENT_FIELDS,
     )
     def test_copy_fields_to_detection_event_fails_on_illegal_fields(self, field_name: str):
         with pytest.raises(ValueError, match="Illegal fields") as exc_info:
