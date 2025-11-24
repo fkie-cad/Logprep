@@ -143,7 +143,12 @@ SPECIAL_FIELD_TYPES = frozenset(
 
 
 def _validate_copy_fields_to_detection_event(config: "PreDetectorRule.Config", _, value: set[str]):
-    field_names_set_by_processor = {"rule_filter", "description", "pre_detection_id"}
+    field_names_set_by_processor = {
+        "rule_filter",
+        "description",
+        "pre_detection_id",
+        "creation_timestamp",
+    }
 
     rule_config_field_names = set(f.name for f in fields(type(config)))
     field_names_set_by_rule = rule_config_field_names - SPECIAL_FIELD_TYPES
