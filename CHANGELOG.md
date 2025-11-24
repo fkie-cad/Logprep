@@ -1,5 +1,13 @@
 ## Upcoming Changes
+### Breaking
 
+### Features
+
+### Improvements
+
+### Bugfix
+
+## 18.0.0
 ### Breaking
 * pre detector events now also include host.name if the field value is None
 
