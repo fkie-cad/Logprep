@@ -141,24 +141,28 @@ SPECIAL_FIELD_TYPES = frozenset(
     )
 )
 
-
-def _validate_copy_fields_to_detection_event(config: "PreDetectorRule.Config", _, value: set[str]):
-    field_names_set_by_processor = {
+FIELD_NAMES_SET_BY_PROCESSOR = frozenset(
+    {
         "rule_filter",
         "description",
         "pre_detection_id",
         "creation_timestamp",
     }
+)
 
+
+def _validate_copy_fields_to_detection_event(
+    config: "PreDetectorRule.Config", _, copy_fields_to_detection_event: set[str]
+):
     rule_config_field_names = set(f.name for f in fields(type(config)))
     field_names_set_by_rule = rule_config_field_names - SPECIAL_FIELD_TYPES
 
-    illegal_field_names = field_names_set_by_processor | field_names_set_by_rule
+    illegal_field_names = FIELD_NAMES_SET_BY_PROCESSOR | field_names_set_by_rule
 
-    if value & illegal_field_names:
+    if copy_fields_to_detection_event & illegal_field_names:
         raise ValueError(
-            f"Illegal fields specified for `copy_fields_to_detection_event`. "
-            f"Fields ({', '.join(value & illegal_field_names)}) are not allowed. "
+            f"Illegal fields specified for `copy_fields_to_detection_event`: "
+            f"{', '.join(copy_fields_to_detection_event & illegal_field_names)}."
         )
 
 
@@ -229,6 +233,8 @@ class PreDetectorRule(Rule):
         """
         Field (names) from the triggering event to be added to the detection events.
         Defaults to ["host.name"] for downwards compatibility reasons.
+        Collissions with field names which are already written by this processor are not allowed and
+        will be rejected with a configuration validation error.
         """
 
     @property
