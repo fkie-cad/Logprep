@@ -21,6 +21,7 @@
 * mypy checks in the pull request workflow are now applied to the same directories as in the main workflow
 * update codecov-action from v2 to v5
 * add token for codecov workflow
+* add new test to validate that per-logger log levels correctly override the global log level in LoggerConfig
 
 ### Bugfix
 * fix opensearch output not respecting thread_count config parameter

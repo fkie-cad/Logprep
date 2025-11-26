@@ -224,7 +224,11 @@ from logprep.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
     MIN_CONFIG_REFRESH_INTERVAL,
 )
-from logprep.util.getter import GetterFactory, GetterNotFoundError, RefreshableGetterError
+from logprep.util.getter import (
+    GetterFactory,
+    GetterNotFoundError,
+    RefreshableGetterError,
+)
 from logprep.util.rule_loader import RuleLoader
 
 logger = logging.getLogger("Config")
@@ -428,7 +432,9 @@ class LoggerConfig:
     def _set_loggers_levels(self) -> None:
         """sets the loggers levels to the default or to the given level."""
         for logger_name, logger_config in self.loggers.items():
-            default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
+            default_logger_config = deepcopy(
+                DEFAULT_LOG_CONFIG.get("loggers", {}).get(logger_name, {})
+            )
             if "level" in logger_config:
                 default_logger_config.update({"level": logger_config["level"]})
             self.loggers[logger_name].update(default_logger_config)
@@ -460,8 +466,6 @@ class Configuration:
     If configured the configuration will only be reloaded if the configuration version changes.
     If http errors occurs on configuration reload `config_refresh_interval` is set to a quarter
     of the current `config_refresh_interval` until a minimum of 5 seconds is reached.
-    Note that under high system load, the refresh may be delayed and the configured interval
-    represents a best-effort target rather than an exact timing guarantee.
     Defaults to :code:`None`, which means that the configuration will not be refreshed.
 
     .. security-best-practice::

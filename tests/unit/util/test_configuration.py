@@ -1,11 +1,12 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
+# pylint: disable=import-untyped
 import json
+import logging
 import os
 import uuid
 from importlib.metadata import version
-from logging import getLogger
 from pathlib import Path
 from unittest import mock
 
@@ -32,7 +33,7 @@ from tests.testdata.metadata import (
 
 in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
 
-logger = getLogger()
+logger = logging.getLogger()
 
 
 @pytest.fixture(name="config_path", scope="function")
@@ -1543,3 +1544,82 @@ class TestLoggerConfig:
             "queue",
         ], "should be default"
         assert config.loggers.get("opensearch").get("level") == "ERROR", "should be default"
+
+    def test_default_logger_configuration_matches_expected_values(self):
+        expected_logger_configs = {
+            "loggers": {
+                "root": {"handlers": ["queue"], "level": "INFO"},
+                "console": {"handlers": ["console"]},
+                "filelock": {"level": "ERROR"},
+                "urllib3.connectionpool": {"level": "ERROR"},
+                "opensearch": {"level": "ERROR"},
+            }
+        }
+
+        config = LoggerConfig()
+
+        assert config.loggers == expected_logger_configs["loggers"]
+
+    def test_logger_config_does_not_affect_logging_before_setup(self):
+        logger_config = {
+            "logger": {
+                "loggers": {
+                    "root": {"level": "WARNING"},
+                    "KafkaOutput": {"level": "DEBUG"},
+                    "KafkaInput": {"level": "ERROR"},
+                    "DummyOutput": {"level": "ERROR"},
+                }
+            }
+        }
+        _ = Configuration(**logger_config)
+
+        root_logger = logging.getLogger()
+        assert root_logger.getEffectiveLevel() == logging.INFO
+
+        assert logging.getLogger("KafkaOutput").getEffectiveLevel() == logging.INFO
+        assert logging.getLogger("KafkaInput").getEffectiveLevel() == logging.INFO
+        assert logging.getLogger("DummyOutput").getEffectiveLevel() == logging.INFO
+
+    def test_logger_config_applies_effective_levels_after_setup(self):
+        logger_config = {
+            "logger": {
+                "loggers": {
+                    "root": {"level": "WARNING"},
+                    "KafkaOutput": {"level": "DEBUG"},
+                    "KafkaInput": {"level": "ERROR"},
+                    "DummyOutput": {"level": "ERROR"},
+                }
+            }
+        }
+
+        test_config = Configuration(**logger_config)
+        test_config.logger.setup_logging()
+
+        root_logger = logging.getLogger()
+        assert root_logger.getEffectiveLevel() == logging.WARNING
+        assert logging.getLogger("KafkaOutput").getEffectiveLevel() == logging.DEBUG
+        assert logging.getLogger("KafkaInput").getEffectiveLevel() == logging.ERROR
+        assert logging.getLogger("DummyOutput").getEffectiveLevel() == logging.ERROR
+
+    def test_logger_config_overrides_only_specified_loggers_and_falls_back_to_defaults(self):
+        logger_config = {
+            "logger": {
+                "loggers": {
+                    "root": {"level": "WARNING"},
+                    "KafkaInput": {"level": "ERROR"},
+                }
+            }
+        }
+
+        config = Configuration(**logger_config)
+        config.logger.setup_logging()
+
+        root_logger = logging.getLogger()
+        kafka_output_logger = logging.getLogger("KafkaOutput")
+        kafka_input_logger = logging.getLogger("KafkaInput")
+        dummy_output_logger = logging.getLogger("DummyOutput")
+
+        assert root_logger.getEffectiveLevel() == logging.INFO
+        assert kafka_output_logger.getEffectiveLevel() == logging.INFO
+        assert dummy_output_logger.getEffectiveLevel() == logging.INFO
+        assert kafka_input_logger.getEffectiveLevel() == logging.ERROR
