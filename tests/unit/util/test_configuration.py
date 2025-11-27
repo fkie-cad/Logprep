@@ -1561,6 +1561,16 @@ class TestLoggerConfig:
         assert config.loggers == expected_logger_configs["loggers"]
 
     def test_logger_config_does_not_affect_logging_before_setup(self):
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+
+        kafka_output_logger = logging.getLogger("KafkaOutput")
+        kafka_input_logger = logging.getLogger("KafkaInput")
+        dummy_output_logger = logging.getLogger("DummyOutput")
+
+        for logger_ in (kafka_output_logger, kafka_input_logger, dummy_output_logger):
+            logger_.setLevel(logging.NOTSET)
+
         logger_config = {
             "logger": {
                 "loggers": {
@@ -1571,37 +1581,51 @@ class TestLoggerConfig:
                 }
             }
         }
+
         _ = Configuration(**logger_config)
 
-        root_logger = logging.getLogger()
         assert root_logger.getEffectiveLevel() == logging.INFO
-
-        assert logging.getLogger("KafkaOutput").getEffectiveLevel() == logging.INFO
-        assert logging.getLogger("KafkaInput").getEffectiveLevel() == logging.INFO
-        assert logging.getLogger("DummyOutput").getEffectiveLevel() == logging.INFO
+        assert kafka_output_logger.getEffectiveLevel() == logging.INFO
+        assert kafka_input_logger.getEffectiveLevel() == logging.INFO
+        assert dummy_output_logger.getEffectiveLevel() == logging.INFO
 
     def test_logger_config_applies_effective_levels_after_setup(self):
+        root_logger = logging.getLogger()
+        kafka_output_logger = logging.getLogger("KafkaOutput")
+        kafka_input_logger = logging.getLogger("KafkaInput")
+        dummy_output_logger = logging.getLogger("DummyOutput")
+
+        for logger_ in (root_logger, kafka_output_logger, kafka_input_logger, dummy_output_logger):
+            logger_.setLevel(logging.NOTSET)
+
         logger_config = {
             "logger": {
+                "level": "WARNING",
                 "loggers": {
-                    "root": {"level": "WARNING"},
                     "KafkaOutput": {"level": "DEBUG"},
                     "KafkaInput": {"level": "ERROR"},
                     "DummyOutput": {"level": "ERROR"},
-                }
+                },
             }
         }
 
-        test_config = Configuration(**logger_config)
-        test_config.logger.setup_logging()
+        config = Configuration(**logger_config)
+        config.logger.setup_logging()
 
-        root_logger = logging.getLogger()
         assert root_logger.getEffectiveLevel() == logging.WARNING
-        assert logging.getLogger("KafkaOutput").getEffectiveLevel() == logging.DEBUG
-        assert logging.getLogger("KafkaInput").getEffectiveLevel() == logging.ERROR
-        assert logging.getLogger("DummyOutput").getEffectiveLevel() == logging.ERROR
+        assert kafka_output_logger.getEffectiveLevel() == logging.DEBUG
+        assert kafka_input_logger.getEffectiveLevel() == logging.ERROR
+        assert dummy_output_logger.getEffectiveLevel() == logging.ERROR
 
     def test_logger_config_overrides_only_specified_loggers_and_falls_back_to_defaults(self):
+        root_logger = logging.getLogger()
+        kafka_output_logger = logging.getLogger("KafkaOutput")
+        kafka_input_logger = logging.getLogger("KafkaInput")
+        dummy_output_logger = logging.getLogger("DummyOutput")
+
+        for logger_ in (root_logger, kafka_output_logger, kafka_input_logger, dummy_output_logger):
+            logger_.setLevel(logging.NOTSET)
+
         logger_config = {
             "logger": {
                 "loggers": {
@@ -1614,12 +1638,40 @@ class TestLoggerConfig:
         config = Configuration(**logger_config)
         config.logger.setup_logging()
 
-        root_logger = logging.getLogger()
-        kafka_output_logger = logging.getLogger("KafkaOutput")
-        kafka_input_logger = logging.getLogger("KafkaInput")
-        dummy_output_logger = logging.getLogger("DummyOutput")
-
         assert root_logger.getEffectiveLevel() == logging.INFO
         assert kafka_output_logger.getEffectiveLevel() == logging.INFO
         assert dummy_output_logger.getEffectiveLevel() == logging.INFO
         assert kafka_input_logger.getEffectiveLevel() == logging.ERROR
+
+    def test_logger_config_sets_root_level_from_global_level(self):
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.NOTSET)
+
+        logger_config = {
+            "logger": {
+                "level": "ERROR",
+            }
+        }
+
+        config = Configuration(**logger_config)
+        config.logger.setup_logging()
+
+        assert root_logger.getEffectiveLevel() == logging.ERROR
+
+    def test_logger_config_ignores_root_level_in_loggers_mapping_when_global_level_is_set(self):
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.NOTSET)
+
+        logger_config = {
+            "logger": {
+                "level": "ERROR",
+                "loggers": {
+                    "root": {"level": "INFO"},
+                },
+            }
+        }
+
+        config = Configuration(**logger_config)
+        config.logger.setup_logging()
+
+        assert root_logger.getEffectiveLevel() == logging.ERROR
