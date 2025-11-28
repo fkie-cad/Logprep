@@ -407,7 +407,15 @@ class LoggerConfig:
                 "py.warnings": {"level": "ERROR"}
                 "Runner": {"level": "DEBUG"}
 
-        """
+    .. note::
+
+       The effective log level of the root logger is controlled via :code:`logger.level`.
+       By default, :code:`logger.level` is set to :code:`INFO` if not configured explicitly.
+       A value configured under :code:`loggers.root.level` is currently ignored for the
+       root logger, because it will always be overwritten by :code:`logger.level`.
+       Providing :code:`loggers.root.level` therefore has no effect (except for triggering
+       a warning during startup).
+    """
 
     def __attrs_post_init__(self) -> None:
         """Create a LoggerConfig from a logprep logger configuration."""
@@ -436,6 +444,11 @@ class LoggerConfig:
                 DEFAULT_LOG_CONFIG.get("loggers", {}).get(logger_name, {})
             )
             if "level" in logger_config:
+                if logger_name == "root":
+                    logger.warning(
+                        f"setting loggers.root.level is discouraged as this value is being overwritten by the global (default) level ({self.level})"
+                    )
+
                 merged_logger_config.update({"level": logger_config["level"]})
             self.loggers[logger_name].update(merged_logger_config)
 
