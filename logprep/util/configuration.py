@@ -572,7 +572,7 @@ class Configuration:
     .. security-best-practice::
        :title: Configuration - Metrics Configuration
        :location: config.metrics.uvicorn_config
-       :suggested-value: metrics.uvicorn_config.access_log: true, metrics.uvicorn_config.server_header: false, metrics.uvicorn_config.data_header: false
+       :suggested-value: metrics.uvicorn_config.access_log: true, metrics.uvicorn_config.server_header: false, metrics.uvicorn_config.date_header: false
 
        Additionally to the below it is recommended to configure `ssl on the metrics server endpoint
        <https://www.uvicorn.org/settings/#https>`_

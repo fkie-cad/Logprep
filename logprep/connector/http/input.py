@@ -387,7 +387,7 @@ class HttpInput(Input):
            :title: Uvicorn Webserver Configuration
            :location: uvicorn_config
            :suggested-value: uvicorn_config.access_log: true,
-            uvicorn_config.server_header: false, uvicorn_config.data_header: false
+            uvicorn_config.server_header: false, uvicorn_config.date_header: false
 
            Additionally to the below it is recommended to configure
            `ssl` on the metrics server endpoint
