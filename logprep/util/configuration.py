@@ -438,7 +438,13 @@ class LoggerConfig:
         dictConfig(log_config)
 
     def _set_loggers_levels(self) -> None:
-        """sets the loggers levels to the default or to the given level."""
+        """Normalize per-logger configuration and preserve explicit levels.
+
+        For each logger configured in :attr:`loggers`, this method prepares a
+        default configuration and makes sure that any explicitly configured
+        ``level`` is kept when defaults are applied.
+        """
+
         for logger_name, logger_config in self.loggers.items():
             merged_logger_config = deepcopy(
                 DEFAULT_LOG_CONFIG.get("loggers", {}).get(logger_name, {})
@@ -450,6 +456,7 @@ class LoggerConfig:
                     )
 
                 merged_logger_config.update({"level": logger_config["level"]})
+
             self.loggers[logger_name].update(merged_logger_config)
 
     def _set_defaults(self) -> None:

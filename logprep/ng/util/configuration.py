@@ -457,7 +457,13 @@ class LoggerConfig:
                 DEFAULT_LOG_CONFIG.get("loggers", {}).get(logger_name, {})
             )
             if "level" in logger_config:
+                if logger_name == "root":
+                    logger.warning(
+                        f"setting loggers.root.level is discouraged as this value is being overwritten by the global (default) level ({self.level})"
+                    )
+
                 merged_logger_config.update({"level": logger_config["level"]})
+
             self.loggers[logger_name].update(merged_logger_config)
 
     def _set_defaults(self) -> None:
