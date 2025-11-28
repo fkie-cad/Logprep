@@ -6,6 +6,7 @@
 ### Improvements
 
 ### Bugfix
+* fix incorrect default-logger lookup by consistently resolving defaults from `DEFAULT_LOG_CONFIG["loggers"]`.
 
 ## 18.0.0
 ### Breaking
