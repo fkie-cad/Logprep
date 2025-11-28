@@ -6,6 +6,7 @@ from copy import deepcopy
 import pytest
 from deepdiff import DeepDiff
 
+from logprep.util.helper import get_dotted_field_value
 from tests.unit.processor.base import BaseProcessorTestCase
 
 DETECTION_EVENT_FIELDS = frozenset(
@@ -711,3 +712,52 @@ class TestPreDetector(BaseProcessorTestCase):
                 }
             )
         assert exc_info is not None
+
+    def test_host_name_not_reused_with_same_rule_for_different_events(self):
+        rule = {
+            "filter": "match",
+            "pre_detector": {
+                "id": "RULE_ONE_ID_A",
+                "title": "RULE_ONE",
+                "severity": "critical",
+                "mitre": ["attack.test1"],
+                "case_condition": "directly",
+            },
+            "description": "Test rule",
+        }
+        self._load_rule(rule)
+
+        document = {"match": "something", "host": {"name": "host_name"}}
+        detection_results = self.object.process(document).data[0][0]
+        assert get_dotted_field_value(detection_results, "host.name") == "host_name"
+
+        document = {"match": "something"}
+        detection_results = self.object.process(document).data[0][0]
+        assert get_dotted_field_value(detection_results, "host.name") is None
+
+    def test_extra_rule_config_fields_not_reused_with_same_rule_for_different_events(self):
+        extra_rule_config = {"copy_fields_to_detection_event": {"host.name", "custom"}}
+        self._load_rule(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
+                    "title": "RULE_ONE",
+                    "severity": "critical",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "case_condition": "directly",
+                    **extra_rule_config,
+                },
+                "description": "Test rule one",
+            }
+        )
+
+        document = {"match": "something", "host": {"name": "host_name"}, "custom": "custom_value"}
+        detection_results = self.object.process(document).data[0][0]
+        assert get_dotted_field_value(detection_results, "host.name") == "host_name"
+        assert get_dotted_field_value(detection_results, "custom") == "custom_value"
+
+        document = {"match": "something"}
+        detection_results = self.object.process(document).data[0][0]
+        assert get_dotted_field_value(detection_results, "host.name") is None
+        assert get_dotted_field_value(detection_results, "custom") is None
