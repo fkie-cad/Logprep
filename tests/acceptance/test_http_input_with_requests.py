@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+import json
 import time
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
@@ -77,3 +78,52 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, confi
         time.sleep(0.5)
 
         assert "my message" in output_path.read_text()
+
+
+@pytest.mark.parametrize(
+    "collect_meta, expect_metadata",
+    [
+        (True, True),
+        (False, False),
+    ],
+    ids=["collect_meta_true", "collect_meta_false"],
+)
+def test_http_input_respects_collect_meta_flag(
+    tmp_path: Path,
+    config: Configuration,
+    collect_meta: bool,
+    expect_metadata: bool,
+):
+    config.input["testinput"]["collect_meta"] = collect_meta
+
+    output_path = tmp_path / "output.jsonl"
+    config.output = {
+        "testoutput": {
+            "type": "jsonl_output",
+            "output_file": str(output_path),
+        }
+    }
+
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
+
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
+
+        requests.post(
+            "https://127.0.0.1:9000/plaintext",
+            data="my message",
+            verify=False,
+            timeout=5,
+        )
+
+        time.sleep(0.5)
+        content_str = output_path.read_text()
+        content_json = json.loads(content_str)
+
+        if expect_metadata:
+            assert "@metadata" in content_json, content_str
+            for field in ("url", "remote_addr", "user_agent"):
+                assert field in content_json["@metadata"], f"{field} not in {content_str}"
+        else:
+            assert "@metadata" not in content_json, content_str
