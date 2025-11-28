@@ -277,7 +277,7 @@ def test_config_loglevel_error_hides_info(tmp_path):
                 if not output:
                     break
 
-                assert not re.search(r"root.*INFO", output), output
+                assert not re.search(r"root\s.*INFO", output), output
 
 
 def test_config_loglevel_info_shows_info(tmp_path):
@@ -305,7 +305,7 @@ def test_config_loglevel_info_shows_info(tmp_path):
                 if not output:
                     break
 
-                if re.search(r"root.*INFO", output):
+                if re.search(r"root\s.*INFO", output):
                     info_logged = True
                     break
 
