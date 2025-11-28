@@ -110,8 +110,8 @@ dev = [
   "pytest-asyncio",
   "pre-commit",
   "mypy>=1.18.2",
-  "types-requests",
   "psutil",
+  "types-requests",
   "types-psutil",
   "types-PyYaml",
 ]
@@ -187,6 +187,11 @@ defining-attr-methods="__init__,__new__,setUp"
 exclude = "tests/.*"
 follow_imports = "skip"
 follow_imports_for_stubs = "True"
+
+# Evidently looking at dev Packages, they are installed, mypy doesnt seem to think so
+[[tool.mypy.overrides]]
+module = ["requests.*"]
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["logprep.framework.pipeline_manager.*"]

@@ -172,6 +172,15 @@ def raise_request_exceptions(func: Callable):
     return func_wrapper
 
 
+default_meta_headers = frozenset(
+    [
+        "url",
+        "remote_addr",
+        "user-agent",
+    ]
+)
+
+
 def add_metadata(func: Callable):
     """Decorator to add metadata to resulting http event.
     Uses attribute collect_meta of endpoint class to decide over metadata collection
@@ -179,14 +188,22 @@ def add_metadata(func: Callable):
     """
 
     async def func_wrapper(*args, **kwargs):
-        req = args[1]
-        endpoint = args[0]
-        if endpoint.collect_meta:
-            metadata = {
-                "url": req.url,
-                "remote_addr": req.remote_addr,
-                "user_agent": req.user_agent,
-            }
+        req: falcon.Request = args[1]
+        endpoint: HttpEndpoint = args[0]
+
+        if endpoint.collect_meta or set(endpoint.copy_headers_to_logs) != default_meta_headers:
+            metadata = {}
+            for header in endpoint.copy_headers_to_logs:
+                # Remote_addr and url are special cases, because those are not copied 1 to 1 from headers
+                match header:
+                    case "remote_addr":
+                        metadata[header] = req.remote_addr
+                    case "url":
+                        metadata[header] = req.url
+                    case _:
+                        key = header.replace("-", "_").lower()
+                        metadata[key] = req.get_header(header, False)
+
             kwargs["metadata"] = {endpoint.metafield_name: metadata}
         else:
             kwargs["metadata"] = {}
@@ -231,9 +248,13 @@ class HttpEndpoint(ABC):
         metafield_name: str,
         credentials: Credentials,
         metrics: "HttpInput.Metrics",
+        copy_headers_to_logs: list[str],
     ) -> None:
         self.messages = messages
         self.original_event_field = original_event_field
+        self.copy_headers_to_logs = copy_headers_to_logs
+
+        # Deprecated
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
         self.credentials = credentials
@@ -432,8 +453,15 @@ class HttpInput(Input):
         be smaller than default value of 15.000 messages.
         """
 
-        collect_meta: str = field(validator=validators.instance_of(bool), default=True)
-        """Defines if metadata should be collected
+        copy_headers_to_logs: List[str] = field(
+            validator=validators.instance_of(list),
+            default=list(default_meta_headers),
+        )
+        """Defines what metadata should be collected"""
+
+        collect_meta: bool = field(validator=validators.instance_of(bool), default=True)
+        """Deprecated use copy_headers_to_logs instead
+        Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
 
@@ -449,7 +477,9 @@ class HttpInput(Input):
 
         original_event_field: dict = field(
             validator=[
+                # type: ignore
                 validators.optional(
+                    # type: ignore
                     validators.deep_mapping(
                         key_validator=validators.in_(["format", "target_field"]),
                         value_validator=validators.instance_of(str),
@@ -506,6 +536,7 @@ class HttpInput(Input):
 
         endpoints_config = {}
         collect_meta = self._config.collect_meta
+        copy_headers_to_logs = self._config.copy_headers_to_logs
         metafield_name = self._config.metafield_name
         original_event_field = self._config.original_event_field
         cred_factory = CredentialsFactory()
@@ -521,6 +552,7 @@ class HttpInput(Input):
                 metafield_name,
                 credentials,
                 self.metrics,
+                copy_headers_to_logs,
             )
 
         self.app = self._get_asgi_app(endpoints_config)

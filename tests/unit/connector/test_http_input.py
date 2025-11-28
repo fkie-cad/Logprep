@@ -51,7 +51,6 @@ input:
 
 @mock.patch("logprep.connector.http.input.http.ThreadingHTTPServer", new=mock.MagicMock())
 class TestHttpConnector(BaseInputTestCase):
-
     CONFIG: dict = {
         "type": "http_input",
         "message_backlog_size": 100,
