@@ -453,12 +453,12 @@ class LoggerConfig:
         """
 
         for logger_name, logger_config in self.loggers.items():
-            default_logger_config = deepcopy(
+            merged_logger_config = deepcopy(
                 DEFAULT_LOG_CONFIG.get("loggers", {}).get(logger_name, {})
             )
             if "level" in logger_config:
-                default_logger_config.update({"level": logger_config["level"]})
-            self.loggers[logger_name].update(default_logger_config)
+                merged_logger_config.update({"level": logger_config["level"]})
+            self.loggers[logger_name].update(merged_logger_config)
 
     def _set_defaults(self) -> None:
         """Reset all logger configuration keys to :data:`DEFAULT_LOG_CONFIG`.
