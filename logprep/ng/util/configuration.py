@@ -224,7 +224,11 @@ from logprep.ng.util.defaults import (
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
-from logprep.util.getter import GetterFactory, GetterNotFoundError, RefreshableGetterError
+from logprep.util.getter import (
+    GetterFactory,
+    GetterNotFoundError,
+    RefreshableGetterError,
+)
 from logprep.util.rule_loader import RuleLoader
 
 logger = logging.getLogger("Config")
@@ -323,9 +327,16 @@ class MetricsConfig:
 
 @define(kw_only=True)
 class LoggerConfig:
-    """The logger config class used in Configuration.
-    The schema for this class is derived from the python logging module:
+    """Logging configuration used by :class:`Configuration`.
+
+    The design of this class is inspired by the dictionary-based schema used by
+    the Python logging module:
     https://docs.python.org/3/library/logging.config.html#dictionary-schema-details
+
+    It extends the standard schema with convenience fields (e.g. :attr:`level`,
+    :attr:`format`, :attr:`datefmt`) and merges user-defined settings with
+    :data:`DEFAULT_LOG_CONFIG`. The resulting configuration is intended to be
+    compatible with :func:`logging.config.dictConfig`.
     """
 
     _LOG_LEVELS = (
@@ -362,7 +373,9 @@ class LoggerConfig:
     """
     format: str = field(default="", validator=(validators.instance_of(str)), eq=False)
     """The format of the log message as supported by the :code:`LogprepFormatter`.
-    Defaults to :code:`"%(asctime)-15s %(name)-10s %(levelname)-8s: %(message)s"`.
+
+    If not explicitly set, the format defined in :data:`DEFAULT_LOG_FORMAT`
+    from :mod:`logprep.ng.util.defaults` is used.
 
     .. autoclass:: logprep.util.logging.LogprepFormatter
       :no-index:
@@ -379,9 +392,6 @@ class LoggerConfig:
         "filelock", "ERROR"
         "urllib3.connectionpool", "ERROR"
         "opensearch", "ERROR"
-        "uvicorn", "INFO"
-        "uvicorn.access", "INFO"
-        "uvicorn.error", "INFO"
 
     You can alter the log level of the loggers by adding them to the loggers mapping like in the
     example. Logprep opts out of hierarchical loggers and so it is possible to set the log level in
@@ -406,7 +416,13 @@ class LoggerConfig:
         """
 
     def __attrs_post_init__(self) -> None:
-        """Create a LoggerConfig from a logprep logger configuration."""
+        """Normalize and complete the logger configuration based on DEFAULT_LOG_CONFIG.
+
+        This method applies default values from :data:`DEFAULT_LOG_CONFIG`, merges
+        per-logger settings and ensures that the root logger receives the configured
+        :attr:`level`.
+        """
+
         self._set_defaults()
         if not self.level:
             self.level = DEFAULT_LOG_CONFIG.get("loggers", {}).get("root", {}).get("level", "INFO")
@@ -416,25 +432,48 @@ class LoggerConfig:
         self.loggers.get("root", {}).update({"level": self.level})
 
     def setup_logging(self) -> None:
-        """Setup the logging configuration.
-        is called in the :code:`logprep.run_logprep` module.
-        We have to write the configuration to the environment variable :code:`LOGPREP_LOG_CONFIG` to
-        make it available for the uvicorn server in :code:'logprep.util.http'.
+        """Apply the logging configuration to the current process.
+
+        The configuration is serialized to JSON and written to the
+        :envvar:`LOGPREP_LOG_CONFIG` environment variable so that the uvicorn
+        server in :mod:`logprep.util.http` can reuse it. Afterwards the
+        configuration is applied using :func:`logging.config.dictConfig`.
         """
+
         log_config = asdict(self)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
         dictConfig(log_config)
 
     def _set_loggers_levels(self) -> None:
-        """sets the loggers levels to the default or to the given level."""
+        """Normalize per-logger configuration and preserve explicit levels.
+
+        For each logger configured in :attr:`loggers`, this method prepares a
+        default configuration and makes sure that any explicitly configured
+        ``level`` is kept when defaults are applied.
+        """
+
         for logger_name, logger_config in self.loggers.items():
-            default_logger_config = deepcopy(DEFAULT_LOG_CONFIG.get(logger_name, {}))
+            merged_logger_config = deepcopy(
+                DEFAULT_LOG_CONFIG.get("loggers", {}).get(logger_name, {})
+            )
             if "level" in logger_config:
-                default_logger_config.update({"level": logger_config["level"]})
-            self.loggers[logger_name].update(default_logger_config)
+                if logger_name == "root":
+                    logger.warning(
+                        f"setting loggers.root.level is discouraged as this value is being overwritten by the global (default) level ({self.level})"
+                    )
+
+                merged_logger_config.update({"level": logger_config["level"]})
+
+            self.loggers[logger_name].update(merged_logger_config)
 
     def _set_defaults(self) -> None:
-        """resets all keys to the defined defaults except :code:`loggers`."""
+        """Reset all logger configuration keys to :data:`DEFAULT_LOG_CONFIG`.
+
+        All top-level keys except :attr:`loggers` are overwritten with the values
+        from :data:`DEFAULT_LOG_CONFIG`. Per-logger configuration is merged
+        separately in :meth:`_set_loggers_levels`.
+        """
+
         for key, value in DEFAULT_LOG_CONFIG.items():
             if key == "loggers":
                 continue
@@ -456,11 +495,16 @@ class Configuration:
         validator=validators.instance_of((int, type(None))), default=None, eq=False
     )
     """Configures the interval in seconds on which logprep should try to reload the configuration.
+
     If not configured, logprep won't reload the configuration automatically.
-    If configured the configuration will only be reloaded if the configuration version changes.
-    If http errors occurs on configuration reload `config_refresh_interval` is set to a quarter
-    of the current `config_refresh_interval` until a minimum of 5 seconds is reached.
-    Defaults to :code:`None`, which means that the configuration will not be refreshed.
+
+    If configured, the configuration will only be reloaded if the configuration version changes.
+    If HTTP-related errors occur while reloading the configuration
+    (:class:`ConfigGetterException`), :attr:`config_refresh_interval` is set to a
+    quarter of its current value, but never lower than :data:`MIN_CONFIG_REFRESH_INTERVAL`.
+    Values lower than :data:`MIN_CONFIG_REFRESH_INTERVAL` are automatically increased
+    to that minimum. Defaults to :code:`None`, which means that the configuration
+    will not be refreshed.
 
     .. security-best-practice::
        :title: Configuration - Refresh Interval
@@ -468,19 +512,19 @@ class Configuration:
        :suggested-value: <= 300
 
        The refresh interval for the configuration shouldn't be set too high in production
-       environments.
-       It is suggested to not set a value higher than :code:`300` (5 min).
-       That way configuration updates are propagated fairly quickly instead of once a day.
+       environments. It is suggested to not set a value higher than :code:`300` (5 min).
+       That way configuration updates are propagated fairly quickly instead of, for example,
+       only once a day.
 
-       It should also be noted that a new configuration file will be read as long as it is a valid
-       config.
-       There is no further check to ensure credibility.
+       It should also be noted that a new configuration file will be read as long as it is a
+       valid config. There is no further check to ensure credibility.
 
        In case a new configuration could not be retrieved successfully and the
-       :code:`config_refresh_interval` is already reduced automatically to 5 seconds it should be
-       noted that this could lead to a blocking behavior or a significant reduction in performance
-       as logprep is often retrying to reload the configuration.
-       Because of that ensure that the configuration endpoint is always available.
+       :attr:`config_refresh_interval` has already been reduced automatically to
+       :data:`MIN_CONFIG_REFRESH_INTERVAL`, this can lead to blocking behaviour or a
+       significant reduction in performance, as logprep will frequently retry loading the
+       configuration. Because of that, ensure that the configuration endpoint is always
+       available.
     """
     process_count: int = field(
         validator=(validators.instance_of(int), validators.ge(1)), default=1, eq=False
@@ -566,7 +610,7 @@ class Configuration:
     .. security-best-practice::
        :title: Configuration - Metrics Configuration
        :location: config.metrics.uvicorn_config
-       :suggested-value: metrics.uvicorn_config.access_log: true, metrics.uvicorn_config.server_header: false, metrics.uvicorn_config.data_header: false
+        :suggested-value: metrics.uvicorn_config.access_log: true, metrics.uvicorn_config.server_header: false, metrics.uvicorn_config.date_header: false
 
        Additionally to the below it is recommended to configure `ssl on the metrics server endpoint
        <https://www.uvicorn.org/settings/#https>`_
@@ -802,37 +846,33 @@ class Configuration:
         return yaml.dump(self.as_dict())
 
     def reload(self) -> None:
-        """Reloads the application's configuration from the specified sources.
+        """Reload the application's configuration from the configured sources.
 
-        This method attempts to reload the application's configuration by reading from the
-        configured paths or urls. If the new configuration is identical to the current one, it
-        simply updates the refresh interval and continues. If the configuration has changed, it
-        updates the internal state, metrics, and pipeline accordingly.
+        This method attempts to rebuild the configuration from all paths listed in
+        :attr:`config_paths`. If the newly loaded configuration is identical to the
+        current one, the method only updates the refresh interval and continues.
 
-        In case of a failure to load the configuration, it logs the error, updates failure metrics,
-        and, if possible, reduces the configuration refresh interval to attempt more frequent
-        retries.
+        If the configuration has changed, all relevant internal attributes,
+        metrics and the merged pipeline are updated accordingly. The reload
+        process does not raise exceptions to the caller; all errors are handled
+        internally.
 
-        The configuration refresh interval (:code:`config_refresh_interval`) determines how often
-        the configuration should be reloaded. If the configuration reload fails, the interval is
-        temporarily reduced to a quarter of its previous value to allow for quicker recovery. If
-        the reload is successful or the configuration hasn't changed, the interval is set or
-        maintained according to the latest configuration.
+        If configuration sources cannot be retrieved
+        (:class:`ConfigGetterException`), the failure is logged, failure metrics are
+        incremented, and the :attr:`config_refresh_interval` is reduced to a quarter
+        of its current value (but never below :data:`MIN_CONFIG_REFRESH_INTERVAL`).
+        If validation errors occur (:class:`InvalidConfigurationErrors`), the
+        failure is logged and metrics are updated, but the interval is not reduced.
 
-        Note
-        ----
-        The `config_refresh_interval` in the new configuration cannot be set to `None` because it
-        is required to control the periodic reloads of the configuration. If it is missing in the
-        new configuration, the previous interval is retained to ensure the reload mechanism
-        continues to function.
+        The value of :attr:`config_refresh_interval` determines how often periodic
+        reload attempts will be scheduled. If the new configuration does not define
+        this field, the previous interval is retained to ensure continued periodic
+        reloads.
 
-        Raises
-        ------
-        ConfigGetterException
-            If there is an error retrieving the configuration.
-        InvalidConfigurationErrors
-            If the configuration is invalid.
+        No exceptions are propagated from this method; all reload failures are
+        recorded via metrics and logs.
         """
+
         errors: List[Exception] = []
         try:
             new_config = Configuration.from_sources(self.config_paths)

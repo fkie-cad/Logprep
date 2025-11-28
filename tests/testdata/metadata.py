@@ -1,3 +1,5 @@
+"""Provides absolute paths to config and schema files used in tests."""
+
 from os.path import join, split
 
 path_to_testdata = split(__file__)[0]

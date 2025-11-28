@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 # pylint: disable=too-many-locals
+import logging
 import os
 import re
 import tempfile
@@ -9,6 +10,7 @@ from pathlib import Path
 
 import requests
 
+from logprep.util.configuration import LoggerConfig
 from tests.acceptance.util import (
     HTTPServerForTesting,
     convert_to_http_config,
@@ -250,3 +252,61 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
         response = requests.get("http://127.0.0.1:8003/health", timeout=7)
         response.raise_for_status()
         assert "OK" == response.text
+
+
+def test_config_loglevel_error_hides_info(tmp_path):
+    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
+    config = get_default_logprep_config(pipeline, with_hmac=False)
+    config.output.update({"kafka": {"type": "dummy_output", "default": False}})
+
+    logger_config = {
+        "level": "ERROR",
+    }
+    config.logger = LoggerConfig(**logger_config)
+
+    endpoint = "http://localhost:32000"
+    config = convert_to_http_config(config, endpoint)
+    config_path = Path("generated_config.yml")
+    config_path.write_text(config.as_yaml(), encoding="utf-8")
+
+    with HTTPServerForTesting.run_in_thread():
+        with run_logprep(f"{endpoint}/{str(config_path)}") as proc:
+            while True:
+                output = proc.stdout.readline().decode("utf8")
+
+                if not output:
+                    break
+
+                assert not re.search(r"root\s.*INFO", output), output
+
+
+def test_config_loglevel_info_shows_info(tmp_path):
+    pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
+    config = get_default_logprep_config(pipeline, with_hmac=False)
+    config.output.update({"kafka": {"type": "dummy_output", "default": False}})
+
+    logger_config = {
+        "level": "INFO",
+    }
+    config.logger = LoggerConfig(**logger_config)
+
+    endpoint = "http://localhost:32000"
+    config = convert_to_http_config(config, endpoint)
+    config_path = Path("generated_config.yml")
+    config_path.write_text(config.as_yaml(), encoding="utf-8")
+
+    with HTTPServerForTesting.run_in_thread():
+        with run_logprep(f"{endpoint}/{str(config_path)}") as proc:
+            info_logged = False
+
+            while True:
+                output = proc.stdout.readline().decode("utf8")
+
+                if not output:
+                    break
+
+                if re.search(r"root\s.*INFO", output):
+                    info_logged = True
+                    break
+
+            assert info_logged, output
