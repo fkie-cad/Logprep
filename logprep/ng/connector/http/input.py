@@ -88,7 +88,7 @@ Behaviour of HTTP Requests
 
 import queue
 from functools import cached_property
-from typing import Mapping, Type
+from typing import List, Mapping, Type
 
 import falcon
 import requests
@@ -100,6 +100,7 @@ from logprep.connector.http.input import (
     JSONHttpEndpoint,
     JSONLHttpEndpoint,
     PlaintextHttpEndpoint,
+    default_meta_headers,
     logger,
     route_compile_helper,
 )
@@ -202,8 +203,15 @@ class HttpInput(Input):
         be smaller than default value of 15.000 messages.
         """
 
+        copy_headers_to_logs: List[str] = field(
+            validator=validators.instance_of(list),
+            default=list(default_meta_headers),
+        )
+        """Defines what metadata should be collected"""
+
         collect_meta: str = field(validator=validators.instance_of(bool), default=True)
-        """Defines if metadata should be collected
+        """Deprecated use :code:`copy_headers_to_logs` instead.
+        Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
 
@@ -267,6 +275,8 @@ class HttpInput(Input):
         super().setup()
         endpoints_config = {}
         collect_meta = self._config.collect_meta
+        copy_headers_to_logs = self._config.copy_headers_to_logs
+
         metafield_name = self._config.metafield_name
         original_event_field = self._config.original_event_field
         cred_factory = CredentialsFactory()
@@ -286,6 +296,7 @@ class HttpInput(Input):
                 metafield_name,
                 credentials,
                 self.metrics,
+                copy_headers_to_logs,
             )
 
         self.app = self._get_asgi_app(endpoints_config)
