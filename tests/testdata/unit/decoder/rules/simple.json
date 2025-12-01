@@ -1,0 +1,11 @@
+[
+  {
+    "filter": "message",
+    "decoder": {
+      "source_fields": [
+        "message"
+      ],
+      "target_field": "new_field"
+    }
+  }
+]

@@ -15,7 +15,7 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"message": '{"to_decode": "decode value"}'},
-        {"message": "This is a message", "new_field": {"to_decode": "decode value"}},
+        {"message": '{"to_decode": "decode value"}', "new_field": {"to_decode": "decode value"}},
     ),
 ]
 
@@ -26,7 +26,7 @@ class TestDecoder(BaseProcessorTestCase):
 
     CONFIG: dict = {
         "type": "decoder",
-        "rules": [],
+        "rules": ["tests/testdata/unit/decoder/rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)

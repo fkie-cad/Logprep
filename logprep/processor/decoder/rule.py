@@ -40,15 +40,14 @@ Examples for decoder:
 
 """
 
-from attrs import define, field, validators
-from logprep.processor.base.rule import Rule
+from attrs import define
+
+from logprep.processor.field_manager.rule import FieldManagerRule
 
 
-
-class DecoderRule(Rule):
+class DecoderRule(FieldManagerRule):
     """..."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(FieldManagerRule.Config):
         """Config for DecoderRule"""
-        ...
