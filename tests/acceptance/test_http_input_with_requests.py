@@ -117,12 +117,12 @@ def test_http_input_respects_collect_meta_flag(
         )
 
         time.sleep(0.5)
-        content_str = output_path.read_text()
-        content_json = json.loads(content_str)
+        output_str = output_path.read_text()
+        output_json = json.loads(output_str)
 
         if expect_metadata:
-            assert "@metadata" in content_json, content_str
+            assert "@metadata" in output_json, output_str
             for field in ("url", "remote_addr", "user_agent"):
-                assert field in content_json["@metadata"], f"{field} not in {content_str}"
+                assert field in output_json["@metadata"], f"{field} not in {output_str}"
         else:
-            assert "@metadata" not in content_json, content_str
+            assert "@metadata" not in output_json, output_str
