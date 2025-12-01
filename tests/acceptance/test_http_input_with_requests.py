@@ -83,10 +83,9 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, confi
 @pytest.mark.parametrize(
     "collect_meta, expect_metadata",
     [
-        (True, True),
-        (False, False),
+        pytest.param(True, True, id="collect_meta_true"),
+        pytest.param(False, False, id="collect_meta_false"),
     ],
-    ids=["collect_meta_true", "collect_meta_false"],
 )
 def test_http_input_respects_collect_meta_flag(
     tmp_path: Path,
