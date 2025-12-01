@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 import json
 import time
+from collections.abc import Iterable
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
 
@@ -81,17 +82,23 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, confi
 
 
 @pytest.mark.parametrize(
-    "collect_meta, expect_metadata",
+    ("collect_meta", "expect_metafield_name", "expect_metafields"),
     [
-        pytest.param(True, True, id="collect_meta_true"),
-        pytest.param(False, False, id="collect_meta_false"),
+        pytest.param(
+            True,
+            "@metadata",
+            ("url", "remote_addr", "user_agent"),
+            id="collect_meta_true",
+        ),
+        pytest.param(False, "@metadata", None, id="collect_meta_false"),
     ],
 )
 def test_http_input_respects_collect_meta_flag(
     tmp_path: Path,
     config: Configuration,
     collect_meta: bool,
-    expect_metadata: bool,
+    expect_metafield_name: str,
+    expect_metafields: Iterable[str] | None,
 ):
     config.input["testinput"]["collect_meta"] = collect_meta
 
@@ -120,9 +127,9 @@ def test_http_input_respects_collect_meta_flag(
         output_str = output_path.read_text()
         output_json = json.loads(output_str)
 
-        if expect_metadata:
-            assert "@metadata" in output_json, output_str
-            for field in ("url", "remote_addr", "user_agent"):
-                assert field in output_json["@metadata"], f"{field} not in {output_str}"
+        if expect_metafields is not None:
+            assert expect_metafield_name in output_json, output_str
+            for field in expect_metafields:
+                assert field in output_json[expect_metafield_name], f"{field} not in {output_str}"
         else:
-            assert "@metadata" not in output_json, output_str
+            assert expect_metafield_name not in output_json, output_str
