@@ -17,6 +17,20 @@ test_cases = [  # testcase, rule, event, expected
         {"message": '{"to_decode": "decode value"}'},
         {"message": '{"to_decode": "decode value"}', "new_field": {"to_decode": "decode value"}},
     ),
+    (
+        "decodes escaped json to target field",
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+            },
+        },
+        #fmt: off
+        {"message": "{\"to_decode\": \"decode value\"}"},
+        #fmt: on
+        {"message": '{"to_decode": "decode value"}', "new_field": {"to_decode": "decode value"}},
+    ),
 ]
 
 failure_test_cases = []  # testcase, rule, event, expected

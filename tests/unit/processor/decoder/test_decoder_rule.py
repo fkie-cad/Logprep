@@ -1,7 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import pytest
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+
 from logprep.processor.decoder.rule import DecoderRule
 
 
