@@ -1,16 +1,25 @@
 # pylint: disable=missing-docstring
 import pytest
+
 from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
-
 test_cases = [  # testcase, rule, event, expected
-
+    (
+        "decodes simple json to target field",
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+            },
+        },
+        {"message": '{"to_decode": "decode value"}'},
+        {"message": "This is a message", "new_field": {"to_decode": "decode value"}},
+    ),
 ]
 
-failure_test_cases = [  # testcase, rule, event, expected
- 
-]  
+failure_test_cases = []  # testcase, rule, event, expected
 
 
 class TestDecoder(BaseProcessorTestCase):
