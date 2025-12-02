@@ -27,6 +27,7 @@ from attrs import define
 
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
+from logprep.util.helper import add_fields_to, pop_dotted_field_value
 
 
 class Decoder(FieldManager):
@@ -39,7 +40,17 @@ class Decoder(FieldManager):
         """Config of ..."""
 
     def _apply_rules(self, event, rule):
-        super()._apply_rules(event, rule)
+        rule_args = (
+            rule.source_fields,
+            rule.target_field,
+            rule.mapping,
+            rule.merge_with_target,
+            rule.overwrite_target,
+        )
+        if rule.mapping:
+            self._apply_mapping(event, rule, rule_args)
+        if rule.source_fields and rule.target_field:
+            self._apply_single_target_processing(event, rule, rule_args)
 
     def _apply_single_target_processing(self, event, rule, rule_args):
         source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
@@ -51,3 +62,23 @@ class Decoder(FieldManager):
         parsed_source_field_values = [self._decoder.decode(value) for value in source_field_values]
         args = (event, target_field, parsed_source_field_values)
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
+
+    def _apply_mapping(self, event, rule, rule_args):
+        source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
+        source_fields, targets = list(zip(*mapping.items()))
+        source_field_values = self._get_field_values(event, mapping.keys())
+        self._handle_missing_fields(event, rule, source_fields, source_field_values)
+        if not any(source_field_values):
+            return
+        source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
+        parsed_source_field_values = [self._decoder.decode(value) for value in source_field_values]
+        add_fields_to(
+            event,
+            dict(zip(targets, parsed_source_field_values)),
+            rule,
+            merge_with_target,
+            overwrite_target,
+        )
+        if rule.delete_source_fields:
+            for dotted_field in source_fields:
+                pop_dotted_field_value(event, dotted_field)
