@@ -191,7 +191,7 @@ def add_metadata(func: Callable):
         req: falcon.Request = args[1]
         endpoint: HttpEndpoint = args[0]
 
-        if endpoint.collect_meta or set(endpoint.copy_headers_to_logs) != default_meta_headers:
+        if endpoint.collect_meta:
             metadata = {}
             for header in endpoint.copy_headers_to_logs:
                 # Remote_addr and url are special cases, because those are not copied 1 to 1 from headers
@@ -205,6 +205,7 @@ def add_metadata(func: Callable):
                         metadata[key] = req.get_header(header, False)
 
             kwargs["metadata"] = {endpoint.metafield_name: metadata}
+
         else:
             kwargs["metadata"] = {}
         func_wrapper = await func(*args, **kwargs)
@@ -292,6 +293,12 @@ class HttpEndpoint(ABC):
                 data = zlib.decompress(data, 31)
         return data
 
+    def put_message(self, event: dict, metadata: dict, **kwargs):
+        """Puts message to internal queue"""
+        if self.metafield_name in event:
+            logger.warning("metadata field was in Event and got overwritten")
+        self.messages.put(event | metadata, block=False, **kwargs)
+
 
 class JSONHttpEndpoint(HttpEndpoint):
     """:code:`json` endpoint to get json from request"""
@@ -314,7 +321,7 @@ class JSONHttpEndpoint(HttpEndpoint):
                 )
                 event = {}
                 add_fields_to(event, {target_field: event_value})
-            self.messages.put(event | kwargs["metadata"], block=False)
+            self.put_message(event, kwargs["metadata"])
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -338,7 +345,8 @@ class JSONLHttpEndpoint(HttpEndpoint):
                 )
                 event = {}
                 add_fields_to(event, {target_field: event_value})
-            self.messages.put(event | kwargs["metadata"], block=False, batch_size=len(events))
+
+            self.put_message(event, kwargs["metadata"], batch_size=len(events))
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -360,7 +368,7 @@ class PlaintextHttpEndpoint(HttpEndpoint):
             )
             event = {}
             add_fields_to(event, {target_field: event_value})
-        self.messages.put(event | kwargs["metadata"], block=False)
+        self.put_message(event, kwargs["metadata"])
 
 
 class HttpInput(Input):
