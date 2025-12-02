@@ -26,7 +26,7 @@ This option is recommended if you just want to use the latest stable release of 
 
 .. code-block:: bash
 
-    uv pip install logprep
+    uv sync
 
 To see if the installation was successful run :code:`logprep --version`.
 
@@ -50,8 +50,8 @@ contribute to them.
 
     git clone https://github.com/fkie-cad/Logprep.git
     cd Logprep
-    uv pip install .
-    uv pip install ".[dev]" # if you intend to contribute
+    uv sync
+    uv sync --extra dev # if you intend to contribute
 
 To see if the installation was successful run
 :code:`logprep --version`.

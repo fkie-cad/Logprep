@@ -52,7 +52,7 @@ Each processor has `processor.py` and `rule.py`:
 
 ### Setup
 ```bash
-uv pip install -e .[dev]  # Install with dev dependencies
+uv sync --extra dev  # Install with dev dependencies
 pre-commit install     # Enable hooks
 ```
 

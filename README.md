@@ -187,7 +187,7 @@ be built locally via:
 
 ```
 sudo apt install pandoc
-uv pip install -e .[doc]
+uv sync --extra doc
 cd ./doc/
 make html
 ```
