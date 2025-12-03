@@ -2,7 +2,11 @@
 Decoder
 ============
 
-The `decoder` processor ...
+The `decoder` processor decodes or parses field values from the configured
+:code:`source_format`. Following :code:`source_formats` are implemented:
+
+* json
+
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^

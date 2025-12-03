@@ -2,6 +2,9 @@
 Decoder
 ============
 
+With the :code:`decoder` processor you are able to parse fields from
+different formats.
+
 A speaking example:
 
 ..  code-block:: yaml
@@ -10,20 +13,30 @@ A speaking example:
 
     filter: message
     decoder:
-        ...
-    description: '...'
+        source_format: json
+        mapping:
+            message: parsed
+    description: 'parse message field to the field called parsed'
 
 ..  code-block:: json
     :linenos:
     :caption: Incoming event
 
-    <INCOMMING_EVENT>
+    {
+        "message": "{\"timestamp\": \"2019-08-02T09:46:18.625Z\", \"log\": \"user login failed\"}"
+    }
 
 ..  code-block:: json
     :linenos:
     :caption: Processed event
 
-    <PROCESSED_EVENT>
+    {
+        "message": "{\"timestamp\": \"2019-08-02T09:46:18.625Z\", \"log\": \"user login failed\"}",
+        "parsed": {
+            "timestamp": "2019-08-02T09:46:18.625Z",
+            "log": "user login failed"
+        }
+    }
 
 
 .. autoclass:: logprep.processor.decoder.rule.DecoderRule.Config
