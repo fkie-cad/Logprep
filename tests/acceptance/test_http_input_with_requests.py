@@ -82,25 +82,36 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path: Path, confi
 
 
 @pytest.mark.parametrize(
-    ("collect_meta", "expect_metafield_name", "expect_metafields"),
+    ("collect_meta", "expect_specific_metafield_name", "expect_metafields"),
     [
         pytest.param(
             True,
-            "@metadata",
+            None,
             ("url", "remote_addr", "user_agent"),
-            id="collect_meta_true",
+            id="collect_meta_true_by_default_metafield_name",
         ),
-        pytest.param(False, "@metadata", None, id="collect_meta_false"),
+        pytest.param(False, None, None, id="collect_meta_false_by_default_metafield_name"),
+        pytest.param(
+            True,
+            "custom",
+            ("url", "remote_addr", "user_agent"),
+            id="collect_meta_true_by_specific_metafield_name",
+        ),
     ],
 )
 def test_http_input_respects_collect_meta_flag(
     tmp_path: Path,
     config: Configuration,
     collect_meta: bool,
-    expect_metafield_name: str,
+    expect_specific_metafield_name: str,
     expect_metafields: Iterable[str] | None,
 ):
     config.input["testinput"]["collect_meta"] = collect_meta
+
+    if expect_specific_metafield_name is not None:
+        config.input["testinput"]["metafield_name"] = expect_specific_metafield_name
+    else:
+        expect_specific_metafield_name = "@metadata"
 
     output_path = tmp_path / "output.jsonl"
     config.output = {
@@ -128,8 +139,10 @@ def test_http_input_respects_collect_meta_flag(
         output_json = json.loads(output_str)
 
         if expect_metafields is not None:
-            assert expect_metafield_name in output_json, output_str
+            assert expect_specific_metafield_name in output_json, output_str
             for field in expect_metafields:
-                assert field in output_json[expect_metafield_name], f"{field} not in {output_str}"
+                assert (
+                    field in output_json[expect_specific_metafield_name]
+                ), f"{field} not in {output_str}"
         else:
-            assert expect_metafield_name not in output_json, output_str
+            assert expect_specific_metafield_name not in output_json, output_str
