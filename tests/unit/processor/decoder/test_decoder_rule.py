@@ -17,7 +17,41 @@ class TestDecoderRule:
     @pytest.mark.parametrize(
         ["rule", "error", "message"],
         [
-            # add your tests here
+            (
+                {
+                    "filter": "message",
+                    "decoder": {"source_fields": ["message"], "target_field": "new_field"},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "decoder": {"source_fields": ["message", "next"], "target_field": "new_field"},
+                },
+                ValueError,
+                " must be <= 1",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "decoder": {"mapping": {"source": "target"}},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"source": "target"},
+                        "source_format": "not implemented",
+                    },
+                },
+                ValueError,
+                "'source_format' must be in.*got 'not implemented'",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
@@ -34,7 +68,54 @@ class TestDecoderRule:
     @pytest.mark.parametrize(
         ["testcase", "rule1", "rule2", "equality"],
         [
-            # add your tests here
+            (
+                "equal because equal rules",
+                {
+                    "filter": "message",
+                    "decoder": {"source_fields": ["message"], "target_field": "new_field"},
+                },
+                {
+                    "filter": "message",
+                    "decoder": {"source_fields": ["message"], "target_field": "new_field"},
+                },
+                True,
+            ),
+            (
+                "not equal because different filter",
+                {
+                    "filter": "message",
+                    "decoder": {"source_fields": ["message"], "target_field": "new_field"},
+                },
+                {
+                    "filter": "other: message",
+                    "decoder": {"source_fields": ["message"], "target_field": "new_field"},
+                },
+                False,
+            ),
+            (
+                "not equal because other target",
+                {
+                    "filter": "message",
+                    "decoder": {"source_fields": ["message"], "target_field": "new_field"},
+                },
+                {
+                    "filter": "message",
+                    "decoder": {"source_fields": ["message"], "target_field": "other_field"},
+                },
+                False,
+            ),
+            (
+                "not equal because other source",
+                {
+                    "filter": "message",
+                    "decoder": {"source_fields": ["message"], "target_field": "new_field"},
+                },
+                {
+                    "filter": "message",
+                    "decoder": {"source_fields": ["other"], "target_field": "new_field"},
+                },
+                False,
+            ),
         ],
     )
     def test_equality(self, testcase, rule1, rule2, equality):
