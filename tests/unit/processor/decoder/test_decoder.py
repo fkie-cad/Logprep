@@ -1,4 +1,7 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
+
+import json
 
 import pytest
 
@@ -61,3 +64,19 @@ class TestDecoder(BaseProcessorTestCase):
         with pytest.raises(ProcessingWarning):
             self.object.process(event)
         assert event == expected, testcase
+
+    def test_decodes_different_source_json_escaping(self):
+        """has to be tested from external file to avoid auto format from black"""
+        rule = {
+            "filter": "message",
+            "decoder": {"source_fields": ["message"], "target_field": "parsed"},
+        }
+        with open("tests/testdata/unit/decoder/parse.txt", encoding="utf-8") as f:
+            for line in f.readlines():
+                log_input, source_format, expected_output = line.split(",")
+                rule["decoder"]["source_format"] = source_format
+                self._load_rule(rule)
+                expected_output = expected_output.lstrip().strip("\n")
+                event = self.object._decoder.decode(log_input)
+                self.object.process(event)
+                assert json.dumps(event["parsed"]) == expected_output
