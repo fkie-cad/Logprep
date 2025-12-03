@@ -5,7 +5,6 @@ import json
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -55,7 +54,21 @@ test_cases = [  # testcase, rule, event, expected
     ),
 ]
 
-failure_test_cases = []  # testcase, rule, event, expected
+failure_test_cases = [
+    (
+        "not base64 source string",
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "source_format": "base64",
+            },
+        },
+        {"message": "not base64"},
+        {"message": "not base64"},
+    )
+]  # testcase, rule, event, expected
 
 
 class TestDecoder(BaseProcessorTestCase):
@@ -74,8 +87,8 @@ class TestDecoder(BaseProcessorTestCase):
     @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected):
         self._load_rule(rule)
-        with pytest.raises(ProcessingWarning):
-            self.object.process(event)
+        result = self.object.process(event)
+        assert result.errors
         assert event == expected, testcase
 
     def test_decodes_different_source_json_escaping(self):
