@@ -57,11 +57,11 @@ from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 
-implemented_decoders = ("json",)
+implemented_decoders = ("json", "base64")
 
 
 class DecoderRule(FieldManagerRule):
-    """..."""
+    """Rule for the decoder processor"""
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
@@ -82,3 +82,8 @@ class DecoderRule(FieldManagerRule):
             validator=(validators.instance_of(str), validators.in_(implemented_decoders)),
             default="json",
         )
+
+    @property
+    def source_format(self) -> str:
+        """getter for rule config"""
+        return self._config.source_format

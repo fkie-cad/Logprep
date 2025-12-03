@@ -40,6 +40,19 @@ test_cases = [  # testcase, rule, event, expected
             "escaped_field": {"to_decode": "decode value"},
         },
     ),
+    (
+        "decodes simple base64",
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "source_format": "base64",
+            },
+        },
+        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
+        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "new_field": "this,is,the,message"},
+    ),
 ]
 
 failure_test_cases = []  # testcase, rule, event, expected
