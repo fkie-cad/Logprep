@@ -202,7 +202,7 @@ def add_metadata(func: Callable):
                         metadata[header] = req.url
                     case _:
                         key = header.replace("-", "_").lower()
-                        metadata[key] = req.get_header(header, False)
+                        metadata[key] = req.get_header(header, required=False, default=None)
 
             kwargs["metadata"] = {endpoint.metafield_name: metadata}
 
