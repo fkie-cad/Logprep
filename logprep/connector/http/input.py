@@ -94,7 +94,7 @@ import zlib
 from abc import ABC
 from base64 import b64encode
 from functools import cached_property
-from typing import Callable, List, Mapping, Tuple, Type, Union
+from typing import Callable, List, Mapping, Set, Tuple, Type, Union
 
 import falcon.asgi
 import msgspec
@@ -172,7 +172,7 @@ def raise_request_exceptions(func: Callable):
     return func_wrapper
 
 
-default_meta_headers = frozenset(
+DEFAULT_META_HEADERS = frozenset(
     [
         "url",
         "remote_addr",
@@ -191,10 +191,12 @@ def add_metadata(func: Callable):
         req: falcon.Request = args[1]
         endpoint: HttpEndpoint = args[0]
 
-        if endpoint.collect_meta:
+        if not endpoint.collect_meta or len(endpoint.copy_headers_to_logs) == 0:
+            kwargs["metadata"] = {}
+        else:
             metadata = {}
             for header in endpoint.copy_headers_to_logs:
-                # Remote_addr and url are special cases, because those are not copied 1 to 1 from headers
+                # remote_addr and url are special cases, because those are not copied 1 to 1 from headers
                 match header:
                     case "remote_addr":
                         metadata[header] = req.remote_addr
@@ -206,8 +208,6 @@ def add_metadata(func: Callable):
 
             kwargs["metadata"] = {endpoint.metafield_name: metadata}
 
-        else:
-            kwargs["metadata"] = {}
         func_wrapper = await func(*args, **kwargs)
         return func_wrapper
 
@@ -293,11 +293,11 @@ class HttpEndpoint(ABC):
                 data = zlib.decompress(data, 31)
         return data
 
-    def put_message(self, event: dict, metadata: dict, **kwargs):
+    def put_message(self, event: dict, metadata: dict):
         """Puts message to internal queue"""
         if self.metafield_name in event:
             logger.warning("metadata field was in Event and got overwritten")
-        self.messages.put(event | metadata, block=False, **kwargs)
+        self.messages.put(event | metadata, block=False)
 
 
 class JSONHttpEndpoint(HttpEndpoint):
@@ -346,7 +346,7 @@ class JSONLHttpEndpoint(HttpEndpoint):
                 event = {}
                 add_fields_to(event, {target_field: event_value})
 
-            self.put_message(event, kwargs["metadata"], batch_size=len(events))
+            self.put_message(event, kwargs["metadata"])
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -461,14 +461,25 @@ class HttpInput(Input):
         be smaller than default value of 15.000 messages.
         """
 
-        copy_headers_to_logs: List[str] = field(
+        copy_headers_to_logs: Set[str] = field(
             validator=validators.instance_of(list),
-            default=list(default_meta_headers),
+            default=list(DEFAULT_META_HEADERS),
         )
-        """Defines what metadata should be collected"""
+        """Defines what metadata should be collected from Http Headers
+        Special cases:
+        - remote_addr (Gets the inbound client ip instead of header)
+        - url (Get the requested url from http request and not technically a header)
+
+        Defaults:
+        - remote_addr
+        - url
+        - User-Agent
+
+        The output header names in Events are stored as json strings, and are transformed from "User-Agent" to "user_agent"
+        """
 
         collect_meta: bool = field(validator=validators.instance_of(bool), default=True)
-        """Deprecated use copy_headers_to_logs instead
+        """Deprecated use copy_headers_to_logs instead, to turn off collecting metadata set copy_headers_to_logs to an empty list ([]).
         Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
@@ -481,7 +492,9 @@ class HttpInput(Input):
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
-        """Defines the name of the key for the collected metadata fields"""
+        """Defines the name of the key for the collected metadata fields
+        Logs a Warning if metadata field overwrites preexisting field in Event
+        """
 
         original_event_field: dict = field(
             validator=[

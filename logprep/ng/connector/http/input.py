@@ -96,11 +96,11 @@ from attrs import define, field, validators
 from joblib._multiprocessing_helpers import mp
 
 from logprep.connector.http.input import (
+    DEFAULT_META_HEADERS,
     HttpEndpoint,
     JSONHttpEndpoint,
     JSONLHttpEndpoint,
     PlaintextHttpEndpoint,
-    default_meta_headers,
     logger,
     route_compile_helper,
 )
@@ -205,11 +205,11 @@ class HttpInput(Input):
 
         copy_headers_to_logs: List[str] = field(
             validator=validators.instance_of(list),
-            default=list(default_meta_headers),
+            default=list(DEFAULT_META_HEADERS),
         )
         """Defines what metadata should be collected"""
 
-        collect_meta: str = field(validator=validators.instance_of(bool), default=True)
+        collect_meta: bool = field(validator=validators.instance_of(bool), default=True)
         """Deprecated use :code:`copy_headers_to_logs` instead.
         Defines if metadata should be collected
         - :code:`True`: Collect metadata
