@@ -296,7 +296,7 @@ class HttpEndpoint(ABC):
     def put_message(self, event: dict, metadata: dict):
         """Puts message to internal queue"""
         if self.metafield_name in event:
-            logger.warning("metadata field was in Event and got overwritten")
+            logger.warning("metadata field was in event and got overwritten")
         self.messages.put(event | metadata, block=False)
 
 
