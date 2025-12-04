@@ -24,7 +24,7 @@ from tests.testdata.input_logdata.file_input_logs import (
 )
 from tests.unit.ng.connector.base import BaseInputTestCase
 
-CHECK_INTERVAL = 0.1
+CHECK_INTERVAL = 2
 
 
 def wait_for_interval(interval):
