@@ -310,7 +310,7 @@ class TestHttpConnector(BaseInputTestCase):
             resp = client.post("/json", json=message)
             assert resp.status_code == 200
 
-            assert "metadata field was in Event and got overwritten" in caplog.text
+            assert "metadata field was in event and got overwritten" in caplog.text
 
             message = connector.messages.get(timeout=0.5)
             assert message["custom"]["url"].endswith("/json")
