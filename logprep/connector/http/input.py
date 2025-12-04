@@ -462,8 +462,14 @@ class HttpInput(Input):
         """
 
         copy_headers_to_logs: Set[str] = field(
-            validator=validators.instance_of(list),
-            default=list(DEFAULT_META_HEADERS),
+            validator=validators.deep_iterable(
+                member_validator=validators.instance_of(str),
+                iterable_validator=validators.or_(
+                    validators.instance_of(set), validators.instance_of(list)
+                ),
+            ),
+            converter=set,
+            default=set(DEFAULT_META_HEADERS),
         )
         """Defines what metadata should be collected from Http Headers
         Special cases:

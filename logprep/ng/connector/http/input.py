@@ -88,7 +88,7 @@ Behaviour of HTTP Requests
 
 import queue
 from functools import cached_property
-from typing import List, Mapping, Type
+from typing import List, Mapping, Set, Type
 
 import falcon
 import requests
@@ -203,14 +203,31 @@ class HttpInput(Input):
         be smaller than default value of 15.000 messages.
         """
 
-        copy_headers_to_logs: List[str] = field(
-            validator=validators.instance_of(list),
-            default=list(DEFAULT_META_HEADERS),
+        copy_headers_to_logs: Set[str] = field(
+            validator=validators.deep_iterable(
+                member_validator=validators.instance_of(str),
+                iterable_validator=validators.or_(
+                    validators.instance_of(set), validators.instance_of(list)
+                ),
+            ),
+            converter=set,
+            default=set(DEFAULT_META_HEADERS),
         )
-        """Defines what metadata should be collected"""
+        """Defines what metadata should be collected from Http Headers
+        Special cases:
+        - remote_addr (Gets the inbound client ip instead of header)
+        - url (Get the requested url from http request and not technically a header)
+
+        Defaults:
+        - remote_addr
+        - url
+        - User-Agent
+
+        The output header names in Events are stored as json strings, and are transformed from "User-Agent" to "user_agent"
+        """
 
         collect_meta: bool = field(validator=validators.instance_of(bool), default=True)
-        """Deprecated use :code:`copy_headers_to_logs` instead.
+        """Deprecated use copy_headers_to_logs instead, to turn off collecting metadata set copy_headers_to_logs to an empty list ([]).
         Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
