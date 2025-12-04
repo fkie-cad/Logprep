@@ -1,6 +1,6 @@
 # Install all packages
 install-packages:
-	pip install -e .[dev]
+    uv sync --extra dev
 
 # Test all pytests
 test:
