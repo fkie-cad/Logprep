@@ -93,8 +93,8 @@ import re
 import zlib
 from abc import ABC
 from base64 import b64encode
+from collections.abc import Callable, Mapping
 from functools import cached_property
-from typing import Callable, List, Mapping, Set, Tuple, Type, Union
 
 import falcon.asgi
 import msgspec
@@ -249,7 +249,7 @@ class HttpEndpoint(ABC):
         metafield_name: str,
         credentials: Credentials,
         metrics: "HttpInput.Metrics",
-        copy_headers_to_logs: list[str],
+        copy_headers_to_logs: set[str],
     ) -> None:
         self.messages = messages
         self.original_event_field = original_event_field
@@ -398,7 +398,7 @@ class HttpInput(Input):
     class Config(Input.Config):
         """Config for HTTPInput"""
 
-        uvicorn_config: Mapping[str, Union[str, int]] = field(
+        uvicorn_config: Mapping[str, str | int] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
@@ -461,7 +461,7 @@ class HttpInput(Input):
         be smaller than default value of 15.000 messages.
         """
 
-        copy_headers_to_logs: Set[str] = field(
+        copy_headers_to_logs: set[str] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of(str),
                 iterable_validator=validators.or_(
@@ -469,7 +469,7 @@ class HttpInput(Input):
                 ),
             ),
             converter=set,
-            default=set(DEFAULT_META_HEADERS),
+            factory=lambda: set(DEFAULT_META_HEADERS),
         )
         """Defines what metadata should be collected from Http Headers
         Special cases:
@@ -526,11 +526,11 @@ class HttpInput(Input):
                     "Cannot configure both add_full_event_to_target_field and original_event_field."
                 )
 
-    __slots__: List[str] = ["target", "app", "http_server"]
+    __slots__: list[str] = ["target", "app", "http_server"]
 
     messages: mp.Queue = None
 
-    _endpoint_registry: Mapping[str, Type[HttpEndpoint]] = {
+    _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
         "plaintext": PlaintextHttpEndpoint,
         "jsonl": JSONLHttpEndpoint,
@@ -596,7 +596,7 @@ class HttpInput(Input):
             app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
         return app
 
-    def _get_event(self, timeout: float) -> Tuple:
+    def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the queue"""
         self.metrics.message_backlog_size += self.messages.qsize()
         try:
@@ -613,7 +613,7 @@ class HttpInput(Input):
         self.http_server.shut_down()
 
     @cached_property
-    def health_endpoints(self) -> List[str]:
+    def health_endpoints(self) -> list[str]:
         """Returns a list of endpoints for internal healthcheck
         the endpoints are examples to match against the configured regex enabled
         endpoints. The endpoints are normalized to match the regex patterns and

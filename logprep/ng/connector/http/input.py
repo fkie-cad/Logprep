@@ -87,8 +87,8 @@ Behaviour of HTTP Requests
 """
 
 import queue
+from collections.abc import Mapping
 from functools import cached_property
-from typing import List, Mapping, Set, Type
 
 import falcon
 import requests
@@ -203,7 +203,7 @@ class HttpInput(Input):
         be smaller than default value of 15.000 messages.
         """
 
-        copy_headers_to_logs: Set[str] = field(
+        copy_headers_to_logs: set[str] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of(str),
                 iterable_validator=validators.or_(
@@ -211,7 +211,7 @@ class HttpInput(Input):
                 ),
             ),
             converter=set,
-            default=set(DEFAULT_META_HEADERS),
+            factory=lambda: set(DEFAULT_META_HEADERS),
         )
         """Defines what metadata should be collected from Http Headers
         Special cases:
@@ -243,14 +243,12 @@ class HttpInput(Input):
         """Defines the name of the key for the collected metadata fields"""
 
         original_event_field: dict = field(
-            validator=[
-                validators.optional(
-                    validators.deep_mapping(
-                        key_validator=validators.in_(["format", "target_field"]),
-                        value_validator=validators.instance_of(str),
-                    )
-                ),
-            ],
+            validator=validators.optional(
+                validators.deep_mapping(
+                    key_validator=validators.in_(["format", "target_field"]),
+                    value_validator=validators.instance_of(str),
+                )
+            ),
             default=None,
         )
         """Optional config parameter that writes the full event to one single target field. The
@@ -268,7 +266,7 @@ class HttpInput(Input):
 
     messages: mp.Queue = None
 
-    _endpoint_registry: Mapping[str, Type[HttpEndpoint]] = {
+    _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
         "plaintext": PlaintextHttpEndpoint,
         "jsonl": JSONLHttpEndpoint,
