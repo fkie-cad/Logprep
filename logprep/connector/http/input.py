@@ -93,8 +93,8 @@ import re
 import zlib
 from abc import ABC
 from base64 import b64encode
+from collections.abc import Callable, Mapping
 from functools import cached_property
-from typing import Callable, List, Mapping, Tuple, Type, Union
 
 import falcon.asgi
 import msgspec
@@ -172,6 +172,15 @@ def raise_request_exceptions(func: Callable):
     return func_wrapper
 
 
+DEFAULT_META_HEADERS = frozenset(
+    [
+        "url",
+        "remote_addr",
+        "user-agent",
+    ]
+)
+
+
 def add_metadata(func: Callable):
     """Decorator to add metadata to resulting http event.
     Uses attribute collect_meta of endpoint class to decide over metadata collection
@@ -179,17 +188,26 @@ def add_metadata(func: Callable):
     """
 
     async def func_wrapper(*args, **kwargs):
-        req = args[1]
-        endpoint = args[0]
-        if endpoint.collect_meta:
-            metadata = {
-                "url": req.url,
-                "remote_addr": req.remote_addr,
-                "user_agent": req.user_agent,
-            }
-            kwargs["metadata"] = {endpoint.metafield_name: metadata}
-        else:
+        req: falcon.Request = args[1]
+        endpoint: HttpEndpoint = args[0]
+
+        if not endpoint.collect_meta or len(endpoint.copy_headers_to_logs) == 0:
             kwargs["metadata"] = {}
+        else:
+            metadata = {}
+            for header in endpoint.copy_headers_to_logs:
+                # remote_addr and url are special cases, because those are not copied 1 to 1 from headers
+                match header:
+                    case "remote_addr":
+                        metadata[header] = req.remote_addr
+                    case "url":
+                        metadata[header] = req.url
+                    case _:
+                        key = header.replace("-", "_").lower()
+                        metadata[key] = req.get_header(header, required=False, default=None)
+
+            kwargs["metadata"] = {endpoint.metafield_name: metadata}
+
         func_wrapper = await func(*args, **kwargs)
         return func_wrapper
 
@@ -231,9 +249,13 @@ class HttpEndpoint(ABC):
         metafield_name: str,
         credentials: Credentials,
         metrics: "HttpInput.Metrics",
+        copy_headers_to_logs: set[str],
     ) -> None:
         self.messages = messages
         self.original_event_field = original_event_field
+        self.copy_headers_to_logs = copy_headers_to_logs
+
+        # Deprecated
         self.collect_meta = collect_meta
         self.metafield_name = metafield_name
         self.credentials = credentials
@@ -271,6 +293,12 @@ class HttpEndpoint(ABC):
                 data = zlib.decompress(data, 31)
         return data
 
+    def put_message(self, event: dict, metadata: dict):
+        """Puts message to internal queue"""
+        if self.metafield_name in event:
+            logger.warning("metadata field was in event and got overwritten")
+        self.messages.put(event | metadata, block=False)
+
 
 class JSONHttpEndpoint(HttpEndpoint):
     """:code:`json` endpoint to get json from request"""
@@ -293,7 +321,7 @@ class JSONHttpEndpoint(HttpEndpoint):
                 )
                 event = {}
                 add_fields_to(event, {target_field: event_value})
-            self.messages.put(event | kwargs["metadata"], block=False)
+            self.put_message(event, kwargs["metadata"])
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -317,7 +345,8 @@ class JSONLHttpEndpoint(HttpEndpoint):
                 )
                 event = {}
                 add_fields_to(event, {target_field: event_value})
-            self.messages.put(event | kwargs["metadata"], block=False, batch_size=len(events))
+
+            self.put_message(event, kwargs["metadata"])
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -339,7 +368,7 @@ class PlaintextHttpEndpoint(HttpEndpoint):
             )
             event = {}
             add_fields_to(event, {target_field: event_value})
-        self.messages.put(event | kwargs["metadata"], block=False)
+        self.put_message(event, kwargs["metadata"])
 
 
 class HttpInput(Input):
@@ -369,7 +398,7 @@ class HttpInput(Input):
     class Config(Input.Config):
         """Config for HTTPInput"""
 
-        uvicorn_config: Mapping[str, Union[str, int]] = field(
+        uvicorn_config: Mapping[str, str | int] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
@@ -432,8 +461,32 @@ class HttpInput(Input):
         be smaller than default value of 15.000 messages.
         """
 
-        collect_meta: str = field(validator=validators.instance_of(bool), default=True)
-        """Defines if metadata should be collected
+        copy_headers_to_logs: set[str] = field(
+            validator=validators.deep_iterable(
+                member_validator=validators.instance_of(str),
+                iterable_validator=validators.or_(
+                    validators.instance_of(set), validators.instance_of(list)
+                ),
+            ),
+            converter=set,
+            factory=lambda: set(DEFAULT_META_HEADERS),
+        )
+        """Defines what metadata should be collected from Http Headers
+        Special cases:
+        - remote_addr (Gets the inbound client ip instead of header)
+        - url (Get the requested url from http request and not technically a header)
+
+        Defaults:
+        - remote_addr
+        - url
+        - User-Agent
+
+        The output header names in Events are stored as json strings, and are transformed from "User-Agent" to "user_agent"
+        """
+
+        collect_meta: bool = field(validator=validators.instance_of(bool), default=True)
+        """Deprecated use copy_headers_to_logs instead, to turn off collecting metadata set copy_headers_to_logs to an empty list ([]).
+        Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
 
@@ -445,11 +498,15 @@ class HttpInput(Input):
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
-        """Defines the name of the key for the collected metadata fields"""
+        """Defines the name of the key for the collected metadata fields
+        Logs a Warning if metadata field overwrites preexisting field in Event
+        """
 
         original_event_field: dict = field(
             validator=[
+                # type: ignore
                 validators.optional(
+                    # type: ignore
                     validators.deep_mapping(
                         key_validator=validators.in_(["format", "target_field"]),
                         value_validator=validators.instance_of(str),
@@ -469,11 +526,11 @@ class HttpInput(Input):
                     "Cannot configure both add_full_event_to_target_field and original_event_field."
                 )
 
-    __slots__: List[str] = ["target", "app", "http_server"]
+    __slots__: list[str] = ["target", "app", "http_server"]
 
     messages: mp.Queue = None
 
-    _endpoint_registry: Mapping[str, Type[HttpEndpoint]] = {
+    _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
         "plaintext": PlaintextHttpEndpoint,
         "jsonl": JSONLHttpEndpoint,
@@ -506,6 +563,7 @@ class HttpInput(Input):
 
         endpoints_config = {}
         collect_meta = self._config.collect_meta
+        copy_headers_to_logs = self._config.copy_headers_to_logs
         metafield_name = self._config.metafield_name
         original_event_field = self._config.original_event_field
         cred_factory = CredentialsFactory()
@@ -521,6 +579,7 @@ class HttpInput(Input):
                 metafield_name,
                 credentials,
                 self.metrics,
+                copy_headers_to_logs,
             )
 
         self.app = self._get_asgi_app(endpoints_config)
@@ -537,7 +596,7 @@ class HttpInput(Input):
             app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
         return app
 
-    def _get_event(self, timeout: float) -> Tuple:
+    def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the queue"""
         self.metrics.message_backlog_size += self.messages.qsize()
         try:
@@ -554,7 +613,7 @@ class HttpInput(Input):
         self.http_server.shut_down()
 
     @cached_property
-    def health_endpoints(self) -> List[str]:
+    def health_endpoints(self) -> list[str]:
         """Returns a list of endpoints for internal healthcheck
         the endpoints are examples to match against the configured regex enabled
         endpoints. The endpoints are normalized to match the regex patterns and

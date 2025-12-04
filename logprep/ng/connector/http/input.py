@@ -87,8 +87,8 @@ Behaviour of HTTP Requests
 """
 
 import queue
+from collections.abc import Mapping
 from functools import cached_property
-from typing import Mapping, Type
 
 import falcon
 import requests
@@ -96,6 +96,7 @@ from attrs import define, field, validators
 from joblib._multiprocessing_helpers import mp
 
 from logprep.connector.http.input import (
+    DEFAULT_META_HEADERS,
     HttpEndpoint,
     JSONHttpEndpoint,
     JSONLHttpEndpoint,
@@ -202,8 +203,32 @@ class HttpInput(Input):
         be smaller than default value of 15.000 messages.
         """
 
-        collect_meta: str = field(validator=validators.instance_of(bool), default=True)
-        """Defines if metadata should be collected
+        copy_headers_to_logs: set[str] = field(
+            validator=validators.deep_iterable(
+                member_validator=validators.instance_of(str),
+                iterable_validator=validators.or_(
+                    validators.instance_of(set), validators.instance_of(list)
+                ),
+            ),
+            converter=set,
+            factory=lambda: set(DEFAULT_META_HEADERS),
+        )
+        """Defines what metadata should be collected from Http Headers
+        Special cases:
+        - remote_addr (Gets the inbound client ip instead of header)
+        - url (Get the requested url from http request and not technically a header)
+
+        Defaults:
+        - remote_addr
+        - url
+        - User-Agent
+
+        The output header names in Events are stored as json strings, and are transformed from "User-Agent" to "user_agent"
+        """
+
+        collect_meta: bool = field(validator=validators.instance_of(bool), default=True)
+        """Deprecated use copy_headers_to_logs instead, to turn off collecting metadata set copy_headers_to_logs to an empty list ([]).
+        Defines if metadata should be collected
         - :code:`True`: Collect metadata
         - :code:`False`: Won't collect metadata
 
@@ -218,14 +243,12 @@ class HttpInput(Input):
         """Defines the name of the key for the collected metadata fields"""
 
         original_event_field: dict = field(
-            validator=[
-                validators.optional(
-                    validators.deep_mapping(
-                        key_validator=validators.in_(["format", "target_field"]),
-                        value_validator=validators.instance_of(str),
-                    )
-                ),
-            ],
+            validator=validators.optional(
+                validators.deep_mapping(
+                    key_validator=validators.in_(["format", "target_field"]),
+                    value_validator=validators.instance_of(str),
+                )
+            ),
             default=None,
         )
         """Optional config parameter that writes the full event to one single target field. The
@@ -243,7 +266,7 @@ class HttpInput(Input):
 
     messages: mp.Queue = None
 
-    _endpoint_registry: Mapping[str, Type[HttpEndpoint]] = {
+    _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
         "plaintext": PlaintextHttpEndpoint,
         "jsonl": JSONLHttpEndpoint,
@@ -267,6 +290,8 @@ class HttpInput(Input):
         super().setup()
         endpoints_config = {}
         collect_meta = self._config.collect_meta
+        copy_headers_to_logs = self._config.copy_headers_to_logs
+
         metafield_name = self._config.metafield_name
         original_event_field = self._config.original_event_field
         cred_factory = CredentialsFactory()
@@ -286,6 +311,7 @@ class HttpInput(Input):
                 metafield_name,
                 credentials,
                 self.metrics,
+                copy_headers_to_logs,
             )
 
         self.app = self._get_asgi_app(endpoints_config)

@@ -51,7 +51,6 @@ input:
 
 @mock.patch("logprep.connector.http.input.http.ThreadingHTTPServer", new=mock.MagicMock())
 class TestHttpConnector(BaseInputTestCase):
-
     CONFIG: dict = {
         "type": "http_input",
         "message_backlog_size": 100,
@@ -268,6 +267,114 @@ class TestHttpConnector(BaseInputTestCase):
         assert message["custom"]["url"].endswith("/json")
         assert re.search(r"\d+\.\d+\.\d+\.\d+", message["custom"]["remote_addr"])
         assert isinstance(message["custom"]["user_agent"], str)
+
+    def test_get_no_metadata_when_collect_meta_false(self):
+        message = {"message": "my message"}
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["collect_meta"] = False
+        connector_config["metafield_name"] = "custom"
+        connector = Factory.create({"test connector": connector_config})
+        connector.pipeline_index = 1
+        connector.setup()
+        client = testing.TestClient(connector.app)
+        resp = client.post("/json", json=message)
+        assert resp.status_code == 200
+        message = connector.messages.get(timeout=0.5)
+        assert "custom" not in message
+
+    def test_get_no_metadata_when_copy_headers_to_logs_explicit_empty(self):
+        message = {"message": "my message"}
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["collect_meta"] = True
+        connector_config["copy_headers_to_logs"] = []
+        connector_config["metafield_name"] = "custom"
+        connector = Factory.create({"test connector": connector_config})
+        connector.pipeline_index = 1
+        connector.setup()
+        client = testing.TestClient(connector.app)
+        resp = client.post("/json", json=message)
+        assert resp.status_code == 200
+        message = connector.messages.get(timeout=0.5)
+        assert "custom" not in message
+
+    def test_get_metadata_with_existing_metadata_field(self, caplog):
+        message = {"message": "my message", "custom": "test"}
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["collect_meta"] = True
+        connector_config["metafield_name"] = "custom"
+        connector = Factory.create({"test connector": connector_config})
+        connector.pipeline_index = 1
+        connector.setup()
+        with caplog.at_level("WARNING"):
+            client = testing.TestClient(connector.app)
+            resp = client.post("/json", json=message)
+            assert resp.status_code == 200
+
+            assert "metadata field was in event and got overwritten" in caplog.text
+
+            message = connector.messages.get(timeout=0.5)
+            assert message["custom"]["url"].endswith("/json")
+            assert re.search(r"\d+\.\d+\.\d+\.\d+", message["custom"]["remote_addr"])
+            assert isinstance(message["custom"]["user_agent"], str)
+
+    def test_get_metadata_with_custom_header(self):
+        message = {"message": "my message"}
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["copy_headers_to_logs"] = ["test-header", "url"]
+        connector_config["collect_meta"] = True
+        connector_config["metafield_name"] = "custom"
+        connector = Factory.create({"test connector": connector_config})
+        connector.pipeline_index = 1
+        connector.setup()
+        client = testing.TestClient(connector.app)
+
+        test_str = "This is a test"
+        resp = client.post("/json", json=message, headers={"Test-Header": test_str})
+        assert resp.status_code == 200
+        message = connector.messages.get(timeout=0.5)
+
+        assert message["custom"]["url"].endswith("/json")
+        assert message["custom"]["test_header"] == test_str
+
+    def test_get_metadata_with_missing_header(self):
+        message = {"message": "my message"}
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["copy_headers_to_logs"] = ["test-header", "url"]
+        connector_config["collect_meta"] = True
+        connector_config["metafield_name"] = "custom"
+        connector = Factory.create({"test connector": connector_config})
+        connector.pipeline_index = 1
+        connector.setup()
+        client = testing.TestClient(connector.app)
+
+        test_str = "This is a test"
+        resp = client.post("/json", json=message)
+        assert resp.status_code == 200
+        message = connector.messages.get(timeout=0.5)
+
+        assert message["custom"]["url"].endswith("/json")
+        assert message["custom"]["test_header"] == None
+
+    def test_get_metadata_with_copy_headers_to_logs_overwrites_defaults(self):
+        message = {"message": "my message"}
+        connector_config = deepcopy(self.CONFIG)
+        connector_config["collect_meta"] = True
+        connector_config["copy_headers_to_logs"] = ["test-header", "url"]
+        connector_config["metafield_name"] = "custom"
+        connector = Factory.create({"test connector": connector_config})
+        connector.pipeline_index = 1
+        connector.setup()
+        client = testing.TestClient(connector.app)
+
+        test_str = "This is a test"
+        resp = client.post("/json", json=message, headers={"Test-Header": test_str})
+        assert resp.status_code == 200
+        message = connector.messages.get(timeout=0.5)
+
+        assert message["custom"]["url"].endswith("/json")
+        assert message["custom"]["test_header"] == test_str
+        assert "user_agent" not in message["custom"]
+        assert "remote_addr" not in message["custom"]
 
     def test_original_event_field_with_event_as_dict(self):
         message = {"message": "my message"}
