@@ -29,6 +29,7 @@ Processor Configuration
 """
 
 import base64
+import binascii
 import json
 from typing import Callable
 
@@ -76,7 +77,9 @@ class Decoder(FieldManager):
         source_field_values = list(filter(lambda x: x is not None, source_field_values))
         if not source_field_values:
             return
-        parsed_source_field_values = [decoder(value) for value in source_field_values]
+        parsed_source_field_values = self._decode(event, rule, decoder, source_field_values)
+        if not parsed_source_field_values:
+            return
         args = (event, target_field, parsed_source_field_values)
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
@@ -88,7 +91,9 @@ class Decoder(FieldManager):
         if not any(source_field_values):
             return
         source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
-        parsed_source_field_values = [decoder(value) for value in source_field_values]
+        parsed_source_field_values = self._decode(event, rule, decoder, source_field_values)
+        if not parsed_source_field_values:
+            return
         add_fields_to(
             event,
             dict(zip(targets, parsed_source_field_values)),
@@ -99,3 +104,13 @@ class Decoder(FieldManager):
         if rule.delete_source_fields:
             for dotted_field in source_fields:
                 pop_dotted_field_value(event, dotted_field)
+
+    def _decode(
+        self, event: dict, rule: DecoderRule, decoder: Callable, source_field_values: list
+    ) -> list:
+        try:
+            return [decoder(value) for value in source_field_values]
+        except (binascii.Error, json.decoder.JSONDecodeError) as error:
+            add_fields_to(event, {"tags": rule.failure_tags}, merge_with_target=True)
+            self.result.errors.append(error)
+            return []

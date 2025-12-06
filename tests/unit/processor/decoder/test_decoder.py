@@ -66,8 +66,70 @@ failure_test_cases = [
             },
         },
         {"message": "not base64"},
+        {"message": "not base64", "tags": ["_decoder_failure"]},
+    ),
+    (
+        "not base64 source string with mapping",
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "new_field"},
+                "source_format": "base64",
+            },
+        },
         {"message": "not base64"},
-    )
+        {"message": "not base64", "tags": ["_decoder_failure"]},
+    ),
+    (
+        "source field not found with mapping",
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"missing": "new_field"},
+                "source_format": "base64",
+            },
+        },
+        {"message": "not base64"},
+        {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
+    ),
+    (
+        "source field not found with single source field",
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["missing"],
+                "target_field": "new_field",
+                "source_format": "base64",
+            },
+        },
+        {"message": "not base64"},
+        {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
+    ),
+    (
+        "json decode error with mapping",
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "new_field"},
+                "source_format": "json",
+            },
+        },
+        {"message": "not json"},
+        {"message": "not json", "tags": ["_decoder_failure"]},
+    ),
+    (
+        "json decode error with single field",
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "source_format": "json",
+            },
+        },
+        {"message": "not json"},
+        {"message": "not json", "tags": ["_decoder_failure"]},
+    ),
 ]  # testcase, rule, event, expected
 
 
@@ -88,7 +150,7 @@ class TestDecoder(BaseProcessorTestCase):
     def test_testcases_failure_handling(self, testcase, rule, event, expected):
         self._load_rule(rule)
         result = self.object.process(event)
-        assert result.errors
+        assert result.errors or result.warnings
         assert event == expected, testcase
 
     def test_decodes_different_source_json_escaping(self):
