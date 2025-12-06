@@ -33,7 +33,6 @@ import binascii
 import json
 from typing import Callable
 
-from attrs import define
 
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
@@ -49,10 +48,6 @@ class Decoder(FieldManager):
     """A processor that ..."""
 
     rule_class = DecoderRule
-
-    @define(kw_only=True)
-    class Config(FieldManager.Config):
-        """Config of ..."""
 
     def _apply_single_target_processing(
         self,
