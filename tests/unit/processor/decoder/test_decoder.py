@@ -52,6 +52,46 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
         {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "new_field": "this,is,the,message"},
     ),
+    (
+        "decodes simple base64 and removes source field",
+        {
+            "filter": "message",
+            "decoder": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "source_format": "base64",
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
+        {"new_field": "this,is,the,message"},
+    ),
+    (
+        "decodes simple base64 and removes source fields with mapping",
+        {
+            "filter": "message1",
+            "decoder": {
+                "mapping": {"message1": "new_field1", "message2": "new_field2"},
+                "source_format": "base64",
+                "delete_source_fields": True,
+            },
+        },
+        {"message1": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
+        {"new_field1": "this,is,the,message", "new_field2": "this,is,the,message"},
+    ),
+    (
+        "decodes simple base64 and overwrites source_fields",
+        {
+            "filter": "message1",
+            "decoder": {
+                "mapping": {"message1": "message1", "message2": "message2"},
+                "source_format": "base64",
+                "overwrite_target": True,
+            },
+        },
+        {"message1": "dGhpcyxpcyx0aGUsbWVzc2FnZQ==", "message2": "dGhpcyxpcyx0aGUsbWVzc2FnZQ=="},
+        {"message1": "this,is,the,message", "message2": "this,is,the,message"},
+    ),
 ]
 
 failure_test_cases = [
