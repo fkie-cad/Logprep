@@ -54,23 +54,13 @@ class Decoder(FieldManager):
     class Config(FieldManager.Config):
         """Config of ..."""
 
-    def _apply_rules(self, event, rule):
-        rule_args = (
-            rule.source_fields,
-            rule.target_field,
-            rule.mapping,
-            rule.merge_with_target,
-            rule.overwrite_target,
-        )
-        decoder = implemented_decoders[rule.source_format]
-        if rule.mapping:
-            self._apply_mapping(event, rule, rule_args, decoder=decoder)
-        if rule.source_fields and rule.target_field:
-            self._apply_single_target_processing(event, rule, rule_args, decoder=decoder)
-
     def _apply_single_target_processing(
-        self, event, rule, rule_args, decoder: Callable = json.loads
+        self,
+        event,
+        rule,
+        rule_args,
     ):
+        decoder = implemented_decoders[rule.source_format]
         source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
@@ -83,7 +73,8 @@ class Decoder(FieldManager):
         args = (event, target_field, parsed_source_field_values)
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
-    def _apply_mapping(self, event, rule, rule_args, decoder: Callable = json.loads):
+    def _apply_mapping(self, event, rule, rule_args):
+        decoder = implemented_decoders[rule.source_format]
         source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())
