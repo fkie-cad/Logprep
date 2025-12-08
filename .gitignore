@@ -31,3 +31,4 @@ requirements.*
 .mypy_cache
 /scripts/
 .dmypy.json
+tmp
