@@ -2,7 +2,11 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from logprep.processor.replacer.rule import ReplacerRule, ReplacementTemplate, Replacement
+from logprep.processor.replacer.rule import (
+    Replacement,
+    ReplacementTemplate,
+    ReplacerRule,
+)
 
 
 class TestReplacerRule:
@@ -14,6 +18,7 @@ class TestReplacerRule:
             },
         }
         rule_dict = ReplacerRule.create_from_dict(rule)
+        rule_dict.setup_metrics()
         assert isinstance(rule_dict, ReplacerRule)
 
     @pytest.mark.parametrize(
@@ -78,6 +83,7 @@ class TestReplacerRule:
                 ReplacerRule.create_from_dict(rule)
         else:
             rule_instance = ReplacerRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("replacer").items():
                 assert hasattr(rule_instance._config, key)
@@ -141,7 +147,9 @@ class TestReplacerRule:
     )
     def test_equality(self, testcase, rule1, rule2, equality):
         rule1 = ReplacerRule.create_from_dict(rule1)
+        rule1.setup_metrics()
         rule2 = ReplacerRule.create_from_dict(rule2)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == equality, testcase
 
     @pytest.mark.parametrize(

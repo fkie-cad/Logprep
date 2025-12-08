@@ -1,11 +1,13 @@
 """This module contains classes for misuse detection and rule attribution
 as used by AMIDES."""
 
+import typing
 from typing import Dict, List, Tuple
 
-from sklearn.base import BaseEstimator
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import MinMaxScaler
+if typing.TYPE_CHECKING:
+    from sklearn.base import BaseEstimator
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.preprocessing import MinMaxScaler
 
 from logprep.processor.amides.features import CommaSeparation
 
@@ -27,9 +29,9 @@ class DetectionModel:
 
     __slots__ = ("_clf", "_vectorizer", "_scaler")
 
-    _clf: BaseEstimator
-    _vectorizer: TfidfVectorizer
-    _scaler: MinMaxScaler
+    _clf: "BaseEstimator"
+    _vectorizer: "TfidfVectorizer"
+    _scaler: "MinMaxScaler"
 
     def __init__(self, misuse_model: dict):
         self._setup(misuse_model)

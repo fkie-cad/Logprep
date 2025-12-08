@@ -194,6 +194,6 @@ class GenericResolver(FieldManager):
         self.metrics.num_cache_entries += cache_info.currsize
         self.metrics.cache_load += cache_info.currsize / cache_info.maxsize
 
-    def setup(self):
-        super().setup()
+    def setup(self, metrics=True) -> None:
+        super().setup(metrics=metrics)
         self._cache_metrics_skip_count = 0

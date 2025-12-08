@@ -162,7 +162,9 @@ class TestGenericResolverRule:
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
         rule1 = GenericResolverRule.create_from_dict(rule_definition)
+        rule1.setup_metrics()
         rule2 = GenericResolverRule.create_from_dict(other_rule_definition)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == is_equal, testcase
 
     @pytest.mark.parametrize(
@@ -220,6 +222,7 @@ class TestGenericResolverRule:
                 GenericResolverRule.create_from_dict(rule)
         else:
             rule_instance = GenericResolverRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("generic_resolver").items():
                 assert hasattr(rule_instance._config, key)
@@ -258,6 +261,7 @@ class TestGenericResolverRule:
         with patch.dict("os.environ", mock_env):
             scheduler = HttpGetter(protocol="http", target=target).scheduler
             rule = GenericResolverRule.create_from_dict(rule_definition)
+            rule.setup_metrics()
             assert rule.additions == from_http_1
             HttpGetter.refresh()
             assert rule.additions == from_http_1

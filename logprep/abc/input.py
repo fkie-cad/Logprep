@@ -56,7 +56,8 @@ class InputWarning(LogprepException):
     """May be catched but must be displayed to the user/logged."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
-        input_connector.metrics.number_of_warnings += 1
+        if input_connector._metrics is not None:
+            input_connector.metrics.number_of_warnings += 1
         super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
 
 

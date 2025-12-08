@@ -36,7 +36,6 @@ class BaseComponentTestCase(ABC):
         self.object = Factory.create(configuration=config)
         self.object._wait_for_health = mock.MagicMock()
 
-        assert "metrics" not in self.object.__dict__, "metrics should be a cached_property"
         self.metric_attributes = asdict(
             self.object.metrics,
             filter=partial(self.asdict_filter, block_list=self.block_list),

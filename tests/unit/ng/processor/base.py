@@ -10,7 +10,6 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-from requests.exceptions import HTTPError
 import responses
 from attrs import asdict
 from ruamel.yaml import YAML
@@ -85,6 +84,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             if isinstance(rule, dict) and self.object.rule_class is not None
             else rule
         )
+        rule.setup_metrics()
         self.object._rule_tree.add_rule(rule)
 
     def setup_method(self) -> None:

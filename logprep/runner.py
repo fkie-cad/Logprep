@@ -90,6 +90,7 @@ class Runner:
         self._logger = logging.getLogger("Runner")
         self._manager = PipelineManager(configuration)
         self._scheduler = Scheduler()
+
         if self._logger.isEnabledFor(logging.DEBUG):
             self._scheduler.every(10).seconds.do(self.show_threads)
 

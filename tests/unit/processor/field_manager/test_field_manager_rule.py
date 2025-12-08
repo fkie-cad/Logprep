@@ -13,6 +13,7 @@ class TestFieldManagerRule:
             "field_manager": {"source_fields": ["message"], "target_field": "new_field"},
         }
         rule_dict = FieldManagerRule.create_from_dict(rule)
+        rule_dict.setup_metrics()
         assert isinstance(rule_dict, FieldManagerRule)
 
     @pytest.mark.parametrize(
@@ -92,6 +93,7 @@ class TestFieldManagerRule:
                 FieldManagerRule.create_from_dict(rule)
         else:
             rule_instance = FieldManagerRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("field_manager").items():
                 assert hasattr(rule_instance._config, key)
@@ -116,5 +118,7 @@ class TestFieldManagerRule:
     )
     def test_equality(self, testcase, rule1, rule2, equality):
         rule1 = FieldManagerRule.create_from_dict(rule1)
+        rule1.setup_metrics()
         rule2 = FieldManagerRule.create_from_dict(rule2)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == equality, testcase

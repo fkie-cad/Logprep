@@ -39,6 +39,7 @@ class TestSelectiveExtractorRule:
         read_lines = b"test1\r\ntest2"
         with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
             rule = SelectiveExtractorRule.create_from_dict(rule_definition)
+            rule.setup_metrics()
             extracted_field_list = rule.extracted_field_list
             assert rule._config.extract_from_file == "my/file"
             assert "test1" in extracted_field_list
@@ -55,6 +56,7 @@ class TestSelectiveExtractorRule:
         }
         with pytest.raises(SelectiveExtractorRuleError):
             _ = SelectiveExtractorRule.create_from_dict(rule_definition)
+            _.setup_metrics()
 
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
@@ -181,7 +183,9 @@ class TestSelectiveExtractorRule:
 
             with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
                 rule1 = SelectiveExtractorRule.create_from_dict(rule_definition)
+                rule1.setup_metrics()
                 rule2 = SelectiveExtractorRule.create_from_dict(other_rule_definition)
+                rule2.setup_metrics()
                 assert (rule1 == rule2) == is_equal, testcase
 
     @pytest.mark.parametrize(
@@ -295,10 +299,13 @@ class TestSelectiveExtractorRule:
                 if raised:
                     with pytest.raises(raised, match=message):
                         _ = SelectiveExtractorRule.create_from_dict(rule_definition)
+                        _.setup_metrics()
                 else:
                     extractor_rule = SelectiveExtractorRule.create_from_dict(rule_definition)
+                    extractor_rule.setup_metrics()
                     assert isinstance(extractor_rule, SelectiveExtractorRule)
 
     def test_rule_is_hashable(self, rule_definition):
         rule = SelectiveExtractorRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert isinstance(rule, Hashable)

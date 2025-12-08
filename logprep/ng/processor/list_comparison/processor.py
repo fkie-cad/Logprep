@@ -49,8 +49,8 @@ class ListComparison(Processor):
 
     rule_class = ListComparisonRule
 
-    def setup(self) -> None:
-        super().setup()
+    def setup(self, metrics=True) -> None:
+        super().setup(metrics=metrics)
         for rule in self.rules:
             rule.init_list_comparison(self._config.list_search_base_path)
 

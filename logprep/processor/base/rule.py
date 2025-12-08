@@ -242,6 +242,8 @@ class Rule:
 
     rule_type: str = ""
 
+    _metrics: Optional[Metrics] = None
+
     @cached_property
     def id(self) -> str:
         """return the rule id"""
@@ -284,10 +286,16 @@ class Rule:
         if self._config.id is None:
             self._config.id = self.sha256
 
-    @cached_property
-    def metrics(self):
+    def setup_metrics(self):
+        if self._metrics is None:
+            self._metrics = self.Metrics(labels=self.metric_labels)
+
+    @property
+    def metrics(self) -> Metrics:
         """create and return metrics object"""
-        return self.Metrics(labels=self.metric_labels)
+        if self._metrics is None:
+            raise RuntimeError("accessing metrics property of rule without setup()")
+        return self._metrics
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Rule):

@@ -21,6 +21,7 @@ class ExceptionBaseTest:
 
     def setup_method(self):
         self.object = Rule.create_from_dict({"filter": "message", "rule": {}})
+        self.object.setup_metrics()
         self.event = {"message": "test_event"}
         self.exception_args = ("the error message", self.object, self.event)
 

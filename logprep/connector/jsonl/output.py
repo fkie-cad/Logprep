@@ -60,8 +60,8 @@ class JsonlOutput(Output):
         self.events = []
         self.failed_events = []
 
-    def setup(self):
-        super().setup()
+    def setup(self, metrics=True) -> None:
+        super().setup(metrics=metrics)
         open(self._config.output_file, "a+", encoding="utf8").close()
         if self._config.output_file_custom:
             open(self._config.output_file_custom, "a+", encoding="utf8").close()

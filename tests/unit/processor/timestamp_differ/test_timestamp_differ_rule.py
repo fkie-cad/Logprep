@@ -15,6 +15,7 @@ class TestTimestampDifferRule:
             },
         }
         rule = TimestampDifferRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         assert rule
 
     def test_diff_field_is_split_in_fields_and_formats(self):
@@ -26,6 +27,7 @@ class TestTimestampDifferRule:
             },
         }
         rule = TimestampDifferRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         assert rule.source_fields == ["field2", "field1"]
         assert rule.source_field_formats == ["YYYY-MM-DD HH:mm:ss", "YYYY-MM-DD HH:mm:ss"]
 
@@ -106,6 +108,7 @@ class TestTimestampDifferRule:
                 TimestampDifferRule.create_from_dict(rule)
         else:
             rule_instance = TimestampDifferRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("timestamp_differ").items():
                 assert hasattr(rule_instance._config, key)

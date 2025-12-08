@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.string_splitter.rule import StringSplitterRule
 
 
@@ -13,6 +12,7 @@ class TestStringSplitterRule:
             "string_splitter": {"source_fields": ["message"], "target_field": "new_field"},
         }
         rule_dict = StringSplitterRule.create_from_dict(rule)
+        rule_dict.setup_metrics()
         assert isinstance(rule_dict, StringSplitterRule)
 
     @pytest.mark.parametrize(
@@ -43,6 +43,7 @@ class TestStringSplitterRule:
                 StringSplitterRule.create_from_dict(rule)
         else:
             rule_instance = StringSplitterRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("string_splitter").items():
                 assert hasattr(rule_instance._config, key)
@@ -56,5 +57,7 @@ class TestStringSplitterRule:
     )
     def test_equality(self, testcase, rule1, rule2, equality):
         rule1 = StringSplitterRule.create_from_dict(rule1)
+        rule1.setup_metrics()
         rule2 = StringSplitterRule.create_from_dict(rule2)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == equality, testcase
