@@ -104,7 +104,7 @@ class Runner:
     def stop_and_exit(self) -> None:
         """Stop the runner and exit the process."""
         self._logger.info("Shutting down")
-        if self._manager:
+        if hasattr(self, "_manager") and self._manager is not None:
             self._manager.stop()
 
     def show_threads(self) -> None:
