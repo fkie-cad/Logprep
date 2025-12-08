@@ -9,14 +9,18 @@ from importlib.metadata import version
 from typing import Generator
 
 from attrs import define, field
+from prometheus_client import Histogram
 from schedule import Scheduler
 
 from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
-from logprep.metrics.metrics import GaugeMetric
+from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.configuration import Configuration
 from logprep.util.defaults import EXITCODES
 from logprep.util.getter import refresh_getters
+
+logger = logging.getLogger("Runner")
 
 
 class Runner:
@@ -114,14 +118,104 @@ class Runner:
                 f"Thread: {thread.name} (ID: {thread.ident}), daemon: {thread.daemon}, alive: {thread.is_alive()}, native: {thread.native_id}"
             )
 
+    def _leak_proc_setup(self):
+        obj = FieldManager(
+            name="test", configuration=FieldManager.Config(type="field_manager", rules=[])
+        )
+        obj.setup()
+
+    def _leak_metrics(self):
+        _ = FieldManager.Metrics(labels={"metrics": "1"})
+
+    def _leak_counter(self):
+        _ = CounterMetric(name="test", description="none", labels={"counter": "1"})
+
+    def _leak_counter_init(self):
+        obj = CounterMetric(name="test", description="none", labels={"counter": "1"})
+        obj.init_tracker()
+
+    def _leak_gauge(self):
+        _ = GaugeMetric(name="test", description="none", labels={"gauge": "1"})
+
+    def _leak_gauge_init(self):
+        obj = GaugeMetric(name="test", description="none", labels={"gauge": "1"})
+        obj.init_tracker()
+
+    def _leak_hist(self):
+        _ = HistogramMetric(name="test", description="none", labels={"hist": "1"})
+
+    def _leak_hist_init(self):
+        obj = HistogramMetric(name="test", description="none", labels={"hist": "1"})
+        obj.init_tracker()
+
+    def _leak_hist_core(self):
+        _ = Histogram(
+            name="test",
+            documentation="none",
+            labelnames=["hist"],
+            buckets=(0.00001, 0.00005, 0.0001, 0.001, 0.1, 1),
+            registry=None,
+        )
+
+    def _leak_hist_core_labels(self):
+        obj = Histogram(
+            name="test",
+            documentation="none",
+            labelnames=["hist"],
+            buckets=(0.00001, 0.00005, 0.0001, 0.001, 0.1, 1),
+            registry=None,
+        )
+        obj.labels(**{"hist": "1"})
+
+    def _leak_hist_core_labels_clear(self):
+        obj = Histogram(
+            name="test",
+            documentation="none",
+            labelnames=["hist"],
+            buckets=(0.00001, 0.00005, 0.0001, 0.001, 0.1, 1),
+            registry=None,
+        )
+        obj.labels(**{"hist": "1"})
+        obj.clear()
+
+    def _leak_hist_core_labels_clear_del(self):
+        obj = Histogram(
+            name="test",
+            documentation="none",
+            labelnames=["hist"],
+            buckets=(0.00001, 0.00005, 0.0001, 0.001, 0.1, 1),
+            registry=None,
+        )
+        obj.labels(**{"hist": "1"})
+        obj.clear()
+        del obj
+
     def _iterate(self) -> None:
         for _ in self._keep_iterating():
             refresh_getters()
             self._scheduler.run_pending()
             if self._exit_received:
                 break
+            # self._leak_proc_setup()
+            # self._leak_metrics()
+            # self._leak_counter()
+            # self._leak_counter_init()
+            # self._leak_gauge()
+            # self._leak_gauge_init()
+            # self._leak_hist()
+            # self._leak_hist_init()
+            # self._leak_hist_core()
+            # self._leak_hist_core_labels()
+            # self._leak_hist_core_labels_clear()
+            # self._leak_hist_core_labels_clear_del()
             self._configuration.refresh()
             if self._configuration.version != self._config_version:
+                logger.debug(
+                    "Loaded version = %s, current version = %s, differ = %s",
+                    self._configuration.version,
+                    self._config_version,
+                    self._configuration.version != self._config_version,
+                )
                 self._manager.reload()
                 self._config_version = self._configuration.version
             if self._manager.should_exit():
