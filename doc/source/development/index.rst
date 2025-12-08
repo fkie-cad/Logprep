@@ -10,5 +10,6 @@ Development
    processor_how_to
    register_a_new_component
    testing
+   profiling/index
    coding_examples
    programaticly_start_logprep
