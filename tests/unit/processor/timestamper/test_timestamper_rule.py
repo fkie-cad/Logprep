@@ -12,6 +12,7 @@ class TestTimestamperRule:
             "timestamper": {"source_fields": ["message"], "target_field": "new_field"},
         }
         rule_dict = TimestamperRule.create_from_dict(rule)
+        rule_dict.setup_metrics()
         assert isinstance(rule_dict, TimestamperRule)
 
     @pytest.mark.parametrize(
@@ -56,6 +57,7 @@ class TestTimestamperRule:
                 TimestamperRule.create_from_dict(rule)
         else:
             rule_instance = TimestamperRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("timestamper").items():
                 assert hasattr(rule_instance._config, key)

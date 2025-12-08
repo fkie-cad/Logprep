@@ -322,12 +322,12 @@ class FileInput(Input):
         except queue.Empty:
             return None, None
 
-    def setup(self) -> None:
+    def setup(self, metrics=True) -> None:
         """Creates and starts the Thread that continuously monitors the given logfile.
         Right now this input connector is only started in the first process.
         It needs the class attribute pipeline_index before running setup in Pipeline
         Initiation"""
-        super().setup()
+        super().setup(metrics=metrics)
         if not hasattr(self, "pipeline_index"):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."

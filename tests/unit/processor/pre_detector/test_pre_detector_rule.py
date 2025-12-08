@@ -165,22 +165,28 @@ class TestPreDetectorRule:
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
         rule1 = PreDetectorRule.create_from_dict(rule_definition)
+        rule1.setup_metrics()
         rule2 = PreDetectorRule.create_from_dict(other_rule_definition)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == is_equal, testcase
 
         rule_definition["pre_detector"]["link"] = "some_link"
         other_rule_definition["pre_detector"]["link"] = "some_link"
         rule1 = PreDetectorRule.create_from_dict(rule_definition)
+        rule1.setup_metrics()
         rule2 = PreDetectorRule.create_from_dict(other_rule_definition)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == is_equal, f"{testcase} (with link)"
 
     def test_detection_data_link_is_not_none_does_exists(self, rule_definition):
         rule_definition["pre_detector"]["link"] = "some_link"
         rule = PreDetectorRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert "link" in rule.detection_data
         assert rule.detection_data["link"] == "some_link"
 
     def test_detection_data_link_is_none_does_not_exist(self, rule_definition):
         rule_definition["pre_detector"]["link"] = None
         rule = PreDetectorRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert "link" not in rule.detection_data

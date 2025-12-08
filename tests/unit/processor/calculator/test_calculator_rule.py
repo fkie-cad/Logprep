@@ -12,6 +12,7 @@ class TestCalculatorRule:
             "calculator": {"calc": "${field1} + ${field2}", "target_field": "field3"},
         }
         rule = CalculatorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         assert rule
 
     def test_fills_source_fields(self):
@@ -20,6 +21,7 @@ class TestCalculatorRule:
             "calculator": {"calc": "${field1} + ${field2}", "target_field": "field3"},
         }
         rule = CalculatorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         assert rule.source_fields == ["field1", "field2"]
 
     @pytest.mark.parametrize(
@@ -49,6 +51,7 @@ class TestCalculatorRule:
                 CalculatorRule.create_from_dict(rule)
         else:
             rule_instance = CalculatorRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("calculator").items():
                 assert hasattr(rule_instance._config, key)

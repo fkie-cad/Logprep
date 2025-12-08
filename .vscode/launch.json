@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug non-ng example pipeline",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "logprep/run_logprep.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run",
+                "examples/exampledata/config/pipeline.yml"
+            ],
+            "env": {
+                "PROMETHEUS_MULTIPROC_DIR": "tmp/logprep"
+            },
+            "justMyCode": false
+        }
+    ]
+}

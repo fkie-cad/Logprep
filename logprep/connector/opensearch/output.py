@@ -213,8 +213,8 @@ class OpensearchOutput(Output):
         self._message_backlog = []
         self._failed = []
 
-    def setup(self):
-        super().setup()
+    def setup(self, metrics=True) -> None:
+        super().setup(metrics=metrics)
         flush_timeout = self.config.flush_timeout
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
 

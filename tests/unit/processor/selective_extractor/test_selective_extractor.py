@@ -39,6 +39,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
                 },
             }
         )
+        rule.setup_metrics()
         self.object._rule_tree.add_rule(rule)
         document = {field_name: "the value"}
         tuple_list = self.object.process(document)

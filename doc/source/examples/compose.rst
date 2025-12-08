@@ -11,6 +11,8 @@ properly start.
 
 The environment can either be started with a Logprep container or without one:
 
+.. _compose_setup_with_logprep_on_host:
+
 Run without Logprep Container (default)
 ---------------------------------------
 

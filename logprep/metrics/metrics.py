@@ -117,10 +117,10 @@ Processor Specific Metrics
 
 import os
 import time
-from _socket import gethostname
 from abc import ABC, abstractmethod
 from typing import Any, Union
 
+from _socket import gethostname
 from attrs import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 

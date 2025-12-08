@@ -1,12 +1,12 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import json
+from ipaddress import IPv4Network
 from pathlib import Path
 from unittest import mock
 
 import pytest
 import responses
-from ipaddress import IPv4Network
 
 from logprep.factory import Factory
 from logprep.ng.event.log_event import LogEvent
@@ -296,6 +296,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         }
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
+        rule.setup_metrics()
         processor._rule_tree.add_rule(rule)
         processor.setup()
         assert processor.rules[0].compare_sets == {
@@ -323,6 +324,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         }
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
+        rule.setup_metrics()
         processor._rule_tree.add_rule(rule)
         processor.setup()
         assert processor.rules[0].compare_sets == {
@@ -372,6 +374,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         with mock.patch.dict("os.environ", mock_env):
             processor = Factory.create({"custom_lister": config})
             rule = processor.rule_class.create_from_dict(rule_dict)
+            rule.setup_metrics()
             processor._rule_tree.add_rule(rule)
             processor.setup()
             assert processor.rules[0].compare_sets == {
@@ -457,6 +460,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
         }
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
+        rule.setup_metrics()
         processor._rule_tree.add_rule(rule)
         processor.setup()
         processor.process(log_event)

@@ -707,9 +707,16 @@ class Configuration:
           due to failures during the update."""
 
     def __attrs_post_init__(self) -> None:
+        # TBD
+        self._metrics = None  # type: ignore
+
+    def setup(self) -> None:
         self._metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._set_version_info_metric()
         self._set_config_refresh_interval(self.config_refresh_interval)
+
+    def setup_logging(self) -> None:
+        self.logger.setup_logging()
 
     @property
     def _metric_labels(self) -> dict[str, str]:
@@ -1023,9 +1030,10 @@ class Configuration:
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
         for processor_config in self.pipeline:
+            processor = None
             try:
                 processor = Factory.create(deepcopy(processor_config))
-                processor.setup()
+                processor.setup(metrics=False)
                 self._verify_rules(processor)
             except (
                 FactoryError,
@@ -1037,6 +1045,9 @@ class Configuration:
                 errors.append(error)
             except FileNotFoundError as error:
                 errors.append(InvalidConfigurationError(f"File not found: {error.filename}"))
+            finally:
+                if processor is not None:
+                    processor.shut_down()
             try:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except

@@ -658,14 +658,17 @@ pipeline:
         self, metrics_config_dict, raised_error, test_case
     ):  # pylint: disable=unused-argument
         if raised_error is None:
-            _ = Configuration(**{"metrics": metrics_config_dict})
+            config = Configuration(**{"metrics": metrics_config_dict})
+            config.setup()
         else:
             with pytest.raises(raised_error):
-                _ = Configuration(**{"metrics": metrics_config_dict})
+                config = Configuration(**{"metrics": metrics_config_dict})
+                config.setup()
 
     def test_reload_reloads_complete_config_if_different_config(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config._metrics.number_of_config_refreshes = 0
         config._metrics.number_of_config_refresh_failures = 0
         assert config.version == "1"
@@ -697,10 +700,12 @@ output:
     def test_reload_sets_config_refresh_interval_none(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         assert config.config_refresh_interval is None, "should be None"
         config.config_refresh_interval = 60
         config_path.write_text(config.as_yaml())
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config.schedule_config_refresh()
         assert config.config_refresh_interval == 60, "should be 60 seconds"
         assert config._scheduler.jobs, "should have a job"
@@ -715,6 +720,7 @@ output:
     def test_reload_always_reloads(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config._metrics.number_of_config_refreshes = 0
         config._metrics.number_of_config_refresh_failures = 0
         config.process_count = 99
@@ -728,6 +734,7 @@ output:
 
     def test_reload_logs_error_on_invalid_config(self, config_path, caplog):
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config._metrics.number_of_config_refreshes = 0
         config._metrics.number_of_config_refresh_failures = 0
         assert config.version == "1"
@@ -758,6 +765,7 @@ output:
     def test_reload_exposes_config_refresh_interval_metric(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config_path.write_text(
             """
 version: different_version
@@ -785,6 +793,7 @@ output:
     def test_reload_exposes_version_info_metric(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config_path.write_text(
             """
 version: different_version
@@ -827,12 +836,14 @@ output:
 """
         )
         with mock.patch("logprep.util.configuration.GaugeMetric.add_with_labels") as mock_add:
-            Configuration.from_sources([str(config_path)])
-        assert mock_add.call_count == 3, "version_info and config_refresh_interval and ???"
+            config = Configuration.from_sources([str(config_path)])
+            config.setup()
+        assert mock_add.call_count == 2, "version_info and config_refresh_interval"
 
     def test_reload_logs_error_on_invalid_processor_config(self, config_path, caplog):
         caplog.set_level("DEBUG")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config._metrics.number_of_config_refreshes = 0
         config._metrics.number_of_config_refresh_failures = 0
         assert config.version == "1", "version should be 1"
@@ -872,6 +883,7 @@ output:
     ):
         caplog.set_level("WARNING")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config._metrics.number_of_config_refreshes = 0
         config._metrics.number_of_config_refresh_failures = 0
         config.config_refresh_interval = 40
@@ -888,6 +900,7 @@ output:
     def test_reload_with_errors_does_not_set_interval_le_5_seconds(self, config_path, caplog):
         caplog.set_level("WARNING")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config.config_refresh_interval = 8
         config._metrics.config_refresh_interval = 0  # set to primitive type
         assert config.version == "1", "version should be 1"
@@ -904,14 +917,18 @@ output:
     ):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 8
+        config.setup()
+
         config._metrics.number_of_config_refreshes = 0
         config._metrics.number_of_config_refresh_failures = 0
-        config.config_refresh_interval = 8
         assert config.version == "1", "version should be 1"
+
         config_path.unlink()  # causes FileNotFoundError
         config.reload()
         assert caplog.text.count("Failed to load configuration") == 1
         assert config.config_refresh_interval == 5, "set minimum refresh interval to 5"
+
         config.config_refresh_interval = 8  # to write original config
         config_path.write_text(config.as_yaml())
         config.config_refresh_interval = 5
@@ -926,7 +943,7 @@ output:
         config.reload()
         assert caplog.text.count("Failed to load configuration") == 1
         assert caplog.text.count("Config refresh recovered from failing source") == 1
-        assert caplog.text.count("Config refresh interval is set to: 8 seconds") == 4
+        assert caplog.text.count("Config refresh interval is set to: 8 seconds") == 3
         assert config.config_refresh_interval == 8, "refresh interval should be reset to origin"
         assert config._metrics.number_of_config_refreshes == 2, "refresh after recovering"
         assert config._metrics.number_of_config_refresh_failures == 1, "config refresh failure"
@@ -968,6 +985,7 @@ output:
 
     def test_returned_json_is_valid_config(self, config_path):
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config.version = "super_custom_version"
         config_path.write_text(config.as_json())
         new_config = Configuration.from_sources([str(config_path)])
@@ -975,6 +993,7 @@ output:
 
     def test_returned_yaml_is_valid_config(self, config_path):
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config.version = "super_custom_version"
         config_path.write_text(config.as_yaml())
         new_config = Configuration.from_sources([str(config_path)])
@@ -982,6 +1001,7 @@ output:
 
     def test_reload_loads_generated_config(self, config_path):
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config_path.write_text(config.as_yaml())
         config.version = "very old version"
         config.reload()
@@ -989,6 +1009,7 @@ output:
 
     def test_reload_sets_pipeline(self, config_path):
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config.config_refresh_interval = 5
         config_path.write_text(config.as_yaml())
         config.version = "older version"
@@ -997,6 +1018,7 @@ output:
 
     def test_reload_sets_new_pipline(self, config_path):
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         assert len(config.pipeline) == 4
         config.pipeline.append(
             {
@@ -1093,6 +1115,7 @@ output:
 
     def test_schedule_config_refresh_does_not_schedule_if_none(self, config_path):
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config.config_refresh_interval = None
         config.schedule_config_refresh()
         assert config.config_refresh_interval is None
@@ -1352,28 +1375,34 @@ output:
             config1 = Configuration.from_sources(
                 [str(input_config), str(output_config), str(exporter_config)]
             )
+            config1.setup()
             assert config1.metrics.enabled
 
             config1 = Configuration.from_sources(
                 [str(exporter_config), str(input_config), str(output_config)]
             )
+            config1.setup()
             assert config1.metrics.enabled
 
             config1 = Configuration.from_sources(
                 [str(input_config), str(exporter_config), str(output_config)]
             )
+            config1.setup()
             assert config1.metrics.enabled
 
     def test_verify_calls_processor_setup(self, config_path):
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         with mock.patch("logprep.abc.processor.Processor.setup") as mocked_setup:
             config._verify()
             mocked_setup.assert_called()
 
     def test_verify_prints_file_not_found_errors_with_filename(self, config_path):
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         with mock.patch(
-            "logprep.abc.processor.Processor.setup", side_effect=lambda: open("not_existing_file")
+            "logprep.abc.processor.Processor.setup",
+            side_effect=lambda *args, **kwargs: open("not_existing_file"),
         ):
             with pytest.raises(
                 InvalidConfigurationError, match="File not found: not_existing_file"
@@ -1383,6 +1412,7 @@ output:
     def test_sets_version_metric(self, config_path):
         with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
             config = Configuration.from_sources([str(config_path)])
+            config.setup()
         mock_add.assert_called()
         mock_add.assert_has_calls(
             (
@@ -1399,6 +1429,7 @@ output:
     def test_always_log_config_refresh_interval(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config.config_refresh_interval = 10
         config.reload()
         assert "Successfully reloaded configuration" in caplog.text
@@ -1407,10 +1438,12 @@ output:
     def test_config_refresh_interval_cant_be_set_to_none(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
         config.config_refresh_interval = None
         config_path.write_text(config.as_yaml())
         config.config_refresh_interval = 10
         config.reload()
+        print(caplog.text)
         assert "Successfully reloaded configuration" in caplog.text
         assert "Config refresh interval is set to: 10 seconds" in caplog.text
         assert config.config_refresh_interval == 10, "should not be changed to None"
@@ -1421,6 +1454,7 @@ output:
     ):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
+        config.setup()
 
         config.config_refresh_interval = 10
 
@@ -1462,6 +1496,7 @@ output:
         assert "Successfully reloaded configuration" in caplog.text
 
         config = Configuration.from_sources([str(config_path)])  # Load with existing variable value
+        config.setup()
         caplog.clear()
         config.reload()  # Reload with unchanged variable value
         assert "Successfully reloaded configuration" in caplog.text

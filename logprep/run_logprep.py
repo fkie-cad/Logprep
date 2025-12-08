@@ -40,7 +40,8 @@ def _get_configuration(config_paths: tuple[str]) -> Configuration:
     console_logger = logging.getLogger("console")
     try:
         config = Configuration.from_sources(config_paths)
-        config.logger.setup_logging()
+        config.setup()
+        config.setup_logging()
         logger = logging.getLogger("root")  # pylint: disable=redefined-outer-name
         logger.info("Log level set to '%s'", logging.getLevelName(logger.level))
         return config

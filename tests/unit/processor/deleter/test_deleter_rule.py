@@ -96,11 +96,14 @@ class TestDeleterRule:
             if raised:
                 with pytest.raises(raised, match=message):
                     _ = DeleterRule.create_from_dict(rule_definition)
+                    _.setup_metrics()
             else:
                 with mock.patch("builtins.open", mock.mock_open(read_data="")):
                     deleter_rule = DeleterRule.create_from_dict(rule_definition)
+                    deleter_rule.setup_metrics()
                     assert isinstance(deleter_rule, DeleterRule)
 
     def test_rule_is_hashable(self, rule_definition):
         rule = DeleterRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert isinstance(rule, Hashable)

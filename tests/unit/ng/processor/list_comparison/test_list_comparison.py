@@ -291,6 +291,7 @@ Hans
         }
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
+        rule.setup_metrics()
         processor._rule_tree.add_rule(rule)
         processor.setup()
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
@@ -338,6 +339,7 @@ Heinz
         with mock.patch.dict("os.environ", mock_env):
             processor = Factory.create({"custom_lister": config})
             rule = processor.rule_class.create_from_dict(rule_dict)
+            rule.setup_metrics()
             processor._rule_tree.add_rule(rule)
             processor.setup()
             assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
@@ -405,6 +407,7 @@ Heinz
         }
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
+        rule.setup_metrics()
         processor._rule_tree.add_rule(rule)
         processor.setup()
         processor.process(log_event)

@@ -93,8 +93,8 @@ class GeoipEnricher(FieldManager):
             logger.debug("finished geoip database download.")
         return database.Reader(db_path)
 
-    def setup(self):
-        super().setup()
+    def setup(self, metrics=True) -> None:
+        super().setup(metrics=metrics)
         _ = self._city_db  # trigger download
 
     def _try_getting_geoip_data(self, ip_string):

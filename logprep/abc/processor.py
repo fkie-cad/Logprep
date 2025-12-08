@@ -322,7 +322,10 @@ class Processor(Component):
                 overwrite_target=getattr(rule, "overwrite_target", False),
             )
 
-    def setup(self):
-        super().setup()
+    def setup(self, metrics=True):
+        super().setup(metrics=metrics)
+
+    def setup_metrics(self):
+        super().setup_metrics()
         for rule in self.rules:
-            _ = rule.metrics  # initialize metrics to show them on startup
+            rule.setup_metrics()

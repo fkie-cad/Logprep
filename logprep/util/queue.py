@@ -16,8 +16,16 @@ class _QueueWithSize(BaseQueue):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.__size = multiprocessing.Value("i", 0)
+        try:
+            super().__init__(*args, **kwargs)
+            self.__size = multiprocessing.Value("i", 0)
+        except OSError as error:
+            if error.errno == 22 and "maxsize" in kwargs:
+                raise ValueError(
+                    "Invalid argument. "
+                    "Parameter `maxsize` might exceed upper boundary for queue implementation."
+                ) from error
+            raise error
 
     def put(self, *args, **kwargs):
         super().put(*args, **kwargs)

@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 # pylint: disable=too-many-locals
-import logging
 import os
 import re
 import tempfile
@@ -254,7 +253,7 @@ def test_logprep_exposes_prometheus_metrics_and_healthchecks(tmp_path):
         assert "OK" == response.text
 
 
-def test_config_loglevel_error_hides_info(tmp_path):
+def test_config_loglevel_error_hides_info():
     pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.output.update({"kafka": {"type": "dummy_output", "default": False}})
@@ -280,7 +279,7 @@ def test_config_loglevel_error_hides_info(tmp_path):
                 assert not re.search(r"root\s.*INFO", output), output
 
 
-def test_config_loglevel_info_shows_info(tmp_path):
+def test_config_loglevel_info_shows_info():
     pipeline = get_full_pipeline(exclude=["normalizer", "geoip_enricher"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config.output.update({"kafka": {"type": "dummy_output", "default": False}})

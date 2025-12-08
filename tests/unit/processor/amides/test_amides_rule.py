@@ -76,5 +76,7 @@ class TestAmidesRule:
         self, default_rule_definition, testcase, other_rule_definition, is_equal
     ):
         rule1 = AmidesRule.create_from_dict(default_rule_definition)
+        rule1.setup_metrics()
         rule2 = AmidesRule.create_from_dict(other_rule_definition)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == is_equal, testcase

@@ -74,6 +74,7 @@ class TestRuleTree:
     def test_add_rule(self, rule_dict):
         rule_tree = RuleTree()
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         assert rule_tree.root.children[0].expression == Exists(["winlog"])
@@ -84,6 +85,7 @@ class TestRuleTree:
 
         rule_dict["filter"] = "winlog: 123 AND xfoo: bar"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         assert rule_tree.root.children[0].children[0].children[0].expression == Exists(["xfoo"])
@@ -98,6 +100,7 @@ class TestRuleTree:
     def test_add_rule_fails(self, mock_warning, rule_dict):
         rule_tree = RuleTree()
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         error = Exception("mocked error")
         with mock.patch(
             "logprep.framework.rule_tree.rule_parser.RuleParser.parse_rule",
@@ -114,17 +117,20 @@ class TestRuleTree:
     def test_get_rule_id(self, rule_dict):
         rule_tree = RuleTree()
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
         assert rule_tree.get_rule_id(rule) == 0
 
         rule_dict["filter"] = "winlog: 123 AND xfoo: bar"
         rule2 = PreDetectorRule.create_from_dict(rule_dict)
+        rule2.setup_metrics()
         rule_tree.add_rule(rule2)
         assert rule_tree.get_rule_id(rule) == 0
         assert rule_tree.get_rule_id(rule2) == 1
 
         rule_dict["filter"] = "winlog: 123 AND xfoo: baz"
         rule3 = PreDetectorRule.create_from_dict(rule_dict)
+        rule3.setup_metrics()
         assert rule_tree.get_rule_id(rule) == 0
         assert rule_tree.get_rule_id(rule2) == 1
         assert rule_tree.get_rule_id(rule3) is None
@@ -132,6 +138,7 @@ class TestRuleTree:
     def test_match_simple(self, rule_dict):
         rule_tree = RuleTree()
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         assert rule_tree.get_matching_rules({"winlog": "123"}) == [rule]
@@ -149,6 +156,7 @@ class TestRuleTree:
         rule_tree = RuleTree()
         rule_dict["filter"] = "winlog: 123 AND test: (Good OR Okay OR Bad) OR foo: bar"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         assert rule_tree.get_matching_rules(document) == [rule]
@@ -157,10 +165,12 @@ class TestRuleTree:
         rule_tree = RuleTree()
         rule_dict["filter"] = "winlog: 123 AND test: (Good OR Okay OR Bad)"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         rule_dict["filter"] = "foo: bar"
         rule2 = PreDetectorRule.create_from_dict(rule_dict)
+        rule2.setup_metrics()
         rule_tree.add_rule(rule2)
 
         matchings_rules = rule_tree.get_matching_rules(
@@ -172,6 +182,7 @@ class TestRuleTree:
         rule_tree = RuleTree()
         rule_dict["filter"] = "winlog OR winlog: 123"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         assert rule_tree.get_matching_rules({"winlog": "123"}) == [rule]
@@ -180,6 +191,7 @@ class TestRuleTree:
         rule_tree = RuleTree()
         rule_dict["filter"] = "winlog: 123 OR winlog: 123"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         assert rule_tree.get_matching_rules({"winlog": "123"}) == [rule]
@@ -188,6 +200,7 @@ class TestRuleTree:
         rule_tree = RuleTree()
         rule_dict["filter"] = "foo: 123 OR bar: 123"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         assert rule_tree.get_matching_rules({"foo": "123", "bar": "123"}) == [rule]
@@ -196,6 +209,7 @@ class TestRuleTree:
         rule_tree = RuleTree()
         rule_dict["filter"] = "winlog: 123 OR winlog: 456"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         assert rule_tree.get_matching_rules({"winlog": "123"}) == [rule]
@@ -204,6 +218,7 @@ class TestRuleTree:
     def test_match_two_identical_rules(self, rule_dict):
         rule_tree = RuleTree()
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
         rule_tree.add_rule(rule)
 
@@ -217,6 +232,7 @@ class TestRuleTree:
             rule_dict["pre_detector"]["id"] = i
             rule_dict["pre_detector"]["title"] = f"{i}"
             rule = PreDetectorRule.create_from_dict(rule_dict)
+            rule.setup_metrics()
             rule_tree.add_rule(rule)
 
         matching_rules = rule_tree.get_matching_rules({"foo": "123", "bar": "123"})
@@ -235,6 +251,7 @@ class TestRuleTree:
         rule_tree = RuleTree()
         rule_dict["filter"] = rule_filter
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
         assert rule_tree.get_matching_rules(document) == [rule]
 
@@ -246,6 +263,7 @@ class TestRuleTree:
 
         rule_dict["filter"] = "winlog: 123 AND test: (Good OR Okay OR Bad) OR foo: bar"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         assert rule_tree.get_matching_rules({"foo": "bar"})
@@ -258,6 +276,7 @@ class TestRuleTree:
         rule_tree.rule_parser = RuleParser(tag_map)
 
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
 
         rule_tree.add_rule(rule)
 
@@ -272,10 +291,12 @@ class TestRuleTree:
         rule_tree = RuleTree()
         rule_dict["filter"] = "EventID: 1 AND winlog: 123"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
 
         rule_dict["filter"] = "EventID: 1"
         subrule = PreDetectorRule.create_from_dict(rule_dict)
+        subrule.setup_metrics()
         rule_tree.add_rule(subrule)
 
         assert rule_tree.get_matching_rules({"EventID": "1", "winlog": "123"}) == [subrule, rule]
@@ -283,16 +304,19 @@ class TestRuleTree:
     def test_get_size(self, rule_dict):
         rule_tree = RuleTree()
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
         assert rule_tree.get_size() == 2
 
         rule_dict["filter"] = "winlog: 123 AND xfoo: bar"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
         assert rule_tree.get_size() == 4
 
         rule_dict["filter"] = "winlog: 123 AND xfoo: foo"
         rule = PreDetectorRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         rule_tree.add_rule(rule)
         assert rule_tree.get_size() == 5
 
