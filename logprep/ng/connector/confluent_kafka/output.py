@@ -333,10 +333,10 @@ class ConfluentKafkaOutput(Output):
             return False
         return super().health()
 
-    def setup(self) -> None:
+    def setup(self, metrics=True) -> None:
         """Set the component up."""
         try:
-            super().setup()
+            super().setup(metrics=metrics)
         except KafkaException as error:
             raise FatalOutputError(self, f"Could not setup kafka producer: {error}") from error
 

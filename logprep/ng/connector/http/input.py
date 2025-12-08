@@ -284,10 +284,10 @@ class HttpInput(Input):
         self.app = None
         self.http_server: http.ThreadingHTTPServer | None = None
 
-    def setup(self) -> None:
+    def setup(self, metrics=True) -> None:
         """setup starts the actual functionality of this connector."""
 
-        super().setup()
+        super().setup(metrics=metrics)
         endpoints_config = {}
         collect_meta = self._config.collect_meta
         copy_headers_to_logs = self._config.copy_headers_to_logs

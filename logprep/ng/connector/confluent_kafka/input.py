@@ -588,7 +588,7 @@ class ConfluentKafkaInput(Input):
             return False
         return super().health()
 
-    def setup(self) -> None:
+    def setup(self, metrics=True) -> None:
         """Set the component up."""
         try:
             self._consumer.subscribe(
@@ -597,6 +597,6 @@ class ConfluentKafkaInput(Input):
                 on_revoke=self._revoke_callback,
                 on_lost=self._lost_callback,
             )
-            super().setup()
+            super().setup(metrics=metrics)
         except KafkaException as error:
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error

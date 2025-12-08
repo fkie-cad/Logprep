@@ -202,8 +202,8 @@ class Amides(FieldManager):
     def _evaluate_cmdline_cached(self):
         return lru_cache(maxsize=self._config.max_cache_entries)(self._evaluate_cmdline)
 
-    def setup(self):
-        super().setup()
+    def setup(self, metrics=True) -> None:
+        super().setup(metrics=metrics)
         models = self._load_and_unpack_models()
 
         self._misuse_detector = MisuseDetector(models["single"], self._config.decision_threshold)

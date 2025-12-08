@@ -725,6 +725,10 @@ class Configuration:
           due to failures during the update."""
 
     def __attrs_post_init__(self) -> None:
+        # TBD
+        self._metrics = None  # type: ignore
+
+    def setup(self) -> None:
         self._metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._set_version_info_metric()
         self._set_config_refresh_interval(self.config_refresh_interval)

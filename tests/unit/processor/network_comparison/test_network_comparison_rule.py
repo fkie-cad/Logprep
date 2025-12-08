@@ -89,13 +89,16 @@ class TestNetworkComparisonRule:
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
         rule1 = NetworkComparisonRule.create_from_dict(rule_definition)
+        rule1.setup_metrics()
         rule2 = NetworkComparisonRule.create_from_dict(other_rule_definition)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == is_equal, testcase
 
     def test_compare_set_not_empty_for_valid_rule_def_after_init_list_comparison(
         self, rule_definition
     ):
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
 
         rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")
 
@@ -128,6 +131,7 @@ class TestNetworkComparisonRule:
             "description": "",
         }
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
 
         rule.init_list_comparison("tests/testdata/unit/network_comparison/rules")
 
@@ -148,6 +152,7 @@ class TestNetworkComparisonRule:
             "description": "",
         }
         rule = NetworkComparisonRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
 
         with pytest.raises(
             ValueError, match="'invalid_network' does not appear to be an IPv4 or IPv6 network"

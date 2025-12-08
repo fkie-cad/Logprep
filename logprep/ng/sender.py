@@ -134,7 +134,7 @@ class Sender(Iterator):
         self.pipeline.shut_down()
         logger.info("Sender has been shut down.")
 
-    def setup(self) -> None:
+    def setup(self, metrics=True) -> None:
         """Setup all outputs."""
         for _, output in self._outputs.items():
             output.setup()

@@ -42,7 +42,9 @@ class TestSpecificGenericProcessing:
             "dissector": {"mapping": {"protocol": "%{proto} %{col}"}},
         }
         rule_one = DissectorRule.create_from_dict(rule_one_dict)
+        rule_one.setup_metrics()
         rule_two = DissectorRule.create_from_dict(rule_two_dict)
+        rule_two.setup_metrics()
         processor._rule_tree.add_rule(rule_one)
         processor._rule_tree.add_rule(rule_two)
         event = {"message": "time [proto col] url"}
@@ -69,7 +71,9 @@ class TestSpecificGenericProcessing:
             "dissector": {"mapping": {"protocol": "%{proto} %{col}"}},
         }
         rule_one = DissectorRule.create_from_dict(rule_one_dict)
+        rule_one.setup_metrics()
         rule_two = DissectorRule.create_from_dict(rule_two_dict)
+        rule_two.setup_metrics()
         processor._rule_tree.add_rule(rule_one)
         processor._rule_tree.add_rule(rule_two)
         event = {"message": "time [proto col] url"}
@@ -89,7 +93,9 @@ class TestSpecificGenericProcessing:
         rule_one_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
         rule_two_dict = {"filter": "NOT something", "generic_adder": {"add": {"something": "else"}}}
         rule_one = GenericAdderRule.create_from_dict(rule_one_dict)
+        rule_one.setup_metrics()
         rule_two = GenericAdderRule.create_from_dict(rule_two_dict)
+        rule_two.setup_metrics()
         processor._rule_tree.add_rule(rule_one)
         processor._rule_tree.add_rule(rule_two)
         event = {"val": "content"}
@@ -115,6 +121,7 @@ class TestSpecificGenericProcessing:
         processor.result = mock.MagicMock()
         rule_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
         rule = GenericAdderRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
 
         processor._handle_warning_error(event, rule, BaseException(), failure_tags=None)
         assert event == expected
@@ -136,6 +143,7 @@ class TestSpecificGenericProcessing:
         processor.result = mock.MagicMock()
         rule_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
         rule = GenericAdderRule.create_from_dict(rule_dict)
+        rule.setup_metrics()
         processing_error = ProcessingWarning("message", rule, event, ["_error_tag"])
 
         processor._handle_warning_error(event, rule, processing_error, failure_tags=None)

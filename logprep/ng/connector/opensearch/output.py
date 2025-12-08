@@ -229,8 +229,8 @@ class OpensearchOutput(Output):
         super().__init__(name, configuration)
         self._message_backlog = []
 
-    def setup(self):
-        super().setup()
+    def setup(self, metrics=True) -> None:
+        super().setup(metrics=metrics)
         flush_timeout = self.config.flush_timeout
         self._schedule_task(task=self.flush, seconds=flush_timeout)
 

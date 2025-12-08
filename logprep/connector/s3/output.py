@@ -40,13 +40,13 @@ Example
 
 import logging
 import re
+import typing
 from collections import defaultdict
 from functools import cached_property
 from time import time
 from typing import Any, DefaultDict, Optional
 from uuid import uuid4
 
-import boto3
 import msgspec
 from attr import define, field
 from attrs import validators
@@ -61,6 +61,9 @@ from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import CounterMetric, Metric
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
+
+if typing.TYPE_CHECKING:
+    import boto3
 
 
 def _handle_s3_error(func):
@@ -142,7 +145,7 @@ class S3Output(Output):
         """The input callback is called after the maximum backlog size has been reached
         if this is set to True (optional)"""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) Timeout after :code:`message_backlog` is flushed if 
+        """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
 
     @define(kw_only=True)
@@ -169,7 +172,9 @@ class S3Output(Output):
         self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
 
     @cached_property
-    def _s3_resource(self) -> boto3.resources.factory.ServiceResource:
+    def _s3_resource(self) -> "boto3.resources.factory.ServiceResource":
+        import boto3
+
         session = boto3.Session(
             aws_access_key_id=self._config.aws_access_key_id,
             aws_secret_access_key=self._config.aws_secret_access_key,
@@ -208,8 +213,8 @@ class S3Output(Output):
         return f"{base_description} - S3 Output: {self._config.endpoint_url}"
 
     @_handle_s3_error
-    def setup(self) -> None:
-        super().setup()
+    def setup(self, metrics=True) -> None:
+        super().setup(metrics=metrics)
         flush_timeout = self._config.flush_timeout
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
 

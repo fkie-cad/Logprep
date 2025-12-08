@@ -35,6 +35,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert rule._filter == StringFilterExpression(["applyrule"], "yes")
         assert rule._config.label == simple_rule_dict["labeler"]["label"]
 
@@ -55,6 +56,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         dummy_schema = MockLabelingSchema(False)
 
         assert not rule.conforms_to_schema(dummy_schema)
@@ -65,6 +67,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         dummy_schema = MockLabelingSchema(True)
 
         assert rule.conforms_to_schema(dummy_schema)
@@ -76,6 +79,7 @@ class TestRule:
             "description": "this is the description",
         }
         _ = LabelerRule.create_from_dict(rule_definition)
+        _.setup_metrics()
 
     def test_matches_returns_true_for_matching_document(self):
         rule_definition = {
@@ -83,6 +87,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         document = {"applyrule": "yes"}
 
         assert rule.matches(document)
@@ -93,23 +98,28 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         non_matching_documents = [{}, {"applyrule": "wrong value"}, {"wrong key": "value"}]
         for document in non_matching_documents:
             assert not rule.matches(document)
 
     def test_rules_are_different_if_their_filters_differ(self):
         rule1 = LabelerRule.create_from_dict(simple_rule_dict)
+        rule1.setup_metrics()
         rule2_dict = deepcopy(simple_rule_dict)
         rule2_dict["filter"] = 'applyrule: "no"'
         rule2 = LabelerRule.create_from_dict(rule2_dict)
+        rule2.setup_metrics()
 
         assert rule1 != rule2
 
     def test_rules_are_different_if_their_assigned_labels_differ(self):
         rule1_dict = {"filter": 'applyrule: "yes"', "labeler": {"label": {"reporter": ["windows"]}}}
         rule1 = LabelerRule.create_from_dict(rule1_dict)
+        rule1.setup_metrics()
         rule2_dict = {"filter": 'applyrule: "yes"', "labeler": {"label": {"reporter": ["mac"]}}}
         rule2 = LabelerRule.create_from_dict(rule2_dict)
+        rule2.setup_metrics()
 
         assert rule1 != rule2
 
@@ -119,7 +129,9 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule1 = LabelerRule.create_from_dict(rule_definition)
+        rule1.setup_metrics()
         rule2 = LabelerRule.create_from_dict(rule_definition)
+        rule2.setup_metrics()
 
         assert rule1 == rule2
 
@@ -129,10 +141,12 @@ class TestRule:
         rule_dict1 = deepcopy(simple_rule_dict)
         rule_dict1["description"] = "This is the first description"
         rule1 = LabelerRule.create_from_dict(rule_dict1)
+        rule1.setup_metrics()
 
         rule_dict2 = deepcopy(simple_rule_dict)
         rule_dict2["description"] = "This is the second description"
         rule2 = LabelerRule.create_from_dict(rule_dict2)
+        rule2.setup_metrics()
 
         assert rule1 == rule2
 
@@ -143,6 +157,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert rule.matches({"applyrule": "yes"})
         assert rule.matches({"applyrule": "yes!"})
         assert rule.matches({"applyrule": "no? yes!"})
@@ -154,6 +169,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         non_matching_documents = [
             {},
             {"applyrule": "no"},
@@ -172,6 +188,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert rule.matches({"applyrule": "UPlo8888"})
         assert rule.matches({"applyrule": "UPlo99999"})
         assert rule.matches({"applyrule": "UPlo$$$$"})
@@ -184,6 +201,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert not rule.matches({"applyrule": ""})
         assert not rule.matches({"applyrule": "UPlo777"})
         assert not rule.matches({"applyrule": "UP888888"})
@@ -198,6 +216,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         document = {"applyrule": None}
 
         assert rule.matches(document)
@@ -208,6 +227,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert rule.matches({"applyrule": "yes"})
         assert rule.matches({"applyrule": "yes!"})
         assert rule.matches({"applyrule": "no? yes!"})
@@ -218,6 +238,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         non_matching_documents = [
             {},
             {"applyrule": "no"},
@@ -236,6 +257,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert rule.matches({"applyrule": "UPlo8888"})
         assert rule.matches({"applyrule": "UPlo99999"})
         assert rule.matches({"applyrule": "UPlo$$$$"})
@@ -248,6 +270,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert not rule.matches({"applyrule": ""})
         assert not rule.matches({"applyrule": "UPlo777"})
         assert not rule.matches({"applyrule": "UP888888"})
@@ -262,6 +285,7 @@ class TestRule:
             "labeler": {"label": {"reporter": {"windows"}}},  # label is given as set
         }
         rule = LabelerRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert all(
             isinstance(val, list) for val in rule.prefixed_label.values()
         ), "prefixed_labels contain non-list values"

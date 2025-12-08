@@ -25,15 +25,16 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline, PipelineResult  # type: ignore[attr-defined]
+from logprep.framework.pipeline import (  # type: ignore[attr-defined]
+    Pipeline,
+    PipelineResult,
+)
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
     ProcessingWarning,
 )
 from logprep.util.configuration import Configuration
-
-original_create = Factory.create
 
 
 class ConfigurationForTests:
@@ -101,6 +102,7 @@ def get_mock_processor():
 @mock.patch("logprep.factory.Factory.create", new_callable=get_mock_create)
 class TestPipeline(ConfigurationForTests):
     def setup_method(self):
+        self.original_create = Factory.create
         self._check_failed_stored = None
 
         self.pipeline = Pipeline(
@@ -192,8 +194,8 @@ class TestPipeline(ConfigurationForTests):
         input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
         expected_output_data = deepcopy(input_data)
         connector_config = {"type": "dummy_input", "documents": input_data}
-        self.pipeline._input = original_create({"dummy": connector_config})
-        self.pipeline._output = {"dummy": original_create({"dummy": {"type": "dummy_output"}})}
+        self.pipeline._input = self.original_create({"dummy": connector_config})
+        self.pipeline._output = {"dummy": self.original_create({"dummy": {"type": "dummy_output"}})}
         self.pipeline.run()
         assert self.pipeline._output["dummy"].events == expected_output_data
 
@@ -359,7 +361,7 @@ class TestPipeline(ConfigurationForTests):
 
     @mock.patch("logging.Logger.error")
     def test_critical_output_error_is_logged_and_counted(self, mock_log_error, _):
-        dummy_output = original_create({"dummy_output": {"type": "dummy_output"}})
+        dummy_output = self.original_create({"dummy_output": {"type": "dummy_output"}})
         dummy_output.store_failed = mock.MagicMock()
 
         def raise_critical(event):
@@ -381,7 +383,7 @@ class TestPipeline(ConfigurationForTests):
 
     @mock.patch("logging.Logger.warning")
     def test_warning_output_error_is_logged(self, mock_warning, _):
-        dummy_output = original_create({"dummy_output": {"type": "dummy_output"}})
+        dummy_output = self.original_create({"dummy_output": {"type": "dummy_output"}})
 
         def raise_warning(event):
             raise OutputWarning(self.pipeline._output["dummy"], "mock output warning")
@@ -403,7 +405,9 @@ class TestPipeline(ConfigurationForTests):
         def raise_fatal_input_error(event):
             raise FatalInputError(self.pipeline._input, "fatal input error")
 
-        self.pipeline._input = original_create({"dummy": {"type": "dummy_input", "documents": []}})
+        self.pipeline._input = self.original_create(
+            {"dummy": {"type": "dummy_input", "documents": []}}
+        )
         self.pipeline._input.get_next = mock.MagicMock(side_effect=raise_fatal_input_error)
         self.pipeline._shut_down = mock.MagicMock()
         self.pipeline.run()
@@ -502,7 +506,7 @@ class TestPipeline(ConfigurationForTests):
                 "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
             }
         }
-        self.pipeline._input = original_create(input_config)
+        self.pipeline._input = self.original_create(input_config)
         self.pipeline._input.pipeline_index = 1
         self.pipeline._input.messages = mock.MagicMock(spec=multiprocessing.queues.Queue)
         self.pipeline._input.messages.empty = mock.MagicMock()
@@ -531,7 +535,7 @@ class TestPipeline(ConfigurationForTests):
             "dummy1": {"type": "dummy_output", "default": False},
             "dummy2": {"type": "dummy_output"},
         }
-        with mock.patch("logprep.factory.Factory.create", original_create):
+        with mock.patch("logprep.factory.Factory.create", self.original_create):
             output = self.pipeline._output
             assert isinstance(output, dict)
             for output_connector in output.items():
@@ -542,7 +546,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._logprep_config.output = {
             "dummy": {"type": "dummy_output"},
         }
-        with mock.patch("logprep.factory.Factory.create", original_create):
+        with mock.patch("logprep.factory.Factory.create", self.original_create):
             output = self.pipeline._output
 
         mock_task = mock.MagicMock()
@@ -771,6 +775,7 @@ class TestPipeline(ConfigurationForTests):
 
 class TestPipelineWithActualInput:
     def setup_method(self):
+        self.original_create = Factory.create
         self.config = Configuration.from_sources(["tests/testdata/config/config.yml"])
         self.config.output = {}
         self.config.process_count = 1

@@ -55,6 +55,7 @@ class TestPseudonomyzerRule:
                 PseudonymizerRule.create_from_dict(rule)
         else:
             rule_instance = PseudonymizerRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("pseudonymizer").items():
                 assert hasattr(rule_instance._config, key)
@@ -109,5 +110,7 @@ class TestPseudonomyzerRule:
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
         rule_1 = PseudonymizerRule.create_from_dict(rule_definition)
+        rule_1.setup_metrics()
         rule_2 = PseudonymizerRule.create_from_dict(other_rule_definition)
+        rule_2.setup_metrics()
         assert (rule_1 == rule_2) == is_equal, testcase

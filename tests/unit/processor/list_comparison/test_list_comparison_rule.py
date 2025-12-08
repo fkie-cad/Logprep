@@ -89,13 +89,16 @@ class TestListComparisonRule:
     )
     def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
         rule1 = ListComparisonRule.create_from_dict(rule_definition)
+        rule1.setup_metrics()
         rule2 = ListComparisonRule.create_from_dict(other_rule_definition)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == is_equal, testcase
 
     def test_compare_set_not_empty_for_valid_rule_def_after_init_list_comparison(
         self, rule_definition
     ):
         rule = ListComparisonRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
 
         rule.init_list_comparison("tests/testdata/unit/list_comparison/rules")
 
@@ -117,6 +120,7 @@ class TestListComparisonRule:
             },
         }
         rule = ListComparisonRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         url = "http://something"
         with pytest.raises(TypeError, match=f"The target {url} must be a url"):
             rule._init_list_comparison_from_http(url)

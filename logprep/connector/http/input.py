@@ -548,13 +548,13 @@ class HttpInput(Input):
         self.app = None
         self.http_server = None
 
-    def setup(self):
+    def setup(self, metrics=True) -> None:
         """setup starts the actual functionality of this connector.
         By checking against pipeline_index we're assuring this connector
         only runs a single time for multiple processes.
         """
 
-        super().setup()
+        super().setup(metrics=metrics)
         if self.pipeline_index is None:
             raise FatalInputError(self, "Necessary instance attribute `pipeline_index` is not set.")
         # Start HTTP Input only when in first process

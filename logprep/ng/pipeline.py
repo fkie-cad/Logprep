@@ -81,10 +81,10 @@ class Pipeline(Iterator):
         logger.info("All processors has been shut down.")
         logger.info("Pipeline has been shut down.")
 
-    def setup(self) -> None:
+    def setup(self, metrics=True) -> None:
         """Setup the pipeline components."""
 
         for processor in self.processors:
-            processor.setup()
+            processor.setup(metrics=metrics)
 
         logger.info("Pipeline has been set up.")

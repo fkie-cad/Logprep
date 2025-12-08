@@ -12,6 +12,7 @@ class TestIpInformerRule:
             "ip_informer": {"source_fields": ["message"], "target_field": "new_field"},
         }
         rule_dict = IpInformerRule.create_from_dict(rule)
+        rule_dict.setup_metrics()
         assert isinstance(rule_dict, IpInformerRule)
 
     @pytest.mark.parametrize(
@@ -57,6 +58,7 @@ class TestIpInformerRule:
                 IpInformerRule.create_from_dict(rule)
         else:
             rule_instance = IpInformerRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("ip_informer").items():
                 assert hasattr(rule_instance._config, key)

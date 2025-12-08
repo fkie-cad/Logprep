@@ -62,8 +62,8 @@ class Labeler(Processor):
         self._schema = LabelingSchema.create_from_file(configuration.schema)
         super().__init__(name, configuration=configuration)
 
-    def setup(self) -> None:
-        super().setup()
+    def setup(self, metrics=True) -> None:
+        super().setup(metrics=metrics)
         for rule in self.rules:
             if self._config.include_parent_labels:
                 rule.add_parent_labels_from_schema(self._schema)

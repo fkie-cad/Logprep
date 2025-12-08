@@ -22,6 +22,7 @@ def fixture_rule_definition():
 class TestDropperRule:
     def test_rule_has_fields_to_drop(self, rule_definition):
         rule = DropperRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         fields_to_drop = rule.fields_to_drop
         assert isinstance(fields_to_drop, list)
         assert "field1" in fields_to_drop
@@ -113,11 +114,14 @@ class TestDropperRule:
             if raised:
                 with pytest.raises(raised, match=message):
                     _ = DropperRule.create_from_dict(rule_definition)
+                    _.setup_metrics()
             else:
                 with mock.patch("builtins.open", mock.mock_open(read_data="")):
                     dropper_rule = DropperRule.create_from_dict(rule_definition)
+                    dropper_rule.setup_metrics()
                     assert isinstance(dropper_rule, DropperRule)
 
     def test_rule_is_hashable(self, rule_definition):
         rule = DropperRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert isinstance(rule, Hashable)

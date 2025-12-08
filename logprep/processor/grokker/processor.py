@@ -107,9 +107,9 @@ class Grokker(FieldManager):
         if not matches:
             raise ProcessingWarning("no grok pattern matched", rule, event)
 
-    def setup(self) -> None:
+    def setup(self, metrics=True) -> None:
         """Loads the action mapping. Has to be called before processing"""
-        super().setup()
+        super().setup(metrics=metrics)
         custom_patterns_dir = self._config.custom_patterns_dir
         if re.search(r"http(s)?:\/\/.*?\.zip", custom_patterns_dir):
             with tempfile.TemporaryDirectory("grok") as patterns_tmp_path:

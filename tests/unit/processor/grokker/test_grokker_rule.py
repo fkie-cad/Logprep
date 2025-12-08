@@ -13,6 +13,7 @@ class TestGrokkerRule:
             "grokker": {"mapping": {"message": "Username: %{USER:user}"}},
         }
         rule_dict = GrokkerRule.create_from_dict(rule)
+        rule_dict.setup_metrics()
         assert isinstance(rule_dict, GrokkerRule)
 
     @pytest.mark.parametrize(
@@ -242,9 +243,11 @@ class TestGrokkerRule:
         if error:
             with pytest.raises(error, match=message):
                 rule = GrokkerRule.create_from_dict(rule)
+                rule.setup_metrics()
                 rule.set_mapping_actions()
         else:
             rule_instance = GrokkerRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             rule_instance.set_mapping_actions()
             assert hasattr(rule_instance, "_config")
             for key, _ in rule.get("grokker").items():
@@ -307,7 +310,9 @@ class TestGrokkerRule:
     )
     def test_equality(self, testcase, rule1, rule2, equality):
         rule1 = GrokkerRule.create_from_dict(rule1)
+        rule1.setup_metrics()
         rule2 = GrokkerRule.create_from_dict(rule2)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == equality, testcase
 
     @pytest.mark.parametrize(
@@ -353,4 +358,5 @@ class TestGrokkerRule:
     )
     def test_ensure_dotted_field_notation_in_mapping(self, rule, expected_mapping):
         rule = GrokkerRule.create_from_dict(rule)
+        rule.setup_metrics()
         assert rule._config.mapping == expected_mapping

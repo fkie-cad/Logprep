@@ -195,7 +195,7 @@ class Runner:
 
         logger.debug("Finished processing batch of events.")
 
-    def setup(self) -> None:
+    def setup(self, metrics=True) -> None:
         """Set up the runner, its components, and required runner attributes."""
 
         self.sender = self._initialize_sender()

@@ -92,7 +92,9 @@ class TestGenericAdderRule:
         is_equal,
     ):
         rule1 = GenericAdderRule.create_from_dict(rule_definition)
+        rule1.setup_metrics()
         rule2 = GenericAdderRule.create_from_dict(other_rule_definition)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == is_equal, testcase
 
     def test_rule_accepts_bool_type(self):
@@ -101,6 +103,7 @@ class TestGenericAdderRule:
             "generic_adder": {"add": {"added_bool_field": True}},
         }
         rule = GenericAdderRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         assert isinstance(rule.add.get("added_bool_field"), bool)
 
     @responses.activate
@@ -147,6 +150,7 @@ class TestGenericAdderRule:
         with patch.dict("os.environ", mock_env):
             scheduler = HttpGetter(protocol="http", target=target).scheduler
             rule = GenericAdderRule.create_from_dict(rule_definition)
+            rule.setup_metrics()
             assert rule.add == expected_1
             HttpGetter.refresh()
             assert rule.add == expected_1

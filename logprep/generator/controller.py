@@ -36,7 +36,7 @@ class Controller:
         self.sender = Sender(self.file_loader.read_lines(), self.output, **self.config)
         self.exit_requested = False
 
-    def setup(self) -> None:
+    def setup(self, metrics=True) -> None:
         """Setup the generator"""
         self.loghandler.start()
         logger.debug("Start thread Fileloader active threads: %s", threading.active_count())

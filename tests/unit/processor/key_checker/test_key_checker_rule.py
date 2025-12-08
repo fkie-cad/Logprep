@@ -89,6 +89,7 @@ class TestKeyCheckerRule:
                 KeyCheckerRule.create_from_dict(rule)
         else:
             keychecker_rule = KeyCheckerRule.create_from_dict(rule)
+            keychecker_rule.setup_metrics()
             assert hasattr(keychecker_rule, "_config")
             for key, value in rule.get("key_checker").items():
                 assert hasattr(keychecker_rule._config, key)
@@ -181,5 +182,7 @@ class TestKeyCheckerRule:
     )
     def test_equality(self, testcase, rule1, rule2, equality):
         rule1 = KeyCheckerRule.create_from_dict(rule1)
+        rule1.setup_metrics()
         rule2 = KeyCheckerRule.create_from_dict(rule2)
+        rule2.setup_metrics()
         assert (rule1 == rule2) == equality, testcase

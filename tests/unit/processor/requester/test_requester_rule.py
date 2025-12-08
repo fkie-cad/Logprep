@@ -12,6 +12,7 @@ class TestRequesterRule:
             "requester": {"method": "GET", "url": "http://fancyapi"},
         }
         rule_dict = RequesterRule.create_from_dict(rule)
+        rule_dict.setup_metrics()
         assert isinstance(rule_dict, RequesterRule)
 
     @pytest.mark.parametrize(
@@ -151,6 +152,7 @@ class TestRequesterRule:
                 RequesterRule.create_from_dict(rule)
         else:
             rule_instance = RequesterRule.create_from_dict(rule)
+            rule_instance.setup_metrics()
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("requester").items():
                 assert hasattr(rule_instance._config, key)
@@ -226,6 +228,7 @@ class TestRequesterRule:
     )
     def test_sets_source_fields(self, rule, expected_source_fields):
         rule_instance = RequesterRule.create_from_dict(rule)
+        rule_instance.setup_metrics()
         assert expected_source_fields == rule_instance.source_fields
 
     @pytest.mark.parametrize(
@@ -258,4 +261,5 @@ class TestRequesterRule:
     )
     def test_kwargs_returns_requests_kwargs(self, rule, expected_keys):
         rule_instance = RequesterRule.create_from_dict(rule)
+        rule_instance.setup_metrics()
         assert sorted(expected_keys) == sorted(list(rule_instance.kwargs.keys()))

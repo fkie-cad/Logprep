@@ -6,8 +6,7 @@ import logging
 import sys
 import time
 from abc import ABC
-from functools import cached_property
-from typing import Callable
+from typing import Callable, Optional
 
 import msgspec
 from attr import define, field, validators
@@ -60,6 +59,7 @@ class Component(ABC):
     # instance attributes
     name: str
     _config: Config
+    _metrics: Optional[Metrics] = None
 
     # class attributes
     _scheduler = Scheduler()
@@ -76,10 +76,28 @@ class Component(ABC):
         self.name = name
         self.pipeline_index = pipeline_index
 
-    @cached_property
-    def metrics(self):
+    def setup(self, metrics=True):
+        """Set the component up."""
+        if metrics:
+            self.setup_metrics()
+        self._populate_cached_properties()
+        if not "http" in self._config.type:
+            # HTTP input connector spins up a http server
+            # only on the first pipeline process
+            # but this runs on all pipeline processes which leads to never
+            # completing the setup phase
+            self._wait_for_health()
+
+    def setup_metrics(self):
+        if self._metrics is None:
+            self._metrics = self.Metrics(labels=self.metric_labels)
+
+    @property
+    def metrics(self) -> Metrics:
         """create and return metrics object"""
-        return self.Metrics(labels=self.metric_labels)
+        if self._metrics is None:
+            raise AttributeError("accessing metrics property of component without setup()")
+        return self._metrics
 
     def __repr__(self):
         return camel_to_snake(self.__class__.__name__)
@@ -96,16 +114,6 @@ class Component(ABC):
 
         """
         return f"{self.__class__.__name__} ({self.name})"
-
-    def setup(self):
-        """Set the component up."""
-        self._populate_cached_properties()
-        if not "http" in self._config.type:
-            # HTTP input connector spins up a http server
-            # only on the first pipeline process
-            # but this runs on all pipeline processes which leads to never
-            # completing the setup phase
-            self._wait_for_health()
 
     def _wait_for_health(self) -> None:
         """Wait for the component to be healthy.
@@ -134,8 +142,11 @@ class Component(ABC):
 
         """
         self._scheduler.clear(id(self))
+        # retain metrics after clear as required by tests
+        metrics = self._metrics
         if hasattr(self, "__dict__"):
             self.__dict__.clear()
+        self._metrics = metrics
 
     def health(self) -> bool:
         """Check the health of the component.

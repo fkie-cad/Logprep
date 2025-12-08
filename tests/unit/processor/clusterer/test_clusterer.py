@@ -141,6 +141,7 @@ class TestClusterer(BaseProcessorTestCase):
         }
 
         rule = ClustererRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         self.object.rules.append(rule)
 
         results = self.object.test_rules()
@@ -167,6 +168,7 @@ class TestClusterer(BaseProcessorTestCase):
 
         document = {"message": "test signature test"}
         rule = ClustererRule.create_from_dict(rule_definition)
+        rule.setup_metrics()
         self.object._rule_tree.add_rule(rule)
         self.object._cluster(document, rule)
 
@@ -228,6 +230,7 @@ class TestClusterer(BaseProcessorTestCase):
         rules = []
         for idx, rule in enumerate(rules_to_add):
             new_rule = ClustererRule.create_from_dict(rule)
+            new_rule.setup_metrics()
             new_rule.file_name = str(idx)
             rules.append(new_rule)
             clusterer._rule_tree.add_rule(new_rule)
@@ -308,6 +311,7 @@ class TestClusterer(BaseProcessorTestCase):
         rules = []
         for idx, rule in enumerate(rules_to_add):
             new_rule = ClustererRule.create_from_dict(rule)
+            new_rule.setup_metrics()
             new_rule.file_name = str(idx)
             rules.append(new_rule)
             clusterer._rule_tree.add_rule(new_rule)
