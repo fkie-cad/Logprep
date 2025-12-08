@@ -133,6 +133,7 @@ class Component(ABC):
         Optional: Called when stopping the pipeline
 
         """
+        self._scheduler.clear(id(self))
         if hasattr(self, "__dict__"):
             self.__dict__.clear()
 
@@ -172,7 +173,7 @@ class Component(ABC):
             return
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
-        self._scheduler.every(seconds).seconds.do(task, *args, **kwargs)
+        self._scheduler.every(seconds).seconds.do(task, *args, **kwargs).tag(id(self))
 
     @classmethod
     def run_pending_tasks(cls) -> None:
