@@ -82,6 +82,9 @@ class DecoderRule(FieldManagerRule):
             validator=(validators.instance_of(str), validators.in_(implemented_decoders)),
             default="json",
         )
+        """The source format in the source field. Defaults to :code:`json`
+        Possible values are :code:`json, base64`
+        """
 
     @property
     def source_format(self) -> str:
