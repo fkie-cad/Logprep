@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 import tempfile
+from os import kill
 
+import psutil
 import pytest
 from ruamel.yaml import YAML
 
@@ -62,6 +64,37 @@ def test_config_refresh_after_5_seconds_without_change(tmp_path, config):
     config_path.write_text(config.as_json())
     with run_logprep(config_path) as proc:
         wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
+        wait_for_output(
+            proc,
+            "Successfully reloaded configuration",
+            test_timeout=10,
+        )
+
+
+def test_config_refresh_after_crash(tmp_path, config):
+    config.config_refresh_interval = 5
+    config.metrics = {"enabled": False}
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_json())
+    with run_logprep(config_path) as proc:
+        wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
+
+        wait_for_output(proc, "Start building pipeline", test_timeout=10)
+        main_process = psutil.Process(proc.pid)
+        children = main_process.children(recursive=True)
+        print(children)
+
+        for child in children:
+            if child.pid == proc.pid:
+                continue
+            child.kill()
+
+        # pipeline = children.pop()
+        # pipeline.kill()
+
+        print("Waiting for restarting failed pipeline")
+        wait_for_output(proc, "Restarting failed pipeline", test_timeout=5)
+
         wait_for_output(
             proc,
             "Successfully reloaded configuration",

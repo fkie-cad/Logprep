@@ -334,10 +334,13 @@ def wait_for_output(
     ):
         output = proc.stdout.readline()
         while 1:
-            if re.search(expected_output, output.decode("utf8")):
+            decoded = output.decode("utf8")
+            if decoded and decoded != "" and decoded != "" and not str.isspace(decoded):
+                print(decoded)
+            if re.search(expected_output, decoded):
                 break
             for forbidden_output in forbidden_outputs:
-                assert not re.search(forbidden_output, output.decode("utf8")), output
+                assert not re.search(forbidden_output, decoded), output
             output = proc.stdout.readline()
 
     wait_for_output_inner(proc, expected_output, forbidden_outputs)
