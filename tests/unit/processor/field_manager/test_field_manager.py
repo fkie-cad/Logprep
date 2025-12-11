@@ -52,6 +52,19 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "field_manager": {
                 "source_fields": ["message"],
+                "target_field": "existing",
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "This is a message", "existing": "existing"},
+        {"existing": "This is a message"},
+    ),
+    (
+        "moves single field to existing target field",
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["message"],
                 "target_field": "new_field",
                 "delete_source_fields": True,
                 "overwrite_target": True,
