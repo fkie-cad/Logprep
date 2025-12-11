@@ -44,7 +44,7 @@ DECODERS = {
 
 
 class Decoder(FieldManager):
-    """A processor that ..."""
+    """A processor that decodes field values to target fields"""
 
     rule_class = DecoderRule
 
