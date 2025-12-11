@@ -52,6 +52,19 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "field_manager": {
                 "source_fields": ["message"],
+                "target_field": "existing",
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "This is a message", "existing": "existing"},
+        {"existing": "This is a message"},
+    ),
+    (
+        "moves single field to existing target field",
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["message"],
                 "target_field": "new_field",
                 "delete_source_fields": True,
                 "overwrite_target": True,
@@ -532,6 +545,33 @@ test_cases = [  # testcase, rule, event, expected
                 "target1": "value",
             },
         },
+    ),
+    (
+        "overlapping source with target single processing",
+        {
+            "filter": "host",
+            "field_manager": {
+                "source_fields": ["host"],
+                "target_field": "host.name",
+                "delete_source_fields": True,
+            },
+        },
+        {"host": "example.com"},
+        {"host": {"name": "example.com"}},
+    ),
+    (
+        "overlapping source with target mapping processing",
+        {
+            "filter": "host",
+            "field_manager": {
+                "mapping": {
+                    "host": "host.name",
+                },
+                "delete_source_fields": True,
+            },
+        },
+        {"host": "example.com"},
+        {"host": {"name": "example.com"}},
     ),
 ]
 
