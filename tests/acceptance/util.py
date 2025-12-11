@@ -322,7 +322,7 @@ def run_logprep(
 
 def wait_for_output(
     proc: subprocess.Popen, expected_output, test_timeout=10, forbidden_outputs=None
-) -> None:
+) -> re.Match[str]:
     if forbidden_outputs is None:
         forbidden_outputs = ["Invalid", "Exception", "Critical", "Error", "ERROR"]
 
@@ -335,40 +335,17 @@ def wait_for_output(
         output = proc.stdout.readline()
         while 1:
             decoded = output.decode("utf8")
-            if decoded and decoded != "" and decoded != "" and not str.isspace(decoded):
-                print(decoded)
-            if re.search(expected_output, decoded):
-                break
+            match = re.search(expected_output, decoded)
+            if match:
+                return match
             for forbidden_output in forbidden_outputs:
                 assert not re.search(forbidden_output, decoded), output
             output = proc.stdout.readline()
 
-    wait_for_output_inner(proc, expected_output, forbidden_outputs)
+    match: re.Match[str] = cast(
+        re.Match[str], wait_for_output_inner(proc, expected_output, forbidden_outputs)
+    )
     time.sleep(0.1)
-
-
-def wait_for_output_with_search(
-    proc: subprocess.Popen, search_regex, test_timeout=10
-) -> re.Match[str]:
-    @timeout(test_timeout)
-    def wait_for_output_inner(
-        proc,
-        search_regex,
-    ) -> None | re.Match[str]:
-        output = proc.stdout.readline()
-        while 1:
-            decoded = output.decode("utf8")
-            if decoded and decoded != "" and decoded != "" and not str.isspace(decoded):
-                print(decoded)
-            match = re.search(search_regex, decoded)
-            if match:
-                return match
-            output = proc.stdout.readline()
-        return None
-
-    match: re.Match[str] = cast(re.Match[str], wait_for_output_inner(proc, search_regex))
-    time.sleep(0.1)
-
     return match
 
 
