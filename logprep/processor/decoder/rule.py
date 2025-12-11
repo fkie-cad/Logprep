@@ -88,5 +88,5 @@ class DecoderRule(FieldManagerRule):
 
     @property
     def source_format(self) -> str:
-        """getter for rule config"""
+        """Getter for rule config"""
         return self._config.source_format
