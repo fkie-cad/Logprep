@@ -534,12 +534,26 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "overlapping source with target",
+        "overlapping source with target single processing",
         {
             "filter": "host",
             "field_manager": {
                 "source_fields": ["host"],
                 "target_field": "host.name",
+                "delete_source_fields": True,
+            },
+        },
+        {"host": "example.com"},
+        {"host": {"name": "example.com"}},
+    ),
+    (
+        "overlapping source with target mapping processing",
+        {
+            "filter": "host",
+            "field_manager": {
+                "mapping": {
+                    "host": "host.name",
+                },
                 "delete_source_fields": True,
             },
         },

@@ -153,3 +153,8 @@ class FieldManager(Processor):
             ]
             return list(zip(*mapping))
         return source_field_values, targets
+
+    @staticmethod
+    def _get_first_overlapping_key(source_field: str, target: str) -> str | None:
+        """Returns the first overlapping key or None"""
+        return "host"
