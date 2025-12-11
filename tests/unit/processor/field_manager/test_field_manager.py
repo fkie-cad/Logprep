@@ -533,6 +533,19 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
     ),
+    (
+        "overlapping source with target",
+        {
+            "filter": "host",
+            "field_manager": {
+                "source_fields": ["host"],
+                "target_field": "host.name",
+                "delete_source_fields": True,
+            },
+        },
+        {"host": "example.com"},
+        {"host": {"name": "example.com"}},
+    ),
 ]
 
 failure_test_cases = [
