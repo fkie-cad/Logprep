@@ -108,6 +108,11 @@ def test_config_refresh_after_crash_config_not_changed(tmp_path, config):
             }
         ]
         config_path.write_text(config.as_json())
+        wait_for_output(
+            proc,
+            "Successfully reloaded configuration",
+            test_timeout=10,
+        )
 
         pipeline_pid = int(m.group("pid"))
         pipeline1 = psutil.Process(pipeline_pid)
