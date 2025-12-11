@@ -35,7 +35,7 @@ from typing import Callable
 
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import add_fields_to, pop_dotted_field_value
+from logprep.util.helper import FieldValue, add_fields_to, pop_dotted_field_value
 
 DECODERS = {
     "json": json.loads,
@@ -58,7 +58,7 @@ class Decoder(FieldManager):
         source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
-        source_field_values = list(filter(lambda x: x is not None, source_field_values))
+        source_field_values = [list(filter(lambda x: x is not None, source_field_values))]
         if not source_field_values:
             return
         parsed_source_field_values = self._decode(event, rule, decoder, source_field_values)
@@ -91,8 +91,12 @@ class Decoder(FieldManager):
                 pop_dotted_field_value(event, dotted_field)
 
     def _decode(
-        self, event: dict, rule: DecoderRule, decoder: Callable, source_field_values: list
-    ) -> list:
+        self,
+        event: dict[str, FieldValue],
+        rule: DecoderRule,
+        decoder: Callable[[str], FieldValue],
+        source_field_values: list[str],
+    ) -> FieldValue:
         try:
             return [decoder(value) for value in source_field_values]
         except (binascii.Error, json.decoder.JSONDecodeError) as error:
