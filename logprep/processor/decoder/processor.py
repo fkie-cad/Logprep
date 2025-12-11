@@ -56,7 +56,7 @@ class Decoder(FieldManager):
     ):
         decoder = DECODERS[rule.source_format]
         source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
-        source_field_values = self._get_field_values(event, rule.source_fields)
+        source_field_values = self._get_field_values(event, source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
         source_field_values = [value for value in source_field_values if value is not None]
         if not source_field_values:
@@ -69,9 +69,9 @@ class Decoder(FieldManager):
 
     def _apply_mapping(self, event, rule, rule_args):
         decoder = DECODERS[rule.source_format]
-        source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
+        _, __, mapping, merge_with_target, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
-        source_field_values = self._get_field_values(event, mapping.keys())
+        source_field_values = self._get_field_values(event, source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
         if not any(source_field_values):
             return
