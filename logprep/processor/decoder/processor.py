@@ -33,12 +33,11 @@ import binascii
 import json
 from typing import Callable
 
-
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import add_fields_to, pop_dotted_field_value
 
-implemented_decoders = {
+DECODERS = {
     "json": json.loads,
     "base64": lambda x: base64.b64decode(x).decode("utf-8"),
 }
@@ -55,7 +54,7 @@ class Decoder(FieldManager):
         rule,
         rule_args,
     ):
-        decoder = implemented_decoders[rule.source_format]
+        decoder = DECODERS[rule.source_format]
         source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
@@ -69,7 +68,7 @@ class Decoder(FieldManager):
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
     def _apply_mapping(self, event, rule, rule_args):
-        decoder = implemented_decoders[rule.source_format]
+        decoder = DECODERS[rule.source_format]
         source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())
