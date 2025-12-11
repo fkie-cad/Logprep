@@ -19,7 +19,7 @@ from importlib import import_module
 from logging import DEBUG, basicConfig, getLogger
 from os import makedirs, path
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Generator, Optional, cast
 
 import psutil
 
@@ -345,6 +345,31 @@ def wait_for_output(
 
     wait_for_output_inner(proc, expected_output, forbidden_outputs)
     time.sleep(0.1)
+
+
+def wait_for_output_with_search(
+    proc: subprocess.Popen, search_regex, test_timeout=10
+) -> re.Match[str]:
+    @timeout(test_timeout)
+    def wait_for_output_inner(
+        proc,
+        search_regex,
+    ) -> None | re.Match[str]:
+        output = proc.stdout.readline()
+        while 1:
+            decoded = output.decode("utf8")
+            if decoded and decoded != "" and decoded != "" and not str.isspace(decoded):
+                print(decoded)
+            match = re.search(search_regex, decoded)
+            if match:
+                return match
+            output = proc.stdout.readline()
+        return None
+
+    match: re.Match[str] = cast(re.Match[str], wait_for_output_inner(proc, search_regex))
+    time.sleep(0.1)
+
+    return match
 
 
 def get_full_pipeline(exclude=None):

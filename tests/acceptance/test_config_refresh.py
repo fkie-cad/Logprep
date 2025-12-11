@@ -7,7 +7,11 @@ import pytest
 from ruamel.yaml import YAML
 
 from logprep.util.configuration import Configuration
-from tests.acceptance.util import run_logprep, wait_for_output
+from tests.acceptance.util import (
+    run_logprep,
+    wait_for_output,
+    wait_for_output_with_search,
+)
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -23,6 +27,7 @@ def get_config():
         "profile_pipelines": False,
         "config_refresh_interval": 5,
         "metrics": {"enabled": False},
+        "logger": {"level": "DEBUG"},
         "pipeline": [],
         "input": {
             "file_input": {
@@ -71,32 +76,54 @@ def test_config_refresh_after_5_seconds_without_change(tmp_path, config):
         )
 
 
-def test_config_refresh_after_crash(tmp_path, config):
+def test_config_refresh_after_crash_config_not_changed(tmp_path, config):
     config.config_refresh_interval = 5
     config.metrics = {"enabled": False}
+
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(config.as_json())
     with run_logprep(config_path) as proc:
         wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
 
-        wait_for_output(proc, "Start building pipeline", test_timeout=10)
-        main_process = psutil.Process(proc.pid)
-        children = main_process.children(recursive=True)
-        print(children)
+        m = wait_for_output_with_search(
+            proc, r"^.{10}\s.{8}\s(?P<pid>\d*?)\s*Pipeline1\s.*$", test_timeout=10
+        )
 
-        for child in children:
-            if child.pid == proc.pid:
-                continue
-            child.kill()
+        wait_for_output(proc, "Finished building pipeline")
 
-        # pipeline = children.pop()
-        # pipeline.kill()
+        config.input = {
+            "dummy_input": {"type": "dummy_input", "documents": [{"something": "yeah"}]}
+        }
+        config.pipeline = [
+            {
+                "calc": {
+                    "type": "calculator",
+                    "rules": [
+                        {
+                            "filter": "test_label: execute",
+                            "calculator": {"target_field": "calculation", "calc": "1 / 0"},
+                        }
+                    ],
+                }
+            }
+        ]
+        config_path.write_text(config.as_json())
+
+        pipeline_pid = int(m.group("pid"))
+        pipeline1 = psutil.Process(pipeline_pid)
+        pipeline1.kill()
 
         print("Waiting for restarting failed pipeline")
         wait_for_output(proc, "Restarting failed pipeline", test_timeout=5)
 
-        wait_for_output(
-            proc,
-            "Successfully reloaded configuration",
-            test_timeout=10,
-        )
+        timed_out = False
+        try:
+            wait_for_output(
+                proc,
+                expected_output="Created 'calculator' processor",
+                test_timeout=10,
+            )
+        except:
+            timed_out = True
+        finally:
+            assert timed_out
