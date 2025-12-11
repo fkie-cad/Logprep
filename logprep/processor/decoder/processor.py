@@ -58,7 +58,7 @@ class Decoder(FieldManager):
         source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
-        source_field_values = [list(filter(lambda x: x is not None, source_field_values))]
+        source_field_values = [value for value in source_field_values if value is not None]
         if not source_field_values:
             return
         parsed_source_field_values = self._decode(event, rule, decoder, source_field_values)
