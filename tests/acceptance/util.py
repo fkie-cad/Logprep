@@ -340,7 +340,6 @@ def wait_for_output(
             output_line = proc.stdout.readline()
 
     match = wait_for_output_inner()
-    time.sleep(0.1)
     return match
 
 
