@@ -1617,6 +1617,31 @@ class TestLoggerConfig:
         assert kafka_input_logger.getEffectiveLevel() == logging.ERROR
         assert dummy_output_logger.getEffectiveLevel() == logging.ERROR
 
+    def test_logger_config_component_logger_does_not_affect_other_named_component_loggers(self):
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.NOTSET)
+
+        component_logger = logging.getLogger("Component")
+        kafkaoutput_logger = logging.getLogger("KafkaOutput")
+
+        component_logger.setLevel(logging.NOTSET)
+        kafkaoutput_logger.setLevel(logging.NOTSET)
+
+        logger_config = {
+            "logger": {
+                "level": "WARNING",
+                "loggers": {
+                    "Component": {"level": "ERROR"},
+                },
+            }
+        }
+
+        config = Configuration(**logger_config)
+        config.logger.setup_logging()
+
+        assert component_logger.getEffectiveLevel() == logging.ERROR
+        assert kafkaoutput_logger.getEffectiveLevel() == logging.WARNING
+
     def test_logger_config_overrides_only_specified_loggers_and_falls_back_to_defaults(self):
         root_logger = logging.getLogger()
         kafka_output_logger = logging.getLogger("KafkaOutput")
