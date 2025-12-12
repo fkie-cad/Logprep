@@ -324,7 +324,7 @@ def wait_for_output(
     proc: subprocess.Popen[bytes],
     expected_output: str,
     test_timeout: int = 10,
-    forbidden_outputs: list[str] = ["Invalid", "Exception", "Critical", "Error", "ERROR"],
+    forbidden_outputs: tuple[str, ...] = ("Invalid", "Exception", "Critical", "Error", "ERROR"),
 ) -> re.Match[str]:
     @timeout(test_timeout)
     def wait_for_output_inner() -> re.Match[str]:
