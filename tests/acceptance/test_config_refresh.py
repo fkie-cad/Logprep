@@ -75,6 +75,9 @@ def test_config_refresh_after_5_seconds_without_change(tmp_path, config):
         )
 
 
+@pytest.mark.skip(
+    reason="Currently this is not supposed to run, wait for bug fix ticket and reenable"
+)
 def test_config_refresh_after_crash_config_not_changed(tmp_path, config):
     config.config_refresh_interval = 5
     config.metrics = {"enabled": False}

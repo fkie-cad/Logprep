@@ -19,7 +19,7 @@ from importlib import import_module
 from logging import DEBUG, basicConfig, getLogger
 from os import makedirs, path
 from pathlib import Path
-from typing import Generator, Optional, cast
+from typing import Generator, Optional
 
 import psutil
 
@@ -138,7 +138,7 @@ def get_runner_outputs(
         A list of logprep outputs containing events, extra outputs like pre-detections or pseudonyms
         and errors
     """
-    parsed_outputs = [None, None, None]
+    parsed_outputs: list = [None, None, None]
     output_config = list(patched_runner._configuration.output.values())[0]
     output_paths = [
         output_path for key, output_path in output_config.items() if "output_file" in key
@@ -329,15 +329,15 @@ def wait_for_output(
     @timeout(test_timeout)
     def wait_for_output_inner() -> re.Match[str]:
         assert proc.stdout
-        output = proc.stdout.readline()
+        output_line = proc.stdout.readline()
         while True:
-            decoded = output.decode("utf8")
-            match = re.search(expected_output, decoded)
+            decoded_line = output_line.decode("utf8")
+            match = re.search(expected_output, decoded_line)
             if match:
                 return match
             for forbidden_output in forbidden_outputs:
-                assert not re.search(forbidden_output, decoded), output
-            output = proc.stdout.readline()
+                assert not re.search(forbidden_output, decoded_line), output_line
+            output_line = proc.stdout.readline()
 
     match = wait_for_output_inner()
     time.sleep(0.1)
