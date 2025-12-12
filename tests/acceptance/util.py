@@ -258,7 +258,7 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
     return Configuration(**config_yml)
 
 
-def _start_logprep(config_path: str, env: dict | None = None) -> subprocess.Popen:
+def _start_logprep(config_path: str, env: dict | None = None) -> subprocess.Popen[bytes]:
     if env is None:
         env = {}
     env.update({"PYTHONPATH": "."})
@@ -321,19 +321,16 @@ def run_logprep(
 
 
 def wait_for_output(
-    proc: subprocess.Popen, expected_output, test_timeout=10, forbidden_outputs=None
+    proc: subprocess.Popen[bytes],
+    expected_output: str,
+    test_timeout: int = 10,
+    forbidden_outputs: list[str] = ["Invalid", "Exception", "Critical", "Error", "ERROR"],
 ) -> re.Match[str]:
-    if forbidden_outputs is None:
-        forbidden_outputs = ["Invalid", "Exception", "Critical", "Error", "ERROR"]
-
     @timeout(test_timeout)
-    def wait_for_output_inner(
-        proc,
-        expected_output,
-        forbidden_outputs,
-    ):
+    def wait_for_output_inner() -> re.Match[str]:
+        assert proc.stdout
         output = proc.stdout.readline()
-        while 1:
+        while True:
             decoded = output.decode("utf8")
             match = re.search(expected_output, decoded)
             if match:
@@ -342,9 +339,7 @@ def wait_for_output(
                 assert not re.search(forbidden_output, decoded), output
             output = proc.stdout.readline()
 
-    match: re.Match[str] = cast(
-        re.Match[str], wait_for_output_inner(proc, expected_output, forbidden_outputs)
-    )
+    match = wait_for_output_inner()
     time.sleep(0.1)
     return match
 
