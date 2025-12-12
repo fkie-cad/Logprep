@@ -138,7 +138,7 @@ def get_runner_outputs(
         A list of logprep outputs containing events, extra outputs like pre-detections or pseudonyms
         and errors
     """
-    parsed_outputs = [None, None, None]
+    parsed_outputs: list = [None, None, None]
     output_config = list(patched_runner._configuration.output.values())[0]
     output_paths = [
         output_path for key, output_path in output_config.items() if "output_file" in key
@@ -258,7 +258,7 @@ def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration
     return Configuration(**config_yml)
 
 
-def _start_logprep(config_path: str, env: dict | None = None) -> subprocess.Popen:
+def _start_logprep(config_path: str, env: dict | None = None) -> subprocess.Popen[bytes]:
     if env is None:
         env = {}
     env.update({"PYTHONPATH": "."})
@@ -321,27 +321,25 @@ def run_logprep(
 
 
 def wait_for_output(
-    proc: subprocess.Popen, expected_output, test_timeout=10, forbidden_outputs=None
-) -> None:
-    if forbidden_outputs is None:
-        forbidden_outputs = ["Invalid", "Exception", "Critical", "Error", "ERROR"]
-
+    proc: subprocess.Popen[bytes],
+    expected_output: str,
+    test_timeout: int = 10,
+    forbidden_outputs: tuple[str, ...] = ("Invalid", "Exception", "Critical", "Error", "ERROR"),
+) -> re.Match[str]:
     @timeout(test_timeout)
-    def wait_for_output_inner(
-        proc,
-        expected_output,
-        forbidden_outputs,
-    ):
-        output = proc.stdout.readline()
-        while 1:
-            if re.search(expected_output, output.decode("utf8")):
-                break
+    def wait_for_output_inner() -> re.Match[str]:
+        assert proc.stdout
+        output_line = proc.stdout.readline()
+        while True:
+            decoded_line = output_line.decode("utf8")
+            match = re.search(expected_output, decoded_line)
+            if match:
+                return match
             for forbidden_output in forbidden_outputs:
-                assert not re.search(forbidden_output, output.decode("utf8")), output
-            output = proc.stdout.readline()
+                assert not re.search(forbidden_output, decoded_line), output_line
+            output_line = proc.stdout.readline()
 
-    wait_for_output_inner(proc, expected_output, forbidden_outputs)
-    time.sleep(0.1)
+    return wait_for_output_inner()
 
 
 def get_full_pipeline(exclude=None):
