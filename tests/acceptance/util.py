@@ -339,8 +339,7 @@ def wait_for_output(
                 assert not re.search(forbidden_output, decoded_line), output_line
             output_line = proc.stdout.readline()
 
-    match = wait_for_output_inner()
-    return match
+    return wait_for_output_inner()
 
 
 def get_full_pipeline(exclude=None):

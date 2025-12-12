@@ -88,8 +88,8 @@ def test_config_refresh_after_crash_config_not_changed(tmp_path, config):
     with run_logprep(config_path) as proc:
         wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
 
-        match = wait_for_output(
-            proc, r"^.{10}\s.{8}\s(?P<pid>\d*?)\s*Pipeline1\s.*$", test_timeout=10
+        pipeline_pid = int(
+            wait_for_output(proc, r"^.{20}(?P<pid>\d*?)\s*Pipeline1", test_timeout=10).group("pid")
         )
 
         wait_for_output(proc, "Finished building pipeline")
@@ -114,7 +114,6 @@ def test_config_refresh_after_crash_config_not_changed(tmp_path, config):
             test_timeout=10,
         )
 
-        pipeline_pid = int(match.group("pid"))
         pipeline_process = psutil.Process(pipeline_pid)
         pipeline_process.kill()
 
