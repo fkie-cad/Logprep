@@ -1,0 +1,92 @@
+"""
+Decoder
+============
+
+With the :code:`decoder` processor you are able to parse fields from
+different formats.
+
+A speaking example:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Given decoder rule
+
+    filter: message
+    decoder:
+        source_format: json
+        mapping:
+            message: parsed
+    description: 'parse message field to the field called parsed'
+
+..  code-block:: json
+    :linenos:
+    :caption: Incoming event
+
+    {
+        "message": "{\"timestamp\": \"2019-08-02T09:46:18.625Z\", \"log\": \"user login failed\"}"
+    }
+
+..  code-block:: json
+    :linenos:
+    :caption: Processed event
+
+    {
+        "message": "{\"timestamp\": \"2019-08-02T09:46:18.625Z\", \"log\": \"user login failed\"}",
+        "parsed": {
+            "timestamp": "2019-08-02T09:46:18.625Z",
+            "log": "user login failed"
+        }
+    }
+
+
+.. autoclass:: logprep.processor.decoder.rule.DecoderRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+Examples for decoder:
+------------------------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.decoder.test_decoder
+   :template: testcase-renderer.tmpl
+
+"""
+
+from attrs import define, field, validators
+
+from logprep.processor.field_manager.rule import FieldManagerRule
+
+implemented_decoders = ("json", "base64")
+
+
+class DecoderRule(FieldManagerRule):
+    """Rule for the decoder processor"""
+
+    @define(kw_only=True)
+    class Config(FieldManagerRule.Config):
+        """Config for DecoderRule"""
+
+        source_fields: list = field(
+            validator=(
+                validators.max_len(1),
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+            ),
+            factory=list,
+        )
+        """The field to decode as list with maximum one element. For multi field operations
+           use :code:`mapping` instead.
+        """
+        source_format: str = field(
+            validator=(validators.instance_of(str), validators.in_(implemented_decoders)),
+            default="json",
+        )
+        """The source format in the source field. Defaults to :code:`json`
+        Possible values are :code:`json, base64`
+        """
+
+    @property
+    def source_format(self) -> str:
+        """Getter for rule config"""
+        return self._config.source_format

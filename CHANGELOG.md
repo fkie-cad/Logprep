@@ -3,6 +3,7 @@
 
 ### Features
 * Headers from incoming http requests can now be copied into events via `copy_headers_to_log` config in http input, `collect_meta` will be deprecated in the future
+* add new `decoder` processor to decode values from event field
 
 ### Improvements
 
