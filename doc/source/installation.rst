@@ -68,6 +68,14 @@ This option can be used to build a container image from a specific commit
 
 To see if the installation was successful run :code:`docker run logprep --version`.
 
+**Note:**
+The provided Dockerfile uses **Python 3.11** by default via the :code:`PYTHON_VERSION` build argument.
+If you want to build Logprep with another supported Python version, override the value during build:
+
+..  code-block:: bash
+
+    docker build --build-arg PYTHON_VERSION=3.13 -t logprep .
+
 Helm
 ====
 
