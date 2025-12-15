@@ -54,6 +54,7 @@ test_cases = [  # testcase, rule, event, expected
                 "source_fields": ["message"],
                 "target_field": "existing",
                 "delete_source_fields": True,
+                "overwrite_target": True,
             },
         },
         {"message": "This is a message", "existing": "existing"},
@@ -553,7 +554,7 @@ test_cases = [  # testcase, rule, event, expected
             "field_manager": {
                 "source_fields": ["host"],
                 "target_field": "host.name",
-                "delete_source_fields": True,
+                "overwrite_target": True,
             },
         },
         {"host": "example.com"},
@@ -567,7 +568,7 @@ test_cases = [  # testcase, rule, event, expected
                 "mapping": {
                     "host": "host.name",
                 },
-                "delete_source_fields": True,
+                "overwrite_target": True,
             },
         },
         {"host": "example.com"},
@@ -666,7 +667,8 @@ class TestFieldManager(BaseProcessorTestCase):
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
         self._load_rule(rule)
-        self.object.process(event)
+        result = self.object.process(event)
+        assert not result.errors
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
