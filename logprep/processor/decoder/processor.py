@@ -49,7 +49,7 @@ class Decoder(FieldManager):
     rule_class = DecoderRule
 
     def transform_values(
-        self, source_field_values: list[FieldValue], event: dict, rule: DecoderRule
+        self, source_field_values: list[FieldValue], event: dict[str, FieldValue], rule: DecoderRule
     ) -> list[FieldValue]:
         decoder = DECODERS[rule.source_format]
         return self._decode(event, rule, decoder, source_field_values)
