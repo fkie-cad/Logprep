@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=line-too-long
 import logging
 import re
 
@@ -45,6 +46,20 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message"},
         {"new_field": "This is a message"},
+    ),
+    (
+        "moves single field to existing target field",
+        {
+            "filter": "message",
+            "field_manager": {
+                "source_fields": ["message"],
+                "target_field": "existing",
+                "delete_source_fields": True,
+                "overwrite_target": True,
+            },
+        },
+        {"message": "This is a message", "existing": "existing"},
+        {"existing": "This is a message"},
     ),
     (
         "moves single field to existing target field",
@@ -533,6 +548,33 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
     ),
+    (
+        "overlapping source with target single processing",
+        {
+            "filter": "host",
+            "field_manager": {
+                "source_fields": ["host"],
+                "target_field": "host.name",
+                "overwrite_target": True,
+            },
+        },
+        {"host": "example.com"},
+        {"host": {"name": "example.com"}},
+    ),
+    (
+        "overlapping source with target mapping processing",
+        {
+            "filter": "host",
+            "field_manager": {
+                "mapping": {
+                    "host": "host.name",
+                },
+                "overwrite_target": True,
+            },
+        },
+        {"host": "example.com"},
+        {"host": {"name": "example.com"}},
+    ),
 ]
 
 failure_test_cases = [
@@ -626,7 +668,8 @@ class TestFieldManager(BaseProcessorTestCase):
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
         self._load_rule(rule)
-        self.object.process(event)
+        result = self.object.process(event)
+        assert not result.errors
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
