@@ -30,6 +30,7 @@ Processor Configuration
 from logprep.abc.processor import Processor
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
+    FieldValue,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
@@ -160,7 +161,9 @@ class FieldManager(Processor):
             return list(zip(*mapping))
         return source_field_values, targets
 
-    def transform_values(self, source_field_values, event, rule):
+    def transform_values(
+        self, source_field_values: list[FieldValue], _: dict, __: FieldManagerRule
+    ) -> list[FieldValue]:
         """template method to be able to transform the source fields
         in child classes
         """
