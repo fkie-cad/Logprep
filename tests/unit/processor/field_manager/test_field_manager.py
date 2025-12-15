@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=line-too-long
 import logging
 import re
 
