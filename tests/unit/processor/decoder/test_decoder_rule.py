@@ -1,5 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+from contextlib import nullcontext as does_not_raise
+
 import pytest
 
 from logprep.processor.decoder.rule import DecoderRule
@@ -15,33 +17,33 @@ class TestDecoderRule:
         assert isinstance(rule_dict, DecoderRule)
 
     @pytest.mark.parametrize(
-        ["rule", "error", "message"],
+        ["rule", "assert_error_if_expected"],
         [
-            (
+            pytest.param(
                 {
                     "filter": "message",
                     "decoder": {"source_fields": ["message"], "target_field": "new_field"},
                 },
-                None,
-                None,
+                does_not_raise(),
+                id="decode_with_source_fields",
             ),
-            (
+            pytest.param(
                 {
                     "filter": "message",
                     "decoder": {"source_fields": ["message", "next"], "target_field": "new_field"},
                 },
-                ValueError,
-                " must be <= 1",
+                pytest.raises(ValueError, match=" must be <= 1"),
+                id="not_more_than_one_source_field",
             ),
-            (
+            pytest.param(
                 {
                     "filter": "message",
                     "decoder": {"mapping": {"source": "target"}},
                 },
-                None,
-                None,
+                does_not_raise(),
+                id="decode_with_mapping",
             ),
-            (
+            pytest.param(
                 {
                     "filter": "message",
                     "decoder": {
@@ -49,16 +51,15 @@ class TestDecoderRule:
                         "source_format": "not implemented",
                     },
                 },
-                ValueError,
-                "'source_format' must be in.*got 'not implemented'",
+                pytest.raises(
+                    ValueError, match="'source_format' must be in.*got 'not implemented'"
+                ),
+                id="illegal_source_format",
             ),
         ],
     )
-    def test_create_from_dict_validates_config(self, rule, error, message):
-        if error:
-            with pytest.raises(error, match=message):
-                DecoderRule.create_from_dict(rule)
-        else:
+    def test_create_from_dict_validates_config(self, rule, assert_error_if_expected):
+        with assert_error_if_expected:
             rule_instance = DecoderRule.create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("decoder").items():
@@ -68,7 +69,7 @@ class TestDecoderRule:
     @pytest.mark.parametrize(
         ["testcase", "rule1", "rule2", "equality"],
         [
-            (
+            pytest.param(
                 "equal because equal rules",
                 {
                     "filter": "message",
@@ -79,8 +80,9 @@ class TestDecoderRule:
                     "decoder": {"source_fields": ["message"], "target_field": "new_field"},
                 },
                 True,
+                id="all_equal",
             ),
-            (
+            pytest.param(
                 "not equal because different filter",
                 {
                     "filter": "message",
@@ -91,8 +93,9 @@ class TestDecoderRule:
                     "decoder": {"source_fields": ["message"], "target_field": "new_field"},
                 },
                 False,
+                id="filter_differs",
             ),
-            (
+            pytest.param(
                 "not equal because other target",
                 {
                     "filter": "message",
@@ -103,8 +106,9 @@ class TestDecoderRule:
                     "decoder": {"source_fields": ["message"], "target_field": "other_field"},
                 },
                 False,
+                id="target_differs",
             ),
-            (
+            pytest.param(
                 "not equal because other source",
                 {
                     "filter": "message",
@@ -115,6 +119,7 @@ class TestDecoderRule:
                     "decoder": {"source_fields": ["other"], "target_field": "new_field"},
                 },
                 False,
+                id="source_differs",
             ),
         ],
     )
