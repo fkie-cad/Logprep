@@ -62,6 +62,8 @@ class FieldManager(Processor):
         if not source_field_values:
             return
         target_field_values = self.transform_values(source_field_values, event, rule)
+        if not target_field_values:
+            return
         args = (event, target_field, target_field_values)
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
@@ -74,6 +76,8 @@ class FieldManager(Processor):
             return
         source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
         target_filed_values = self.transform_values(source_field_values, event, rule)
+        if not target_filed_values:
+            return
         add_fields_to(
             event,
             dict(zip(targets, target_filed_values)),

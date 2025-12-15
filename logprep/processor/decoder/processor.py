@@ -35,7 +35,7 @@ from typing import Callable
 
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import FieldValue, add_fields_to, pop_dotted_field_value
+from logprep.util.helper import FieldValue, add_fields_to
 
 DECODERS = {
     "json": json.loads,
@@ -48,47 +48,9 @@ class Decoder(FieldManager):
 
     rule_class = DecoderRule
 
-    def _apply_single_target_processing(
-        self,
-        event,
-        rule,
-        rule_args,
-    ):
-        decoder = DECODERS[rule.source_format]
-        source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
-        source_field_values = self._get_field_values(event, source_fields)
-        self._handle_missing_fields(event, rule, source_fields, source_field_values)
-        source_field_values = [value for value in source_field_values if value is not None]
-        if not source_field_values:
-            return
-        parsed_source_field_values = self._decode(event, rule, decoder, source_field_values)
-        if not parsed_source_field_values:
-            return
-        args = (event, target_field, parsed_source_field_values)
-        self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
-
-    def _apply_mapping(self, event, rule, rule_args):
-        decoder = DECODERS[rule.source_format]
-        _, __, mapping, merge_with_target, overwrite_target = rule_args
-        source_fields, targets = list(zip(*mapping.items()))
-        source_field_values = self._get_field_values(event, source_fields)
-        self._handle_missing_fields(event, rule, source_fields, source_field_values)
-        if not any(source_field_values):
-            return
-        source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
-        parsed_source_field_values = self._decode(event, rule, decoder, source_field_values)
-        if not parsed_source_field_values:
-            return
-        add_fields_to(
-            event,
-            dict(zip(targets, parsed_source_field_values)),
-            rule,
-            merge_with_target,
-            overwrite_target,
-        )
-        if rule.delete_source_fields:
-            for dotted_field in source_fields:
-                pop_dotted_field_value(event, dotted_field)
+    def transform_values(self, source_field_values, event, rule):
+        decoder = DECODERS.get(rule.source_format)
+        return self._decode(event, rule, decoder, source_field_values)
 
     def _decode(
         self,
