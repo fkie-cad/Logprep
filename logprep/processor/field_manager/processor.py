@@ -30,6 +30,7 @@ Processor Configuration
 from logprep.abc.processor import Processor
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
+    FieldValue,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
@@ -61,7 +62,10 @@ class FieldManager(Processor):
         source_field_values = list(filter(lambda x: x is not None, source_field_values))
         if not source_field_values:
             return
-        args = (event, target_field, source_field_values)
+        target_field_values = self.transform_values(source_field_values, event, rule)
+        if not target_field_values:
+            return
+        args = (event, target_field, target_field_values)
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
     def _apply_mapping(self, event, rule, rule_args):
@@ -72,9 +76,12 @@ class FieldManager(Processor):
         if not any(source_field_values):
             return
         source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
+        target_field_values = self.transform_values(source_field_values, event, rule)
+        if not target_field_values:
+            return
         add_fields_to(
             event,
-            dict(zip(targets, source_field_values)),
+            dict(zip(targets, target_field_values)),
             rule,
             merge_with_target,
             overwrite_target,
@@ -153,3 +160,11 @@ class FieldManager(Processor):
             ]
             return list(zip(*mapping))
         return source_field_values, targets
+
+    def transform_values(
+        self, source_field_values: list[FieldValue], _: dict, __: FieldManagerRule
+    ) -> list[FieldValue]:
+        """template method to be able to transform the source fields
+        in child classes
+        """
+        return source_field_values
