@@ -95,6 +95,7 @@ from abc import ABC
 from base64 import b64encode
 from collections.abc import Callable, Mapping
 from functools import cached_property
+from typing import Any
 
 import falcon.asgi
 import msgspec
@@ -182,34 +183,49 @@ DEFAULT_META_HEADERS = frozenset(
 
 
 def add_metadata(func: Callable):
-    """Decorator to add metadata to resulting http event.
-    Uses attribute collect_meta of endpoint class to decide over metadata collection
-    Uses attribute metafield_name to define key name for metadata
+    """Decorator that enriches HTTP events with request metadata.
+
+    Metadata collection is controlled by the endpoint's ``collect_meta`` flag.
+    The keys to collect are defined in ``copy_headers_to_logs`` and are resolved
+    generically per entry in the following order:
+
+    1. HTTP header with the given name
+    2. HTTP header using snake_case normalization
+    3. Attribute on the Falcon ``Request`` object
+
+    Resolved metadata is grouped under ``metafield_name``.
+    Missing values are included as ``None`` to keep the metadata schema stable.
     """
 
     async def func_wrapper(*args, **kwargs):
         req: falcon.Request = args[1]
         endpoint: HttpEndpoint = args[0]
 
-        if not endpoint.collect_meta or len(endpoint.copy_headers_to_logs) == 0:
+        def _resolve(header_name: str) -> Any:
+            value = req.get_header(header_name, required=False, default=None)
+
+            if value is not None:
+                return value
+
+            fallback = header_name.replace("-", "_").lower()
+            value = req.get_header(fallback, required=False, default=None)
+
+            if value is not None:
+                return value
+
+            return getattr(req, fallback, None)
+
+        if not endpoint.collect_meta or not endpoint.copy_headers_to_logs:
             kwargs["metadata"] = {}
         else:
             metadata = {}
+
             for header in endpoint.copy_headers_to_logs:
-                # remote_addr and url are special cases, because those are not copied 1 to 1 from headers
-                match header:
-                    case "remote_addr":
-                        metadata[header] = req.remote_addr
-                    case "url":
-                        metadata[header] = req.url
-                    case _:
-                        key = header.replace("-", "_").lower()
-                        metadata[key] = req.get_header(header, required=False, default=None)
+                metadata[header.replace("-", "_").lower()] = _resolve(header)
 
             kwargs["metadata"] = {endpoint.metafield_name: metadata}
 
-        func_wrapper = await func(*args, **kwargs)
-        return func_wrapper
+        return await func(*args, **kwargs)
 
     return func_wrapper
 
