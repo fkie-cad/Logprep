@@ -76,8 +76,8 @@ class FieldManager(Processor):
         if not any(source_field_values):
             return
         source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
-        target_filed_values = self.transform_values(source_field_values, event, rule)
-        if not target_filed_values:
+        target_field_values = self.transform_values(source_field_values, event, rule)
+        if not target_field_values:
             return
         add_fields_to(
             event,
