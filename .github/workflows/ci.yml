@@ -31,6 +31,8 @@ jobs:
       - name: build docs
         run: |
           cd doc
+          uv run sphinx-apidoc -fT -o source/module_reference ../logprep
+          uv run make clean html
           sphinx-apidoc -fT -o source/module_reference ../logprep
           make clean html
   documentation-preview:
