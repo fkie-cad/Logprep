@@ -33,11 +33,10 @@ jobs:
             ${{ inputs.path }}
       - name: Install dependencies
         run: |
-          pip install --upgrade pip wheel
-          pip install .[dev]
+          pip install --upgrade pip wheel uv
+          uv sync --frozen --extra dev
       - name: check black formatting
-        run: |
-          black --check --diff --config ./pyproject.toml .
+        run: uv run black --check --diff --config ./pyproject.toml .
       - name: lint helm charts
         run: |
           helm lint --strict ./charts/logprep
@@ -47,9 +46,9 @@ jobs:
           pylint ${{ steps.changed-files.outputs.all_changed_files }}
       - name: mypy type checking
         if: steps.changed-files.outputs.all_changed_files
-        run: mypy ${{ steps.changed-files.outputs.all_changed_files }}
+        run: uv run mypy --follow-imports=skip ${{ steps.changed-files.outputs.all_changed_files }}
       - name: Run tests and collect coverage
-        run: pytest tests/unit --cov=logprep --cov-report=xml
+        run: uv run pytest tests/unit --cov=logprep --cov-report=xml
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v5
         with:
