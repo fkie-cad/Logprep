@@ -26,8 +26,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update && sudo apt-get -y install pandoc
-          pip install --upgrade pip wheel
-          pip install .[doc]
+          python -m pip install --upgrade pip uv
+          uv sync --frozen --extra doc
       - name: build docs
         run: |
           cd doc

@@ -50,8 +50,8 @@ contribute to them.
 
     git clone https://github.com/fkie-cad/Logprep.git
     cd Logprep
-    uv sync
-    uv sync --extra dev # if you intend to contribute
+    uv sync --frozen
+    uv sync --frozen --extra dev # if you intend to contribute
 
 To see if the installation was successful run
 :code:`logprep --version`.

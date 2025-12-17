@@ -52,13 +52,13 @@ Each processor has `processor.py` and `rule.py`:
 
 ### Setup
 ```bash
-uv sync --extra dev  # Install with dev dependencies
+uv sync --frozen --extra dev  # Install with dev dependencies
 pre-commit install     # Enable hooks
 ```
 
 ### Testing
 ```bash
-pytest ./tests --cov=logprep --cov-report=xml -vvv
+uv run pytest ./tests --cov=logprep --cov-report=xml -vvv
 ```
 
 ### Hybrid Python/Rust

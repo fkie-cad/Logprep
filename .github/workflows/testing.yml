@@ -29,10 +29,10 @@ jobs:
         id: install
       - name: Install dependencies
         run: |
-          pip install --upgrade pip wheel
-          pip install .[dev]
+          pip install --upgrade pip wheel uv
+          uv sync --frozen --extra dev
       - name: Perform ${{ matrix.test-type }} test
         env:
           PYTEST_ADDOPTS: "--color=yes"
         run: |
-          pytest -vv tests/${{ matrix.test-type }}
+          uv run pytest -vv tests/${{ matrix.test-type }}

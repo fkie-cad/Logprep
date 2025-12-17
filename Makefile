@@ -1,7 +1,7 @@
 # Install all packages
 install-packages:
-    uv sync --extra dev
+    uv sync --frozen --extra dev
 
 # Test all pytests
 test:
-	pytest ./tests --cov=logprep --cov-report=xml -vvv
+	uv run pytest ./tests --cov=logprep --cov-report=xml -vvv
