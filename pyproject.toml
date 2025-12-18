@@ -79,7 +79,7 @@ dependencies = [
   "requests>=2.31.0",
   "ruamel.yaml",
   "schedule",
-  "urllib3>=1.26.17",              # CVE-2023-43804
+  "urllib3>=2.6.0",              # [>=1.26.17]: CVE-2023-43804, [>=2.6.0]: CVE-2025-66418, CVE-2025-66471
   "uvicorn",
   "deepdiff",
   "msgspec",
@@ -117,7 +117,7 @@ dev = [
 ]
 
 doc = [
-  "sphinx>=8.2.0",
+  "sphinx>=8.2.0,<9",
   "sphinx_rtd_theme",
   "sphinxcontrib.datatemplates",
   "sphinxcontrib-mermaid",
