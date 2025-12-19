@@ -1,6 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-
+# pylint: disable=line-too-long
 import json
 
 import pytest
