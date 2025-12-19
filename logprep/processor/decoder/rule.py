@@ -55,9 +55,10 @@ Examples for decoder:
 
 from attrs import define, field, validators
 
+from logprep.processor.decoder.decoders import DECODERS
 from logprep.processor.field_manager.rule import FieldManagerRule
 
-implemented_decoders = ("json", "base64")
+implemented_decoders = tuple(DECODERS.keys())
 
 
 class DecoderRule(FieldManagerRule):

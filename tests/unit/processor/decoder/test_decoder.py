@@ -114,6 +114,32 @@ class TestDecoder(BaseProcessorTestCase):
                 {"message1": "this,is,the,message", "message2": "this,is,the,message"},
                 id="decodes_simple_base64_and_overwrites_source_fields",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "clf",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200 9481',
+                },
+                {
+                    "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200 9481',
+                    "parsed": {
+                        "host": "127.0.0.1",
+                        "ident": "ident",
+                        "authuser": "alice",
+                        "timestamp": "01/May/2025:07:20:10 +0000",
+                        "request_line": "GET /index.html HTTP/1.1",
+                        "status": "200",
+                        "bytes": "9481",
+                    },
+                },
+                id="parse clf",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):
@@ -198,6 +224,24 @@ class TestDecoder(BaseProcessorTestCase):
                 {"message": "not json"},
                 {"message": "not json", "tags": ["_decoder_failure"]},
                 id="json_decode_error_with_single_field",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "clf",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200',
+                },
+                {
+                    "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200',
+                    "tags": ["_decoder_failure"],
+                },
+                id="parse clf failed",
             ),
         ],
     )
