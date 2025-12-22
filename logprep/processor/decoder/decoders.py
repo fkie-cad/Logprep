@@ -11,6 +11,12 @@ class DecoderError(Exception):
 
 
 def _parse(log_line, regex):
+    """this parses a given log_line to a dict via provided regex
+    it is really important that you don't use lookahead or lookbehinds
+    in the provided regex, because they could break the application by
+    recursive expressions in strings
+    """
+
     def _parse(log_line, regex):
         result = re.match(regex, log_line)
         if result is None:
