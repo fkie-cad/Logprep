@@ -454,6 +454,24 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse clf failed",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "nginx",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": "this does not match any nginx pattern",
+                },
+                {
+                    "message": "this does not match any nginx pattern",
+                    "tags": ["_decoder_failure"],
+                },
+                id="no nginx pattern matches",
+            ),
         ],
     )
     def test_testcases_failure_handling(self, rule, event, expected):
