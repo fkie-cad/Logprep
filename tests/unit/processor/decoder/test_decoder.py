@@ -140,12 +140,127 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse clf",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "nginx",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": '192.168.32.9 - - [19/Dec/2023:14:04:42 +0000]  200 "POST /otlp/v1/metrics HTTP/1.1" 0 "-" "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)" "-"'
+                },
+                {
+                    "message": '192.168.32.9 - - [19/Dec/2023:14:04:42 +0000]  200 "POST /otlp/v1/metrics HTTP/1.1" 0 "-" "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)" "-"',
+                    "parsed": {
+                        "agent": "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)",
+                        "code": "200",
+                        "gzip_ratio": "-",
+                        "host": "192.168.32.9",
+                        "method": "POST",
+                        "path": "/otlp/v1/metrics",
+                        "referer": "-",
+                        "size": "0",
+                        "time": "19/Dec/2023:14:04:42 +0000",
+                        "user": "-",
+                    },
+                },
+                id="parse nginx",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "nginx",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": '192.168.16.37 - - [19/Dec/2023:14:04:39 +0000]  200 "GET / HTTP/1.1" 2 "-" "kube-probe/1.32+" "-"'
+                },
+                {
+                    "message": '192.168.16.37 - - [19/Dec/2023:14:04:39 +0000]  200 "GET / HTTP/1.1" 2 "-" "kube-probe/1.32+" "-"',
+                    "parsed": {
+                        "agent": "kube-probe/1.32+",
+                        "code": "200",
+                        "gzip_ratio": "-",
+                        "host": "192.168.16.37",
+                        "method": "GET",
+                        "path": "/",
+                        "referer": "-",
+                        "size": "2",
+                        "time": "19/Dec/2023:14:04:39 +0000",
+                        "user": "-",
+                    },
+                },
+                id="parse nginx health check",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "nginx",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": '192.168.42.31 - boat-cmb-write [19/Dec/2024:14:04:33 +0000] "POST /v1/metrics HTTP/1.1" 200 2 "-" "OpenTelemetry Collector for Kubernetes/0.134.0 (linux/amd64)"'
+                },
+                {
+                    "message": '192.168.42.31 - boat-cmb-write [19/Dec/2024:14:04:33 +0000] "POST /v1/metrics HTTP/1.1" 200 2 "-" "OpenTelemetry Collector for Kubernetes/0.134.0 (linux/amd64)"',
+                    "parsed": {
+                        "agent": "OpenTelemetry Collector for Kubernetes/0.134.0 (linux/amd64)",
+                        "code": "200",
+                        "host": "192.168.42.31",
+                        "method": "POST",
+                        "path": "/v1/metrics",
+                        "referer": "-",
+                        "size": "2",
+                        "time": "19/Dec/2024:14:04:33 +0000",
+                        "user": "boat-cmb-write",
+                    },
+                },
+                id="parse nginx opentelemetry",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "nginx",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": '192.168.32.9 - - [19/Dec/2023:14:04:32 +0000]  400 "POST /otlp/v1/metrics HTTP/1.1" 462 "-" "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)" "-"'
+                },
+                {
+                    "message": '192.168.32.9 - - [19/Dec/2023:14:04:32 +0000]  400 "POST /otlp/v1/metrics HTTP/1.1" 462 "-" "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)" "-"',
+                    "parsed": {
+                        "agent": "OpenTelemetry Collector Contrib/0.132.0 (linux/amd64)",
+                        "code": "400",
+                        "host": "192.168.32.9",
+                        "method": "POST",
+                        "path": "/otlp/v1/metrics",
+                        "gzip_ratio": "-",
+                        "referer": "-",
+                        "size": "462",
+                        "time": "19/Dec/2023:14:04:32 +0000",
+                        "user": "-",
+                    },
+                },
+                id="parse nginx opentelemetry 2",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):
         self._load_rule(rule)
-        self.object.process(event)
-        assert event == expected
+        result = self.object.process(event)
+        assert event == expected, f"{result.errors}"
 
     @pytest.mark.parametrize(
         "rule, event, expected",
