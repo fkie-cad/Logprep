@@ -89,6 +89,15 @@ regex_nginx = (
 )
 
 
+regex_syslog_rfc3164_local = re.compile(  # local without host
+    r"^\<(?P<pri>[0-9]+)\>"
+    r"(?P<time>[^ ]* {1,2}[^ ]* [^ ]*) "
+    r"(?P<ident>[a-zA-Z0-9_\/\.\-]*)"
+    r"(?:\[(?P<pid>[0-9]+)\])?"
+    r"(?:[^\:]*\:)? *(?P<message>.*)"
+    r"$"
+)
+
 regex_syslog_rfc3164 = re.compile(
     r"^\<(?P<pri>[0-9]+)\>"
     r"(?P<time>[^ ]* {1,2}[^ ]* [^ ]*) "
@@ -99,11 +108,27 @@ regex_syslog_rfc3164 = re.compile(
     r"$"
 )
 
+regex_iso8601 = r"\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)"
+
+regex_syslog_rfc5424 = re.compile(
+    r"^\<(?P<pri>[0-9]{1,5})\>"
+    r"1 "  # the version 1-> rfc5424
+    rf"(?P<time>{regex_iso8601}) "
+    r"(?P<host>[^ ]+) "
+    r"(?P<ident>[^ ]+) "
+    r"(?P<pid>[-0-9]+) "
+    r"(?P<msgid>[^ ]+) "
+    r"(?P<extradata>(\[(.*?)\]|-)) "
+    r"(?P<message>.+)$"
+)
+
 
 DECODERS = {
     "json": json.loads,
     "base64": lambda x: base64.b64decode(x).decode("utf-8"),
     "clf": partial(_parse, regex=regex_clf),
     "nginx": partial(_parse, regex=regex_nginx),
+    "syslog_rfc5424": partial(_parse, regex=regex_syslog_rfc5424),
     "syslog_rfc3164": partial(_parse, regex=regex_syslog_rfc3164),
+    "syslog_rfc3164_local": partial(_parse, regex=regex_syslog_rfc3164_local),
 }
