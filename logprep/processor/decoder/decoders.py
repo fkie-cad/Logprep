@@ -11,6 +11,13 @@ class DecoderError(Exception):
     """raised if decoding fails"""
 
 
+def _parse(log_line, regex):
+    result = re.match(regex, log_line)
+    if result is None:
+        raise DecoderError("regex does not match")
+    return result.groupdict()
+
+
 def parse_clf(log_line: str) -> dict[str, FieldValue]:
     """parses clf
     see: https://en.wikipedia.org/wiki/Common_Log_Format
@@ -26,14 +33,53 @@ def parse_clf(log_line: str) -> dict[str, FieldValue]:
         r"(?P<bytes>\d+)\s*"  # content-length of the document transferred
         r"$"
     )
-    result = re.match(regex, log_line)
-    if result is None:
-        raise DecoderError
-    return result.groupdict()
+    return _parse(log_line, regex)
+
+
+def parse_nginx(log_line: str) -> dict[str, FieldValue]:
+    """parses nginx log format"""
+    regex = (
+        (
+            r"^"
+            r"(?P<host>[^ ]*) - "
+            r"(?P<user>[^ ]*) "
+            r"\[(?P<time>[^\]]*)\]\s+"
+            r"(?P<code>[^ ]*) "
+            r'"(?P<method>\S+)(?: +(?P<path>[^\"]*?)(?: +\S*)?)?"\s+'
+            r"(?P<size>[^ ]*)\s+"
+            r'"(?P<referer>[^\"]*)"\s+'
+            r'"(?P<agent>[^\"]*)"\s+'
+            r'"(?P<gzip_ratio>[^\"]*)"'
+            r"$"
+        ),
+        (
+            r"^"
+            r"(?P<host>[^ ]*) - "
+            r"(?P<user>[^ ]*) "
+            r"\[(?P<time>[^\]]*)\]\s+"
+            r'"(?P<method>\S+)(?: +(?P<path>[^\"]*?)(?: +\S*)?)?"\s+'
+            r"(?P<code>[^ ]*) "
+            r"(?P<size>[^ ]*)\s+"
+            r'"(?P<referer>[^\"]*)"\s+'
+            r'"(?P<agent>[^\"]*)"'
+            r"$"
+        ),
+    )
+    result = None
+    for r in regex:
+        try:
+            result = _parse(log_line, r)
+            break
+        except DecoderError:
+            pass
+    else:
+        raise DecoderError("no regex matches")
+    return result
 
 
 DECODERS = {
     "json": json.loads,
     "base64": lambda x: base64.b64decode(x).decode("utf-8"),
     "clf": parse_clf,
+    "nginx": parse_nginx,
 }
