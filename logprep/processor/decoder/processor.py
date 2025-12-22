@@ -9,6 +9,7 @@ The `decoder` processor decodes or parses field values from the configured
 * base64
 * clf see: https://en.wikipedia.org/wiki/Common_Log_Format
 * nginx parser for kubernetes ingress
+* syslog
 
 
 Processor Configuration
