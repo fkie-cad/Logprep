@@ -255,6 +255,31 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse nginx opentelemetry 2",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "syslog_rfc3164",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0"
+                },
+                {
+                    "message": "<34>Oct 3 10:15:32 mymachine su[12345]: 'su root' failed for user on /dev/pts/0",
+                    "parsed": {
+                        "host": "mymachine",
+                        "ident": "su",
+                        "message": "'su root' failed for user on /dev/pts/0",
+                        "pid": "12345",
+                        "pri": "34",
+                        "time": "Oct 3 10:15:32",
+                    },
+                },
+                id="parse syslog rfc 3164",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):
