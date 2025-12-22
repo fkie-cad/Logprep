@@ -280,6 +280,57 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse syslog rfc 3164",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "syslog_rfc3164_local",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0"
+                },
+                {
+                    "message": "<34>Oct 3 10:15:32 su[12345]: 'su root' failed for user on /dev/pts/0",
+                    "parsed": {
+                        "ident": "su",
+                        "message": "'su root' failed for user on /dev/pts/0",
+                        "pid": "12345",
+                        "pri": "34",
+                        "time": "Oct 3 10:15:32",
+                    },
+                },
+                id="parse syslog rfc 3164 local",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "syslog_rfc5424",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0"
+                },
+                {
+                    "message": "<34>1 2025-01-03T14:07:15.003Z mymachine.example.com su 12345 ID47 - 'su root' failed for user on /dev/pts/0",
+                    "parsed": {
+                        "host": "mymachine.example.com",
+                        "ident": "su",
+                        "pid": "12345",
+                        "message": "'su root' failed for user on /dev/pts/0",
+                        "pri": "34",
+                        "time": "2025-01-03T14:07:15.003Z",
+                        "msgid": "ID47",
+                        "extradata": "-",
+                    },
+                },
+                id="parse syslog rfc 5424",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):
