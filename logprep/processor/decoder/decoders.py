@@ -17,7 +17,7 @@ def _parse(log_line, regex):
             raise DecoderError("regex does not match")
         return result.groupdict()
 
-    if isinstance(regex, str):
+    if isinstance(regex, re.Pattern):
         return _parse(log_line, regex)
 
     result = None
@@ -32,21 +32,23 @@ def _parse(log_line, regex):
     return result
 
 
-regex_clf = (
-    r"^"
-    r"^(?P<host>[^\s]+)\s+"  # hostname or ip
-    r"(?P<ident>[^\s]+)\s+"  # identity RFC 1413
-    r"(?P<authuser>[^\s]+)\s+"  # userid requesting the document
-    r"\[(?P<timestamp>[^\s]+\s+[^\s]+)\]\s+"  # timestamp in strftime format %d/%b/%Y:%H:%M:%S %z
-    r'"(?P<request_line>.*)"\s+'  # the requestd document
-    r"(?P<status>\d{3})\s+"  # the http status returned to the client
-    r"(?P<bytes>\d+)\s*"  # content-length of the document transferred
-    r"$"
+regex_clf = re.compile(
+    (
+        r"^"
+        r"^(?P<host>[^\s]+)\s+"  # hostname or ip
+        r"(?P<ident>[^\s]+)\s+"  # identity RFC 1413
+        r"(?P<authuser>[^\s]+)\s+"  # userid requesting the document
+        r"\[(?P<timestamp>[^\s]+\s+[^\s]+)\]\s+"  # timestamp in strftime format %d/%b/%Y:%H:%M:%S %z
+        r'"(?P<request_line>.*)"\s+'  # the requestd document
+        r"(?P<status>\d{3})\s+"  # the http status returned to the client
+        r"(?P<bytes>\d+)\s*"  # content-length of the document transferred
+        r"$"
+    )
 )
 
 
 regex_nginx = (
-    (
+    re.compile(
         r"^"
         r"(?P<host>[^ ]*) - "
         r"(?P<user>[^ ]*) "
@@ -59,7 +61,7 @@ regex_nginx = (
         r'"(?P<gzip_ratio>[^\"]*)"'
         r"$"
     ),
-    (
+    re.compile(
         r"^"
         r"(?P<host>[^ ]*) - "
         r"(?P<user>[^ ]*) "
@@ -71,7 +73,7 @@ regex_nginx = (
         r'"(?P<agent>[^\"]*)"'
         r"$"
     ),
-    (
+    re.compile(
         r"^"
         r"(?P<remote>[^ ]*) "
         r"(?P<host>[^ ]*) "
@@ -87,16 +89,14 @@ regex_nginx = (
 )
 
 
-regex_syslog_rfc3164 = (
-    (
-        r"^\<(?P<pri>[0-9]+)\>"
-        r"(?P<time>[^ ]* {1,2}[^ ]* [^ ]*) "
-        r"(?P<host>[^ ]*) "
-        r"(?P<ident>[a-zA-Z0-9_\/\.\-]*)"
-        r"(?:\[(?P<pid>[0-9]+)\])?(?:[^\:]*\:)? "
-        r"*(?P<message>.*)"
-        r"$"
-    ),
+regex_syslog_rfc3164 = re.compile(
+    r"^\<(?P<pri>[0-9]+)\>"
+    r"(?P<time>[^ ]* {1,2}[^ ]* [^ ]*) "
+    r"(?P<host>[^ ]*) "
+    r"(?P<ident>[a-zA-Z0-9_\/\.\-]*)"
+    r"(?:\[(?P<pid>[0-9]+)\])?(?:[^\:]*\:)? "
+    r"*(?P<message>.*)"
+    r"$"
 )
 
 
