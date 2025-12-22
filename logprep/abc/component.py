@@ -9,8 +9,7 @@ from abc import ABC
 from typing import Callable, Optional
 
 import msgspec
-from attr import define, field, validators
-from attrs import asdict
+from attrs import asdict, define, field, validators
 from schedule import Scheduler
 
 from logprep.metrics.metrics import Metric

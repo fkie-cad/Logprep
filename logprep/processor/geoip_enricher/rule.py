@@ -26,8 +26,7 @@ In the following example the IP in :code:`client.ip` will be enriched with geoip
    :noindex:
 """
 
-from attr import Factory
-from attrs import define, field, validators
+from attrs import Factory, define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 

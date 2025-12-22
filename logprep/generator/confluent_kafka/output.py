@@ -10,8 +10,7 @@ import json
 import logging
 from typing import overload
 
-from attr import evolve, field
-from attrs import define
+from attrs import define, evolve, field
 
 from logprep.abc.output import CriticalOutputError, Output
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput

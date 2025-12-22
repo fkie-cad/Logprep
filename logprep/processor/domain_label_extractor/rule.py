@@ -56,7 +56,7 @@ will result in the following output
    :noindex:
 """
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 

@@ -31,7 +31,7 @@ from functools import cached_property
 from ipaddress import ip_address
 from pathlib import Path
 
-from attr import define, field, validators
+from attrs import define, field, validators
 from filelock import FileLock
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError

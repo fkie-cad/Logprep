@@ -48,8 +48,7 @@ from typing import Any, DefaultDict, Optional
 from uuid import uuid4
 
 import msgspec
-from attr import define, field
-from attrs import validators
+from attrs import define, field, validators
 from botocore.exceptions import (
     BotoCoreError,
     ClientError,

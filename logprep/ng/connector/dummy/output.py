@@ -20,8 +20,7 @@ Example
 import logging
 from typing import TYPE_CHECKING, List
 
-from attr import define, field
-from attrs import validators
+from attrs import define, field, validators
 
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import Output
