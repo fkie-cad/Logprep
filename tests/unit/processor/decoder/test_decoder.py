@@ -331,6 +331,26 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse syslog rfc 5424",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "logfmt",
+                        "overwrite_target": True,
+                    },
+                },
+                {"message": 'level=INFO host=Ubuntu msg="Connected to PostgreSQL database"'},
+                {
+                    "message": 'level=INFO host=Ubuntu msg="Connected to PostgreSQL database"',
+                    "parsed": {
+                        "host": "Ubuntu",
+                        "level": "INFO",
+                        "msg": "Connected to PostgreSQL database",
+                    },
+                },
+                id="parse logfmt",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):
