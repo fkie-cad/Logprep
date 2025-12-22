@@ -186,8 +186,6 @@ max-attributes=12
 defining-attr-methods="__init__,__new__,setUp"
 [tool.mypy]
 exclude = "tests/.*"
-follow_imports = "skip"
-follow_imports_for_stubs = "True"
 
 # Evidently looking at dev Packages, they are installed, mypy doesnt seem to think so
 [[tool.mypy.overrides]]
