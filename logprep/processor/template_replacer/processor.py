@@ -34,7 +34,7 @@ Processor Configuration
 
 from typing import Any, List
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.template_replacer.rule import TemplateReplacerRule

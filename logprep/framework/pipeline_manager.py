@@ -9,7 +9,7 @@ import sys
 import time
 from typing import Any
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.connector.http.input import HttpInput

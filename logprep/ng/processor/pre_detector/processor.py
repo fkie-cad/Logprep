@@ -32,7 +32,7 @@ from functools import cached_property
 from typing import cast
 from uuid import uuid4
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.sre_event import SreEvent

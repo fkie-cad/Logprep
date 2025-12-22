@@ -23,8 +23,7 @@ import copy
 from functools import cached_property
 from typing import List, Optional, Union
 
-from attr import field, validators
-from attrs import define
+from attrs import define, field, validators
 
 from logprep.abc.input import Input, SourceDisconnectedWarning
 

@@ -39,7 +39,7 @@ from multiprocessing.pool import ThreadPool
 from typing import Any, Optional
 from urllib.parse import urlsplit
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric

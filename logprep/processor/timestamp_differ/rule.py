@@ -44,8 +44,7 @@ Examples for timestamp_differ:
 
 import re
 
-from attr import field
-from attrs import define, validators
+from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
 

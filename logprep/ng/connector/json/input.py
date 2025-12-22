@@ -23,8 +23,7 @@ Example
 import copy
 from functools import cached_property
 
-from attr import field, validators
-from attrs import define
+from attrs import define, field, validators
 
 from logprep.ng.abc.input import Input
 from logprep.ng.connector.dummy.input import DummyInput
