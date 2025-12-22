@@ -122,6 +122,20 @@ regex_syslog_rfc5424 = re.compile(
     r"(?P<message>.+)$"
 )
 
+token = re.compile(r'^(?P<token>[a-zA-Z0-9]+=(".+"|\S+))')
+
+
+def parse_logfmt(log_line: str) -> dict[str, str]:
+    """parses logfmt format"""
+    result: dict[str, str] = {}
+    while log_line:
+        match_result = token.search(log_line)
+        token_result = match_result.groupdict()["token"]
+        log_line = log_line.lstrip(token_result + " ")
+        key, value = token_result.split("=")
+        result |= {key: value.lstrip('"').rstrip('"')}
+    return result
+
 
 DECODERS = {
     "json": json.loads,
@@ -131,4 +145,5 @@ DECODERS = {
     "syslog_rfc5424": partial(_parse, regex=regex_syslog_rfc5424),
     "syslog_rfc3164": partial(_parse, regex=regex_syslog_rfc3164),
     "syslog_rfc3164_local": partial(_parse, regex=regex_syslog_rfc3164_local),
+    "logfmt": parse_logfmt,
 }
