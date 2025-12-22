@@ -24,8 +24,7 @@ import copy
 from functools import cached_property
 from typing import Optional
 
-from attr import field, validators
-from attrs import define
+from attrs import define, field, validators
 
 from logprep.abc.input import Input
 from logprep.connector.dummy.input import DummyInput

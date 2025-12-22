@@ -90,7 +90,7 @@ from typing import List, Tuple
 from zipfile import ZipFile
 
 import joblib
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric

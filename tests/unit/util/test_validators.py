@@ -4,20 +4,19 @@ from typing import Optional
 from unittest import mock
 
 import pytest
-from attr import define, field
-from attrs import validators
+from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.util.validators import (
-    json_validator,
+    dict_structure_validator,
+    directory_validator,
     file_validator,
+    json_validator,
     list_of_dirs_validator,
     list_of_files_validator,
+    list_of_urls_validator,
     one_of_validator,
     url_validator,
-    list_of_urls_validator,
-    directory_validator,
-    dict_structure_validator,
 )
 
 

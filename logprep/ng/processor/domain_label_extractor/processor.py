@@ -36,7 +36,7 @@ import logging
 from typing import Any, Dict
 from urllib.parse import urlsplit
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule

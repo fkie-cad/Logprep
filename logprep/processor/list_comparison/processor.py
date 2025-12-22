@@ -26,7 +26,7 @@ Processor Configuration
 .. automodule:: logprep.processor.list_comparison.rule
 """
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule

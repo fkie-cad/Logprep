@@ -10,8 +10,7 @@ from functools import cached_property
 from typing import Callable
 
 import msgspec
-from attr import define, field, validators
-from attrs import asdict
+from attrs import asdict, define, field, validators
 from schedule import Scheduler
 
 from logprep.metrics.metrics import Metric

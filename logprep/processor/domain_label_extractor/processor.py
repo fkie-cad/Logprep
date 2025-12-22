@@ -35,7 +35,7 @@ import ipaddress
 import logging
 from urllib.parse import urlsplit
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
