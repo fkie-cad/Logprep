@@ -15,6 +15,7 @@ The `decoder` processor decodes or parses field values from the configured
 * logfmt
 * cri
 * docker
+* decolorize (removing color codes in logs)
 
 
 Processor Configuration
