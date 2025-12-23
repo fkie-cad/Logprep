@@ -351,6 +351,31 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse logfmt",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "logfmt",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": 'time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="this is a log line" extra="user=foo"'
+                },
+                {
+                    "message": 'time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="this is a log line" extra="user=foo"',
+                    "parsed": {
+                        "app": "loki",
+                        "duration": "125",
+                        "extra": "user=foo",
+                        "level": "WARN",
+                        "message": "this is a log line",
+                        "time": "2012-11-01T22:08:41+00:00",
+                    },
+                },
+                id="parse more complex logfmt",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):
