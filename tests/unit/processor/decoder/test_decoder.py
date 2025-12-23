@@ -419,6 +419,28 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse docker",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "docker",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z", "extra": "not expected field"}'
+                },
+                {
+                    "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z", "extra": "not expected field"}',
+                    "parsed": {
+                        "stream": "stderr",
+                        "output": "log message",
+                        "timestamp": "2019-04-30T02:12:41.8443515Z",
+                    },
+                },
+                id="parse docker with additional fields",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):
@@ -556,6 +578,57 @@ class TestDecoder(BaseProcessorTestCase):
                     "tags": ["_decoder_failure"],
                 },
                 id="not cri ",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "docker",
+                    },
+                },
+                {
+                    "message": "notdocker",
+                },
+                {
+                    "message": "notdocker",
+                    "tags": ["_decoder_failure"],
+                },
+                id="not docker and not json",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "docker",
+                    },
+                },
+                {
+                    "message": '{"message": "this is not the message expected"}',
+                },
+                {
+                    "message": '{"message": "this is not the message expected"}',
+                    "tags": ["_decoder_failure"],
+                },
+                id="json, but not docker",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "docker",
+                    },
+                },
+                {
+                    "message": '{"log":"log message","time":"2019-04-30T02:12:41.8443515Z"}',
+                },
+                {
+                    "message": '{"log":"log message","time":"2019-04-30T02:12:41.8443515Z"}',
+                    "tags": ["_decoder_failure"],
+                },
+                id="json, but not docker because one missing",
             ),
         ],
     )
