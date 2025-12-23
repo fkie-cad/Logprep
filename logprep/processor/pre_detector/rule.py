@@ -175,7 +175,7 @@ class PreDetectorRule(Rule):
     class Config(Rule.Config):  # pylint: disable=too-many-instance-attributes
         """RuleConfig for Predetector"""
 
-        id: str = field(validator=validators.instance_of((str, int)))
+        id: str = field(validator=validators.instance_of((str, int)), converter=str)
         """An ID for the triggered rule."""
         title: str = field(validator=validators.instance_of(str))
         """A description for the triggered rule."""
@@ -206,11 +206,15 @@ class PreDetectorRule(Rule):
         timestamp_field: str = field(validator=validators.instance_of(str), default="@timestamp")
         """the field which has the given timestamp to be normalized defaults to :code:`@timestamp`"""
         source_timezone: ZoneInfo = field(
-            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)),
+            converter=lambda z: z if isinstance(z, ZoneInfo) else ZoneInfo(z),
+            default=ZoneInfo("UTC"),
         )
         """ timezone of source_fields defaults to :code:`UTC`"""
         target_timezone: ZoneInfo = field(
-            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)),
+            converter=lambda z: z if isinstance(z, ZoneInfo) else ZoneInfo(z),
+            default=ZoneInfo("UTC"),
         )
         """ timezone for target_field defaults to :code:`UTC`"""
         failure_tags: list = field(
@@ -275,11 +279,11 @@ class PreDetectorRule(Rule):
         return self.config.source_format
 
     @property
-    def target_timezone(self) -> str:
+    def target_timezone(self) -> ZoneInfo:
         return self.config.target_timezone
 
     @property
-    def source_timezone(self) -> str:
+    def source_timezone(self) -> ZoneInfo:
         return self.config.source_timezone
 
     @property
