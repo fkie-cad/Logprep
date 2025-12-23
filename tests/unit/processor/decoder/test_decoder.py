@@ -397,6 +397,28 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse cri",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "docker",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}'
+                },
+                {
+                    "message": '{"log":"log message","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}',
+                    "parsed": {
+                        "stream": "stderr",
+                        "output": "log message",
+                        "timestamp": "2019-04-30T02:12:41.8443515Z",
+                    },
+                },
+                id="parse docker",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):

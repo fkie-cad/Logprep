@@ -14,6 +14,7 @@ The `decoder` processor decodes or parses field values from the configured
 * syslog_rfc5324
 * logfmt
 * cri
+* docker
 
 
 Processor Configuration
@@ -35,8 +36,6 @@ Processor Configuration
 .. automodule:: logprep.processor.decoder.processor.Decoder.rule
 """
 
-import binascii
-import json
 from typing import Callable
 
 from logprep.processor.decoder.decoders import DECODERS, DecoderError
@@ -65,7 +64,7 @@ class Decoder(FieldManager):
     ) -> FieldValue:
         try:
             return [decoder(value) for value in source_field_values]
-        except (binascii.Error, json.decoder.JSONDecodeError, DecoderError) as error:
+        except DecoderError as error:
             add_fields_to(event, {"tags": rule.failure_tags}, merge_with_target=True)
             self.result.errors.append(error)
             return []

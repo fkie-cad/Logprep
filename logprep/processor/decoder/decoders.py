@@ -1,9 +1,15 @@
 """implemented decoders"""
 
 import base64
-import json
+import binascii
 import re
 from functools import partial
+
+import msgspec
+
+from logprep.util.helper import FieldValue
+
+json_decoder = msgspec.json.Decoder()
 
 
 class DecoderError(Exception):
@@ -45,7 +51,7 @@ regex_clf = re.compile(
         r"(?P<ident>[^\s]+)\s+"  # identity RFC 1413
         r"(?P<authuser>[^\s]+)\s+"  # userid requesting the document
         r"\[(?P<timestamp>[^\s]+\s+[^\s]+)\]\s+"  # timestamp in strftime format %d/%b/%Y:%H:%M:%S %z
-        r'"(?P<request_line>.*)"\s+'  # the requestd document
+        r'"(?P<request_line>.*)"\s+'  # the requested document
         r"(?P<status>\d{3})\s+"  # the http status returned to the client
         r"(?P<bytes>\d+)\s*"  # content-length of the document transferred
         r"$"
@@ -153,9 +159,46 @@ def parse_cri(log_line: str) -> dict[str, str]:
     }
 
 
+def parse_json(log_line: str) -> dict[str, FieldValue]:
+    """parses json and handles decode errors"""
+    try:
+        return json_decoder.decode(log_line)
+    except msgspec.DecodeError as error:
+        raise DecoderError("can't decode json") from error
+
+
+def parse_base64(log_line: str) -> dict[str, FieldValue]:
+    """parses base64 and handles decode errors"""
+    try:
+        return base64.b64decode(log_line).decode("utf-8")
+    except binascii.Error as error:
+        raise DecoderError("can't decode base64") from error
+
+
+class DockerLog(msgspec.Struct):
+    """Type definition for Docker log line"""
+
+    log: str
+    stream: str
+    time: str
+
+
+def parse_docker(log_line: str) -> dict[str, str]:
+    """parse docker log lines"""
+    try:
+        docker_log = msgspec.json.decode(log_line, type=DockerLog)
+        return {
+            "output": docker_log.log,
+            "stream": docker_log.stream,
+            "timestamp": docker_log.time,
+        }
+    except msgspec.DecodeError as error:
+        raise DecoderError("can't parse docker log") from error
+
+
 DECODERS = {
-    "json": json.loads,
-    "base64": lambda x: base64.b64decode(x).decode("utf-8"),
+    "json": parse_json,
+    "base64": parse_base64,
     "clf": partial(_parse, regex=regex_clf),
     "nginx": partial(_parse, regex=regex_nginx),
     "syslog_rfc5424": partial(_parse, regex=regex_syslog_rfc5424),
@@ -163,4 +206,5 @@ DECODERS = {
     "syslog_rfc3164_local": partial(_parse, regex=regex_syslog_rfc3164_local),
     "logfmt": parse_logfmt,
     "cri": parse_cri,
+    "docker": parse_docker,
 }
