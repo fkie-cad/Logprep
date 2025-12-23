@@ -13,6 +13,7 @@ The `decoder` processor decodes or parses field values from the configured
 * syslog_rfc3164_local
 * syslog_rfc5324
 * logfmt
+* cri
 
 
 Processor Configuration
