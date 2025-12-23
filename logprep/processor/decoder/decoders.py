@@ -1,4 +1,18 @@
-"""implemented decoders"""
+"""Utility decoders for common log formats used by Logprep.
+
+This module provides small, focused decoding helpers that convert raw
+log lines into Python structures (typically dicts) for downstream
+processors. Each decoder wraps parsing logic and maps decoding errors to
+``DecoderError`` so callers can handle failures uniformly.
+
+Notes
+- The internal ``_parse`` helper performs regex matching and supports
+    a single ``re.Pattern`` or an iterable of patterns. Avoid lookahead
+    and lookbehind in supplied regexes to prevent pathological cases.
+- ``parse_json`` uses ``msgspec`` for fast, strict JSON decoding and
+    converts decode errors to ``DecoderError``.
+- ``decolorize`` strips ANSI escape sequences from log lines.
+"""
 
 import base64
 import binascii
@@ -13,11 +27,11 @@ json_decoder = msgspec.json.Decoder()
 
 
 class DecoderError(Exception):
-    """raised if decoding fails"""
+    """Raised if decoding fails"""
 
 
 def _parse(log_line, regex):
-    """this parses a given log_line to a dict via provided regex
+    """This parses a given log_line to a dict via provided regex
     it is really important that you don't use lookahead or lookbehinds
     in the provided regex, because they could break the application by
     recursive expressions in strings
@@ -138,13 +152,13 @@ token_regex = re.compile(r'([a-zA-Z0-9]+)=("[^"]+"|\S+)')
 
 
 def parse_logfmt(log_line: str) -> dict[str, str]:
-    """parses logfmt format"""
+    """Parses logfmt format"""
     tokens = token_regex.findall(log_line)
     return {key: value.strip('"') for key, value in tokens}
 
 
 def parse_cri(log_line: str) -> dict[str, str]:
-    """parses cri container log format by using only
+    """Parses cri container log format by using only
     string operations"""
     timestamp, _, log_line = log_line.partition(" ")
     stream, _, log_line = log_line.partition(" ")
@@ -160,7 +174,7 @@ def parse_cri(log_line: str) -> dict[str, str]:
 
 
 def parse_json(log_line: str) -> dict[str, FieldValue]:
-    """parses json and handles decode errors"""
+    """Parses json and handles decode errors"""
     try:
         return json_decoder.decode(log_line)
     except msgspec.DecodeError as error:
@@ -168,7 +182,7 @@ def parse_json(log_line: str) -> dict[str, FieldValue]:
 
 
 def parse_base64(log_line: str) -> dict[str, FieldValue]:
-    """parses base64 and handles decode errors"""
+    """Parses base64 and handles decode errors"""
     try:
         return base64.b64decode(log_line).decode("utf-8")
     except binascii.Error as error:
@@ -184,7 +198,7 @@ class DockerLog(msgspec.Struct):
 
 
 def parse_docker(log_line: str) -> dict[str, str]:
-    """parse docker log lines"""
+    """Parses docker log lines"""
     try:
         docker_log = msgspec.json.decode(log_line, type=DockerLog)
         return {
@@ -200,7 +214,7 @@ ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
 
 def decolorize(log_line: str) -> str:
-    """remove color codes from logs"""
+    """Removes color codes from logs"""
     return ansi_escape.sub("", log_line)
 
 
