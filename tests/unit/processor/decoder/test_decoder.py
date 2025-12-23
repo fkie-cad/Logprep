@@ -441,6 +441,40 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse docker with additional fields",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "message"},
+                        "source_format": "decolorize",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": "ls\r\n\x1b[00m\x1b[01;31mexamplefile.zip\x1b[00m\r\n\x1b[01;31m",
+                },
+                {
+                    "message": "ls\r\nexamplefile.zip\r\n",
+                },
+                id="decolorize simple",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "message"},
+                        "source_format": "decolorize",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": "2021-07-14T03:23:44.315Z / \u001b[32minfo\u001b[39m: Server started on port: 3000 - Environment \r\n",
+                },
+                {
+                    "message": "2021-07-14T03:23:44.315Z / info: Server started on port: 3000 - Environment \r\n",
+                },
+                id="decolorize log",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):

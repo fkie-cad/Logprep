@@ -196,6 +196,14 @@ def parse_docker(log_line: str) -> dict[str, str]:
         raise DecoderError("can't parse docker log") from error
 
 
+ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def decolorize(log_line: str) -> str:
+    """remove color codes from logs"""
+    return ansi_escape.sub("", log_line)
+
+
 DECODERS = {
     "json": parse_json,
     "base64": parse_base64,
@@ -207,4 +215,5 @@ DECODERS = {
     "logfmt": parse_logfmt,
     "cri": parse_cri,
     "docker": parse_docker,
+    "decolorize": decolorize,
 }
