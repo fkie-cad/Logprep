@@ -58,7 +58,7 @@ from attrs import define, field, validators
 from logprep.processor.decoder.decoders import DECODERS
 from logprep.processor.field_manager.rule import FieldManagerRule
 
-implemented_decoders = tuple(DECODERS.keys())
+IMPLEMENTED_DECODERS = tuple(DECODERS.keys())
 
 
 class DecoderRule(FieldManagerRule):
@@ -80,7 +80,7 @@ class DecoderRule(FieldManagerRule):
            use :code:`mapping` instead.
         """
         source_format: str = field(
-            validator=(validators.instance_of(str), validators.in_(implemented_decoders)),
+            validator=(validators.instance_of(str), validators.in_(IMPLEMENTED_DECODERS)),
             default="json",
         )
         """The source format in the source field. Defaults to :code:`json`
