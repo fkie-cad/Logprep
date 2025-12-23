@@ -376,6 +376,27 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="parse more complex logfmt",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "cri",
+                        "overwrite_target": True,
+                    },
+                },
+                {"message": "2019-04-30T02:12:41.8443515Z stdout F message"},
+                {
+                    "message": "2019-04-30T02:12:41.8443515Z stdout F message",
+                    "parsed": {
+                        "stream": "stdout",
+                        "flags": "F",
+                        "message": "message",
+                        "timestamp": "2019-04-30T02:12:41.8443515Z",
+                    },
+                },
+                id="parse cri",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):
@@ -496,6 +517,23 @@ class TestDecoder(BaseProcessorTestCase):
                     "tags": ["_decoder_failure"],
                 },
                 id="no nginx pattern matches",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "cri",
+                    },
+                },
+                {
+                    "message": "nocri",
+                },
+                {
+                    "message": "nocri",
+                    "tags": ["_decoder_failure"],
+                },
+                id="not cri ",
             ),
         ],
     )

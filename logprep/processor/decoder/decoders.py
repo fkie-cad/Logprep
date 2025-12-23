@@ -137,6 +137,22 @@ def parse_logfmt(log_line: str) -> dict[str, str]:
     return {key: value.strip('"') for key, value in tokens}
 
 
+def parse_cri(log_line: str) -> dict[str, str]:
+    """parses cri container log format by using only
+    string operations"""
+    timestamp, _, log_line = log_line.partition(" ")
+    stream, _, log_line = log_line.partition(" ")
+    flags, _, message = log_line.partition(" ")
+    if any((not timestamp, not stream, not flags)):
+        raise DecoderError("can't be parsed with cri")
+    return {
+        "timestamp": timestamp,
+        "stream": stream,
+        "flags": flags,
+        "message": message,
+    }
+
+
 DECODERS = {
     "json": json.loads,
     "base64": lambda x: base64.b64decode(x).decode("utf-8"),
@@ -146,4 +162,5 @@ DECODERS = {
     "syslog_rfc3164": partial(_parse, regex=regex_syslog_rfc3164),
     "syslog_rfc3164_local": partial(_parse, regex=regex_syslog_rfc3164_local),
     "logfmt": parse_logfmt,
+    "cri": parse_cri,
 }
