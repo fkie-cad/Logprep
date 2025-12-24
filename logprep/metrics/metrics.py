@@ -117,12 +117,14 @@ Processor Specific Metrics
 
 import os
 import time
-from _socket import gethostname
+import typing
 from abc import ABC, abstractmethod
-from typing import Any, Union
+from typing import Any
 
+from _socket import gethostname
 from attrs import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+from prometheus_client.metrics import MetricWrapperBase
 
 from logprep.util.helper import _add_field_to_silent_fail
 
@@ -146,7 +148,12 @@ class Metric(ABC):
     _registry: CollectorRegistry = field(default=None)
     _prefix: str = field(default="logprep_")
     inject_label_values: bool = field(default=True)
-    tracker: Union[Counter, Histogram, Gauge] = field(init=False, default=None)
+    _tracker: MetricWrapperBase = field(init=False, default=None)
+
+    @property
+    def tracker(self) -> MetricWrapperBase:
+        """Returns the prometheus metric object"""
+        return self._tracker
 
     @property
     def fullname(self):
@@ -156,43 +163,31 @@ class Metric(ABC):
     def init_tracker(self) -> None:
         """initializes the tracker and adds it to the trackers dict"""
         try:
-            if isinstance(self, CounterMetric):
-                self.tracker = Counter(
-                    name=self.fullname,
-                    documentation=self.description,
-                    labelnames=self.labels.keys(),
-                    registry=self._registry,
-                )
-            if isinstance(self, HistogramMetric):
-                self.tracker = Histogram(
-                    name=self.fullname,
-                    documentation=self.description,
-                    labelnames=self.labels.keys(),
-                    buckets=(0.00001, 0.00005, 0.0001, 0.001, 0.1, 1),
-                    registry=self._registry,
-                )
-            if isinstance(self, GaugeMetric):
-                self.tracker = Gauge(
-                    name=self.fullname,
-                    documentation=self.description,
-                    labelnames=self.labels.keys(),
-                    registry=self._registry,
-                    multiprocess_mode="liveall",
-                )
+            self._tracker = self._init_tracker()
         except ValueError as error:
             # pylint: disable=protected-access
-            self.tracker = self._registry._names_to_collectors.get(self.fullname)
+            tracker = self._registry._names_to_collectors.get(self.fullname)
             # pylint: enable=protected-access
-            if not isinstance(self.tracker, METRIC_TO_COLLECTOR_TYPE[type(self)]):
-                raise ValueError(
-                    f"Metric {self.fullname} already exists with different type"
-                ) from error
+            if tracker is not None:
+                if not isinstance(tracker, self.get_collector_type()):
+                    raise ValueError(
+                        f"Metric {self.fullname} already exists with different type"
+                    ) from error
+                self._tracker = tracker
         if self.inject_label_values:
-            self.tracker.labels(**self.labels)
+            self._tracker.labels(**self.labels)
 
     @abstractmethod
     def __add__(self, other):
-        """Add"""
+        """Increment the metric by the given value"""
+
+    @abstractmethod
+    def get_collector_type(self) -> type[MetricWrapperBase]:
+        """Get the associated Collector counterpart type of this Metric"""
+
+    @abstractmethod
+    def _init_tracker(self) -> MetricWrapperBase:
+        """Create the concrete prometheus metric object"""
 
     @staticmethod
     def measure_time(metric_name: str = "processing_time_per_event"):
@@ -249,6 +244,22 @@ class Metric(ABC):
 class CounterMetric(Metric):
     """Wrapper for prometheus Counter metric"""
 
+    def get_collector_type(self) -> type[MetricWrapperBase]:
+        return Counter
+
+    def _init_tracker(self):
+        return Counter(
+            name=self.fullname,
+            documentation=self.description,
+            labelnames=self.labels.keys(),
+            registry=self._registry,
+        )
+
+    @property
+    def tracker(self) -> Counter:
+        """Returns the prometheus metric object"""
+        return typing.cast(Counter, self._tracker)
+
     def __add__(self, other: Any) -> "CounterMetric":
         return self.add_with_labels(other, self.labels)
 
@@ -263,6 +274,23 @@ class CounterMetric(Metric):
 class HistogramMetric(Metric):
     """Wrapper for prometheus Histogram metric"""
 
+    def get_collector_type(self) -> type[MetricWrapperBase]:
+        return Histogram
+
+    def _init_tracker(self):
+        return Histogram(
+            name=self.fullname,
+            documentation=self.description,
+            labelnames=self.labels.keys(),
+            buckets=(0.00001, 0.00005, 0.0001, 0.001, 0.1, 1),
+            registry=self._registry,
+        )
+
+    @property
+    def tracker(self) -> Histogram:
+        """Returns the prometheus metric object"""
+        return typing.cast(Histogram, self._tracker)
+
     def __add__(self, other):
         self.tracker.labels(**self.labels).observe(other)
         return self
@@ -272,6 +300,23 @@ class HistogramMetric(Metric):
 class GaugeMetric(Metric):
     """Wrapper for prometheus Gauge metric""" ""
 
+    def get_collector_type(self) -> type[MetricWrapperBase]:
+        return Gauge
+
+    def _init_tracker(self):
+        return Gauge(
+            name=self.fullname,
+            documentation=self.description,
+            labelnames=self.labels.keys(),
+            registry=self._registry,
+            multiprocess_mode="liveall",
+        )
+
+    @property
+    def tracker(self) -> Gauge:
+        """Returns the prometheus metric object"""
+        return typing.cast(Gauge, self._tracker)
+
     def __add__(self, other):
         return self.add_with_labels(other, self.labels)
 
@@ -280,10 +325,3 @@ class GaugeMetric(Metric):
         labels = self.labels | labels
         self.tracker.labels(**labels).set(other)
         return self
-
-
-METRIC_TO_COLLECTOR_TYPE = {
-    CounterMetric: Counter,
-    HistogramMetric: Histogram,
-    GaugeMetric: Gauge,
-}
