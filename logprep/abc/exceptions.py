@@ -8,5 +8,7 @@ class LogprepException(Exception):
         self.message = message
         super().__init__(message, *args)
 
-    def __eq__(self, __value: object) -> bool:
-        return type(self) is type(__value) and self.args == __value.args
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, LogprepException):
+            return self.args == other.args
+        return NotImplemented
