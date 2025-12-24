@@ -175,7 +175,7 @@ class PreDetectorRule(Rule):
     class Config(Rule.Config):  # pylint: disable=too-many-instance-attributes
         """RuleConfig for Predetector"""
 
-        id: str = field(validator=validators.instance_of((str, int)), converter=str)
+        id: str = field(validator=validators.instance_of((str, int)), converter=str)  # type: ignore
         """An ID for the triggered rule."""
         title: str = field(validator=validators.instance_of(str))
         """A description for the triggered rule."""
@@ -226,7 +226,7 @@ class PreDetectorRule(Rule):
                 validators.deep_iterable(
                     member_validator=validators.instance_of(str),
                     iterable_validator=validators.or_(
-                        validators.instance_of(set), validators.instance_of(list)
+                        validators.instance_of(set), validators.instance_of(list)  # type: ignore
                     ),
                 ),
                 _validate_copy_fields_to_detection_event,
