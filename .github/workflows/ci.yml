@@ -22,7 +22,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
       - name: Install dependencies
         run: |
           sudo apt-get update && sudo apt-get -y install pandoc
@@ -31,8 +30,6 @@ jobs:
       - name: build docs
         run: |
           cd doc
-          uv run sphinx-apidoc -fT -o source/module_reference ../logprep
-          uv run make clean html
           sphinx-apidoc -fT -o source/module_reference ../logprep
           make clean html
   documentation-preview:
