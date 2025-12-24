@@ -22,12 +22,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+      - name: Install pandoc
         run: |
-          sudo apt-get update && sudo apt-get -y install pandoc
+          sudo apt-get update
+          sudo apt-get -y install pandoc
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-py${{ matrix.python-version }}-
+      - name: Install uv and sync deps
+        run: |
           python -m pip install --upgrade pip uv
           uv sync --frozen --extra doc
-      - name: build docs
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Build docs
         run: |
           cd doc
           sphinx-apidoc -fT -o source/module_reference ../logprep
