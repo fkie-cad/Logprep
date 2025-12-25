@@ -161,11 +161,10 @@ def parse_logfmt(log_line: str) -> dict[str, str]:
 def parse_cri(log_line: str) -> dict[str, str]:
     """Parses cri container log format by using only
     string operations"""
-    timestamp, _, log_line = log_line.partition(" ")
-    stream, _, log_line = log_line.partition(" ")
-    flags, _, message = log_line.partition(" ")
-    if any((not timestamp, not stream, not flags)):
-        raise DecoderError("can't be parsed with cri")
+    try:
+        timestamp, stream, flags, message = log_line.split(" ", maxsplit=3)
+    except ValueError as error:
+        raise DecoderError("can't be parsed with cri") from error
     return {
         "timestamp": timestamp,
         "stream": stream,
