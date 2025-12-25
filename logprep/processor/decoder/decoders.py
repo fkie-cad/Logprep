@@ -18,6 +18,7 @@ import base64
 import binascii
 import re
 from functools import partial
+from typing import Iterable
 
 import msgspec
 
@@ -30,46 +31,37 @@ class DecoderError(Exception):
     """Raised if decoding fails"""
 
 
-def _parse(log_line: str, regex: re.Pattern | list[re.Pattern]) -> dict[str, str]:
+def _parse(log_line: str, regexes: Iterable[re.Pattern]) -> dict[str, str]:
     """This parses a given log_line to a dict via provided regex
     it is really important that you don't use lookahead or lookbehinds
     in the provided regex, because they could break the application by
     recursive expressions in strings
     """
 
-    def _parse_single(log_line: str, regex: re.Pattern) -> dict[str, str]:
-        result = re.match(regex, log_line)
-        if result is None:
-            raise DecoderError("regex does not match")
-        return result.groupdict()
-
-    if isinstance(regex, re.Pattern):
-        return _parse_single(log_line, regex)
-
     result = None
-    for r in regex:
-        try:
-            result = _parse_single(log_line, r)
+    for regex in regexes:
+        result = re.match(regex, log_line)
+        if result:
             break
-        except DecoderError:
-            pass
     else:
         raise DecoderError("no regex matches")
-    return result
+    return result.groupdict()
 
 
-REGEX_CLF = re.compile(
-    (
-        r"^"
-        r"^(?P<host>[^\s]+)\s+"  # hostname or ip
-        r"(?P<ident>[^\s]+)\s+"  # identity RFC 1413
-        r"(?P<authuser>[^\s]+)\s+"  # userid requesting the document
-        r"\[(?P<timestamp>[^\s]+\s+[^\s]+)\]\s+"  # timestamp in strftime format %d/%b/%Y:%H:%M:%S %z
-        r'"(?P<request_line>.*)"\s+'  # the requested document
-        r"(?P<status>\d{3})\s+"  # the http status returned to the client
-        r"(?P<bytes>\d+)\s*"  # content-length of the document transferred
-        r"$"
-    )
+REGEX_CLF = (
+    re.compile(
+        (
+            r"^"
+            r"^(?P<host>[^\s]+)\s+"  # hostname or ip
+            r"(?P<ident>[^\s]+)\s+"  # identity RFC 1413
+            r"(?P<authuser>[^\s]+)\s+"  # userid requesting the document
+            r"\[(?P<timestamp>[^\s]+\s+[^\s]+)\]\s+"  # timestamp in strftime format %d/%b/%Y:%H:%M:%S %z
+            r'"(?P<request_line>.*)"\s+'  # the requested document
+            r"(?P<status>\d{3})\s+"  # the http status returned to the client
+            r"(?P<bytes>\d+)\s*"  # content-length of the document transferred
+            r"$"
+        )
+    ),
 )
 
 
@@ -115,37 +107,43 @@ REGEX_NGINX = (
 )
 
 
-REGEX_SYSLOG_RFC3164_LOCAL = re.compile(  # local without host
-    r"^\<(?P<pri>[0-9]+)\>"
-    r"(?P<time>[^ ]* {1,2}[^ ]* [^ ]*) "
-    r"(?P<ident>[a-zA-Z0-9_\/\.\-]*)"
-    r"(?:\[(?P<pid>[0-9]+)\])?"
-    r"(?:[^\:]*\:)? *(?P<message>.*)"
-    r"$"
+REGEX_SYSLOG_RFC3164_LOCAL = (
+    re.compile(  # local without host
+        r"^\<(?P<pri>[0-9]+)\>"
+        r"(?P<time>[^ ]* {1,2}[^ ]* [^ ]*) "
+        r"(?P<ident>[a-zA-Z0-9_\/\.\-]*)"
+        r"(?:\[(?P<pid>[0-9]+)\])?"
+        r"(?:[^\:]*\:)? *(?P<message>.*)"
+        r"$"
+    ),
 )
 
-REGEX_SYSLOG_RFC3164 = re.compile(
-    r"^\<(?P<pri>[0-9]+)\>"
-    r"(?P<time>[^ ]* {1,2}[^ ]* [^ ]*) "
-    r"(?P<host>[^ ]*) "
-    r"(?P<ident>[a-zA-Z0-9_\/\.\-]*)"
-    r"(?:\[(?P<pid>[0-9]+)\])?(?:[^\:]*\:)? "
-    r"*(?P<message>.*)"
-    r"$"
+REGEX_SYSLOG_RFC3164 = (
+    re.compile(
+        r"^\<(?P<pri>[0-9]+)\>"
+        r"(?P<time>[^ ]* {1,2}[^ ]* [^ ]*) "
+        r"(?P<host>[^ ]*) "
+        r"(?P<ident>[a-zA-Z0-9_\/\.\-]*)"
+        r"(?:\[(?P<pid>[0-9]+)\])?(?:[^\:]*\:)? "
+        r"*(?P<message>.*)"
+        r"$"
+    ),
 )
 
 REGEX_ISO8601 = r"\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)"
 
-REGEX_SYSLOG_RFC5424 = re.compile(
-    r"^\<(?P<pri>[0-9]{1,5})\>"
-    r"1 "  # the version 1-> rfc5424
-    rf"(?P<time>{REGEX_ISO8601}) "
-    r"(?P<host>[^ ]+) "
-    r"(?P<ident>[^ ]+) "
-    r"(?P<pid>[-0-9]+) "
-    r"(?P<msgid>[^ ]+) "
-    r"(?P<extradata>(\[(.*?)\]|-)) "
-    r"(?P<message>.+)$"
+REGEX_SYSLOG_RFC5424 = (
+    re.compile(
+        r"^\<(?P<pri>[0-9]{1,5})\>"
+        r"1 "  # the version 1-> rfc5424
+        rf"(?P<time>{REGEX_ISO8601}) "
+        r"(?P<host>[^ ]+) "
+        r"(?P<ident>[^ ]+) "
+        r"(?P<pid>[-0-9]+) "
+        r"(?P<msgid>[^ ]+) "
+        r"(?P<extradata>(\[(.*?)\]|-)) "
+        r"(?P<message>.+)$"
+    ),
 )
 
 
@@ -221,11 +219,11 @@ def decolorize(log_line: str) -> str:
 DECODERS = {
     "json": parse_json,
     "base64": parse_base64,
-    "clf": partial(_parse, regex=REGEX_CLF),
-    "nginx": partial(_parse, regex=REGEX_NGINX),
-    "syslog_rfc5424": partial(_parse, regex=REGEX_SYSLOG_RFC5424),
-    "syslog_rfc3164": partial(_parse, regex=REGEX_SYSLOG_RFC3164),
-    "syslog_rfc3164_local": partial(_parse, regex=REGEX_SYSLOG_RFC3164_LOCAL),
+    "clf": partial(_parse, regexes=REGEX_CLF),
+    "nginx": partial(_parse, regexes=REGEX_NGINX),
+    "syslog_rfc5424": partial(_parse, regexes=REGEX_SYSLOG_RFC5424),
+    "syslog_rfc3164": partial(_parse, regexes=REGEX_SYSLOG_RFC3164),
+    "syslog_rfc3164_local": partial(_parse, regexes=REGEX_SYSLOG_RFC3164_LOCAL),
     "logfmt": parse_logfmt,
     "cri": parse_cri,
     "docker": parse_docker,
