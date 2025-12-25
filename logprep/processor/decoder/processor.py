@@ -7,6 +7,15 @@ The `decoder` processor decodes or parses field values from the configured
 
 * json
 * base64
+* clf see: https://en.wikipedia.org/wiki/Common_Log_Format
+* nginx parser for kubernetes ingress
+* syslog_rfc3164
+* syslog_rfc3164_local
+* syslog_rfc5324
+* logfmt
+* cri
+* docker
+* decolorize (removing color codes in logs)
 
 
 Processor Configuration
@@ -28,19 +37,12 @@ Processor Configuration
 .. automodule:: logprep.processor.decoder.processor.Decoder.rule
 """
 
-import base64
-import binascii
-import json
 from typing import Callable
 
+from logprep.processor.decoder.decoders import DECODERS, DecoderError
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import FieldValue, add_fields_to
-
-DECODERS = {
-    "json": json.loads,
-    "base64": lambda x: base64.b64decode(x).decode("utf-8"),
-}
 
 
 class Decoder(FieldManager):
@@ -63,7 +65,7 @@ class Decoder(FieldManager):
     ) -> FieldValue:
         try:
             return [decoder(value) for value in source_field_values]
-        except (binascii.Error, json.decoder.JSONDecodeError) as error:
+        except DecoderError as error:
             add_fields_to(event, {"tags": rule.failure_tags}, merge_with_target=True)
             self.result.errors.append(error)
             return []
