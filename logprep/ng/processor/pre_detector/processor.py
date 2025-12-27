@@ -28,6 +28,7 @@ Processor Configuration
 .. automodule:: logprep.processor.pre_detector.rule
 """
 
+import typing
 from functools import cached_property
 from typing import cast
 from uuid import uuid4
@@ -37,6 +38,7 @@ from attrs import define, field, validators
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.sre_event import SreEvent
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.rule import Rule
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.util.helper import (
@@ -56,26 +58,26 @@ class PreDetector(Processor):
         """PreDetector config"""
 
         outputs: tuple[dict[str, str]] = field(
-            validator=[
+            validator=(
                 validators.deep_iterable(
-                    member_validator=[
+                    member_validator=(
                         validators.instance_of(dict),
                         validators.deep_mapping(
                             key_validator=validators.instance_of(str),
                             value_validator=validators.instance_of(str),
                             mapping_validator=validators.max_len(1),
                         ),
-                    ],
+                    ),
                     iterable_validator=validators.instance_of(tuple),
                 ),
                 validators.min_len(1),
-            ],
+            ),
             converter=tuple,
         )
         """list of output mappings in form of :code:`output_name:topic`.
         Only one mapping is allowed per list element"""
 
-        alert_ip_list_path: str = field(
+        alert_ip_list_path: str | None = field(
             default=None, validator=validators.optional(validators.instance_of(str))
         )
         """
@@ -94,9 +96,14 @@ class PreDetector(Processor):
 
     rule_class = PreDetectorRule
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(PreDetector.Config, self._config)
+
     @cached_property
     def _ip_alerter(self) -> IPAlerter:
-        return IPAlerter(self._config.alert_ip_list_path)
+        return IPAlerter(self.config.alert_ip_list_path)
 
     def normalize_timestamp(self, rule: PreDetectorRule, timestamp: FieldValue) -> str:
         """method for normalizing the timestamp"""
@@ -115,7 +122,8 @@ class PreDetector(Processor):
                 tags=["_pre_detector_timeparsing_failure"],
             ) from error
 
-    def _apply_rules(self, event: dict, rule: PreDetectorRule) -> None:
+    def _apply_rules(self, event: dict, _rule: Rule) -> None:
+        rule = typing.cast(PreDetectorRule, _rule)
         if not (
             self._ip_alerter.has_ip_fields(rule)
             and not self._ip_alerter.is_in_alerts_list(rule, event)
@@ -133,7 +141,7 @@ class PreDetector(Processor):
             pre_detection_id = str(uuid4())
             add_fields_to(event, {"pre_detection_id": pre_detection_id}, rule=rule)
         detection_result = self._generate_detection_result(pre_detection_id, event, rule)
-        sre_event = SreEvent(data=detection_result, outputs=self._config.outputs)
+        sre_event = SreEvent(data=detection_result, outputs=self.config.outputs)
         self._event.extra_data.append(sre_event)
 
     @staticmethod

@@ -175,7 +175,7 @@ class PreDetectorRule(Rule):
     class Config(Rule.Config):  # pylint: disable=too-many-instance-attributes
         """RuleConfig for Predetector"""
 
-        id: str = field(validator=validators.instance_of((str, int)), converter=str)  # type: ignore
+        id: str | int = field(validator=validators.instance_of((str, int)))
         """An ID for the triggered rule."""
         title: str = field(validator=validators.instance_of(str))
         """A description for the triggered rule."""

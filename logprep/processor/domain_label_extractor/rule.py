@@ -56,6 +56,8 @@ will result in the following output
    :noindex:
 """
 
+import typing
+
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -77,3 +79,8 @@ class DomainLabelExtractorRule(FieldManagerRule):
         """The fields from where to get the values which should be processed."""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(DomainLabelExtractorRule.Config, self._config)

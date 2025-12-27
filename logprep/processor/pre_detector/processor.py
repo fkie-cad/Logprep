@@ -110,7 +110,7 @@ class PreDetector(Processor):
     @property
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
-        return typing.cast("PreDetector.Config", self._config)
+        return typing.cast(PreDetector.Config, self._config)
 
     @cached_property
     def _ip_alerter(self) -> IPAlerter:

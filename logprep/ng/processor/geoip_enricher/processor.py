@@ -27,6 +27,7 @@ Processor Configuration
 import logging
 import os
 import tempfile
+import typing
 from functools import cached_property
 from ipaddress import ip_address
 from pathlib import Path
@@ -37,6 +38,7 @@ from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.rule import Rule
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_fields_to, get_dotted_field_value
@@ -61,9 +63,14 @@ class GeoipEnricher(FieldManager):
 
     rule_class = GeoipEnricherRule
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(GeoipEnricher.Config, self._config)
+
     @cached_property
     def _city_db(self) -> database.Reader:
-        db_path = Path(self._config.db_path)
+        db_path = Path(self.config.db_path)
         if not db_path.exists():
             logger.debug("start geoip database download...")
             logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
@@ -73,9 +80,9 @@ class GeoipEnricher(FieldManager):
                 with FileLock(db_path_file):
                     db_path_file.touch()
                     db_path_file.write_bytes(
-                        GetterFactory.from_string(str(self._config.db_path)).get_raw()
+                        GetterFactory.from_string(str(self.config.db_path)).get_raw()
                     )
-            db_path = str(db_path_file.absolute())
+            db_path = db_path_file
             logger.debug("finished geoip database download.")
         return database.Reader(db_path)
 
@@ -92,6 +99,9 @@ class GeoipEnricher(FieldManager):
 
             geoip_data |= {
                 "properties.accuracy_radius": ip_data.location.accuracy_radius,
+            }
+
+            geoip_data |= {
                 "properties.continent": ip_data.continent.name,
                 "properties.continent_code": ip_data.continent.code,
                 "properties.country": ip_data.country.name,
@@ -117,10 +127,13 @@ class GeoipEnricher(FieldManager):
         except (ValueError, AddressNotFoundError):
             return {}
 
-    def _apply_rules(self, event: dict, rule: GeoipEnricherRule) -> None:
+    def _apply_rules(self, event: dict, _rule: Rule) -> None:
+        rule = typing.cast(GeoipEnricherRule, _rule)
         ip_string = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [ip_string]):
             return
+        if not isinstance(ip_string, str):
+            raise ValueError("ip_string is not a string type")
         geoip_data = self._try_getting_geoip_data(ip_string)
         if not geoip_data:
             return
