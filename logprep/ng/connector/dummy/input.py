@@ -20,6 +20,7 @@ Example
 """
 
 import copy
+import typing
 from functools import cached_property
 
 from attrs import define, field, validators
@@ -36,25 +37,30 @@ class DummyInput(Input):
 
         documents: list[dict | type | Exception]
         """A list of documents that should be returned."""
-        repeat_documents: str | None = field(validator=validators.instance_of(bool), default=False)
+        repeat_documents: bool = field(validator=validators.instance_of(bool), default=False)
         """If set to :code:`true`, then the given input documents will be repeated after the last
         one is reached. Default: :code:`False`"""
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast("DummyInput.Config", self._config)
+
     @cached_property
     def _documents(self) -> list[dict | type | Exception]:
-        return copy.copy(self._config.documents)
+        return copy.copy(self.config.documents)
 
     def _get_event(self, timeout: float) -> tuple:
         """Retrieve next document from configuration and raise warning if found"""
 
         if not self._documents:
-            if not self._config.repeat_documents:
+            if not self.config.repeat_documents:
                 raise SourceDisconnectedWarning(self, "no documents left")
             del self.__dict__["_documents"]
 
         document = self._documents.pop(0)
 
-        if (document.__class__ == type) and issubclass(document, Exception):
-            raise document
+        if (document.__class__ == type) and issubclass(document, Exception):  # type: ignore
+            raise document  # type: ignore
 
         return document, None, None

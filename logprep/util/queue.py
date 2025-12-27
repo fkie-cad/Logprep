@@ -4,8 +4,8 @@ import logging
 import multiprocessing
 import sys
 import time
-from multiprocessing.queues import Empty
 from multiprocessing.queues import Queue as BaseQueue
+from queue import Empty
 
 logger = logging.getLogger("Queue")
 
@@ -49,7 +49,7 @@ Queue: type[BaseQueue] = _QueueWithSize if sys.platform == "darwin" else BaseQue
 """A queue type which provides `qsize` and works on all relevant platforms"""
 
 
-class ThrottlingQueue(Queue):
+class ThrottlingQueue(Queue):  # type: ignore
     """A queue that throttles puts when coming close to reaching capacity"""
 
     wait_time = 5

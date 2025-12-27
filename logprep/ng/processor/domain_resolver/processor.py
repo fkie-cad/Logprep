@@ -32,6 +32,7 @@ Processor Configuration
 import datetime
 import logging
 import socket
+import typing
 from enum import IntEnum
 from functools import cached_property
 from multiprocessing import context
@@ -43,6 +44,7 @@ from attrs import define, field, validators
 
 from logprep.metrics.metrics import CounterMetric
 from logprep.ng.abc.processor import Processor
+from logprep.processor.base.rule import Rule
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
@@ -73,7 +75,7 @@ class DomainResolver(Processor):
 
         timeout: Optional[float] = field(
             default=0.5,
-            validator=validators.optional(validators.instance_of(float)),
+            validator=validators.instance_of(float),
             converter=float,
         )
         """Timeout for resolving of domains."""
@@ -91,14 +93,10 @@ class DomainResolver(Processor):
         max_caching_days has elapsed if it was discarded due to the size limit."""
         hash_salt: str = field(validator=validators.instance_of(str))
         """A salt that is used for hashing."""
-        cache_enabled: bool = field(
-            default=True, validator=validators.optional(validator=validators.instance_of(bool))
-        )
+        cache_enabled: bool = field(default=True, validator=validators.instance_of(bool))
         """If enabled activates a cache such that already seen domains do not need to be resolved
         again."""
-        debug_cache: bool = field(
-            default=False, validator=validators.optional(validator=validators.instance_of(bool))
-        )
+        debug_cache: bool = field(default=False, validator=validators.instance_of(bool))
         """If enabled adds debug information to the current event, for example if the event
         was retrieved from the cache or newly resolved, as well as the cache size."""
 
@@ -159,10 +157,15 @@ class DomainResolver(Processor):
         super().__init__(name, configuration)
         self._domain_ip_map = {}
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(DomainResolver.Config, self._config)
+
     @cached_property
     def _cache(self) -> Cache:
-        cache_max_timedelta = datetime.timedelta(days=self._config.max_caching_days)
-        return Cache(max_items=self._config.max_cached_domains, max_timedelta=cache_max_timedelta)
+        cache_max_timedelta = datetime.timedelta(days=self.config.max_caching_days)
+        return Cache(max_items=self.config.max_cached_domains, max_timedelta=cache_max_timedelta)
 
     @cached_property
     def _hasher(self) -> SHA256Hasher:
@@ -172,11 +175,14 @@ class DomainResolver(Processor):
     def _thread_pool(self) -> ThreadPool:
         return ThreadPool(processes=1)
 
-    def _apply_rules(self, event: dict[str, Any], rule: DomainResolverRule) -> None:
+    def _apply_rules(self, event: dict[str, Any], _rule: Rule) -> None:
+        rule = typing.cast(DomainResolverRule, _rule)
         source_field = rule.source_fields[0]
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
             return
+        if not isinstance(domain_or_url_str, str):
+            raise ValueError("expected source_field to be a string")
 
         url = urlsplit(domain_or_url_str)
         domain = url.hostname
@@ -185,7 +191,7 @@ class DomainResolver(Processor):
         if not domain:
             return
         self.metrics.total_urls += 1
-        if self._config.cache_enabled:
+        if self.config.cache_enabled:
             self._resolve_with_cache(domain, event, rule)
         else:
             resolved_ip, _ = self._resolve_ip(domain)
@@ -194,7 +200,7 @@ class DomainResolver(Processor):
     def _resolve_with_cache(
         self, domain: str, event: dict[str, Any], rule: DomainResolverRule
     ) -> None:
-        hash_string = self._hasher.hash_str(domain, salt=self._config.hash_salt)
+        hash_string = self._hasher.hash_str(domain, salt=self.config.hash_salt)
         requires_storing = self._cache.requires_storing(hash_string)
         if requires_storing:
             resolved_ip, status = self._resolve_ip(domain)
@@ -206,7 +212,7 @@ class DomainResolver(Processor):
             self.metrics.resolved_cached += 1
         self._add_resolve_infos_to_event(event, rule, resolved_ip)
 
-        if self._config.debug_cache:
+        if self.config.debug_cache:
             self._store_debug_infos(event, requires_storing)
 
     def _add_resolve_infos_to_event(
@@ -222,7 +228,7 @@ class DomainResolver(Processor):
         """
         try:
             result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
-            resolved_ip = result.get(timeout=self._config.timeout)
+            resolved_ip = result.get(timeout=self.config.timeout)
             return resolved_ip, ResolveStatus.SUCCESS
         except ValueError:  # Makes no connection so does not need to be cached
             self.metrics.invalid_domains += 1

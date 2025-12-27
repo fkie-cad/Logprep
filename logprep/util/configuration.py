@@ -1048,6 +1048,8 @@ class Configuration:
         if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
             try:
                 credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+                if credentials_file_path is None:
+                    raise ValueError("missing credentials file path")
                 _ = CredentialsFactory.get_content(Path(credentials_file_path))
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
