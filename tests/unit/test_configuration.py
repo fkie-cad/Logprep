@@ -3,13 +3,11 @@ from copy import deepcopy
 from typing import Optional
 
 import pytest
-from attr import define, field, validators
+from attrs import define, field, validators
+
 from logprep.abc.processor import Processor
 from logprep.configuration import Configuration
-from logprep.factory_error import (
-    NoTypeSpecifiedError,
-    UnknownComponentTypeError,
-)
+from logprep.factory_error import NoTypeSpecifiedError, UnknownComponentTypeError
 from logprep.registry import Registry
 
 

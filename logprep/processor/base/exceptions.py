@@ -16,7 +16,7 @@ class RuleError(LogprepException):
 class InvalidRuleDefinitionError(RuleError):
     """Raise if defined rule is invalid."""
 
-    def __init__(self, message: str = None):
+    def __init__(self, message: str | None = None):
         if message:
             super().__init__(message)
 
@@ -70,12 +70,15 @@ class ProcessingCriticalError(ProcessingError):
 class ProcessingWarning(Warning):
     """A warning occurred - log the warning, but continue processing the event."""
 
-    def __init__(self, message: str, rule: "Rule | None", event: dict, tags: List[str] = None):
+    def __init__(
+        self, message: str, rule: "Rule | None", event: dict | None, tags: List[str] | None = None
+    ):
         self.tags = tags if tags else []
         if rule:
             rule.metrics.number_of_warnings += 1
             message += f", {rule.id=}, {rule.description=}"
-        message += f", {event=}"
+        if event is not None:
+            message += f", {event=}"
         super().__init__(f"{self.__class__.__name__}: {message}")
 
 

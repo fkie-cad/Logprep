@@ -28,7 +28,7 @@ In the following example the timestamp will be extracted from
    :noindex:
 """
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 

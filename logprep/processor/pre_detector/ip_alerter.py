@@ -1,23 +1,22 @@
 """This module is used to generate alerts if an IP matches a pattern in a list."""
 
 from datetime import datetime
-from ipaddress import ip_network, ip_address, IPv4Network
+from ipaddress import IPv4Network, IPv6Network, ip_address, ip_network
 from os.path import isfile
-from typing import Union, List
 
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
-from logprep.util.time import TimeParser, UTC
+from logprep.util.time import UTC, TimeParser
 
 
 class IPAlerter:
     """Used to get if an IP is in an alert list and if the IP alert has expired."""
 
-    def __init__(self, alert_ip_lists_path: Union[List[str], str]):
+    def __init__(self, alert_ip_lists_path: list[str] | str | None):
         self._alert_ips_map: dict[str, str] = {}
         self._single_alert_ips: set[str] = set()
-        self._alert_network: set[IPv4Network] = set()
+        self._alert_network: set[IPv4Network | IPv6Network] = set()
 
         if isinstance(alert_ip_lists_path, str):
             alert_ip_lists_path = [alert_ip_lists_path]
@@ -30,10 +29,12 @@ class IPAlerter:
         """Return if rule has IP fields."""
         return bool(rule.ip_fields)
 
-    def _init_alert_ip_list(self, alert_ip_lists: List):
+    def _init_alert_ip_list(self, alert_ip_lists: list[str]):
         for alert_ip_list in alert_ip_lists:
             if alert_ip_list and isfile(alert_ip_list):
                 full_alert_ip_list = GetterFactory.from_string(alert_ip_list).get_yaml()
+                if isinstance(full_alert_ip_list, list):
+                    raise ValueError("expected a mapping and not a list")
                 self._filter_non_expired_alert_ips(full_alert_ip_list)
                 self._single_alert_ips.update(
                     set(ip_string for ip_string in self._alert_ips_map if "/" not in ip_string)
@@ -64,7 +65,7 @@ class IPAlerter:
             return now < expiration_date
         return True
 
-    def _network_is_not_expired(self, network: IPv4Network) -> bool:
+    def _network_is_not_expired(self, network: IPv4Network | IPv6Network) -> bool:
         expiration_date_str = self._alert_ips_map[network.exploded]
         if expiration_date_str:
             expiration_date = TimeParser.from_string(expiration_date_str)
@@ -78,7 +79,7 @@ class IPAlerter:
             ips = get_dotted_field_value(event, field)
             ips = ips if isinstance(ips, list) else [ips]
             for ip_string in ips:
-                if self._ip_is_in_alert_list(ip_string):
+                if isinstance(ip_string, str) and self._ip_is_in_alert_list(ip_string):
                     return True
         return False
 

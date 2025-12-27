@@ -33,9 +33,10 @@ Processor Configuration
 
 import ipaddress
 import logging
+import typing
 from urllib.parse import urlsplit
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.processor.field_manager.processor import FieldManager
@@ -52,14 +53,17 @@ class DomainLabelExtractor(FieldManager):
     class Config(FieldManager.Config):
         """DomainLabelExtractor config"""
 
-        tagging_field_name: str = field(
-            default="tags", validator=validators.optional(validators.instance_of(str))
-        )
+        tagging_field_name: str = field(default="tags", validator=validators.instance_of(str))
         """Optional configuration field that defines into which field in the event the
         informational tags should be written to. If this field is not present it defaults
         to :code:`tags`."""
 
     rule_class = DomainLabelExtractorRule
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(DomainLabelExtractor.Config, self._config)
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
@@ -83,14 +87,17 @@ class DomainLabelExtractor(FieldManager):
         domain = source_field_values[0]
         if domain is None:
             return
-        tagging_field = get_dotted_field_value(event, self._config.tagging_field_name)
+        tagging_field = get_dotted_field_value(event, self.config.tagging_field_name)
+
         if tagging_field is None:
             tagging_field = []
+        if not isinstance(tagging_field, list):
+            raise ValueError("tagging_field already has a conflicting value")
 
         if self._is_valid_ip(domain):
             tagging_field.append(f"ip_in_{rule.source_fields[0].replace('.', '_')}")
             add_and_overwrite(
-                event, fields={self._config.tagging_field_name: tagging_field}, rule=rule
+                event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
             )
             return
 
@@ -109,7 +116,7 @@ class DomainLabelExtractor(FieldManager):
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
             add_and_overwrite(
-                event, fields={self._config.tagging_field_name: tagging_field}, rule=rule
+                event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
             )
 
     @staticmethod

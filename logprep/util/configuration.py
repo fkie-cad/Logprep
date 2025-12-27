@@ -1023,6 +1023,7 @@ class Configuration:
                 except Exception as error:  # pylint: disable=broad-except
                     errors.append(error)
         for processor_config in self.pipeline:
+            processor = None
             try:
                 processor = Factory.create(deepcopy(processor_config))
                 processor.setup()
@@ -1037,6 +1038,9 @@ class Configuration:
                 errors.append(error)
             except FileNotFoundError as error:
                 errors.append(InvalidConfigurationError(f"File not found: {error.filename}"))
+            finally:
+                if processor is not None:
+                    processor.shut_down()
             try:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
@@ -1044,6 +1048,8 @@ class Configuration:
         if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
             try:
                 credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+                if credentials_file_path is None:
+                    raise ValueError("missing credentials file path")
                 _ = CredentialsFactory.get_content(Path(credentials_file_path))
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)

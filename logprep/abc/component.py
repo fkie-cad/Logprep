@@ -10,8 +10,7 @@ from functools import cached_property
 from typing import Callable
 
 import msgspec
-from attr import define, field, validators
-from attrs import asdict
+from attrs import asdict, define, field, validators
 from schedule import Scheduler
 
 from logprep.metrics.metrics import Metric
@@ -133,6 +132,7 @@ class Component(ABC):
         Optional: Called when stopping the pipeline
 
         """
+        self._scheduler.clear(id(self))
         if hasattr(self, "__dict__"):
             self.__dict__.clear()
 
@@ -172,7 +172,7 @@ class Component(ABC):
             return
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
-        self._scheduler.every(seconds).seconds.do(task, *args, **kwargs)
+        self._scheduler.every(seconds).seconds.do(task, *args, **kwargs).tag(id(self))
 
     @classmethod
     def run_pending_tasks(cls) -> None:
