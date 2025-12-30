@@ -76,12 +76,16 @@ class TestHttpConnector(BaseInputTestCase):
         "logprep_number_of_http_requests",
     ]
 
+    def _create_test_instance(self, config=None):
+        instance = super()._create_test_instance(config)
+        instance.pipeline_index = 1
+        return instance
+
     def setup_method(self):
         HttpInput.messages = ThrottlingQueue(
             ctx=multiprocessing.get_context(), maxsize=self.CONFIG.get("message_backlog_size")
         )
         super().setup_method()
-        self.object.pipeline_index = 1
         with mock.patch(
             "logprep.connector.http.input.http.ThreadingHTTPServer", new=mock.MagicMock()
         ):

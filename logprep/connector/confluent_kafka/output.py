@@ -342,6 +342,7 @@ class ConfluentKafkaOutput(Output):
             )
         else:
             logger.info("Producer flushed successfully. %s messages remaining.", remaining_messages)
+        return super().shut_down()
 
     def health(self) -> bool:
         """Check the health of kafka producer."""

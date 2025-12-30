@@ -64,11 +64,16 @@ class TestFileInput(BaseInputTestCase):
         while not self.object._messages.empty():
             self.object._messages.get(timeout=0.001)
 
-    def teardown_method(self):
-        self.object.stop_flag.set()
-        if not self.object.rthread.is_alive():
+    @pytest.fixture(autouse=True)
+    def cleanup_after_test(self):
+        stop_flag = self.object.stop_flag
+        rthread = self.object.rthread
+        _config = self.object._config
+        yield  # runs the test
+        stop_flag.set()
+        if not rthread.is_alive():
             try:
-                os.remove(self.object._config.logfile_path)
+                os.remove(_config.logfile_path)
             except Exception:
                 pass
 
@@ -111,9 +116,10 @@ class TestFileInput(BaseInputTestCase):
         assert self.object._fileinfo_util.has_fingerprint_changed("another_test_path", 0) is False
 
     def test_exit_on_shutdown(self):
+        rthread = self.object.rthread
         self.object.shut_down()
         wait_for_interval(CHECK_INTERVAL)
-        assert self.object.rthread.is_alive() is False
+        assert rthread.is_alive() is False
 
     def test_pipeline_index_not_there(self):
         delattr(self.object, "pipeline_index")

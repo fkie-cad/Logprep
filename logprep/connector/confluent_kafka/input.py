@@ -229,14 +229,14 @@ class ConfluentKafkaInput(Input):
         """The topic from which new log messages will be fetched."""
 
         kafka_config: Optional[MappingProxyType] = field(
-            validator=[
+            validator=(
                 validators.instance_of(MappingProxyType),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of(str),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
-            ],
+            ),
             converter=MappingProxyType,
         )
         """ Kafka configuration for the kafka client.
@@ -562,7 +562,7 @@ class ConfluentKafkaInput(Input):
     def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
-        super().shut_down()
+        return super().shut_down()
 
     def health(self) -> bool:
         """Check the health of the component.

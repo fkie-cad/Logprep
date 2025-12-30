@@ -346,3 +346,4 @@ class FileInput(Input):
     def shut_down(self):
         """Raises the Stop Event Flag that will stop the thread that monitors the logfile"""
         self.stop_flag.set()
+        return super().shut_down()

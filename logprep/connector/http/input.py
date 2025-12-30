@@ -611,6 +611,7 @@ class HttpInput(Input):
         if self.http_server is None:
             return
         self.http_server.shut_down()
+        return super().shut_down()
 
     @cached_property
     def health_endpoints(self) -> list[str]:

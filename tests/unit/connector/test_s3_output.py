@@ -288,3 +288,7 @@ class TestS3Output(BaseOutputTestCase):
     @pytest.mark.skip(reason="Not implemented yet")
     def test_setup_calls_wait_for_health(self):
         pass
+
+    @mock.patch("logprep.connector.s3.output.S3Output._s3_resource", new=mock.MagicMock())
+    def test_job_cleanup_on_shutdown(self, component_scheduler):
+        return super().test_job_cleanup_on_shutdown(component_scheduler)

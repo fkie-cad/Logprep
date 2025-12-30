@@ -106,7 +106,7 @@ class DummyOutput(Output):
 
     def shut_down(self):
         self.shut_down_called_count += 1
-        super().shut_down()
+        return super().shut_down()
 
     def flush(self):
         """Flush not implemented because it has not backlog."""

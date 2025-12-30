@@ -101,3 +101,4 @@ class DummyOutput(Output):
 
     def shut_down(self):
         self.shut_down_called_count += 1
+        return super().shut_down()

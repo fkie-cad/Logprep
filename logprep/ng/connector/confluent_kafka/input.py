@@ -566,7 +566,7 @@ class ConfluentKafkaInput(Input):
     def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
-        super().shut_down()
+        return super().shut_down()
 
     def health(self) -> bool:
         """Check the health of the component.
