@@ -41,18 +41,16 @@ original_create = Factory.create
 
 class ConfigurationForTests:
     logprep_config = Configuration(
-        **{
-            "version": 1,
-            "timeout": 0.001,
-            "input": {"dummy": {"type": "dummy_input", "documents": [{"test": "empty"}]}},
-            "output": {"dummy": {"type": "dummy_output"}},
-            "pipeline": [
-                {"mock_processor1": {"proc": "conf"}},
-                {"mock_processor2": {"proc": "conf"}},
-            ],
-            "metrics": {"enabled": False},
-            "error_output": {"dummy": {"type": "dummy_output"}},
-        }
+        version=1,
+        timeout=0.001,
+        input={"dummy": {"type": "dummy_input", "documents": [{"test": "empty"}]}},
+        output={"dummy": {"type": "dummy_output"}},
+        pipeline=[
+            {"mock_processor1": {"proc": "conf"}},
+            {"mock_processor2": {"proc": "conf"}},
+        ],
+        metrics={"enabled": False},
+        error_output={"dummy": {"type": "dummy_output"}},
     )
     # metrics object is not pickable and we want to deepcopy this configuration
     logprep_config._metrics = mock.MagicMock()

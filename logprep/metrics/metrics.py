@@ -151,6 +151,11 @@ class Metric(ABC):
     _tracker: MetricWrapperBase = field(init=False, default=None)
 
     @property
+    @abstractmethod
+    def collector_type(self) -> type[MetricWrapperBase]:
+        """The prometheus metric companion type"""
+
+    @property
     def tracker(self) -> MetricWrapperBase:
         """Returns the prometheus metric object"""
         return self._tracker
@@ -169,7 +174,7 @@ class Metric(ABC):
             tracker = self._registry._names_to_collectors.get(self.fullname)
             # pylint: enable=protected-access
             if tracker is not None:
-                if not isinstance(tracker, self.get_collector_type()):
+                if not isinstance(tracker, self.collector_type):
                     raise ValueError(
                         f"Metric {self.fullname} already exists with different type"
                     ) from error
@@ -180,10 +185,6 @@ class Metric(ABC):
     @abstractmethod
     def __add__(self, other):
         """Increment the metric by the given value"""
-
-    @abstractmethod
-    def get_collector_type(self) -> type[MetricWrapperBase]:
-        """Get the associated Collector counterpart type of this Metric"""
 
     @abstractmethod
     def _init_tracker(self) -> MetricWrapperBase:
@@ -244,7 +245,8 @@ class Metric(ABC):
 class CounterMetric(Metric):
     """Wrapper for prometheus Counter metric"""
 
-    def get_collector_type(self) -> type[MetricWrapperBase]:
+    @property
+    def collector_type(self) -> type[Counter]:
         return Counter
 
     def _init_tracker(self):
@@ -274,7 +276,8 @@ class CounterMetric(Metric):
 class HistogramMetric(Metric):
     """Wrapper for prometheus Histogram metric"""
 
-    def get_collector_type(self) -> type[MetricWrapperBase]:
+    @property
+    def collector_type(self) -> type[Histogram]:
         return Histogram
 
     def _init_tracker(self):
@@ -300,7 +303,8 @@ class HistogramMetric(Metric):
 class GaugeMetric(Metric):
     """Wrapper for prometheus Gauge metric""" ""
 
-    def get_collector_type(self) -> type[MetricWrapperBase]:
+    @property
+    def collector_type(self) -> type[Gauge]:
         return Gauge
 
     def _init_tracker(self):
