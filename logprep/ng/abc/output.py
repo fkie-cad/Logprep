@@ -124,7 +124,7 @@ class Output(Connector):
 
         return wrapper
 
-    def shut_down(self) -> None:
+    def _shut_down(self) -> None:
         """Shut down the output connector."""
         self.flush()
-        return super().shut_down()
+        return super()._shut_down()

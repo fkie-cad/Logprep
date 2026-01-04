@@ -318,6 +318,6 @@ class OpensearchOutput(Output):
             return False
         return super().health() and resp.get("status") in self.config.desired_cluster_status
 
-    def shut_down(self):
+    def _shut_down(self):
         self._write_backlog()
-        return super().shut_down()
+        return super()._shut_down()

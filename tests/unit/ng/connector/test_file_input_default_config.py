@@ -9,7 +9,7 @@
 # pylint: disable=consider-using-with
 
 import os
-import tempfile
+import pathlib
 import threading
 import time
 
@@ -31,7 +31,7 @@ def wait_for_interval(interval):
     time.sleep(2 * interval)
 
 
-def write_file(file_name: str, source_data: list):
+def write_file(file_name: str | pathlib.Path, source_data: list):
     with open(file_name, "w", encoding="utf-8") as file:
         for line in source_data:
             file.write(line + "\n")
@@ -56,29 +56,30 @@ class TestFileInput(BaseInputTestCase):
         "interval": CHECK_INTERVAL,
     }
 
-    def setup_method(self):
-        _, testfile = tempfile.mkstemp()
-        write_file(testfile, test_initial_log_data)
-        self.CONFIG["logfile_path"] = testfile
+    object: FileInput
+
+    @pytest.fixture(autouse=True)
+    def setup_and_cleanup(self, tmp_path: pathlib.Path):
+        logfile_path = tmp_path / "log_data.txt"
+        write_file(logfile_path, test_initial_log_data)
+        self.CONFIG["logfile_path"] = str(logfile_path)
+
         super().setup_method()
+
         self.object.pipeline_index = 1
         self.object.setup()
+
         # we have to empty the queue for testing
         while not self.object._messages.empty():
             self.object._messages.get(timeout=0.001)
 
-    @pytest.fixture(autouse=True)
-    def cleanup_after_test(self):
-        stop_flag = self.object.stop_flag
-        rthread = self.object.rthread
-        _config = self.object._config
-        yield  # runs the test
-        stop_flag.set()
-        if not rthread.is_alive():
-            try:
-                os.remove(_config.logfile_path)
-            except Exception:
-                pass
+        yield
+
+        self.object.shut_down()
+
+    def setup_method(self):
+        """We use the fixtures for setup & teardown in this class instead"""
+        pass
 
     def test_create_connector(self):
         assert isinstance(self.object, FileInput)

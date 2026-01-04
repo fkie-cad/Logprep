@@ -104,9 +104,9 @@ class DummyOutput(Output):
         """Store additional data in a custom location inside the output destination."""
         self.store(event)
 
-    def shut_down(self):
+    def _shut_down(self):
         self.shut_down_called_count += 1
-        return super().shut_down()
+        return super()._shut_down()
 
     def flush(self):
         """Flush not implemented because it has not backlog."""

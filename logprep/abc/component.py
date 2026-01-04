@@ -55,7 +55,14 @@ class Component(ABC):
                     attribute.init_tracker()
 
     # __dict__ is added to support functools.cached_property
-    __slots__ = ["name", "_config", "pipeline_index", "_job_tag_for_cleanup", "__dict__"]
+    __slots__ = [
+        "name",
+        "_config",
+        "pipeline_index",
+        "_job_tag_for_cleanup",
+        "_is_shut_down",
+        "__dict__",
+    ]
 
     # instance attributes
     name: str
@@ -76,6 +83,7 @@ class Component(ABC):
         self.name = name
         self.pipeline_index = pipeline_index
         self._job_tag_for_cleanup = f"{self.__class__.__name__}:{self.name}:{uuid.uuid4()}"
+        self._is_shut_down = False
 
     @cached_property
     def metrics(self):
@@ -134,6 +142,11 @@ class Component(ABC):
         Optional: Called when stopping the pipeline
 
         """
+        if not self._is_shut_down:
+            self._is_shut_down = True
+            self._shut_down()
+
+    def _shut_down(self):
         self._scheduler.clear(self._job_tag_for_cleanup)
         if hasattr(self, "__dict__"):
             self.__dict__.clear()

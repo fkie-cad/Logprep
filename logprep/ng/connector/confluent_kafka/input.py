@@ -563,10 +563,10 @@ class ConfluentKafkaInput(Input):
             logger.error("Failed to retrieve member ID: %s", error)
         return member_id
 
-    def shut_down(self) -> None:
+    def _shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
-        return super().shut_down()
+        return super()._shut_down()
 
     def health(self) -> bool:
         """Check the health of the component.

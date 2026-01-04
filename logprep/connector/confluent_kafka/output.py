@@ -325,7 +325,7 @@ class ConfluentKafkaOutput(Output):
         except Exception as error:
             raise CriticalOutputError(self, str(error), document) from error
 
-    def shut_down(self) -> None:
+    def _shut_down(self) -> None:
         """ensures that all messages are flushed. According to
         https://confluent-kafka-python.readthedocs.io/en/latest/#confluent_kafka.Producer.flush
         flush without the timeout parameter will block until all messages are delivered.
@@ -342,7 +342,7 @@ class ConfluentKafkaOutput(Output):
             )
         else:
             logger.info("Producer flushed successfully. %s messages remaining.", remaining_messages)
-        return super().shut_down()
+        return super()._shut_down()
 
     def health(self) -> bool:
         """Check the health of kafka producer."""

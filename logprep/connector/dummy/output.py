@@ -99,6 +99,6 @@ class DummyOutput(Output):
     def _flush(self):
         logger.debug("Flushing DummyOutput '%s' with %d events", self.name, len(self.events))
 
-    def shut_down(self):
+    def _shut_down(self):
         self.shut_down_called_count += 1
-        return super().shut_down()
+        return super()._shut_down()
