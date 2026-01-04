@@ -72,7 +72,7 @@ class DomainResolver(Processor):
     class Config(Processor.Config):
         """DomainResolver config"""
 
-        timeout: Optional[float] = field(
+        timeout: float = field(
             default=0.5,
             validator=validators.instance_of(float),
             converter=float,

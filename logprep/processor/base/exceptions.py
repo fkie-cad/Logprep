@@ -77,8 +77,7 @@ class ProcessingWarning(Warning):
         if rule:
             rule.metrics.number_of_warnings += 1
             message += f", {rule.id=}, {rule.description=}"
-        if event is not None:
-            message += f", {event=}"
+        message += f", {event=}"
         super().__init__(f"{self.__class__.__name__}: {message}")
 
 

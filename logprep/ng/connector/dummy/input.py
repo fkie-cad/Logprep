@@ -60,7 +60,7 @@ class DummyInput(Input):
 
         document = self._documents.pop(0)
 
-        if (document.__class__ == type) and issubclass(document, Exception):  # type: ignore
-            raise document  # type: ignore
+        if isinstance(document, type) and issubclass(document, Exception):
+            raise document
 
         return document, None, None

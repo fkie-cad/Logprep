@@ -25,7 +25,7 @@ class _QueueWithSize(BaseQueue):
                     "Invalid argument. "
                     "Parameter `maxsize` might exceed upper boundary for queue implementation."
                 ) from error
-            raise error
+            raise
 
     def put(self, *args, **kwargs):
         super().put(*args, **kwargs)
