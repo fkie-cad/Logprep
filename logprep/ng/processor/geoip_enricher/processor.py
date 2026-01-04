@@ -25,7 +25,6 @@ Processor Configuration
 """
 
 import logging
-import os
 import tempfile
 import typing
 from functools import cached_property
@@ -71,20 +70,30 @@ class GeoipEnricher(FieldManager):
     @cached_property
     def _city_db(self) -> database.Reader:
         db_path = Path(self.config.db_path)
+
         if not db_path.exists():
             logger.debug("start geoip database download...")
+
             logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
-            os.makedirs(logprep_tmp_dir, exist_ok=True)
+            logprep_tmp_dir.mkdir(parents=True, exist_ok=True)
+
             db_path_file = logprep_tmp_dir / f"{self.name}.mmdb"
-            if not os.path.isfile(db_path_file):
-                with FileLock(db_path_file):
-                    db_path_file.touch()
-                    db_path_file.write_bytes(
-                        GetterFactory.from_string(str(self.config.db_path)).get_raw()
-                    )
+            lock = FileLock(str(db_path_file) + ".lock")
+
+            with lock:
+                if not db_path_file.exists():
+                    tmp = db_path_file.with_suffix(".tmp")
+                    tmp.write_bytes(GetterFactory.from_string(self.config.db_path).get_raw())
+                    tmp.replace(db_path_file)
+
             db_path = db_path_file
             logger.debug("finished geoip database download.")
-        return database.Reader(db_path)
+
+        try:
+            return database.Reader(db_path)
+        except Exception:
+            logger.exception("failed to load GeoIP database")
+            raise
 
     def setup(self) -> None:
         super().setup()
