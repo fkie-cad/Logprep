@@ -163,7 +163,6 @@ class FileInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the threadsafe queue"""
-
         try:
             message: dict = self._messages.get(timeout=timeout)
             raw_message: bytes = str(message).encode("utf8")

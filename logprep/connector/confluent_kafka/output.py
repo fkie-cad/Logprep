@@ -31,7 +31,7 @@ from types import MappingProxyType
 
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer  # type: ignore
-from confluent_kafka.admin import AdminClient  # type: ignore
+from confluent_kafka.admin import AdminClient
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.metrics.metrics import GaugeMetric, Metric
@@ -162,8 +162,8 @@ class ConfluentKafkaOutput(Output):
         Default is :code:`0`."""
         kafka_config: MappingProxyType = field(
             validator=(
-                validators.instance_of(MappingProxyType),
                 validators.deep_mapping(
+                    mapping_validator=validators.instance_of(MappingProxyType),
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of((str, dict)),
                 ),
@@ -235,7 +235,7 @@ class ConfluentKafkaOutput(Output):
     def _producer(self) -> Producer:
         return Producer(self._kafka_config)
 
-    def _error_callback(self, error: KafkaException):
+    def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
         This callback is served upon calling client.poll()
@@ -273,14 +273,7 @@ class ConfluentKafkaOutput(Output):
         self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", DEFAULT_RETURN)
 
     def describe(self) -> str:
-        """Get name of Kafka endpoint with the bootstrap server.
-
-        Returns
-        -------
-        kafka : ConfluentKafka
-            Acts as input and output connector.
-
-        """
+        """Get name of Kafka endpoint with the bootstrap server."""
         base_description = super().describe()
         return (
             f"{base_description} - Kafka Output: "
@@ -294,11 +287,6 @@ class ConfluentKafkaOutput(Output):
         ----------
         document : dict
            Document to store.
-
-        Returns
-        -------
-        Returns True to inform the pipeline to call the batch_finished_callback method in the
-        configured input
         """
         self.store_custom(document, self.config.topic)
 
@@ -330,14 +318,12 @@ class ConfluentKafkaOutput(Output):
         except Exception as error:
             raise CriticalOutputError(self, str(error), document) from error
 
-    def _shut_down(self) -> None:
+    def flush(self) -> None:
         """ensures that all messages are flushed. According to
         https://confluent-kafka-python.readthedocs.io/en/latest/#confluent_kafka.Producer.flush
         flush without the timeout parameter will block until all messages are delivered.
         This ensures no messages will get lost on shutdown.
         """
-        if self._producer is None:
-            return
         remaining_messages = self._producer.flush()
         if remaining_messages:
             self.metrics.number_of_errors += 1
@@ -347,13 +333,16 @@ class ConfluentKafkaOutput(Output):
             )
         else:
             logger.info("Producer flushed successfully. %s messages remaining.", remaining_messages)
+
+    def _shut_down(self):
+        self.flush()
         return super()._shut_down()
 
     def health(self) -> bool:
         """Check the health of kafka producer."""
         try:
             metadata = self._admin.list_topics(timeout=self.config.health_timeout)
-            if not self.config.topic in metadata.topics:
+            if self.config.topic not in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self.config.topic)
                 return False
         except KafkaException as error:

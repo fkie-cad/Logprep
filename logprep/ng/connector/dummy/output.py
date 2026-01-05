@@ -18,7 +18,8 @@ Example
 """
 
 import logging
-from typing import TYPE_CHECKING, List
+import typing
+from typing import TYPE_CHECKING
 
 from attrs import define, field, validators
 
@@ -45,7 +46,7 @@ class DummyOutput(Output):
         """If set to True, this connector will behave completely neutral and not do anything.
         Especially counting metrics or storing events."""
 
-        exceptions: List[str] = field(
+        exceptions: list[str] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of((str, type(None))),
                 iterable_validator=validators.instance_of(list),
@@ -56,6 +57,7 @@ class DummyOutput(Output):
         for testing purposes. If an exception is raised, the exception is handled
         by the output decorator.
         """
+
         reset_on_flush: bool = field(default=False)
         """If set to True, the stored events will be cleared when flush() is called."""
 
@@ -73,12 +75,17 @@ class DummyOutput(Output):
         "_exceptions",
     ]
 
-    def __init__(self, name: str, configuration: "Connector.Config"):
+    def __init__(self, name: str, configuration: "DummyOutput.Config"):
         super().__init__(name, configuration)
         self.events = []
         self.failed_events = []
         self.shut_down_called_count = 0
         self._exceptions = configuration.exceptions
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast("DummyOutput.Config", self._config)
 
     @Output._handle_errors
     def store(self, event: Event) -> None:
@@ -89,7 +96,7 @@ class DummyOutput(Output):
         document : dict
            Processed log event that will be stored.
         """
-        if self._config.do_nothing:
+        if self.config.do_nothing:
             return
         event.state.next_state()
         if self._exceptions:
@@ -100,16 +107,16 @@ class DummyOutput(Output):
         event.state.next_state(success=True)
         self.metrics.number_of_processed_events += 1
 
-    def store_custom(self, event: Event, target: str):  # pylint: disable=unused-argument
+    def store_custom(self, event: Event, target: str):
         """Store additional data in a custom location inside the output destination."""
         self.store(event)
 
-    def _shut_down(self):
-        self.shut_down_called_count += 1
-        return super()._shut_down()
-
     def flush(self):
-        """Flush not implemented because it has not backlog."""
-        if self._config.reset_on_flush:
+        """Flush not implemented because it has no backlog."""
+        if self.config.reset_on_flush:
             self.events.clear()
         logger.debug("DummyOutput flushed %s events", len(self.events))
+
+    def shut_down(self):
+        self.shut_down_called_count += 1
+        return super().shut_down()

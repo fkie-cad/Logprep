@@ -48,7 +48,7 @@ class DummyInput(Input):
 
     @cached_property
     def _documents(self) -> list[dict | type | Exception]:
-        return copy.copy(self.config.documents)
+        return copy.deepcopy(self.config.documents)
 
     def _get_event(self, timeout: float) -> tuple:
         """Retrieve next document from configuration and raise warning if found"""

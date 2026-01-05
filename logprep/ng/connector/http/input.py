@@ -90,11 +90,12 @@ import queue
 import typing
 from collections.abc import Mapping
 from functools import cached_property
+from multiprocessing import Queue
 
 import falcon
+import falcon.asgi
 import requests
 from attrs import define, field, validators
-from joblib._multiprocessing_helpers import mp
 
 from logprep.connector.http.input import (
     DEFAULT_META_HEADERS,
@@ -114,8 +115,6 @@ from logprep.util.credentials import CredentialsFactory
 
 class HttpInput(Input):
     """Connector to accept log messages as http post requests"""
-
-    pipeline_index: int = 1
 
     @define(kw_only=True)
     class Metrics(Input.Metrics):
@@ -172,14 +171,12 @@ class HttpInput(Input):
                     workers: 2
 
         """
-        endpoints: Mapping[str, str] = field(
-            validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.matches_re(r"^\/.+"),
-                    value_validator=validators.in_(["json", "plaintext", "jsonl"]),
-                ),
-            ]
+        endpoints: dict[str, str] = field(
+            validator=validators.deep_mapping(
+                mapping_validator=validators.instance_of(dict),
+                key_validator=validators.matches_re(r"^\/.+"),
+                value_validator=validators.in_(["json", "plaintext", "jsonl"]),
+            ),
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`. It's possible to use wildcards and
@@ -239,7 +236,9 @@ class HttpInput(Input):
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
-        """Defines the name of the key for the collected metadata fields"""
+        """Defines the name of the key for the collected metadata fields.
+        Logs a Warning if metadata field overwrites preexisting field in Event
+        """
 
         original_event_field: dict[str, str] | None = field(
             validator=validators.optional(
@@ -264,7 +263,7 @@ class HttpInput(Input):
 
     __slots__: list[str] = ["target", "app", "http_server"]
 
-    messages: mp.Queue  # type: ignore
+    messages: typing.Optional[Queue] = None
 
     _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
@@ -293,10 +292,13 @@ class HttpInput(Input):
         """setup starts the actual functionality of this connector."""
 
         super().setup()
+
+        if self.messages is None:
+            raise ValueError("message queue `messages` has not been set")
+
         endpoints_config = {}
         collect_meta = self.config.collect_meta
         copy_headers_to_logs = self.config.copy_headers_to_logs
-
         metafield_name = self.config.metafield_name
         original_event_field = self.config.original_event_field
         cred_factory = CredentialsFactory()
@@ -335,11 +337,11 @@ class HttpInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the queue"""
+        messages = typing.cast(Queue, self.messages)
 
-        self.metrics.message_backlog_size += self.messages.qsize()
-
+        self.metrics.message_backlog_size += messages.qsize()
         try:
-            message = self.messages.get(timeout=timeout)
+            message = messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
             return message, raw_message, None
         except queue.Empty:
@@ -347,9 +349,7 @@ class HttpInput(Input):
 
     def _shut_down(self) -> None:
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        if self.http_server is None:  # pragma: no cover this is a mypy issue fix
-            return
-        self.http_server.shut_down()
+        self.http_server.shut_down()  # type: ignore
         return super()._shut_down()
 
     @cached_property

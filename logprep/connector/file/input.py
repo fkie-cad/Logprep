@@ -132,7 +132,7 @@ class FileWatcherUtil:
         Name of the logfile that should be logged
     """
 
-    def __init__(self, file_name: str = ""):
+    def __init__(self, file_name: str = "") -> None:
         self.dict: dict = {}
         if file_name:
             self.add_file(file_name)
@@ -268,7 +268,7 @@ class FileInput(Input):
         at the end of a log file"""
         return self._get_file_size(file_name) if self.config.start == "end" else 0
 
-    def _follow_file(self, file_name: str, file):
+    def _follow_file(self, file_name: str, file: TextIO) -> None:
         """Will go through monitored file from offset to end of file"""
         file_not_ended = False
         while not file_not_ended:
@@ -284,11 +284,11 @@ class FileInput(Input):
             else:
                 file_not_ended = True
 
-    def _calc_and_update_fingerprint(self, file_name: str, file):
+    def _calc_and_update_fingerprint(self, file_name: str, file) -> None:
         crc32, fingerprint_size = self._calc_file_fingerprint(file)
         self._fileinfo_util.add_fingerprint(file_name, crc32, fingerprint_size)
 
-    def _calc_and_check_fingerprint(self, file_name: str, file) -> bool:
+    def _calc_and_check_fingerprint(self, file_name: str, file: TextIO) -> bool:
         baseline_fingerprint_size: int = self._fileinfo_util.get_fingerprint_size(file_name)
         crc32, _ = self._calc_file_fingerprint(file, baseline_fingerprint_size)
         if self._fileinfo_util.has_fingerprint_changed(file_name, crc32):
@@ -297,7 +297,7 @@ class FileInput(Input):
 
     @threadsafe_wrapper
     @runtime_file_exceptions
-    def _file_input_handler(self, file_name: str):
+    def _file_input_handler(self, file_name: str) -> None:
         """Put log_line as a dict to threadsafe message queue from given input file.
         Depending on configuration it will continuously monitor a given file for new
         appending log lines. Depending on configuration it will start to process the
@@ -349,7 +349,7 @@ class FileInput(Input):
                 file_name=self.config.logfile_path,
             )
 
-    def _shut_down(self):
+    def _shut_down(self) -> None:
         """Raises the Stop Event Flag that will stop the thread that monitors the logfile"""
         self.stop_flag.set()
         return super()._shut_down()

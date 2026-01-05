@@ -34,7 +34,7 @@ import logging
 import ssl
 import typing
 from functools import cached_property
-from typing import List, Optional
+from typing import Optional
 
 import opensearchpy as search
 from attrs import define, field, validators
@@ -82,7 +82,7 @@ class OpensearchOutput(Output):
            :code:`secret` and a valid :code:`ca_cert`.
         """
 
-        hosts: List[str] = field(
+        hosts: list[str] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of((str, type(None))),
                 iterable_validator=validators.instance_of(list),
@@ -142,10 +142,10 @@ class OpensearchOutput(Output):
 
     __slots__ = ["_message_backlog", "_failed"]
 
-    _failed: List
+    _failed: list
     """Temporary list of failed messages."""
 
-    _message_backlog: List
+    _message_backlog: list
     """List of messages to be sent to Opensearch."""
 
     @property

@@ -96,6 +96,7 @@ from abc import ABC
 from base64 import b64encode
 from collections.abc import Callable, Mapping
 from functools import cached_property
+from multiprocessing import Queue
 
 import falcon.asgi
 import msgspec
@@ -400,15 +401,13 @@ class HttpInput(Input):
     class Config(Input.Config):
         """Config for HTTPInput"""
 
-        uvicorn_config: Mapping[str, str | int] = field(
-            validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
-                    # lambda xyz tuple necessary because of input structure
-                    value_validator=lambda x, y, z: True,
-                ),
-            ]
+        uvicorn_config: dict[str, str | int] = field(
+            validator=validators.deep_mapping(
+                mapping_validator=validators.instance_of(dict),
+                key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
+                # lambda xyz tuple necessary because of input structure
+                value_validator=lambda x, y, z: True,
+            ),
         )
 
         """Configure uvicorn server. For possible settings see
@@ -433,14 +432,12 @@ class HttpInput(Input):
                     workers: 2
 
         """
-        endpoints: Mapping[str, str] = field(
-            validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.matches_re(r"^\/.+"),
-                    value_validator=validators.in_(["json", "plaintext", "jsonl"]),
-                ),
-            ]
+        endpoints: dict[str, str] = field(
+            validator=validators.deep_mapping(
+                mapping_validator=validators.instance_of(dict),
+                key_validator=validators.matches_re(r"^\/.+"),
+                value_validator=validators.in_(["json", "plaintext", "jsonl"]),
+            ),
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`. It's possible to use wildcards and
@@ -500,7 +497,7 @@ class HttpInput(Input):
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
-        """Defines the name of the key for the collected metadata fields
+        """Defines the name of the key for the collected metadata fields.
         Logs a Warning if metadata field overwrites preexisting field in Event
         """
 
@@ -510,7 +507,7 @@ class HttpInput(Input):
                     mapping_validator=validators.instance_of(dict),
                     key_validator=validators.in_(["format", "target_field"]),
                     value_validator=validators.instance_of(str),
-                )
+                ),
             ),
             default=None,
         )
@@ -527,7 +524,7 @@ class HttpInput(Input):
 
     __slots__: list[str] = ["target", "app", "http_server"]
 
-    messages: typing.Optional[mp.Queue] = None
+    messages: typing.Optional[Queue] = None
 
     _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
@@ -544,21 +541,25 @@ class HttpInput(Input):
         )
         schema = "https" if ssl_options else "http"
         self.target = f"{schema}://{host}:{port}"
-        self.app = None
-        self.http_server = None
+        self.app: falcon.asgi.App | None = None
+        self.http_server: http.ThreadingHTTPServer | None = None
 
     @property
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
         return typing.cast(HttpInput.Config, self._config)
 
-    def setup(self):
+    def setup(self) -> None:
         """setup starts the actual functionality of this connector.
         By checking against pipeline_index we're assuring this connector
         only runs a single time for multiple processes.
         """
 
         super().setup()
+
+        if self.messages is None:
+            raise ValueError("message queue `messages` has not been set")
+
         if self.pipeline_index is None:
             raise FatalInputError(self, "Necessary instance attribute `pipeline_index` is not set.")
         # Start HTTP Input only when in first process
@@ -575,6 +576,10 @@ class HttpInput(Input):
         # and add authentication if credentials are existing for path
         for endpoint_path, endpoint_type in self.config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_type)
+
+            if endpoint_class is None:  # pragma: no cover this is a mypy issue fix
+                continue
+
             credentials = cred_factory.from_endpoint(endpoint_path)
             endpoints_config[endpoint_path] = endpoint_class(
                 self.messages,
@@ -602,22 +607,19 @@ class HttpInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the queue"""
-        if self.messages is not None:
-            self.metrics.message_backlog_size += self.messages.qsize()
-            try:
-                message = self.messages.get(timeout=timeout)
-                raw_message = str(message).encode("utf8")
-                return message, raw_message
-            except queue.Empty:
-                return None, None
-        else:
-            raise ValueError("message queue not set")
+        messages = typing.cast(Queue, self.messages)
+
+        self.metrics.message_backlog_size += messages.qsize()
+        try:
+            message = messages.get(timeout=timeout)
+            raw_message = str(message).encode("utf8")
+            return message, raw_message
+        except queue.Empty:
+            return None, None
 
     def _shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        if self.http_server is None:
-            return
-        self.http_server.shut_down()
+        self.http_server.shut_down()  # type: ignore
         return super()._shut_down()
 
     @cached_property

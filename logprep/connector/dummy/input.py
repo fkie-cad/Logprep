@@ -22,7 +22,6 @@ Example
 import copy
 import typing
 from functools import cached_property
-from typing import List, Union
 
 from attrs import define, field, validators
 
@@ -36,7 +35,7 @@ class DummyInput(Input):
     class Config(Input.Config):
         """DummyInput specific configuration"""
 
-        documents: List[Union[dict, type, Exception]]
+        documents: list[dict | type | Exception]
         """A list of documents that should be returned."""
         repeat_documents: bool = field(validator=validators.instance_of(bool), default=False)
         """If set to :code:`true`, then the given input documents will be repeated after the last
@@ -48,8 +47,8 @@ class DummyInput(Input):
         return typing.cast("DummyInput.Config", self._config)
 
     @cached_property
-    def _documents(self):
-        return copy.deepcopy(self._config.documents)
+    def _documents(self) -> list[dict | type | Exception]:
+        return copy.deepcopy(self.config.documents)
 
     def _get_event(self, timeout: float) -> tuple:
         """Retrieve next document from configuration and raise warning if found"""
@@ -61,7 +60,7 @@ class DummyInput(Input):
 
         document = self._documents.pop(0)
 
-        if (document.__class__ == type) and issubclass(document, Exception):  # type: ignore
-            raise document  # type: ignore
+        if isinstance(document, type) and issubclass(document, Exception):
+            raise document
 
         return document, None
