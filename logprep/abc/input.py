@@ -379,7 +379,7 @@ class Input(Connector):
 
     def _write_full_event_to_target_field(self, event_dict: dict, raw_event: bytearray) -> None:
         target = self._config.preprocessing.get("add_full_event_to_target_field")
-        complete_event = {}
+        complete_event: str | dict = {}
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
         if target["format"] == "dict":
