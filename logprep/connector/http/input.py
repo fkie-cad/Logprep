@@ -527,7 +527,7 @@ class HttpInput(Input):
 
     __slots__: list[str] = ["target", "app", "http_server"]
 
-    messages: mp.Queue
+    messages: typing.Optional[mp.Queue] = None
 
     _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
@@ -602,13 +602,16 @@ class HttpInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the queue"""
-        self.metrics.message_backlog_size += self.messages.qsize()
-        try:
-            message = self.messages.get(timeout=timeout)
-            raw_message = str(message).encode("utf8")
-            return message, raw_message
-        except queue.Empty:
-            return None, None
+        if self.messages is not None:
+            self.metrics.message_backlog_size += self.messages.qsize()
+            try:
+                message = self.messages.get(timeout=timeout)
+                raw_message = str(message).encode("utf8")
+                return message, raw_message
+            except queue.Empty:
+                return None, None
+        else:
+            raise ValueError("message queue not set")
 
     def _shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
