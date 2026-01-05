@@ -476,3 +476,8 @@ class Input(Connector):
         }
         add_fields_to(event_dict, new_field)
         return event_dict
+
+    def _shut_down(self) -> None:
+        self._clear_scheduled_jobs()
+        # we can not clear the instance properties as the pipeline still uses them after shut_down
+        # has to be fixed in the new architecture

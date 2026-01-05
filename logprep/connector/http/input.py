@@ -619,7 +619,8 @@ class HttpInput(Input):
 
     def _shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        self.http_server.shut_down()  # type: ignore
+        if self.http_server:
+            self.http_server.shut_down()
         return super()._shut_down()
 
     @cached_property
