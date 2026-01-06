@@ -57,7 +57,7 @@ keywords = [
   "logdata",
 ]
 dependencies = [
-  "aiohttp>=3.9.2,<4",                # CVE-2024-23334
+  "aiohttp>=3.13.3,<4",                # [>=3.9.2]: CVE-2024-23334, [>=3.13.3]: CVE-2025-69223
   "attrs<26",
   "certifi>=2023.7.22, <2026",            # CVE-2023-37920
   "confluent-kafka>2,<3",
