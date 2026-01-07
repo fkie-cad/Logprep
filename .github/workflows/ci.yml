@@ -33,6 +33,15 @@ jobs:
           cd doc
           sphinx-apidoc -fT -o source/module_reference ../logprep
           make clean html
+  documentation-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: readthedocs/actions/preview@v1
+        with:
+          project-slug: logprep
+          project-language: en
+          platform: community
+          single-language: true
   code-quality:
     uses: ./.github/workflows/code-quality.yml
     secrets: inherit
