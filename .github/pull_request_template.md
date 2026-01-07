@@ -11,8 +11,8 @@
 ### Documentation
 - [ ] [README.md](https://github.com/fkie-cad/Logprep/blob/main/README.md) is up-to-date
 - [ ] [CHANGELOG.md](https://github.com/fkie-cad/Logprep/blob/main/CHANGELOG.md) is up-to-date
-- [ ] [Documentation](https://github.com/fkie-cad/Logprep/tree/main/doc/source) is up-to-date
-- [ ] [Preview for docs](https://app.readthedocs.org/projects/logprep/builds/) looks fine
+- [ ] [Documentation](https://github.com/fkie-cad/Logprep/tree/main/doc/source) (doc/source) is up-to-date
+- [ ] [Preview for docs](#readthedocs-preview) looks fine
 - [ ] [Notebooks](https://github.com/fkie-cad/Logprep/tree/main/doc/source/development/notebooks) are up-to-date and functional
 - [ ] [Examples](https://github.com/fkie-cad/Logprep/tree/main/examples) are up-to-date and functional (including compose & k8s)
 
