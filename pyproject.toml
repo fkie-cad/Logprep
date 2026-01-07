@@ -182,18 +182,17 @@ max-attributes=12
 [tool.pylint.CLASSES]
 
 # List of method names used to declare (i.e. assign) instance attributes.
-defining-attr-methods="__init__,__new__,setUp"
+defining-attr-methods="__init__,__new__,setup"
+
 [tool.mypy]
+# use imported type information but don't report issues if not a file under check
+follow_imports = "silent"
 exclude = "tests/.*"
 
 # Evidently looking at dev Packages, they are installed, mypy doesnt seem to think so
 [[tool.mypy.overrides]]
 module = ["requests.*"]
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["logprep.framework.pipeline_manager.*"]
-disable_error_code = "attr-defined"
 
 [[tool.mypy.overrides]]
 module = ["joblib.*", "boto3.*", "botocore.*"]
