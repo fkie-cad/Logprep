@@ -67,6 +67,6 @@ ENV_NAME_LOGPREP_GETTER_CONFIG = "LOGPREP_GETTER_CONFIG"
 
 DEFAULT_HEALTH_STATE = False  # unhealthy
 
-DEFAULT_HEALTH_TIMEOUT = 1  # seconds
+DEFAULT_HEALTH_TIMEOUT: float = 1  # seconds
 
 RULE_FILE_EXTENSIONS = {".yml", ".yaml", ".json"}

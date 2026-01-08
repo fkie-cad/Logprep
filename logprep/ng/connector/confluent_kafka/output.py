@@ -24,10 +24,10 @@ Example
 """
 
 import logging
+import typing
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
-from typing import Optional
 
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Message, Producer  # type: ignore
@@ -161,16 +161,16 @@ class ConfluentKafkaOutput(Output):
         )
         """The maximum time in seconds to wait for an answer from the broker on polling.
         Default is :code:`0`."""
-        kafka_config: Optional[MappingProxyType] = field(
-            validator=[
-                validators.instance_of(MappingProxyType),
+        kafka_config: MappingProxyType = field(
+            validator=(
                 validators.deep_mapping(
+                    mapping_validator=validators.instance_of(MappingProxyType),
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of((str, dict)),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers"]),
-            ],
-            factory=MappingProxyType,
+            ),
+            factory=MappingProxyType,  # type: ignore
             converter=MappingProxyType,
         )
         """ Kafka configuration for the kafka client.
@@ -184,7 +184,21 @@ class ConfluentKafkaOutput(Output):
         .. datatemplate:import-module:: logprep.connector.confluent_kafka.output
             :template: defaults-renderer.tmpl
 
+        .. security-best-practice::
+           :title: Kafka Output Producer Authentication and Encryption
+
+           Kafka authentication is a critical aspect of securing your data pipeline.
+           Ensure that you have the following configurations in place:
+
+           - Use SSL/mTLS encryption for data in transit.
+           - Configure SASL or mTLS authentication for your Kafka clients.
+           - Regularly rotate your Kafka credentials and secrets.
         """
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(ConfluentKafkaOutput.Config, self._config)
 
     @property
     def _kafka_config(self) -> dict:
@@ -201,7 +215,7 @@ class ConfluentKafkaOutput(Output):
             "error_cb": self._error_callback,
         }
         DEFAULTS.update({"client.id": getfqdn()})
-        return DEFAULTS | self._config.kafka_config | injected_config
+        return DEFAULTS | self.config.kafka_config | injected_config
 
     @cached_property
     def _admin(self) -> AdminClient:
@@ -212,8 +226,8 @@ class ConfluentKafkaOutput(Output):
         AdminClient
             confluent_kafka admin client object
         """
-        admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
-        for key, value in self._config.kafka_config.items():
+        admin_config = {"bootstrap.servers": self.config.kafka_config["bootstrap.servers"]}
+        for key, value in self.config.kafka_config.items():
             if key.startswith(("security.", "ssl.")):
                 admin_config[key] = value
         return AdminClient(admin_config)
@@ -264,7 +278,7 @@ class ConfluentKafkaOutput(Output):
         base_description = super().describe()
         return (
             f"{base_description} - Kafka Output: "
-            f"{self._config.kafka_config.get('bootstrap.servers')}"
+            f"{self.config.kafka_config.get('bootstrap.servers')}"
         )
 
     def store(self, event: Event) -> None:
@@ -275,7 +289,7 @@ class ConfluentKafkaOutput(Output):
         event : Event
             The event to store.
         """
-        self.store_custom(event, self._config.topic)
+        self.store_custom(event, self.config.topic)
 
     @Output._handle_errors
     @Metric.measure_time()
@@ -299,10 +313,10 @@ class ConfluentKafkaOutput(Output):
                 on_delivery=partial(self.on_delivery, event),
             )
             logger.debug("Produced message %s to topic %s", str(document), target)
-            self._producer.poll(self._config.send_timeout)
+            self._producer.poll(self.config.send_timeout)
         except BufferError:
             # block program until buffer is empty or timeout is reached
-            self._producer.flush(timeout=self._config.flush_timeout)
+            self._producer.flush(timeout=self.config.flush_timeout)
             logger.debug("Buffer full, flushing")
 
     def flush(self) -> None:
@@ -311,7 +325,8 @@ class ConfluentKafkaOutput(Output):
         flush without the timeout parameter will block until all messages are delivered.
         This ensures no messages will get lost on shutdown.
         """
-        if remaining_messages := self._producer.flush():
+        remaining_messages = self._producer.flush()
+        if remaining_messages:
             self.metrics.number_of_errors += 1
             logger.error(
                 "Flushing producer timed out. %s messages are still in the buffer.",
@@ -323,9 +338,9 @@ class ConfluentKafkaOutput(Output):
     def health(self) -> bool:
         """Check the health of kafka producer."""
         try:
-            metadata = self._admin.list_topics(timeout=self._config.health_timeout)
-            if self._config.topic not in metadata.topics:
-                logger.error("Topic  '%s' does not exit", self._config.topic)
+            metadata = self._admin.list_topics(timeout=self.config.health_timeout)
+            if self.config.topic not in metadata.topics:
+                logger.error("Topic  '%s' does not exit", self.config.topic)
                 return False
         except KafkaException as error:
             logger.error("Health check failed: %s", error)

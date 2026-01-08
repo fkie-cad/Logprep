@@ -6,9 +6,16 @@
 * add new `decoder` processor to decode values from event field
 
 ### Improvements
+* use follow-imports=silent (instead of skip) to perform more strict type checking
+* add docs on how to perform memory profiling
+* make the pipeline example work on MacOS (reduce error queue size)
+* clean up scheduled jobs and other resources when shutting down components
+* fix several minor mypy issues and improve static typing
 
 ### Bugfix
 * fix incorrect default-logger lookup by consistently resolving defaults from `DEFAULT_LOG_CONFIG["loggers"]`.
+* fix a possible race condition in the `geoip_enricher`
+* fix possible memory leaks in configuration refresh when processors set up scheduled jobs which were not cleaned up
 
 ## 18.0.0
 ### Breaking

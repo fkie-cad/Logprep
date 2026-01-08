@@ -26,12 +26,13 @@ In the following example the IP in :code:`client.ip` will be enriched with geoip
    :noindex:
 """
 
-from attr import Factory
-from attrs import define, field, validators
+import typing
+
+from attrs import Factory, define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 
-GEOIP_DATA_STUBS = {
+GEOIP_DATA_STUBS: dict = {
     "type": "Feature",
     "geometry.type": None,
     "geometry.coordinates": None,
@@ -106,5 +107,10 @@ class GeoipEnricherRule(FieldManagerRule):
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
     @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(GeoipEnricherRule.Config, self._config)
+
+    @property
     def customize_target_subfields(self) -> dict:  # pylint: disable=missing-function-docstring
-        return self._config.customize_target_subfields
+        return self.config.customize_target_subfields

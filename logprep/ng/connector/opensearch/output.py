@@ -32,6 +32,7 @@ Example
 
 import logging
 import ssl
+import typing
 from functools import cached_property
 from typing import List, Optional
 
@@ -167,10 +168,10 @@ class OpensearchOutput(Output):
     @property
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
-        return self._config
+        return typing.cast(OpensearchOutput.Config, self._config)
 
     @cached_property
-    def ssl_context(self) -> ssl.SSLContext:
+    def ssl_context(self) -> ssl.SSLContext | None:
         """Returns the ssl context
 
         Returns
@@ -313,7 +314,7 @@ class OpensearchOutput(Output):
             "raise_on_exception": False,
         }
         actions = (event.data for event in events)
-        for index, result in enumerate(helpers.parallel_bulk(client, actions, **kwargs)):
+        for index, result in enumerate(helpers.parallel_bulk(client, actions, **kwargs)):  # type: ignore
             success, item = result
             if success:
                 events[index].state.next_state(success=True)

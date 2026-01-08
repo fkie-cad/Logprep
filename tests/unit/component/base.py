@@ -8,6 +8,7 @@ from typing import Callable, Iterable
 from unittest import mock
 
 import pytest
+import schedule
 from attrs import asdict
 from attrs.exceptions import FrozenInstanceError
 from prometheus_client import Counter, Gauge, Histogram
@@ -31,10 +32,15 @@ class BaseComponentTestCase(ABC):
 
     metric_attributes: dict
 
+    def _create_test_instance(self, config: dict | None = None) -> Component:
+        config_or_default = config if config else {"Test Instance Name": self.CONFIG}
+        instance = Factory.create(configuration=config_or_default)
+        assert instance is not None
+        instance._wait_for_health = mock.MagicMock()  # type: ignore
+        return instance
+
     def setup_method(self) -> None:
-        config = {"Test Instance Name": self.CONFIG}
-        self.object = Factory.create(configuration=config)
-        self.object._wait_for_health = mock.MagicMock()
+        self.object = self._create_test_instance()
 
         assert "metrics" not in self.object.__dict__, "metrics should be a cached_property"
         self.metric_attributes = asdict(
@@ -126,6 +132,44 @@ class BaseComponentTestCase(ABC):
     def test_setup_populates_cached_properties(self, mock_getmembers):
         self.object.setup()
         mock_getmembers.assert_called_with(self.object)
+
+    @pytest.fixture(scope="function")
+    def component_scheduler(self):
+        with mock.patch.object(Component, "_scheduler", schedule.Scheduler()) as scheduler:
+            yield scheduler
+
+    def test_job_cleanup_on_shutdown(self, component_scheduler):
+        """
+        Tests if setup/shut_down properly affect the class-wide scheduler.
+        This test does not use `self.object` as the base classes treat this instance
+        differently in terms of setup/shut_down.
+        """
+
+        # make sure the class-wide scheduler is fresh and empty
+        scheduler = component_scheduler
+        assert len(scheduler.get_jobs()) == 0, "scheduler should initially be empty"
+
+        instance = self._create_test_instance()
+
+        n_jobs_after_init = len(scheduler.get_jobs())
+
+        scheduler.every(100).seconds.do(lambda: "irrelevant")
+        assert (
+            len(scheduler.get_jobs()) == n_jobs_after_init + 1
+        ), "adding a job should increase job count"
+
+        instance.setup()
+        n_jobs_after_setup = len(scheduler.get_jobs())
+
+        instance._schedule_task(lambda: "irrelevant", seconds=42)
+        assert (
+            len(scheduler.get_jobs()) == n_jobs_after_setup + 1
+        ), "adding a job via component interface should also increase the job count"
+
+        instance.shut_down()
+        assert (
+            len(scheduler.get_jobs()) == 1
+        ), f"shut_down should clear component instance specific jobs, {scheduler.jobs}"
 
     def test_setup_calls_wait_for_health(self):
         self.object.setup()

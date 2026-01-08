@@ -5,13 +5,13 @@ import inspect
 import logging
 import sys
 import time
+import uuid
 from abc import ABC
 from functools import cached_property
 from typing import Callable
 
 import msgspec
-from attr import define, field, validators
-from attrs import asdict
+from attrs import asdict, define, field, validators
 from schedule import Scheduler
 
 from logprep.metrics.metrics import Metric
@@ -55,7 +55,14 @@ class Component(ABC):
                     attribute.init_tracker()
 
     # __dict__ is added to support functools.cached_property
-    __slots__ = ["name", "_config", "pipeline_index", "__dict__"]
+    __slots__ = [
+        "name",
+        "_config",
+        "pipeline_index",
+        "_job_tag_for_cleanup",
+        "_is_shut_down",
+        "__dict__",
+    ]
 
     # instance attributes
     name: str
@@ -75,6 +82,8 @@ class Component(ABC):
         self._config = configuration
         self.name = name
         self.pipeline_index = pipeline_index
+        self._job_tag_for_cleanup = f"{self.__class__.__name__}:{self.name}:{uuid.uuid4()}"
+        self._is_shut_down = False
 
     @cached_property
     def metrics(self):
@@ -127,14 +136,26 @@ class Component(ABC):
             if isinstance(value, functools.cached_property)
         ]
 
+    def _clear_scheduled_jobs(self) -> None:
+        self._scheduler.clear(self._job_tag_for_cleanup)
+
+    def _clear_properties(self) -> None:
+        if hasattr(self, "__dict__"):
+            self.__dict__.clear()
+
+    def _shut_down(self) -> None:
+        self._clear_scheduled_jobs()
+        self._clear_properties()
+
     def shut_down(self):
         """Stop processing of this component.
 
         Optional: Called when stopping the pipeline
 
         """
-        if hasattr(self, "__dict__"):
-            self.__dict__.clear()
+        if not self._is_shut_down:
+            self._is_shut_down = True
+            self._shut_down()
 
     def health(self) -> bool:
         """Check the health of the component.
@@ -168,11 +189,13 @@ class Component(ABC):
             the time interval in seconds
 
         """
-        if task in map(lambda job: job.job_func.func, self._scheduler.jobs):
+        if task in [job.job_func.func for job in self._scheduler.jobs if job.job_func]:
             return
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
-        self._scheduler.every(seconds).seconds.do(task, *args, **kwargs)
+        self._scheduler.every(seconds).seconds.do(task, *args, **kwargs).tag(
+            self._job_tag_for_cleanup
+        )
 
     @classmethod
     def run_pending_tasks(cls) -> None:

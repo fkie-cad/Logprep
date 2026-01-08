@@ -31,6 +31,11 @@ class TestJsonInput(BaseInputTestCase):
 
     CONFIG = {"type": "ng_json_input", "documents_path": "/does/not/matter"}
 
+    @pytest.fixture
+    def mock_parse(self):
+        with mock.patch("logprep.ng.connector.json.input.parse_json") as _mock_parse:
+            yield _mock_parse
+
     def patch_documents_property(self, *, document):
         """
         Patch the `@cached_property` `_documents` to return a shared, mutable list.
@@ -1040,3 +1045,7 @@ class TestJsonInput(BaseInputTestCase):
                 assert len(connector.event_backlog.backlog) == new_size, expected_message
 
             connector.shut_down()
+
+    @pytest.mark.usefixtures("mock_parse")
+    def test_job_cleanup_on_shutdown(self, component_scheduler):
+        return super().test_job_cleanup_on_shutdown(component_scheduler)

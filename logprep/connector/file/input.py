@@ -22,8 +22,9 @@ Example
 
 import queue
 import threading
+import typing
 import zlib
-from typing import Callable, TextIO
+from typing import Any, Callable, TextIO
 
 from attrs import define, field, validators
 
@@ -87,7 +88,7 @@ class RepeatedTimerThread(threading.Thread):
         stop_flag: threading.Event,
         watch_file: bool,
         *args: tuple,
-        **kwargs: dict,
+        **kwargs: Any,
     ):
         super().__init__()
         self.exception = None
@@ -131,7 +132,7 @@ class FileWatcherUtil:
         Name of the logfile that should be logged
     """
 
-    def __init__(self, file_name: str = ""):
+    def __init__(self, file_name: str = "") -> None:
         self.dict: dict = {}
         if file_name:
             self.add_file(file_name)
@@ -201,7 +202,7 @@ class FileInput(Input):
 
     _messages: queue.Queue = queue.Queue()
     _fileinfo_util: FileWatcherUtil = FileWatcherUtil()
-    rthread: threading.Event = None
+    rthread: threading.Thread | None = None
 
     @define(kw_only=True)
     class Config(Input.Config):
@@ -219,7 +220,7 @@ class FileInput(Input):
         - ``begin``: starts to read from the beginning of a file
         - ``end``: goes initially to the end of the file and waits for new content"""
 
-        watch_file: str = field(validator=validators.instance_of(bool), default=True)
+        watch_file: bool = field(validator=validators.instance_of(bool), default=True)
         """Defines the behaviour of the file monitor with the following options:
         - ``True``: Read the file like defined in `start` param and monitor continuously
         for newly appended log lines or file changes
@@ -232,6 +233,11 @@ class FileInput(Input):
         super().__init__(name, configuration)
         self.stop_flag = threading.Event()
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(FileInput.Config, self._config)
+
     def _calc_file_fingerprint(
         self, file_pointer: TextIO, fingerprint_length: int | None = None
     ) -> tuple:
@@ -239,7 +245,7 @@ class FileInput(Input):
         If the existing log file is less than 256 bytes, it will take what is there
         and return also the size"""
         if not fingerprint_length:
-            file_size: int = self._get_file_size(self._config.logfile_path)
+            file_size: int = self._get_file_size(self.config.logfile_path)
             if 1 < file_size < 256:
                 fingerprint_length = file_size
             else:
@@ -260,9 +266,9 @@ class FileInput(Input):
     def _get_initial_file_offset(self, file_name: str) -> int:
         """Calculates the file_size for given logfile if it's configured to start
         at the end of a log file"""
-        return self._get_file_size(file_name) if self._config.start == "end" else 0
+        return self._get_file_size(file_name) if self.config.start == "end" else 0
 
-    def _follow_file(self, file_name: str, file):
+    def _follow_file(self, file_name: str, file: TextIO) -> None:
         """Will go through monitored file from offset to end of file"""
         file_not_ended = False
         while not file_not_ended:
@@ -278,11 +284,11 @@ class FileInput(Input):
             else:
                 file_not_ended = True
 
-    def _calc_and_update_fingerprint(self, file_name: str, file):
+    def _calc_and_update_fingerprint(self, file_name: str, file) -> None:
         crc32, fingerprint_size = self._calc_file_fingerprint(file)
         self._fileinfo_util.add_fingerprint(file_name, crc32, fingerprint_size)
 
-    def _calc_and_check_fingerprint(self, file_name: str, file) -> bool:
+    def _calc_and_check_fingerprint(self, file_name: str, file: TextIO) -> bool:
         baseline_fingerprint_size: int = self._fileinfo_util.get_fingerprint_size(file_name)
         crc32, _ = self._calc_file_fingerprint(file, baseline_fingerprint_size)
         if self._fileinfo_util.has_fingerprint_changed(file_name, crc32):
@@ -291,7 +297,7 @@ class FileInput(Input):
 
     @threadsafe_wrapper
     @runtime_file_exceptions
-    def _file_input_handler(self, file_name: str):
+    def _file_input_handler(self, file_name: str) -> None:
         """Put log_line as a dict to threadsafe message queue from given input file.
         Depending on configuration it will continuously monitor a given file for new
         appending log lines. Depending on configuration it will start to process the
@@ -333,16 +339,17 @@ class FileInput(Input):
                 self, "Necessary instance attribute `pipeline_index` could not be found."
             )
         if self.pipeline_index == 1:
-            initial_file_pointer: int = self._get_initial_file_offset(self._config.logfile_path)
-            self._fileinfo_util.add_offset(self._config.logfile_path, initial_file_pointer)
+            initial_file_pointer: int = self._get_initial_file_offset(self.config.logfile_path)
+            self._fileinfo_util.add_offset(self.config.logfile_path, initial_file_pointer)
             self.rthread = RepeatedTimerThread(
-                self._config.interval,
+                self.config.interval,
                 self._file_input_handler,
                 self.stop_flag,
-                self._config.watch_file,
-                file_name=self._config.logfile_path,
+                self.config.watch_file,
+                file_name=self.config.logfile_path,
             )
 
-    def shut_down(self):
+    def _shut_down(self) -> None:
         """Raises the Stop Event Flag that will stop the thread that monitors the logfile"""
         self.stop_flag.set()
+        return super()._shut_down()

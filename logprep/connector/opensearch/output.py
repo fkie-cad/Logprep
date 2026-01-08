@@ -32,8 +32,9 @@ Example
 
 import logging
 import ssl
+import typing
 from functools import cached_property
-from typing import List, Optional
+from typing import Optional
 
 import opensearchpy as search
 from attrs import define, field, validators
@@ -81,7 +82,7 @@ class OpensearchOutput(Output):
            :code:`secret` and a valid :code:`ca_cert`.
         """
 
-        hosts: List[str] = field(
+        hosts: list[str] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of((str, type(None))),
                 iterable_validator=validators.instance_of(list),
@@ -141,19 +142,19 @@ class OpensearchOutput(Output):
 
     __slots__ = ["_message_backlog", "_failed"]
 
-    _failed: List
+    _failed: list
     """Temporary list of failed messages."""
 
-    _message_backlog: List
+    _message_backlog: list
     """List of messages to be sent to Opensearch."""
 
     @property
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
-        return self._config
+        return typing.cast(OpensearchOutput.Config, self._config)
 
     @cached_property
-    def ssl_context(self) -> ssl.SSLContext:
+    def ssl_context(self) -> ssl.SSLContext | None:
         """Returns the ssl context
 
         Returns
@@ -318,6 +319,6 @@ class OpensearchOutput(Output):
             return False
         return super().health() and resp.get("status") in self.config.desired_cluster_status
 
-    def shut_down(self):
+    def _shut_down(self):
         self._write_backlog()
-        return super().shut_down()
+        return super()._shut_down()

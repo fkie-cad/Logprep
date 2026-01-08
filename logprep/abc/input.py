@@ -379,7 +379,7 @@ class Input(Connector):
 
     def _write_full_event_to_target_field(self, event_dict: dict, raw_event: bytearray) -> None:
         target = self._config.preprocessing.get("add_full_event_to_target_field")
-        complete_event = {}
+        complete_event: str | dict = {}
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
         if target["format"] == "dict":
@@ -476,3 +476,8 @@ class Input(Connector):
         }
         add_fields_to(event_dict, new_field)
         return event_dict
+
+    def _shut_down(self) -> None:
+        self._clear_scheduled_jobs()
+        # we can not clear the instance properties as the pipeline still uses them after shut_down
+        # has to be fixed in the new architecture

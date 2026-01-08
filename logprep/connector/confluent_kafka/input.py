@@ -30,10 +30,11 @@ Example
 # pylint: enable=line-too-long
 import logging
 import os
+import typing
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
@@ -47,9 +48,8 @@ from confluent_kafka import (  # type: ignore
     Message,
     TopicPartition,
 )
-from confluent_kafka.admin import AdminClient  # type: ignore
+from confluent_kafka.admin import AdminClient
 
-from logprep.abc.connector import Connector
 from logprep.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
@@ -68,7 +68,6 @@ DEFAULTS = {
     "session.timeout.ms": "6000",
     "statistics.interval.ms": "30000",
 }
-
 
 SPECIAL_OFFSETS = {
     OFFSET_BEGINNING,
@@ -228,15 +227,15 @@ class ConfluentKafkaInput(Input):
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
 
-        kafka_config: Optional[MappingProxyType] = field(
-            validator=[
+        kafka_config: MappingProxyType = field(
+            validator=(
                 validators.instance_of(MappingProxyType),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of(str),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
-            ],
+            ),
             converter=MappingProxyType,
         )
         """ Kafka configuration for the kafka client.
@@ -272,9 +271,14 @@ class ConfluentKafkaInput(Input):
 
     __slots__ = ["_last_valid_record"]
 
-    def __init__(self, name: str, configuration: "Connector.Config") -> None:
+    def __init__(self, name: str, configuration: "ConfluentKafkaInput.Config") -> None:
         super().__init__(name, configuration)
         self._last_valid_record = None
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(ConfluentKafkaInput.Config, self._config)
 
     @property
     def _kafka_config(self) -> dict:
@@ -300,7 +304,7 @@ class ConfluentKafkaInput(Input):
                 f"Pipeline{self.pipeline_index}-pid{os.getpid()}"
             }
         )
-        return DEFAULTS | self._config.kafka_config | injected_config
+        return DEFAULTS | self.config.kafka_config | injected_config
 
     @cached_property
     def _admin(self) -> AdminClient:
@@ -311,8 +315,8 @@ class ConfluentKafkaInput(Input):
         AdminClient
             confluent_kafka admin client object
         """
-        admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
-        for key, value in self._config.kafka_config.items():
+        admin_config = {"bootstrap.servers": self.config.kafka_config["bootstrap.servers"]}
+        for key, value in self.config.kafka_config.items():
             if key.startswith(("security.", "ssl.")):
                 admin_config[key] = value
         return AdminClient(admin_config)
@@ -402,7 +406,7 @@ class ConfluentKafkaInput(Input):
             if offset in SPECIAL_OFFSETS:
                 offset = 0
             labels = {
-                "description": f"topic: {self._config.topic} - "
+                "description": f"topic: {self.config.topic} - "
                 f"partition: {topic_partition.partition}"
             }
             self.metrics.committed_offsets.add_with_labels(offset, labels)
@@ -416,7 +420,7 @@ class ConfluentKafkaInput(Input):
             Description of the ConfluentKafkaInput connector.
         """
         base_description = super().describe()
-        return f"{base_description} - Kafka Input: {self._config.kafka_config['bootstrap.servers']}"
+        return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
 
     def _get_raw_event(self, timeout: float) -> bytes | None:
         """Get next raw Message from Kafka.
@@ -448,7 +452,7 @@ class ConfluentKafkaInput(Input):
                 self, "A confluent-kafka record contains an error code", str(kafka_error)
             )
         self._last_valid_record = message
-        labels = {"description": f"topic: {self._config.topic} - partition: {message.partition()}"}
+        labels = {"description": f"topic: {self.config.topic} - partition: {message.partition()}"}
         self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
         return message.value()
 
@@ -489,11 +493,11 @@ class ConfluentKafkaInput(Input):
 
     @property
     def _enable_auto_offset_store(self) -> bool:
-        return self._config.kafka_config.get("enable.auto.offset.store") == "true"
+        return self.config.kafka_config.get("enable.auto.offset.store") == "true"
 
     @property
     def _enable_auto_commit(self) -> bool:
-        return self._config.kafka_config.get("enable.auto.commit") == "true"
+        return self.config.kafka_config.get("enable.auto.commit") == "true"
 
     def batch_finished_callback(self) -> None:
         """Store offsets for last message referenced by `self._last_valid_records`.
@@ -523,7 +527,7 @@ class ConfluentKafkaInput(Input):
             if offset in SPECIAL_OFFSETS:
                 offset = 0
 
-            labels = {"description": f"topic: {self._config.topic} - partition: {partition}"}
+            labels = {"description": f"topic: {self.config.topic} - partition: {partition}"}
             self.metrics.committed_offsets.add_with_labels(offset, labels)
             self.metrics.current_offsets.add_with_labels(offset, labels)
 
@@ -559,10 +563,10 @@ class ConfluentKafkaInput(Input):
             logger.error("Failed to retrieve member ID: %s", error)
         return member_id
 
-    def shut_down(self) -> None:
+    def _shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
-        super().shut_down()
+        return super()._shut_down()
 
     def health(self) -> bool:
         """Check the health of the component.
@@ -574,9 +578,9 @@ class ConfluentKafkaInput(Input):
         """
 
         try:
-            metadata = self._admin.list_topics(timeout=self._config.health_timeout)
-            if not self._config.topic in metadata.topics:
-                logger.error("Topic  '%s' does not exit", self._config.topic)
+            metadata = self._admin.list_topics(timeout=self.config.health_timeout)
+            if self.config.topic not in metadata.topics:
+                logger.error("Topic  '%s' does not exit", self.config.topic)
                 return False
         except KafkaException as error:
             logger.error("Health check failed: %s", error)
@@ -588,7 +592,7 @@ class ConfluentKafkaInput(Input):
         """Set the component up."""
         try:
             self._consumer.subscribe(
-                [self._config.topic],
+                [self.config.topic],
                 on_assign=self._assign_callback,
                 on_revoke=self._revoke_callback,
                 on_lost=self._lost_callback,

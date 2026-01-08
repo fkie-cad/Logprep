@@ -87,13 +87,15 @@ Behaviour of HTTP Requests
 """
 
 import queue
+import typing
 from collections.abc import Mapping
 from functools import cached_property
+from multiprocessing import Queue
 
 import falcon
+import falcon.asgi
 import requests
 from attrs import define, field, validators
-from joblib._multiprocessing_helpers import mp
 
 from logprep.connector.http.input import (
     DEFAULT_META_HEADERS,
@@ -113,8 +115,6 @@ from logprep.util.credentials import CredentialsFactory
 
 class HttpInput(Input):
     """Connector to accept log messages as http post requests"""
-
-    pipeline_index: int = 1
 
     @define(kw_only=True)
     class Metrics(Input.Metrics):
@@ -140,15 +140,13 @@ class HttpInput(Input):
     class Config(Input.Config):
         """Config for HTTPInput"""
 
-        uvicorn_config: Mapping[str, str | int] = field(
-            validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
-                    # lambda xyz tuple necessary because of input structure
-                    value_validator=lambda x, y, z: True,
-                ),
-            ]
+        uvicorn_config: dict[str, str | int] = field(
+            validator=validators.deep_mapping(
+                mapping_validator=validators.instance_of(dict),
+                key_validator=validators.in_(http.UVICORN_CONFIG_KEYS),
+                # lambda xyz tuple necessary because of input structure
+                value_validator=lambda x, y, z: True,
+            ),
         )
 
         """Configure uvicorn server. For possible settings see
@@ -173,14 +171,12 @@ class HttpInput(Input):
                     workers: 2
 
         """
-        endpoints: Mapping[str, str] = field(
-            validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.matches_re(r"^\/.+"),
-                    value_validator=validators.in_(["json", "plaintext", "jsonl"]),
-                ),
-            ]
+        endpoints: dict[str, str] = field(
+            validator=validators.deep_mapping(
+                mapping_validator=validators.instance_of(dict),
+                key_validator=validators.matches_re(r"^\/.+"),
+                value_validator=validators.in_(["json", "plaintext", "jsonl"]),
+            ),
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`. It's possible to use wildcards and
@@ -240,14 +236,17 @@ class HttpInput(Input):
         """
 
         metafield_name: str = field(validator=validators.instance_of(str), default="@metadata")
-        """Defines the name of the key for the collected metadata fields"""
+        """Defines the name of the key for the collected metadata fields.
+        Logs a Warning if metadata field overwrites preexisting field in Event
+        """
 
-        original_event_field: dict = field(
+        original_event_field: dict[str, str] | None = field(
             validator=validators.optional(
                 validators.deep_mapping(
+                    mapping_validator=validators.instance_of(dict),
                     key_validator=validators.in_(["format", "target_field"]),
                     value_validator=validators.instance_of(str),
-                )
+                ),
             ),
             default=None,
         )
@@ -264,7 +263,7 @@ class HttpInput(Input):
 
     __slots__: list[str] = ["target", "app", "http_server"]
 
-    messages: mp.Queue = None
+    messages: typing.Optional[Queue] = None
 
     _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
@@ -274,30 +273,38 @@ class HttpInput(Input):
 
     def __init__(self, name: str, configuration: "HttpInput.Config") -> None:
         super().__init__(name, configuration)
-        port = self._config.uvicorn_config["port"]
-        host = self._config.uvicorn_config["host"]
+        port = self.config.uvicorn_config["port"]
+        host = self.config.uvicorn_config["host"]
         ssl_options = any(
-            setting for setting in self._config.uvicorn_config if setting.startswith("ssl")
+            setting for setting in self.config.uvicorn_config if setting.startswith("ssl")
         )
         schema = "https" if ssl_options else "http"
         self.target = f"{schema}://{host}:{port}"
-        self.app = None
+        self.app: falcon.asgi.App | None = None
         self.http_server: http.ThreadingHTTPServer | None = None
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(HttpInput.Config, self._config)
 
     def setup(self) -> None:
         """setup starts the actual functionality of this connector."""
 
         super().setup()
-        endpoints_config = {}
-        collect_meta = self._config.collect_meta
-        copy_headers_to_logs = self._config.copy_headers_to_logs
 
-        metafield_name = self._config.metafield_name
-        original_event_field = self._config.original_event_field
+        if self.messages is None:
+            raise ValueError("message queue `messages` has not been set")
+
+        endpoints_config = {}
+        collect_meta = self.config.collect_meta
+        copy_headers_to_logs = self.config.copy_headers_to_logs
+        metafield_name = self.config.metafield_name
+        original_event_field = self.config.original_event_field
         cred_factory = CredentialsFactory()
         # preparing dict with endpoint paths and initialized endpoints objects
         # and add authentication if credentials are existing for path
-        for endpoint_path, endpoint_type in self._config.endpoints.items():
+        for endpoint_path, endpoint_type in self.config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_type)
 
             if endpoint_class is None:  # pragma: no cover this is a mypy issue fix
@@ -316,7 +323,7 @@ class HttpInput(Input):
 
         self.app = self._get_asgi_app(endpoints_config)
         self.http_server = http.ThreadingHTTPServer(
-            self._config.uvicorn_config, self.app, daemon=False, logger_name="HTTPServer"
+            self.config.uvicorn_config, self.app, daemon=False, logger_name="HTTPServer"
         )
         self.http_server.start()
 
@@ -330,21 +337,21 @@ class HttpInput(Input):
 
     def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the queue"""
+        messages = typing.cast(Queue, self.messages)
 
-        self.metrics.message_backlog_size += self.messages.qsize()
-
+        self.metrics.message_backlog_size += messages.qsize()
         try:
-            message = self.messages.get(timeout=timeout)
+            message = messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
             return message, raw_message, None
         except queue.Empty:
             return None, None, None
 
-    def shut_down(self) -> None:
+    def _shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        if self.http_server is None:  # pragma: no cover this is a mypy issue fix
-            return
-        self.http_server.shut_down()
+        if self.http_server:
+            self.http_server.shut_down()
+        return super()._shut_down()
 
     @cached_property
     def health_endpoints(self) -> list[str]:
@@ -353,7 +360,7 @@ class HttpInput(Input):
         endpoints. The endpoints are normalized to match the regex patterns and
         this ensures that the endpoints should not be too long
         """
-        normalized_endpoints = (endpoint.replace(".*", "b") for endpoint in self._config.endpoints)
+        normalized_endpoints = (endpoint.replace(".*", "b") for endpoint in self.config.endpoints)
         normalized_endpoints = (endpoint.replace(".+", "b") for endpoint in normalized_endpoints)
         normalized_endpoints = (endpoint.replace("+", "{5}") for endpoint in normalized_endpoints)
         normalized_endpoints = (endpoint.replace("*", "{5}") for endpoint in normalized_endpoints)
@@ -370,7 +377,7 @@ class HttpInput(Input):
         for endpoint in self.health_endpoints:
             try:
                 requests.get(
-                    f"{self.target}{endpoint}", timeout=self._config.health_timeout
+                    f"{self.target}{endpoint}", timeout=self.config.health_timeout
                 ).raise_for_status()
             except (requests.exceptions.RequestException, requests.exceptions.Timeout) as error:
                 logger.error("Health check failed for endpoint: %s due to %s", endpoint, str(error))

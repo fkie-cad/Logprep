@@ -20,11 +20,10 @@ Example
 """
 
 import copy
+import typing
 from functools import cached_property
-from typing import List, Optional, Union
 
-from attr import field, validators
-from attrs import define
+from attrs import define, field, validators
 
 from logprep.abc.input import Input, SourceDisconnectedWarning
 
@@ -36,27 +35,32 @@ class DummyInput(Input):
     class Config(Input.Config):
         """DummyInput specific configuration"""
 
-        documents: List[Union[dict, type, Exception]]
+        documents: list[dict | type | Exception]
         """A list of documents that should be returned."""
-        repeat_documents: Optional[str] = field(
-            validator=validators.instance_of(bool), default=False
-        )
+        repeat_documents: bool = field(validator=validators.instance_of(bool), default=False)
         """If set to :code:`true`, then the given input documents will be repeated after the last
         one is reached. Default: :code:`False`"""
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast("DummyInput.Config", self._config)
+
     @cached_property
-    def _documents(self):
-        return copy.deepcopy(self._config.documents)
+    def _documents(self) -> list[dict | type | Exception]:
+        return copy.deepcopy(self.config.documents)
 
     def _get_event(self, timeout: float) -> tuple:
         """Retrieve next document from configuration and raise warning if found"""
+
         if not self._documents:
-            if not self._config.repeat_documents:
+            if not self.config.repeat_documents:
                 raise SourceDisconnectedWarning(self, "no documents left")
             del self.__dict__["_documents"]
 
         document = self._documents.pop(0)
 
-        if (document.__class__ == type) and issubclass(document, Exception):
+        if isinstance(document, type) and issubclass(document, Exception):
             raise document
+
         return document, None

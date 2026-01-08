@@ -18,16 +18,15 @@ Example
 """
 
 import logging
-from typing import TYPE_CHECKING, List
+import typing
+from typing import TYPE_CHECKING
 
-from attr import define, field
-from attrs import validators
+from attrs import define, field, validators
 
 from logprep.abc.output import Output
 
 if TYPE_CHECKING:
     from logprep.abc.connector import Connector  # pragma: no cover
-
 
 logger = logging.getLogger("DummyOutput")
 
@@ -42,14 +41,19 @@ class DummyOutput(Output):
         """Common Configurations"""
 
         do_nothing: bool = field(default=False)
+        """If set to True, this connector will behave completely neutral and not do anything.
+        Especially counting metrics or storing events."""
 
-        exceptions: List[str] = field(
+        exceptions: list[str] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of((str, type(None))),
                 iterable_validator=validators.instance_of(list),
             ),
             default=[],
         )
+        """List of exceptions to raise when storing an event. This is useful
+        for testing purposes.
+        """
 
         timeout: int = field(validator=validators.instance_of(int), default=500)
         """(Optional) Timeout for the connection (default is 500s)."""
@@ -68,13 +72,18 @@ class DummyOutput(Output):
         "_exceptions",
     ]
 
-    def __init__(self, name: str, configuration: "Connector.Config"):
+    def __init__(self, name: str, configuration: "DummyOutput.Config"):
         super().__init__(name, configuration)
         self.events = []
         self.failed_events = []
         self.shut_down_called_count = 0
         self._exceptions = configuration.exceptions
-        self._schedule_task(task=self._flush, seconds=self._config.timeout)
+        self._schedule_task(task=self._flush, seconds=configuration.timeout)
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast("DummyOutput.Config", self._config)
 
     def store(self, document: dict):
         """Store the document in the output destination.
@@ -84,7 +93,7 @@ class DummyOutput(Output):
         document : dict
            Processed log event that will be stored.
         """
-        if self._config.do_nothing:
+        if self.config.do_nothing:
             return
         if self._exceptions:
             exception = self._exceptions.pop(0)
@@ -102,3 +111,4 @@ class DummyOutput(Output):
 
     def shut_down(self):
         self.shut_down_called_count += 1
+        return super().shut_down()

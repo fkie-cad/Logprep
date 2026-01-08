@@ -24,14 +24,14 @@ Example
 """
 
 import logging
+import typing
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
-from typing import Optional
 
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer  # type: ignore
-from confluent_kafka.admin import AdminClient  # type: ignore
+from confluent_kafka.admin import AdminClient
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.metrics.metrics import GaugeMetric, Metric
@@ -160,16 +160,16 @@ class ConfluentKafkaOutput(Output):
         )
         """The maximum time in seconds to wait for an answer from the broker on polling.
         Default is :code:`0`."""
-        kafka_config: Optional[MappingProxyType] = field(
-            validator=[
-                validators.instance_of(MappingProxyType),
+        kafka_config: MappingProxyType = field(
+            validator=(
                 validators.deep_mapping(
+                    mapping_validator=validators.instance_of(MappingProxyType),
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of((str, dict)),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers"]),
-            ],
-            factory=MappingProxyType,
+            ),
+            factory=MappingProxyType,  # type: ignore
             converter=MappingProxyType,
         )
         """ Kafka configuration for the kafka client.
@@ -195,6 +195,11 @@ class ConfluentKafkaOutput(Output):
         """
 
     @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(ConfluentKafkaOutput.Config, self._config)
+
+    @property
     def _kafka_config(self) -> dict:
         """Get the kafka configuration.
 
@@ -209,7 +214,7 @@ class ConfluentKafkaOutput(Output):
             "error_cb": self._error_callback,
         }
         DEFAULTS.update({"client.id": getfqdn()})
-        return DEFAULTS | self._config.kafka_config | injected_config
+        return DEFAULTS | self.config.kafka_config | injected_config
 
     @cached_property
     def _admin(self) -> AdminClient:
@@ -220,8 +225,8 @@ class ConfluentKafkaOutput(Output):
         AdminClient
             confluent_kafka admin client object
         """
-        admin_config = {"bootstrap.servers": self._config.kafka_config["bootstrap.servers"]}
-        for key, value in self._config.kafka_config.items():
+        admin_config = {"bootstrap.servers": self.config.kafka_config["bootstrap.servers"]}
+        for key, value in self.config.kafka_config.items():
             if key.startswith(("security.", "ssl.")):
                 admin_config[key] = value
         return AdminClient(admin_config)
@@ -230,7 +235,7 @@ class ConfluentKafkaOutput(Output):
     def _producer(self) -> Producer:
         return Producer(self._kafka_config)
 
-    def _error_callback(self, error: KafkaException):
+    def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
         This callback is served upon calling client.poll()
@@ -268,18 +273,11 @@ class ConfluentKafkaOutput(Output):
         self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", DEFAULT_RETURN)
 
     def describe(self) -> str:
-        """Get name of Kafka endpoint with the bootstrap server.
-
-        Returns
-        -------
-        kafka : ConfluentKafka
-            Acts as input and output connector.
-
-        """
+        """Get name of Kafka endpoint with the bootstrap server."""
         base_description = super().describe()
         return (
             f"{base_description} - Kafka Output: "
-            f"{self._config.kafka_config.get('bootstrap.servers')}"
+            f"{self.config.kafka_config.get('bootstrap.servers')}"
         )
 
     def store(self, document: dict) -> None:
@@ -289,13 +287,8 @@ class ConfluentKafkaOutput(Output):
         ----------
         document : dict
            Document to store.
-
-        Returns
-        -------
-        Returns True to inform the pipeline to call the batch_finished_callback method in the
-        configured input
         """
-        self.store_custom(document, self._config.topic)
+        self.store_custom(document, self.config.topic)
 
     @Metric.measure_time()
     def store_custom(self, document: dict, target: str) -> None:
@@ -316,23 +309,21 @@ class ConfluentKafkaOutput(Output):
         try:
             self._producer.produce(target, value=self._encoder.encode(document))
             logger.debug("Produced message %s to topic %s", str(document), target)
-            self._producer.poll(self._config.send_timeout)
+            self._producer.poll(self.config.send_timeout)
             self.metrics.number_of_processed_events += 1
         except BufferError:
             # block program until buffer is empty or timeout is reached
-            self._producer.flush(timeout=self._config.flush_timeout)
+            self._producer.flush(timeout=self.config.flush_timeout)
             logger.debug("Buffer full, flushing")
         except Exception as error:
             raise CriticalOutputError(self, str(error), document) from error
 
-    def shut_down(self) -> None:
+    def flush(self) -> None:
         """ensures that all messages are flushed. According to
         https://confluent-kafka-python.readthedocs.io/en/latest/#confluent_kafka.Producer.flush
         flush without the timeout parameter will block until all messages are delivered.
         This ensures no messages will get lost on shutdown.
         """
-        if self._producer is None:
-            return
         remaining_messages = self._producer.flush()
         if remaining_messages:
             self.metrics.number_of_errors += 1
@@ -343,12 +334,16 @@ class ConfluentKafkaOutput(Output):
         else:
             logger.info("Producer flushed successfully. %s messages remaining.", remaining_messages)
 
+    def _shut_down(self):
+        self.flush()
+        return super()._shut_down()
+
     def health(self) -> bool:
         """Check the health of kafka producer."""
         try:
-            metadata = self._admin.list_topics(timeout=self._config.health_timeout)
-            if not self._config.topic in metadata.topics:
-                logger.error("Topic  '%s' does not exit", self._config.topic)
+            metadata = self._admin.list_topics(timeout=self.config.health_timeout)
+            if self.config.topic not in metadata.topics:
+                logger.error("Topic  '%s' does not exit", self.config.topic)
                 return False
         except KafkaException as error:
             logger.error("Health check failed: %s", error)

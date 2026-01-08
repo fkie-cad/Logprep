@@ -33,12 +33,14 @@ Processor Configuration
 
 import ipaddress
 import logging
+import typing
 from typing import Any, Dict
 from urllib.parse import urlsplit
 
-from attr import define, field, validators
+from attrs import define, field, validators
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.rule import Rule
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
 from logprep.util.url.url import Domain
@@ -53,16 +55,19 @@ class DomainLabelExtractor(FieldManager):
     class Config(FieldManager.Config):
         """DomainLabelExtractor config"""
 
-        tagging_field_name: str = field(
-            default="tags", validator=validators.optional(validators.instance_of(str))
-        )
-        """Optional configuration field that defines into which field in the event the
+        tagging_field_name: str = field(default="tags", validator=validators.instance_of(str))
+        """Configuration field that defines into which field in the event the
         informational tags should be written to. If this field is not present it defaults
         to :code:`tags`."""
 
     rule_class = DomainLabelExtractorRule
 
-    def _apply_rules(self, event: Dict[str, Any], rule: DomainLabelExtractorRule) -> None:
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(DomainLabelExtractor.Config, self._config)
+
+    def _apply_rules(self, event: Dict[str, Any], _rule: Rule) -> None:
         """
         Apply matching rule to given log event. Such that a given domain,
         configured via rule, is split into it's labels and parts. The resulting
@@ -79,19 +84,22 @@ class DomainLabelExtractor(FieldManager):
         rule :
             Currently applied domain label extractor rule.
         """
-        source_field_values = self._get_field_values(event, rule.source_fields)
-        self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
+        rule = typing.cast(DomainLabelExtractorRule, _rule)
+        source_field_values = self._get_field_values(event, rule.config.source_fields)
+        self._handle_missing_fields(event, rule, rule.config.source_fields, source_field_values)
         domain = source_field_values[0]
         if domain is None:
             return
-        tagging_field = get_dotted_field_value(event, self._config.tagging_field_name)
+        tagging_field = get_dotted_field_value(event, self.config.tagging_field_name)
         if tagging_field is None:
             tagging_field = []
+        if not isinstance(tagging_field, list):
+            raise ValueError("tagging_field already has a conflicting value")
 
         if self._is_valid_ip(domain):
-            tagging_field.append(f"ip_in_{rule.source_fields[0].replace('.', '_')}")
+            tagging_field.append(f"ip_in_{rule.config.source_fields[0].replace('.', '_')}")
             add_and_overwrite(
-                event, fields={self._config.tagging_field_name: tagging_field}, rule=rule
+                event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
             )
             return
 
@@ -102,15 +110,17 @@ class DomainLabelExtractor(FieldManager):
         labels = Domain(domain)
         if labels.suffix != "":
             fields = {
-                f"{rule.target_field}.registered_domain": f"{labels.domain}.{labels.suffix}",
-                f"{rule.target_field}.top_level_domain": labels.suffix,
-                f"{rule.target_field}.subdomain": labels.subdomain,
+                f"{rule.config.target_field}.registered_domain": f"{labels.domain}.{labels.suffix}",
+                f"{rule.config.target_field}.top_level_domain": labels.suffix,
+                f"{rule.config.target_field}.subdomain": labels.subdomain,
             }
-            add_fields_to(event, fields, rule, overwrite_target=rule.overwrite_target)
+            add_fields_to(event, fields, rule, overwrite_target=rule.config.overwrite_target)
         else:
-            tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
+            tagging_field.append(
+                f"invalid_domain_in_{rule.config.source_fields[0].replace('.', '_')}"
+            )
             add_and_overwrite(
-                event, fields={self._config.tagging_field_name: tagging_field}, rule=rule
+                event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
             )
 
     @staticmethod

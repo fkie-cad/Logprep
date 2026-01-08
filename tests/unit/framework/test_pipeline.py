@@ -25,7 +25,10 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor, ProcessorResult
 from logprep.factory import Factory
-from logprep.framework.pipeline import Pipeline, PipelineResult  # type: ignore[attr-defined]
+from logprep.framework.pipeline import (  # type: ignore[attr-defined]
+    Pipeline,
+    PipelineResult,
+)
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -38,18 +41,16 @@ original_create = Factory.create
 
 class ConfigurationForTests:
     logprep_config = Configuration(
-        **{
-            "version": 1,
-            "timeout": 0.001,
-            "input": {"dummy": {"type": "dummy_input", "documents": [{"test": "empty"}]}},
-            "output": {"dummy": {"type": "dummy_output"}},
-            "pipeline": [
-                {"mock_processor1": {"proc": "conf"}},
-                {"mock_processor2": {"proc": "conf"}},
-            ],
-            "metrics": {"enabled": False},
-            "error_output": {"dummy": {"type": "dummy_output"}},
-        }
+        version=1,
+        timeout=0.001,
+        input={"dummy": {"type": "dummy_input", "documents": [{"test": "empty"}]}},
+        output={"dummy": {"type": "dummy_output"}},
+        pipeline=[
+            {"mock_processor1": {"proc": "conf"}},
+            {"mock_processor2": {"proc": "conf"}},
+        ],
+        metrics={"enabled": False},
+        error_output={"dummy": {"type": "dummy_output"}},
     )
     # metrics object is not pickable and we want to deepcopy this configuration
     logprep_config._metrics = mock.MagicMock()
