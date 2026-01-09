@@ -48,17 +48,15 @@ def _parse(log_line: str, regexes: Iterable[re.Pattern]) -> dict[str, str]:
 
 REGEX_CLF = (
     re.compile(
-        (
-            r"^"
-            r"^(?P<host>[^\s]+)\s+"  # hostname or ip
-            r"(?P<ident>[^\s]+)\s+"  # identity RFC 1413
-            r"(?P<authuser>[^\s]+)\s+"  # userid requesting the document
-            r"\[(?P<timestamp>[^\s]+\s+[^\s]+)\]\s+"  # timestamp in strftime format %d/%b/%Y:%H:%M:%S %z
-            r'"(?P<request_line>.*)"\s+'  # the requested document
-            r"(?P<status>\d{3})\s+"  # the http status returned to the client
-            r"(?P<bytes>\d+)\s*"  # content-length of the document transferred
-            r"$"
-        )
+        r"^"
+        r"^(?P<host>[^\s]+)\s+"  # hostname or ip
+        r"(?P<ident>[^\s]+)\s+"  # identity RFC 1413
+        r"(?P<authuser>[^\s]+)\s+"  # userid requesting the document
+        r"\[(?P<timestamp>[^\s]+\s+[^\s]+)\]\s+"  # timestamp strftime format %d/%b/%Y:%H:%M:%S %z
+        r'"(?P<request_line>.*)"\s+'  # the requested document
+        r"(?P<status>\d{3})\s+"  # the http status returned to the client
+        r"(?P<bytes>\d+)\s*"  # content-length of the document transferred
+        r"$"
     ),
 )
 
