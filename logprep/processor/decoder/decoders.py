@@ -18,7 +18,7 @@ import base64
 import binascii
 import re
 from functools import partial
-from typing import Iterable
+from typing import Callable, Dict, Iterable
 
 import msgspec
 
@@ -175,7 +175,7 @@ def parse_json(log_line: str) -> dict[str, FieldValue]:
         raise DecoderError("can't decode json") from error
 
 
-def parse_base64(log_line: str) -> dict[str, FieldValue]:
+def parse_base64(log_line: str) -> str:
     """Parses base64 and handles decode errors"""
     try:
         return base64.b64decode(log_line).decode("utf-8")
@@ -212,7 +212,7 @@ def decolorize(log_line: str) -> str:
     return ANSI_ESCAPE.sub("", log_line)
 
 
-DECODERS = {
+DECODERS: Dict[str, Callable] = {
     "json": parse_json,
     "base64": parse_base64,
     "clf": partial(_parse, regexes=REGEX_CLF),

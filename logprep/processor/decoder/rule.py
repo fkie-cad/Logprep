@@ -53,6 +53,8 @@ Examples for decoder:
 
 """
 
+import typing
+
 from attrs import define, field, validators
 
 from logprep.processor.decoder.decoders import DECODERS
@@ -88,6 +90,11 @@ class DecoderRule(FieldManagerRule):
         """
 
     @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(DecoderRule.Config, self._config)
+
+    @property
     def source_format(self) -> str:
         """Getter for rule config"""
-        return self._config.source_format
+        return self.config.source_format

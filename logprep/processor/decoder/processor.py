@@ -37,11 +37,15 @@ Processor Configuration
 .. automodule:: logprep.processor.decoder.processor.Decoder.rule
 """
 
+import typing
 from typing import Callable
+
+from typing_extensions import override
 
 from logprep.processor.decoder.decoders import DECODERS, DecoderError
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import FieldValue, add_fields_to
 
 
@@ -50,21 +54,26 @@ class Decoder(FieldManager):
 
     rule_class = DecoderRule
 
+    @override
     def transform_values(
-        self, source_field_values: list[FieldValue], event: dict[str, FieldValue], rule: DecoderRule
+        self,
+        source_field_values: list[FieldValue],
+        event: dict[str, FieldValue],
+        rule: FieldManagerRule,
     ) -> list[FieldValue]:
-        decoder = DECODERS[rule.source_format]
-        return self._decode(event, rule, decoder, source_field_values)
+        decoder_rule = typing.cast(DecoderRule, rule)
+        decoder = DECODERS[decoder_rule.source_format]
+        return self._decode(event, decoder_rule, decoder, source_field_values)
 
     def _decode(
         self,
         event: dict[str, FieldValue],
         rule: DecoderRule,
         decoder: Callable[[str], FieldValue],
-        source_field_values: list[str],
-    ) -> FieldValue:
+        source_field_values: list[FieldValue],
+    ) -> list[FieldValue]:
         try:
-            return [decoder(value) for value in source_field_values]
+            return [decoder(str(value)) for value in source_field_values]
         except DecoderError as error:
             add_fields_to(event, {"tags": rule.failure_tags}, merge_with_target=True)
             self.result.errors.append(error)
