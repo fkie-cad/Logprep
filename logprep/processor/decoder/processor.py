@@ -73,7 +73,7 @@ class Decoder(FieldManager):
         source_field_values: list[FieldValue],
     ) -> list[FieldValue]:
         try:
-            return [decoder(str(value)) for value in source_field_values]
+            return [decoder(value) for value in source_field_values]  # type: ignore
         except DecoderError as error:
             add_fields_to(event, {"tags": rule.failure_tags}, merge_with_target=True)
             self.result.errors.append(error)
