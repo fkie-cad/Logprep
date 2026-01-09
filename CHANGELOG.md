@@ -16,6 +16,7 @@
 * fix incorrect default-logger lookup by consistently resolving defaults from `DEFAULT_LOG_CONFIG["loggers"]`.
 * fix a possible race condition in the `geoip_enricher`
 * fix possible memory leaks in configuration refresh when processors set up scheduled jobs which were not cleaned up
+* fix a bug in `dissector` not handling curly braces on the end of a dissect section properly
 
 ## 18.0.0
 ### Breaking

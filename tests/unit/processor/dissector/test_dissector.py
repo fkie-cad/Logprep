@@ -1,5 +1,5 @@
 # pylint: disable=missing-docstring
-
+# pylint: disable=duplicate-code
 import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
