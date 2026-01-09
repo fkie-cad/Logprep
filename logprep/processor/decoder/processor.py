@@ -3,7 +3,7 @@ Decoder
 ============
 
 The `decoder` processor decodes or parses field values from the configured
-:code:`source_format`. Following :code:`source_formats` are implemented:
+:code:`source_format`. Following options for :code:`source_format` are implemented:
 
 * json
 * base64
