@@ -41,11 +41,9 @@ def _parse(log_line: str, regexes: Iterable[re.Pattern]) -> dict[str, str]:
     result = None
     for regex in regexes:
         result = re.match(regex, log_line)
-        if result:
-            break
-    else:
-        raise DecoderError("no regex matches")
-    return result.groupdict()
+        if result is not None:
+            return result.groupdict()
+    raise DecoderError("no regex matches")
 
 
 REGEX_CLF = (
