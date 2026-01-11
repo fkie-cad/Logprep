@@ -17,7 +17,7 @@
 - [ ] [Examples](https://github.com/fkie-cad/Logprep/tree/main/examples) are up-to-date and functional (including compose & k8s)
 
 ### Code Quality
-- [ ] Patch test coverage > 95% (otherwise a justification is provided)
+- [ ] Patch test coverage > 95% and does not decrease
 - [ ] New code uses correct & specific type hints
 
 ### How did you verify that the changes work in practice?
