@@ -34,7 +34,7 @@ Processor Configuration
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.processor.decoder.processor.Decoder.rule
+.. automodule:: logprep.processor.decoder.rule
 """
 
 import typing

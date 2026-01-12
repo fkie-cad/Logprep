@@ -86,7 +86,18 @@ class DecoderRule(FieldManagerRule):
             default="json",
         )
         """The source format in the source field. Defaults to :code:`json`
-        Possible values are :code:`json, base64`
+        Possible values are 
+        :code:`json`,
+        :code:`base64`,
+        :code:`clf`,
+        :code:`nginx`,
+        :code:`syslog_rfc5424`,
+        :code:`syslog_rfc3164`,
+        :code:`syslog_rfc3164_local`,
+        :code:`logfmt`,
+        :code:`cri`,
+        :code:`docker`,
+        :code:`decolorize`
         """
 
     @property
