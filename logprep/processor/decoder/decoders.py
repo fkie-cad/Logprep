@@ -18,7 +18,7 @@ import base64
 import binascii
 import re
 from functools import partial
-from typing import Callable, Dict, Iterable
+from typing import Dict, Generic, Iterable, Protocol, TypeVar, runtime_checkable
 
 import msgspec
 
@@ -29,6 +29,19 @@ JSON_DECODER = msgspec.json.Decoder()
 
 class DecoderError(Exception):
     """Raised if decoding fails"""
+
+
+DecoderFuncResult_co = TypeVar("DecoderFuncResult_co", bound=FieldValue, covariant=True)
+
+
+@runtime_checkable
+class DecoderFunc(Generic[DecoderFuncResult_co], Protocol):
+    """
+    Covariant function type for decoding string values
+    into concrete variants of `FieldValue`
+    """
+
+    def __call__(self, log_line: str) -> DecoderFuncResult_co: ...
 
 
 def _parse(log_line: str, regexes: Iterable[re.Pattern]) -> dict[str, str]:
@@ -212,7 +225,7 @@ def decolorize(log_line: str) -> str:
     return ANSI_ESCAPE.sub("", log_line)
 
 
-DECODERS: Dict[str, Callable] = {
+DECODERS: Dict[str, DecoderFunc] = {
     "json": parse_json,
     "base64": parse_base64,
     "clf": partial(_parse, regexes=REGEX_CLF),
