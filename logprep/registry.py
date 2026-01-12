@@ -45,6 +45,7 @@ from logprep.ng.processor.concatenator.processor import Concatenator as NgConcat
 from logprep.ng.processor.datetime_extractor.processor import (
     DatetimeExtractor as NgDatetimeExtractor,
 )
+from logprep.ng.processor.decoder.processor import Decoder as NgDecoder
 from logprep.ng.processor.deleter.processor import Deleter as NgDeleter
 from logprep.ng.processor.dissector.processor import Dissector as NgDissector
 from logprep.ng.processor.domain_label_extractor.processor import (
@@ -155,6 +156,7 @@ class Registry:
         "ng_clusterer": NgClusterer,
         "ng_concatenator": NgConcatenator,
         "ng_deleter": NgDeleter,
+        "ng_decoder": NgDecoder,
         "ng_datetime_extractor": NgDatetimeExtractor,
         "ng_dissector": NgDissector,
         "ng_domain_label_extractor": NgDomainLabelExtractor,

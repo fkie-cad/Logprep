@@ -85,7 +85,7 @@ class FieldManager(Processor):
             return
         add_fields_to(
             event,
-            dict(zip(targets, source_field_values)),
+            dict(zip(targets, target_field_values)),
             rule,
             merge_with_target,
             overwrite_target,
