@@ -22,6 +22,7 @@ from logprep.connector.opensearch.output import OpensearchOutput
 from logprep.connector.s3.output import S3Output
 from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutput
 from logprep.generator.http.output import HttpGeneratorOutput
+from logprep.ng.abc.processor import Processor as NgProcessor
 from logprep.ng.connector.confluent_kafka.input import (
     ConfluentKafkaInput as NgConfluentKafkaInput,
 )
@@ -128,7 +129,7 @@ from logprep.processor.timestamper.processor import Timestamper
 class Registry:
     """Component Registry"""
 
-    mapping: Dict[str, Type[Processor | Connector]] = {
+    mapping: Dict[str, Type[Processor | Connector | NgProcessor]] = {
         # Processors
         "amides": Amides,
         "calculator": Calculator,
@@ -219,7 +220,7 @@ class Registry:
     }
 
     @classmethod
-    def get_class(cls, component_type: str) -> Type[Processor | Connector]:
+    def get_class(cls, component_type: str) -> Type[Processor | Connector | NgProcessor]:
         """return the processor class for a given type
 
         Parameters
