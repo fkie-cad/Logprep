@@ -44,7 +44,7 @@ class FieldManager(Processor):
 
     rule_class = FieldManagerRule
 
-    def _apply_rules(self, event: dict, rule: FieldManagerRule) -> None:
+    def _apply_rules(self, event: dict, rule: FieldManagerRule) -> None:  # type: ignore
         rule_args = (
             rule.source_fields,
             rule.target_field,
