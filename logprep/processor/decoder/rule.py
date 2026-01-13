@@ -23,7 +23,7 @@ A speaking example:
     :caption: Incoming event
 
     {
-        "message": "{\"timestamp\": \"2019-08-02T09:46:18.625Z\", \"log\": \"user login failed\"}"
+        "message": "{\\"timestamp\\": \\"2019-08-02T09:46:18.625Z\\", \\"log\\": \\"user login failed\\"}"
     }
 
 ..  code-block:: json
@@ -31,7 +31,7 @@ A speaking example:
     :caption: Processed event
 
     {
-        "message": "{\"timestamp\": \"2019-08-02T09:46:18.625Z\", \"log\": \"user login failed\"}",
+        "message": "{\\"timestamp\\": \\"2019-08-02T09:46:18.625Z\\", \\"log\\": \\"user login failed\\"}",
         "parsed": {
             "timestamp": "2019-08-02T09:46:18.625Z",
             "log": "user login failed"
