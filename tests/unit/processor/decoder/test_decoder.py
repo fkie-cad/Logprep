@@ -475,6 +475,23 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="decolorize log",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "message"},
+                        "source_format": "base64",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": "dGhpcyBpcyBlc2NhcGVkIG9uIHdyb25nIHBsYWNlIiBhZnRlciBlc2NhcGUK",
+                },
+                {
+                    "message": 'this is escaped on wrong place" after escape\n',
+                },
+                id="base64 double quote escape",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):

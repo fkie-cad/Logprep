@@ -46,7 +46,7 @@ A speaking example:
    :noindex:
 
 Examples for decoder:
-------------------------------------------------
+---------------------
 
 .. datatemplate:import-module:: tests.unit.processor.decoder.test_decoder
    :template: testcase-renderer.tmpl
