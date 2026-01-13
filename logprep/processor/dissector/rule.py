@@ -100,7 +100,7 @@ from logprep.util.helper import add_and_overwrite, append
 
 START = r"%\{"
 END = r"\}"
-VALID_TARGET_FIELD = r"[^\}\%\{\}\+\/\|]*"
+VALID_TARGET_FIELD = r"[^\%\{\}\+\/\|]*"
 APPEND_WITH_SEPERATOR = r"(\+\([^%]+\))"
 APPEND_WITHOUT_SEPERATOR = r"(\+(?!\([^%]))"
 INDIRECT_FIELD_NOTATION = r"([&\?]))"
