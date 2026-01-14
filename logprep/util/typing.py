@@ -3,12 +3,12 @@ This module contains typing related helper functions
 that are shared by different modules.
 """
 
-from typing import Any, TypeGuard, TypeVar
+from typing import Any, Tuple, TypeGuard, TypeVar
 
 T = TypeVar("T")
 
 
-def is_list_of(val: list[Any], class_or_tuple: type[T]) -> TypeGuard[list[T]]:
+def is_list_of(val: list[Any], class_or_tuple: type[T] | Tuple) -> TypeGuard[list[T]]:
     """Checks and statically asserts that a list has a specific element type
 
     Parameters
