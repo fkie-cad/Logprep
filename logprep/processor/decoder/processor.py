@@ -75,7 +75,7 @@ class Decoder(FieldManager):
         source_field_values: list[FieldValue],
     ) -> list[FieldValue]:
         try:
-            if is_list_of(source_field_values, str):
+            if is_list_of(source_field_values, (str, dict)):
                 return [decoder(value) for value in source_field_values]
             raise DecoderError("can only decode string values")
         except DecoderError as error:

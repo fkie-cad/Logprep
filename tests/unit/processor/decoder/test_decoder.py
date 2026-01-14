@@ -491,6 +491,9 @@ class TestDecoder(BaseProcessorTestCase):
                     "message": 'this is escaped on wrong place" after escape\n',
                 },
                 id="base64 double quote escape",
+            ),
+            pytest.param(
+                {
                     "filter": "kubernetes.labels",
                     "decoder": {
                         "mapping": {"kubernetes.labels": "orchestrator.resource.label"},

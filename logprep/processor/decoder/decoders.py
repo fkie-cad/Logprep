@@ -225,9 +225,6 @@ def decolorize(log_line: str) -> str:
     return ANSI_ESCAPE.sub("", log_line)
 
 
-<<<<<<< Updated upstream
-DECODERS: Dict[str, DecoderFunc] = {
-=======
 def dict2list(log_dict: dict[str, str]) -> list[str]:
     """converts a flat dict to a list of strings"""
     if not all(isinstance(value, str) for value in list(log_dict.values()) + list(log_dict.keys())):
@@ -236,8 +233,7 @@ def dict2list(log_dict: dict[str, str]) -> list[str]:
     return result
 
 
-DECODERS: Dict[str, Callable] = {
->>>>>>> Stashed changes
+DECODERS: Dict[str, DecoderFunc] = {
     "json": parse_json,
     "base64": parse_base64,
     "clf": partial(_parse, regexes=REGEX_CLF),
