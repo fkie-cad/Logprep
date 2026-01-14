@@ -3,7 +3,7 @@
 
 ### Features
 * headers from incoming http requests can now be copied into events via `copy_headers_to_log` config in http input, `collect_meta` will be deprecated in the future
-* add new `decoder` processor to decode values from event field
+* add new `decoder` processor to decode values from event field, starting with `json`, `base64`, `clf` (see: https://en.wikipedia.org/wiki/Common_Log_Format), `nginx` parser for kubernetes ingress, `syslog_rfc3164`, `syslog_rfc3164_local`, `syslog_rfc5324`, `logfmt`, `cri`, `docker`, `decolorize` (removing color codes in logs)
 
 ### Improvements
 * use follow-imports=silent (instead of skip) to perform more strict type checking

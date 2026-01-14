@@ -5,13 +5,14 @@ import json
 
 import pytest
 
-from tests.unit.processor.base import BaseProcessorTestCase
+from logprep.ng.event.log_event import LogEvent
+from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
 class TestDecoder(BaseProcessorTestCase):
 
     CONFIG: dict = {
-        "type": "decoder",
+        "type": "ng_decoder",
         "rules": ["tests/testdata/unit/decoder/rules"],
     }
 
@@ -496,8 +497,9 @@ class TestDecoder(BaseProcessorTestCase):
     )
     def test_testcases(self, rule, event, expected):
         self._load_rule(rule)
+        event = LogEvent(event, original=b"")
         result = self.object.process(event)
-        assert event == expected, f"{result.errors}"
+        assert event.data == expected, f"{result.errors}"
 
     @pytest.mark.parametrize(
         "rule, event, expected",
@@ -685,9 +687,10 @@ class TestDecoder(BaseProcessorTestCase):
     )
     def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
+        event = LogEvent(event, original=b"")
         result = self.object.process(event)
         assert result.errors or result.warnings
-        assert event == expected
+        assert event.data == expected
 
     def test_decodes_different_source_json_escaping(self):
         """has to be tested from external file to avoid auto format from black"""
@@ -702,5 +705,6 @@ class TestDecoder(BaseProcessorTestCase):
                 self._load_rule(rule)
                 expected_output = expected_output.lstrip().strip("\n")
                 event = self.object._decoder.decode(log_input)
+                event = LogEvent(event, original=b"")
                 self.object.process(event)
-                assert json.dumps(event["parsed"]) == expected_output
+                assert json.dumps(event.data["parsed"]) == expected_output

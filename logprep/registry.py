@@ -22,6 +22,7 @@ from logprep.connector.opensearch.output import OpensearchOutput
 from logprep.connector.s3.output import S3Output
 from logprep.generator.confluent_kafka.output import ConfluentKafkaGeneratorOutput
 from logprep.generator.http.output import HttpGeneratorOutput
+from logprep.ng.abc.processor import Processor as NgProcessor
 from logprep.ng.connector.confluent_kafka.input import (
     ConfluentKafkaInput as NgConfluentKafkaInput,
 )
@@ -45,6 +46,7 @@ from logprep.ng.processor.concatenator.processor import Concatenator as NgConcat
 from logprep.ng.processor.datetime_extractor.processor import (
     DatetimeExtractor as NgDatetimeExtractor,
 )
+from logprep.ng.processor.decoder.processor import Decoder as NgDecoder
 from logprep.ng.processor.deleter.processor import Deleter as NgDeleter
 from logprep.ng.processor.dissector.processor import Dissector as NgDissector
 from logprep.ng.processor.domain_label_extractor.processor import (
@@ -127,7 +129,7 @@ from logprep.processor.timestamper.processor import Timestamper
 class Registry:
     """Component Registry"""
 
-    mapping: Dict[str, Type[Processor | Connector]] = {
+    mapping: Dict[str, Type[Processor | Connector | NgProcessor]] = {
         # Processors
         "amides": Amides,
         "calculator": Calculator,
@@ -155,6 +157,7 @@ class Registry:
         "ng_clusterer": NgClusterer,
         "ng_concatenator": NgConcatenator,
         "ng_deleter": NgDeleter,
+        "ng_decoder": NgDecoder,
         "ng_datetime_extractor": NgDatetimeExtractor,
         "ng_dissector": NgDissector,
         "ng_domain_label_extractor": NgDomainLabelExtractor,
@@ -217,7 +220,7 @@ class Registry:
     }
 
     @classmethod
-    def get_class(cls, component_type: str) -> Type[Processor | Connector]:
+    def get_class(cls, component_type: str) -> Type[Processor | Connector | NgProcessor]:
         """return the processor class for a given type
 
         Parameters

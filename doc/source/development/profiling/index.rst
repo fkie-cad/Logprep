@@ -35,7 +35,7 @@ Ensure all required dependencies are installed on the host:
 - **Docker** / **Podman**: Refer to :ref:`the respective docs <compose_setup_with_logprep_on_host>` for detailed instructions.
 
 Prepare the Execution Environment
---------------------------------
+---------------------------------
 
 Start the Docker containers and wait for them to be fully operational:
 

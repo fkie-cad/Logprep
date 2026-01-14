@@ -30,9 +30,9 @@ Processor Configuration
 from typing import Iterable
 
 from logprep.ng.abc.processor import Processor
-from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
+    FieldValue,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
@@ -44,7 +44,7 @@ class FieldManager(Processor):
 
     rule_class = FieldManagerRule
 
-    def _apply_rules(self, event: dict, rule: Rule) -> None:
+    def _apply_rules(self, event: dict, rule: FieldManagerRule) -> None:  # type: ignore
         rule_args = (
             rule.source_fields,
             rule.target_field,
@@ -57,17 +57,22 @@ class FieldManager(Processor):
         if rule.source_fields and rule.target_field:
             self._apply_single_target_processing(event, rule, rule_args)
 
-    def _apply_single_target_processing(self, event: dict, rule: Rule, rule_args: tuple) -> None:
+    def _apply_single_target_processing(
+        self, event: dict, rule: FieldManagerRule, rule_args: tuple
+    ) -> None:
         source_fields, target_field, _, merge_with_target, overwrite_target = rule_args
         source_field_values = self._get_field_values(event, rule.source_fields)
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
         source_field_values = list(filter(lambda x: x is not None, source_field_values))
         if not source_field_values:
             return
-        args = (event, target_field, source_field_values)
+        target_field_values = self.transform_values(source_field_values, event, rule)
+        if not target_field_values:
+            return
+        args = (event, target_field, target_field_values)
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
-    def _apply_mapping(self, event: dict, rule: "Rule", rule_args: tuple) -> None:
+    def _apply_mapping(self, event: dict, rule: FieldManagerRule, rule_args: tuple) -> None:
         source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())
@@ -75,9 +80,12 @@ class FieldManager(Processor):
         if not any(source_field_values):
             return
         source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
+        target_field_values = self.transform_values(source_field_values, event, rule)
+        if not target_field_values:
+            return
         add_fields_to(
             event,
-            dict(zip(targets, source_field_values)),
+            dict(zip(targets, target_field_values)),
             rule,
             merge_with_target,
             overwrite_target,
@@ -87,7 +95,7 @@ class FieldManager(Processor):
                 pop_dotted_field_value(event, dotted_field)
 
     def _write_to_single_target(
-        self, args: tuple, merge_with_target: bool, overwrite_target: bool, rule: Rule
+        self, args: tuple, merge_with_target: bool, overwrite_target: bool, rule: FieldManagerRule
     ) -> None:
         event, target_field, source_fields_values = args
         if len(source_fields_values) == 1 and not merge_with_target:
@@ -117,7 +125,7 @@ class FieldManager(Processor):
         return ordered_flatten_list
 
     def _handle_missing_fields(
-        self, event: dict, rule: "Rule", source_fields: Iterable, field_values: Iterable
+        self, event: dict, rule: FieldManagerRule, source_fields: Iterable, field_values: Iterable
     ) -> bool:
         if rule.ignore_missing_fields:
             return False
@@ -164,3 +172,11 @@ class FieldManager(Processor):
             ]
             return list(zip(*mapping))
         return source_field_values, targets
+
+    def transform_values(
+        self, source_field_values: list[FieldValue], _: dict, __: FieldManagerRule
+    ) -> list[FieldValue]:
+        """template method to be able to transform the source fields
+        in child classes
+        """
+        return source_field_values

@@ -23,7 +23,7 @@ A speaking example:
     :caption: Incoming event
 
     {
-        "message": "{\"timestamp\": \"2019-08-02T09:46:18.625Z\", \"log\": \"user login failed\"}"
+        "message": "{\\"timestamp\\": \\"2019-08-02T09:46:18.625Z\\", \\"log\\": \\"user login failed\\"}"
     }
 
 ..  code-block:: json
@@ -31,7 +31,7 @@ A speaking example:
     :caption: Processed event
 
     {
-        "message": "{\"timestamp\": \"2019-08-02T09:46:18.625Z\", \"log\": \"user login failed\"}",
+        "message": "{\\"timestamp\\": \\"2019-08-02T09:46:18.625Z\\", \\"log\\": \\"user login failed\\"}",
         "parsed": {
             "timestamp": "2019-08-02T09:46:18.625Z",
             "log": "user login failed"
@@ -46,18 +46,21 @@ A speaking example:
    :noindex:
 
 Examples for decoder:
-------------------------------------------------
+---------------------
 
 .. datatemplate:import-module:: tests.unit.processor.decoder.test_decoder
    :template: testcase-renderer.tmpl
 
 """
 
+import typing
+
 from attrs import define, field, validators
 
+from logprep.processor.decoder.decoders import DECODERS
 from logprep.processor.field_manager.rule import FieldManagerRule
 
-implemented_decoders = ("json", "base64")
+IMPLEMENTED_DECODERS = tuple(DECODERS.keys())
 
 
 class DecoderRule(FieldManagerRule):
@@ -79,14 +82,30 @@ class DecoderRule(FieldManagerRule):
            use :code:`mapping` instead.
         """
         source_format: str = field(
-            validator=(validators.instance_of(str), validators.in_(implemented_decoders)),
+            validator=(validators.instance_of(str), validators.in_(IMPLEMENTED_DECODERS)),
             default="json",
         )
         """The source format in the source field. Defaults to :code:`json`
-        Possible values are :code:`json, base64`
+        Possible values are 
+        :code:`json`,
+        :code:`base64`,
+        :code:`clf`,
+        :code:`nginx`,
+        :code:`syslog_rfc5424`,
+        :code:`syslog_rfc3164`,
+        :code:`syslog_rfc3164_local`,
+        :code:`logfmt`,
+        :code:`cri`,
+        :code:`docker`,
+        :code:`decolorize`
         """
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(DecoderRule.Config, self._config)
 
     @property
     def source_format(self) -> str:
         """Getter for rule config"""
-        return self._config.source_format
+        return self.config.source_format
