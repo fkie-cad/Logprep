@@ -215,7 +215,7 @@ def decolorize(log_line: str) -> str:
 
 def dict2list(log_dict: dict[str, str]) -> list[str]:
     """converts a flat dict to a list of strings"""
-    if is_list_of(list(log_dict.values()) + list(log_dict.keys()), str):
+    if not is_list_of(list(log_dict.values()) + list(log_dict.keys()), str):
         raise DecoderError("is not a string to string mapping")
     result = [f"{key}:{value}" for key, value in log_dict.items()]
     return result
