@@ -225,7 +225,19 @@ def decolorize(log_line: str) -> str:
     return ANSI_ESCAPE.sub("", log_line)
 
 
+<<<<<<< Updated upstream
 DECODERS: Dict[str, DecoderFunc] = {
+=======
+def dict2list(log_dict: dict[str, str]) -> list[str]:
+    """converts a flat dict to a list of strings"""
+    if not all(isinstance(value, str) for value in list(log_dict.values()) + list(log_dict.keys())):
+        raise DecoderError("is not a string to string mapping")
+    result = [f"{key}:{value}" for key, value in log_dict.items()]
+    return result
+
+
+DECODERS: Dict[str, Callable] = {
+>>>>>>> Stashed changes
     "json": parse_json,
     "base64": parse_base64,
     "clf": partial(_parse, regexes=REGEX_CLF),
@@ -237,4 +249,5 @@ DECODERS: Dict[str, DecoderFunc] = {
     "cri": parse_cri,
     "docker": parse_docker,
     "decolorize": decolorize,
+    "dict2list": dict2list,
 }

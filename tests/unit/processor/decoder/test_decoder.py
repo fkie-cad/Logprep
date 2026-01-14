@@ -491,6 +491,40 @@ class TestDecoder(BaseProcessorTestCase):
                     "message": 'this is escaped on wrong place" after escape\n',
                 },
                 id="base64 double quote escape",
+                    "filter": "kubernetes.labels",
+                    "decoder": {
+                        "mapping": {"kubernetes.labels": "orchestrator.resource.label"},
+                        "source_format": "dict2list",
+                        "delete_source_fields": True,
+                    },
+                },
+                {
+                    "kubernetes": {
+                        "labels": {
+                            "app.kubernetes.io/name": "mysql",
+                            "app.kubernetes.io/instance": "mysql-abcxyz",
+                            "app.kubernetes.io/version": "5.7.21",
+                            "app.kubernetes.io/component": "database",
+                            "app.kubernetes.io/part-of": "wordpress",
+                            "app.kubernetes.io/managed-by": "Helm",
+                        }
+                    },
+                },
+                {
+                    "orchestrator": {
+                        "resource": {
+                            "label": [
+                                "app.kubernetes.io/name:mysql",
+                                "app.kubernetes.io/instance:mysql-abcxyz",
+                                "app.kubernetes.io/version:5.7.21",
+                                "app.kubernetes.io/component:database",
+                                "app.kubernetes.io/part-of:wordpress",
+                                "app.kubernetes.io/managed-by:Helm",
+                            ],
+                        },
+                    },
+                },
+                id="dict2list conversion",
             ),
         ],
     )
@@ -680,6 +714,84 @@ class TestDecoder(BaseProcessorTestCase):
                     "tags": ["_decoder_failure"],
                 },
                 id="json, but not docker because one missing",
+            ),
+            pytest.param(
+                {
+                    "filter": "kubernetes.labels",
+                    "decoder": {
+                        "mapping": {"kubernetes.labels": "does.not.matter"},
+                        "source_format": "dict2list",
+                    },
+                },
+                {
+                    "kubernetes": {
+                        "labels": {
+                            "app.kubernetes.io/name": "mysql",
+                            "app.kubernetes.io/instance": "mysql-abcxyz",
+                            234: "5.7.21",
+                            "app.kubernetes.io/component": "database",
+                            "app.kubernetes.io/part-of": "wordpress",
+                            "app.kubernetes.io/managed-by": "Helm",
+                        }
+                    }
+                },
+                {
+                    "kubernetes": {
+                        "labels": {
+                            "app.kubernetes.io/name": "mysql",
+                            "app.kubernetes.io/instance": "mysql-abcxyz",
+                            234: "5.7.21",
+                            "app.kubernetes.io/component": "database",
+                            "app.kubernetes.io/part-of": "wordpress",
+                            "app.kubernetes.io/managed-by": "Helm",
+                        }
+                    },
+                    "tags": ["_decoder_failure"],
+                },
+                id="source is nested dict",
+            ),
+            pytest.param(
+                {
+                    "filter": "kubernetes.labels",
+                    "decoder": {
+                        "mapping": {"kubernetes.labels": "does.not.matter"},
+                        "source_format": "dict2list",
+                    },
+                },
+                {
+                    "kubernetes": {
+                        "labels": {
+                            "app": {
+                                "kubernetes": {
+                                    "io/name": "mysql",
+                                    "io/instance": "mysql-abcxyz",
+                                    "io/version": "5.7.21",
+                                    "io/component": "database",
+                                    "io/part-of": "wordpress",
+                                    "io/managed-by": "Helm",
+                                }
+                            }
+                        }
+                    },
+                },
+                {
+                    "kubernetes": {
+                        "labels": {
+                            "app": {
+                                "kubernetes": {
+                                    "io/name": "mysql",
+                                    "io/instance": "mysql-abcxyz",
+                                    "io/version": "5.7.21",
+                                    "io/component": "database",
+                                    "io/part-of": "wordpress",
+                                    "io/managed-by": "Helm",
+                                }
+                            }
+                        }
+                    },
+                    "tags": ["_decoder_failure"],
+                },
+                id="one key is integer",
             ),
         ],
     )

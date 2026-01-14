@@ -16,6 +16,7 @@ The `decoder` processor decodes or parses field values from the configured
 * cri
 * docker
 * decolorize (removing color codes in logs)
+* dict2list (convert string mapping to list)
 
 
 Processor Configuration
