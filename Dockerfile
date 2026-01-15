@@ -49,6 +49,9 @@ RUN pip3 uninstall \
 RUN apt-get update && apt-get -y upgrade && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+RUN apt-get uninstall -y libsqlite3-dev
+
 COPY --from=build /opt/venv /opt/venv
 RUN useradd -s /bin/sh -m -c "logprep user" logprep
 USER logprep
