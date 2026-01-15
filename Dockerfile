@@ -52,8 +52,6 @@ RUN apt-get update && apt-get -y upgrade && \
 
 RUN apt-get remove --purge -y --allow-remove-essential util-linux liblastlog2-2 libsqlite3-0
 
-RUN apt list --installed
-
 COPY --from=build /opt/venv /opt/venv
 RUN useradd -s /bin/sh -m -c "logprep user" logprep
 USER logprep
