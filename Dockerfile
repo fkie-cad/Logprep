@@ -47,9 +47,9 @@ RUN pip3 uninstall \
     'setuptools' \
     'wheel'
 RUN apt-get update && apt-get -y upgrade && \
-apt-get remove --purge -y --allow-remove-essential util-linux liblastlog2-2 libsqlite3-0 && \
-apt-get clean && \
-rm -rf /var/lib/apt/lists/*
+    apt-get remove --purge -y --allow-remove-essential util-linux liblastlog2-2 libsqlite3-0 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /opt/venv /opt/venv
 RUN useradd -s /bin/sh -m -c "logprep user" logprep
