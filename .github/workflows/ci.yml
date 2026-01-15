@@ -41,8 +41,8 @@ jobs:
           project-slug: logprep
           project-language: en
           platform: community
-          single-language: true
-          message-template: "--- \n<a name=\"readthedocs-preview\"></a>The rendered docs for this PR can be found [here]({docs-pr-index-url})."
+          single-version: 'true'
+          message-template: "---\n<a name=\"readthedocs-preview\"></a>The rendered docs for this PR can be found [here]({docs-pr-index-url})."
   code-quality:
     uses: ./.github/workflows/code-quality.yml
     secrets: inherit
