@@ -1,4 +1,6 @@
 # pylint: disable=missing-docstring
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
 import re
 
 import pytest
@@ -27,6 +29,19 @@ test_cases = [
         },
         {"message": "this, is, the, message"},
         {"message": "this, is, the, message", "result": ["this", "is", "the", "message"]},
+    ),
+    (
+        "splits one item with delimiter",
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+            },
+        },
+        {"message": "this,"},
+        {"message": "this,", "result": ["this"]},
     ),
 ]  # testcase, rule, event, expected
 
