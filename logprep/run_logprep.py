@@ -1,5 +1,6 @@
 # pylint: disable=logging-fstring-interpolation
 """This module can be used to start the logprep."""
+
 import logging
 import logging.config
 import os
