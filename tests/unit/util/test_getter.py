@@ -145,16 +145,14 @@ class TestGetterFactory:
     @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_environment_variables_in_yaml_content(self, tmp_path):
         testfile = tmp_path / "test_getter.json"
-        testfile.write_text(
-            """---
+        testfile.write_text("""---
 key: $PYTEST_TEST_TOKEN
 list:
     - first element
     - $PYTEST_TEST_TOKEN
     - ${PYTEST_TEST_TOKEN}-with-additional-string
 dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
-"""
-        )
+""")
         my_getter = GetterFactory.from_string(str(testfile))
         expected = {
             "key": "mytoken",
@@ -166,8 +164,7 @@ dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
     @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
     def test_getter_expands_only_whitelisted_in_yaml_content(self, tmp_path):
         testfile = tmp_path / "test_getter.json"
-        testfile.write_text(
-            """---
+        testfile.write_text("""---
 key: $PYTEST_TEST_TOKEN
 list:
     - first element
@@ -175,8 +172,7 @@ list:
     - $PYTEST_TEST_TOKEN
     - ${PYTEST_TEST_TOKEN}-with-additional-string
 dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
-"""
-        )
+""")
         my_getter = GetterFactory.from_string(str(testfile))
         expected = {
             "key": "mytoken",

@@ -98,8 +98,7 @@ class TestConfiguration:
     )
     def test_get_last_value(self, tmp_path, attribute, first_value, second_value):
         first_config = tmp_path / "pipeline.yml"
-        first_config.write_text(
-            f"""
+        first_config.write_text(f"""
 input:
     dummy:
         type: dummy_input
@@ -108,11 +107,9 @@ output:
     dummy:
         type: dummy_output
 {attribute}: {first_value}
-"""
-        )
+""")
         second_config = tmp_path / "pipeline2.yml"
-        second_config.write_text(
-            f"""
+        second_config.write_text(f"""
 input:
     dummy:
         type: dummy_input
@@ -121,8 +118,7 @@ output:
     dummy:
         type: dummy_output
 {attribute}: {second_value}
-"""
-        )
+""")
         with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmp_path)}):
             config = Configuration.from_sources([str(first_config), str(second_config)])
             attribute_from_test = getattr(config, attribute)
@@ -136,8 +132,7 @@ output:
         first_value = {"level": "INFO"}
         second_value = {"level": "DEBUG"}
         first_config = tmp_path / "pipeline.yml"
-        first_config.write_text(
-            f"""
+        first_config.write_text(f"""
 input:
     dummy:
         type: dummy_input
@@ -146,11 +141,9 @@ output:
     dummy:
         type: dummy_output
 {attribute}: {first_value}
-"""
-        )
+""")
         second_config = tmp_path / "pipeline2.yml"
-        second_config.write_text(
-            f"""
+        second_config.write_text(f"""
 input:
     dummy:
         type: dummy_input
@@ -159,8 +152,7 @@ output:
     dummy:
         type: dummy_output
 {attribute}: {second_value}
-"""
-        )
+""")
         config = Configuration.from_sources([str(first_config), str(second_config)])
         assert config.logger.level == "DEBUG"
         assert config.logger.loggers.get("root").get("level") == "DEBUG"
@@ -189,8 +181,7 @@ output:
 
     def test_pipeline_property_is_merged_from_configs(self, tmp_path):
         first_config = tmp_path / "pipeline.yml"
-        first_config.write_text(
-            """
+        first_config.write_text("""
 input:
     dummy:
         type: dummy_input
@@ -204,17 +195,14 @@ pipeline:
         schema: examples/exampledata/rules/labeler/schema.json
         include_parent_labels: true
         rules: []
-"""
-        )
+""")
         second_config = tmp_path / "pipeline2.yml"
-        second_config.write_text(
-            """
+        second_config.write_text("""
 pipeline:
     - dissectorname:
         type: dissector
         rules: []
-"""
-        )
+""")
         config = Configuration.from_sources([str(first_config), str(second_config)])
         assert isinstance(config.pipeline, list)
         assert len(config.pipeline) == 2
@@ -526,8 +514,7 @@ output:
     @patch
     def test_config_gets_enriched_by_environment(self, tmp_path):
         config_path = tmp_path / "pipeline.yml"
-        config_path.write_text(
-            """
+        config_path.write_text("""
 version: $LOGPREP_VERSION
 process_count: $LOGPREP_PROCESS_COUNT
 timeout: 0.1
@@ -536,8 +523,7 @@ logger:
 $LOGPREP_PIPELINE
 $LOGPREP_INPUT
 $LOGPREP_OUTPUT
-"""
-        )
+""")
         config = Configuration.from_sources([str(config_path)])
         config._verify()
         assert config.version == "1"
@@ -549,8 +535,7 @@ $LOGPREP_OUTPUT
     @patch
     def test_config_gets_enriched_by_environment_with_non_existent_variable(self, tmp_path):
         config_path = tmp_path / "pipeline.yml"
-        config_path.write_text(
-            """
+        config_path.write_text("""
 version: $LOGPREP_VERSION
 process_count: $LOGPREP_PROCESS_COUNT
 timeout: 0.1
@@ -560,8 +545,7 @@ $LOGPREP_I_DO_NOT_EXIST
 $LOGPREP_PIPELINE
 $LOGPREP_INPUT
 $LOGPREP_OUTPUT
-"""
-        )
+""")
         with pytest.raises(
             InvalidConfigurationErrors,
             match=r"Environment variable\(s\) used, but not set: LOGPREP_I_DO_NOT_EXIST",
@@ -570,8 +554,7 @@ $LOGPREP_OUTPUT
 
     def test_duplicate_rule_id_per_processor_raises(self, tmp_path):
         config_path = tmp_path / "pipeline.yml"
-        config_path.write_text(
-            """
+        config_path.write_text("""
 input:
     dummy:
         type: dummy_input
@@ -593,8 +576,7 @@ pipeline:
                 id: same id
                 mapping:
                   message: "%{other_field} %{next_field}"
-"""
-        )
+""")
         with pytest.raises(InvalidConfigurationErrors) as raised:
             Configuration.from_sources([str(config_path)])
         assert len(raised.value.errors) == 1
@@ -603,8 +585,7 @@ pipeline:
 
     def test_duplicate_rule_id_in_different_rule_trees_per_processor_raises(self, tmp_path):
         config_path = tmp_path / "pipeline.yml"
-        config_path.write_text(
-            """
+        config_path.write_text("""
 input:
     dummy:
         type: dummy_input
@@ -626,8 +607,7 @@ pipeline:
                 id: same id
                 mapping:
                   message: "%{other_field} %{next_field}"
-"""
-        )
+""")
         with pytest.raises(InvalidConfigurationErrors) as raised:
             Configuration.from_sources([str(config_path)])
         assert len(raised.value.errors) == 1
@@ -670,8 +650,7 @@ pipeline:
         config._metrics.number_of_config_refresh_failures = 0
         assert config.version == "1"
         assert config.process_count == 3
-        config_path.write_text(
-            """
+        config_path.write_text("""
 version: second_version
 process_count: 2
 timeout: 0.1
@@ -684,8 +663,7 @@ input:
 output:
     dummy:
         type: dummy_output
-"""
-        )
+""")
         config.reload()
         assert config.version == "second_version", "version should be updated"
         assert config.process_count == 2, "process count should be updated"
@@ -731,8 +709,7 @@ output:
         config._metrics.number_of_config_refreshes = 0
         config._metrics.number_of_config_refresh_failures = 0
         assert config.version == "1"
-        config_path.write_text(
-            """
+        config_path.write_text("""
 version: second_version
 process_count: THIS SHOULD BE AN INT
 timeout: 0.1
@@ -745,8 +722,7 @@ input:
 output:
     dummy:
         type: dummy_output
-"""
-        )
+""")
 
         config.reload()
         assert "Failed to reload configuration" in caplog.text
@@ -758,8 +734,7 @@ output:
     def test_reload_exposes_config_refresh_interval_metric(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
-        config_path.write_text(
-            """
+        config_path.write_text("""
 version: different_version
 process_count: 1
 config_refresh_interval: 66
@@ -773,8 +748,7 @@ input:
 output:
     dummy:
         type: dummy_output
-"""
-        )
+""")
         with mock.patch.object(
             config._metrics.config_refresh_interval, "add_with_labels"
         ) as mock_add:
@@ -785,8 +759,7 @@ output:
     def test_reload_exposes_version_info_metric(self, config_path, caplog):
         caplog.set_level("INFO")
         config = Configuration.from_sources([str(config_path)])
-        config_path.write_text(
-            """
+        config_path.write_text("""
 version: different_version
 process_count: 1
 config_refresh_interval: 66
@@ -800,8 +773,7 @@ input:
 output:
     dummy:
         type: dummy_output
-"""
-        )
+""")
         with mock.patch.object(config._metrics.version_info, "add_with_labels") as mock_add:
             config.reload()
         assert "Successfully reloaded" in caplog.text
@@ -809,8 +781,7 @@ output:
 
     def test_init_exposes_version_info_metric(self, config_path, caplog):
         caplog.set_level("INFO")
-        config_path.write_text(
-            """
+        config_path.write_text("""
 version: different_version
 process_count: 1
 config_refresh_interval: 66
@@ -824,8 +795,7 @@ input:
 output:
     dummy:
         type: dummy_output
-"""
-        )
+""")
         with mock.patch("logprep.util.configuration.GaugeMetric.add_with_labels") as mock_add:
             Configuration.from_sources([str(config_path)])
         assert mock_add.call_count == 3, "version_info and config_refresh_interval and ???"
@@ -836,8 +806,7 @@ output:
         config._metrics.number_of_config_refreshes = 0
         config._metrics.number_of_config_refresh_failures = 0
         assert config.version == "1", "version should be 1"
-        config_path.write_text(
-            """
+        config_path.write_text("""
 version: second_version
 process_count: 2
 timeout: 0.1
@@ -858,8 +827,7 @@ input:
 output:
     dummy:
         type: dummy_output
-"""
-        )
+""")
         config.reload()
         assert "Failed to reload configuration" in caplog.text
         assert "THIS SHOULD BE A VALID PROCESSOR" in caplog.text
@@ -1121,8 +1089,7 @@ output:
                 Configuration.from_sources([path_to_config])
 
     def test_config_with_single_json_rule(self, config_path):
-        config_path.write_text(
-            """
+        config_path.write_text("""
 {
 "input": {
     "dummy": {"type": "dummy_input", "documents": []}
@@ -1149,14 +1116,12 @@ output:
     }
     ]
 }
-"""
-        )
+""")
         config = Configuration.from_sources([str(config_path)])
         assert len(config.pipeline) == 1
 
     def test_config_with_missing_environment_variable_and_other_failure_raises(self, config_path):
-        config_path.write_text(
-            """
+        config_path.write_text("""
 version: $LOGPREP_VERSION
 process_count: 1
 pipeline:
@@ -1170,15 +1135,13 @@ input:
 output:
     dummy:
         type: dummy_output
-"""
-        )
+""")
         with pytest.raises(InvalidConfigurationError) as raised:
             Configuration.from_sources([str(config_path)])
         assert len(raised.value.errors) == 2
 
     def test_processor_config_with_file_path(self, config_path):
-        config_path.write_text(
-            """
+        config_path.write_text("""
 pipeline:
     - the almighty dissector:
         type: dissector
@@ -1191,8 +1154,7 @@ input:
 output:
     dummy:
         type: dummy_output
-"""
-        )
+""")
         config = Configuration.from_sources([str(config_path)])
         assert len(config.pipeline) == 1
         assert len(config.pipeline[0]["the almighty dissector"]["rules"]) == 1
@@ -1200,8 +1162,7 @@ output:
     @responses.activate
     def test_processor_config_with_url_path(self, tmp_path):
         config_path = tmp_path / "pipeline.yml"
-        config_path.write_text(
-            """
+        config_path.write_text("""
 pipeline:
     - the almighty dissector:
         type: dissector
@@ -1214,8 +1175,7 @@ input:
 output:
     dummy:
         type: dummy_output
-"""
-        )
+""")
         resp_text = json.dumps(
             [
                 {
@@ -1298,14 +1258,12 @@ output:
 
     def test_verify_credentials_file_raises_for_unexpected_key(self, config_path, tmp_path):
         credential_file_path = tmp_path / "credentials.yml"
-        credential_file_path.write_text(
-            """---
+        credential_file_path.write_text("""---
 endpoints:
     /some/auth/endpoint:
         username: test_user
         password: myverysecretpassword
-"""
-        )
+""")
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             with pytest.raises(
@@ -1318,16 +1276,13 @@ endpoints:
         prometheus_multiproc_dir = tmp_path / "prometheus_multiproc_dir"
         prometheus_multiproc_dir.mkdir()
         exporter_config = tmp_path / "exporter-config"
-        exporter_config.write_text(
-            """
+        exporter_config.write_text("""
 metrics:
   enabled: true
   port: 8000
-"""
-        )
+""")
         input_config = tmp_path / "input-config"
-        input_config.write_text(
-            """
+        input_config.write_text("""
 input:
   stdin:
     type: file_input
@@ -1335,17 +1290,14 @@ input:
     start: end
     watch_file: true
     interval: 1
-"""
-        )
+""")
 
         output_config = tmp_path / "output-config"
-        output_config.write_text(
-            """
+        output_config.write_text("""
 output:
   console:
     type: console_output
-"""
-        )
+""")
         with mock.patch.dict(
             "os.environ", {"PROMETHEUS_MULTIPROC_DIR": str(prometheus_multiproc_dir)}
         ):
