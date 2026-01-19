@@ -27,6 +27,7 @@ Example
             session.timeout.ms: "6000"
             auto.offset.reset: "earliest"
 """
+
 # pylint: enable=line-too-long
 import logging
 import os

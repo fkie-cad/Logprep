@@ -754,7 +754,7 @@ getter:
             (
                 "Return None if wrong URL is given",
                 """---
-getter:             
+getter:
     "https://some.other.url":
         token: "jsoskdmoiewjdoeijkxsmoiqw8jdiowd0"
 """,
@@ -764,7 +764,7 @@ getter:
             (
                 "Raises InvalidConfigurationError credentials file is invalid yml",
                 """---
-getter:                
+getter:
     "https://some.url":
         password no colon here
         username: test
@@ -794,7 +794,7 @@ getter:
                 """
 {
 "getter": {
-    "https://some.url": 
+    "https://some.url":
         "endpoint": "https://endpoint.end",
         "client_id": "test",
         "client_secret": "test"
@@ -806,7 +806,7 @@ getter:
                 "Return OAuth2PassowordFlowCredentials object with extra client_id",
                 """---
 getter:
-    "https://some.url": 
+    "https://some.url":
         endpoint: https://endpoint.end
         client_id: test
         username: test
@@ -952,7 +952,7 @@ getter:
 getter:
     "https://some.url":
         client_key: "path/to/client/key"
-        cert: 
+        cert:
 """,
                 None,
                 InvalidConfigurationError,
@@ -975,15 +975,13 @@ getter:
 
     def test_input_credentials_returns_expected_credentials_object(self, tmp_path):
         credential_file_path = tmp_path / "credentials.yml"
-        credential_file_path.write_text(
-            """---
+        credential_file_path.write_text("""---
 input:
     endpoints:
         /some/auth/endpoint:
             username: test_user
             password: myverysecretpassword
-"""
-        )
+""")
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             creds = CredentialsFactory.from_endpoint("/some/auth/endpoint")
@@ -996,15 +994,13 @@ input:
 
     def test_credentials_from_root_url(self, tmp_path):
         credential_file_path = tmp_path / "credentials.yml"
-        credential_file_path.write_text(
-            """---
+        credential_file_path.write_text("""---
 getter:
     "http://some.url":
         endpoint: https://endpoint.end
         client_id: test
         client_secret: test
-"""
-        )
+""")
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             creds = CredentialsFactory.from_target("http://some.url")
@@ -1055,16 +1051,14 @@ getter:
     ):
         credential_file_path = tmp_path / "credentials.yml"
         secret_file_path = tmp_path / "secret.txt"
-        credential_file_path.write_text(
-            f"""---
+        credential_file_path.write_text(f"""---
 getter:
     "http://some.url":
         {endpoint}
         username: testuser
         client_id: testid
         {type_of_secret}: {secret_file_path}
-"""
-        )
+""")
         secret_file_path.write_text(secret_content)
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
@@ -1076,8 +1070,7 @@ getter:
         secret_file_path_0 = tmp_path / "secret-0.txt"
         secret_file_path_1 = tmp_path / "secret-1.txt"
 
-        credential_file_path.write_text(
-            f"""---
+        credential_file_path.write_text(f"""---
 getter:
     "http://some.url":
         endpoint: "https://endpoint.end"
@@ -1085,8 +1078,7 @@ getter:
         client_id: testid
         client_secret_file: {secret_file_path_0}
         password_file: {secret_file_path_1}
-"""
-        )
+""")
         secret_file_path_0.write_text("thisismysecretsecretclientsecret")
         secret_file_path_1.write_text("thisismysecorndsecretsecretpasswordsecret")
 
@@ -1114,14 +1106,12 @@ getter:
 
     def test_from_target_raises_when_getter_key_not_set(self, tmp_path):
         credential_file_path = tmp_path / "credentials.yml"
-        credential_file_path.write_text(
-            """---
+        credential_file_path.write_text("""---
     "http://some.url":
         endpoint: "https://endpoint.end"
         username: testuser
         password_file: "thisismysecretsecretclientsecret"
-"""
-        )
+""")
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             with pytest.raises(
@@ -1133,13 +1123,11 @@ getter:
 
     def test_from_endpoint_raises_when_input_key_not_set(self, tmp_path):
         credential_file_path = tmp_path / "credentials.yml"
-        credential_file_path.write_text(
-            """---
+        credential_file_path.write_text("""---
     /some/endpoint:
         username: testuser
         password_file: "thisismysecretsecretclientsecret"
-"""
-        )
+""")
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credential_file_path)}
         with mock.patch.dict("os.environ", mock_env):
             with pytest.raises(
