@@ -91,6 +91,7 @@ require additional options.
     regex_fields:
     - ip_address
 """
+
 import logging
 import re
 from itertools import chain, zip_longest

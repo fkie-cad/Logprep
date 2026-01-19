@@ -33,8 +33,7 @@ def create_credentials(tmp_path):
     secret_file_path = tmp_path / "secret-0.txt"
     secret_file_path.write_text("secret_password")
     credential_file_path = tmp_path / "credentials.yml"
-    credential_file_path.write_text(
-        f"""---
+    credential_file_path.write_text(f"""---
 input:
   endpoints:
     /auth-json-secret:
@@ -46,8 +45,7 @@ input:
     /.*/[A-Z]{{2}}/json$:
       username: user
       password: password
-"""
-    )
+""")
 
     return str(credential_file_path)
 

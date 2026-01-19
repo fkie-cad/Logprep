@@ -96,7 +96,7 @@ dependencies = [
 [project.optional-dependencies]
 
 dev = [
-  "black>=25.9.0",
+  "black>=26.0.0",
   "httpx",
   "isort",
   "pylint",
