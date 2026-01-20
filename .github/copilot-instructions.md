@@ -22,8 +22,8 @@ class Component:
     @define(kw_only=True)
     class Config(BaseClass.Config):
         # Configuration parameters with validators
-    
-    @define(kw_only=True) 
+
+    @define(kw_only=True)
     class Metrics(BaseClass.Metrics):
         # Prometheus metrics with CounterMetric/HistogramMetric
 ```
@@ -52,13 +52,13 @@ Each processor has `processor.py` and `rule.py`:
 
 ### Setup
 ```bash
-pip install -e .[dev]  # Install with dev dependencies
+uv sync --frozen --extra dev  # Install with dev dependencies
 pre-commit install     # Enable hooks
 ```
 
 ### Testing
 ```bash
-pytest ./tests --cov=logprep --cov-report=xml -vvv
+uv run pytest ./tests --cov=logprep --cov-report=xml -vvv
 ```
 
 ### Hybrid Python/Rust

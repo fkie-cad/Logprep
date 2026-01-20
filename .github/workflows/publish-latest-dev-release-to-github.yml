@@ -9,7 +9,7 @@ jobs:
     name: create and publish
     if: github.event.pull_request.merged == true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Initialize Python
         uses: actions/setup-python@v1
         with:

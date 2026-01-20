@@ -3,7 +3,7 @@ connector:
     # point your docker context to minikube and build the image
     # `eval $(minikube docker-env)` or `(minikube docker-env).replace("export ", '$env:') | out-string | Invoke-Expression`
     # build this image using the Dockerfile in the root of the repository
-    # `docker buildx build -t local/logprep:latest --build-arg PYTHON_VERSION=3.11 --build-arg LOGPREP_VERSION=dev .`
+    # `docker buildx build -t local/logprep:latest --build-arg PYTHON_VERSION=3.11 .`
     registry: local
     repository: logprep
     tag: latest
@@ -51,7 +51,6 @@ connector:
       request.required.acks: "-1"
   ingress:
     enabled: true
-
 ## for additional configurations see: `https://github.com/bitnami/charts/blob/main/bitnami/kafka/values.yaml`
 kafka:
   listeners:
@@ -68,7 +67,6 @@ kafka:
     numPartitions: 10
     topics:
       - name: consumer
-
 logprep:
   image:
     registry: local
