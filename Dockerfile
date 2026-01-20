@@ -7,7 +7,6 @@ FROM registry-1.docker.io/library/python:${PYTHON_VERSION} AS build
 RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
-# Use a python virtual environment
 RUN python -m venv --upgrade-deps /opt/venv
 
 # Install the Rust toolchain
