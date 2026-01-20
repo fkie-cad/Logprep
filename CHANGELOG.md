@@ -5,7 +5,7 @@
 * add uv as dependency management, including uv.lock
 
 ### Improvements
-* simplify Dockerfile and remove docker build support for `LOGPREP_VERSION=latest`
+* simplify Dockerfile and remove docker build support for `LOGPREP_VERSION`
 
 ### Bugfix
 
