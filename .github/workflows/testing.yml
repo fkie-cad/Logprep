@@ -16,23 +16,19 @@ jobs:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
         test-type: ["unit", "acceptance"]
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - name: Install uv and set the Python version
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
       - name: Install helm
         uses: azure/setup-helm@v4.2.0
         with:
           version: "latest"
         id: install
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip wheel uv
-          uv sync --frozen --extra dev
+        run: uv sync --frozen --extra dev
       - name: Perform ${{ matrix.test-type }} test
         env:
           PYTEST_ADDOPTS: "--color=yes"
-        run: |
-          uv run pytest -vv tests/${{ matrix.test-type }}
+        run: uv run pytest -vv tests/${{ matrix.test-type }}
