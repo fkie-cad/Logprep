@@ -26,7 +26,14 @@ This option is recommended if you just want to use the latest stable release of 
 
 .. code-block:: bash
 
-    uv sync
+    git clone https://github.com/fkie-cad/Logprep.git@latest && cd logprep && uv sync --frozen
+
+Alternative: directly from PiPy via pip:
+
+.. code-block:: bash
+
+    pip install logprep
+
 
 To see if the installation was successful run :code:`logprep --version`.
 
@@ -36,7 +43,7 @@ This option is recommended if you want to try out the latest developments.
 
 .. code-block:: bash
 
-    uv pip install git+https://github.com/fkie-cad/Logprep.git@latest
+    git clone https://github.com/fkie-cad/Logprep.git@latest && cd logprep && uv sync --all-extras
 
 To see if the installation was successful run :code:`logprep --version`.
 

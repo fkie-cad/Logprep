@@ -29,12 +29,11 @@ jobs:
       - name: Install uv and sync deps
         run: |
           uv sync --frozen --extra doc
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
       - name: Build docs
         run: |
           cd doc
-          sphinx-apidoc -fT -o source/module_reference ../logprep
-          make clean html
+          uv run sphinx-apidoc -fT -o source/module_reference ../logprep
+          uv run make clean html
   documentation-preview:
     runs-on: ubuntu-latest
     steps:

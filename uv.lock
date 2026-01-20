@@ -1403,7 +1403,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.3,<4" },
     { name = "asgiref", marker = "extra == 'dev'" },
     { name = "attrs", specifier = "<26" },
-    { name = "black", marker = "extra == 'dev'", specifier = ">=25.9.0" },
+    { name = "black", marker = "extra == 'dev'", specifier = ">=26.0.0" },
     { name = "boto3", specifier = "<2" },
     { name = "certifi", specifier = ">=2023.7.22,<2026" },
     { name = "cibuildwheel", marker = "extra == 'dev'" },

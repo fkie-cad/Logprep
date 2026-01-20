@@ -39,7 +39,7 @@ jobs:
         run: helm lint --strict ./charts/logprep
       - name: lint changed and added files
         if: steps.changed-files.outputs.all_changed_files
-        run: pylint ${{ steps.changed-files.outputs.all_changed_files }}
+        run: uv run pylint ${{ steps.changed-files.outputs.all_changed_files }}
       - name: mypy type checking
         if: steps.changed-files.outputs.all_changed_files
         run: uv run mypy --follow-imports=skip ${{ steps.changed-files.outputs.all_changed_files }}
