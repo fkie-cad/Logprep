@@ -16,6 +16,10 @@ ENV PATH="/opt/venv/bin:/root/.cargo/bin:${PATH}"
 # Install uv into the venv
 RUN pip install --disable-pip-version-check --no-cache-dir uv
 
+# [jaraco.context <6.1.0] CVE: GHSA-58pv-8j8x-9vj2
+#     The setuptools build backend includes jaraco.context as vendored code.
+RUN pip uninstall -y setuptools
+
 WORKDIR /logprep
 
 ENV UV_COMPILE_BYTECODE=1
