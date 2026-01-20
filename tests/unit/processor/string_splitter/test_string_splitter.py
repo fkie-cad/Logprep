@@ -43,6 +43,19 @@ test_cases = [
         {"message": "this,"},
         {"message": "this,", "result": ["this"]},
     ),
+    (
+        "splits one item with multiple delimiter",
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+            },
+        },
+        {"message": ",,this,,"},
+        {"message": ",,this,,", "result": ["this"]},
+    ),
 ]  # testcase, rule, event, expected
 
 failure_test_cases = [
