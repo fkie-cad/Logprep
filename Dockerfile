@@ -28,7 +28,7 @@ ENV UV_LINK_MODE=copy
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
-# Install deps using only the lockfile + pyproject first (best layer caching)
+# Install deps using only the lockfile + pyproject.toml first (best layer caching)
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=/logprep/uv.lock,readonly \
     --mount=type=bind,source=pyproject.toml,target=/logprep/pyproject.toml,readonly \
