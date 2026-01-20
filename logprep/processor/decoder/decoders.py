@@ -225,6 +225,13 @@ def decolorize(log_line: str) -> str:
     return ANSI_ESCAPE.sub("", log_line)
 
 
+def parse_klog(log_line: str) -> dict[str, str]:
+    """Parses klog loglines
+    see: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
+    """
+    return {}
+
+
 DECODERS: Dict[str, DecoderFunc] = {
     "json": parse_json,
     "base64": parse_base64,
@@ -237,4 +244,5 @@ DECODERS: Dict[str, DecoderFunc] = {
     "cri": parse_cri,
     "docker": parse_docker,
     "decolorize": decolorize,
+    "klog": parse_klog,
 }
