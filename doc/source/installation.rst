@@ -2,32 +2,50 @@
 Installation
 ============
 
-PIP
-===
+UV
+==
 
-Python should be present on the system. Currently, Python 3.11 - 3.13 are supported.
-To install Logprep you have following options:
+Python should be present on the system. Currently, **Python 3.11 – 3.14** are supported.
+
+Logprep can be installed with **uv**, a fast drop-in replacement for pip.
+Using uv is optional – Logprep can still be installed with regular pip as well.
+
+We recommend using **uv**, because uv uses a lock file during installation.
+This ensures that Logprep is installed with the *exact same dependency versions*
+that are used and tested during development, providing more reproducible and stable installations.
+
+If you want to install uv, refer to the official installation guide:
+
+https://docs.astral.sh/uv/getting-started/installation/#installing-uv
+
+To install Logprep you have the following options:
 
 **1. Option:** latest stable release
 
-This option is recommended if you just want to use the latest release of logprep.
+This option is recommended if you just want to use the latest stable release of Logprep.
 
-..  code-block:: bash
+.. code-block:: bash
+
+    git clone https://github.com/fkie-cad/Logprep.git logprep && cd logprep && uv sync --frozen
+
+Alternative: directly from PyPI via pip:
+
+.. code-block:: bash
 
     pip install logprep
+
 
 To see if the installation was successful run :code:`logprep --version`.
 
 **2. Option:** latest development release
 
-This option is recommended if you just want to try out the latest developments.
+This option is recommended if you want to try out the latest developments.
 
-..  code-block:: bash
+.. code-block:: bash
 
-    pip install git+https://github.com/fkie-cad/Logprep.git@latest
+    git clone https://github.com/fkie-cad/Logprep.git logprep && cd logprep && uv sync --all-extras
 
 To see if the installation was successful run :code:`logprep --version`.
-
 
 GIT
 ===
@@ -39,8 +57,8 @@ contribute to them.
 
     git clone https://github.com/fkie-cad/Logprep.git
     cd Logprep
-    pip install .
-    pip install ".[dev]" # if you intend to contribute
+    uv sync --frozen
+    uv sync --frozen --extra dev # if you intend to contribute
 
 To see if the installation was successful run
 :code:`logprep --version`.
@@ -56,6 +74,14 @@ This option can be used to build a container image from a specific commit
     docker build -t logprep .
 
 To see if the installation was successful run :code:`docker run logprep --version`.
+
+**Note:**
+The provided Dockerfile uses **Python 3.11** by default via the :code:`PYTHON_VERSION` build argument.
+If you want to build Logprep with another supported Python version, override the value during build:
+
+..  code-block:: bash
+
+    docker build --build-arg PYTHON_VERSION=3.13 -t logprep .
 
 Helm
 ====

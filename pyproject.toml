@@ -57,40 +57,40 @@ keywords = [
   "logdata",
 ]
 dependencies = [
-  "aiohttp>=3.9.2",                # CVE-2024-23334
-  "attrs",
-  "certifi>=2023.7.22",            # CVE-2023-37920
-  "confluent-kafka>2",
-  "filelock",
-  "geoip2",
-  "jsonref",
-  "luqum",
+  "aiohttp>=3.13.3,<4", # [>=3.9.2]: CVE-2024-23334, [>=3.13.3]: CVE-2025-69223
+  "attrs<26",
+  "certifi>=2023.7.22, <2026", # CVE-2023-37920
+  "confluent-kafka>2,<3",
+  "filelock<4",
+  "geoip2>=5.2.0,<6", # Setuptools has been replaced with 5.2.0 (CVE)
+  "jsonref<2",
+  "luqum<2",
   "more-itertools==8.10.0",
-  "numpy>=1.26.0",
-  "opensearch-py",
-  "prometheus_client",
-  "protobuf>=3.20.2",
-  "pycryptodome",
-  "pyparsing",
-  "scikit-learn>=1.2.0",
-  "scipy>=1.9.2",
-  "joblib",
-  "pyyaml",
-  "requests>=2.31.0",
-  "ruamel.yaml",
-  "schedule",
-  "urllib3>=1.26.17",              # CVE-2023-43804
-  "uvicorn",
-  "deepdiff",
-  "msgspec",
-  "boto3",
-  "pydantic",
-  "click",
-  "pandas",
-  "tabulate",
-  "falcon>=3.1.3",
-  "uvloop",
-  "httptools",
+  "numpy>=1.26.0,<3",
+  "opensearch-py<4",
+  "prometheus_client<1",
+  "protobuf>=3.20.2,<7",
+  "pycryptodome<4",
+  "pyparsing<4",
+  "scikit-learn>=1.2.0,<2",
+  "scipy>=1.9.2,<2",
+  "joblib<2",
+  "pyyaml<7",
+  "requests>=2.31.0,<3",
+  "ruamel.yaml<1",
+  "schedule<2",
+  "urllib3>=2.6.3,<3", # [>=1.26.17]: CVE-2023-43804, [>=2.6.0]: CVE-2025-66418, CVE-2025-66471, [>=2.6.3]: CVE-2026-21441
+  "uvicorn<1",
+  "deepdiff<9",
+  "msgspec<1",
+  "boto3<2",
+  "pydantic<3",
+  "click<9",
+  "pandas<3",
+  "tabulate<1",
+  "falcon>=3.1.3,<5",
+  "uvloop<1",
+  "httptools<1",
 ]
 
 [project.optional-dependencies]
@@ -117,7 +117,7 @@ dev = [
 ]
 
 doc = [
-  "sphinx>=8.2.0",
+  "sphinx>=8.2.0,<9",
   "sphinx_rtd_theme",
   "sphinxcontrib.datatemplates",
   "sphinxcontrib-mermaid",

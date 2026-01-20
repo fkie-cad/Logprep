@@ -1,6 +1,5 @@
 # The following command must be executed after each restart on linux or opensearch exits with an error
 # sudo sysctl -w vm.max_map_count=262144
-
 services:
   opensearch:
     image: registry-1.docker.io/opensearchproject/opensearch:2
@@ -92,7 +91,6 @@ services:
     build:
       context: ../..
       args:
-        LOGPREP_VERSION: dev
         PYTHON_VERSION: ${PYTHON_VERSION:-3.11}
     environment:
       PROMETHEUS_MULTIPROC_DIR: /tmp/logprep/prometheus_multiproc

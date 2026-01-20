@@ -181,7 +181,7 @@ Then build the logprep image with the following command:
 .. code-block:: bash
     :caption: Build this image using the Dockerfile in the root of the repository
 
-    docker buildx build -t local/logprep:latest --build-arg PYTHON_VERSION=3.11 --build-arg LOGPREP_VERSION=dev .
+    docker buildx build -t local/logprep:latest --build-arg PYTHON_VERSION=3.11  .
 
 Then install the opensiem example using the local logprep image:
 
