@@ -28,7 +28,7 @@ This option is recommended if you just want to use the latest stable release of 
 
     git clone https://github.com/fkie-cad/Logprep.git@latest && cd logprep && uv sync --frozen
 
-Alternative: directly from PiPy via pip:
+Alternative: directly from PyPI via pip:
 
 .. code-block:: bash
 
