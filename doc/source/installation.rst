@@ -43,7 +43,7 @@ This option is recommended if you want to try out the latest developments.
 
 .. code-block:: bash
 
-    git clone https://github.com/fkie-cad/Logprep.git@latest && cd logprep && uv sync --all-extras
+    git clone https://github.com/fkie-cad/Logprep.git logprep && cd logprep && uv sync --all-extras
 
 To see if the installation was successful run :code:`logprep --version`.
 
