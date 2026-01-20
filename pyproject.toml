@@ -57,12 +57,12 @@ keywords = [
   "logdata",
 ]
 dependencies = [
-  "aiohttp>=3.13.3,<4",                # [>=3.9.2]: CVE-2024-23334, [>=3.13.3]: CVE-2025-69223
+  "aiohttp>=3.13.3,<4", # [>=3.9.2]: CVE-2024-23334, [>=3.13.3]: CVE-2025-69223
   "attrs<26",
-  "certifi>=2023.7.22, <2026",            # CVE-2023-37920
+  "certifi>=2023.7.22, <2026", # CVE-2023-37920
   "confluent-kafka>2,<3",
   "filelock<4",
-  "geoip2<6",
+  "geoip2>=5.2.0,<6", # Setuptools has been replaced with 5.2.0 (CVE)
   "jsonref<2",
   "luqum<2",
   "more-itertools==8.10.0",

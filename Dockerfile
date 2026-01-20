@@ -42,10 +42,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-editable --frozen && \
     logprep --version
 
-# geoip2 4.8.0 lists a vulnerable setuptools version as a dependency. setuptools is unneeded at runtime, so it is uninstalled.
-# More recent (currently unreleased) versions of geoip2 removed setuptools from dependencies.
-RUN uv pip uninstall setuptools
-
 FROM registry-1.docker.io/library/python:${PYTHON_VERSION}-slim AS prod
 
 # remove setuptools as installed by the python image
