@@ -75,7 +75,6 @@ jobs:
           context: .
           push: true
           build-args: |
-            LOGPREP_VERSION=${{ inputs.build-version }}
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: ${{ steps.image-tag.outputs.tags }}
           platforms: "linux/arm64,linux/amd64"
