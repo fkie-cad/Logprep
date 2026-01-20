@@ -5,7 +5,7 @@ Installation
 UV
 ==
 
-Python should be present on the system. Currently, Python 3.11 – 3.14 are supported.
+Python should be present on the system. Currently, **Python 3.11 – 3.14** are supported.
 
 Logprep can be installed with **uv**, a fast drop-in replacement for pip.
 Using uv is optional – Logprep can still be installed with regular pip as well.
