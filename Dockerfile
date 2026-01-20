@@ -35,7 +35,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project --no-editable --frozen
 
 # Then copy the rest of the project
-# COPY logprep uv.lock .... /logprep
 COPY . /logprep/
 
 # Use uv.lock + pyproject.toml to install logprep and its runtime deps, non-editable \
