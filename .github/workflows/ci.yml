@@ -27,7 +27,9 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install pandoc
       - name: Install uv and sync deps
-        run: uv sync --frozen --extra doc echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+        run: |
+          uv sync --frozen --extra doc
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
       - name: Build docs
         run: |
           cd doc
