@@ -17,29 +17,3 @@ jobs:
           GIT_PASSWORD: ${{ secrets.GIT_PASSWORD }}
           GIT_PUSH_ARGS: '--force --quiet --no-progress'
           DEBUG: "false"
-  try_build-wheel-and-tarball-without-rust-setup:
-    runs-on: ubuntu-latest
-    name: Build Logprep
-    steps:
-      - uses: actions/checkout@v4
-      - name: Initialize Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: "3.11"
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-        with:
-          platforms: all
-      - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel
-      - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse --archs x86_64
-      - name: Build binary wheel and a source tarball
-        run: pipx run build --sdist
-      - name: copy artifacts to dist folder
-        run: cp ./wheelhouse/* ./dist/
-      - name: Upload Artifact for next job
-        uses: actions/upload-artifact@master
-        with:
-          name: logprep-build
-          path: dist

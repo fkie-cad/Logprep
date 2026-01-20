@@ -17,6 +17,7 @@ jobs:
       matrix:
         python-version: ["3.11"]
     steps:
+      - uses: actions/checkout@v6
       - name: Install uv and set the Python version
         uses: astral-sh/setup-uv@v7
         with:
