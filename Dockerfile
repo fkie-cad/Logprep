@@ -18,9 +18,12 @@ RUN apt-get update && \
     apt-get install -y git && \
     rm -rf /var/lib/apt/lists/*
 
+# Install the Rust toolchain
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+ENV PATH="/opt/venv/bin:/root/.cargo/bin:${PATH}"
+
 # Use a python virtual environment
 RUN python -m venv --upgrade-deps /opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
 
 # Install uv into the venv
 RUN pip install --disable-pip-version-check --no-cache-dir uv
