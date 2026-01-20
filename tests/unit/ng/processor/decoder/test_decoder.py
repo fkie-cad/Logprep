@@ -508,11 +508,11 @@ class TestDecoder(BaseProcessorTestCase):
                 {
                     "message": "I0528 19:15:22.737538   47512 logtest.go:52] Pod kube-system/kube-dns status was updated to ready",
                     "parsed": {
-                        "level": "INFO",
+                        "level": "I",
                         "timestamp": "0528 19:15:22.737538",
-                        "thread_id": "47512",
-                        "file_name": "logtest.go",
-                        "line_no": "52",
+                        "threadid": "47512",
+                        "file": "logtest.go",
+                        "line": "52",
                         "msg": "Pod kube-system/kube-dns status was updated to ready",
                     },
                 },

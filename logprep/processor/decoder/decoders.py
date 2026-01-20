@@ -155,6 +155,17 @@ REGEX_SYSLOG_RFC5424 = (
     ),
 )
 
+# see: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
+REGEX_KLOG = (
+    re.compile(
+        r"(?P<level>[A-Z])"
+        r"(?P<timestamp>\d{2}\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{6})\s+"
+        r"(?P<threadid>\d+)\s+"
+        r"(?P<file>[^:]+):"
+        r"(?P<line>\d+)\]\s+"
+        r"(?P<msg>.*)"
+    ),
+)
 
 REGEX_LOGFMT_TOKEN = re.compile(r'([a-zA-Z0-9]+)=("[^"]+"|\S+)')
 
@@ -225,13 +236,6 @@ def decolorize(log_line: str) -> str:
     return ANSI_ESCAPE.sub("", log_line)
 
 
-def parse_klog(log_line: str) -> dict[str, str]:
-    """Parses klog loglines
-    see: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md
-    """
-    return {}
-
-
 DECODERS: Dict[str, DecoderFunc] = {
     "json": parse_json,
     "base64": parse_base64,
@@ -244,5 +248,5 @@ DECODERS: Dict[str, DecoderFunc] = {
     "cri": parse_cri,
     "docker": parse_docker,
     "decolorize": decolorize,
-    "klog": parse_klog,
+    "klog": partial(_parse, regexes=REGEX_KLOG),
 }
