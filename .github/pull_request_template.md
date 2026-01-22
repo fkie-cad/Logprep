@@ -28,3 +28,4 @@
 - [ ] The code is readable/maintainable and follows the [contribution guidelines](https://github.com/fkie-cad/Logprep/blob/main/CONTRIBUTING.md)
 - [ ] [Documentation](#documentation) is up-to-date
 - [ ] Tests (unit & acceptance) are meaningful and not over-mocked
+- [ ] If dependencies were added, removed, or updated, the `uv.lock` file is present and correctly synchronized with the changes
