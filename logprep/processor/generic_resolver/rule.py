@@ -121,6 +121,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
+from attr.validators import instance_of
 from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
@@ -145,7 +146,19 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
-        resolve_list: dict = field(validator=(validators.instance_of(dict)), factory=dict)
+        resolve_list: dict | list[tuple[str, str]] = field(
+            validator=validators.or_(
+                validators.instance_of(dict),
+                validators.deep_iterable(
+                    member_validator=validators.deep_iterable(
+                        member_validator=validators.instance_of(str),
+                        iterable_validator=validators.instance_of(tuple),
+                    ),
+                    iterable_validator=validators.instance_of(list),
+                ),
+            ),
+            factory=dict,
+        )
         """lookup mapping in form of
         :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`"""
         resolve_from_file: dict = field(
@@ -178,7 +191,7 @@ class GenericResolverRule(FieldManagerRule):
            authenticity and integrity of the loaded values.
 
         """
-        ignore_case: Optional[str] = field(validator=validators.instance_of(bool), default=False)
+        ignore_case: bool = field(validator=validators.instance_of(bool), default=False)
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
         additions: dict = field(default={}, eq=False, init=False)
