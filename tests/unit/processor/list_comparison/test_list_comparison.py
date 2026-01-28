@@ -412,12 +412,12 @@ Heinz
         http_list_content,
         expected_result,
     ):
+        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         list_name = "bad_users.list"
-        final_url = f"http://localhost/tests/testdata/{list_name}?ref=bla"
 
         responses.add(
             responses.GET,
-            final_url,
+            url=Template(url_template).substitute({"LOGPREP_LIST": list_name}),
             body=http_list_content,
             status=200,
         )
@@ -433,7 +433,7 @@ Heinz
             "description": "",
         }
 
-        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+        
         config = {
             "type": "list_comparison",
             "rules": [],
