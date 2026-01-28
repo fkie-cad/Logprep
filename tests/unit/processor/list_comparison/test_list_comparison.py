@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 import json
 from pathlib import Path
+from string import Template
 from unittest import mock
 
 import pytest
@@ -414,10 +415,11 @@ Heinz
     ):
         url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         list_name = "bad_users.list"
+        final_url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
 
         responses.add(
             responses.GET,
-            url=Template(url_template).substitute({"LOGPREP_LIST": list_name}),
+            url=final_url,
             body=http_list_content,
             status=200,
         )
@@ -433,7 +435,6 @@ Heinz
             "description": "",
         }
 
-        
         config = {
             "type": "list_comparison",
             "rules": [],
