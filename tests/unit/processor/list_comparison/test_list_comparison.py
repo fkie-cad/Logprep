@@ -1,10 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import pytest
-
 import json
 from pathlib import Path
 from unittest import mock
+
+import pytest
 import responses
 
 from logprep.factory import Factory
@@ -398,3 +398,61 @@ Heinz
         processor.setup()
         processor.process(document)
         assert document == expected, testcase
+
+    @pytest.mark.parametrize(
+        "http_path, http_list_content, expected_result",
+        [
+            (
+                "http://localhost/tests/testdata/bad_users.list?ref=bla",
+                "",
+                {"http://localhost/tests/testdata/bad_users.list?ref=bla": set()},
+            ),
+            (
+                "http://localhost/tests/testdata/bad_users.list?ref=bla",
+                "\n",
+                {"http://localhost/tests/testdata/bad_users.list?ref=bla": {""}},
+            ),
+        ],
+    )
+    @responses.activate
+    def test_list_comparison_empty_http_list_or_empty_line_updates_compare_sets(
+        self,
+        http_path,
+        http_list_content,
+        expected_result,
+    ):
+        responses.add(
+            responses.GET,
+            http_path,
+            body=http_list_content,
+            status=200,
+        )
+
+        document = {"user": "Foo"}
+        rule_dict = {
+            "filter": "system",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [http_path],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": http_path,
+        }
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        processor.process(document)
+
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == http_path
+
+        assert http_path in rule.compare_sets
+        assert rule.compare_sets[http_path] == expected_result[http_path]
