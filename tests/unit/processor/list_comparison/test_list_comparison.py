@@ -400,30 +400,24 @@ Heinz
         assert document == expected, testcase
 
     @pytest.mark.parametrize(
-        "http_path, http_list_content, expected_result",
+        "http_list_content, expected_result",
         [
-            (
-                "http://localhost/tests/testdata/bad_users.list?ref=bla",
-                "",
-                {"http://localhost/tests/testdata/bad_users.list?ref=bla": set()},
-            ),
-            (
-                "http://localhost/tests/testdata/bad_users.list?ref=bla",
-                "\n",
-                {"http://localhost/tests/testdata/bad_users.list?ref=bla": {""}},
-            ),
+            ("", set()),
+            ("\n", {""}),
         ],
     )
     @responses.activate
     def test_list_comparison_empty_http_list_or_empty_line_updates_compare_sets(
         self,
-        http_path,
         http_list_content,
         expected_result,
     ):
+        list_name = "bad_users.list"
+        final_url = f"http://localhost/tests/testdata/{list_name}?ref=bla"
+
         responses.add(
             responses.GET,
-            http_path,
+            final_url,
             body=http_list_content,
             status=200,
         )
@@ -434,15 +428,19 @@ Heinz
             "list_comparison": {
                 "source_fields": ["user"],
                 "target_field": "user_results",
-                "list_file_paths": [http_path],
+                "list_file_paths": [list_name],
             },
             "description": "",
         }
+
+        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         config = {
             "type": "list_comparison",
             "rules": [],
-            "list_search_base_path": http_path,
+            "list_search_base_path": url_template,
         }
+
+        HttpGetter._shared.clear()
 
         processor = Factory.create({"custom_lister": config})
         rule = processor.rule_class.create_from_dict(rule_dict)
@@ -452,7 +450,5 @@ Heinz
         processor.process(document)
 
         assert len(responses.calls) == 1
-        assert responses.calls[0].request.url == http_path
-
-        assert http_path in rule.compare_sets
-        assert rule.compare_sets[http_path] == expected_result[http_path]
+        assert responses.calls[0].request.url == final_url
+        assert rule.compare_sets[list_name] == expected_result
