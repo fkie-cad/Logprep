@@ -10,7 +10,10 @@ import pytest
 import responses
 
 from logprep.factory_error import InvalidConfigurationError
-from logprep.processor.generic_resolver.rule import GenericResolverRule
+from logprep.processor.generic_resolver.rule import (
+    GenericResolverRule,
+    convert_list_dict_to_dict,
+)
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter
 
@@ -30,6 +33,28 @@ def fixture_rule_definition():
         },
         "description": "insert a description text",
     }
+
+
+@pytest.mark.parametrize(
+    "input, should_raise",
+    [
+        ({"pattern": "result"}, False),
+        ({"pattern": {"result_one": "result_two"}}, False),
+        ({"pattern": "result_one", "pattern2": "result_two"}, False),
+        ([{"pattern": "result_one"}, {"pattern2": "result_two"}], False),
+        (
+            [{"pattern": "result_one", "invalid_pattern2": "invalid"}, {"pattern2": "result_two"}],
+            True,
+        ),
+        (8, True),
+    ],
+)
+def test_convert_list_dict_to_dict_converter(input, should_raise: bool):
+    if should_raise:
+        with pytest.raises(InvalidConfigurationError):
+            convert_list_dict_to_dict(input)
+    else:
+        assert convert_list_dict_to_dict(input)
 
 
 class TestGenericResolverRule:
