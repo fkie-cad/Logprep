@@ -119,24 +119,29 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, cast
 
 from attr.validators import instance_of
 from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory, RefreshableGetter
 
 
-def convert_list_dict_to_dict(x: dict[str, str] | list[dict[str, str]]) -> dict[str, str]:
+def convert_list_dict_to_dict(x: dict[str, dict] | list[dict[str, dict]]) -> dict[str, dict]:
     if isinstance(x, dict):
         return x
+
+    if not isinstance(x, list):
+        raise InvalidConfigurationError("expected list")
 
     res = {}
     for item in x:
         keys = list(item.keys())
-        assert len(keys) == 1
+        if len(keys) != 1:
+            raise InvalidConfigurationError("dict has not exactly one key")
         res[keys[0]] = item[keys[0]]
 
     return res
@@ -159,18 +164,13 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
-        resolve_list: dict[str, str] = field(
-            validator=validators.or_(
-                validators.instance_of(dict),
-                validators.deep_iterable(
-                    member_validator=validators.deep_iterable(
-                        member_validator=validators.instance_of(str),
-                        iterable_validator=validators.instance_of(dict),
-                    ),
-                    iterable_validator=validators.instance_of(list),
-                ),
+        resolve_list: dict = field(
+            validator=validators.deep_mapping(
+                key_validator=validators.instance_of(str),
+                mapping_validator=validators.instance_of(dict),
             ),
             converter=convert_list_dict_to_dict,
+            factory=dict,
         )
         """lookup mapping in form of
         :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`"""
@@ -179,7 +179,7 @@ class GenericResolverRule(FieldManagerRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.in_(["path", "pattern"]),
-                    value_validator=validators.instance_of(Union[str, int]),
+                    value_validator=validators.instance_of((str, int)),
                 ),
             ],
             factory=dict,
@@ -211,7 +211,7 @@ class GenericResolverRule(FieldManagerRule):
         """Contains a dictionary of field names and values that should be added."""
 
         @property
-        def _file_path(self):
+        def _file_path(self) -> None | str:
             """Returns the file path"""
             return self.resolve_from_file.get("path")
 
@@ -232,6 +232,7 @@ class GenericResolverRule(FieldManagerRule):
 
         def _get_additions(self) -> dict:
             try:
+                assert isinstance(self._file_path, str)
                 additions = GetterFactory.from_string(self._file_path).get_dict()
             except ValueError as error:
                 raise InvalidConfigurationError(
@@ -246,7 +247,9 @@ class GenericResolverRule(FieldManagerRule):
                 )
 
         def _raise_if_file_does_not_exist(self):
-            if not (self._file_path.startswith("http") or Path(self._file_path).is_file()):
+            if not self._file_path or not (
+                self._file_path.startswith("http") or Path(self._file_path).is_file()
+            ):
                 raise InvalidConfigurationError(
                     f"Additions file '{self._file_path}' not found! (Rule ID: '{self.id}')",
                 )
@@ -254,16 +257,19 @@ class GenericResolverRule(FieldManagerRule):
     @property
     def field_mapping(self) -> dict:
         """Returns the field mapping"""
+        assert isinstance(self._config, self.Config)
         return self._config.field_mapping
 
     @property
     def resolve_list(self) -> dict:
         """Returns the resolve list"""
+        assert isinstance(self._config, self.Config)
         return self._config.resolve_list
 
     @cached_property
     def compiled_resolve_list(self) -> List[Tuple[re.Pattern, str]]:
         """Returns the resolve list with tuple pairs of compiled patterns and values"""
+        assert isinstance(self._config, self.Config)
         return [
             (re.compile(pattern, re.I if self.ignore_case else 0), val)
             for pattern, val in self._config.resolve_list.items()
@@ -272,19 +278,23 @@ class GenericResolverRule(FieldManagerRule):
     @property
     def resolve_from_file(self) -> dict:
         """Returns the resolve file"""
+        assert isinstance(self._config, self.Config)
         return self._config.resolve_from_file
 
     @property
     def ignore_case(self) -> bool:
         """Returns if the matching should be case-sensitive or not"""
+        assert isinstance(self._config, self.Config)
         return self._config.ignore_case
 
     @cached_property
     def pattern(self) -> re.Pattern:
         """Pattern used to resolve from file"""
+        assert isinstance(self._config, self.Config)
         return re.compile(f'^{self.resolve_from_file["pattern"]}$', re.I if self.ignore_case else 0)
 
     @property
     def additions(self) -> dict:
         """Returns additions from the resolve file"""
+        assert isinstance(self._config, self.Config)
         return self._config.additions

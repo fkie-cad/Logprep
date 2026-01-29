@@ -105,7 +105,7 @@ class TestGenericResolverRule:
                     "filter": "message",
                     "generic_resolver": {
                         "field_mapping": {"to_resolve": "resolved"},
-                        "resolve_list": [("pattern", "other_result")],
+                        "resolve_list": {"pattern": "other_result"},
                         "resolve_from_file": {
                             "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
                             "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
