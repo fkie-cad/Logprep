@@ -119,32 +119,13 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import Any, TypeVar
 
 from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.util.converters import convert_ordered_mapping
 from logprep.util.getter import GetterFactory, RefreshableGetter
-
-INPUT_TYPE = TypeVar("INPUT_TYPE")
-
-
-def merge_dicts(x: dict[str, INPUT_TYPE] | list[dict[str, INPUT_TYPE]]) -> dict[str, INPUT_TYPE]:
-    if isinstance(x, dict):
-        return x
-
-    if not isinstance(x, list):
-        raise InvalidConfigurationError("expected list")
-
-    res = {}
-    for item in x:
-        keys = list(item.keys())
-        if len(keys) != 1:
-            raise InvalidConfigurationError("dict has not exactly one key")
-        res[keys[0]] = item[keys[0]]
-
-    return res
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -164,12 +145,12 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
-        resolve_list: dict[str, Any] = field(
+        resolve_list: dict = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
                 mapping_validator=validators.instance_of(dict),
             ),
-            converter=merge_dicts,
+            converter=convert_ordered_mapping,
             factory=dict,
         )
         """lookup mapping in form of
