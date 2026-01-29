@@ -12,7 +12,7 @@ import responses
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.generic_resolver.rule import (
     GenericResolverRule,
-    convert_list_dict_to_dict,
+    merge_dicts,
 )
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter
@@ -49,12 +49,12 @@ def fixture_rule_definition():
         (8, True),
     ],
 )
-def test_convert_list_dict_to_dict_converter(input, should_raise: bool):
+def test_merge_dicts_converter(input, should_raise: bool):
     if should_raise:
         with pytest.raises(InvalidConfigurationError):
-            convert_list_dict_to_dict(input)
+            merge_dicts(input)
     else:
-        assert convert_list_dict_to_dict(input)
+        assert merge_dicts(input)
 
 
 class TestGenericResolverRule:

@@ -119,18 +119,18 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import List, Tuple, Union, cast
+from typing import Any, TypeVar
 
-from attr.validators import instance_of
 from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
-from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory, RefreshableGetter
 
+INPUT_TYPE = TypeVar("INPUT_TYPE")
 
-def convert_list_dict_to_dict(x: dict[str, dict] | list[dict[str, dict]]) -> dict[str, dict]:
+
+def merge_dicts(x: dict[str, INPUT_TYPE] | list[dict[str, INPUT_TYPE]]) -> dict[str, INPUT_TYPE]:
     if isinstance(x, dict):
         return x
 
@@ -164,12 +164,12 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
-        resolve_list: dict = field(
+        resolve_list: dict[str, Any] = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
                 mapping_validator=validators.instance_of(dict),
             ),
-            converter=convert_list_dict_to_dict,
+            converter=merge_dicts,
             factory=dict,
         )
         """lookup mapping in form of
@@ -267,7 +267,7 @@ class GenericResolverRule(FieldManagerRule):
         return self._config.resolve_list
 
     @cached_property
-    def compiled_resolve_list(self) -> List[Tuple[re.Pattern, str]]:
+    def compiled_resolve_list(self) -> list[tuple[re.Pattern, str]]:
         """Returns the resolve list with tuple pairs of compiled patterns and values"""
         assert isinstance(self._config, self.Config)
         return [
