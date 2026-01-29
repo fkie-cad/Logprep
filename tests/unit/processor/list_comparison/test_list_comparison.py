@@ -426,7 +426,7 @@ Heinz
 
         document = {"user": "Foo"}
         rule_dict = {
-            "filter": "system",
+            "filter": "user",
             "list_comparison": {
                 "source_fields": ["user"],
                 "target_field": "user_results",
@@ -450,8 +450,8 @@ Heinz
         processor.setup()
         processor.process(document)
 
-        unmodified_document = {"user": "Foo"}
-        assert document == unmodified_document
+        expected_document = {"user": "Foo", "user_results": {"not_in_list": ["bad_users.list"]}}
+        assert document == expected_document
 
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
