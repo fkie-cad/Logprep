@@ -9,6 +9,16 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  check-uv-lockfile:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv and set the Python version
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Check lockfile is consistent with pyproject.toml
+        run: uv lock --check
   test:
     uses: ./.github/workflows/testing.yml
   build-docs:
