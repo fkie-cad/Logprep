@@ -415,11 +415,11 @@ Heinz
     ):
         url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         list_name = "bad_users.list"
-        final_url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+        url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
 
         responses.add(
             responses.GET,
-            url=final_url,
+            url=url,
             body=http_list_content,
             status=200,
         )
@@ -450,6 +450,9 @@ Heinz
         processor.setup()
         processor.process(document)
 
+        unmodified_document = {"user": "Foo"}
+        assert document == unmodified_document
+
         assert len(responses.calls) == 1
-        assert responses.calls[0].request.url == final_url
+        assert responses.calls[0].request.url == url
         assert rule.compare_sets[list_name] == expected_result
