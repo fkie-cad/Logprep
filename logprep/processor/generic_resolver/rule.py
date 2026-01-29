@@ -119,7 +119,7 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
 from attr.validators import instance_of
 from attrs import define, field, validators
@@ -127,6 +127,19 @@ from attrs import define, field, validators
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory, RefreshableGetter
+
+
+def convert_list_dict_to_dict(x: dict[str, str] | list[dict[str, str]]) -> dict[str, str]:
+    if isinstance(x, dict):
+        return x
+
+    res = {}
+    for item in x:
+        keys = list(item.keys())
+        assert len(keys) == 1
+        res[keys[0]] = item[keys[0]]
+
+    return res
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -146,18 +159,18 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
-        resolve_list: dict | list[tuple[str, str]] = field(
+        resolve_list: dict[str, str] = field(
             validator=validators.or_(
                 validators.instance_of(dict),
                 validators.deep_iterable(
                     member_validator=validators.deep_iterable(
                         member_validator=validators.instance_of(str),
-                        iterable_validator=validators.instance_of(tuple),
+                        iterable_validator=validators.instance_of(dict),
                     ),
                     iterable_validator=validators.instance_of(list),
                 ),
             ),
-            factory=dict,
+            converter=convert_list_dict_to_dict,
         )
         """lookup mapping in form of
         :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`"""
