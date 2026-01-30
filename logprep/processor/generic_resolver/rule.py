@@ -129,6 +129,7 @@ from logprep.util.converters import (
     convert_ordered_mapping_or_skip,
 )
 from logprep.util.getter import GetterFactory, RefreshableGetter
+from logprep.util.helper import FieldValue
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -148,7 +149,7 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
-        resolve_list: dict = field(
+        resolve_list: dict[str, FieldValue] = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
                 mapping_validator=validators.instance_of(dict),
@@ -253,7 +254,7 @@ class GenericResolverRule(FieldManagerRule):
         return self.config.resolve_list
 
     @cached_property
-    def compiled_resolve_list(self) -> list[tuple[re.Pattern, str]]:
+    def compiled_resolve_list(self) -> list[tuple[re.Pattern, FieldValue]]:
         """Returns the resolve list with tuple pairs of compiled patterns and values"""
         return [
             (re.compile(pattern, re.I if self.ignore_case else 0), val)
