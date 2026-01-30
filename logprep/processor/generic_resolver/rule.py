@@ -28,6 +28,20 @@ the value in :code:`to_resolve`.
       resolve_list:
         .*Hello.*: Greeting
 
+Alternatively for yaml compliance it is possible to declare the resolve_list like so, to keep
+ordering when using the config from different programs. Both styles will be supported in the
+future, this one is recommended for clarity and yaml compliance.
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        - .*Hello.*: Greeting
+
 Alternatively, a YML file with a resolve list and a regex pattern can be used to resolve values.
 For this, a field :code:`resolve_from_file` with the subfields :code:`path` and :code:`pattern`
 must be added.
