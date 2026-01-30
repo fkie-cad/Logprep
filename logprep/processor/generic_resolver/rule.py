@@ -42,6 +42,8 @@ future, this one is recommended for clarity and yaml compliance.
         to_resolve: resolved
       resolve_list:
         - .*Hello.*: Greeting
+        - .*error.*: Error
+        - never_match: Panic
 
 Alternatively, a YML file with a resolve list and a regex pattern can be used to resolve values.
 For this, a field :code:`resolve_from_file` with the subfields :code:`path` and :code:`pattern`
@@ -132,16 +134,16 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 """
 
 import re
+import typing
 from functools import cached_property, partial
 from pathlib import Path
-from typing import cast
 
 from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import (
-    convert_ordered_mapping_or_skip,
+    convert_ordered_mapping_or_keep_mapping,
 )
 from logprep.util.getter import GetterFactory, RefreshableGetter
 from logprep.util.helper import FieldValue
@@ -169,7 +171,7 @@ class GenericResolverRule(FieldManagerRule):
                 key_validator=validators.instance_of(str),
                 mapping_validator=validators.instance_of(dict),
             ),
-            converter=convert_ordered_mapping_or_skip,
+            converter=convert_ordered_mapping_or_keep_mapping,
             factory=dict,
         )
         """lookup mapping in form of
@@ -254,7 +256,7 @@ class GenericResolverRule(FieldManagerRule):
     @property
     def config(self) -> Config:
         """Returns the typed GenericResolverRule.Config"""
-        return cast(GenericResolverRule.Config, self._config)
+        return typing.cast(GenericResolverRule.Config, self._config)
 
     @property
     def field_mapping(self) -> dict:
@@ -282,13 +284,11 @@ class GenericResolverRule(FieldManagerRule):
     @property
     def ignore_case(self) -> bool:
         """Returns if the matching should be case-sensitive or not"""
-        assert isinstance(self._config, self.Config)
-        return self._config.ignore_case
+        return self.config.ignore_case
 
     @cached_property
     def pattern(self) -> re.Pattern:
         """Pattern used to resolve from file"""
-        assert isinstance(self._config, self.Config)
         return re.compile(f'^{self.resolve_from_file["pattern"]}$', re.I if self.ignore_case else 0)
 
     @property

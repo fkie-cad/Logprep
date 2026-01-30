@@ -6,16 +6,16 @@ KeyTypeT = TypeVar("KeyTypeT")
 ValueTypeT = TypeVar("ValueTypeT")
 
 
-def convert_ordered_mapping_or_skip(
-    x: dict[KeyTypeT, ValueTypeT] | list[dict[KeyTypeT, ValueTypeT]],
+def convert_ordered_mapping_or_keep_mapping(
+    dict_or_sequence: dict[KeyTypeT, ValueTypeT] | list[dict[KeyTypeT, ValueTypeT]],
 ) -> dict[KeyTypeT, ValueTypeT]:
-    if isinstance(x, dict):
-        return x
+    if isinstance(dict_or_sequence, dict):
+        return dict_or_sequence
 
-    if not isinstance(x, list):
+    if not isinstance(dict_or_sequence, list):
         raise InvalidConfigurationError("expected list")
 
-    return convert_ordered_mapping(x)
+    return convert_ordered_mapping(dict_or_sequence)
 
 
 def convert_ordered_mapping(dicts: list[dict[KeyTypeT, ValueTypeT]]) -> dict[KeyTypeT, ValueTypeT]:
