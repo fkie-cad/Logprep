@@ -117,7 +117,7 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 """
 
 import re
-from functools import cached_property
+from functools import cached_property, partial
 from pathlib import Path
 from typing import cast
 
@@ -204,13 +204,13 @@ class GenericResolverRule(FieldManagerRule):
             if self._file_path:
                 getter = GetterFactory.from_string(self._file_path)
                 if isinstance(getter, RefreshableGetter):
-                    getter.add_callback(self._add_from_path)
-                self._add_from_path()
+                    getter.add_callback(partial(self._add_from_path, self._file_path))
+                self._add_from_path(self._file_path)
 
-        def _add_from_path(self):
+        def _add_from_path(self, path: str):
             self._raise_if_pattern_is_invalid()
-            self._raise_if_file_does_not_exist()
-            additions = self._get_additions_from_path(cast(str, self._file_path))
+            self._raise_if_file_does_not_exist(path)
+            additions = self._get_additions_from_path(path)
             if self.ignore_case:
                 additions = {key.upper(): value for key, value in additions.items()}
             self.additions = additions
@@ -230,12 +230,10 @@ class GenericResolverRule(FieldManagerRule):
                     f"Mapping group is missing in mapping file pattern! (Rule ID: '{self.id}')"
                 )
 
-        def _raise_if_file_does_not_exist(self):
-            if not self._file_path or not (
-                self._file_path.startswith("http") or Path(self._file_path).is_file()
-            ):
+        def _raise_if_file_does_not_exist(self, path: str):
+            if not (path.startswith("http") or Path(path).is_file()):
                 raise InvalidConfigurationError(
-                    f"Additions file '{self._file_path}' not found! (Rule ID: '{self.id}')",
+                    f"Additions file '{path}' not found! (Rule ID: '{self.id}')",
                 )
 
     @property
