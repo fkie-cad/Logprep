@@ -31,6 +31,7 @@ the value in :code:`to_resolve`.
 Alternatively for yaml compliance it is possible to declare the resolve_list like so, to keep
 ordering when using the config from different programs. Both styles will be supported in the
 future, this one is recommended for clarity and yaml compliance.
+
 ..  code-block:: yaml
     :linenos:
     :caption: Example
