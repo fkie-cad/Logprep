@@ -1,11 +1,15 @@
+"""converters to use with `attrs` fields"""
+
 import pytest
 
 from logprep.factory_error import InvalidConfigurationError
-from logprep.util.converters import convert_ordered_mapping
+from logprep.util.converters import (
+    convert_ordered_mapping_or_skip,
+)
 
 
 @pytest.mark.parametrize(
-    "input, should_raise",
+    "case, should_raise",
     [
         ({"pattern": "result"}, False),
         ({"pattern": {"result_one": "result_two"}}, False),
@@ -19,9 +23,9 @@ from logprep.util.converters import convert_ordered_mapping
         ([{"pattern": "first"}, {"pattern": "overwrite"}], True),
     ],
 )
-def test_merge_dicts_converter(input, should_raise: bool):
+def test_merge_dicts_converter(case, should_raise: bool):
     if should_raise:
         with pytest.raises(InvalidConfigurationError):
-            convert_ordered_mapping(input)
+            convert_ordered_mapping_or_skip(case)
     else:
-        assert convert_ordered_mapping(input)
+        assert convert_ordered_mapping_or_skip(case)

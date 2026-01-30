@@ -119,12 +119,15 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
 import re
 from functools import cached_property
 from pathlib import Path
+from typing import cast
 
 from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.converters import convert_ordered_mapping
+from logprep.util.converters import (
+    convert_ordered_mapping_or_skip,
+)
 from logprep.util.getter import GetterFactory, RefreshableGetter
 
 
@@ -150,7 +153,7 @@ class GenericResolverRule(FieldManagerRule):
                 key_validator=validators.instance_of(str),
                 mapping_validator=validators.instance_of(dict),
             ),
-            converter=convert_ordered_mapping,
+            converter=convert_ordered_mapping_or_skip,
             factory=dict,
         )
         """lookup mapping in form of
@@ -206,18 +209,17 @@ class GenericResolverRule(FieldManagerRule):
         def _add_from_path(self):
             self._raise_if_pattern_is_invalid()
             self._raise_if_file_does_not_exist()
-            additions = self._get_additions()
+            additions = self._get_additions_from_path(cast(str, self._file_path))
             if self.ignore_case:
                 additions = {key.upper(): value for key, value in additions.items()}
             self.additions = additions
 
-        def _get_additions(self) -> dict:
+        def _get_additions_from_path(self, path: str) -> dict:
             try:
-                assert isinstance(self._file_path, str)
-                additions = GetterFactory.from_string(self._file_path).get_dict()
+                additions = GetterFactory.from_string(path).get_dict()
             except ValueError as error:
                 raise InvalidConfigurationError(
-                    f"Error loading additions from '{self._file_path}': {error}"
+                    f"Error loading additions from '{path}': {error}"
                 ) from error
             return additions
 
@@ -236,31 +238,32 @@ class GenericResolverRule(FieldManagerRule):
                 )
 
     @property
+    def config(self) -> Config:
+        """Returns the typed GenericResolverRule.Config"""
+        return cast(GenericResolverRule.Config, self._config)
+
+    @property
     def field_mapping(self) -> dict:
         """Returns the field mapping"""
-        assert isinstance(self._config, self.Config)
-        return self._config.field_mapping
+        return self.config.field_mapping
 
     @property
     def resolve_list(self) -> dict:
         """Returns the resolve list"""
-        assert isinstance(self._config, self.Config)
-        return self._config.resolve_list
+        return self.config.resolve_list
 
     @cached_property
     def compiled_resolve_list(self) -> list[tuple[re.Pattern, str]]:
         """Returns the resolve list with tuple pairs of compiled patterns and values"""
-        assert isinstance(self._config, self.Config)
         return [
             (re.compile(pattern, re.I if self.ignore_case else 0), val)
-            for pattern, val in self._config.resolve_list.items()
+            for pattern, val in self.config.resolve_list.items()
         ]
 
     @property
     def resolve_from_file(self) -> dict:
         """Returns the resolve file"""
-        assert isinstance(self._config, self.Config)
-        return self._config.resolve_from_file
+        return self.config.resolve_from_file
 
     @property
     def ignore_case(self) -> bool:
@@ -277,5 +280,4 @@ class GenericResolverRule(FieldManagerRule):
     @property
     def additions(self) -> dict:
         """Returns additions from the resolve file"""
-        assert isinstance(self._config, self.Config)
-        return self._config.additions
+        return self.config.additions
