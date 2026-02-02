@@ -28,9 +28,7 @@ the value in :code:`to_resolve`.
       resolve_list:
         .*Hello.*: Greeting
 
-Alternatively for yaml compliance it is possible to declare the resolve_list like so, to keep
-ordering when using the config from different programs. Both styles will be supported in the
-future, this one is recommended for clarity and yaml compliance.
+For YAML compliance, it is possible to declare the resolve list as follows to maintain ordering when using the configuration file with different programs. Both styles will be supported in future; however, this one is recommended for clarity and YAML compliance.
 
 ..  code-block:: yaml
     :linenos:
