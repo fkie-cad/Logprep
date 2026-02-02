@@ -2,7 +2,6 @@
 
 import pytest
 
-from logprep.factory_error import InvalidConfigurationError
 from logprep.util.converters import (
     convert_ordered_mapping_or_keep_mapping,
 )
@@ -38,7 +37,7 @@ from logprep.util.converters import (
 )
 def test_merge_dicts_converter(case, should_raise: bool):
     if should_raise:
-        with pytest.raises(InvalidConfigurationError):
+        with pytest.raises(ValueError):
             convert_ordered_mapping_or_keep_mapping(case)
     else:
         assert convert_ordered_mapping_or_keep_mapping(case)
