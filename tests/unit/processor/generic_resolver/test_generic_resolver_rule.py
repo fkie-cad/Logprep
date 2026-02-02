@@ -10,7 +10,9 @@ import pytest
 import responses
 
 from logprep.factory_error import InvalidConfigurationError
-from logprep.processor.generic_resolver.rule import GenericResolverRule
+from logprep.processor.generic_resolver.rule import (
+    GenericResolverRule,
+)
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter
 
@@ -34,10 +36,9 @@ def fixture_rule_definition():
 
 class TestGenericResolverRule:
     @pytest.mark.parametrize(
-        "testcase, other_rule_definition, is_equal",
+        ["other_rule_definition", "is_equal"],
         [
-            (
-                "Should be equal cause the same",
+            pytest.param(
                 {
                     "filter": "message",
                     "generic_resolver": {
@@ -51,9 +52,9 @@ class TestGenericResolverRule:
                     },
                 },
                 True,
+                id="should_be_equal_same",
             ),
-            (
-                "Should be equal cause without merge_with_target, since default is the same",
+            pytest.param(
                 {
                     "filter": "message",
                     "generic_resolver": {
@@ -66,9 +67,9 @@ class TestGenericResolverRule:
                     },
                 },
                 True,
+                id="should_be_equal_default_same",
             ),
-            (
-                "Should be not equal cause of other filter",
+            pytest.param(
                 {
                     "filter": "other_message",
                     "generic_resolver": {
@@ -82,9 +83,9 @@ class TestGenericResolverRule:
                     },
                 },
                 False,
+                id="should_not_be_equal_other_filter",
             ),
-            (
-                "Should be not equal cause of other field_mapping",
+            pytest.param(
                 {
                     "filter": "message",
                     "generic_resolver": {
@@ -98,9 +99,9 @@ class TestGenericResolverRule:
                     },
                 },
                 False,
+                id="should_not_be_equal_other_field_mapping",
             ),
-            (
-                "Should be not equal cause of other resolve_list",
+            pytest.param(
                 {
                     "filter": "message",
                     "generic_resolver": {
@@ -114,9 +115,9 @@ class TestGenericResolverRule:
                     },
                 },
                 False,
+                id="should_not_be_equal_other_resolve_list",
             ),
-            (
-                "Should be not equal cause of no resolve_list",
+            pytest.param(
                 {
                     "filter": "message",
                     "generic_resolver": {
@@ -129,9 +130,9 @@ class TestGenericResolverRule:
                     },
                 },
                 False,
+                id="should_not_be_equal_no_resolve_list",
             ),
-            (
-                "Should be not equal cause of other resolve_from_file",
+            pytest.param(
                 {
                     "filter": "message",
                     "generic_resolver": {
@@ -145,9 +146,9 @@ class TestGenericResolverRule:
                     },
                 },
                 False,
+                id="should_not_be_equal_other_resolve_from_file",
             ),
-            (
-                "Should be not equal cause of no resolve_from_file",
+            pytest.param(
                 {
                     "filter": "message",
                     "generic_resolver": {
@@ -157,18 +158,47 @@ class TestGenericResolverRule:
                     },
                 },
                 False,
+                id="should_not_be_equal_no_resolve_from_file",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_list": [{"pattern": "result"}, {"pattern2": "result2"}],
+                        "merge_with_target": False,
+                    },
+                },
+                False,
+                id="should_not_be_equal_no_resolve_from_file_with_resolve_list_sequence",
+            ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_list": [{"pattern": "result"}],
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                        "merge_with_target": False,
+                    },
+                },
+                True,
+                id="should_be_equal_same_with_resolve_list_sequence",
             ),
         ],
     )
-    def test_rules_equality(self, rule_definition, testcase, other_rule_definition, is_equal):
+    def test_rules_equality(self, rule_definition, other_rule_definition, is_equal):
         rule1 = GenericResolverRule.create_from_dict(rule_definition)
         rule2 = GenericResolverRule.create_from_dict(other_rule_definition)
-        assert (rule1 == rule2) == is_equal, testcase
+        assert (rule1 == rule2) == is_equal
 
     @pytest.mark.parametrize(
         ["rule", "error", "message"],
         [
-            (
+            pytest.param(
                 {
                     "filter": "to_resolve",
                     "generic_resolver": {
@@ -182,8 +212,9 @@ class TestGenericResolverRule:
                 },
                 InvalidConfigurationError,
                 "Mapping group is missing in mapping",
+                id="missing_mapping_group",
             ),
-            (
+            pytest.param(
                 {
                     "filter": "to.resolve",
                     "generic_resolver": {
@@ -196,8 +227,9 @@ class TestGenericResolverRule:
                 },
                 InvalidConfigurationError,
                 "Additions file 'foo' not found",
+                id="no_additional_file_found",
             ),
-            (
+            pytest.param(
                 {
                     "filter": "to.resolve",
                     "generic_resolver": {
@@ -208,9 +240,9 @@ class TestGenericResolverRule:
                         },
                     },
                 },
-                InvalidConfigurationError,
-                r"Error loading additions from '.+resolve_mapping_list\.yml': "
-                r"Value is not a dictionary",
+                None,
+                "",
+                id="load_from_file_with_list_of_key_value",
             ),
         ],
     )
