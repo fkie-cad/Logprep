@@ -242,7 +242,7 @@ class TestGenericResolverRule:
                 },
                 None,
                 "",
-                id="error_loading_not_dict_value",
+                id="load_from_file_with_list_of_key_value",
             ),
         ],
     )
