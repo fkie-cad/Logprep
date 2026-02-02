@@ -240,9 +240,8 @@ class TestGenericResolverRule:
                         },
                     },
                 },
-                InvalidConfigurationError,
-                r"Error loading additions from '.+resolve_mapping_list\.yml': "
-                r"Value is not a dictionary",
+                None,
+                "",
                 id="error_loading_not_dict_value",
             ),
         ],

@@ -234,7 +234,8 @@ class GenericResolverRule(FieldManagerRule):
 
         def _get_additions_from_path(self, path: str) -> dict:
             try:
-                additions = GetterFactory.from_string(path).get_dict()
+                additions = GetterFactory.from_string(path).get_collection()
+                additions = convert_ordered_mapping_or_keep_mapping(additions)
             except ValueError as error:
                 raise InvalidConfigurationError(
                     f"Error loading additions from '{path}': {error}"

@@ -2,13 +2,13 @@ from typing import TypeVar
 
 from logprep.factory_error import InvalidConfigurationError
 
-KeyTypeT = TypeVar("KeyTypeT")
-ValueTypeT = TypeVar("ValueTypeT")
+Key = TypeVar("Key")
+Value = TypeVar("Value")
 
 
 def convert_ordered_mapping_or_keep_mapping(
-    dict_or_sequence: dict[KeyTypeT, ValueTypeT] | list[dict[KeyTypeT, ValueTypeT]],
-) -> dict[KeyTypeT, ValueTypeT]:
+    dict_or_sequence: dict[Key, Value] | list[dict[Key, Value]],
+) -> dict[Key, Value]:
     if isinstance(dict_or_sequence, dict):
         return dict_or_sequence
 
@@ -18,7 +18,7 @@ def convert_ordered_mapping_or_keep_mapping(
     return convert_ordered_mapping(dict_or_sequence)
 
 
-def convert_ordered_mapping(dicts: list[dict[KeyTypeT, ValueTypeT]]) -> dict[KeyTypeT, ValueTypeT]:
+def convert_ordered_mapping(dicts: list[dict[Key, Value]]) -> dict[Key, Value]:
     ordered_mapping = {}
     for element in dicts:
         keys = list(element.keys())
