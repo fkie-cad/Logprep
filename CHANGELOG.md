@@ -3,6 +3,7 @@
 
 ### Features
 * add uv as dependency management, including uv.lock
+* allow configuration (and auto-creation) of service accounts in helm chart
 
 ### Improvements
 * simplify Dockerfile and remove docker build support for `LOGPREP_VERSION`
