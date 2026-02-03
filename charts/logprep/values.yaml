@@ -15,6 +15,12 @@ resources:
   requests:
     memory: "2Gi"
     cpu: "250m"
+serviceAccount:
+  create: false
+  # auto generates if left empty
+  name: ""
+  # only used if create true
+  automountServiceAccountToken: false
 # if enabled: the default security context for the pod
 podSecurityContext:
   enabled: true
