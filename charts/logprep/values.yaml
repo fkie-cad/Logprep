@@ -19,7 +19,7 @@ serviceAccount:
   create: true
   # auto generates if left empty
   name: ""
-  # only set if create true
+  # only used if create true
   automountServiceAccountToken: false
 # if enabled: the default security context for the pod
 podSecurityContext:
