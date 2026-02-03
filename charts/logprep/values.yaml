@@ -16,6 +16,8 @@ resources:
     memory: "2Gi"
     cpu: "250m"
 serviceAccount:
+  # if not enabled nothing happens
+  enabled: false
   create: true
   # auto generates if left empty
   name: ""
