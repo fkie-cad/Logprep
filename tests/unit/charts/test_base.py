@@ -49,7 +49,7 @@ class TestLogprepChart(TestBaseChartTest):
     def test_manifests_are_rendered(self):
         assert self.manifests
         assert len(self.manifests) > 0
-        assert len(self.manifests) == 9
+        assert len(self.manifests) == 8
 
     def test_extra_labels_are_populated(self):
         logprep_values = {"extraLabels": {"foo": "bar"}}
