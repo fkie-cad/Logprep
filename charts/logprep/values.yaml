@@ -16,11 +16,10 @@ resources:
     memory: "2Gi"
     cpu: "250m"
 serviceAccount:
-  # if not enabled nothing happens
-  enabled: true
   create: true
   # auto generates if left empty
   name: ""
+  # only set if create true
   automountServiceAccountToken: false
 # if enabled: the default security context for the pod
 podSecurityContext:
