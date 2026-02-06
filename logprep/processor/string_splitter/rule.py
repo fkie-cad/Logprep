@@ -41,6 +41,8 @@ Examples for string_splitter:
 
 """
 
+import typing
+
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -60,13 +62,25 @@ class StringSplitterRule(FieldManagerRule):
                 validators.min_len(1),
                 validators.max_len(1),
             ],
+            default=[],
         )
         delimiter: str = field(validator=validators.instance_of(str), default=" ")
         """The delimiter for splitting. Defaults to whitespace"""
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(default={}, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+        remove_whitespace: bool = field(default=False)
 
     @property
-    def delimiter(self):
+    def config(self) -> Config:
+        """returns the config as typed StringSplitterRule.Config"""
+        return typing.cast(StringSplitterRule.Config, self._config)
+
+    @property
+    def delimiter(self) -> str:
         """returns the configured delimiter"""
-        return self._config.delimiter
+        return self.config.delimiter
+
+    @property
+    def remove_whitespace(self) -> bool:
+        """returns the configured remove_whitespace flag"""
+        return self.config.remove_whitespace
