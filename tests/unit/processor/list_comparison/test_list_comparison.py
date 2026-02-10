@@ -413,6 +413,9 @@ Heinz
         http_list_content,
         expected_result,
     ):
+        document = {"user": "Foo"}
+        expected_document = {"user": "Foo", "user_results": {"not_in_list": ["bad_users.list"]}}
+
         url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         list_name = "bad_users.list"
         url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
@@ -424,7 +427,6 @@ Heinz
             status=200,
         )
 
-        document = {"user": "Foo"}
         rule_dict = {
             "filter": "user",
             "list_comparison": {
@@ -450,9 +452,7 @@ Heinz
         processor.setup()
         processor.process(document)
 
-        expected_document = {"user": "Foo", "user_results": {"not_in_list": ["bad_users.list"]}}
         assert document == expected_document
-
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
         assert rule.compare_sets[list_name] == expected_result
