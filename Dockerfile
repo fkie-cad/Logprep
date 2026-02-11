@@ -58,6 +58,7 @@ RUN pip3 uninstall \
     'wheel'
 
 RUN apt-get update && apt-get -y upgrade && \
+    apt-get remove --purge -y --allow-remove-essential util-linux liblastlog2-2 libsqlite3-0 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
