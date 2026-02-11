@@ -7,9 +7,11 @@
 
 ### Improvements
 * simplify Dockerfile and remove docker build support for `LOGPREP_VERSION`
+* decoder errors are treated as warnings
 
 ### Bugfix
-* generic resolver now follows yaml standard and accepts a list instead of relying on the ordering of a dict
+* generic_resolver now follows yaml standard and accepts a list instead of relying on the ordering of a dict
+* decoder errors are handled properly and don't lead to pipeline failures
 
 ## 18.0.1
 ### Breaking
