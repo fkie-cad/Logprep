@@ -7,6 +7,78 @@ import pytest
 
 from tests.unit.processor.base import BaseProcessorTestCase
 
+test_cases = [
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "drop_empty": True,
+            },
+        },
+        {"message": "this is the message"},
+        ["this", "is", "the", "message"],
+        id="splits_without_explicit_set_delimiter_on_whitespace",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ", ",
+                "drop_empty": True,
+            },
+        },
+        {"message": "this, is, the, message"},
+        ["this", "is", "the", "message"],
+        id="splits_with_delimiter",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        {"message": "this,"},
+        ["this"],
+        id="splits_one_item_with_delimiter",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        {"message": ",,this,,"},
+        ["this"],
+        id="splits_one_item_with_multiple_delimiter_and_drop_empty",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": False,
+            },
+        },
+        {"message": ",,this,,"},
+        ["", "", "this", "", ""],
+        id="splits_one_item_with_multiple_delimiter_and_no_drop_empty",
+    ),
+]
+
 
 class TestStringSplitter(BaseProcessorTestCase):
     CONFIG: dict = {
@@ -14,80 +86,7 @@ class TestStringSplitter(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/string_splitter/rules"],
     }
 
-    @pytest.mark.parametrize(
-        ["rule", "event", "expected"],
-        [
-            pytest.param(
-                {
-                    "filter": "message",
-                    "string_splitter": {
-                        "source_fields": ["message"],
-                        "target_field": "result",
-                        "remove_whitespace": True,
-                    },
-                },
-                {"message": "this is the message"},
-                ["this", "is", "the", "message"],
-                id="splits_without_explicit_set_delimiter_on_whitespace",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "string_splitter": {
-                        "source_fields": ["message"],
-                        "target_field": "result",
-                        "delimiter": ", ",
-                        "remove_whitespace": True,
-                    },
-                },
-                {"message": "this, is, the, message"},
-                ["this", "is", "the", "message"],
-                id="splits_with_delimiter",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "string_splitter": {
-                        "source_fields": ["message"],
-                        "target_field": "result",
-                        "delimiter": ",",
-                        "remove_whitespace": True,
-                    },
-                },
-                {"message": "this,"},
-                ["this"],
-                id="splits_one_item_with_delimiter",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "string_splitter": {
-                        "source_fields": ["message"],
-                        "target_field": "result",
-                        "delimiter": ",",
-                        "remove_whitespace": True,
-                    },
-                },
-                {"message": ",,this,,"},
-                ["this"],
-                id="splits_one_item_with_multiple_delimiter_and_remove_whitespace",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "string_splitter": {
-                        "source_fields": ["message"],
-                        "target_field": "result",
-                        "delimiter": ",",
-                        "remove_whitespace": False,
-                    },
-                },
-                {"message": ",,this,,"},
-                ["", "", "this", "", ""],
-                id="splits_one_item_with_multiple_delimiter_and_no_remove_whitespace",
-            ),
-        ],
-    )
+    @pytest.mark.parametrize(["rule", "event", "expected"], test_cases)
     def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
         self._load_rule(rule)
         self.object.process(event)

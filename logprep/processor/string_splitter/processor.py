@@ -43,6 +43,6 @@ class StringSplitter(FieldManager):
             raise ProcessingWarning(f"source_field '{source_field}' is not a string", rule, event)
         result = source_field_content.split(rule.delimiter)
 
-        if rule.remove_whitespace:
-            result = [item for item in result if item != ""]
+        if rule.drop_empty:
+            result = [item for item in result if item != "" and not item.isspace()]
         self._write_target_field(event, rule, result)

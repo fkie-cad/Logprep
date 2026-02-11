@@ -68,7 +68,7 @@ class StringSplitterRule(FieldManagerRule):
         """The delimiter for splitting. Defaults to whitespace"""
         mapping: dict = field(default={}, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
-        remove_whitespace: bool = field(default=False)
+        drop_empty: bool = field(default=False)
 
     @property
     def config(self) -> Config:
@@ -81,6 +81,6 @@ class StringSplitterRule(FieldManagerRule):
         return self.config.delimiter
 
     @property
-    def remove_whitespace(self) -> bool:
+    def drop_empty(self) -> bool:
         """returns the configured remove_whitespace flag"""
-        return self.config.remove_whitespace
+        return self.config.drop_empty
