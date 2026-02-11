@@ -493,6 +493,31 @@ class TestDecoder(BaseProcessorTestCase):
                 },
                 id="base64 double quote escape",
             ),
+            pytest.param(
+                {
+                    "filter": "message",
+                    "decoder": {
+                        "mapping": {"message": "parsed"},
+                        "source_format": "klog",
+                        "overwrite_target": True,
+                    },
+                },
+                {
+                    "message": "I0528 19:15:22.737538   47512 logtest.go:52] Pod kube-system/kube-dns status was updated to ready",
+                },
+                {
+                    "message": "I0528 19:15:22.737538   47512 logtest.go:52] Pod kube-system/kube-dns status was updated to ready",
+                    "parsed": {
+                        "level": "I",
+                        "timestamp": "0528 19:15:22.737538",
+                        "threadid": "47512",
+                        "file": "logtest.go",
+                        "line": "52",
+                        "msg": "Pod kube-system/kube-dns status was updated to ready",
+                    },
+                },
+                id="parse simple klog",
+            ),
         ],
     )
     def test_testcases(self, rule, event, expected):
