@@ -25,7 +25,6 @@ Processor Configuration
 
 from copy import deepcopy
 from functools import cached_property, lru_cache
-from typing import Optional
 
 from attrs import define, field, validators
 
@@ -44,9 +43,7 @@ class GenericResolver(FieldManager):
     class Config(Processor.Config):
         """GenericResolver config"""
 
-        max_cache_entries: Optional[int] = field(
-            validator=validators.optional(validators.instance_of(int)), default=0
-        )
+        max_cache_entries: int = field(validator=validators.instance_of(int), default=0)
         """(Optional) Size of cache for results when resolving from a list.
         The cache can be disabled by setting this option to :code:`0`.
 
@@ -57,9 +54,7 @@ class GenericResolver(FieldManager):
            and OOM situations caused by the generic resolver cache.
 
         """
-        cache_metrics_interval: Optional[int] = field(
-            validator=validators.optional(validators.instance_of(int)), default=1
-        )
+        cache_metrics_interval: int = field(validator=validators.instance_of(int), default=1)
         """(Optional) Cache metrics won't be updated immediately.
         Instead updating is skipped for a number of events before it's next update.
         :code:`cache_metrics_interval` sets the number of events between updates (default: 1)."""

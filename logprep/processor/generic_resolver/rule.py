@@ -166,9 +166,7 @@ class GenericResolverRule(FieldManagerRule):
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
         resolve_list: dict[str, FieldValue] = field(
             validator=validators.deep_mapping(
-                value_validator=validators.instance_of(
-                    dict | list | str | int | float | bool | None
-                ),
+                value_validator=validators.instance_of(dict | list | str | int | float | bool),
                 key_validator=validators.instance_of(str),
                 mapping_validator=validators.instance_of(dict),
             ),
@@ -177,17 +175,15 @@ class GenericResolverRule(FieldManagerRule):
         )
         """lookup mapping in form of
         :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`"""
-        resolve_from_file: dict[typing.Literal["path"] | typing.Literal["pattern"], str | int] = (
-            field(
-                validator=[
-                    validators.instance_of(dict),
-                    validators.deep_mapping(
-                        key_validator=validators.in_(["path", "pattern"]),
-                        value_validator=validators.instance_of((str, int)),
-                    ),
-                ],
-                factory=dict,
-            )
+        resolve_from_file: dict[typing.Literal["path"] | typing.Literal["pattern"], str] = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.in_(["path", "pattern"]),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
         )
         """Mapping with a `path` key to a YML file (for string format see :ref:`getters`)
         with a resolve list and a `pattern` key with
@@ -282,7 +278,7 @@ class GenericResolverRule(FieldManagerRule):
     @property
     def resolve_from_file(
         self,
-    ) -> dict[typing.Literal["path"] | typing.Literal["pattern"], str | int]:
+    ) -> dict[typing.Literal["path"] | typing.Literal["pattern"], str]:
         """Returns the resolve file"""
         return self.config.resolve_from_file
 
