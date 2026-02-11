@@ -1,10 +1,19 @@
 .. -*- mode: rst -*-
 {% for item in data.test_cases %}
 
+{% if item.id is defined %}
+*{{ item.id }}:*
+
+- rule: :code:`{{ item.values[0] }}`
+- message: :code:`{{ item.values[1] }}`
+- processed: :code:`{{ item.values[2] }}`
+
+{% else %}
 *{{ item[0] }}:*
 
 - rule: :code:`{{ item[1] }}`
 - message: :code:`{{ item[2] }}`
 - processed: :code:`{{ item[3] }}`
+{% endif %}
 
 {% endfor %}
