@@ -170,7 +170,9 @@ class GenericResolverRule(FieldManagerRule):
                 key_validator=validators.instance_of(str),
                 mapping_validator=validators.instance_of(dict),
             ),
-            converter=convert_ordered_mapping_or_keep_mapping,
+            converter=lambda x: convert_ordered_mapping_or_keep_mapping(
+                x
+            ),  # pylint: disable=unnecessary-lambda
             factory=dict,
         )
         """lookup mapping in form of
