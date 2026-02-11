@@ -8,7 +8,7 @@ from typing import Any, TypeGuard, TypeVar
 T = TypeVar("T")
 
 
-def is_list_of(val: list[Any], class_or_tuple: type[T]) -> TypeGuard[list[T]]:
+def is_list_of(val: list[Any], class_type: type[T]) -> TypeGuard[list[T]]:
     """Checks and statically asserts that a list has a specific element type
 
     Parameters
@@ -23,4 +23,4 @@ def is_list_of(val: list[Any], class_or_tuple: type[T]) -> TypeGuard[list[T]]:
     TypeGuard[list[T]]
         The type information that `val` is of this list type
     """
-    return all(isinstance(obj, class_or_tuple) for obj in val)
+    return all(isinstance(obj, class_type) for obj in val)
