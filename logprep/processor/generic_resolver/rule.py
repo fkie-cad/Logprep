@@ -142,9 +142,7 @@ from attrs import define, field, validators
 
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.converters import (
-    convert_ordered_mapping_or_keep_mapping,
-)
+from logprep.util.converters import convert_ordered_mapping_or_keep_mapping
 from logprep.util.getter import GetterFactory, RefreshableGetter
 from logprep.util.helper import FieldValue
 
@@ -156,7 +154,7 @@ class GenericResolverRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for GenericResolver"""
 
-        field_mapping: dict = field(
+        field_mapping: dict[str, str] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
@@ -168,6 +166,9 @@ class GenericResolverRule(FieldManagerRule):
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
         resolve_list: dict[str, FieldValue] = field(
             validator=validators.deep_mapping(
+                value_validator=validators.instance_of(
+                    dict | list | str | int | float | bool | None
+                ),
                 key_validator=validators.instance_of(str),
                 mapping_validator=validators.instance_of(dict),
             ),
@@ -176,15 +177,17 @@ class GenericResolverRule(FieldManagerRule):
         )
         """lookup mapping in form of
         :code:`{REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`"""
-        resolve_from_file: dict = field(
-            validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.in_(["path", "pattern"]),
-                    value_validator=validators.instance_of((str, int)),
-                ),
-            ],
-            factory=dict,
+        resolve_from_file: dict[typing.Literal["path"] | typing.Literal["pattern"], str | int] = (
+            field(
+                validator=[
+                    validators.instance_of(dict),
+                    validators.deep_mapping(
+                        key_validator=validators.in_(["path", "pattern"]),
+                        value_validator=validators.instance_of((str, int)),
+                    ),
+                ],
+                factory=dict,
+            )
         )
         """Mapping with a `path` key to a YML file (for string format see :ref:`getters`)
         with a resolve list and a `pattern` key with
@@ -209,7 +212,7 @@ class GenericResolverRule(FieldManagerRule):
         ignore_case: bool = field(validator=validators.instance_of(bool), default=False)
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
-        additions: dict = field(default={}, eq=False, init=False)
+        additions: dict[str, FieldValue] = field(default={}, eq=False, init=False)
         """Contains a dictionary of field names and values that should be added."""
 
         @property
@@ -232,15 +235,14 @@ class GenericResolverRule(FieldManagerRule):
                 additions = {key.upper(): value for key, value in additions.items()}
             self.additions = additions
 
-        def _get_additions_from_path(self, path: str) -> dict:
+        def _get_additions_from_path(self, path: str) -> dict[str, FieldValue]:
             try:
                 additions = GetterFactory.from_string(path).get_collection()
-                additions = convert_ordered_mapping_or_keep_mapping(additions)
+                return convert_ordered_mapping_or_keep_mapping(additions)
             except ValueError as error:
                 raise InvalidConfigurationError(
                     f"Error loading additions from '{path}': {error}"
                 ) from error
-            return additions
 
         def _raise_if_pattern_is_invalid(self):
             if "?P<mapping>" not in self.resolve_from_file["pattern"]:
@@ -260,12 +262,12 @@ class GenericResolverRule(FieldManagerRule):
         return typing.cast(GenericResolverRule.Config, self._config)
 
     @property
-    def field_mapping(self) -> dict:
+    def field_mapping(self) -> dict[str, str]:
         """Returns the field mapping"""
         return self.config.field_mapping
 
     @property
-    def resolve_list(self) -> dict:
+    def resolve_list(self) -> dict[str, FieldValue]:
         """Returns the resolve list"""
         return self.config.resolve_list
 
@@ -278,7 +280,9 @@ class GenericResolverRule(FieldManagerRule):
         ]
 
     @property
-    def resolve_from_file(self) -> dict:
+    def resolve_from_file(
+        self,
+    ) -> dict[typing.Literal["path"] | typing.Literal["pattern"], str | int]:
         """Returns the resolve file"""
         return self.config.resolve_from_file
 
@@ -293,6 +297,6 @@ class GenericResolverRule(FieldManagerRule):
         return re.compile(f'^{self.resolve_from_file["pattern"]}$', re.I if self.ignore_case else 0)
 
     @property
-    def additions(self) -> dict:
+    def additions(self) -> dict[str, FieldValue]:
         """Returns additions from the resolve file"""
         return self.config.additions

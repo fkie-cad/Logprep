@@ -23,6 +23,7 @@ Processor Configuration
 .. automodule:: logprep.processor.generic_resolver.rule
 """
 
+from copy import deepcopy
 from functools import cached_property, lru_cache
 from typing import Optional
 
@@ -33,7 +34,7 @@ from logprep.metrics.metrics import GaugeMetric
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
 
 
 class GenericResolver(FieldManager):
@@ -130,20 +131,24 @@ class GenericResolver(FieldManager):
         conflicting_fields = []
         for source_field, target_field in rule.field_mapping.items():
             source_field_value = str(get_dotted_field_value(event, source_field))
-            content = self._find_content_of_first_matching_pattern(rule, source_field_value)
-            if not content:
+            resolved_content = self._find_content_of_first_matching_pattern(
+                rule, source_field_value
+            )
+            if resolved_content is None:
                 continue
             current_content = get_dotted_field_value(event, target_field)
-            if isinstance(current_content, list) and content in current_content:
+            if isinstance(current_content, list) and resolved_content in current_content:
                 continue
+            if isinstance(resolved_content, (list, dict)):
+                resolved_content = deepcopy(resolved_content)
             try:
                 add_fields_to(
                     event,
                     fields={
                         target_field: (
-                            [content]
+                            [resolved_content]
                             if rule.merge_with_target and current_content is None
-                            else content
+                            else resolved_content
                         )
                     },
                     rule=rule,
@@ -160,21 +165,21 @@ class GenericResolver(FieldManager):
 
     def _find_content_of_first_matching_pattern(
         self, rule: GenericResolverRule, source_field_value: str
-    ) -> str | None:
+    ) -> FieldValue | None:
         if rule.resolve_from_file:
             matches = rule.pattern.match(source_field_value)
             if matches:
                 mapping = matches.group("mapping")
                 if rule.ignore_case:
                     mapping = mapping.upper()
-                content = rule.additions.get(mapping)
-                if content:
-                    return content
+                mapped_content = rule.additions.get(mapping, None)
+                if mapped_content is not None:
+                    return mapped_content
         return self._get_lru_cached_value_from_list(rule, source_field_value)
 
     def _resolve_value_from_list(
         self, rule: GenericResolverRule, source_field_value: str
-    ) -> Optional[str]:
+    ) -> FieldValue | None:
         for pattern, content in rule.compiled_resolve_list:
             if pattern.search(source_field_value):
                 return content
