@@ -8,6 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import responses
 
 from logprep.factory import Factory
@@ -36,6 +37,85 @@ class TestGenericResolver(BaseProcessorTestCase):
         rule = {"filter": "anything", "generic_resolver": {"field_mapping": {}}}
         self._load_rule(rule)
         assert isinstance(self.object, GenericResolver)
+
+    @pytest.mark.parametrize(
+        ["resolve_value"],
+        [
+            pytest.param(
+                0,
+                id="int_0_falsy",
+            ),
+            pytest.param(
+                42,
+                id="int_42",
+            ),
+            pytest.param(
+                -1,
+                id="int_neg_1",
+            ),
+            pytest.param(
+                -42,
+                id="int_neg_42",
+            ),
+            pytest.param(
+                -42,
+                id="int_neg_42",
+            ),
+            pytest.param(
+                0.0,
+                id="float_0",
+            ),
+            pytest.param(
+                42.1337,
+                id="float_greater_0",
+            ),
+            pytest.param(
+                -42.1337,
+                id="float_lower_0",
+            ),
+            pytest.param(
+                True,
+                id="bool_true",
+            ),
+            pytest.param(
+                False,
+                id="bool_false",
+            ),
+            pytest.param(
+                [],
+                id="list_empty_falsy",
+            ),
+            pytest.param(
+                [1, 2, "string", 0.5],
+                id="list_mixed_types",
+            ),
+            pytest.param(
+                {},
+                id="dict_empty_falsy",
+            ),
+            pytest.param(
+                {"key": "value"},
+                id="dict_simple",
+            ),
+        ],
+    )
+    def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": resolve_value},
+            },
+        }
+
+        self._load_rule(rule)
+
+        expected = {"to_resolve": "something HELLO1", "resolved": resolve_value}
+        document = {"to_resolve": "something HELLO1"}
+
+        self.object.process(document)
+
+        assert document == expected
 
     def test_resolve_not_dotted_field_no_conflict_match(self):
         rule = {
