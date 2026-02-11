@@ -18,30 +18,18 @@ import base64
 import binascii
 import re
 from functools import partial
-from typing import Dict, Generic, Iterable, Protocol, TypeVar, runtime_checkable
+from typing import Callable, Dict, Iterable
 
 import msgspec
 
 from logprep.util.helper import FieldValue
+from logprep.util.typing import is_list_of
 
 JSON_DECODER = msgspec.json.Decoder()
 
 
 class DecoderError(Exception):
     """Raised if decoding fails"""
-
-
-DecoderFuncResult_co = TypeVar("DecoderFuncResult_co", bound=FieldValue, covariant=True)
-
-
-@runtime_checkable
-class DecoderFunc(Generic[DecoderFuncResult_co], Protocol):
-    """
-    Covariant function type for decoding string values
-    into concrete variants of `FieldValue`
-    """
-
-    def __call__(self, log_line: str) -> DecoderFuncResult_co: ...
 
 
 def _parse(log_line: str, regexes: Iterable[re.Pattern]) -> dict[str, str]:
@@ -225,7 +213,15 @@ def decolorize(log_line: str) -> str:
     return ANSI_ESCAPE.sub("", log_line)
 
 
-DECODERS: Dict[str, DecoderFunc] = {
+def dict2list(log_dict: dict[str, str]) -> list[str]:
+    """converts a flat dict to a list of strings"""
+    if not is_list_of(list(log_dict.values()) + list(log_dict.keys()), str):
+        raise DecoderError("is not a string to string mapping")
+    result = [f"{key}:{value}" for key, value in log_dict.items()]
+    return result
+
+
+DECODERS: Dict[str, Callable] = {
     "json": parse_json,
     "base64": parse_base64,
     "clf": partial(_parse, regexes=REGEX_CLF),
@@ -237,4 +233,5 @@ DECODERS: Dict[str, DecoderFunc] = {
     "cri": parse_cri,
     "docker": parse_docker,
     "decolorize": decolorize,
+    "dict2list": dict2list,
 }

@@ -16,6 +16,7 @@ The `decoder` processor decodes or parses field values from the configured
 * cri
 * docker
 * decolorize (removing color codes in logs)
+* dict2list (convert string mapping to list)
 
 
 Processor Configuration
@@ -47,7 +48,6 @@ from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import FieldValue, add_fields_to
-from logprep.util.typing import is_list_of
 
 
 class Decoder(FieldManager):
@@ -70,13 +70,11 @@ class Decoder(FieldManager):
         self,
         event: dict[str, FieldValue],
         rule: DecoderRule,
-        decoder: Callable[[str], FieldValue],
+        decoder: Callable[[FieldValue], FieldValue],
         source_field_values: list[FieldValue],
     ) -> list[FieldValue]:
         try:
-            if is_list_of(source_field_values, str):
-                return [decoder(value) for value in source_field_values]
-            raise DecoderError("can only decode string values")
+            return [decoder(value) for value in source_field_values]
         except DecoderError as error:
             add_fields_to(event, {"tags": rule.failure_tags}, merge_with_target=True)
             self.result.errors.append(error)
