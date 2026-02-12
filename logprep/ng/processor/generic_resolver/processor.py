@@ -24,7 +24,7 @@ Processor Configuration
 """
 
 from copy import deepcopy
-from functools import _lru_cache_wrapper, cached_property, lru_cache
+from functools import cached_property, lru_cache
 from typing import Callable, cast
 
 from attrs import define, field, validators
@@ -42,6 +42,7 @@ from logprep.util.helper import (
     add_fields_to,
     get_dotted_field_value,
 )
+from logprep.util.typing import is_lru_cached
 
 
 class GenericResolver(FieldManager):
@@ -125,10 +126,7 @@ class GenericResolver(FieldManager):
     @cached_property
     def _get_lru_cached_value_from_list(
         self,
-    ) -> (
-        Callable[[GenericResolverRule, str], FieldValue | Missing]
-        | _lru_cache_wrapper[FieldValue | Missing]
-    ):
+    ) -> Callable[[GenericResolverRule, str], FieldValue | Missing]:
         """Returns lru cashed method to retrieve values from list if configured"""
         if self.max_cache_entries <= 0:
             return self._resolve_value_from_list
@@ -200,7 +198,7 @@ class GenericResolver(FieldManager):
         return MISSING
 
     def _update_cache_metrics(self) -> None:
-        if not isinstance(self._get_lru_cached_value_from_list, _lru_cache_wrapper):
+        if not is_lru_cached(self._get_lru_cached_value_from_list):
             return
         self._cache_metrics_skip_count += 1
         if self._cache_metrics_skip_count < self.cache_metrics_interval:
