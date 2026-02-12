@@ -42,6 +42,10 @@ FieldValue: TypeAlias = Union[
     dict[str, "FieldValue"], list["FieldValue"], str, int, float, bool, None
 ]
 
+NonNoneFieldValue: TypeAlias = Union[
+    dict[str, "FieldValue"], list["FieldValue"], str, int, float, bool
+]
+
 
 def color_print_line(back: str | AnsiBack | None, fore: str | AnsiBack | None, message: str):
     """Print string with colors and reset the color afterwards."""

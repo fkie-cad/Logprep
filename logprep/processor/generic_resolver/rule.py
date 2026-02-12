@@ -144,7 +144,7 @@ from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.converters import convert_ordered_mapping_or_keep_mapping
 from logprep.util.getter import GetterFactory, RefreshableGetter
-from logprep.util.helper import FieldValue
+from logprep.util.helper import NonNoneFieldValue
 
 
 class GenericResolverRule(FieldManagerRule):
@@ -164,15 +164,15 @@ class GenericResolverRule(FieldManagerRule):
             ]
         )
         """Mapping in form of :code:`{SOURCE_FIELD: DESTINATION_FIELD}`"""
-        resolve_list: dict[str, FieldValue] = field(
+        resolve_list: dict[str, NonNoneFieldValue] = field(
             validator=validators.deep_mapping(
                 value_validator=validators.instance_of(dict | list | str | int | float | bool),
                 key_validator=validators.instance_of(str),
                 mapping_validator=validators.instance_of(dict),
             ),
             converter=lambda x: convert_ordered_mapping_or_keep_mapping(
-                x
-            ),  # pylint: disable=unnecessary-lambda
+                typing.cast(dict[str, NonNoneFieldValue] | list[dict[str, NonNoneFieldValue]], x)
+            ),
             factory=dict,
         )
         """lookup mapping in form of
@@ -210,7 +210,7 @@ class GenericResolverRule(FieldManagerRule):
         ignore_case: bool = field(validator=validators.instance_of(bool), default=False)
         """(Optional) Ignore case when matching resolve values. Defaults to :code:`False`."""
 
-        additions: dict[str, FieldValue] = field(default={}, eq=False, init=False)
+        additions: dict[str, NonNoneFieldValue] = field(default={}, eq=False, init=False)
         """Contains a dictionary of field names and values that should be added."""
 
         @property
@@ -233,7 +233,7 @@ class GenericResolverRule(FieldManagerRule):
                 additions = {key.upper(): value for key, value in additions.items()}
             self.additions = additions
 
-        def _get_additions_from_path(self, path: str) -> dict[str, FieldValue]:
+        def _get_additions_from_path(self, path: str) -> dict[str, NonNoneFieldValue]:
             try:
                 additions = GetterFactory.from_string(path).get_collection()
                 return convert_ordered_mapping_or_keep_mapping(additions)
@@ -265,12 +265,12 @@ class GenericResolverRule(FieldManagerRule):
         return self.config.field_mapping
 
     @property
-    def resolve_list(self) -> dict[str, FieldValue]:
+    def resolve_list(self) -> dict[str, NonNoneFieldValue]:
         """Returns the resolve list"""
         return self.config.resolve_list
 
     @cached_property
-    def compiled_resolve_list(self) -> list[tuple[re.Pattern, FieldValue]]:
+    def compiled_resolve_list(self) -> list[tuple[re.Pattern, NonNoneFieldValue]]:
         """Returns the resolve list with tuple pairs of compiled patterns and values"""
         return [
             (re.compile(pattern, re.I if self.ignore_case else 0), val)
@@ -295,6 +295,6 @@ class GenericResolverRule(FieldManagerRule):
         return re.compile(f'^{self.resolve_from_file["pattern"]}$', re.I if self.ignore_case else 0)
 
     @property
-    def additions(self) -> dict[str, FieldValue]:
+    def additions(self) -> dict[str, NonNoneFieldValue]:
         """Returns additions from the resolve file"""
         return self.config.additions

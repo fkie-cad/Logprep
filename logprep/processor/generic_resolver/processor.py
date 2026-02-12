@@ -33,7 +33,11 @@ from logprep.metrics.metrics import GaugeMetric
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.util.helper import FieldValue, add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    NonNoneFieldValue,
+    add_fields_to,
+    get_dotted_field_value,
+)
 
 
 class GenericResolver(FieldManager):
@@ -160,7 +164,7 @@ class GenericResolver(FieldManager):
 
     def _find_content_of_first_matching_pattern(
         self, rule: GenericResolverRule, source_field_value: str
-    ) -> FieldValue | None:
+    ) -> NonNoneFieldValue | None:
         if rule.resolve_from_file:
             matches = rule.pattern.match(source_field_value)
             if matches:
@@ -174,7 +178,7 @@ class GenericResolver(FieldManager):
 
     def _resolve_value_from_list(
         self, rule: GenericResolverRule, source_field_value: str
-    ) -> FieldValue | None:
+    ) -> NonNoneFieldValue | None:
         for pattern, content in rule.compiled_resolve_list:
             if pattern.search(source_field_value):
                 return content
