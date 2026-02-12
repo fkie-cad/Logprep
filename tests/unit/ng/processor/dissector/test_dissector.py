@@ -382,27 +382,26 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} %{field2} %{field3} %{+field4}"}},
         },
-        {"message": "This is \\a + message"},
+        {"message": "This is \\a + mess}age"},
         {
-            "message": "This is \\a + message",
+            "message": "This is \\a + mess}age",
             "field1": "This",
             "field2": "is",
             "field3": "\\a",
-            "field4": "+ message",
+            "field4": "+ mess}age",
         },
     ),
     (
         "handles special chars in captured content and target field names",
         {
             "filter": "message",
-            "dissector": {"mapping": {"message": "%{~field1} %{fie ld2} %{$fie}ld3} %{+field4}"}},
+            "dissector": {"mapping": {"message": "%{~field1} %{fie ld2} %{+field4}"}},
         },
-        {"message": "&This is\2 a mess}age /1"},
+        {"message": "&This is\2 mess}age /1"},
         {
-            "message": "&This is\2 a mess}age /1",
+            "message": "&This is\2 mess}age /1",
             "~field1": "&This",
             "fie ld2": "is\2",
-            "$fie}ld3": "a",
             "field4": "mess}age /1",
         },
     ),
@@ -636,6 +635,51 @@ test_cases = [  # testcase, rule, event, expected
         {
             "message": "system_monitor",
             "sys_type": "system_monitor",
+        },
+    ),
+    (
+        "handle curly braces in message simple case",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "proxy{addr=%{destination.address}}",
+                },
+            },
+        },
+        {"message": "proxy{addr=10.99.172.10:4191}"},
+        {
+            "destination": {
+                "address": "10.99.172.10:4191",
+            },
+            "message": "proxy{addr=10.99.172.10:4191}",
+        },
+    ),
+    (
+        "handle curly braces in message full case",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "proxy{addr=%{destination.address}}:service{ns=linkerd-multicluster name=%{destination.domain} port=4191}:endpoint{addr=%{source.address}}: %{log.logger}: %{message}",
+                },
+            },
+        },
+        {
+            "message": "proxy{addr=10.99.172.10:4191}:service{ns=linkerd-multicluster name=probe-gateway-bbb port=4191}:endpoint{addr=192.8.177.98:4191}: linkerd_reconnect: Failed to connect error=connect timed out after 1s"
+        },
+        {
+            "destination": {
+                "address": "10.99.172.10:4191",
+                "domain": "probe-gateway-bbb",
+            },
+            "log": {
+                "logger": "linkerd_reconnect",
+            },
+            "message": "Failed to connect error=connect timed out after 1s",
+            "source": {
+                "address": "192.8.177.98:4191",
+            },
         },
     ),
 ]
