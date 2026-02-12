@@ -24,13 +24,15 @@ Processor Configuration
 """
 
 from copy import deepcopy
-from functools import cached_property, lru_cache
+from functools import _lru_cache_wrapper, cached_property, lru_cache
+from typing import Callable, cast
 
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.metrics.metrics import GaugeMetric
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.helper import (
@@ -106,34 +108,45 @@ class GenericResolver(FieldManager):
     rule_class = GenericResolverRule
 
     @property
-    def max_cache_entries(self):
-        """Returns the configured number of max_cache_entries"""
-        return self._config.max_cache_entries
+    def config(self) -> Config:
+        """Returns the typed GenericResolver.Config"""
+        return cast(GenericResolver.Config, self._config)
 
     @property
-    def cache_metrics_interval(self):
+    def max_cache_entries(self) -> int:
+        """Returns the configured number of max_cache_entries"""
+        return self.config.max_cache_entries
+
+    @property
+    def cache_metrics_interval(self) -> int:
         """Returns the configured cache_metrics_interval"""
-        return self._config.cache_metrics_interval
+        return self.config.cache_metrics_interval
 
     @cached_property
-    def _get_lru_cached_value_from_list(self):
+    def _get_lru_cached_value_from_list(
+        self,
+    ) -> (
+        Callable[[GenericResolverRule, str], FieldValue | Missing]
+        | _lru_cache_wrapper[FieldValue | Missing]
+    ):
         """Returns lru cashed method to retrieve values from list if configured"""
         if self.max_cache_entries <= 0:
             return self._resolve_value_from_list
         return lru_cache(maxsize=self.max_cache_entries)(self._resolve_value_from_list)
 
-    def _apply_rules(self, event: dict, rule: GenericResolverRule) -> None:
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
         """Apply the given rule to the current event"""
+        _rule = cast(GenericResolverRule, rule)
         source_field_values = [
             get_dotted_field_value(event, source_field)
-            for source_field in rule.field_mapping.keys()
+            for source_field in _rule.field_mapping.keys()
         ]
-        self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_field_values)
+        self._handle_missing_fields(event, _rule, _rule.field_mapping.keys(), source_field_values)
         conflicting_fields = []
-        for source_field, target_field in rule.field_mapping.items():
+        for source_field, target_field in _rule.field_mapping.items():
             source_field_value = str(get_dotted_field_value(event, source_field))
             resolved_content = self._find_content_of_first_matching_pattern(
-                rule, source_field_value
+                _rule, source_field_value
             )
             if isinstance(resolved_content, Missing):
                 continue
@@ -148,13 +161,13 @@ class GenericResolver(FieldManager):
                     fields={
                         target_field: (
                             [resolved_content]
-                            if rule.merge_with_target and current_content is None
+                            if _rule.merge_with_target and current_content is None
                             else resolved_content
                         )
                     },
-                    rule=rule,
-                    merge_with_target=rule.merge_with_target,
-                    overwrite_target=rule.overwrite_target,
+                    rule=_rule,
+                    merge_with_target=_rule.merge_with_target,
+                    overwrite_target=_rule.overwrite_target,
                     skip_none=False,
                 )
             except FieldExistsWarning as error:
@@ -163,7 +176,7 @@ class GenericResolver(FieldManager):
         self._update_cache_metrics()
 
         if conflicting_fields:
-            raise FieldExistsWarning(rule, event, conflicting_fields)
+            raise FieldExistsWarning(_rule, event, conflicting_fields)
 
     def _find_content_of_first_matching_pattern(
         self, rule: GenericResolverRule, source_field_value: str
@@ -186,8 +199,8 @@ class GenericResolver(FieldManager):
                 return content
         return MISSING
 
-    def _update_cache_metrics(self):
-        if self.max_cache_entries <= 0:
+    def _update_cache_metrics(self) -> None:
+        if not isinstance(self._get_lru_cached_value_from_list, _lru_cache_wrapper):
             return
         self._cache_metrics_skip_count += 1
         if self._cache_metrics_skip_count < self.cache_metrics_interval:
@@ -198,7 +211,7 @@ class GenericResolver(FieldManager):
         self.metrics.new_results += cache_info.misses
         self.metrics.cached_results += cache_info.hits
         self.metrics.num_cache_entries += cache_info.currsize
-        self.metrics.cache_load += cache_info.currsize / cache_info.maxsize
+        self.metrics.cache_load += cache_info.currsize / self.max_cache_entries
 
     def setup(self):
         super().setup()
