@@ -1,10 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import pytest
-
 import json
 from pathlib import Path
+from string import Template
 from unittest import mock
+
+import pytest
 import responses
 
 from logprep.factory import Factory
@@ -398,3 +399,60 @@ Heinz
         processor.setup()
         processor.process(document)
         assert document == expected, testcase
+
+    @pytest.mark.parametrize(
+        "http_list_content, expected_result",
+        [
+            ("", set()),
+            ("\n", {""}),
+        ],
+    )
+    @responses.activate
+    def test_list_comparison_empty_http_list_or_empty_line_updates_compare_sets(
+        self,
+        http_list_content,
+        expected_result,
+    ):
+        document = {"user": "Foo"}
+        expected_document = {"user": "Foo", "user_results": {"not_in_list": ["bad_users.list"]}}
+
+        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+        list_name = "bad_users.list"
+        url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+
+        responses.add(
+            responses.GET,
+            url=url,
+            body=http_list_content,
+            status=200,
+        )
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        processor.process(document)
+
+        assert document == expected_document
+        assert len(responses.calls) == 1
+        assert responses.calls[0].request.url == url
+        assert rule.compare_sets[list_name] == expected_result
