@@ -6,6 +6,8 @@ import json
 import pytest
 
 from logprep.ng.event.log_event import LogEvent
+from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
+from logprep.util.typing import is_list_of
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
@@ -689,7 +691,13 @@ class TestDecoder(BaseProcessorTestCase):
         self._load_rule(rule)
         event = LogEvent(event, original=b"")
         result = self.object.process(event)
-        assert result.errors or result.warnings
+        assert len(result.errors) > 0 or len(result.warnings) > 0
+        assert is_list_of(
+            result.errors, ProcessingError
+        ), f"ProcessingError expected: {result.errors}"
+        assert is_list_of(
+            result.warnings, ProcessingWarning
+        ), f"ProcessingWarning expected: {result.warnings}"
         assert event.data == expected
 
     def test_decodes_different_source_json_escaping(self):
