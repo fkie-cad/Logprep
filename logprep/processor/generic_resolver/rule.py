@@ -100,8 +100,8 @@ Resolved dictionaries can be merged into existing dictionaries. In the following
         .*Hello.*: {"Greeting": "Hello"}
 
 In the following example :code:`to_resolve` will be checked by the
-regex pattern :code:`\d*(?P<mapping>[a-z]+)\d*` and the list in :code:`path/to/resolve_mapping.yml`
-will be used to add new fields.
+regex pattern :code:`\\d*(?P<mapping>[a-z]+)\\d*` and the list in
+:code:`path/to/resolve_mapping.yml` will be used to add new fields.
 :code:`"resolved": "resolved foo"` will be added to the event if the value
 in :code:`to_resolve` begins with number, ends with numbers and contains foo.
 Furthermore, :code:`"resolved": "resolved bar"` will be added to the event
