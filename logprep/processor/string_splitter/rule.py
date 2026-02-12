@@ -69,6 +69,7 @@ class StringSplitterRule(FieldManagerRule):
         mapping: dict = field(default={}, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         drop_empty: bool = field(default=False)
+        """If empty fields should be dropped or not. Defaults to not dropping empty fields"""
 
     @property
     def config(self) -> Config:
@@ -82,5 +83,5 @@ class StringSplitterRule(FieldManagerRule):
 
     @property
     def drop_empty(self) -> bool:
-        """returns the configured remove_whitespace flag"""
+        """returns the configured drop_empty flag"""
         return self.config.drop_empty
