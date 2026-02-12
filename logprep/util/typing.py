@@ -15,7 +15,7 @@ def is_list_of(val: list[Any], class_type: type[T]) -> TypeGuard[list[T]]:
     ----------
     val : list[Any]
         The list to be checked
-    class_or_tuple : type[T]
+    class_type : type[T]
         The element type to be checked against
 
     Returns
