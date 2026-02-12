@@ -34,7 +34,9 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.helper import (
-    NonNoneFieldValue,
+    MISSING,
+    FieldValue,
+    Missing,
     add_fields_to,
     get_dotted_field_value,
 )
@@ -133,7 +135,7 @@ class GenericResolver(FieldManager):
             resolved_content = self._find_content_of_first_matching_pattern(
                 rule, source_field_value
             )
-            if resolved_content is None:
+            if isinstance(resolved_content, Missing):
                 continue
             current_content = get_dotted_field_value(event, target_field)
             if isinstance(current_content, list) and resolved_content in current_content:
@@ -153,6 +155,7 @@ class GenericResolver(FieldManager):
                     rule=rule,
                     merge_with_target=rule.merge_with_target,
                     overwrite_target=rule.overwrite_target,
+                    skip_none=False,
                 )
             except FieldExistsWarning as error:
                 conflicting_fields.extend(error.skipped_fields)
@@ -164,25 +167,24 @@ class GenericResolver(FieldManager):
 
     def _find_content_of_first_matching_pattern(
         self, rule: GenericResolverRule, source_field_value: str
-    ) -> NonNoneFieldValue | None:
+    ) -> FieldValue | Missing:
         if rule.resolve_from_file:
             matches = rule.pattern.match(source_field_value)
             if matches:
                 mapping = matches.group("mapping")
                 if rule.ignore_case:
                     mapping = mapping.upper()
-                mapped_content = rule.additions.get(mapping, None)
-                if mapped_content is not None:
-                    return mapped_content
+                if mapping in rule.additions:
+                    return rule.additions.get(mapping)
         return self._get_lru_cached_value_from_list(rule, source_field_value)
 
     def _resolve_value_from_list(
         self, rule: GenericResolverRule, source_field_value: str
-    ) -> NonNoneFieldValue | None:
+    ) -> FieldValue | Missing:
         for pattern, content in rule.compiled_resolve_list:
             if pattern.search(source_field_value):
                 return content
-        return None
+        return MISSING
 
     def _update_cache_metrics(self):
         if self.max_cache_entries <= 0:

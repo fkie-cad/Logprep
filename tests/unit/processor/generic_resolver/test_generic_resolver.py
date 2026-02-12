@@ -97,6 +97,10 @@ class TestGenericResolver(BaseProcessorTestCase):
                 {"key": "value"},
                 id="dict_simple",
             ),
+            pytest.param(
+                None,
+                id="None",
+            ),
         ],
     )
     def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
