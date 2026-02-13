@@ -69,7 +69,7 @@ class StringSplitterRule(FieldManagerRule):
         mapping: dict = field(default={}, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         drop_empty: bool = field(default=False)
-        """If empty fields should be dropped or not. Defaults to not dropping empty fields"""
+        """If empty values, as a result of splitting a string should be dropped or kept as a Field. Defaults to not dropping empty values"""
 
     @property
     def config(self) -> Config:

@@ -77,6 +77,76 @@ test_cases = [
         ["", "", "this", "", ""],
         id="splits_one_item_with_multiple_delimiter_and_no_drop_empty",
     ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        {"message": " , ,this, ,"},
+        ["this"],
+        id="splits_one_item_with_multiple_delimiter_and_empty_fields",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        {"message": ",, this , , "},
+        [" this "],
+        id="splits_one_item_with_multiple_delimiter_and_whitespace",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        {"message": "\n,,this,\t, "},
+        ["this"],
+        id="splits_one_item_with_multiple_delimiter_and_newline",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        {"message": ",, this, , "},
+        [" this"],
+        id="splits_one_item_with_multiple_delimiter_and_whitespace_only_in_front",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimiter": ",",
+                "drop_empty": True,
+            },
+        },
+        {"message": "hello , world,this, is a very complex,\n , and even multiline, text,,, "},
+        ["hello ", " world", "this", " is a very complex", " and even multiline", " text"],
+        id="splits_one_item_with_multiple_delimiter_and_whitespace_only_in_front",
+    ),
 ]
 
 
