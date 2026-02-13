@@ -23,9 +23,10 @@ Processor Configuration
 .. automodule:: logprep.processor.generic_resolver.rule
 """
 
+import typing
 from copy import deepcopy
 from functools import cached_property, lru_cache
-from typing import Callable, cast
+from typing import Callable
 
 from attrs import define, field, validators
 
@@ -111,7 +112,7 @@ class GenericResolver(FieldManager):
     @property
     def config(self) -> Config:
         """Returns the typed GenericResolver.Config"""
-        return cast(GenericResolver.Config, self._config)
+        return typing.cast(GenericResolver.Config, self._config)
 
     @property
     def max_cache_entries(self) -> int:
@@ -127,24 +128,24 @@ class GenericResolver(FieldManager):
     def _get_lru_cached_value_from_list(
         self,
     ) -> Callable[[GenericResolverRule, str], FieldValue | Missing]:
-        """Returns lru cashed method to retrieve values from list if configured"""
+        """Returns lru cached method to retrieve values from list if configured"""
         if self.max_cache_entries <= 0:
             return self._resolve_value_from_list
         return lru_cache(maxsize=self.max_cache_entries)(self._resolve_value_from_list)
 
     def _apply_rules(self, event: dict, rule: Rule) -> None:
         """Apply the given rule to the current event"""
-        _rule = cast(GenericResolverRule, rule)
+        rule = typing.cast(GenericResolverRule, rule)
         source_field_values = [
             get_dotted_field_value(event, source_field)
-            for source_field in _rule.field_mapping.keys()
+            for source_field in rule.field_mapping.keys()
         ]
-        self._handle_missing_fields(event, _rule, _rule.field_mapping.keys(), source_field_values)
+        self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_field_values)
         conflicting_fields = []
-        for source_field, target_field in _rule.field_mapping.items():
+        for source_field, target_field in rule.field_mapping.items():
             source_field_value = str(get_dotted_field_value(event, source_field))
             resolved_content = self._find_content_of_first_matching_pattern(
-                _rule, source_field_value
+                rule, source_field_value
             )
             if isinstance(resolved_content, Missing):
                 continue
@@ -159,13 +160,13 @@ class GenericResolver(FieldManager):
                     fields={
                         target_field: (
                             [resolved_content]
-                            if _rule.merge_with_target and current_content is None
+                            if rule.merge_with_target and current_content is None
                             else resolved_content
                         )
                     },
-                    rule=_rule,
-                    merge_with_target=_rule.merge_with_target,
-                    overwrite_target=_rule.overwrite_target,
+                    rule=rule,
+                    merge_with_target=rule.merge_with_target,
+                    overwrite_target=rule.overwrite_target,
                     skip_none=False,
                 )
             except FieldExistsWarning as error:
@@ -174,7 +175,7 @@ class GenericResolver(FieldManager):
         self._update_cache_metrics()
 
         if conflicting_fields:
-            raise FieldExistsWarning(_rule, event, conflicting_fields)
+            raise FieldExistsWarning(rule, event, conflicting_fields)
 
     def _find_content_of_first_matching_pattern(
         self, rule: GenericResolverRule, source_field_value: str
