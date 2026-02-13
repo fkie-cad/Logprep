@@ -147,7 +147,7 @@ class GenericResolver(FieldManager):
             resolved_content = self._find_content_of_first_matching_pattern(
                 rule, source_field_value
             )
-            if isinstance(resolved_content, Missing):
+            if resolved_content is MISSING:
                 continue
             current_content = get_dotted_field_value(event, target_field)
             if isinstance(current_content, list) and resolved_content in current_content:
