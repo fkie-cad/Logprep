@@ -121,9 +121,10 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         document = {"to_resolve": "something HELLO1"}
 
-        self.object.process(document)
+        log_event = LogEvent(document, original=b"")
+        self.object.process(log_event)
 
-        assert document == expected
+        assert log_event.data == expected
 
     def test_resolve_with_dict_value(self):
         rule = {
@@ -140,9 +141,10 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         document = {"to_resolve": "something HELLO1"}
 
-        self.object.process(document)
+        log_event = LogEvent(document, original=b"")
+        self.object.process(log_event)
 
-        assert document == expected
+        assert log_event.data == expected
 
     @pytest.mark.parametrize(["resolve_value"], resolve_value_variants)
     def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
