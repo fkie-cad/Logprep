@@ -12,7 +12,7 @@
 ### Bugfix
 * generic_resolver now follows yaml standard and accepts a list instead of relying on the ordering of a dict
 * decoder errors are handled properly as warnings instead of causing pipeline failures
-* generic_resolver now properly handles falsy values in resolve_list
+* generic_resolver now properly handles falsy values in resolve_list and resolve_from_file
 
 ## 18.0.1
 ### Breaking
