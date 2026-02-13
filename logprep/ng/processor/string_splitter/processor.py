@@ -24,8 +24,13 @@ Processor Configuration
 .. automodule:: logprep.processor.string_splitter.rule
 """
 
+import typing
+
+from typing_extensions import override
+
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.rule import Rule
 from logprep.processor.string_splitter.rule import StringSplitterRule
 from logprep.util.helper import get_dotted_field_value
 
@@ -35,11 +40,17 @@ class StringSplitter(FieldManager):
 
     rule_class = StringSplitterRule
 
-    def _apply_rules(self, event: dict, rule: StringSplitterRule) -> None:
-        source_field = rule.source_fields[0]
+    @override
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        _rule = typing.cast(StringSplitterRule, rule)
+
+        source_field = _rule.source_fields[0]
         source_field_content = get_dotted_field_value(event, source_field)
-        self._handle_missing_fields(event, rule, rule.source_fields, [source_field_content])
+        self._handle_missing_fields(event, _rule, _rule.source_fields, [source_field_content])
         if not isinstance(source_field_content, str):
             raise ProcessingWarning(f"source_field '{source_field}' is not a string", rule, event)
-        result = source_field_content.split(rule.delimiter)
+        result = source_field_content.split(_rule.delimiter)
+
+        if _rule.drop_empty:
+            result = [item for item in result if item != "" and not item.isspace()]
         self._write_target_field(event, rule, result)
