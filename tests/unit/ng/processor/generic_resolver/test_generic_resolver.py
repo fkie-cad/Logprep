@@ -19,6 +19,73 @@ from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
+resolve_value_variants = [
+    pytest.param(
+        0,
+        id="int_0_falsy",
+    ),
+    pytest.param(
+        42,
+        id="int_42",
+    ),
+    pytest.param(
+        -1,
+        id="int_neg_1",
+    ),
+    pytest.param(
+        -42,
+        id="int_neg_42",
+    ),
+    pytest.param(
+        -42,
+        id="int_neg_42",
+    ),
+    pytest.param(
+        0.0,
+        id="float_0",
+    ),
+    pytest.param(
+        42.1337,
+        id="float_greater_0",
+    ),
+    pytest.param(
+        -42.1337,
+        id="float_lower_0",
+    ),
+    pytest.param(
+        True,
+        id="bool_true",
+    ),
+    pytest.param(
+        False,
+        id="bool_false",
+    ),
+    pytest.param(
+        [],
+        id="list_empty_falsy",
+    ),
+    pytest.param(
+        [1, 2, "string", 0.5, [1, 2, 3], {"key": "value"}],
+        id="list_mixed_types",
+    ),
+    pytest.param(
+        {},
+        id="dict_empty_falsy",
+    ),
+    pytest.param(
+        {"key": "value"},
+        id="dict_simple",
+    ),
+    pytest.param(
+        {"key": {"str": "value", "int": 0, "float": 0.1, "bool": True, "list": [1, 2]}},
+        id="dict_nested",
+    ),
+    pytest.param(
+        None,
+        id="None",
+    ),
+]
+
 
 class TestGenericResolver(BaseProcessorTestCase):
     CONFIG = {
@@ -39,71 +106,45 @@ class TestGenericResolver(BaseProcessorTestCase):
         self._load_rule(rule)
         assert isinstance(self.object, GenericResolver)
 
-    @pytest.mark.parametrize(
-        ["resolve_value"],
-        [
-            pytest.param(
-                0,
-                id="int_0_falsy",
-            ),
-            pytest.param(
-                42,
-                id="int_42",
-            ),
-            pytest.param(
-                -1,
-                id="int_neg_1",
-            ),
-            pytest.param(
-                -42,
-                id="int_neg_42",
-            ),
-            pytest.param(
-                -42,
-                id="int_neg_42",
-            ),
-            pytest.param(
-                0.0,
-                id="float_0",
-            ),
-            pytest.param(
-                42.1337,
-                id="float_greater_0",
-            ),
-            pytest.param(
-                -42.1337,
-                id="float_lower_0",
-            ),
-            pytest.param(
-                True,
-                id="bool_true",
-            ),
-            pytest.param(
-                False,
-                id="bool_false",
-            ),
-            pytest.param(
-                [],
-                id="list_empty_falsy",
-            ),
-            pytest.param(
-                [1, 2, "string", 0.5],
-                id="list_mixed_types",
-            ),
-            pytest.param(
-                {},
-                id="dict_empty_falsy",
-            ),
-            pytest.param(
-                {"key": "value"},
-                id="dict_simple",
-            ),
-            pytest.param(
-                None,
-                id="None",
-            ),
-        ],
-    )
+    def test_resolve_not_dotted_field_no_conflict_match(self):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        }
+
+        self._load_rule(rule)
+
+        expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
+
+        document = {"to_resolve": "something HELLO1"}
+
+        self.object.process(document)
+
+        assert document == expected
+
+    def test_resolve_with_dict_value(self):
+        rule = {
+            "filter": "to_resolve",
+            "generic_resolver": {
+                "field_mapping": {"to_resolve": "resolved"},
+                "resolve_list": {".*HELLO\\d": {"Greeting": "Hello"}},
+            },
+        }
+
+        self._load_rule(rule)
+
+        expected = {"to_resolve": "something HELLO1", "resolved": {"Greeting": "Hello"}}
+
+        document = {"to_resolve": "something HELLO1"}
+
+        self.object.process(document)
+
+        assert document == expected
+
+    @pytest.mark.parametrize(["resolve_value"], resolve_value_variants)
     def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
         rule = {
             "filter": "to_resolve",
@@ -123,41 +164,34 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert log_event.data == expected
 
-    def test_resolve_not_dotted_field_no_conflict_match(self):
+    @pytest.mark.parametrize(["resolve_value"], resolve_value_variants)
+    def test_resolve_not_dotted_field_no_conflict_different_values_match_from_file(
+        self, resolve_value, tmp_path
+    ):
+        resolve_file_path = tmp_path / "rule.json"
+
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".*HELLO\\d": "Greeting"},
+                "resolve_from_file": {
+                    "path": str(resolve_file_path),
+                    "pattern": r"(?P<mapping>.+)",
+                },
             },
         }
+        resolve_dict = {"abc": resolve_value}
+        expected = {"to_resolve": "abc", "resolved": resolve_value}
+        document = {"to_resolve": "abc"}
+
+        with open(resolve_file_path, mode="w+", encoding="utf8") as stream:
+            stream.write(json.dumps(resolve_dict))
 
         self._load_rule(rule)
-
-        expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
-
-        document = {"to_resolve": "something HELLO1"}
 
         log_event = LogEvent(document, original=b"")
         self.object.process(log_event)
 
-        assert log_event.data == expected
-
-    def test_resolve_with_dict_value(self):
-        rule = {
-            "filter": "to_resolve",
-            "generic_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_list": {".*HELLO\\d": {"Greeting": "Hello"}},
-            },
-        }
-
-        self._load_rule(rule)
-
-        expected = {"to_resolve": "something HELLO1", "resolved": {"Greeting": "Hello"}}
-        document = {"to_resolve": "something HELLO1"}
-        log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
         assert log_event.data == expected
 
     def test_resolve_from_mapping_with_ignore_case(self):
