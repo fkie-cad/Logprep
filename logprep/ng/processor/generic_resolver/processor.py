@@ -185,8 +185,9 @@ class GenericResolver(FieldManager):
                 mapping = matches.group("mapping")
                 if rule.ignore_case:
                     mapping = mapping.upper()
-                if mapping in rule.additions:
-                    return rule.additions.get(mapping)
+                content = rule.additions.get(mapping, MISSING)
+                if content is not MISSING:
+                    return content
         return self._get_lru_cached_value_from_list(rule, source_field_value)
 
     def _resolve_value_from_list(
