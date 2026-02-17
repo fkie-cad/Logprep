@@ -46,7 +46,7 @@ from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.decoder.decoders import DECODERS, DecoderError
 from logprep.processor.decoder.rule import DecoderRule
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import FieldValue, add_fields_to
+from logprep.util.helper import FieldValue
 from logprep.util.typing import is_list_of
 
 
@@ -78,6 +78,5 @@ class Decoder(FieldManager):
                 return [decoder(value) for value in source_field_values]
             raise DecoderError("can only decode string values")
         except DecoderError as error:
-            add_fields_to(event, {"tags": rule.failure_tags}, merge_with_target=True)
-            self._event.errors.append(error)
+            self._handle_warning_error(event, rule, error)
             return []

@@ -5,6 +5,8 @@ import json
 
 import pytest
 
+from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
+from logprep.util.typing import is_list_of
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -686,7 +688,13 @@ class TestDecoder(BaseProcessorTestCase):
     def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
         result = self.object.process(event)
-        assert result.errors or result.warnings
+        assert len(result.errors) > 0 or len(result.warnings) > 0
+        assert is_list_of(
+            result.errors, ProcessingError
+        ), f"ProcessingError expected: {result.errors}"
+        assert is_list_of(
+            result.warnings, ProcessingWarning
+        ), f"ProcessingWarning expected: {result.warnings}"
         assert event == expected
 
     def test_decodes_different_source_json_escaping(self):
