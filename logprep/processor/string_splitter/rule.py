@@ -69,7 +69,9 @@ class StringSplitterRule(FieldManagerRule):
         mapping: dict = field(default={}, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
         drop_empty: bool = field(default=False)
-        """If empty list values (as a result of the splitting operation) should be dropped or kept. By this definition, the empty string (no characters) and strings containing only `whitespace <https://docs.python.org/3/library/stdtypes.html#str.isspace>`_ count as 'empty'. The default setting is to keep empty list values.
+        """If empty list values (as a result of the splitting operation) should be dropped or kept.
+        By this definition, the empty string (no characters) and strings containing only `whitespace <https://docs.python.org/3/library/stdtypes.html#str.isspace>`_ count as 'empty'.
+        The default setting is to keep empty list values."""
 
     @property
     def config(self) -> Config:
