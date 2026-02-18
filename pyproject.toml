@@ -162,7 +162,7 @@ before-build = "curl -sSf https://sh.rustup.rs | sh -s -- -y"
 environment = 'PATH=$HOME/.cargo/bin:$PATH'
 
 [tool.pylint.MAIN]
-ignore = ".venv"
+ignore = ".venv, poc"
 fail-under = 9.5
 
 [tool.pylint.FORMAT]
