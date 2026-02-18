@@ -144,7 +144,7 @@ build = "cp311-* cp312-* cp313-* cp314-*"
 skip = "*pp* *i686-unknown-linux-musl*"
 
 [tool.pylint.MAIN]
-ignore = ".venv"
+ignore = ".venv, poc"
 fail-under = 9.5
 
 [tool.pylint.FORMAT]
