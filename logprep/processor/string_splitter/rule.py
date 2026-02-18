@@ -41,6 +41,8 @@ Examples for string_splitter:
 
 """
 
+import typing
+
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -60,13 +62,28 @@ class StringSplitterRule(FieldManagerRule):
                 validators.min_len(1),
                 validators.max_len(1),
             ],
+            default=[],
         )
         delimiter: str = field(validator=validators.instance_of(str), default=" ")
         """The delimiter for splitting. Defaults to whitespace"""
-        mapping: dict = field(default="", init=False, repr=False, eq=False)
+        mapping: dict = field(default={}, init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
+        drop_empty: bool = field(default=False)
+        """If empty list values (as a result of the splitting operation) should be dropped or kept.
+        By this definition, the empty string (no characters) and strings containing only `whitespace <https://docs.python.org/3/library/stdtypes.html#str.isspace>`_ count as 'empty'.
+        The default setting is to keep empty list values."""
 
     @property
-    def delimiter(self):
+    def config(self) -> Config:
+        """returns the config as typed StringSplitterRule.Config"""
+        return typing.cast(StringSplitterRule.Config, self._config)
+
+    @property
+    def delimiter(self) -> str:
         """returns the configured delimiter"""
-        return self._config.delimiter
+        return self.config.delimiter
+
+    @property
+    def drop_empty(self) -> bool:
+        """returns the configured drop_empty flag"""
+        return self.config.drop_empty

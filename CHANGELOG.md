@@ -4,10 +4,12 @@
 ### Features
 * add uv as dependency management, including uv.lock
 * allow configuration (and auto-creation) of service accounts in helm chart
+* add new drop_empty flag to allow the `string_splitter` to drop resulting fields that would be empty (e.g. whitespace)
 * generic_resolver now handles all FieldValue types (including None)
 
 ### Improvements
 * simplify Dockerfile and remove docker build support for `LOGPREP_VERSION`
+* pytest.param now works with test_cases document generation
 
 ### Bugfix
 * generic_resolver now follows yaml standard and accepts a list instead of relying on the ordering of a dict
