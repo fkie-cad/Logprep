@@ -7,10 +7,19 @@ from enum import Enum, auto
 from functools import lru_cache, partial, reduce
 from importlib.metadata import version
 from os import remove
-from typing import TYPE_CHECKING, Callable, Iterable, Optional, TypeAlias, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    Optional,
+    Sequence,
+    TypeAlias,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from logprep.processor.base.exceptions import FieldExistsWarning
-from logprep.util.ansi import AnsiBack, AnsiFore, Back, Fore
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -42,50 +51,34 @@ FieldValue: TypeAlias = Union[
     dict[str, "FieldValue"], list["FieldValue"], str, int, float, bool, None
 ]
 
+FieldRef: TypeAlias = str
 
-def color_print_line(back: str | AnsiBack | None, fore: str | AnsiBack | None, message: str):
-    """Print string with colors and reset the color afterwards."""
-    color = ""
-    if back:
-        color += back
-    if fore:
-        color += fore
-
-    print(color + message + Fore.RESET + Back.RESET)
+T = TypeVar("T")
 
 
-def color_print_title(background: str | AnsiBack, message: str):
-    """Print dashed title line with black foreground colour and reset the color afterwards."""
-    message = f"------ {message} ------"
-    color_print_line(background, Fore.BLACK, message)
-
-
-def print_fcolor(fore: AnsiFore, message: str):
-    """Print string with colored font and reset the color afterwards."""
-    color_print_line(None, fore, message)
-
-
-def _add_and_overwrite_key(sub_dict, key):
-    current_value = sub_dict.get(key)
+def _add_and_overwrite_key(event: dict[str, FieldValue], key: str) -> dict[str, FieldValue]:
+    current_value = event.get(key)
     if isinstance(current_value, dict):
         return current_value
-    sub_dict.update({key: {}})
-    return sub_dict.get(key)
+    sub_dict: dict[str, FieldValue] = {}
+    event.update({key: sub_dict})
+    return sub_dict
 
 
-def _add_and_not_overwrite_key(sub_dict, key):
-    current_value = sub_dict.get(key)
+def _add_and_not_overwrite_key(event: dict[str, FieldValue], key: str) -> dict[str, FieldValue]:
+    current_value = event.get(key)
     if isinstance(current_value, dict):
         return current_value
-    if key in sub_dict:
+    if key in event:
         raise KeyError("key exists")
-    sub_dict.update({key: {}})
-    return sub_dict.get(key)
+    sub_dict: dict[str, FieldValue] = {}
+    event.update({key: sub_dict})
+    return sub_dict
 
 
 def _add_field_to(
-    event: dict,
-    field: tuple,
+    event: dict[str, FieldValue],
+    field: tuple[FieldRef, FieldValue],
     rule: Optional["Rule"],
     merge_with_target: bool = False,
     overwrite_target: bool = False,
@@ -99,10 +92,11 @@ def _add_field_to(
     event: dict
         Original log-event that logprep is currently processing
     field: tuple
-        A key value pair describing the field that should be added. The key is the dotted subfield string
-        indicating the target. The value is the content that should be added to the named target.
+        A key value pair describing the field that should be added.
+        The key is the dotted subfield string indicating the target.
+        The value is the content that should be added to the named target.
         The content can be of type str, float, int, list, dict.
-    rule: Rule
+    rule: Rule, optional
         A rule that initiated the field addition, is used for proper error handling.
     merge_with_target: bool, optional
         Flag that determines whether the content should be merged with an existing target_field.
@@ -120,15 +114,15 @@ def _add_field_to(
     if merge_with_target and overwrite_target:
         raise ValueError("Can't merge with and overwrite a target field at the same time")
     target_field, content = field
-    field_path = [event, *get_dotted_field_list(target_field)]
-    target_key = field_path.pop()
+    field_path = get_dotted_field_list(target_field)
+    target_key = field_path[-1]
 
     if overwrite_target:
-        target_parent = reduce(_add_and_overwrite_key, field_path)
+        target_parent = reduce(_add_and_overwrite_key, field_path[:-1], event)
         target_parent[target_key] = content
         return
     try:
-        target_parent = reduce(_add_and_not_overwrite_key, field_path)
+        target_parent = reduce(_add_and_not_overwrite_key, field_path[:-1], event)
     except KeyError as error:
         raise FieldExistsWarning(rule, event, [target_field]) from error
     existing_value = target_parent.get(target_key)
@@ -146,7 +140,7 @@ def _add_field_to(
     elif isinstance(existing_value, list) and isinstance(content, (int, float, str, bool)):
         target_parent[target_key] = existing_value + [content]
     elif isinstance(existing_value, (int, float, str, bool)) and isinstance(content, list):
-        target_parent[target_key] = [existing_value] + content
+        target_parent[target_key] = [existing_value, *content]
     else:
         if not overwrite_target:
             raise FieldExistsWarning(rule, event, [target_field])
@@ -382,15 +376,16 @@ def get_dotted_field_values(
     for field_to_copy in dotted_fields:
         value = get_dotted_field_value_with_explicit_missing(event, field_to_copy)
         if value is MISSING:
-            value = on_missing(field_to_copy)
-            if value is SKIP:
-                continue
+            fallback_value = on_missing(field_to_copy)
+            if fallback_value is not SKIP:
+                result[field_to_copy] = fallback_value
+            continue
         result[field_to_copy] = value
     return result
 
 
 @lru_cache(maxsize=100000)
-def get_dotted_field_list(dotted_field: str) -> list[str]:
+def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
     """Make lookup of dotted field in the dotted_field_lookup_table and ensures
     it is added if not found. Additionally, the string will be interned for faster
     followup lookups.
@@ -402,8 +397,8 @@ def get_dotted_field_list(dotted_field: str) -> list[str]:
 
     Returns
     -------
-    list[str]
-        a list with keys for dictionary iteration
+    Sequence[str]
+        a readonly sequence keys for dictionary iteration
     """
     return dotted_field.split(".")
 
@@ -587,7 +582,7 @@ def get_source_fields_dict(event, rule):
     return source_field_dict
 
 
-def get_versions_string(config: "Configuration" = None) -> str:
+def get_versions_string(config: Optional["Configuration"] = None) -> str:
     """
     Prints the version and exists. If a configuration was found then it's version
     is printed as well
@@ -603,3 +598,19 @@ def get_versions_string(config: "Configuration" = None) -> str:
         config_version = f"no configuration found in {', '.join([DEFAULT_CONFIG_LOCATION])}"
     version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
     return version_string
+
+
+def deduplicate_with_order(items: Iterable[T]) -> list[T]:
+    """Deduplicates the given items while maintaining their order
+
+    Parameters
+    ----------
+    items : Iterable[T]
+        The items to be deduplicated
+
+    Returns
+    -------
+    list[T]
+        The deduplicated list
+    """
+    return list(dict.fromkeys(items))

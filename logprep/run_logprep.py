@@ -13,12 +13,12 @@ import click
 
 from logprep.generator.factory import ControllerFactory
 from logprep.runner import Runner
-from logprep.util.ansi import Fore
+from logprep.util.ansi import ForegroundColor, print_fcolor
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.context_managers import disable_loggers, logqueue_listener
 from logprep.util.defaults import DEFAULT_LOG_CONFIG, EXITCODES
-from logprep.util.helper import get_versions_string, print_fcolor
+from logprep.util.helper import get_versions_string
 from logprep.util.pseudo.commands import depseudonymize, generate_keys, pseudonymize
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.tag_yaml_loader import init_yaml_loader_tags
@@ -122,7 +122,7 @@ def test_config(configs: tuple[str]) -> None:
     """
     with logqueue_listener("console"):
         _get_configuration(configs)
-    print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
+    print_fcolor(ForegroundColor.GREEN, "The verification of the configuration was successful")
 
 
 @test.command(short_help="Execute a dry run against a configuration and selected events")

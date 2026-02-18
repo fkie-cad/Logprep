@@ -2,8 +2,9 @@
 
 import logging
 import os
+import typing
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Type, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Iterable, Sequence, Type, cast
 
 from attrs import define, field, validators
 
@@ -41,13 +42,13 @@ class ProcessorResult:
 
     processor_name : str
         The name of the processor
-    event: Optional[dict]
+    event: dict | None
         A reference to the event that was processed
-    data : Optional[list]
+    data : list | None
         The generated extra data
-    errors : Optional[list]
+    errors : list | None
         The errors that occurred during processing
-    warnings : Optional[list]
+    warnings : list | None
         The warnings that occurred during processing
     """
 
@@ -82,11 +83,11 @@ class Processor(Component):
     class Config(Component.Config):
         """Common Configurations"""
 
-        rules: List[str] = field(
-            validator=[
-                validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
-            ]
+        rules: list[str] = field(
+            validator=validators.deep_iterable(
+                member_validator=validators.instance_of((str, dict)),
+                iterable_validator=validators.instance_of(list),
+            ),
         )
         """List of rule locations to load rules from.
         In addition to paths to file directories it is possible to retrieve rules from a URI.
@@ -118,13 +119,18 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
-        self._rule_tree = RuleTree(config=self._config.tree_config)
-        self.load_rules(rules_targets=self._config.rules)
+        self._rule_tree = RuleTree(config=self.config.tree_config)
+        self.load_rules(rules_targets=self.config.rules)
         self._result = None
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
             logger.debug("Bypassing rule tree for processor %s", self.name)
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast("Processor.Config", self._config)
 
     @property
     def result(self) -> ProcessorResult:
@@ -158,7 +164,7 @@ class Processor(Component):
         return {
             "component": "processor",
             "description": self.describe(),
-            "type": self._config.type,
+            "type": self.config.type,
             "name": self.name,
         }
 
@@ -208,7 +214,7 @@ class Processor(Component):
             return event
 
         def _process_rule_tree_multiple_times(tree: RuleTree, event: dict):
-            matching_rules = tree.get_matching_rules(event)
+            matching_rules: Iterable[Rule] = tree.get_matching_rules(event)
             while matching_rules:
                 for rule in matching_rules:
                     _process_rule(rule, event)
@@ -219,7 +225,7 @@ class Processor(Component):
             for rule in matching_rules:
                 _process_rule(rule, event)
 
-        if self._config.apply_multiple_times:
+        if self.config.apply_multiple_times:
             _process_rule_tree_multiple_times(tree, event)
         else:
             _process_rule_tree_once(tree, event)
@@ -257,7 +263,7 @@ class Processor(Component):
 
         """
 
-    def load_rules(self, rules_targets: List[str | Dict]) -> None:
+    def load_rules(self, rules_targets: Sequence[str | dict]) -> None:
         """method to add rules from directories or urls"""
         try:
             rules = RuleLoader(rules_targets, self.name).rules
