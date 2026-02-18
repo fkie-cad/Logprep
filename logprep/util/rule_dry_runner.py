@@ -46,10 +46,15 @@ from typing import Dict, List
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline, PipelineResult
+from logprep.util.ansi import (
+    BackgroundColor,
+    ForegroundColor,
+    color_print_line,
+    color_print_title,
+)
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import color_print_line, color_print_title, recursive_compare
-from logprep.util.ansi import Back, Fore
+from logprep.util.helper import recursive_compare
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -107,7 +112,7 @@ class DryRunner:
         self._use_json = use_json
         self._logger = logging.getLogger("DryRunner")
 
-    def run(self):
+    def run(self) -> None:
         """Run the dry runner."""
         transformed_cnt = 0
         output_count = 0
@@ -120,7 +125,9 @@ class DryRunner:
             diff = self._print_output_results(input_document, test_output, test_output_custom)
             if diff:
                 transformed_cnt += 1
-        color_print_title(Back.WHITE, f"TRANSFORMED EVENTS: {transformed_cnt}/{output_count}")
+        color_print_title(
+            BackgroundColor.WHITE, f"TRANSFORMED EVENTS: {transformed_cnt}/{output_count}"
+        )
         shutil.rmtree(self._tmp_path)
 
     def _print_output_results(self, input_document, test_output, test_output_custom):
@@ -131,7 +138,7 @@ class DryRunner:
             test_json = json.dumps(test_output, sort_keys=True, indent=4)
             input_path_json = json.dumps(input_document, sort_keys=True, indent=4)
             diff = ndiff(input_path_json.splitlines(), test_json.splitlines())
-            color_print_title(Back.CYAN, "PROCESSED EVENT")
+            color_print_title(BackgroundColor.CYAN, "PROCESSED EVENT")
             self._print_ndiff_items(diff)
         if self._full_output and test_output_custom:
             self._print_custom_outputs(test_output_custom)
@@ -143,18 +150,18 @@ class DryRunner:
         """
         for item in diff:
             if item.startswith("- "):
-                color_print_line(Back.BLACK, Fore.RED, item)
+                color_print_line(BackgroundColor.BLACK, ForegroundColor.RED, item)
             elif item.startswith("+ "):
-                color_print_line(Back.BLACK, Fore.GREEN, item)
+                color_print_line(BackgroundColor.BLACK, ForegroundColor.GREEN, item)
             elif item.startswith("? "):
-                color_print_line(Back.BLACK, Fore.WHITE, item)
+                color_print_line(BackgroundColor.BLACK, ForegroundColor.WHITE, item)
             else:
-                color_print_line(Back.BLACK, Fore.CYAN, item)
+                color_print_line(BackgroundColor.BLACK, ForegroundColor.CYAN, item)
 
     def _print_custom_outputs(self, test_output_custom):
-        color_print_title(Back.MAGENTA, "CUSTOM OUTPUTS")
+        color_print_title(BackgroundColor.MAGENTA, "CUSTOM OUTPUTS")
         for custom_output in test_output_custom:
             output_target, output = list(custom_output.items())[0]
-            color_print_title(Back.YELLOW, f"Output Target: {output_target}")
+            color_print_title(BackgroundColor.YELLOW, f"Output Target: {output_target}")
             test_json = json.dumps(output, sort_keys=True, indent=4)
-            color_print_line(Back.BLACK, Fore.YELLOW, test_json)
+            color_print_line(BackgroundColor.BLACK, ForegroundColor.YELLOW, test_json)

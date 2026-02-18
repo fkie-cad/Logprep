@@ -57,17 +57,17 @@ from logging import getLogger
 from os import path
 from pathlib import Path
 from pprint import pprint
-from typing import TYPE_CHECKING, Union, Any
+from typing import TYPE_CHECKING, Any, Union
 
-from logprep.util.ansi import Fore
 from more_itertools import nth
 from ruamel.yaml import YAML, YAMLError
 
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.pre_detector.processor import PreDetector
+from logprep.util.ansi import ForegroundColor, print_fcolor
 from logprep.util.auto_rule_tester.grok_pattern_replacer import GrokPatternReplacer
-from logprep.util.helper import print_fcolor, remove_file_if_exists
+from logprep.util.helper import remove_file_if_exists
 
 if TYPE_CHECKING:
     from logprep.abc.processor import Processor
@@ -192,17 +192,17 @@ class ProcessorExtensions:
             or item.startswith("error")
             or item.startswith("without tests")
         ):
-            print_fcolor(Fore.RED, item)
+            print_fcolor(ForegroundColor.RED, item)
         elif item.startswith((": + ", "+ ")) or item.startswith("with tests"):
-            print_fcolor(Fore.GREEN, item)
+            print_fcolor(ForegroundColor.GREEN, item)
         elif item.startswith((": ? ", "? ")):
-            print_fcolor(Fore.WHITE, "\n" + item)
+            print_fcolor(ForegroundColor.WHITE, "\n" + item)
         elif item.startswith("> "):
-            print_fcolor(Fore.MAGENTA, "\n" + item)
+            print_fcolor(ForegroundColor.MAGENTA, "\n" + item)
         elif item.lstrip().startswith("~ ") or item.startswith("warning"):
-            print_fcolor(Fore.YELLOW, item)
+            print_fcolor(ForegroundColor.YELLOW, item)
         else:
-            print_fcolor(Fore.CYAN, item)
+            print_fcolor(ForegroundColor.CYAN, item)
 
     @staticmethod
     def load_json_or_yaml(file_path) -> Union[list, dict]:
@@ -286,7 +286,9 @@ class AutoRuleTester:
         if any(processor_test_cfg["rules"] for processor_test_cfg in rules_pn.values()):
             self._run_tests_for_rules(rules_pn)
         else:
-            print_fcolor(Fore.YELLOW, "~\nThere are no rules within any of the rules directories!")
+            print_fcolor(
+                ForegroundColor.YELLOW, "~\nThere are no rules within any of the rules directories!"
+            )
 
     def check_run_rule_tests(self, processor_cont, rules_pn) -> None:
         """Verify dependencies for every preproccessor and if fullfilled, start the real rule tests.
@@ -458,7 +460,7 @@ class AutoRuleTester:
             if (
                 print_diff
                 or nth(self._problems["warnings"], self._rule_cnt) is not None
-                or nth(self._problems.get("errors"), self._rule_cnt) is not None
+                or nth(self._problems["errors"], self._rule_cnt) is not None
             ):
                 self._pd_extra.color_based_print(
                     f"> RULE FILE {rule_test['file']} & "
@@ -469,8 +471,8 @@ class AutoRuleTester:
                         f"~ {self._problems['warnings'][int(self._result['~ Warning'])]}"
                     )
 
-                if print_diff or nth(self._problems.get("errors"), self._rule_cnt) is not None:
-                    if nth(self._problems.get("errors"), self._rule_cnt) is not None:
+                if print_diff or nth(self._problems["errors"], self._rule_cnt) is not None:
+                    if nth(self._problems["errors"], self._rule_cnt) is not None:
                         self._pd_extra.color_based_print(
                             f"- {self._problems['errors'][int(self._result['- Failed Tests'])]}"
                         )

@@ -33,46 +33,63 @@ This module contains only a subset of the original colorama library. Additional 
 https://github.com/tartley/colorama/blob/master/colorama/ansi.py.
 """
 
+from enum import StrEnum
+
 CSI = "\033["
 OSC = "\033]"
 BEL = "\a"
 
 
-def code_to_chars(code):
+def _code_to_chars(code):
     return CSI + str(code) + "m"
 
 
-class AnsiCodes(object):
-    def __init__(self):
-        # the subclasses declare class attributes which are numbers.
-        # Upon instantiation we define instance attributes, which are the same
-        # as the class attributes but wrapped with the ANSI escape sequence
-        for name in dir(self):
-            if not name.startswith("_"):
-                value = getattr(self, name)
-                setattr(self, name, code_to_chars(value))
+class ForegroundColor(StrEnum):
+    """
+    Text foreground color codes for terminal display.
+    """
+
+    BLACK = _code_to_chars(30)
+    RED = _code_to_chars(31)
+    GREEN = _code_to_chars(32)
+    YELLOW = _code_to_chars(33)
+    BLUE = _code_to_chars(34)
+    MAGENTA = _code_to_chars(35)
+    CYAN = _code_to_chars(36)
+    WHITE = _code_to_chars(37)
+    RESET = _code_to_chars(39)
 
 
-class AnsiFore(AnsiCodes):
-    BLACK = 30
-    RED = 31
-    GREEN = 32
-    YELLOW = 33
-    BLUE = 34
-    MAGENTA = 35
-    CYAN = 36
-    WHITE = 37
-    RESET = 39
+class BackgroundColor(StrEnum):
+    """
+    Text background color codes for terminal display.
+    """
+
+    BLACK = _code_to_chars(40)
+    YELLOW = _code_to_chars(43)
+    MAGENTA = _code_to_chars(45)
+    CYAN = _code_to_chars(46)
+    WHITE = _code_to_chars(47)
+    RESET = _code_to_chars(49)
 
 
-class AnsiBack(AnsiCodes):
-    BLACK = 40
-    YELLOW = 43
-    MAGENTA = 45
-    CYAN = 46
-    WHITE = 47
-    RESET = 49
+def color_print_line(back: BackgroundColor | None, fore: ForegroundColor | None, message: str):
+    """Print string with colors and reset the color afterwards."""
+    color = ""
+    if back:
+        color += back
+    if fore:
+        color += fore
+
+    print(color + message + ForegroundColor.RESET + BackgroundColor.RESET)
 
 
-Fore = AnsiFore()
-Back = AnsiBack()
+def color_print_title(background: BackgroundColor, message: str):
+    """Print dashed title line with black foreground colour and reset the color afterwards."""
+    message = f"------ {message} ------"
+    color_print_line(background, ForegroundColor.BLACK, message)
+
+
+def print_fcolor(fore: ForegroundColor, message: str):
+    """Print string with colored font and reset the color afterwards."""
+    color_print_line(None, fore, message)
