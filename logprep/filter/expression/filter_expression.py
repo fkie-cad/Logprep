@@ -339,7 +339,8 @@ class RegExFilterExpression(KeyValueBasedFilterExpression):
         else:
             end_token = "$"
         match = RegExFilterExpression.match_parts_pattern.match(regex)
-        assert match, "regex is designed to always match"
+        if match is None:  # pragma: no cover
+            raise FilterExpressionError("regex is designed to always match")
         flag, _, pattern = match.groups()
         flag = "" if flag is None else flag
         pattern = "" if pattern is None else pattern
