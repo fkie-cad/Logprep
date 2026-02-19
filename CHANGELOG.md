@@ -7,6 +7,7 @@
 ### Improvements
 * improve http endpoint security by fully checking basic auth hashes, and doing that in a time constant manner to not expose secrets
 * improve clusterer performance by removing access via dotted fields where possible
+* fix several mypy issues
 
 ### Bugfix
 * fix missing examples for processor decoder
@@ -24,7 +25,6 @@
 ### Improvements
 * simplify Dockerfile and remove docker build support for `LOGPREP_VERSION`
 * pytest.param now works with test_cases document generation
-* fix several mypy issues
 
 ### Bugfix
 * generic_resolver now follows yaml standard and accepts a list instead of relying on the ordering of a dict
