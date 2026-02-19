@@ -7,7 +7,10 @@ import pytest
 
 from logprep.util.configuration import Configuration
 from logprep.util.helper import (
+    Missing,
+    Skip,
     camel_to_snake,
+    get_dotted_field_list,
     get_dotted_field_value,
     get_versions_string,
     pop_dotted_field_value,
@@ -15,6 +18,18 @@ from logprep.util.helper import (
 )
 from logprep.util.json_handling import is_json
 from tests.testdata.metadata import path_to_config
+
+
+class TestSentinels:
+    def test_no_collission_with_missing(self):
+        assert isinstance(Missing.MISSING, object)
+        assert "MISSING" != Missing.MISSING
+        assert "missing" != Missing.MISSING
+
+    def test_no_collission_with_skip(self):
+        assert isinstance(Skip.SKIP, object)
+        assert "SKIP" != Skip.SKIP
+        assert "skip" != Skip.SKIP
 
 
 class TestCamelToSnake:
@@ -110,6 +125,24 @@ class TestGetDottedFieldValue:
     def test_get_dotted_field_value_nesting_depth_two(self):
         event = {"some": {"dotted": {"field": "127.0.0.1"}}}
         dotted_field = "some.dotted.field"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == "127.0.0.1"
+
+    def test_get_dotted_field_value_with_escaping(self):
+        event = {"dotted.field": "127.0.0.1", "dotted": {"field": "not me"}}
+        dotted_field = "dotted\\.field"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value is "127.0.0.1"
+
+    def test_get_dotted_field_value_with_double_escaping(self):
+        event = {"dotted\\.field": "127.0.0.1", "dotted": {"field": "not me"}}
+        dotted_field = "dotted\\\\\\.field"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value is "127.0.0.1", get_dotted_field_list(dotted_field)
+
+    def test_get_dotted_field_value_nesting_depth_one_with_escaping(self):
+        event = {"dotted": {"field.sub": "127.0.0.1"}}
+        dotted_field = "dotted.field\\.sub"
         value = get_dotted_field_value(event, dotted_field)
         assert value == "127.0.0.1"
 
