@@ -4,7 +4,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
@@ -158,7 +158,7 @@ class Event(ABC):
     def add_fields_to(
         self,
         fields: dict[str, Any],
-        rule: "Rule" | None = None,
+        rule: Optional["Rule"] = None,
         merge_with_target: bool = False,
         overwrite_target: bool = False,
     ) -> None:
