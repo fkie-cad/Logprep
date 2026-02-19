@@ -294,17 +294,17 @@ class TestGenericResolver(BaseProcessorTestCase):
 
     def test_resolve_escaped_dotted_field_no_conflict_match(self):
         rule = {
-            "filter": "to\\.resolve.s\\\\ub",
+            "filter": r"to\.resolve.s\\ub",
             "generic_resolver": {
-                "field_mapping": {"to\\.resolve.sub": "resolved"},
+                "field_mapping": {r"to\.resolve.s\\ub": "resolved"},
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
         self._load_rule(rule)
 
-        expected = {"to.resolve": {"s\\\\ub": "something HELLO1"}, "resolved": "Greeting"}
+        expected = {"to.resolve": {"s\\ub": "something HELLO1"}, "resolved": "Greeting"}
 
-        document = {"to.resolve": {"s\\\\ub": "something HELLO1"}}
+        document = {"to.resolve": {"s\\ub": "something HELLO1"}}
 
         self.object.process(document)
 
