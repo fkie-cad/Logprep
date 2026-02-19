@@ -240,7 +240,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
         value = self._get_value(self.key, document)
 
         if isinstance(value, list):
-            return any(filter(self._matcher.match, (str(val) for val in value)))
+            return any(self._matcher.match(str(v)) for v in value)
 
         match_result = self._matcher.match(str(value))
 
@@ -339,6 +339,10 @@ class RegExFilterExpression(KeyValueBasedFilterExpression):
         else:
             end_token = "$"
         match = RegExFilterExpression.match_parts_pattern.match(regex)
+        if match is None:  # pragma: no cover
+            raise FilterExpressionError(
+                f"Internal error: regex is designed to always match: '{regex!r}'"
+            )
         flag, _, pattern = match.groups()
         flag = "" if flag is None else flag
         pattern = "" if pattern is None else pattern
@@ -348,7 +352,7 @@ class RegExFilterExpression(KeyValueBasedFilterExpression):
         value = self._get_value(self.key, document)
 
         if isinstance(value, list):
-            return any(filter(self._matcher.match, value))
+            return any(self._matcher.match(str(v)) for v in value)
         return self._matcher.match(str(value)) is not None
 
 

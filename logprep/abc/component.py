@@ -54,14 +54,13 @@ class Component(ABC):
                     attribute.labels = self._labels
                     attribute.init_tracker()
 
-    # __dict__ is added to support functools.cached_property
     __slots__ = [
         "name",
         "_config",
         "pipeline_index",
         "_job_tag_for_cleanup",
         "_is_shut_down",
-        "__dict__",
+        "__dict__",  # __dict__ is added to support functools.cached_property
     ]
 
     # instance attributes

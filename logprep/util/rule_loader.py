@@ -3,7 +3,7 @@
 import itertools
 from logging import getLogger
 from pathlib import Path
-from typing import Dict, Generator, Iterable, List
+from typing import Generator, Iterable, Sequence
 
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
@@ -25,12 +25,12 @@ class RuleLoader:
       The name of the processor that the rules belong to.
     """
 
-    def __init__(self, source: List[Dict | str] | Dict | str, processor_name: str):
+    def __init__(self, source: Sequence[dict | str] | dict | str, processor_name: str):
         self.source = source
         self.processor_name = processor_name
 
     @property
-    def rules(self) -> List[Rule]:
+    def rules(self) -> list[Rule]:
         """
         Load rules from a list of dictionaries, dicts or file paths.
 
@@ -39,7 +39,7 @@ class RuleLoader:
         list of Rule
           A list of Rule objects created from the source list of dictionaries or files.
         """
-        rules: List[Rule] = []
+        rules: list[Rule] = []
         match self.source:
             case dict():
                 rules.extend(DictRuleLoader(self.source, self.processor_name).rules)
@@ -55,7 +55,7 @@ class RuleLoader:
         return rules
 
     @property
-    def rule_definitions(self) -> List[Dict]:
+    def rule_definitions(self) -> list[dict]:
         """
         Load rule definitions from a list of directories, dicts or file paths.
 
@@ -64,7 +64,7 @@ class RuleLoader:
         list of dict
           A list of rule definitions.
         """
-        rule_definitions: List[Dict] = []
+        rule_definitions: list[dict] = []
         match self.source:
             case dict():
                 rule_definitions.append(self.source)
@@ -111,7 +111,7 @@ class DirectoryRuleLoader(RuleLoader):
     """
 
     @property
-    def rules(self) -> List[Rule]:
+    def rules(self) -> list[Rule]:
         """
         Generate and return a list of rules from the specified directory.
 
@@ -127,7 +127,7 @@ class DirectoryRuleLoader(RuleLoader):
         return list(itertools.chain(*rule_lists))
 
     @property
-    def rule_definitions(self) -> List[Dict]:
+    def rule_definitions(self) -> list[dict]:
         """
         Generate and return a list of dicts reflecting rule definitions from
         the specified directory.
@@ -159,14 +159,14 @@ class FileRuleLoader(RuleLoader):
     """
 
     @property
-    def rules(self) -> List[Rule]:
+    def rules(self) -> list[Rule]:
         """Retrieve a list of rules.
         This method processes the rule definitions and returns a list of Rule objects.
         It ensures that the source attribute is a string before proceeding.
 
         Returns
         -------
-        List[Rule]
+        list[Rule]
           A list of Rule objects generated from the rule definitions.
 
         Raises
@@ -191,8 +191,8 @@ class FileRuleLoader(RuleLoader):
         return []
 
     @property
-    def rule_definitions(self) -> List[Dict]:
-        rule_definitions: List[Dict] | Dict = []
+    def rule_definitions(self) -> list[dict]:
+        rule_definitions: list[dict] | dict = []
         if not isinstance(self.source, str):
             raise TypeError(f"Expected a string, got {type(self.source)}")
         if self.source.endswith(".yaml") or self.source.endswith(".yml"):
@@ -217,7 +217,7 @@ class DictRuleLoader(RuleLoader):
     """
 
     @property
-    def rules(self) -> List[Rule]:
+    def rules(self) -> list[Rule]:
         """Generate and return a list of rules from the specified
         dictionary.
 

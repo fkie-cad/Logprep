@@ -40,13 +40,15 @@ A path to a rule tree configuration can be set in any processor configuration un
 """
 
 from logging import getLogger
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from attrs import define, field, validators
 
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.util import getter
+from logprep.util.helper import FieldValue, deduplicate_with_order
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.processor.base.rule import Rule
@@ -61,14 +63,12 @@ class RuleTree:
     class Config:
         """Configuration for the RuleTree"""
 
-        priority_dict: dict[str] = field(
-            validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(str),
-                ),
-            ],
+        priority_dict: dict[str, str] = field(
+            validator=validators.deep_mapping(
+                key_validator=validators.instance_of(str),
+                value_validator=validators.instance_of(str),
+                mapping_validator=validators.instance_of(dict),
+            ),
             default=dict(),
         )
         """Fields used in filter expressions can be prioritized by specifying
@@ -76,14 +76,12 @@ class RuleTree:
          the filter expression and the value describes the priority in form
          of string number. The higher the number, the higher the priority."""
 
-        tag_map: dict = field(
-            validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(str),
-                ),
-            ],
+        tag_map: dict[str, str] = field(
+            validator=validators.deep_mapping(
+                key_validator=validators.instance_of(str),
+                value_validator=validators.instance_of(str),
+                mapping_validator=validators.instance_of(dict),
+            ),
             default=dict(),
         )
         """tbd"""
@@ -98,14 +96,14 @@ class RuleTree:
 
     tree_config: Config
 
-    rule_parser: Optional[RuleParser]
+    rule_parser: RuleParser
     _rule_mapping: dict
     _root: Node
 
     def __init__(
         self,
-        root: Node = None,
-        config: str = None,
+        root: Node | None = None,
+        config: str | None = None,
     ):
         """Rule tree initialization function.
 
@@ -122,13 +120,11 @@ class RuleTree:
         self._rule_mapping = {}
         self.tree_config = RuleTree.Config()
         if config:
-            config_data = getter.GetterFactory.from_string(config).get_json()
+            config_data = getter.GetterFactory.from_string(config).get_dict()
             self.tree_config = RuleTree.Config(**config_data)
         self.rule_parser = RuleParser(self.tree_config.tag_map)
 
-        self._root = Node(None)
-        if root:
-            self._root = root
+        self._root = Node(None) if root is None else root
 
     @property
     def number_of_rules(self) -> int:
@@ -165,7 +161,7 @@ class RuleTree:
                 end_node.matching_rules.append(rule)
         self._rule_mapping[rule] = self.number_of_rules
 
-    def _add_parsed_rule(self, parsed_rule: list):
+    def _add_parsed_rule(self, parsed_rule: list[FilterExpression]):
         """Add parsed rule to rule tree.
 
         This function adds a parsed sub-rule of a given rule to the rule tree by iterating through
@@ -200,7 +196,7 @@ class RuleTree:
 
         return current_node
 
-    def get_rule_id(self, rule: "Rule") -> Optional[int]:
+    def get_rule_id(self, rule: "Rule") -> int | None:
         """Returns ID of given rule.
 
         This function returns the ID of a given rule. It is used by the processors to get the ID of
@@ -219,7 +215,7 @@ class RuleTree:
         """
         return self._rule_mapping.get(rule)
 
-    def get_matching_rules(self, event: dict) -> List["Rule"]:
+    def get_matching_rules(self, event: dict[str, FieldValue]) -> list["Rule"]:
         """Get all rules in the tree that match given event.
 
         This function gets all rules that were added to the rule tree that match a given event.
@@ -238,17 +234,14 @@ class RuleTree:
 
         Returns
         -------
-        matches: List[Rule]
+        matches: list[Rule]
             Set of rules that match the given event.
         """
-        matches = []
-        matching_rules = self._retrieve_matching_rules(event, self.root, matches)
-        matching_rules = list(dict.fromkeys(matching_rules))
-        return matching_rules
+        return deduplicate_with_order(self._retrieve_matching_rules(event, self.root, []))
 
     def _retrieve_matching_rules(
-        self, event: dict, current_node: Node = None, matches: List["Rule"] = None
-    ) -> list:
+        self, event: dict, current_node: Node, matches: list["Rule"]
+    ) -> list["Rule"]:
         """Recursively iterate through the rule tree to retrieve matching rules."""
         for child in current_node.children:
             if child.does_match(event):
@@ -258,7 +251,7 @@ class RuleTree:
                 self._retrieve_matching_rules(event, current_node, matches)
         return matches
 
-    def print(self, current_node: Node = None, depth: int = 1):
+    def print(self, current_node: Node | None = None, depth: int = 1):
         """Print rule tree to console.
 
         This function prints the current rule tree with its nodes and transitions to the console
@@ -285,7 +278,7 @@ class RuleTree:
             )
             self.print(child, depth + 1)
 
-    def get_size(self, current_node: Node = None) -> int:
+    def get_size(self, current_node: Node | None = None) -> int:
         """Get size of tree.
 
         Count all nodes in the rule tree by recursively iterating through it and return the result.
@@ -312,11 +305,11 @@ class RuleTree:
 
         return size
 
-    def _get_rules_as_list(self) -> List["Rule"]:
+    def _get_rules_as_list(self) -> list["Rule"]:
         """get all rules
         Returns
         -------
-        rules: List[Rule]
+        rules: list[Rule]
 
         """
 

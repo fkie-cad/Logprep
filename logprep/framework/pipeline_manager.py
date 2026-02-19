@@ -166,7 +166,7 @@ class PipelineManager:
         self.restart_count: int = 0
         self.restart_timeout_ms: int = random.randint(100, 1000)
         self.metrics = self.Metrics(labels={"component": "manager"})
-        self.loghandler: LogprepMPQueueListener = None
+        self.loghandler: LogprepMPQueueListener | None = None
         self.error_queue: multiprocessing.Queue | None = None
         self._error_listener: OutputQueueListener | None = None
         self._configuration: Configuration = configuration
@@ -246,7 +246,7 @@ class PipelineManager:
     def _decrease_to_count(self, count: int):
         while len(self._pipelines) > count:
             pipeline_process = self._pipelines.pop()
-            pipeline_process.stop()
+            pipeline_process.stop()  # type: ignore
             pipeline_process.join()
             self.metrics.number_of_pipeline_stops += 1
 
@@ -328,7 +328,7 @@ class PipelineManager:
         process = multiprocessing.Process(
             target=pipeline.run, daemon=True, name=f"Pipeline-{index}"
         )
-        process.stop = pipeline.stop
+        process.stop = pipeline.stop  # type: ignore
         process.start()
         logger.info("Created new pipeline")
         return process

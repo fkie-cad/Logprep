@@ -96,9 +96,6 @@ import logging
 import re
 from itertools import chain, zip_longest
 
-# pylint: enable=anomalous-backslash-in-string
-from typing import List, Optional, Union
-
 import luqum
 from luqum.parser import IllegalCharacterError, ParseSyntaxError, parser
 from luqum.tree import (
@@ -128,6 +125,9 @@ from logprep.filter.expression.filter_expression import (
     StringFilterExpression,
 )
 
+# pylint: enable=anomalous-backslash-in-string
+
+
 logger = logging.getLogger("LuceneFilter")
 
 
@@ -143,7 +143,7 @@ class LuceneFilter:
     end_escaping_pattern = re.compile(r'((?:\\)+"[\s\)]+(?:AND|OR|NOT|$))')
 
     @staticmethod
-    def create(query_string: str, special_fields: dict = None) -> FilterExpression:
+    def create(query_string: str, special_fields: dict | None = None) -> FilterExpression:
         """Create a FilterExpression from a lucene query string.
 
         Parameters
@@ -232,7 +232,7 @@ class LuceneFilter:
 class LuceneTransformer:
     """A transformer that converts a luqum tree into a FilterExpression."""
 
-    _special_fields_map = {
+    _special_fields_map: dict[str, type[RegExFilterExpression] | type[SigmaFilterExpression]] = {
         "regex_fields": RegExFilterExpression,
         "sigma_fields": SigmaFilterExpression,
     }
@@ -240,14 +240,14 @@ class LuceneTransformer:
     find_unescaping_quote_pattern = re.compile(r'(?:\\)*"')
     find_unescaping_end_pattern = re.compile(r"(?:\\)*$")
 
-    def __init__(self, tree: luqum.tree, special_fields: dict = None):
+    def __init__(self, tree: luqum.tree, special_fields: dict | None = None):
         self._tree = tree
 
         self._special_fields = {}
 
         special_fields = special_fields if special_fields else {}
         for key in self._special_fields_map:
-            self._special_fields[key] = special_fields.get(key) if special_fields.get(key) else []
+            self._special_fields[key] = special_fields.get(key, [])
 
         self._last_search_field = None
 
@@ -280,27 +280,23 @@ class LuceneTransformer:
                 self._last_search_field = None
                 return parsed
             return self._create_field(tree)
-        if isinstance(tree, Word):
-            if self._last_search_field:
-                return self._create_field_group_expression(tree)
-            return self._create_value_expression(tree)
-        if isinstance(tree, Phrase):
-            if self._last_search_field:
-                return self._create_field_group_expression(tree)
-            return self._create_value_expression(tree)
-        if isinstance(tree, Regex):
-            if self._last_search_field:
-                return self._create_field_group_expression(tree)
+        if isinstance(tree, (Word, Phrase, Regex)):
+            if self._last_search_field is not None:
+                return self._create_field_group_expression(tree, self._last_search_field)
             return self._create_value_expression(tree)
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
 
-    def _create_field_group_expression(self, tree: luqum.tree) -> FilterExpression:
+    def _create_field_group_expression(
+        self, tree: luqum.tree, dotted_field: str
+    ) -> FilterExpression:
         """Creates filter expression that is resulting from a field group.
 
         Parameters
         ----------
         tree : luqum.tree
             luqum.tree to create field group expression from.
+        dotted_field: str
+            dotted_field which is treated as the key for the expression.
 
         Returns
         -------
@@ -308,22 +304,21 @@ class LuceneTransformer:
             Parsed filter expression.
 
         """
-        key = self._last_search_field.split(".")
+        key = dotted_field.split(".")
         value = self._strip_quote_from_string(tree.value)
         value = self._remove_lucene_escaping(value)
 
         if isinstance(tree, Regex):
             return self._get_filter_expression_regex(key, value)
-        else:
-            return self._get_filter_expression(key, value)
+        return self._get_filter_expression(key, value)
 
-    def _collect_children(self, tree: luqum.tree) -> List[FilterExpression]:
+    def _collect_children(self, tree: luqum.tree) -> list[FilterExpression]:
         expressions = []
         for child in tree.children:
             expressions.append(self._parse_tree(child))
         return expressions
 
-    def _create_field(self, tree: luqum.tree) -> Optional[FilterExpression]:
+    def _create_field(self, tree: luqum.tree) -> FilterExpression:
         if isinstance(tree.expr, (Phrase, Word)):
             key = tree.name.replace("\\", "")
             key = key.split(".")
@@ -333,7 +328,7 @@ class LuceneTransformer:
             value = self._strip_quote_from_string(tree.expr.value)
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression(key, value)
-        elif isinstance(tree.expr, Regex):
+        if isinstance(tree.expr, Regex):
             key = tree.name.replace("\\", "")
             key = key.split(".")
             if tree.expr.value == "null":
@@ -342,7 +337,7 @@ class LuceneTransformer:
             value = self._strip_quote_from_string(tree.expr.value)
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression_regex(key, value)
-        return None
+        raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
 
     @staticmethod
     def _check_key_and_modifier(key, value):
@@ -353,8 +348,8 @@ class LuceneTransformer:
         return None
 
     def _get_filter_expression(
-        self, key: List[str], value
-    ) -> Union[RegExFilterExpression, StringFilterExpression]:
+        self, key: list[str], value
+    ) -> RegExFilterExpression | StringFilterExpression | SigmaFilterExpression:
 
         key_and_modifier_check = LuceneTransformer._check_key_and_modifier(key, value)
         if key_and_modifier_check is not None:
@@ -376,8 +371,8 @@ class LuceneTransformer:
         return StringFilterExpression(key, value)
 
     def _get_filter_expression_regex(
-        self, key: List[str], value
-    ) -> Union[RegExFilterExpression, StringFilterExpression]:
+        self, key: list[str], value
+    ) -> RegExFilterExpression | StringFilterExpression:
 
         key_and_modifier_check = LuceneTransformer._check_key_and_modifier(key, value)
         if key_and_modifier_check is not None:
@@ -387,7 +382,7 @@ class LuceneTransformer:
         return RegExFilterExpression(key, value)
 
     @staticmethod
-    def _create_value_expression(word: luqum.tree) -> Union[Exists, Always]:
+    def _create_value_expression(word: luqum.tree) -> Exists | Always:
         value = word.value.replace("\\", "")
         value = value.split(".")
         if value == ["*"]:
