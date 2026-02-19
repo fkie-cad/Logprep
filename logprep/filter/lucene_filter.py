@@ -280,27 +280,23 @@ class LuceneTransformer:
                 self._last_search_field = None
                 return parsed
             return self._create_field(tree)
-        if isinstance(tree, Word):
-            if self._last_search_field:
-                return self._create_field_group_expression(tree)
-            return self._create_value_expression(tree)
-        if isinstance(tree, Phrase):
-            if self._last_search_field:
-                return self._create_field_group_expression(tree)
-            return self._create_value_expression(tree)
-        if isinstance(tree, Regex):
-            if self._last_search_field:
-                return self._create_field_group_expression(tree)
+        if isinstance(tree, (Word, Phrase, Regex)):
+            if self._last_search_field is not None:
+                return self._create_field_group_expression(tree, self._last_search_field)
             return self._create_value_expression(tree)
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
 
-    def _create_field_group_expression(self, tree: luqum.tree) -> FilterExpression:
+    def _create_field_group_expression(
+        self, tree: luqum.tree, dotted_field: str
+    ) -> FilterExpression:
         """Creates filter expression that is resulting from a field group.
 
         Parameters
         ----------
         tree : luqum.tree
             luqum.tree to create field group expression from.
+        dotted_field: str
+            dotted_field which is treated as the key for the expression.
 
         Returns
         -------
@@ -308,15 +304,13 @@ class LuceneTransformer:
             Parsed filter expression.
 
         """
-        assert self._last_search_field is not None
-        key = self._last_search_field.split(".")
+        key = dotted_field.split(".")
         value = self._strip_quote_from_string(tree.value)
         value = self._remove_lucene_escaping(value)
 
         if isinstance(tree, Regex):
             return self._get_filter_expression_regex(key, value)
-        else:
-            return self._get_filter_expression(key, value)
+        return self._get_filter_expression(key, value)
 
     def _collect_children(self, tree: luqum.tree) -> list[FilterExpression]:
         expressions = []
