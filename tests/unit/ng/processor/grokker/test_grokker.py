@@ -198,6 +198,33 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
+        "normalization from escaped & nested grok",
+        {
+            "filter": "win\\.log.event\\._id: 123456789",
+            "grokker": {
+                "mapping": {
+                    "win\\.log.event_data.normalize me!": r"%{IP:[par\\ent][...]} \w+ %{NUMBER:[par\\ent][\\port\\]:int} %[ts]+ %{NUMBER:te\\.st\\:int}"
+                },
+            },
+        },
+        {
+            "win.log": {
+                "api": "wineventlog",
+                "event._id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 555 1234 %ttss 11"},
+            }
+        },
+        {
+            "win.log": {
+                "api": "wineventlog",
+                "event._id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 555 1234 %ttss 11"},
+            },
+            "te.st\\": 11,
+            "par\\ent": {"...": "123.123.123.123", "\\port\\": 1234},
+        },
+    ),
+    (
         "example log message",
         {
             "filter": "message",
