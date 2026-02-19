@@ -233,7 +233,7 @@ class LuceneFilter:
     @staticmethod
     def dotted_field_to_list(dotted_field: str, unescape: bool) -> Sequence[str]:
         if unescape:
-            return [v.replace("\\", "") for v in get_dotted_field_list(dotted_field)]
+            return [v.replace("\\\\", "\\") for v in get_dotted_field_list(dotted_field)]
         return get_dotted_field_list(dotted_field)
 
 
