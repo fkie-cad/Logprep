@@ -292,6 +292,24 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
+    def test_resolve_escaped_dotted_field_no_conflict_match(self):
+        rule = {
+            "filter": "to\\.resolve.s\\\\ub",
+            "generic_resolver": {
+                "field_mapping": {"to\\.resolve.sub": "resolved"},
+                "resolve_list": {".*HELLO\\d": "Greeting"},
+            },
+        }
+        self._load_rule(rule)
+
+        expected = {"to.resolve": {"s\\\\ub": "something HELLO1"}, "resolved": "Greeting"}
+
+        document = {"to.resolve": {"s\\\\ub": "something HELLO1"}}
+
+        self.object.process(document)
+
+        assert document == expected
+
     def test_resolve_dotted_field_no_conflict_match_from_file(
         self,
     ):

@@ -400,7 +400,30 @@ def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
     Sequence[str]
         a readonly sequence keys for dictionary iteration
     """
-    return dotted_field.split(".")
+    if dotted_field.find("\\") == -1:
+        return dotted_field.split(".")
+
+    result = []
+
+    char_buffer = []
+    itr = iter(dotted_field)
+    for c in itr:
+        if c == "\\":
+            try:
+                char_buffer.append(next(itr))
+            except StopIteration:
+                char_buffer.append("\\")
+        elif c == ".":
+            result.append("".join(char_buffer))
+            char_buffer = []
+        else:
+            char_buffer.append(c)
+    result.append("".join(char_buffer))
+    return result
+
+
+def field_list_to_dotted_field(field_list: Sequence[str]) -> str:
+    return ".".join(field.replace(".", "\\.") for field in field_list)
 
 
 def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
