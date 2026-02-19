@@ -4,6 +4,7 @@
 ### Features
 
 ### Improvements
+* fix several mypy issues
 
 ### Bugfix
 
@@ -20,7 +21,6 @@
 ### Improvements
 * simplify Dockerfile and remove docker build support for `LOGPREP_VERSION`
 * pytest.param now works with test_cases document generation
-* fix several mypy issues
 
 ### Bugfix
 * generic_resolver now follows yaml standard and accepts a list instead of relying on the ordering of a dict
