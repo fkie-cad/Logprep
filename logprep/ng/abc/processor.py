@@ -2,7 +2,9 @@
 
 import logging
 import os
+import typing
 from abc import abstractmethod
+from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, Type
 
 from attrs import define, field, validators
@@ -63,12 +65,17 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config") -> None:
         super().__init__(name, configuration)
-        self._rule_tree = RuleTree(config=self._config.tree_config)
-        self.load_rules(rules_targets=self._config.rules)
+        self._rule_tree = RuleTree(config=self.config.tree_config)
+        self.load_rules(rules_targets=self.config.rules)
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
             logger.debug("Bypassing rule tree for processor %s", self.name)
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast("Processor.Config", self._config)
 
     @property
     def rules(self) -> list["Rule"]:
@@ -86,7 +93,7 @@ class Processor(Component):
         return {
             "component": "processor",
             "description": self.describe(),
-            "type": self._config.type,
+            "type": self.config.type,
             "name": self.name,
         }
 
@@ -136,7 +143,7 @@ class Processor(Component):
             return event
 
         def _process_rule_tree_multiple_times(tree: RuleTree, event: dict) -> None:
-            matching_rules = tree.get_matching_rules(event)
+            matching_rules: Iterable[Rule] = tree.get_matching_rules(event)
             while matching_rules:
                 for rule in matching_rules:
                     _process_rule(rule, event)
@@ -147,7 +154,7 @@ class Processor(Component):
             for rule in matching_rules:
                 _process_rule(rule, event)
 
-        if self._config.apply_multiple_times:
+        if self.config.apply_multiple_times:
             _process_rule_tree_multiple_times(tree, event)
         else:
             _process_rule_tree_once(tree, event)
@@ -167,8 +174,8 @@ class Processor(Component):
             self._event.errors.append(ProcessingCriticalError(str(error), rule))
         if not hasattr(rule, "delete_source_fields"):
             return
-        if rule.delete_source_fields:
-            for dotted_field in rule.source_fields:
+        if getattr(rule, "delete_source_fields", False):
+            for dotted_field in getattr(rule, "source_fields", []):
                 self._event.pop_dotted_field_value(dotted_field)
 
     @abstractmethod
@@ -183,7 +190,7 @@ class Processor(Component):
 
         """
 
-    def load_rules(self, rules_targets: list[str | dict]) -> None:
+    def load_rules(self, rules_targets: Sequence[str | dict]) -> None:
         """method to add rules from directories or urls"""
         try:
             rules = RuleLoader(rules_targets, self.name).rules
@@ -234,7 +241,7 @@ class Processor(Component):
             dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
         )
         if missing_fields:
-            if rule.ignore_missing_fields:
+            if getattr(rule, "ignore_missing_fields", False):
                 return True
             error = Exception(f"{self.name}: no value for fields: {missing_fields}")
             self._handle_warning_error(event, rule, error)
@@ -242,12 +249,13 @@ class Processor(Component):
         return False
 
     def _write_target_field(self, event: dict, rule: "Rule", result: Any) -> None:
-        add_fields_to(
-            event,
-            fields={rule.target_field: result},
-            merge_with_target=rule.merge_with_target,
-            overwrite_target=rule.overwrite_target,
-        )
+        if hasattr(rule, "target_field"):
+            add_fields_to(
+                event,
+                fields={getattr(rule, "target_field"): result},
+                merge_with_target=getattr(rule, "merge_with_target", False),
+                overwrite_target=getattr(rule, "overwrite_target", False),
+            )
 
     def setup(self) -> None:
         super().setup()

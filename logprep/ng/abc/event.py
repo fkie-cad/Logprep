@@ -3,10 +3,12 @@
 """abstract module for event"""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
+    FieldValue,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
@@ -64,10 +66,8 @@ class Event(ABC):
         Handling warnings and errors:
 
         >>> event = Event({"id": 123})
-        >>> event.warnings.append("Missing timestamp")
+        >>> event.warnings.append(ValueError("Missing timestamp"))
         >>> event.errors.append(ValueError("Invalid format"))
-        >>> event.warnings
-        ['Missing timestamp']
         >>> isinstance(event.errors[0], ValueError)
         True
         """
@@ -80,7 +80,7 @@ class Event(ABC):
         elif state is not None:
             raise TypeError("state must be an instance of EventStateType or EventState, or None")
         self.data: dict[str, Any] = data
-        self.warnings: list[str] = []
+        self.warnings: list[Exception] = []
         self.errors: list[Exception] = []
         super().__init__()
 
@@ -158,7 +158,7 @@ class Event(ABC):
     def add_fields_to(
         self,
         fields: dict[str, Any],
-        rule: "Rule" = None,
+        rule: "Rule" | None = None,
         merge_with_target: bool = False,
         overwrite_target: bool = False,
     ) -> None:
@@ -197,7 +197,7 @@ class Event(ABC):
         """
         return get_dotted_field_value(self.data, dotted_field)
 
-    def pop_dotted_field_value(self, dotted_field: str) -> Optional[Union[dict, list, str]]:
+    def pop_dotted_field_value(self, dotted_field: str) -> FieldValue:
         """
         Shortcut method that delegates to the global `pop_dotted_field_value` helper.
 

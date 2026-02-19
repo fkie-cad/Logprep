@@ -4,7 +4,8 @@ import logging
 import os
 import typing
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Iterable, Sequence, Type, cast
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Type
 
 from attrs import define, field, validators
 
@@ -129,7 +130,7 @@ class Processor(Component):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast("Processor.Config", self._config)
 
     @property
@@ -142,7 +143,7 @@ class Processor(Component):
         ProcessorResult
             The current result to be modified in-place
         """
-        return cast(ProcessorResult, self._result)
+        return typing.cast(ProcessorResult, self._result)
 
     @result.setter
     def result(self, value: ProcessorResult):
