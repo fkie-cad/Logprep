@@ -57,7 +57,7 @@ from logging import getLogger
 from os import path
 from pathlib import Path
 from pprint import pprint
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from more_itertools import nth
 from ruamel.yaml import YAML, YAMLError
@@ -205,7 +205,7 @@ class ProcessorExtensions:
             print_fcolor(ForegroundColor.CYAN, item)
 
     @staticmethod
-    def load_json_or_yaml(file_path) -> Union[list, dict]:
+    def load_json_or_yaml(file_path) -> list | dict:
         """load json or yaml depending on suffix
 
         Parameters
@@ -215,7 +215,7 @@ class ProcessorExtensions:
 
         Returns
         -------
-        Union[list, dict]
+        list | dict
             wether json or yaml
 
         Raises
@@ -251,7 +251,7 @@ class AutoRuleTester:
 
         self._success = True
 
-        self._result: dict[str, Union[int, float]] = {
+        self._result: dict[str, int | float] = {
             "+ Successful Tests": 0,
             "- Failed Tests": 0,
             "~ Warning": 0,

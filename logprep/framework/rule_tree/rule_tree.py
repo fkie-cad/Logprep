@@ -40,7 +40,7 @@ A path to a rule tree configuration can be set in any processor configuration un
 """
 
 from logging import getLogger
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from attrs import define, field, validators
 
@@ -305,11 +305,11 @@ class RuleTree:
 
         return size
 
-    def _get_rules_as_list(self) -> List["Rule"]:
+    def _get_rules_as_list(self) -> list["Rule"]:
         """get all rules
         Returns
         -------
-        rules: List[Rule]
+        rules: list[Rule]
 
         """
 
