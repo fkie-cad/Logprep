@@ -188,6 +188,7 @@ class CredentialsFactory:
         if endpoint_credentials is None:
             return None
         credential_mapping: dict | None = endpoint_credentials.get(target_endpoint)
+
         credentials = cls.from_dict(credential_mapping)
         return credentials
 

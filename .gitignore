@@ -32,3 +32,4 @@ requirements.*
 /scripts/
 .dmypy.json
 tmp
+.envrc

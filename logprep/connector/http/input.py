@@ -115,7 +115,11 @@ from logprep.abc.input import FatalInputError, Input
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util import http, rstr
-from logprep.util.credentials import Credentials, CredentialsFactory
+from logprep.util.credentials import (
+    BasicAuthCredentials,
+    Credentials,
+    CredentialsFactory,
+)
 from logprep.util.helper import add_fields_to
 
 logger = logging.getLogger("HTTPInput")
@@ -126,14 +130,14 @@ def basic_auth(func: Callable):
     Will raise 401 on wrong credentials or missing Authorization-Header"""
 
     async def func_wrapper(*args, **kwargs):
-        endpoint = args[0]
+        endpoint: HttpEndpoint = args[0]
         req = args[1]
         if endpoint.credentials:
             auth_request_header = req.get_header("Authorization")
             if not auth_request_header:
                 raise HTTPUnauthorized
             basic_string = req.auth
-            if endpoint.basicauth_b64 not in basic_string:
+            if basic_string not in endpoint.basicauth_b64:
                 raise HTTPUnauthorized
         func_wrapper = await func(*args, **kwargs)
         return func_wrapper
@@ -249,7 +253,7 @@ class HttpEndpoint(ABC):
         original_event_field: dict[str, str] | None,
         collect_meta: bool,
         metafield_name: str,
-        credentials: Credentials | None,
+        credentials: list[Credentials] | None,
         metrics: "HttpInput.Metrics",
         copy_headers_to_logs: set[str],
     ) -> None:
@@ -259,14 +263,20 @@ class HttpEndpoint(ABC):
 
         # Deprecated
         self.collect_meta = collect_meta
+
         self.metafield_name = metafield_name
         self.credentials = credentials
         self.metrics = metrics
+        self.basicauth_b64: list[str] = []
+
         if self.credentials:
-            # TODO what about other credential types?
-            self.basicauth_b64 = b64encode(
-                f"{self.credentials.username}:{self.credentials.password}".encode("utf-8")  # type: ignore
-            ).decode("utf-8")
+            for cred in self.credentials:
+                if isinstance(cred, BasicAuthCredentials):
+                    self.basicauth_b64.append(
+                        b64encode(f"{cred.username}:{cred.password}".encode("utf-8")).decode(
+                            "utf-8"
+                        )
+                    )
 
     def collect_metrics(self):
         """Increment number of requests"""
@@ -453,7 +463,7 @@ class HttpInput(Input):
         """
 
         message_backlog_size: int = field(
-            validator=validators.instance_of((int, float)), default=15000
+            validator=validators.instance_of(int), default=15000, converter=lambda x: int(x)
         )
         """Configures maximum size of input message queue for this connector. When limit is reached
         the server will answer with 429 Too Many Requests. For reasonable throughput this shouldn't
@@ -463,9 +473,7 @@ class HttpInput(Input):
         copy_headers_to_logs: set[str] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of(str),
-                iterable_validator=validators.or_(
-                    validators.instance_of(set), validators.instance_of(list)
-                ),
+                iterable_validator=validators.instance_of(set),
             ),
             converter=set,
             factory=lambda: set(DEFAULT_META_HEADERS),
