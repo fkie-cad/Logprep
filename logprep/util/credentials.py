@@ -163,7 +163,7 @@ class CredentialsFactory:
         return credentials
 
     @classmethod
-    def from_endpoint(cls, target_endpoint: str) -> "Credentials | None":
+    def from_endpoint(cls, target_endpoint: str) -> "list[Credentials] | Credentials | None":
         """Factory method to create a credentials object based on the credentials stored in the
         environment variable :code:`LOGPREP_CREDENTIALS_FILE`.
         Based on these credentials the expected authentication method is chosen and represented
@@ -187,9 +187,14 @@ class CredentialsFactory:
         endpoint_credentials = credentials_file.input.get("endpoints")
         if endpoint_credentials is None:
             return None
-        credential_mapping: dict | None = endpoint_credentials.get(target_endpoint)
+        credential_mapping: list | dict | None = endpoint_credentials.get(target_endpoint)
 
-        credentials = cls.from_dict(credential_mapping)
+        credentials: list[Credentials] | Credentials | None = None
+        if isinstance(credential_mapping, dict):
+            credentials = cls.from_dict(credential_mapping)
+        elif isinstance(credential_mapping, list):
+            credentials = cls.from_list(credential_mapping)
+
         return credentials
 
     @staticmethod
@@ -250,6 +255,16 @@ class CredentialsFactory:
         for credential_type in secret_content:
             credential_mapping.pop(f"{credential_type}_file")
         credential_mapping.update(secret_content)
+
+    @classmethod
+    def from_list(cls, credential_mapping: list[dict | None]) -> "list[Credentials] | None":
+        creds: list[Credentials] = []
+        for credential in credential_mapping:
+            cred = cls.from_dict(credential)
+            if isinstance(cred, Credentials):
+                creds.append(cred)
+
+        return creds
 
     @classmethod
     def from_dict(cls, credential_mapping: dict | None) -> "Credentials | None":
@@ -392,11 +407,11 @@ class AccessToken:
 
     token: str = field(validator=validators.instance_of(str), repr=False)
     """token used for authentication against the target"""
-    expiry_time: datetime = field(
+    expiry_time: datetime | None = field(
         validator=validators.instance_of((datetime, type(None))), init=False
     )
     """time when token is expired"""
-    refresh_token: str = field(
+    refresh_token: str | None = field(
         validator=validators.instance_of((str, type(None))), default=None, repr=False
     )
     """is used incase the token is expired"""
@@ -416,7 +431,7 @@ class AccessToken:
     @property
     def is_expired(self) -> bool:
         """Checks if the token is already expired."""
-        if self.expires_in == 0:
+        if self.expires_in == 0 or not self.expiry_time:
             return False
         return datetime.now() > self.expiry_time
 
@@ -427,7 +442,9 @@ class Credentials:
 
     _logger = logging.getLogger("Credentials")
 
-    _session: Session = field(validator=validators.instance_of((Session, type(None))), default=None)
+    _session: Session | None = field(
+        validator=validators.instance_of((Session, type(None))), default=None
+    )
 
     def get_session(self):
         """returns session with retry configuration"""
@@ -549,14 +566,14 @@ class OAuth2PasswordFlowCredentials(Credentials):
     """the username for the token request"""
     timeout: int = field(validator=validators.instance_of(int), default=1)
     """The timeout for the token request. Defaults to 1 second."""
-    client_id: str = field(validator=validators.instance_of((str, type(None))), default=None)
+    client_id: str | None = field(validator=validators.instance_of((str, type(None))), default=None)
     """The client id for the token request. This is used to identify the client. (Optional)"""
-    client_secret: str = field(
+    client_secret: str | None = field(
         validator=validators.instance_of((str, type(None))), default=None, repr=False
     )
     """The client secret for the token request.
     This is used to authenticate the client. (Optional)"""
-    _token: AccessToken = field(
+    _token: AccessToken | None = field(
         validator=validators.instance_of((AccessToken, type(None))),
         init=False,
         repr=False,
@@ -573,7 +590,7 @@ class OAuth2PasswordFlowCredentials(Credentials):
             }
             session.headers["Authorization"] = f"Bearer {self._get_token(payload)}"
 
-        if self._token.is_expired and self._token.refresh_token is not None:
+        if self._token and self._token.is_expired and self._token.refresh_token is not None:
             session = Session()
             payload = {
                 "grant_type": "refresh_token",
@@ -639,7 +656,7 @@ class OAuth2ClientFlowCredentials(Credentials):
     """The client secret for the token request. This is used to authenticate the client."""
     timeout: int = field(validator=validators.instance_of(int), default=1)
     """The timeout for the token request. Defaults to 1 second."""
-    _token: AccessToken = field(
+    _token: AccessToken | None = field(
         validator=validators.instance_of((AccessToken, type(None))), init=False, repr=False
     )
 
@@ -659,7 +676,7 @@ class OAuth2ClientFlowCredentials(Credentials):
 
         """
         session = super().get_session()
-        if "Authorization" in session.headers and self._token.is_expired:
+        if "Authorization" in session.headers and (not self._token or self._token.is_expired):
             session.close()
             session = Session()
         if self._no_authorization_header(session):
@@ -710,7 +727,7 @@ class MTLSCredentials(Credentials):
     """path to the client key"""
     cert: str = field(validator=validators.instance_of(str))
     """path to the client certificate"""
-    ca_cert: str = field(validator=validators.instance_of((str, type(None))), default=None)
+    ca_cert: str | None = field(validator=validators.instance_of((str, type(None))), default=None)
     """path to a certification authority certificate"""
 
     def get_session(self):
