@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import os
+import typing
 import zlib
 from abc import abstractmethod
 from collections.abc import Iterator
@@ -26,7 +27,15 @@ from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.processor.base.exceptions import FieldExistsWarning
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    MISSING,
+    FieldValue,
+    Missing,
+    add_fields_to,
+    get_dotted_field_list,
+    get_dotted_field_value,
+    get_dotted_field_value_with_explicit_missing,
+)
 from logprep.util.time import UTC, TimeParser, TimeParserException
 from logprep.util.validators import dict_structure_validator
 
@@ -280,6 +289,11 @@ class Input(Connector):
         self.event_backlog: EventBacklog = SetEventBacklog()
         super().__init__(name, configuration)
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(Input.Config, self._config)
+
     def __call__(self, *, timeout: float) -> InputIterator:
         """Create and return a new input iterator with the specified timeout.
 
@@ -320,7 +334,7 @@ class Input(Connector):
     @property
     def _add_hmac(self) -> bool:
         """Check and return if a hmac should be added or not."""
-        hmac_options = self._config.preprocessing.get("hmac")
+        hmac_options = self.config.preprocessing.get("hmac")
         if not hmac_options:
             return False
         return all(bool(hmac_options[option_key]) for option_key in hmac_options)
@@ -328,7 +342,7 @@ class Input(Connector):
     @property
     def _add_version_info(self) -> bool:
         """Check and return if the version info should be added to the event."""
-        return bool(self._config.preprocessing.get("version_info_target_field"))
+        return bool(self.config.preprocessing.get("version_info_target_field"))
 
     @cached_property
     def _log_arrival_timestamp_timezone(self) -> ZoneInfo:
@@ -338,14 +352,14 @@ class Input(Connector):
     @property
     def _add_log_arrival_time_information(self) -> bool:
         """Check and return if the log arrival time info should be added to the event."""
-        return bool(self._config.preprocessing.get("log_arrival_time_target_field"))
+        return bool(self.config.preprocessing.get("log_arrival_time_target_field"))
 
     @property
     def _add_log_arrival_timedelta_information(self) -> bool:
         """Check and return if the log arrival timedelta info should be added to the event."""
         log_arrival_timedelta_present = self._add_log_arrival_time_information
         log_arrival_time_target_field_present = bool(
-            self._config.preprocessing.get("log_arrival_timedelta")
+            self.config.preprocessing.get("log_arrival_timedelta")
         )
         return log_arrival_time_target_field_present & log_arrival_timedelta_present
 
@@ -355,19 +369,19 @@ class Input(Connector):
         return {
             "component": "input",
             "description": self.describe(),
-            "type": self._config.type,
+            "type": self.config.type,
             "name": self.name,
         }
 
     @property
     def _add_env_enrichment(self) -> bool:
         """Check and return if the env enrichment should be added to the event."""
-        return bool(self._config.preprocessing.get("enrich_by_env_variables"))
+        return bool(self.config.preprocessing.get("enrich_by_env_variables"))
 
     @property
     def _add_full_event_to_target_field(self) -> bool:
         """Check and return if the event should be written into one singular field."""
-        return bool(self._config.preprocessing.get("add_full_event_to_target_field"))
+        return bool(self.config.preprocessing.get("add_full_event_to_target_field"))
 
     def _get_raw_event(self, timeout: float) -> bytes | None:  # pylint: disable=unused-argument
         """Implements the details how to get the raw event
@@ -379,7 +393,7 @@ class Input(Connector):
 
         Returns
         -------
-        raw_event : bytearray
+        raw_event : bytes
             The retrieved raw event
         """
         return None
@@ -410,7 +424,7 @@ class Input(Connector):
         error_log_event = LogEvent(
             data=event if isinstance(event, dict) else {},
             original=raw_event if raw_event is not None else b"",
-            metadata=metadata,
+            metadata=metadata,  # type: ignore
         )
         error_log_event.errors.append(error)
         error_log_event.state.current_state = EventStateType.FAILED
@@ -433,7 +447,7 @@ class Input(Connector):
         """
         self.acknowledge()
         event: dict | None = None
-        raw_event: bytearray | None = None
+        raw_event: bytes | None = None
         metadata: dict | None = None
 
         try:
@@ -449,32 +463,48 @@ class Input(Connector):
 
             try:
                 if self._add_full_event_to_target_field:
-                    self._write_full_event_to_target_field(event, raw_event)
+                    self._write_full_event_to_target_field(
+                        event,
+                        raw_event,
+                        self.config.preprocessing["add_full_event_to_target_field"],
+                    )
                 if self._add_hmac:
-                    event = self._add_hmac_to(event, raw_event)
+                    event = self._add_hmac_to(event, raw_event, self.config.preprocessing["hmac"])
                 if self._add_version_info:
-                    self._add_version_information_to_event(event)
+                    self._add_version_information_to_event(
+                        event,
+                        self.config.preprocessing["version_info_target_field"],
+                    )
                 if self._add_log_arrival_time_information:
-                    self._add_arrival_time_information_to_event(event)
+                    self._add_arrival_time_information_to_event(
+                        event,
+                        self.config.preprocessing["log_arrival_time_target_field"],
+                    )
                 if self._add_log_arrival_timedelta_information:
-                    self._add_arrival_timedelta_information_to_event(event)
+                    self._add_arrival_timedelta_information_to_event(
+                        event,
+                        self.config.preprocessing["log_arrival_timedelta"],
+                        self.config.preprocessing["log_arrival_time_target_field"],
+                    )
                 if self._add_env_enrichment:
-                    self._add_env_enrichment_to_event(event)
+                    self._add_env_enrichment_to_event(
+                        event, self.config.preprocessing["enrich_by_env_variables"]
+                    )
             except (FieldExistsWarning, TimeParserException) as error:
                 raise CriticalInputError(self, error.args[0], event) from error
         except CriticalInputError as error:
             self._register_failed_event(
                 event=event,
                 raw_event=raw_event,
-                metadata=metadata,
+                metadata=metadata,  # type: ignore
                 error=error,
             )
             return None
 
         log_event = LogEvent(
             data=event,
-            original=raw_event,
-            metadata=metadata,
+            original=raw_event,  # type: ignore
+            metadata=metadata,  # type: ignore
         )
 
         self.event_backlog.register(events=[log_event])
@@ -485,24 +515,20 @@ class Input(Connector):
     def batch_finished_callback(self) -> None:
         """Can be called by output connectors after processing a batch of one or more records."""
 
-    def _add_env_enrichment_to_event(self, event: dict) -> None:
+    def _add_env_enrichment_to_event(self, event: dict, enrichments: dict) -> None:
         """Add the env enrichment information to the event"""
-        enrichments = self._config.preprocessing.get("enrich_by_env_variables")
-        if not enrichments:
-            return
         fields = {
             target: os.environ.get(variable_name, "")
             for target, variable_name in enrichments.items()
         }
         add_fields_to(event, fields)
 
-    def _add_arrival_time_information_to_event(self, event: dict) -> None:
-        target = self._config.preprocessing.get("log_arrival_time_target_field")
+    def _add_arrival_time_information_to_event(self, event: dict, target: str) -> None:
         time = TimeParser.now(self._log_arrival_timestamp_timezone).isoformat()
         try:
             add_fields_to(event, {target: time})
         except FieldExistsWarning as error:
-            if len(target.split(".")) == 1:
+            if len(get_dotted_field_list(target)) == 1:
                 raise error
             original_target = target
             target_value = get_dotted_field_value(event, target)
@@ -516,47 +542,49 @@ class Input(Connector):
     def _write_full_event_to_target_field(
         self,
         event_dict: dict,
-        raw_event: bytearray | None,
+        raw_event: bytes | None,
+        target: FullEventConfig,
     ) -> None:
-        target = self._config.preprocessing.get("add_full_event_to_target_field")
-        complete_event = {}
+        complete_event: str | dict = {}
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
-        if target["format"] == "dict":
+        if target.format == "dict":
             complete_event = self._decoder.decode(raw_event.decode("utf-8"))
         else:
             complete_event = json.dumps(raw_event.decode("utf-8"))
-        clear_event = target.get("clear_event", True)
-        if clear_event:
+
+        if target.clear_event:
             event_dict.clear()
         add_fields_to(
-            event_dict, fields={target["target_field"]: complete_event}, overwrite_target=True
+            event_dict, fields={target.target_field: complete_event}, overwrite_target=True
         )
 
-    def _add_arrival_timedelta_information_to_event(self, event: dict) -> None:
-        log_arrival_timedelta_config = self._config.preprocessing.get("log_arrival_timedelta")
-        log_arrival_time_target_field = self._config.preprocessing.get(
-            "log_arrival_time_target_field"
-        )
-        target_field = log_arrival_timedelta_config.get("target_field")
-        reference_target_field = log_arrival_timedelta_config.get("reference_field")
+    def _add_arrival_timedelta_information_to_event(
+        self,
+        event: dict,
+        log_arrival_timedelta: TimeDeltaConfig,
+        log_arrival_time_target_field: str,
+    ) -> None:
+        target_field = log_arrival_timedelta.target_field
+        reference_target_field = log_arrival_timedelta.reference_field
         time_reference = get_dotted_field_value(event, reference_target_field)
         log_arrival_time = get_dotted_field_value(event, log_arrival_time_target_field)
-        if time_reference:
+        if time_reference and isinstance(log_arrival_time, str) and isinstance(time_reference, str):
             delta_time_sec = (
                 TimeParser.from_string(log_arrival_time).astimezone(UTC)
                 - TimeParser.from_string(time_reference).astimezone(UTC)
             ).total_seconds()
             add_fields_to(event, fields={target_field: delta_time_sec})
 
-    def _add_version_information_to_event(self, event: dict) -> None:
+    def _add_version_information_to_event(self, event: dict, target_field: str) -> None:
         """Add the version information to the event"""
-        target_field = self._config.preprocessing.get("version_info_target_field")
         # pylint: disable=protected-access
-        add_fields_to(event, fields={target_field: self._config._version_information})
+        add_fields_to(event, fields={target_field: self.config._version_information})
         # pylint: enable=protected-access
 
-    def _add_hmac_to(self, event_dict: dict, raw_event: bytearray | None) -> dict:
+    def _add_hmac_to(
+        self, event_dict: dict, raw_event: bytes | None, hmac_options: HmacConfig
+    ) -> dict:
         """
         Calculates an HMAC (Hash-based message authentication code) based on a given target field
         and adds it to the given event. If the target field has the value '<RAW_MSG>' the full raw
@@ -569,8 +597,10 @@ class Input(Connector):
         ----------
         event_dict: dict
             The event to which the calculated hmac should be appended
-        raw_event: bytearray, None
+        raw_event: bytes, None
             The raw event how it is received from the input.
+        hmac_options: HmacConfig
+            The configuration for generating and storing the hmac in the event.
 
         Returns
         -------
@@ -584,30 +614,37 @@ class Input(Connector):
             If the hmac could not be added to the event because the desired output field already
             exists or can't be found.
         """
-        hmac_options = self._config.preprocessing.get("hmac", {})
-        hmac_target_field_name = hmac_options.get("target")
+        hmac_target_field_name = hmac_options.target
 
         if raw_event is None:
             raw_event = self._encoder.encode(event_dict)
 
+        received_orig_message: bytes | FieldValue | Missing
         if hmac_target_field_name == "<RAW_MSG>":
             received_orig_message = raw_event
         else:
-            received_orig_message = get_dotted_field_value(event_dict, hmac_target_field_name)
+            received_orig_message = get_dotted_field_value_with_explicit_missing(
+                event_dict, hmac_target_field_name
+            )
 
-        if received_orig_message is None:
+        if received_orig_message is MISSING:
             error_message = f"Couldn't find the hmac target field '{hmac_target_field_name}'"
+            raise CriticalInputError(self, error_message, raw_event)
+        if not isinstance(received_orig_message, (str, bytes)):
+            error_message = (
+                f"Unable to create hmac for data of type '{type(received_orig_message)}'"
+            )
             raise CriticalInputError(self, error_message, raw_event)
         if isinstance(received_orig_message, str):
             received_orig_message = received_orig_message.encode("utf-8")
         hmac = HMAC(
-            key=hmac_options.get("key").encode(),
+            key=hmac_options.key.encode(),
             msg=received_orig_message,
             digestmod=hashlib.sha256,
         ).hexdigest()
         compressed = zlib.compress(received_orig_message, level=-1)
         new_field = {
-            hmac_options.get("output_field"): {
+            hmac_options.output_field: {
                 "hmac": hmac,
                 "compressed_base64": base64.b64encode(compressed).decode(),
             }

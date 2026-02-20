@@ -384,6 +384,10 @@ def get_dotted_field_values(
     return result
 
 
+def has_dotted_field(event: dict[str, FieldValue], dotted_field: str) -> bool:
+    return get_dotted_field_value_with_explicit_missing(event, dotted_field) is not MISSING
+
+
 @lru_cache(maxsize=100000)
 def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
     """Make lookup of dotted field in the dotted_field_lookup_table and ensures
@@ -426,6 +430,10 @@ def field_list_to_dotted_field(field_list: Sequence[str]) -> str:
     return ".".join(field.replace(".", "\\.") for field in field_list)
 
 
+def concat_dotted_fields(*dotted_fields: str) -> str:
+    return ".".join(dotted_fields)
+
+
 def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
     """
     Remove and return dotted field. Returns None is field does not exist.
@@ -442,22 +450,24 @@ def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
     dict_: dict, list, str
         The value of the requested dotted field.
     """
-    fields = dotted_field.split(".")
+    fields = get_dotted_field_list(dotted_field)
     return _retrieve_field_value_and_delete_field_if_configured(
-        event, fields, delete_source_field=True
+        event, list(fields), delete_source_field=True
     )
 
 
 def _retrieve_field_value_and_delete_field_if_configured(
-    sub_dict, dotted_fields_path, delete_source_field=False
-):
+    sub_dict: FieldValue,
+    dotted_fields_path: list[str],
+    delete_source_field: bool = False,
+) -> FieldValue:
     """
     Iterates recursively over the given dictionary retrieving the dotted field. If set the source
     field will be removed. When again going back up the stack trace it deletes the empty left over
     dicts.
     """
     next_key = dotted_fields_path.pop(0)
-    if next_key in sub_dict and isinstance(sub_dict, dict):
+    if isinstance(sub_dict, dict) and next_key in sub_dict:
         if not dotted_fields_path:
             field_value = sub_dict[next_key]
             if delete_source_field:

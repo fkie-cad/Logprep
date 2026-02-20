@@ -6,7 +6,7 @@ from pprint import pprint
 from typing import Any
 
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import get_dotted_field_list, get_dotted_field_value
 
 
 # pylint: disable=protected-access
@@ -44,7 +44,7 @@ class GrokPatternReplacer:
 
     @staticmethod
     def _change_dotted_field_value(event: dict, dotted_field: str, new_value: str):
-        fields = dotted_field.split(".")
+        fields = get_dotted_field_list(dotted_field)
         dict_ = event
         last_field = None
         for field in fields:
@@ -56,7 +56,7 @@ class GrokPatternReplacer:
 
     @staticmethod
     def _change_dotted_field_list_value(event: dict, dotted_field: str, new_value: str, idx: int):
-        fields = dotted_field.split(".")
+        fields = get_dotted_field_list(dotted_field)
         dict_ = event
         last_field = None
         for field in fields:

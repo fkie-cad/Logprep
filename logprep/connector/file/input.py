@@ -235,7 +235,7 @@ class FileInput(Input):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast(FileInput.Config, self._config)
 
     def _calc_file_fingerprint(

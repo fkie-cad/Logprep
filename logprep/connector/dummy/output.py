@@ -82,7 +82,7 @@ class DummyOutput(Output):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast("DummyOutput.Config", self._config)
 
     def store(self, document: dict):

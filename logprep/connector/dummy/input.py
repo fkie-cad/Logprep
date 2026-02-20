@@ -43,7 +43,7 @@ class DummyInput(Input):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast("DummyInput.Config", self._config)
 
     @cached_property
