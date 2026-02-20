@@ -503,9 +503,11 @@ class TestHttpConnector(BaseInputTestCase):
         data = {"message": "my log message"}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
+            assert isinstance(new_connector, HttpInput)
             new_connector.pipeline_index = 1
             new_connector.setup()
             headers = {"Authorization": _basic_auth_str("user", "file_password")}
+            assert new_connector.app
             client = testing.TestClient(new_connector.app, headers=headers)
             resp = client.post("/auth-json-file", body=json.dumps(data))
             assert resp.status_code == 200

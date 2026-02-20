@@ -86,6 +86,7 @@ Behaviour of HTTP Requests
     * Responds with 405
 """
 
+import hmac
 import logging
 import multiprocessing as mp
 import queue
@@ -109,6 +110,7 @@ from falcon import (  # pylint: disable=no-name-in-module
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
     HTTPUnauthorized,
+    Request,
 )
 
 from logprep.abc.input import FatalInputError, Input
@@ -131,14 +133,23 @@ def basic_auth(func: Callable):
 
     async def func_wrapper(*args, **kwargs):
         endpoint: HttpEndpoint = args[0]
-        req = args[1]
+        req: Request = args[1]
         if endpoint.credentials:
-            auth_request_header = req.get_header("Authorization")
-            if not auth_request_header:
+            if not req.auth or not isinstance(req.auth, str):
                 raise HTTPUnauthorized
-            basic_string = req.auth
-            if basic_string not in endpoint.basicauth_b64:
+
+            auth_header_value_b64 = req.auth
+            lowered_auth_header = auth_header_value_b64.lower()
+            if lowered_auth_header.startswith("basic"):
+                auth_header_value_b64 = auth_header_value_b64[5:]
+                auth_header_value_b64 = auth_header_value_b64.lstrip()
+
+            for basicauth_b64 in endpoint.basicauth_b64:
+                if hmac.compare_digest(basicauth_b64, auth_header_value_b64):
+                    break
+            else:
                 raise HTTPUnauthorized
+
         func_wrapper = await func(*args, **kwargs)
         return func_wrapper
 
@@ -253,7 +264,7 @@ class HttpEndpoint(ABC):
         original_event_field: dict[str, str] | None,
         collect_meta: bool,
         metafield_name: str,
-        credentials: list[Credentials] | None,
+        credentials: list[Credentials] | Credentials | None,
         metrics: "HttpInput.Metrics",
         copy_headers_to_logs: set[str],
     ) -> None:
@@ -269,7 +280,7 @@ class HttpEndpoint(ABC):
         self.metrics = metrics
         self.basicauth_b64: list[str] = []
 
-        if self.credentials:
+        if self.credentials and isinstance(self.credentials, list):
             for cred in self.credentials:
                 if isinstance(cred, BasicAuthCredentials):
                     self.basicauth_b64.append(
@@ -277,6 +288,13 @@ class HttpEndpoint(ABC):
                             "utf-8"
                         )
                     )
+        elif self.credentials:
+            if isinstance(self.credentials, BasicAuthCredentials):
+                self.basicauth_b64.append(
+                    b64encode(
+                        f"{self.credentials.username}:{self.credentials.password}".encode("utf-8")
+                    ).decode("utf-8")
+                )
 
     def collect_metrics(self):
         """Increment number of requests"""
@@ -557,6 +575,11 @@ class HttpInput(Input):
         """Provides the properly typed rule configuration object"""
         return typing.cast(HttpInput.Config, self._config)
 
+    @property
+    def _typed_metrics(self) -> Metrics:
+        """Returns metrics as typed HttpInput.Metrics"""
+        return typing.cast(HttpInput.Metrics, self.metrics)
+
     def setup(self) -> None:
         """setup starts the actual functionality of this connector.
         By checking against pipeline_index we're assuring this connector
@@ -595,7 +618,7 @@ class HttpInput(Input):
                 collect_meta,
                 metafield_name,
                 credentials,
-                self.metrics,
+                self._typed_metrics,
                 copy_headers_to_logs,
             )
 
@@ -617,7 +640,7 @@ class HttpInput(Input):
         """Returns the first message from the queue"""
         messages = typing.cast(Queue, self.messages)
 
-        self.metrics.message_backlog_size += messages.qsize()
+        self._typed_metrics.message_backlog_size += messages.qsize()
         try:
             message = messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
@@ -659,7 +682,7 @@ class HttpInput(Input):
                 ).raise_for_status()
             except (requests.exceptions.RequestException, requests.exceptions.Timeout) as error:
                 logger.error("Health check failed for endpoint: %s due to %s", endpoint, str(error))
-                self.metrics.number_of_errors += 1
+                self._typed_metrics.number_of_errors += 1
                 return False
 
         return super().health()
