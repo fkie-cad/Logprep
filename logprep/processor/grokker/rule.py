@@ -69,7 +69,8 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
     def _transform(pattern):  # nosemgrep
         fields = re.findall(FIELD_PATTERN, pattern)
         for dotted_field, _ in fields:
-            if "." in dotted_field:
+            field_list = get_dotted_field_list(dotted_field)
+            if len(field_list) > 1:
                 replacement = "".join(
                     f"[{element}]" for element in get_dotted_field_list(dotted_field)
                 )
