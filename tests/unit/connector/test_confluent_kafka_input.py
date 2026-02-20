@@ -411,7 +411,7 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         self.object.metrics.number_of_warnings = 0
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
-            self.object._lost_callback(mock_partitions)
+            self.object._lost_callback(mock_consumer, mock_partitions)
         mock_warning.assert_called()
         assert self.object.metrics.number_of_warnings == 1
 

@@ -26,7 +26,6 @@ Processor Configuration
 .. automodule:: logprep.processor.network_comparison.rule
 """
 
-import typing
 from ipaddress import ip_address
 
 from logprep.processor.base.rule import Rule
@@ -41,7 +40,7 @@ class NetworkComparison(ListComparison):
 
     def _get_lists_matching_with_values(self, rule: Rule, value_list: list, event: dict) -> list:
         """Iterate over network lists, check if element is in any."""
-        rule = typing.cast(NetworkComparisonRule, rule)
+        assert isinstance(rule, NetworkComparisonRule)
         list_matches: list = []
         for value in value_list:
             try:
