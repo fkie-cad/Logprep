@@ -27,7 +27,6 @@ Processor Configuration
 .. automodule:: logprep.processor.field_manager.rule
 """
 
-import typing
 from typing import Iterable
 
 from logprep.ng.abc.processor import Processor
@@ -47,7 +46,7 @@ class FieldManager(Processor):
     rule_class = FieldManagerRule
 
     def _apply_rules(self, event: dict, rule: Rule) -> None:
-        rule = typing.cast(FieldManagerRule, rule)
+        assert isinstance(rule, FieldManagerRule)
         rule_args = (
             rule.source_fields,
             rule.target_field,

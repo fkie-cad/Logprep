@@ -33,6 +33,7 @@ import logging
 import re
 import tempfile
 import typing
+from collections.abc import Iterable
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -44,7 +45,6 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_fields_to, get_dotted_field_value
-from logprep.util.typing import is_list_of
 
 logger = logging.getLogger("Grokker")
 
@@ -108,21 +108,21 @@ class Grokker(FieldManager):
     def setup(self) -> None:
         """Loads the action mapping. Has to be called before processing"""
         super().setup()
-        assert is_list_of(self.rules, GrokkerRule)
+        rules = typing.cast(Iterable[GrokkerRule], self.rules)
         custom_patterns_dir = self.config.custom_patterns_dir
         if re.search(r"http(s)?:\/\/.*?\.zip", custom_patterns_dir):
             with tempfile.TemporaryDirectory("grok") as patterns_tmp_path:
                 self._download_zip_file(
                     source_file=custom_patterns_dir, target_dir=Path(patterns_tmp_path)
                 )
-                for rule in self.rules:
+                for rule in rules:
                     rule.set_mapping_actions(patterns_tmp_path)
                 return
         if custom_patterns_dir:
-            for rule in self.rules:
+            for rule in rules:
                 rule.set_mapping_actions(custom_patterns_dir)
             return
-        for rule in self.rules:
+        for rule in rules:
             rule.set_mapping_actions()
 
     def _download_zip_file(self, source_file: str, target_dir: Path):
