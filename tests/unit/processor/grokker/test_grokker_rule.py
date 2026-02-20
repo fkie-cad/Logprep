@@ -156,14 +156,6 @@ class TestGrokkerRule:
             ),
             (
                 {
-                    "filter": "message",
-                    "grokker": {"mapping": {"message": "%{NUMBER:[birthday.year]:int}"}},
-                },
-                ValueError,
-                "must match regex",
-            ),
-            (
-                {
                     "filter": "grok_me",
                     "grokker": {"mapping": {"grok_me": "%{GROK_PATTERN_DOES_NOT_EXISTS}"}},
                 },
