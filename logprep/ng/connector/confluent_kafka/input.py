@@ -471,7 +471,7 @@ class ConfluentKafkaInput(Input):
         -------
         event_dict : dict, None
             A parsed document obtained from Kafka.
-        raw_event : bytearray, None
+        raw_event : bytes, None
             A raw document obtained from Kafka.
         metadata: EventMetadata, None
             The kafka metadata with specific data for this event.

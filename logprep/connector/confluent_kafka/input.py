@@ -268,7 +268,7 @@ class ConfluentKafkaInput(Input):
 
         """
 
-    _last_valid_record: Message
+    _last_valid_record: Message | None
 
     __slots__ = ["_last_valid_record"]
 
@@ -278,7 +278,7 @@ class ConfluentKafkaInput(Input):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast(ConfluentKafkaInput.Config, self._config)
 
     @property
@@ -433,7 +433,7 @@ class ConfluentKafkaInput(Input):
 
         Returns
         -------
-        message_value : bytearray
+        message_value : bytes
             A raw document obtained from Kafka.
 
         Raises
@@ -469,7 +469,7 @@ class ConfluentKafkaInput(Input):
         -------
         event_dict : dict
             A parsed document obtained from Kafka.
-        raw_event : bytearray
+        raw_event : bytes
             A raw document obtained from Kafka.
 
         Raises
@@ -545,7 +545,7 @@ class ConfluentKafkaInput(Input):
             )
         self.batch_finished_callback()
 
-    def _lost_callback(self, topic_partitions: list[TopicPartition]) -> None:
+    def _lost_callback(self, _: Consumer, topic_partitions: list[TopicPartition]) -> None:
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
             member_id = self._get_memberid()

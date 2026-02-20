@@ -47,6 +47,7 @@ Examples for grokker:
 """
 
 import re
+import typing
 
 from attrs import define, field, validators
 
@@ -69,7 +70,9 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
         fields = re.findall(FIELD_PATTERN, pattern)
         for dotted_field, _ in fields:
             if "." in dotted_field:
-                replacement = "".join(f"[{element}]" for element in dotted_field.split("."))
+                replacement = "".join(
+                    f"[{element}]" for element in get_dotted_field_list(dotted_field)
+                )
                 # ensure full field is replaced by scanning for ':' at the front and '}' or ':'
                 # at the end in the pattern. Also add them again in the replacement string.
                 pattern = re.sub(
@@ -146,7 +149,12 @@ class GrokkerRule(DissectorRule):
         mapping sections. Here you only have to declare the matching regex without named groups.
         """
 
-    actions: dict[str, Grok]
+    actions: dict[str, Grok]  # type: ignore
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(GrokkerRule.Config, self._config)
 
     def _set_mapping_actions(self):
         self.actions = {}
@@ -162,14 +170,14 @@ class GrokkerRule(DissectorRule):
             self.actions = {
                 dotted_field: Grok(
                     pattern,
-                    custom_patterns=self._config.patterns,
+                    custom_patterns=self.config.patterns,
                     custom_patterns_dir=custom_patterns_dir,
                 )
-                for dotted_field, pattern in self._config.mapping.items()
+                for dotted_field, pattern in self.config.mapping.items()
             }
         except re.error as error:
             raise InvalidRuleDefinitionError(
-                f"The resolved grok pattern '{error.pattern}' is not valid"
+                f"The resolved grok pattern '{error.pattern!r}' is not valid"
             ) from error
 
         # to ensure no string splitting is done during processing for target fields:

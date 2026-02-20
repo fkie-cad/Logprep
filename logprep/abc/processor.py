@@ -21,6 +21,7 @@ from logprep.util.helper import (
     add_and_overwrite,
     add_fields_to,
     get_dotted_field_value,
+    has_dotted_field,
     pop_dotted_field_value,
 )
 from logprep.util.rule_loader import RuleLoader
@@ -279,14 +280,7 @@ class Processor(Component):
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
-        fields = dotted_field.split(".")
-        dict_ = event
-        for field_ in fields:
-            if field_ in dict_ and isinstance(dict_, dict):
-                dict_ = dict_[field_]
-            else:
-                return False
-        return True
+        return has_dotted_field(event, dotted_field)
 
     def _handle_warning_error(self, event, rule, error, failure_tags=None):
         tags = get_dotted_field_value(event, "tags")

@@ -30,7 +30,11 @@ from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    add_fields_to,
+    concat_dotted_fields,
+    get_dotted_field_value,
+)
 
 
 class ListComparison(Processor):
@@ -71,7 +75,7 @@ class ListComparison(Processor):
         """
         comparison_result, comparison_key = self._list_comparison(rule, event)
         if comparison_result is not None:
-            fields = {f"{rule.target_field}.{comparison_key}": comparison_result}
+            fields = {concat_dotted_fields(rule.target_field, comparison_key): comparison_result}
             add_fields_to(event, fields, rule=rule, merge_with_target=True)
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict) -> tuple[list, str]:
