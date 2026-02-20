@@ -42,6 +42,7 @@ from logprep.util.helper import (
     Missing,
     add_fields_to,
     get_dotted_field_value,
+    get_dotted_field_value_with_explicit_missing,
 )
 from logprep.util.typing import is_lru_cached
 
@@ -135,7 +136,7 @@ class GenericResolver(FieldManager):
 
     def _apply_rules(self, event: dict, rule: Rule) -> None:
         """Apply the given rule to the current event"""
-        rule = typing.cast(GenericResolverRule, rule)
+        assert isinstance(rule, GenericResolverRule)
         source_field_values = [
             get_dotted_field_value(event, source_field)
             for source_field in rule.field_mapping.keys()
@@ -143,9 +144,11 @@ class GenericResolver(FieldManager):
         self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_field_values)
         conflicting_fields = []
         for source_field, target_field in rule.field_mapping.items():
-            source_field_value = str(get_dotted_field_value(event, source_field))
+            source_field_value = get_dotted_field_value_with_explicit_missing(event, source_field)
+            if source_field_value is MISSING:
+                continue
             resolved_content = self._find_content_of_first_matching_pattern(
-                rule, source_field_value
+                rule, str(source_field_value)
             )
             if resolved_content is MISSING:
                 continue
@@ -200,18 +203,18 @@ class GenericResolver(FieldManager):
         return MISSING
 
     def _update_cache_metrics(self) -> None:
-        if not is_lru_cached(self._get_lru_cached_value_from_list):
-            return
-        self._cache_metrics_skip_count += 1
-        if self._cache_metrics_skip_count < self.cache_metrics_interval:
-            return
-        self._cache_metrics_skip_count = 0
+        cache_wrapper = self._get_lru_cached_value_from_list
+        if is_lru_cached(cache_wrapper):
+            self._cache_metrics_skip_count += 1
+            if self._cache_metrics_skip_count < self.cache_metrics_interval:
+                return
+            self._cache_metrics_skip_count = 0
 
-        cache_info = self._get_lru_cached_value_from_list.cache_info()
-        self.metrics.new_results += cache_info.misses
-        self.metrics.cached_results += cache_info.hits
-        self.metrics.num_cache_entries += cache_info.currsize
-        self.metrics.cache_load += cache_info.currsize / self.max_cache_entries
+            cache_info = cache_wrapper.cache_info()  # type: ignore
+            self.metrics.new_results += cache_info.misses
+            self.metrics.cached_results += cache_info.hits
+            self.metrics.num_cache_entries += cache_info.currsize
+            self.metrics.cache_load += cache_info.currsize / self.max_cache_entries
 
     def setup(self) -> None:
         super().setup()

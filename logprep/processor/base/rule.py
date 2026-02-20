@@ -315,10 +315,6 @@ class Rule:
     def failure_tags(self):
         return self._config.tag_on_failure
 
-    @cached_property
-    def lucene_filter(self):
-        return self.filter.get_lucene_filter()
-
     # pylint: enable=C0111
 
     @classmethod

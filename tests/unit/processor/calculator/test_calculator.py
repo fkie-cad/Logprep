@@ -145,6 +145,19 @@ test_cases = [  # testcase, rule, event, expected
         {"result": 12},
     ),
     (
+        "handles dotted fields & escaping",
+        {
+            "filter": "*",
+            "calculator": {
+                "calc": "${field\\\\1} + ${key.field\\\\2} +${key.sou\\\\rce.sou\\\\rce\\.\\\\field3}",
+                "target_field": "wrapper.calc\\.res\\\\ult",
+                "delete_source_fields": True,
+            },
+        },
+        {"key": {"sou\\rce": {"sou\\rce.\\field3": 2}, "field\\2": 6}, "field\\1": 4},
+        {"wrapper": {"calc.res\\ult": 12}},
+    ),
+    (
         "Time conversion ms -> ns",
         {
             "filter": "duration",

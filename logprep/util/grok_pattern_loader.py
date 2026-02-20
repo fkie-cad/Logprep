@@ -1,7 +1,6 @@
 """This module contains a loader for grok patterns."""
 
-from os import walk, path
-from typing import Optional
+from os import path, walk
 
 PATTERN_CONVERSION = [("[[:alnum:]]", r"\w")]
 
@@ -17,7 +16,7 @@ class GrokPatternLoader:
     """Used to load grok patterns."""
 
     @staticmethod
-    def load(pattern_path: str) -> Optional[dict]:
+    def load(pattern_path: str) -> dict:
         """Load grok patterns from path that might be directory or file.
 
         Parameters
@@ -35,7 +34,7 @@ class GrokPatternLoader:
             return GrokPatternLoader.load_from_file(pattern_path)
         if path.isdir(pattern_path):
             return GrokPatternLoader.load_from_dir(pattern_path)
-        return None
+        raise ValueError(f"pattern_path is neither a file nor a dir: {pattern_path}")
 
     @staticmethod
     def load_from_file(pattern_path: str) -> dict:
@@ -82,7 +81,7 @@ class GrokPatternLoader:
             Dictionary with grok patterns.
 
         """
-        grok_pattern_dict = {}
+        grok_pattern_dict: dict = {}
         for root, _, files in walk(pattern_dir_path):
             for file in files:
                 new_patterns = GrokPatternLoader.load_from_file(path.join(root, file))

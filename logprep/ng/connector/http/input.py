@@ -256,7 +256,10 @@ class HttpInput(Input):
         :code:`target_field`."""
 
         def __attrs_post_init__(self):
-            if "add_full_event_to_target_field" in self.preprocessing and self.original_event_field:
+            if (
+                self.preprocessing.add_full_event_to_target_field is not None
+                and self.original_event_field
+            ):
                 raise InvalidConfigurationError(
                     "Cannot configure both add_full_event_to_target_field and original_event_field."
                 )
