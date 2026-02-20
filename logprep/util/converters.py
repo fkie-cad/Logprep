@@ -1,5 +1,6 @@
 from typing import TypeVar
 
+T = TypeVar("T")
 Key = TypeVar("Key")
 Value = TypeVar("Value")
 
@@ -29,3 +30,9 @@ def convert_ordered_mapping(dicts: list[dict[Key, Value]]) -> dict[Key, Value]:
         ordered_mapping[keys[0]] = element[keys[0]]
 
     return ordered_mapping
+
+
+def convert_from_dict(constructor: type[T], data: T | dict) -> T:
+    if isinstance(data, dict):
+        return constructor(**data)
+    return data
