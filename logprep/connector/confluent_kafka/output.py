@@ -196,7 +196,7 @@ class ConfluentKafkaOutput(Output):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast(ConfluentKafkaOutput.Config, self._config)
 
     @property

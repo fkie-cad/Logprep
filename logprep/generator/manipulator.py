@@ -3,11 +3,12 @@ Manipulator Module that takes a batch of input events, processes them and return
 versions.
 """
 
-import datetime
 import logging
 from datetime import datetime
 from functools import reduce
 from typing import TYPE_CHECKING, List
+
+from logprep.util.helper import get_dotted_field_list
 
 if TYPE_CHECKING:
     from logprep.generator.input import EventClassConfig
@@ -57,10 +58,11 @@ class Manipulator:
         field_key = timestamp.key
         timestamp_format = timestamp.format
         time_delta = timestamp.time_delta
-        output_field_key = [event, *field_key.split(".")]
-        target_key = output_field_key.pop()
-        target_field = reduce(self._add_and_overwrite_key, output_field_key)
-        target_field |= {target_key: (datetime.now() + time_delta).strftime(timestamp_format)}
+        output_field_key = get_dotted_field_list(field_key)
+        target_field = reduce(self._add_and_overwrite_key, output_field_key[:-1], event)
+        target_field |= {
+            output_field_key[-1]: (datetime.now() + time_delta).strftime(timestamp_format)
+        }
 
     def _add_and_overwrite_key(self, sub_dict: dict, key: str) -> dict:
         """

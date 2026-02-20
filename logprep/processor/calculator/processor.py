@@ -69,7 +69,7 @@ class Calculator(FieldManager):
     @staticmethod
     def _template(string: str, source: dict) -> str:
         for key, value in source.items():
-            key = key.replace(".", r"\.")
+            key = key.replace("\\", "\\\\").replace(".", r"\.")
             pattern = r"\$\{(" + rf"{key}" + r")\}"
             string = re.sub(pattern, str(value), string)
         return string
