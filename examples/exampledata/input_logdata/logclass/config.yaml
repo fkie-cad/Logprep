@@ -1,4 +1,4 @@
-target: /lab/123/ABC/auditlog
+target: consumer
 timestamps:
   - key: TIMESTAMP_FIELD_1
     format: "%Y%m%d"
