@@ -2,27 +2,24 @@
 Runner module
 """
 
+import asyncio
 import json
 import logging
-import logging.config
 import os
 import warnings
-from typing import cast
+from collections.abc import AsyncGenerator
 
 from attrs import asdict
 
-from logprep.factory import Factory
-from logprep.ng.abc.input import Input
-from logprep.ng.abc.output import Output
-from logprep.ng.abc.processor import Processor
-from logprep.ng.event.event_state import EventStateType
-from logprep.ng.event.set_event_backlog import SetEventBacklog
-from logprep.ng.pipeline import Pipeline
-from logprep.ng.sender import Sender
+from logprep.ng.manager import PipelineManager
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 
 logger = logging.getLogger("Runner")
+
+
+GRACEFUL_SHUTDOWN_TIMEOUT = 10
+MAX_CONFIG_REFRESH_INTERVAL_DEVIATION_PERCENT = 0.05
 
 
 class Runner:
@@ -43,194 +40,97 @@ class Runner:
         """
 
         self.configuration = configuration
-        self._running_config_version = configuration.version
-        self._input_connector: Input | None = None
+        self._running_config_version: None | str = None
+        self._main_task: asyncio.Task | None = None
 
-        # Initialized in `setup()`; updated by runner logic thereafter:
-        self.should_exit: bool | None = None
-        self.sender: Sender | None = None
+        self._pipeline_manager: PipelineManager | None = None
 
-        self.setup()
-
-    def _initialize_pipeline(self) -> Pipeline:
-        """Initialize the pipeline from the given `configuration`.
-
-        This method performs the following tasks:
-
-        - Creates components based on the configuration:
-          - input connector
-          - processors
-
-        - Sets up the input connector:
-          - attaches an event backlog
-          - calls its `setup()` method
-          - initializes its iterator with the configured timeout
-
-        - Validates that:
-          - an input connector is configured
-          - all processors are properly configured
-
-        - Instantiates the `Pipeline` with:
-          - the input connector iterator
-          - the list of processors
-
-        Returns
-        -------
-        Pipeline
-            The instantiated pipeline instance (not yet set up).
-        """
-
-        self._input_connector = cast(Input, Factory.create(self.configuration.input))
-        self._input_connector.event_backlog = SetEventBacklog()
-        self._input_connector.setup()
-
-        input_iterator = self._input_connector(timeout=self.configuration.timeout)
-        processors = cast(
-            list[Processor],
-            [Factory.create(processor_config) for processor_config in self.configuration.pipeline],
-        )
-
-        return Pipeline(
-            log_events_iter=input_iterator,
-            processors=cast(list[Processor], processors),
-        )
-
-    def _initialize_sender(self) -> Sender:
-        """Initialize the sender from the given `configuration`.
-
-        This method performs the following tasks:
-
-        - Creates components based on the configuration:
-          - output connectors
-          - error output
-
-        - Validates that:
-          - all output connectors are configured
-          - an error output is available
-
-        - Instantiates the `Sender` with:
-          - the initialized pipeline
-          - configured outputs
-          - configured error output
-          - process count from configuration
-
-        Returns
-        -------
-        Sender
-            The instantiated sender instance (not yet set up).
-        """
-
-        output_connectors = cast(
-            list[Output],
-            [
-                Factory.create({output_name: output})
-                for output_name, output in self.configuration.output.items()
-            ],
-        )
-
-        error_output: Output | None = (
-            Factory.create(self.configuration.error_output)
-            if self.configuration.error_output
-            else None
-        )
-
-        if error_output is None:
-            logger.warning("No error output configured.")
-
-        return Sender(
-            pipeline=self._initialize_pipeline(),
-            outputs=cast(list[Output], output_connectors),
-            error_output=error_output,
-            process_count=self.configuration.process_count,
-        )
-
-    def run(self) -> None:
-        """Run the runner and continuously process events until stopped.
-
-        This method starts the main processing loop, refreshes the configuration
-        if needed, processes event batches, and only exits once `stop()` has been
-        called (setting `should_exit` to True). At the end, it shuts down all
-        components gracefully.
-        """
-
-        # TODO:
-        # * integration tests
-
+    async def _refresh_configuration_gen(self) -> AsyncGenerator[Configuration, None]:
         self.configuration.schedule_config_refresh()
-
+        refresh_interval = self.configuration.config_refresh_interval
         while True:
-            if self.should_exit:
-                logger.debug("Runner exiting.")
-                break
-
-            logger.debug("Runner processing loop.")
-
-            logger.debug("Check configuration change before processing a batch of events.")
             self.configuration.refresh()
 
             if self.configuration.version != self._running_config_version:
-                self.reload()
+                yield self.configuration
+                self._running_config_version = self.configuration.version
+                refresh_interval = self.configuration.config_refresh_interval
 
-            logger.debug("Process next batch of events.")
-            self._process_events()
+            if refresh_interval is not None:
+                try:
+                    await asyncio.sleep(
+                        # realistic bad case: starting to sleep just a moment before scheduled time
+                        # unlikely worst case: starting to sleep even after scheduled time
+                        #                      (if yield takes some time and interval is short)
+                        # --> compensate bad case by giving an upper boundary to the deviation
+                        refresh_interval
+                        * MAX_CONFIG_REFRESH_INTERVAL_DEVIATION_PERCENT
+                    )
+                except asyncio.CancelledError:
+                    logger.debug("Config refresh cancelled. Exiting...")
+                    raise
+            else:
+                logger.debug("Config refresh has been disabled.")
+                break
+
+    async def _run_pipeline(self, config: Configuration) -> tuple[PipelineManager, asyncio.Task]:
+        manager = PipelineManager(config)
+        manager_task = asyncio.create_task(manager.run(), name="pipeline_manager")
+        return manager, manager_task
+
+    async def _shut_down_pipeline(
+        self, manager: PipelineManager, manager_task: asyncio.Task
+    ) -> None:
+        await manager.shut_down()
+        try:
+            await asyncio.wait_for(manager_task, GRACEFUL_SHUTDOWN_TIMEOUT)
+            logger.error("graceful shut down of pipeline manager succeeded")
+        except TimeoutError:
+            logger.error("could not gracefully shut down pipeline manager within timeframe")
+
+    async def _run(self) -> None:
+        logger.debug("Running _run")
+        try:
+            manager, manager_task = await self._run_pipeline(self.configuration)
+
+            async for refreshed_config in self._refresh_configuration_gen():
+                logger.debug("Configuration change detected. Restarting pipeline...")
+                await self._shut_down_pipeline(manager, manager_task)
+                manager, manager_task = await self._run_pipeline(refreshed_config)
+
+            logger.debug("Configuration refresh disabled. Waiting for ")
+            await manager_task
+        except asyncio.CancelledError:
+            if manager is not None and manager_task is not None:
+                await self._shut_down_pipeline(manager, manager_task)
+
+        logger.debug("End of _run")
+
+    async def run(self) -> None:
+        """Run the runner and continuously process events until stopped."""
+        self._running_config_version = self.configuration.version
+
+        self._main_task = asyncio.create_task(self._run(), name="config_refresh")
+
+        await self._main_task
 
         self.shut_down()
         logger.debug("End log processing.")
 
-    def _process_events(self) -> None:
-        """Process a batch of events got from sender iterator."""
+    def stop(self) -> None:
+        """Stop the runner and signal the underlying processing pipeline to exit."""
 
-        logger.debug("Start log processing.")
-
-        sender = cast(Sender, self.sender)
-        logger.debug(f"Get batch of events from sender (batch_size={sender.batch_size}).")
-        for event in sender:
-            if event is None:
-                continue
-
-            if event.state == EventStateType.FAILED:
-                logger.error("event failed: %s", event)
-            else:
-                logger.debug("event processed: %s", event.state)
-
-        logger.debug("Finished processing batch of events.")
-
-    def setup(self) -> None:
-        """Set up the runner, its components, and required runner attributes."""
-
-        self.sender = self._initialize_sender()
-        self.sender.setup()
-        self.should_exit = False
-
-        logger.info("Runner set up complete.")
+        logger.info("Stopping runner and exiting...")
+        if self._main_task is not None:
+            logger.debug("Cancelling runner main task")
+            self._main_task.cancel()
+        else:
+            logger.debug("Attempting to stop inactive runner")
 
     def shut_down(self) -> None:
         """Shut down runner components, and required runner attributes."""
 
-        self.should_exit = True
-        cast(Sender, self.sender).shut_down()
-        self.sender = None
-
-        input_connector = cast(Input, self._input_connector)
-        input_connector.acknowledge()
-
-        len_delivered_events = len(input_connector.event_backlog.get(EventStateType.DELIVERED))
-        if len_delivered_events:
-            logger.error(
-                f"Input connector has {len_delivered_events} non-acked events in event_backlog."
-            )
-
         logger.info("Runner shut down complete.")
-
-    def stop(self) -> None:
-        """Stop the runner and signal the underlying processing pipeline to exit.
-
-        This method sets the `should_exit` flag to True, which will cause the
-        runner and its components to stop gracefully.
-        """
-
-        logger.info("Stopping runner and exiting...")
-        self.should_exit = True
 
     def setup_logging(self) -> None:
         """Setup the logging configuration.
@@ -244,15 +144,3 @@ class Runner:
         log_config = DEFAULT_LOG_CONFIG | asdict(self.configuration.logger)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
         logging.config.dictConfig(log_config)
-
-    def reload(self) -> None:
-        """Reload the log processing pipeline."""
-
-        logger.info("Reloading log processing pipeline...")
-
-        self.shut_down()
-        self.setup()
-
-        self._running_config_version = self.configuration.version
-        self.configuration.schedule_config_refresh()
-        logger.info("Finished reloading log processing pipeline.")
