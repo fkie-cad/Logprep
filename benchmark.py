@@ -347,6 +347,16 @@ def print_runs_table_and_summary(run_results: list[RunResult]) -> None:
         "std_dev": stdev(rates) if len(rates) >= 2 else 0.0,
     }
 
+    # Std dev as percent of average throughput (coefficient of variation)
+    throughput["std_dev_pct_avg"] = (
+        throughput["std_dev"] / throughput["average"] * 100 if throughput["average"] > 0 else 0.0
+    )
+
+    # Optional: also as percent of weighted throughput (often more meaningful)
+    throughput["std_dev_pct_weighted"] = (
+        throughput["std_dev"] / throughput["weighted"] * 100 if throughput["weighted"] > 0 else 0.0
+    )
+
     headers = ["run_s", "window_s", "startup_s", "processed", "docs/s"]
     rows: list[list[str]] = [
         [
@@ -372,6 +382,7 @@ def print_runs_table_and_summary(run_results: list[RunResult]) -> None:
     print(f"throughput (average):  {throughput['average']:,.2f} docs/s")
     print(f"throughput (min/max):  {throughput['min']:,.2f} / {throughput['max']:,.2f} docs/s")
     print(f"throughput (std dev):  {throughput['std_dev']:,.2f} docs/s")
+    print(f"throughput (variance): {throughput['std_dev_pct_weighted']:.2f}% of weighted")
     print("")
     print(f"startup avg:           {mean(startups):.3f} s")
     print("================================")
