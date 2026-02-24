@@ -182,7 +182,7 @@ max-attributes=12
 [tool.pylint.CLASSES]
 
 # List of method names used to declare (i.e. assign) instance attributes.
-defining-attr-methods="__init__,__new__,setup"
+defining-attr-methods="__init__,__new__,setup,_setup"
 
 [tool.mypy]
 # use imported type information but don't report issues if not a file under check
