@@ -15,6 +15,21 @@
                 "PROMETHEUS_MULTIPROC_DIR": "tmp/logprep"
             },
             "justMyCode": false
+        },
+        {
+            "name": "Debug ng example pipeline",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "logprep/run_ng.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run",
+                "examples/exampledata/config/ng_pipeline.yml"
+            ],
+            "env": {
+                "PROMETHEUS_MULTIPROC_DIR": "tmp/logprep"
+            },
+            "justMyCode": false
         }
     ]
 }
