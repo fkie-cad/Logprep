@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Benchmark runner for logprep-ng.
 
@@ -63,13 +62,22 @@ REFRESH_BEFORE_COUNT = True
 # OUTPUT TEE
 # -------------------------
 class Tee:
-    """Duplicate writes to stdout + optional file. Minimal footprint for scripts using print()."""
+    """File-like object that duplicates writes to a primary stream and an
+    optional secondary stream."""
 
     def __init__(self, primary, secondary):
+        """
+        Create a Tee stream.
+
+        Args:
+            primary: Stream to write to (typically sys.stdout).
+            secondary: Optional stream to duplicate writes into (e.g. open file handle).
+        """
         self._primary = primary
         self._secondary = secondary
 
     def write(self, s: str) -> int:
+        """Write to primary stream and duplicate to secondary stream (if any)."""
         n = self._primary.write(s)
         self._primary.flush()
         if self._secondary is not None:
@@ -78,6 +86,7 @@ class Tee:
         return n
 
     def flush(self) -> None:
+        """Flush both primary and secondary streams."""
         self._primary.flush()
         if self._secondary is not None:
             self._secondary.flush()
@@ -88,6 +97,8 @@ class Tee:
 # -------------------------
 @dataclass(frozen=True)
 class RunResult:
+    """Result of a single benchmark run."""
+
     run_seconds: int
     startup_s: float
     window_s: float
@@ -95,6 +106,7 @@ class RunResult:
 
     @property
     def rate(self) -> float:
+        """Documents per second processed during the measurement window."""
         return self.processed / self.window_s if self.window_s > 0 else 0.0
 
 
@@ -108,6 +120,15 @@ def run_cmd(
     env: dict[str, str] | None = None,
     ignore_error: bool = False,
 ) -> None:
+    """
+    Run a command and raise on non-zero exit code unless ignore_error is True.
+
+    Args:
+        cmd: Command and args.
+        cwd: Optional working directory.
+        env: Optional environment.
+        ignore_error: If True, ignore non-zero exit codes.
+    """
     try:
         subprocess.run(cmd, check=True, cwd=str(cwd) if cwd else None, env=env)
     except subprocess.CalledProcessError:
@@ -121,28 +142,59 @@ def popen_cmd(
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
 ) -> subprocess.Popen:
+    """
+    Start a subprocess without waiting.
+
+    Args:
+        cmd: Command and args.
+        cwd: Optional working directory.
+        env: Optional environment.
+
+    Returns:
+        subprocess.Popen handle.
+    """
     return subprocess.Popen(cmd, cwd=str(cwd) if cwd else None, env=env)
 
 
-def kill_hard(p: subprocess.Popen) -> None:
-    if p.poll() is not None:
+def kill_hard(proc: subprocess.Popen) -> None:
+    """
+    Hard-kill a process (SIGKILL on Unix) to avoid shutdown flushing side effects.
+
+    Args:
+        proc: Process handle.
+    """
+    if proc.poll() is not None:
         return
-    p.kill()
-    p.wait()
+    proc.kill()
+    proc.wait()
 
 
 def opensearch_count_processed() -> int:
+    """
+    Return the count of documents in the processed index.
+
+    Returns 0 if the index does not exist yet (404).
+
+    Returns:
+        Document count as int.
+    """
     if REFRESH_BEFORE_COUNT:
         requests.post(f"{OPENSEARCH_URL}/_refresh", timeout=10).raise_for_status()
 
-    r = requests.get(f"{OPENSEARCH_URL}/{PROCESSED_INDEX}/_count", timeout=10)
-    if r.status_code == 404:
+    resp = requests.get(f"{OPENSEARCH_URL}/{PROCESSED_INDEX}/_count", timeout=10)
+    if resp.status_code == 404:
         return 0
-    r.raise_for_status()
-    return int(r.json()["count"])
+    resp.raise_for_status()
+    return int(resp.json()["count"])
 
 
 def reset_prometheus_dir(path: str) -> None:
+    """
+    Reset PROMETHEUS_MULTIPROC_DIR on disk (delete + recreate).
+
+    Args:
+        path: Directory path.
+    """
     shutil.rmtree(path, ignore_errors=True)
     Path(path).mkdir(parents=True, exist_ok=True)
 
@@ -151,6 +203,22 @@ def reset_prometheus_dir(path: str) -> None:
 # BENCH
 # -------------------------
 def benchmark_run(run_seconds: int) -> RunResult:
+    """
+    Execute a single benchmark run:
+    - reset compose + volume
+    - generate events to Kafka
+    - start local logprep-ng
+    - sleep measurement window
+    - count docs in OpenSearch
+    - SIGKILL logprep-ng to avoid flush
+    - tear down compose
+
+    Args:
+        run_seconds: Measurement window length in seconds.
+
+    Returns:
+        RunResult for this run.
+    """
     env = os.environ.copy()
     env["PROMETHEUS_MULTIPROC_DIR"] = PROMETHEUS_MULTIPROC_DIR
 
@@ -159,7 +227,6 @@ def benchmark_run(run_seconds: int) -> RunResult:
     ng_proc: subprocess.Popen | None = None
 
     try:
-        # compose reset + fresh opensearch volume
         run_cmd(["docker", "compose", "down"], cwd=COMPOSE_DIR, env=env)
         run_cmd(["docker", "volume", "rm", "compose_opensearch-data"], env=env, ignore_error=True)
         run_cmd(
@@ -170,7 +237,6 @@ def benchmark_run(run_seconds: int) -> RunResult:
 
         time.sleep(SLEEP_AFTER_COMPOSE_UP_S)
 
-        # generate events
         batch_size = max(EVENT_NUM // 10, 10)
         output_config = f'{{"bootstrap.servers": "{BOOTSTRAP_SERVERS}"}}'
         run_cmd(
@@ -192,12 +258,10 @@ def benchmark_run(run_seconds: int) -> RunResult:
 
         time.sleep(SLEEP_AFTER_GENERATE_S)
 
-        # start logprep-ng
         t0 = time.time()
         ng_proc = popen_cmd(["logprep-ng", "run", str(PIPELINE_CONFIG)], env=env)
         startup_s = time.time() - t0
 
-        # measurement window
         t_run = time.time()
         time.sleep(run_seconds)
         window_s = time.time() - t_run
@@ -227,80 +291,106 @@ def benchmark_run(run_seconds: int) -> RunResult:
 # -------------------------
 # REPORTING
 # -------------------------
-def print_runs_table_and_summary(results: list[RunResult]) -> None:
-    if not results:
-        print("(no runs)")
-        return
+def _render_ascii_table(headers: list[str], rows: list[list[str]]) -> str:
+    """
+    Render a compact ASCII table.
 
-    rates = [r.rate for r in results]
-    processed_counts = [r.processed for r in results]
-    window_times = [r.window_s for r in results]
-    startups = [r.startup_s for r in results]
+    Args:
+        headers: Column headers.
+        rows: Table rows as strings.
 
-    total_processed = sum(processed_counts)
-    total_runtime = sum(window_times)
-    weighted_rate = total_processed / total_runtime if total_runtime > 0 else 0.0
-
-    avg_rate = mean(rates)
-    med_rate = median(rates)
-    min_rate = min(rates)
-    max_rate = max(rates)
-    sd_rate = stdev(rates) if len(rates) >= 2 else 0.0
-
-    headers = ["run_s", "window_s", "startup_s", "processed", "docs/s"]
-    rows: list[list[str]] = []
-    for r in results:
-        rows.append(
-            [
-                f"{r.run_seconds}",
-                f"{r.window_s:.3f}",
-                f"{r.startup_s:.3f}",
-                f"{r.processed:,}".replace(",", "_"),
-                f"{r.rate:,.2f}",
-            ]
-        )
-
+    Returns:
+        Rendered table as a single string.
+    """
     col_widths = [len(h) for h in headers]
     for row in rows:
-        for i, cell in enumerate(row):
-            col_widths[i] = max(col_widths[i], len(cell))
+        for idx, cell in enumerate(row):
+            col_widths[idx] = max(col_widths[idx], len(cell))
 
     def fmt_row(cells: list[str]) -> str:
         return "| " + " | ".join(cells[i].rjust(col_widths[i]) for i in range(len(cells))) + " |"
 
     sep = "+-" + "-+-".join("-" * w for w in col_widths) + "-+"
 
-    print("\n=== RUNS TABLE ===")
-    print(sep)
-    print(fmt_row(headers))
-    print(sep)
+    lines: list[str] = [sep, fmt_row(headers), sep]
     for row in rows:
-        print(fmt_row(row))
-    print(sep)
+        lines.append(fmt_row(row))
+    lines.append(sep)
+    return "\n".join(lines)
+
+
+def print_runs_table_and_summary(run_results: list[RunResult]) -> None:
+    """
+    Print an ASCII table for all runs plus a summary block.
+
+    Args:
+        run_results: List of RunResult objects.
+    """
+    if not run_results:
+        print("(no runs)")
+        return
+
+    rates = [res.rate for res in run_results]
+    processed_counts = [res.processed for res in run_results]
+    window_times = [res.window_s for res in run_results]
+    startups = [res.startup_s for res in run_results]
+
+    total_processed = sum(processed_counts)
+    total_runtime = sum(window_times)
+
+    throughput = {
+        "weighted": total_processed / total_runtime if total_runtime > 0 else 0.0,
+        "average": mean(rates),
+        "median": median(rates),
+        "min": min(rates),
+        "max": max(rates),
+        "std_dev": stdev(rates) if len(rates) >= 2 else 0.0,
+    }
+
+    headers = ["run_s", "window_s", "startup_s", "processed", "docs/s"]
+    rows: list[list[str]] = [
+        [
+            f"{res.run_seconds}",
+            f"{res.window_s:.3f}",
+            f"{res.startup_s:.3f}",
+            f"{res.processed:,}".replace(",", "_"),
+            f"{res.rate:,.2f}",
+        ]
+        for res in run_results
+    ]
+
+    print("\n=== RUNS TABLE ===")
+    print(_render_ascii_table(headers, rows))
 
     print("\n=== FINAL BENCHMARK SUMMARY ===")
-    print(f"runs:                  {len(results)}")
+    print(f"runs:                  {len(run_results)}")
     print(f"total runtime:         {total_runtime:.3f} s")
     print(f"total processed:       {total_processed:,}".replace(",", "_"))
     print("")
-    print(f"throughput (weighted): {weighted_rate:,.2f} docs/s   <-- primary")
-    print(f"throughput (median):   {med_rate:,.2f} docs/s")
-    print(f"throughput (average):  {avg_rate:,.2f} docs/s")
-    print(f"throughput (min/max):  {min_rate:,.2f} / {max_rate:,.2f} docs/s")
-    print(f"throughput (std dev):  {sd_rate:,.2f} docs/s")
+    print(f"throughput (weighted): {throughput['weighted']:,.2f} docs/s   <-- primary")
+    print(f"throughput (median):   {throughput['median']:,.2f} docs/s")
+    print(f"throughput (average):  {throughput['average']:,.2f} docs/s")
+    print(f"throughput (min/max):  {throughput['min']:,.2f} / {throughput['max']:,.2f} docs/s")
+    print(f"throughput (std dev):  {throughput['std_dev']:,.2f} docs/s")
     print("")
     print(f"startup avg:           {mean(startups):.3f} s")
     print("================================")
 
 
-def print_single_run_result(r: RunResult) -> None:
+def print_single_run_result(run_result: RunResult) -> None:
+    """
+    Print the result block for a single run.
+
+    Args:
+        run_result: RunResult.
+    """
     print("--- RESULT ---")
-    print(f"run_seconds:            {r.run_seconds}")
+    print(f"run_seconds:            {run_result.run_seconds}")
     print(f"events generated:       {EVENT_NUM:_}")
-    print(f"startup time:           {r.startup_s:.3f} s")
-    print(f"measurement window:     {r.window_s:.3f} s")
-    print(f"processed (OpenSearch): {r.processed:_}")
-    print(f"throughput:             {r.rate:,.2f} docs/s")
+    print(f"startup time:           {run_result.startup_s:.3f} s")
+    print(f"measurement window:     {run_result.window_s:.3f} s")
+    print(f"processed (OpenSearch): {run_result.processed:_}")
+    print(f"throughput:             {run_result.rate:,.2f} docs/s")
     print("--------------")
 
 
@@ -308,9 +398,15 @@ def print_single_run_result(r: RunResult) -> None:
 # CLI
 # -------------------------
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Run logprep-ng benchmark suite.")
+    """
+    Parse CLI args.
 
-    p.add_argument(
+    Returns:
+        argparse.Namespace
+    """
+    parser = argparse.ArgumentParser(description="Run logprep-ng benchmark suite.")
+
+    parser.add_argument(
         "--runs",
         type=int,
         nargs="+",
@@ -324,19 +420,19 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
-    p.add_argument(
+    parser.add_argument(
         "--out",
         type=Path,
         default=None,
         help="Duplicate console output into file (e.g. --out benchmark_results.txt)",
     )
 
-    args = p.parse_args()
+    cli_args = parser.parse_args()
 
-    if any(r <= 0 for r in args.runs):
-        p.error("--runs must contain positive integers (seconds).")
+    if any(r <= 0 for r in cli_args.runs):
+        parser.error("--runs must contain positive integers (seconds).")
 
-    return args
+    return cli_args
 
 
 # -------------------------
@@ -354,15 +450,15 @@ if __name__ == "__main__":
             sys.stdout = Tee(old_stdout, file_handle)  # type: ignore[assignment]
 
         benchmark_seconds = tuple(args.runs)
-        print(f"Start benchmarking: run {benchmark_seconds=}")
+        print(f"Start benchmarking: benchmark_seconds={benchmark_seconds}")
 
         results: list[RunResult] = []
 
-        for i, seconds in enumerate(benchmark_seconds, start=1):
-            print(f"----- Run Round {i}: {seconds} seconds -----")
-            r = benchmark_run(run_seconds=seconds)
-            results.append(r)
-            print_single_run_result(r)
+        for run_idx, seconds in enumerate(benchmark_seconds, start=1):
+            print(f"----- Run Round {run_idx}: {seconds} seconds -----")
+            result = benchmark_run(run_seconds=seconds)
+            results.append(result)
+            print_single_run_result(result)
             print()
 
         print_runs_table_and_summary(results)
