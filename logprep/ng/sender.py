@@ -1,16 +1,13 @@
 """sender module"""
 
 import logging
-from collections.abc import Iterator
-from itertools import islice
-from typing import Generator
+import typing
 
 from logprep.ng.abc.event import ExtraDataEvent
 from logprep.ng.abc.output import Output
 from logprep.ng.event.error_event import ErrorEvent
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
-from logprep.ng.pipeline import Pipeline
 
 logger = logging.getLogger("Sender")
 
@@ -23,40 +20,23 @@ class LogprepExceptionGroup(ExceptionGroup):
         return f"{self.message}: {self.exceptions}"
 
 
-class Sender(Iterator):
+class Sender:
     """Sender class to handle sending events to configured outputs."""
 
     def __init__(
         self,
-        pipeline: Pipeline,
         outputs: list[Output],
         error_output: Output | None = None,
-        process_count: int = 3,
     ) -> None:
-        self.pipeline = pipeline
         self._outputs = {output.name: output for output in outputs}
         self._default_output = [output for output in outputs if output.default][0]
         self._error_output = error_output
-        self.batch_size = process_count
-        self.should_exit = False
 
-    def __next__(self) -> LogEvent | ErrorEvent:
-        """not implemented, use iter()"""
-        raise NotImplementedError("Use iter() to get events from the Sender.")
-
-    def __iter__(self) -> Generator[LogEvent | ErrorEvent, None, None]:
-        """Iterate over processed events."""
-        while True:
-            logger.debug("Sender iterating")
-            batch = list(islice(self.pipeline, self.batch_size))
-            self._send_and_flush_processed_events(batch_events=batch)
-            if self._error_output:
-                self._send_and_flush_failed_events(batch_events=batch)
-            if self.should_exit:
-                logger.debug("Sender exiting")
-                self.shut_down()
-                return
-            yield from batch
+    def process(self, batch: list[LogEvent]) -> list[LogEvent]:
+        self._send_and_flush_processed_events(batch_events=batch)
+        if self._error_output:
+            self._send_and_flush_failed_events(batch_events=batch)
+        return batch
 
     def _send_and_flush_failed_events(self, batch_events: list[LogEvent]) -> None:
         error_events = [
@@ -86,7 +66,7 @@ class Sender(Iterator):
             output.flush()
 
     def _send_extra_data(self, event: LogEvent) -> None:
-        extra_data_events: list[ExtraDataEvent] = event.extra_data
+        extra_data_events = typing.cast(list[ExtraDataEvent], event.extra_data)
         for extra_data_event in extra_data_events:
             for output in extra_data_event.outputs:
                 for output_name, output_target in output.items():
@@ -124,14 +104,12 @@ class Sender(Iterator):
     def shut_down(self) -> None:
         """Shutdown all outputs gracefully."""
 
-        self.stop()
         for _, output in self._outputs.items():
             output.shut_down()
         if self._error_output:
             self._error_output.shut_down()
         logger.info("All outputs have been shut down.")
 
-        self.pipeline.shut_down()
         logger.info("Sender has been shut down.")
 
     def setup(self) -> None:
@@ -141,15 +119,3 @@ class Sender(Iterator):
         if self._error_output:
             self._error_output.setup()
         logger.info("All outputs have been set up.")
-        self.pipeline.setup()
-
-    def stop(self) -> None:
-        """Request the sender to stop iteration.
-
-        Calling stop() sets the should_exit flag. The sender will finish processing
-        the current batch and exit on the next iteration (i.e., the next next() call).
-        If you need to enforce an immediate stop, use shut_down() instead.
-        """
-
-        self.should_exit = True
-        logger.info("Sender stop signal received.")
