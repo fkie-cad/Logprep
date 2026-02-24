@@ -10,7 +10,7 @@ import os
 import typing
 import zlib
 from abc import abstractmethod
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from copy import deepcopy
 from functools import cached_property
 from hmac import HMAC
@@ -87,7 +87,7 @@ class SourceDisconnectedWarning(InputWarning):
     """Lost (or failed to establish) contact with the source."""
 
 
-class InputIterator(Iterator):
+class InputIterator(AsyncIterator):
     """Base Class for an input Iterator"""
 
     def __init__(self, input_connector: "Input", timeout: float):
@@ -130,6 +130,10 @@ class InputIterator(Iterator):
             event is None,
         )
         return event
+
+    async def __anext__(self):
+        # TODO implement properly
+        return self.__next__()
 
 
 class Input(Connector):
