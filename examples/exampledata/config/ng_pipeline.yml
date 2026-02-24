@@ -17,6 +17,7 @@ logger:
     "uvicorn.access": {"level": "ERROR"}
     "OpenSearchOutput": {"level": "DEBUG"}
     "KafkaOutput": {"level": "ERROR"}
+    "Input": {"level": "ERROR"}
 metrics:
   enabled: true
   port: 8001

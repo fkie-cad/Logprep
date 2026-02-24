@@ -8,6 +8,7 @@ import sys
 from multiprocessing import set_start_method
 
 import click
+import uvloop
 
 from logprep.ng.runner import Runner
 from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
@@ -80,7 +81,7 @@ def run(configs: tuple[str], version=None) -> None:
             signal.signal(signal.SIGTERM, signal_handler)
             signal.signal(signal.SIGINT, signal_handler)
         logger.debug("Configuration loaded")
-        runner.run()
+        uvloop.run(runner.run())
     except SystemExit as error:
         logger.debug(f"Exit received with code {error.code}")
         sys.exit(error.code)
