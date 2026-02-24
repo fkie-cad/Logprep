@@ -9,7 +9,7 @@ import logging
 import os
 import zlib
 from abc import abstractmethod
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from copy import deepcopy
 from functools import cached_property, partial
 from hmac import HMAC
@@ -121,7 +121,7 @@ class FullEventConfig:
     """Defines if raw event should be the only field."""
 
 
-class InputIterator(Iterator):
+class InputIterator(AsyncIterator):
     """Base Class for an input Iterator"""
 
     def __init__(self, input_connector: "Input", timeout: float):
@@ -164,6 +164,10 @@ class InputIterator(Iterator):
             event is None,
         )
         return event
+
+    async def __anext__(self):
+        # TODO implement properly
+        return self.__next__()
 
 
 class Input(Connector):
