@@ -4,6 +4,7 @@
 ### Features
 
 ### Improvements
+* Improve clusterer performance by removing access via dotted fields where possible
 
 ### Bugfix
 

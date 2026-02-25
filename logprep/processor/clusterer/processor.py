@@ -91,18 +91,16 @@ class Clusterer(FieldManager):
             return False
 
         # Return clusterable state if it exists, since it can be true or false
-        clusterable = get_dotted_field_value(event, "clusterable")
+        clusterable = event.get("clusterable")
         if clusterable is not None:
             return clusterable
 
         # Alternatively, check for a clusterable tag
-        tags = get_dotted_field_value(event, "tags")
+        tags = event.get("tags")
         if tags and "clusterable" in tags:
             return True
 
         # It is clusterable if a syslog with PRI exists even if no clusterable field exists
-        # has_facility = 'syslog' in event and 'facility' in event['syslog']
-        # has_severity = 'event' in event and 'severity' in event['event']
         if self._syslog_has_pri(event):
             return True
 
@@ -110,9 +108,7 @@ class Clusterer(FieldManager):
 
     @staticmethod
     def _syslog_has_pri(event: dict):
-        syslog_value = get_dotted_field_value(event, "syslog")
-        event_value = get_dotted_field_value(event, "event")
-        return not (syslog_value is None or event_value is None)
+        return not (event.get("syslog") is None or event.get("event") is None)
 
     def _cluster(self, event: dict, rule: ClustererRule):
         raw_text, sig_text = self._get_text_to_cluster(rule, event)
@@ -129,8 +125,8 @@ class Clusterer(FieldManager):
         if self._syslog_has_pri(event):
             cluster_signature = " , ".join(
                 [
-                    str(get_dotted_field_value(event, "syslog.facility")),
-                    str(get_dotted_field_value(event, "event.severity")),
+                    str(event["syslog"]["facility"]),
+                    str(event["event"]["severity"]),
                     cluster_signature_based_on_message,
                 ]
             )
