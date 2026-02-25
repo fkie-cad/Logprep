@@ -16,7 +16,12 @@ Logs are only clustered if at least one of the following criteria is fulfilled:
 
     Criteria 1: { "message": "A sample message", "tags": ["clusterable", ...], ... }
     Criteria 2: { "message": "A sample message", "clusterable": true, ... }
-    Criteria 3: { "message": "A sample message", "syslog": { "facility": <number> }, "event": { "severity": <string> }, ... }
+    Criteria 3: {
+      "message": "A sample message",
+      "syslog": { "facility": <number> },
+      "event": { "severity": <string> },
+      ...
+    }
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +69,7 @@ class Clusterer(FieldManager):
         output_field_name: str = field(validator=validators.instance_of(str))
         """defines in which field results of the clustering should be stored."""
 
-    __slots__ = ["sps"]
+    __slots__ = ["sps", "_last_rule_id", "_last_non_extracted_signature"]
 
     sps: SignaturePhaseStreaming
 
@@ -148,7 +153,9 @@ class Clusterer(FieldManager):
         self._last_rule_id = rule_id
         return is_new_iteration
 
-    def _get_text_to_cluster(self, rule: ClustererRule, event: dict) -> Tuple[str, str]:
+    def _get_text_to_cluster(
+        self, rule: ClustererRule, event: dict
+    ) -> Tuple[str | None, str | None]:
         sig_text = None
         if self._is_new_tree_iteration(rule):
             self._last_non_extracted_signature = None
@@ -163,7 +170,7 @@ class Clusterer(FieldManager):
     def test_rules(self):
         results = {}
         for _, rule in enumerate(self.rules):
-            rule_repr = rule.__repr__()
+            rule_repr = repr(rule)
             results[rule_repr] = []
             try:
                 for test in rule.tests:
