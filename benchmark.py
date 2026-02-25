@@ -5,19 +5,19 @@ Usage:
 
     Run benchmark normally (stdout only, default runs: 30 30 30):
 
-        python bench.py
+        python benchmark.py
 
     Specify custom measurement windows (seconds):
 
-        python bench.py --runs 30 45 60
+        python benchmark.py --runs 30 45 60
 
     Write full benchmark output to file (in addition to stdout):
 
-        python bench.py --out benchmark_results.txt
+        python benchmark.py --out benchmark_results.txt
 
     Combine both:
 
-        python bench.py --runs 30 45 60 --out benchmark_results.txt
+        python benchmark.py --runs 30 45 60 --out benchmark_results.txt
 
 Notes:
 - The --out flag duplicates ALL console output into the given file.
