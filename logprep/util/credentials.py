@@ -676,7 +676,7 @@ class OAuth2ClientFlowCredentials(Credentials):
 
         """
         session = super().get_session()
-        if "Authorization" in session.headers and (self._token and not self._token.is_expired):
+        if "Authorization" in session.headers and (not self._token or self._token.is_expired):
             session.close()
             session = Session()
         if self._no_authorization_header(session):
