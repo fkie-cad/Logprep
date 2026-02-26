@@ -2,8 +2,10 @@
 ### Breaking
 
 ### Features
+* make it possible to assign multiple credentials to a single endpoint
 
 ### Improvements
+* improve http endpoint security by fully checking basic auth hashes, and doing that in a time constant manner to not expose secrets
 
 ### Bugfix
 
