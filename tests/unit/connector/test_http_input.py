@@ -46,7 +46,7 @@ input:
       - username: user
         password: password
       - username: user2
-        password: password2
+        password_file: {secret_file_path}
 
 """)
 
@@ -556,7 +556,7 @@ class TestHttpConnector(BaseInputTestCase):
             new_connector.pipeline_index = 1
             new_connector.setup()
             assert new_connector.app
-            headers = {"Authorization": _basic_auth_str("user2", "password2")}
+            headers = {"Authorization": _basic_auth_str("user2", "secret_password")}
             client = testing.TestClient(new_connector.app, headers=headers)
             resp = client.post("/auth-json-two-creds", body=json.dumps(data))
             assert resp.status_code == 200
