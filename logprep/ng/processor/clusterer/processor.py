@@ -43,7 +43,7 @@ Processor Configuration
 .. automodule:: logprep.processor.clusterer.rule
 """
 
-import math
+import sys
 from typing import Tuple
 
 from attrs import define, field, validators
@@ -83,7 +83,7 @@ class Clusterer(FieldManager):
         super().__init__(name=name, configuration=configuration)
         self.sps = SignaturePhaseStreaming()
 
-        self._last_rule_id = math.inf
+        self._last_rule_id = sys.maxsize
         self._last_non_extracted_signature = None
 
     def _apply_rules(self, event, rule):

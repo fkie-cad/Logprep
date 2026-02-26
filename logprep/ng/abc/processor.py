@@ -78,7 +78,7 @@ class Processor(Component):
         return typing.cast("Processor.Config", self._config)
 
     @property
-    def rules(self) -> list[rule_class]:
+    def rules(self) -> list["Rule"]:
         """Returns all rules
 
         Returns
