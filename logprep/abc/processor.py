@@ -150,7 +150,7 @@ class Processor(Component):
         self._result = value
 
     @property
-    def rules(self):
+    def rules(self) -> list[rule_class]:
         """Returns all rules
 
         Returns

@@ -49,13 +49,13 @@ from typing import Tuple
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
     LogRecord,
     SignatureEngine,
     SignaturePhaseStreaming,
 )
-from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
@@ -69,11 +69,15 @@ class Clusterer(FieldManager):
         output_field_name: str = field(validator=validators.instance_of(str))
         """defines in which field results of the clustering should be stored."""
 
-    __slots__ = ["sps", "_last_rule_id", "_last_non_extracted_signature"]
+    __slots__ = ("sps", "_last_rule_id", "_last_non_extracted_signature")
+
+    rule_class = ClustererRule
 
     sps: SignaturePhaseStreaming
 
-    rule_class = ClustererRule
+    _last_rule_id: int
+
+    _last_non_extracted_signature: str | None
 
     def __init__(self, name: str, configuration: Processor.Config):
         super().__init__(name=name, configuration=configuration)
@@ -112,8 +116,11 @@ class Clusterer(FieldManager):
         return False
 
     @staticmethod
-    def _syslog_has_pri(event: dict):
-        return not (event.get("syslog") is None or event.get("event") is None)
+    def _syslog_has_pri(event: dict) -> bool:
+        try:
+            return None not in (event["syslog"]["facility"], event["event"]["severity"])
+        except KeyError:
+            return False
 
     def _cluster(self, event: dict, rule: ClustererRule):
         raw_text, sig_text = self._get_text_to_cluster(rule, event)
@@ -167,8 +174,8 @@ class Clusterer(FieldManager):
             raw_text = sig_text
         return raw_text, sig_text
 
-    def test_rules(self):
-        results = {}
+    def test_rules(self) -> dict[str, list]:
+        results: dict[str, list] = {}
         for _, rule in enumerate(self.rules):
             rule_repr = repr(rule)
             results[rule_repr] = []
@@ -177,6 +184,6 @@ class Clusterer(FieldManager):
                     result = SignatureEngine.apply_signature_rule(test["raw"], rule)
                     expected_result = test["result"]
                     results[rule_repr].append((result, expected_result))
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 results[rule_repr].append(None)
         return results
