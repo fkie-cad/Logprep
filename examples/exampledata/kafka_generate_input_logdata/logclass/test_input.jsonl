@@ -1,0 +1,8 @@
+{"test_label": "execute", "something": "test"}
+{"test_dropper": "test", "keep_me": "keep_test", "something": "test", "drop_me": "test"}
+{"test_normalizer": "test", "something": "normalize_me"}
+{"test_normalizer": "test", "something_special": "normalize_me"}
+{"test_pseudonymizer": "test", "something": "pseudonymize_me"}
+{"test_pseudonymizer": "test", "something_special": "pseudonymize_me"}
+{"test_pre_detector": "test", "something": "test"}
+{ "@timestamp": "1699211755000", "message": "2023-11-5-20-13-17+0100 This is an example message for a request. Source: [127.0.0.1:8000], Target: [22:156.21:AS:CD:EG:12:98:ff]. Some more infos: (SystemA-SystemB-SystemC) (Server1 Server2 Server3)", "meta": { "provider": { "name": "provider", "id": "ABF" } } }
