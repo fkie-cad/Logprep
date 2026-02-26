@@ -84,9 +84,11 @@ class Runner:
         await manager.shut_down()
         try:
             await asyncio.wait_for(manager_task, GRACEFUL_SHUTDOWN_TIMEOUT)
-            logger.error("graceful shut down of pipeline manager succeeded")
+            logger.info("graceful shut down of pipeline manager succeeded")
         except TimeoutError:
-            logger.error("could not gracefully shut down pipeline manager within timeframe")
+            logger.error(
+                "could not gracefully shut down pipeline manager within timeframe", exc_info=True
+            )
 
     async def _run(self) -> None:
         logger.debug("Running _run")
