@@ -276,25 +276,21 @@ class HttpEndpoint(ABC):
         self.collect_meta = collect_meta
 
         self.metafield_name = metafield_name
-        self.credentials = credentials
         self.metrics = metrics
         self.basicauth_b64: list[str] = []
 
-        if self.credentials and isinstance(self.credentials, list):
-            for cred in self.credentials:
+        self.credentials = None
+
+        if credentials:
+            credentials = [credentials] if isinstance(credentials, Credentials) else credentials
+            for cred in credentials:
                 if isinstance(cred, BasicAuthCredentials):
                     self.basicauth_b64.append(
                         b64encode(f"{cred.username}:{cred.password}".encode("utf-8")).decode(
                             "utf-8"
                         )
                     )
-        elif self.credentials:
-            if isinstance(self.credentials, BasicAuthCredentials):
-                self.basicauth_b64.append(
-                    b64encode(
-                        f"{self.credentials.username}:{self.credentials.password}".encode("utf-8")
-                    ).decode("utf-8")
-                )
+            self.credentials = credentials
 
     def collect_metrics(self):
         """Increment number of requests"""
@@ -481,7 +477,7 @@ class HttpInput(Input):
         """
 
         message_backlog_size: int = field(
-            validator=validators.instance_of(int), default=15000, converter=lambda x: int(x)
+            validator=validators.instance_of(int), default=15000, converter=int
         )
         """Configures maximum size of input message queue for this connector. When limit is reached
         the server will answer with 429 Too Many Requests. For reasonable throughput this shouldn't

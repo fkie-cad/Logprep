@@ -264,7 +264,7 @@ class CredentialsFactory:
             if isinstance(cred, Credentials):
                 creds.append(cred)
 
-        return creds
+        return creds if len(creds) > 0 else None
 
     @classmethod
     def from_dict(cls, credential_mapping: dict | None) -> "Credentials | None":
@@ -407,8 +407,8 @@ class AccessToken:
 
     token: str = field(validator=validators.instance_of(str), repr=False)
     """token used for authentication against the target"""
-    expiry_time: datetime | None = field(
-        validator=validators.instance_of((datetime, type(None))), init=False
+    expiry_time: datetime = field(
+        validator=validators.instance_of(datetime), init=False, default=datetime.now()
     )
     """time when token is expired"""
     refresh_token: str | None = field(
@@ -431,7 +431,7 @@ class AccessToken:
     @property
     def is_expired(self) -> bool:
         """Checks if the token is already expired."""
-        if self.expires_in == 0 or not self.expiry_time:
+        if self.expires_in == 0:
             return False
         return datetime.now() > self.expiry_time
 
@@ -676,7 +676,7 @@ class OAuth2ClientFlowCredentials(Credentials):
 
         """
         session = super().get_session()
-        if "Authorization" in session.headers and (not self._token or self._token.is_expired):
+        if "Authorization" in session.headers and (self._token and not self._token.is_expired):
             session.close()
             session = Session()
         if self._no_authorization_header(session):

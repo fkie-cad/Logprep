@@ -545,16 +545,23 @@ class TestHttpConnector(BaseInputTestCase):
             resp = client.post("/auth-json-secret/AB/json", body=json.dumps(data))
             assert resp.status_code == 200
 
-    def test_endpoint_returns_200_on_correct_authorization_for_subpath_and_second_credential(
+    def test_endpoint_returns_200_on_correct_authorization_for_subpath_and_both_credentials(
         self, credentials_file_path
     ):
         mock_env = {ENV_NAME_LOGPREP_CREDENTIALS_FILE: credentials_file_path}
         data = {"message": "my log message"}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
+            assert isinstance(new_connector, HttpInput)
             new_connector.pipeline_index = 1
             new_connector.setup()
+            assert new_connector.app
             headers = {"Authorization": _basic_auth_str("user2", "password2")}
+            client = testing.TestClient(new_connector.app, headers=headers)
+            resp = client.post("/auth-json-two-creds", body=json.dumps(data))
+            assert resp.status_code == 200
+
+            headers = {"Authorization": _basic_auth_str("user", "password")}
             client = testing.TestClient(new_connector.app, headers=headers)
             resp = client.post("/auth-json-two-creds", body=json.dumps(data))
             assert resp.status_code == 200
@@ -566,8 +573,10 @@ class TestHttpConnector(BaseInputTestCase):
         data = {"message": "my log message"}
         with mock.patch.dict("os.environ", mock_env):
             new_connector = Factory.create({"test connector": self.CONFIG})
+            assert isinstance(new_connector, HttpInput)
             new_connector.pipeline_index = 1
             new_connector.setup()
+            assert new_connector.app
             headers = {"Authorization": _basic_auth_str("wrong", "credentials")}
             client = testing.TestClient(new_connector.app, headers=headers)
             resp = client.post("/auth-json-two-creds", body=json.dumps(data))
