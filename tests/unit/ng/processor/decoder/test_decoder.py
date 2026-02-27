@@ -10,9 +10,13 @@ from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.typing import is_list_of
 from tests.unit.ng.processor.base import BaseProcessorTestCase
+from tests.unit.processor.decoder.test_decoder import (
+    failure_test_cases as non_ng_failure_test_cases,
+)
 from tests.unit.processor.decoder.test_decoder import test_cases as non_ng_test_cases
 
 test_cases = deepcopy(non_ng_test_cases)
+failure_test_cases = deepcopy(non_ng_failure_test_cases)
 
 
 class TestDecoder(BaseProcessorTestCase):
@@ -34,187 +38,7 @@ class TestDecoder(BaseProcessorTestCase):
 
     @pytest.mark.parametrize(
         "rule, event, expected",
-        [
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "source_fields": ["message"],
-                        "target_field": "new_field",
-                        "source_format": "base64",
-                    },
-                },
-                {"message": "not base64"},
-                {"message": "not base64", "tags": ["_decoder_failure"]},
-                id="not_base64_source_string",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "mapping": {"message": "new_field"},
-                        "source_format": "base64",
-                    },
-                },
-                {"message": "not base64"},
-                {"message": "not base64", "tags": ["_decoder_failure"]},
-                id="not_base64_source_string_with_mapping",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "mapping": {"missing": "new_field"},
-                        "source_format": "base64",
-                    },
-                },
-                {"message": "not base64"},
-                {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
-                id="source_field_not_found_with_mapping",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "source_fields": ["missing"],
-                        "target_field": "new_field",
-                        "source_format": "base64",
-                    },
-                },
-                {"message": "not base64"},
-                {"message": "not base64", "tags": ["_decoder_missing_field_warning"]},
-                id="source_field_not_found_with_single_source_field",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "mapping": {"message": "new_field"},
-                        "source_format": "json",
-                    },
-                },
-                {"message": "not json"},
-                {"message": "not json", "tags": ["_decoder_failure"]},
-                id="json_decode_error_with_mapping",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "source_fields": ["message"],
-                        "target_field": "new_field",
-                        "source_format": "json",
-                    },
-                },
-                {"message": "not json"},
-                {"message": "not json", "tags": ["_decoder_failure"]},
-                id="json_decode_error_with_single_field",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "mapping": {"message": "parsed"},
-                        "source_format": "clf",
-                        "overwrite_target": True,
-                    },
-                },
-                {
-                    "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200',
-                },
-                {
-                    "message": '127.0.0.1 ident alice [01/May/2025:07:20:10 +0000] "GET /index.html HTTP/1.1" 200',
-                    "tags": ["_decoder_failure"],
-                },
-                id="parse clf failed",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "mapping": {"message": "parsed"},
-                        "source_format": "nginx",
-                        "overwrite_target": True,
-                    },
-                },
-                {
-                    "message": "this does not match any nginx pattern",
-                },
-                {
-                    "message": "this does not match any nginx pattern",
-                    "tags": ["_decoder_failure"],
-                },
-                id="no nginx pattern matches",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "mapping": {"message": "parsed"},
-                        "source_format": "cri",
-                    },
-                },
-                {
-                    "message": "nocri",
-                },
-                {
-                    "message": "nocri",
-                    "tags": ["_decoder_failure"],
-                },
-                id="not cri ",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "mapping": {"message": "parsed"},
-                        "source_format": "docker",
-                    },
-                },
-                {
-                    "message": "notdocker",
-                },
-                {
-                    "message": "notdocker",
-                    "tags": ["_decoder_failure"],
-                },
-                id="not docker and not json",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "mapping": {"message": "parsed"},
-                        "source_format": "docker",
-                    },
-                },
-                {
-                    "message": '{"message": "this is not the message expected"}',
-                },
-                {
-                    "message": '{"message": "this is not the message expected"}',
-                    "tags": ["_decoder_failure"],
-                },
-                id="json, but not docker",
-            ),
-            pytest.param(
-                {
-                    "filter": "message",
-                    "decoder": {
-                        "mapping": {"message": "parsed"},
-                        "source_format": "docker",
-                    },
-                },
-                {
-                    "message": '{"log":"log message","time":"2019-04-30T02:12:41.8443515Z"}',
-                },
-                {
-                    "message": '{"log":"log message","time":"2019-04-30T02:12:41.8443515Z"}',
-                    "tags": ["_decoder_failure"],
-                },
-                id="json, but not docker because one missing",
-            ),
-        ],
+        failure_test_cases,
     )
     def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
