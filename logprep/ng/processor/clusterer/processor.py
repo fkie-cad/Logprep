@@ -16,7 +16,12 @@ Logs are only clustered if at least one of the following criteria is fulfilled:
 
     Criteria 1: { "message": "A sample message", "tags": ["clusterable", ...], ... }
     Criteria 2: { "message": "A sample message", "clusterable": true, ... }
-    Criteria 3: { "message": "A sample message", "syslog": { "facility": <number> }, "event": { "severity": <string> }, ... }
+    Criteria 3: {
+      "message": "A sample message",
+      "syslog": { "facility": <number> },
+      "event": { "severity": <string> },
+      ...
+    }
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +43,7 @@ Processor Configuration
 .. automodule:: logprep.processor.clusterer.rule
 """
 
-import math
+import sys
 from typing import Tuple
 
 from attrs import define, field, validators
@@ -78,7 +83,7 @@ class Clusterer(FieldManager):
         super().__init__(name=name, configuration=configuration)
         self.sps = SignaturePhaseStreaming()
 
-        self._last_rule_id = math.inf
+        self._last_rule_id = sys.maxsize
         self._last_non_extracted_signature = None
 
     def _apply_rules(self, event, rule):
@@ -95,28 +100,27 @@ class Clusterer(FieldManager):
             return False
 
         # Return clusterable state if it exists, since it can be true or false
-        clusterable = get_dotted_field_value(event, "clusterable")
+        clusterable = event.get("clusterable")
         if clusterable is not None:
             return clusterable
 
         # Alternatively, check for a clusterable tag
-        tags = get_dotted_field_value(event, "tags")
+        tags = event.get("tags")
         if tags and "clusterable" in tags:
             return True
 
         # It is clusterable if a syslog with PRI exists even if no clusterable field exists
-        # has_facility = 'syslog' in event and 'facility' in event['syslog']
-        # has_severity = 'event' in event and 'severity' in event['event']
         if self._syslog_has_pri(event):
             return True
 
         return False
 
     @staticmethod
-    def _syslog_has_pri(event: dict):
-        syslog_value = get_dotted_field_value(event, "syslog")
-        event_value = get_dotted_field_value(event, "event")
-        return not (syslog_value is None or event_value is None)
+    def _syslog_has_pri(event: dict) -> bool:
+        try:
+            return None not in (event["syslog"]["facility"], event["event"]["severity"])
+        except KeyError:
+            return False
 
     def _cluster(self, event: dict, rule: ClustererRule):
         raw_text, sig_text = self._get_text_to_cluster(rule, event)
@@ -133,8 +137,8 @@ class Clusterer(FieldManager):
         if self._syslog_has_pri(event):
             cluster_signature = " , ".join(
                 [
-                    str(get_dotted_field_value(event, "syslog.facility")),
-                    str(get_dotted_field_value(event, "event.severity")),
+                    str(event["syslog"]["facility"]),
+                    str(event["event"]["severity"]),
                     cluster_signature_based_on_message,
                 ]
             )
@@ -156,7 +160,9 @@ class Clusterer(FieldManager):
         self._last_rule_id = rule_id
         return is_new_iteration
 
-    def _get_text_to_cluster(self, rule: ClustererRule, event: dict) -> Tuple[str, str | None]:
+    def _get_text_to_cluster(
+        self, rule: ClustererRule, event: dict
+    ) -> Tuple[str | None, str | None]:
         sig_text = None
         if self._is_new_tree_iteration(rule):
             self._last_non_extracted_signature = None
@@ -168,8 +174,8 @@ class Clusterer(FieldManager):
             raw_text = sig_text
         return raw_text, sig_text
 
-    def test_rules(self):
-        results = {}
+    def test_rules(self) -> dict[str, list]:
+        results: dict[str, list] = {}
         for _, rule in enumerate(self.rules):
             rule_repr = repr(rule)
             results[rule_repr] = []
