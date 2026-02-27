@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
 import json
+from copy import deepcopy
 
 import pytest
 
@@ -11,7 +12,7 @@ from logprep.util.typing import is_list_of
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.decoder.test_decoder import test_cases as non_ng_test_cases
 
-test_cases = non_ng_test_cases
+test_cases = deepcopy(non_ng_test_cases)
 
 
 class TestDecoder(BaseProcessorTestCase):
