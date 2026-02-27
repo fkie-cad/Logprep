@@ -24,12 +24,14 @@ Processor Configuration
 """
 
 import re
+import typing
 from functools import cached_property
 from typing import Callable
 
 from pyparsing import ParseException, ParseSyntaxException
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.rule import Rule
 from logprep.processor.calculator.fourFn import BNF
 from logprep.processor.calculator.rule import CalculatorRule
 from logprep.util.decorators import timeout
@@ -41,7 +43,8 @@ class Calculator(FieldManager):
 
     rule_class = CalculatorRule
 
-    def _apply_rules(self, event: dict, rule: CalculatorRule) -> None:
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        rule = typing.cast(CalculatorRule, rule)
         source_field_dict = get_source_fields_dict(event, rule)
         if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
             return
@@ -70,12 +73,13 @@ class Calculator(FieldManager):
     @staticmethod
     def _template(string: str, source: dict) -> str:
         for key, value in source.items():
-            key = key.replace(".", r"\.")
+            key = key.replace("\\", "\\\\").replace(".", r"\.")
             pattern = r"\$\{(" + rf"{key}" + r")\}"
             string = re.sub(pattern, str(value), string)
         return string
 
     def _calculate(self, event: dict, rule: CalculatorRule, expression: str) -> Callable:
+
         @timeout(seconds=rule.timeout)
         def calculate(event, rule: CalculatorRule, expression: str) -> float | None:
             try:
