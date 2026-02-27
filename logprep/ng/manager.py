@@ -2,8 +2,10 @@
 Runner module
 """
 
+import asyncio
 import logging
 import typing
+from asyncio import CancelledError
 from typing import cast
 
 from logprep.factory import Factory
@@ -31,10 +33,11 @@ BATCH_INTERVAL_S = 5
 class PipelineManager:
     """Orchestrator class managing pipeline inputs, processors and outputs"""
 
-    def __init__(self, configuration: Configuration) -> None:
+    def __init__(self, configuration: Configuration, shutdown_timeout_s: float) -> None:
         """Initialize the component from the given `configuration`."""
 
         self.configuration = configuration
+        self._shutdown_timeout_s = shutdown_timeout_s
 
     def _setup(self):
         self._event_backlog = SetEventBacklog()
@@ -121,13 +124,24 @@ class PipelineManager:
         """Run the runner and continuously process events until stopped."""
 
         self._setup()
-        await self._orchestrator.run()
+        try:
+            await self._orchestrator.run()
+        except CancelledError:
+            # TODO cancelling() > 0 is no safe discriminator; improve
+            current_task = asyncio.current_task()
+            if current_task and current_task.cancelling() > 0:
+                logger.debug("PipelineManager.run has been cancelled. Shutting down")
+                await self._shut_down()
+            else:
+                logger.error("Orchestrator has been cancelled. Shutting down")
+                await self._shut_down()
 
-    async def shut_down(self) -> None:
+    async def _shut_down(self) -> None:
         """Shut down runner components, and required runner attributes."""
 
         if self._orchestrator is not None:
-            await self._orchestrator.shut_down(1)
+            # TODO only a fraction of shutdown_timeout_s should be passed to the orchestrator
+            await self._orchestrator.shut_down(self._shutdown_timeout_s)
 
         if self._sender is not None:
             self._sender.shut_down()

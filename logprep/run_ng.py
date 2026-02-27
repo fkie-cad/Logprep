@@ -86,6 +86,8 @@ def run(configs: tuple[str], version=None) -> None:
         logger.debug(f"Exit received with code {error.code}")
         sys.exit(error.code)
     # pylint: disable=broad-except
+    except ExceptionGroup as error_group:
+        logger.exception(f"Multiple errors occurred: {error_group}")
     except Exception as error:
         if os.environ.get("DEBUG", False):
             logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
