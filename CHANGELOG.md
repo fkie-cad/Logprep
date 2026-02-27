@@ -8,6 +8,7 @@
 
 ### Bugfix
 * fix missing examples for processor decoder
+* fix calculator silently failing on syntax errors
 
 
 ## 18.1.0
