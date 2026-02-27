@@ -6,6 +6,7 @@
 ### Improvements
 
 ### Bugfix
+* fix missing examples for processor decoder
 
 
 ## 18.1.0
