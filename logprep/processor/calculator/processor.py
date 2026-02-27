@@ -26,7 +26,7 @@ Processor Configuration
 import re
 from functools import cached_property
 
-from pyparsing import ParseException
+from pyparsing import ParseException, ParseSyntaxException
 
 from logprep.processor.calculator.fourFn import BNF
 from logprep.processor.calculator.rule import CalculatorRule
@@ -80,7 +80,7 @@ class Calculator(FieldManager):
             try:
                 _ = self.bnf.parseString(expression, parseAll=True)
                 return self.bnf.evaluate_stack()
-            except ParseException as error:
+            except (ParseException, ParseSyntaxException) as error:
                 error.msg = f"({self.name}): expression '{error.line}' could not be parsed"
                 self._handle_warning_error(event, rule, error)
             except ArithmeticError as error:

@@ -314,6 +314,22 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         r"ProcessingWarning.*could not be parsed",
     ),
     (
+        "Tags failure incorrect syntax",
+        {
+            "filter": "field1",
+            "calculator": {
+                "calc": "round(${field1}",
+                "target_field": "result",
+            },
+        },
+        {"field1": 1337},
+        {
+            "field1": 1337,
+            "tags": ["_calculator_failure"],
+        },
+        r"ProcessingWarning.*could not be parsed",
+    ),
+    (
         "division by zero",
         {
             "filter": "message",
