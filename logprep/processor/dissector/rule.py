@@ -90,7 +90,9 @@ Examples for dissection and datatype conversion:
 """
 
 import re
-from typing import Callable, List, Tuple
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from typing import Any
 
 from attrs import define, field, validators
 
@@ -136,8 +138,21 @@ def str_to_bool(input_str: str) -> bool:
     return False
 
 
+@dataclass
+class DissectorAction:
+    """Parsed dissect section ready to be applied"""
+
+    source_field: str
+    delimiter: str
+    target_field: str
+    action: Callable[[Any, Any, Any, Any], None]
+    separator: str
+    strip_char: str
+    position: int
+
+
 class DissectorRule(FieldManagerRule):
-    """dissector rule"""
+    """Dissector rule"""
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
@@ -186,11 +201,10 @@ class DissectorRule(FieldManagerRule):
 
     _config: "DissectorRule.Config"
 
-    actions: List[Tuple[str, str, str, Callable, str, str, int]]
-    """list tuple format (source_field, delimiter, target_field, action, separator, strip_char,
-    position)"""
+    actions_by_source_field: Sequence[tuple[str, Sequence[DissectorAction]]]
+    """Actions grouped by the corresponding source field"""
 
-    convert_actions: List[Tuple[str, Callable]]
+    convert_actions: list[tuple[str, Callable]]
     """list tuple format <target_field>, <converter callable>"""
 
     @property
@@ -206,8 +220,9 @@ class DissectorRule(FieldManagerRule):
         self._set_convert_actions()
 
     def _set_mapping_actions(self):
-        self.actions = []
+        self.actions_by_source_field = []
         for source_field, pattern in self._config.mapping.items():
+            actions = []
             if not re.match(rf"^{DISSECT}.*", pattern):
                 pattern = "%{}" + pattern
             sections = re.findall(r"%\{[^%]+", pattern)
@@ -228,9 +243,18 @@ class DissectorRule(FieldManagerRule):
                 delimiter = None if delimiter == "" else delimiter
                 position = int(position) if position is not None else 0
                 action = self._actions_mapping.get(action_key) if target_field else _do_nothing
-                self.actions.append(
-                    (source_field, delimiter, target_field, action, separator, strip_char, position)
+                actions.append(
+                    DissectorAction(
+                        source_field=source_field,
+                        delimiter=delimiter,
+                        target_field=target_field,
+                        action=action,
+                        separator=separator,
+                        strip_char=strip_char,
+                        position=position,
+                    )
                 )
+            self.actions_by_source_field.append((source_field, actions))
 
     def _set_convert_actions(self):
         self.convert_actions = []

@@ -755,6 +755,12 @@ failure_test_cases = [  # testcase, rule, event, expected
         {"message": "This is the message which does not matter"},
         {"message": "This is the message which does not matter", "tags": ["_dissector_failure"]},
     ),
+    (
+        "indirect field notation in wrong order",
+        {"filter": "message", "dissector": {"mapping": {"message": "%{&key} %{?key}"}}},
+        {"message": "This is the message"},
+        {"message": "This is the message", "tags": ["_dissector_failure"]},
+    ),
 ]
 
 

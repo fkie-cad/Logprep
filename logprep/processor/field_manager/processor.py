@@ -51,7 +51,7 @@ class FieldManager(Processor):
             rule.overwrite_target,
         )
         if rule.mapping:
-            self._apply_mapping(event, rule, rule_args)
+            self.__apply_mapping(event, rule, rule_args)
         if rule.source_fields and rule.target_field:
             self._apply_single_target_processing(event, rule, rule_args)
 
@@ -68,7 +68,7 @@ class FieldManager(Processor):
         args = (event, target_field, target_field_values)
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
-    def _apply_mapping(self, event, rule, rule_args):
+    def __apply_mapping(self, event, rule, rule_args):
         source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())
