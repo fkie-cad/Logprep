@@ -24,14 +24,18 @@ Processor Configuration
 """
 
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.processor.replacer.rule import ReplacerRule, ReplacementTemplate, Replacement
+from logprep.processor.replacer.rule import (
+    Replacement,
+    ReplacementTemplate,
+    ReplacerRule,
+)
 from logprep.util.helper import add_fields_to, get_dotted_field_value
 
 
 class Replacer(FieldManager):
     """A processor that replaces parts of a string via templates defined in rules."""
 
-    rule_class = ReplacerRule
+    rule_class = ReplacerRule  # type: ignore
 
     def _apply_rules(self, event: dict, rule: ReplacerRule) -> None:
         for source_field in rule.mapping:
