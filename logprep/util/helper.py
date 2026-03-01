@@ -426,6 +426,43 @@ def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
     return result
 
 
+@lru_cache(maxsize=1000)
+def get_dotted_field_list_tail(dotted_field: str) -> tuple[str | None, str]:
+    """Make lookup of dotted field in the dotted_field_lookup_table and ensures
+    it is added if not found. Additionally, the string will be interned for faster
+    followup lookups.
+
+    Parameters
+    ----------
+    dotted_field : str
+        the dotted field input
+
+    Returns
+    -------
+    Sequence[str]
+        a readonly sequence keys for dictionary iteration
+    """
+    dot_index = dotted_field.rfind(".")
+    while dot_index >= 0:
+
+        previous_char_index = dot_index - 1
+
+        i = previous_char_index
+        while i >= 0:
+            if dotted_field[i] != "\\":
+                break
+            i -= 1
+        escape_count = previous_char_index - i
+
+        if escape_count % 2 == 0:
+            # even escape count --> our dot is not escaped, e.g. r"\\."
+            return (dotted_field[:dot_index], dotted_field[dot_index + 1 :])
+        else:
+            # odd escape count --> out dot is escaped
+            dot_index = dotted_field.rfind(".", None, dot_index - escape_count)
+    return (None, dotted_field)
+
+
 def field_list_to_dotted_field(field_list: Sequence[str]) -> str:
     return ".".join(field.replace(".", "\\.") for field in field_list)
 
@@ -434,7 +471,9 @@ def concat_dotted_fields(*dotted_fields: str) -> str:
     return ".".join(dotted_fields)
 
 
-def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
+def pop_dotted_field_value(
+    event: dict[str, FieldValue], dotted_field: str, drop_empty: bool = True
+) -> FieldValue | Missing:
     """
     Remove and return dotted field. Returns None is field does not exist.
 
@@ -444,43 +483,51 @@ def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
         The event from which the dotted field value should be extracted
     dotted_field: str
         The dotted field name which identifies the requested value
+    drop_empty: bool
+        Whether to drop empty dicts along the way
 
     Returns
     -------
-    dict_: dict, list, str
-        The value of the requested dotted field.
+    FieldValue | Missing
+        The value of the requested dotted field or the MISSING sentinel
     """
-    fields = get_dotted_field_list(dotted_field)
-    return _retrieve_field_value_and_delete_field_if_configured(
-        event, list(fields), delete_source_field=True
+    if drop_empty:
+        return _pop_field_value_and_drop_empty(event, list(get_dotted_field_list(dotted_field)))
+    return _pop_field_value(event, dotted_field)
+
+
+def _pop_field_value(event: dict[str, FieldValue], dotted_field: str) -> FieldValue | Missing:
+    parent_dotted_field, field = get_dotted_field_list_tail(dotted_field)
+    parent_field_value = (
+        event if parent_dotted_field is None else get_dotted_field_value(event, parent_dotted_field)
     )
+    if parent_field_value and isinstance(parent_field_value, dict) and field in parent_field_value:
+        return parent_field_value.pop(field)
+    return MISSING
 
 
-def _retrieve_field_value_and_delete_field_if_configured(
+def _pop_field_value_and_drop_empty(
     sub_dict: FieldValue,
-    dotted_fields_path: list[str],
-    delete_source_field: bool = False,
-) -> FieldValue:
+    field_list: list[str],
+) -> FieldValue | Missing:
     """
     Iterates recursively over the given dictionary retrieving the dotted field. If set the source
     field will be removed. When again going back up the stack trace it deletes the empty left over
     dicts.
     """
-    next_key = dotted_fields_path.pop(0)
+    next_key = field_list.pop(0)
     if isinstance(sub_dict, dict) and next_key in sub_dict:
-        if not dotted_fields_path:
-            field_value = sub_dict[next_key]
-            if delete_source_field:
-                del sub_dict[next_key]
-            return field_value
-        field_value = _retrieve_field_value_and_delete_field_if_configured(
-            sub_dict[next_key], dotted_fields_path, delete_source_field
-        )
-        # If remaining subdict is empty delete it
+        if not field_list:
+            # next_key is the final key in the traversion
+            leaf_value = sub_dict[next_key]
+            del sub_dict[next_key]
+            return leaf_value
+        field_value = _pop_field_value_and_drop_empty(sub_dict[next_key], field_list)
+        # if remaining subdict is empty delete it
         if not sub_dict[next_key]:
             del sub_dict[next_key]
         return field_value
-    return None
+    return MISSING
 
 
 def recursive_compare(test_output, expected_output):

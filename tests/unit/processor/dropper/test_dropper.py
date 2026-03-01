@@ -64,6 +64,15 @@ class TestDropper(BaseProcessorTestCase):
 
         assert document == expected
 
+    def test_nested_escaped_field_gets_dropped(self):
+        rule = {"filter": "\\\\drop", "dropper": {"drop": ["\\\\drop.me\\.pls\\\\"]}}
+        expected = {}
+        document = {"\\drop": {"me.pls\\": "something"}}
+        self._load_rule(rule)
+        self.object.process(document)
+
+        assert document == expected
+
     def test_deep_nested_field_with_neighbour_gets_dropped(self):
         rule = {
             "filter": "keep_me.drop.me",
