@@ -60,7 +60,7 @@ class Dissector(FieldManager):
         self, event: dict[str, FieldValue], rule: DissectorRule
     ) -> Generator[tuple[Callable, dict, dict, str, Rule, int]]:
         target_field_mapping = {}
-        for source_field, actions in rule.actions_by_source_field:
+        for source_field, actions in rule.actions_by_source_field.items():
 
             value = get_dotted_field_value_with_explicit_missing(event, source_field)
             if value is MISSING:

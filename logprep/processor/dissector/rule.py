@@ -90,7 +90,7 @@ Examples for dissection and datatype conversion:
 """
 
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -139,10 +139,9 @@ def str_to_bool(input_str: str) -> bool:
 
 
 @dataclass
-class DissectorAction:
+class SectionAction:
     """Parsed dissect section ready to be applied"""
 
-    source_field: str
     delimiter: str
     target_field: str
     action: Callable[[Any, Any, Any, Any], None]
@@ -201,7 +200,7 @@ class DissectorRule(FieldManagerRule):
 
     _config: "DissectorRule.Config"
 
-    actions_by_source_field: Sequence[tuple[str, Sequence[DissectorAction]]]
+    actions_by_source_field: dict[str, list[SectionAction]]
     """Actions grouped by the corresponding source field"""
 
     convert_actions: list[tuple[str, Callable]]
@@ -220,7 +219,7 @@ class DissectorRule(FieldManagerRule):
         self._set_convert_actions()
 
     def _set_mapping_actions(self):
-        self.actions_by_source_field = []
+        self.actions_by_source_field = {}
         for source_field, pattern in self._config.mapping.items():
             actions = []
             if not re.match(rf"^{DISSECT}.*", pattern):
@@ -244,8 +243,7 @@ class DissectorRule(FieldManagerRule):
                 position = int(position) if position is not None else 0
                 action = self._actions_mapping.get(action_key) if target_field else _do_nothing
                 actions.append(
-                    DissectorAction(
-                        source_field=source_field,
+                    SectionAction(
                         delimiter=delimiter,
                         target_field=target_field,
                         action=action,
@@ -254,7 +252,7 @@ class DissectorRule(FieldManagerRule):
                         position=position,
                     )
                 )
-            self.actions_by_source_field.append((source_field, actions))
+            self.actions_by_source_field[source_field] = actions
 
     def _set_convert_actions(self):
         self.convert_actions = []
