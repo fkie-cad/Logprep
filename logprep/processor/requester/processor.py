@@ -35,14 +35,18 @@ Processor Configuration
 """
 
 import json
-import re
 
 import requests
 
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.requester.rule import RequesterRule
-from logprep.util.helper import add_fields_to, get_source_fields_dict
+from logprep.util.helper import (
+    add_fields_to,
+    create_template_resolver,
+    get_source_fields_dict,
+    transform_field_value,
+)
 
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
@@ -114,15 +118,12 @@ class Requester(FieldManager):
         return result
 
     def _template_kwargs(self, kwargs: dict, source: dict):
+        template_resolver = create_template_resolver(source)
         for key, value in kwargs.items():
             if key in TEMPLATE_KWARGS:
-                kwargs.update({key: json.loads(self._template(json.dumps(value), source))})
+                kwargs[key] = transform_field_value(
+                    transform_key=template_resolver,
+                    transform_value=lambda d: template_resolver(d) if isinstance(d, str) else d,
+                    data=value,
+                )
         return kwargs
-
-    @staticmethod
-    def _template(string: str, source: dict) -> str:
-        for key, value in source.items():
-            key = key.replace(".", r"\.")
-            pattern = r"\$\{(" + rf"{key}" + r")\}"
-            string = re.sub(pattern, str(value), string)
-        return string

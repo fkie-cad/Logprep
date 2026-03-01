@@ -35,14 +35,20 @@ Processor Configuration
 """
 
 import json
-import re
+import typing
 
 import requests
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.rule import Rule
 from logprep.processor.requester.rule import RequesterRule
-from logprep.util.helper import add_fields_to, get_source_fields_dict
+from logprep.util.helper import (
+    add_fields_to,
+    create_template_resolver,
+    get_source_fields_dict,
+    transform_field_value,
+)
 
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
@@ -53,7 +59,8 @@ class Requester(FieldManager):
 
     rule_class = RequesterRule
 
-    def _apply_rules(self, event: dict, rule: RequesterRule) -> None:
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        rule = typing.cast(RequesterRule, rule)
         source_field_dict = get_source_fields_dict(event, rule)
         if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
             return
@@ -115,16 +122,13 @@ class Requester(FieldManager):
             result = response.content.decode("utf-8")
         return result
 
-    def _template_kwargs(self, kwargs: dict, source: dict) -> dict:
+    def _template_kwargs(self, kwargs: dict, source: dict):
+        template_resolver = create_template_resolver(source)
         for key, value in kwargs.items():
             if key in TEMPLATE_KWARGS:
-                kwargs.update({key: json.loads(self._template(json.dumps(value), source))})
+                kwargs[key] = transform_field_value(
+                    transform_key=template_resolver,
+                    transform_value=lambda d: template_resolver(d) if isinstance(d, str) else d,
+                    data=value,
+                )
         return kwargs
-
-    @staticmethod
-    def _template(string: str, source: dict) -> str:
-        for key, value in source.items():
-            key = key.replace(".", r"\.")
-            pattern = r"\$\{(" + rf"{key}" + r")\}"
-            string = re.sub(pattern, str(value), string)
-        return string
