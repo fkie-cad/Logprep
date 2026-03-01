@@ -63,13 +63,13 @@ A speaking example for event enrichment via external api:
 """
 
 import inspect
-import json
 import re
 
 import requests
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
+from logprep.util.helper import FieldValue, reduce_field_value
 
 parameter_keys = inspect.signature(requests.Request).parameters.keys()
 REQUEST_CONFIG_KEYS = [
@@ -155,7 +155,9 @@ class RequesterRule(FieldManagerRule):
             factory=tuple,
         )
         """ (Optional) The authentication tuple. Defined as list. Will be converted to tuple"""
-        timeout: float = field(validator=validators.instance_of(float), converter=float, default=2)
+        timeout: float = field(
+            validator=validators.instance_of(float), converter=float, default=2.0
+        )
         """ (Optional) The timeout in seconds as float for the request. Defaults to 2 seconds"""
         verify: bool = field(validator=validators.instance_of(bool), default=True)
         """ (Optional) Whether or not verify the ssl context. Defaults to :code:`True`."""
@@ -178,11 +180,14 @@ class RequesterRule(FieldManagerRule):
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
         def __attrs_post_init__(self):
-            url_fields = re.findall(FIELD_PATTERN, self.url)
-            json_fields = re.findall(FIELD_PATTERN, json.dumps(self.json))
-            data_fields = re.findall(FIELD_PATTERN, self.data)
-            params_fields = re.findall(FIELD_PATTERN, json.dumps(self.params))
-            self.source_fields = list({*url_fields, *json_fields, *data_fields, *params_fields})
+            def collect_fields(value: FieldValue, fields: list[str]) -> list[str]:
+                if isinstance(value, str):
+                    fields.extend(re.findall(FIELD_PATTERN, value))
+                return fields
+
+            self.source_fields = reduce_field_value(
+                collect_fields, [self.url, self.json, self.data, self.params], []
+            )
             super().__attrs_post_init__()
 
     # pylint: disable=missing-docstring

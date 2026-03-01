@@ -14,7 +14,12 @@ from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
-from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    add_and_overwrite,
+    add_fields_to,
+    get_dotted_field_value,
+    has_dotted_field,
+)
 from logprep.util.rule_loader import RuleLoader
 
 if TYPE_CHECKING:
@@ -205,14 +210,7 @@ class Processor(Component):
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
-        fields = dotted_field.split(".")
-        dict_ = event
-        for field_ in fields:
-            if field_ in dict_ and isinstance(dict_, dict):
-                dict_ = dict_[field_]
-            else:
-                return False
-        return True
+        return has_dotted_field(event, dotted_field)
 
     def _handle_warning_error(
         self, event: dict, rule: "Rule", error: Exception, failure_tags: list | None = None

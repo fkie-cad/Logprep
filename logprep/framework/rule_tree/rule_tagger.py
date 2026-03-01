@@ -1,12 +1,12 @@
 """This module implements functionality to add tags to filter expressions."""
 
-from typing import Union, List
+from typing import List, Union
 
 from logprep.filter.expression.filter_expression import (
-    StringFilterExpression,
     Exists,
-    Not,
     KeyBasedFilterExpression,
+    Not,
+    StringFilterExpression,
 )
 from logprep.util.helper import get_dotted_field_list
 
@@ -66,10 +66,14 @@ class RuleTagger:
                     self._add_tag(rule_expressions, self._tag_map[next_expression.key[0]])
 
     def _expression_in_tag_map(self, expression):
-        return (
-            isinstance(expression, KeyBasedFilterExpression)
-            and expression.key[0] in self._tag_map.keys()
-        )
+        try:
+            return (
+                isinstance(expression, KeyBasedFilterExpression)
+                and expression.key[0] in self._tag_map.keys()
+            )
+        except IndexError as error:
+            print("LOL")
+            raise error
 
     @staticmethod
     def _add_tag(expressions: List[KeyBasedFilterExpression], tag_map_value: str):
@@ -98,7 +102,7 @@ class RuleTagger:
             key, value = tag_map_value.split(":")
             expressions.insert(0, StringFilterExpression(get_dotted_field_list(key), value))
         else:
-            expressions.insert(0, Exists(tag_map_value.split(".")))
+            expressions.insert(0, Exists(get_dotted_field_list(tag_map_value)))
 
     @staticmethod
     def _tag_exists(expression: KeyBasedFilterExpression, tag: str) -> bool:

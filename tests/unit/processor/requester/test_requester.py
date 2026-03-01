@@ -31,6 +31,16 @@ test_cases = [
         {"method": "GET", "url": "http://mock-mock/file.yml", "status": 200},
     ),
     (
+        "request with url from different escaped fields",
+        {
+            "filter": "message",
+            "requester": {"url": "${m\\\\y\\.url}/${my\\.file}", "method": "GET"},
+        },
+        {"message": "the message", "m\\y.url": "http://mock-mock", "my.file": "file.yml"},
+        {"message": "the message", "m\\y.url": "http://mock-mock", "my.file": "file.yml"},
+        {"method": "GET", "url": "http://mock-mock/file.yml", "status": 200},
+    ),
+    (
         "post request with json",
         {
             "filter": "message",
@@ -79,6 +89,26 @@ test_cases = [
             "method": "POST",
             "url": "http://mock-mock/",
             "match": [matchers.json_params_matcher({"keyvalue": "valuevalue"})],
+            "content_type": "application/json",
+            "status": 200,
+        },
+    ),
+    (
+        "post request with complex json and url from escaped dotted fields",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://${message.action\\.url}",
+                "method": "POST",
+                "json": {"${message.comp\\\\lex\\.key}": "${message.complex\\.value}"},
+            },
+        },
+        {"message": {"action.url": "mock-mock", "comp\\lex.key": "key", "complex.value": "value"}},
+        {"message": {"action.url": "mock-mock", "comp\\lex.key": "key", "complex.value": "value"}},
+        {
+            "method": "POST",
+            "url": "http://mock-mock/",
+            "match": [matchers.json_params_matcher({"key": "value"})],
             "content_type": "application/json",
             "status": 200,
         },

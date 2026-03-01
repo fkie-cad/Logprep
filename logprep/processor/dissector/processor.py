@@ -26,69 +26,82 @@ Processor Configuration
 .. automodule:: logprep.processor.dissector.rule
 """
 
-from typing import TYPE_CHECKING, Callable, List, Tuple
+from collections.abc import Callable, Generator
 
+from logprep.processor.base.rule import Rule
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import add_fields_to, get_dotted_field_value
-
-if TYPE_CHECKING:
-    from logprep.processor.base.rule import Rule
+from logprep.util.helper import (
+    MISSING,
+    FieldValue,
+    add_fields_to,
+    get_dotted_field_value,
+    get_dotted_field_value_with_explicit_missing,
+)
 
 
 class Dissector(FieldManager):
     """A processor that tokenizes field values to new fields and converts datatypes"""
 
-    rule_class = DissectorRule
+    rule_class = DissectorRule  # type: ignore
 
     def _apply_rules(self, event, rule):
-        self._apply_mapping(event, rule)
+        self.__apply_mapping(event, rule)
         self._apply_convert_datatype(event, rule)
 
-    def _apply_mapping(self, event, rule):
+    def __apply_mapping(self, event, rule):
         action_mappings_sorted_by_position = sorted(
             self._get_mappings(event, rule), key=lambda x: x[5]
         )
         for action, *args, _ in action_mappings_sorted_by_position:
             action(*args)
 
-    def _get_mappings(self, event, rule) -> List[Tuple[Callable, dict, dict, str, "Rule", int]]:
-        current_field = None
+    def _get_mappings(
+        self, event: dict[str, FieldValue], rule: DissectorRule
+    ) -> Generator[tuple[Callable, dict, dict, str, Rule, int]]:
         target_field_mapping = {}
-        for rule_action in rule.actions:
-            (
-                source_field,
-                delimiter,
-                target_field,
-                rule_action,
-                separator,
-                strip_char,
-                position,
-            ) = rule_action
-            if current_field != source_field:
-                current_field = source_field
-                loop_content = get_dotted_field_value(event, current_field)
-                if loop_content is None:
-                    if rule.ignore_missing_fields:
-                        continue
-                    error = Exception(f"dissector: mapping field '{source_field}' does not exist")
-                    self._handle_warning_error(event, rule, error)
-            if delimiter is not None and loop_content is not None:
-                content, _, loop_content = loop_content.partition(delimiter)
-            else:
-                content = loop_content
-            if target_field.startswith("?"):
-                target_field_mapping[target_field.lstrip("?")] = content
-                target_field = content
-                content = ""
-            if target_field.startswith("&"):
-                target_field = target_field_mapping.get(target_field.lstrip("&"))
-            if strip_char:
-                content = content.strip(strip_char)
-            field = {target_field: content}
-            yield rule_action, event, field, separator, rule, position
+        for source_field, actions in rule.actions_by_source_field.items():
 
-    def _apply_convert_datatype(self, event, rule):
+            value = get_dotted_field_value_with_explicit_missing(event, source_field)
+            if value is MISSING:
+                if rule.ignore_missing_fields:
+                    continue
+                error = Exception(f"dissector: mapping field '{source_field}' does not exist")
+                self._handle_warning_error(event, rule, error)
+                continue
+            if not isinstance(value, str):
+                error = ValueError(f"dissector: encountered non-string value type {type(value)}")
+                self._handle_warning_error(event, rule, error)
+                continue
+
+            remaining_value = value
+            for action in actions:
+                if action.delimiter is not None:
+                    content, _, remaining_value = remaining_value.partition(action.delimiter)
+                else:
+                    content = remaining_value
+
+                target_field = action.target_field
+                if target_field.startswith("?"):
+                    target_field_mapping[target_field.lstrip("?")] = content
+                    target_field = content
+                    content = ""
+                if target_field.startswith("&"):
+                    try:
+                        target_field = target_field_mapping[target_field.lstrip("&")]
+                    except KeyError:
+                        self._handle_warning_error(
+                            event,
+                            rule,
+                            Exception(f"field reference ({target_field}) before declaration (?)"),
+                        )
+                        break
+                if action.strip_char and content is not None:
+                    content = content.strip(action.strip_char)
+                field = {target_field: content}
+                yield action.action, event, field, action.separator, rule, action.position
+
+    def _apply_convert_datatype(self, event: dict[str, FieldValue], rule: DissectorRule):
         for target_field, converter in rule.convert_actions:
             try:
                 target_value = converter(get_dotted_field_value(event, target_field))

@@ -2,11 +2,14 @@
 # pylint: disable=protected-access
 # pylint: disable=anomalous-backslash-in-string
 # pylint: disable=line-too-long
+import typing
+
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.dissector.rule import (
     DissectorRule,
+    SectionAction,
     add_and_overwrite,
     append,
     str_to_bool,
@@ -336,11 +339,12 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule.create_from_dict(rule)
-        assert rule.actions
-        assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
-        assert rule.actions[1] == ("field1", " ", "field3", add_and_overwrite, "", None, 0)
-        assert rule.actions[2] == ("field1", None, "field4", add_and_overwrite, "", None, 0)
+        rule = typing.cast(DissectorRule, DissectorRule.create_from_dict(rule))
+        actions = rule.actions_by_source_field
+        assert actions
+        assert actions["field1"][0] == SectionAction(":", "field2", add_and_overwrite, "", None, 0)
+        assert actions["field1"][1] == SectionAction(" ", "field3", add_and_overwrite, "", None, 0)
+        assert actions["field1"][2] == SectionAction(None, "field4", add_and_overwrite, "", None, 0)
 
     def test_converts_mappings_with_append_operator_to_append_field_to_action(self):
         rule = {
@@ -350,11 +354,12 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule.create_from_dict(rule)
-        assert rule.actions
-        assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
-        assert rule.actions[1] == ("field1", " ", "field3", append, "", None, 0)
-        assert rule.actions[2] == ("field1", None, "field4", add_and_overwrite, "", None, 0)
+        rule = typing.cast(DissectorRule, DissectorRule.create_from_dict(rule))
+        actions = rule.actions_by_source_field
+        assert actions
+        assert actions["field1"][0] == SectionAction(":", "field2", add_and_overwrite, "", None, 0)
+        assert actions["field1"][1] == SectionAction(" ", "field3", append, "", None, 0)
+        assert actions["field1"][2] == SectionAction(None, "field4", add_and_overwrite, "", None, 0)
 
     def test_converts_mappings_with_append_operator_and_order_modifier(self):
         rule = {
@@ -364,11 +369,12 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule.create_from_dict(rule)
-        assert rule.actions
-        assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
-        assert rule.actions[1] == ("field1", " ", "field3", append, "", None, 1)
-        assert rule.actions[2] == ("field1", None, "field4", append, "", None, 3)
+        rule = typing.cast(DissectorRule, DissectorRule.create_from_dict(rule))
+        actions = rule.actions_by_source_field
+        assert actions
+        assert actions["field1"][0] == SectionAction(":", "field2", add_and_overwrite, "", None, 0)
+        assert actions["field1"][1] == SectionAction(" ", "field3", append, "", None, 1)
+        assert actions["field1"][2] == SectionAction(None, "field4", append, "", None, 3)
 
     def test_adds_convert_actions(self):
         rule = {"filter": "message", "dissector": {"convert_datatype": {"field1": "int"}}}
@@ -405,11 +411,12 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule.create_from_dict(rule)
-        assert rule.actions
-        assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
-        assert rule.actions[1] == ("field1", " ", "field3", append, " ", None, 1)
-        assert rule.actions[2] == ("field1", None, "field4", append, ",", None, 3)
+        rule = typing.cast(DissectorRule, DissectorRule.create_from_dict(rule))
+        actions = rule.actions_by_source_field
+        assert actions
+        assert actions["field1"][0] == SectionAction(":", "field2", add_and_overwrite, "", None, 0)
+        assert actions["field1"][1] == SectionAction(" ", "field3", append, " ", None, 1)
+        assert actions["field1"][2] == SectionAction(None, "field4", append, ",", None, 3)
 
     def test_parses_defined_multichar_separator(self):
         rule = {
@@ -419,11 +426,12 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule.create_from_dict(rule)
-        assert rule.actions
-        assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
-        assert rule.actions[1] == ("field1", " ", "field3", append, "separator", None, 1)
-        assert rule.actions[2] == ("field1", None, "field4", append, ",", None, 3)
+        rule = typing.cast(DissectorRule, DissectorRule.create_from_dict(rule))
+        actions = rule.actions_by_source_field
+        assert actions
+        assert actions["field1"][0] == SectionAction(":", "field2", add_and_overwrite, "", None, 0)
+        assert actions["field1"][1] == SectionAction(" ", "field3", append, "separator", None, 1)
+        assert actions["field1"][2] == SectionAction(None, "field4", append, ",", None, 3)
 
     def test_parses_defined_special_chars_separator(self):
         rule = {
@@ -433,11 +441,12 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule.create_from_dict(rule)
-        assert rule.actions
-        assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
-        assert rule.actions[1] == ("field1", " ", "field3", append, "(", None, 1)
-        assert rule.actions[2] == ("field1", None, "field4", append, ")", None, 3)
+        rule = typing.cast(DissectorRule, DissectorRule.create_from_dict(rule))
+        actions = rule.actions_by_source_field
+        assert actions
+        assert actions["field1"][0] == SectionAction(":", "field2", add_and_overwrite, "", None, 0)
+        assert actions["field1"][1] == SectionAction(" ", "field3", append, "(", None, 1)
+        assert actions["field1"][2] == SectionAction(None, "field4", append, ")", None, 3)
 
     def test_parses_defined_very_special_chars_separator(self):
         rule = {
@@ -447,11 +456,12 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule.create_from_dict(rule)
-        assert rule.actions
-        assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
-        assert rule.actions[1] == ("field1", " ", "field3", append, "#", None, 1)
-        assert rule.actions[2] == ("field1", None, "field4", append, "}", None, 3)
+        rule = typing.cast(DissectorRule, DissectorRule.create_from_dict(rule))
+        actions = rule.actions_by_source_field
+        assert actions
+        assert actions["field1"][0] == SectionAction(":", "field2", add_and_overwrite, "", None, 0)
+        assert actions["field1"][1] == SectionAction(" ", "field3", append, "#", None, 1)
+        assert actions["field1"][2] == SectionAction(None, "field4", append, "}", None, 3)
 
     def test_parses_strip_char(self):
         rule = {
@@ -461,11 +471,12 @@ class TestDissectorRule:
                 "tag_on_failure": ["_failed"],
             },
         }
-        rule = DissectorRule.create_from_dict(rule)
-        assert rule.actions
-        assert rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
-        assert rule.actions[1] == ("field1", " ", "field3", add_and_overwrite, "", None, 0)
-        assert rule.actions[2] == ("field1", None, "field4", add_and_overwrite, "", " ", 0)
+        rule = typing.cast(DissectorRule, DissectorRule.create_from_dict(rule))
+        actions = rule.actions_by_source_field
+        assert actions
+        assert actions["field1"][0] == SectionAction(":", "field2", add_and_overwrite, "", None, 0)
+        assert actions["field1"][1] == SectionAction(" ", "field3", add_and_overwrite, "", None, 0)
+        assert actions["field1"][2] == SectionAction(None, "field4", add_and_overwrite, "", " ", 0)
 
     def test_parses_datatype_conversion_from_dissect_pattern(self):
         rule = {

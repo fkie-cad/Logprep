@@ -3,7 +3,9 @@
 import re
 from abc import ABC, abstractmethod
 from itertools import chain, zip_longest
-from typing import Any, List
+from typing import Any, Sequence
+
+from logprep.util.helper import field_list_to_dotted_field
 
 
 class FilterExpressionError(Exception):
@@ -78,7 +80,7 @@ class FilterExpression(ABC):
         """
 
     @staticmethod
-    def _get_value(key: List[str], document: dict) -> Any:
+    def _get_value(key: Sequence[str], document: dict) -> Any:
         """Return the value for the given key from the document."""
         if not key:
             raise KeyDoesNotExistError
@@ -159,10 +161,10 @@ class Or(CompoundFilterExpression):
 class KeyBasedFilterExpression(FilterExpression):
     """Base class of filter expressions that match a certain value on a given key."""
 
-    def __init__(self, key: List[str]):
+    def __init__(self, key: Sequence[str]):
         super().__init__()
         self.key = key
-        self._key_as_dotted_string = ".".join([str(i) for i in self.key])
+        self._key_as_dotted_string = field_list_to_dotted_field([str(i) for i in self.key])
 
     def __repr__(self) -> str:
         return f"{self.key_as_dotted_string}"
@@ -186,7 +188,7 @@ class KeyBasedFilterExpression(FilterExpression):
 class KeyValueBasedFilterExpression(KeyBasedFilterExpression):
     """Base class of filter expressions that match a certain value on a given key."""
 
-    def __init__(self, key: List[str], expected_value: Any):
+    def __init__(self, key: Sequence[str], expected_value: Any):
         super().__init__(key)
         self._expected_value = expected_value
 
@@ -219,7 +221,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
     wc = re.compile(r"((?:\\)*\*)")
     wq = re.compile(r"((?:\\)*\?)")
 
-    def __init__(self, key: List[str], expected_value: Any):
+    def __init__(self, key: Sequence[str], expected_value: Any):
         super().__init__(key, expected_value)
         new_string = re.escape(str(self._expected_value))
 
@@ -290,7 +292,7 @@ class FloatFilterExpression(KeyValueBasedFilterExpression):
 class RangeBasedFilterExpression(KeyBasedFilterExpression):
     """Base class of filter expressions that match for a range of values."""
 
-    def __init__(self, key: List[str], lower_bound: float, upper_bound: float):
+    def __init__(self, key: Sequence[str], lower_bound: float, upper_bound: float):
         super().__init__(key)
         self._lower_bound = lower_bound
         self._upper_bound = upper_bound
@@ -326,7 +328,7 @@ class RegExFilterExpression(KeyValueBasedFilterExpression):
     match_escaping_pattern = re.compile(r".*?(?P<escaping>\\*)\$$")
     match_parts_pattern = re.compile(r"^(?P<flag>\(\?\w\))?(?P<start>\^)?(?P<pattern>.*)")
 
-    def __init__(self, key: List[str], regex: str):
+    def __init__(self, key: Sequence[str], regex: str):
         self._regex = self._normalize_regex(regex)
         self._matcher = re.compile(self._regex)
         super().__init__(key, f"/{self._regex.strip('^$')}/")

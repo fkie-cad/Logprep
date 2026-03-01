@@ -30,6 +30,7 @@ Processor Configuration
 from typing import Iterable
 
 from logprep.ng.abc.processor import Processor
+from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import (
     FieldValue,
@@ -44,7 +45,8 @@ class FieldManager(Processor):
 
     rule_class = FieldManagerRule
 
-    def _apply_rules(self, event: dict, rule: FieldManagerRule) -> None:  # type: ignore
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        assert isinstance(rule, FieldManagerRule)
         rule_args = (
             rule.source_fields,
             rule.target_field,
@@ -53,7 +55,7 @@ class FieldManager(Processor):
             rule.overwrite_target,
         )
         if rule.mapping:
-            self._apply_mapping(event, rule, rule_args)
+            self.__apply_mapping(event, rule, rule_args)
         if rule.source_fields and rule.target_field:
             self._apply_single_target_processing(event, rule, rule_args)
 
@@ -72,7 +74,7 @@ class FieldManager(Processor):
         args = (event, target_field, target_field_values)
         self._write_to_single_target(args, merge_with_target, overwrite_target, rule)
 
-    def _apply_mapping(self, event: dict, rule: FieldManagerRule, rule_args: tuple) -> None:
+    def __apply_mapping(self, event: dict, rule: FieldManagerRule, rule_args: tuple) -> None:
         source_fields, _, mapping, merge_with_target, overwrite_target = rule_args
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())

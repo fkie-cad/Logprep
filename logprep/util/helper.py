@@ -384,6 +384,10 @@ def get_dotted_field_values(
     return result
 
 
+def has_dotted_field(event: dict[str, FieldValue], dotted_field: str) -> bool:
+    return get_dotted_field_value_with_explicit_missing(event, dotted_field) is not MISSING
+
+
 @lru_cache(maxsize=100000)
 def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
     """Make lookup of dotted field in the dotted_field_lookup_table and ensures
@@ -400,10 +404,76 @@ def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
     Sequence[str]
         a readonly sequence keys for dictionary iteration
     """
-    return dotted_field.split(".")
+    if dotted_field.find("\\") == -1:
+        return dotted_field.split(".")
+
+    result = []
+
+    char_buffer = []
+    itr = iter(dotted_field)
+    for c in itr:
+        if c == "\\":
+            try:
+                char_buffer.append(next(itr))
+            except StopIteration:
+                char_buffer.append("\\")
+        elif c == ".":
+            result.append("".join(char_buffer))
+            char_buffer = []
+        else:
+            char_buffer.append(c)
+    result.append("".join(char_buffer))
+    return result
 
 
-def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
+@lru_cache(maxsize=1000)
+def get_dotted_field_list_tail(dotted_field: str) -> tuple[str | None, str]:
+    """Make lookup of dotted field in the dotted_field_lookup_table and ensures
+    it is added if not found. Additionally, the string will be interned for faster
+    followup lookups.
+
+    Parameters
+    ----------
+    dotted_field : str
+        the dotted field input
+
+    Returns
+    -------
+    Sequence[str]
+        a readonly sequence keys for dictionary iteration
+    """
+    dot_index = dotted_field.rfind(".")
+    while dot_index >= 0:
+
+        previous_char_index = dot_index - 1
+
+        i = previous_char_index
+        while i >= 0:
+            if dotted_field[i] != "\\":
+                break
+            i -= 1
+        escape_count = previous_char_index - i
+
+        if escape_count % 2 == 0:
+            # even escape count --> our dot is not escaped, e.g. r"\\."
+            return (dotted_field[:dot_index], dotted_field[dot_index + 1 :])
+        else:
+            # odd escape count --> out dot is escaped
+            dot_index = dotted_field.rfind(".", None, dot_index - escape_count)
+    return (None, dotted_field)
+
+
+def field_list_to_dotted_field(field_list: Sequence[str]) -> str:
+    return ".".join(field.replace(".", "\\.") for field in field_list)
+
+
+def concat_dotted_fields(*dotted_fields: str) -> str:
+    return ".".join(dotted_fields)
+
+
+def pop_dotted_field_value(
+    event: dict[str, FieldValue], dotted_field: str, drop_empty: bool = True
+) -> FieldValue | Missing:
     """
     Remove and return dotted field. Returns None is field does not exist.
 
@@ -413,41 +483,51 @@ def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
         The event from which the dotted field value should be extracted
     dotted_field: str
         The dotted field name which identifies the requested value
+    drop_empty: bool
+        Whether to drop empty dicts along the way
 
     Returns
     -------
-    dict_: dict, list, str
-        The value of the requested dotted field.
+    FieldValue | Missing
+        The value of the requested dotted field or the MISSING sentinel
     """
-    fields = dotted_field.split(".")
-    return _retrieve_field_value_and_delete_field_if_configured(
-        event, fields, delete_source_field=True
+    if drop_empty:
+        return _pop_field_value_and_drop_empty(event, list(get_dotted_field_list(dotted_field)))
+    return _pop_field_value(event, dotted_field)
+
+
+def _pop_field_value(event: dict[str, FieldValue], dotted_field: str) -> FieldValue | Missing:
+    parent_dotted_field, field = get_dotted_field_list_tail(dotted_field)
+    parent_field_value = (
+        event if parent_dotted_field is None else get_dotted_field_value(event, parent_dotted_field)
     )
+    if parent_field_value and isinstance(parent_field_value, dict) and field in parent_field_value:
+        return parent_field_value.pop(field)
+    return MISSING
 
 
-def _retrieve_field_value_and_delete_field_if_configured(
-    sub_dict, dotted_fields_path, delete_source_field=False
-):
+def _pop_field_value_and_drop_empty(
+    sub_dict: FieldValue,
+    field_list: list[str],
+) -> FieldValue | Missing:
     """
     Iterates recursively over the given dictionary retrieving the dotted field. If set the source
     field will be removed. When again going back up the stack trace it deletes the empty left over
     dicts.
     """
-    next_key = dotted_fields_path.pop(0)
-    if next_key in sub_dict and isinstance(sub_dict, dict):
-        if not dotted_fields_path:
-            field_value = sub_dict[next_key]
-            if delete_source_field:
-                del sub_dict[next_key]
-            return field_value
-        field_value = _retrieve_field_value_and_delete_field_if_configured(
-            sub_dict[next_key], dotted_fields_path, delete_source_field
-        )
-        # If remaining subdict is empty delete it
+    next_key = field_list.pop(0)
+    if isinstance(sub_dict, dict) and next_key in sub_dict:
+        if not field_list:
+            # next_key is the final key in the traversion
+            leaf_value = sub_dict[next_key]
+            del sub_dict[next_key]
+            return leaf_value
+        field_value = _pop_field_value_and_drop_empty(sub_dict[next_key], field_list)
+        # if remaining subdict is empty delete it
         if not sub_dict[next_key]:
             del sub_dict[next_key]
         return field_value
-    return None
+    return MISSING
 
 
 def recursive_compare(test_output, expected_output):
@@ -614,3 +694,155 @@ def deduplicate_with_order(items: Iterable[T]) -> list[T]:
         The deduplicated list
     """
     return list(dict.fromkeys(items))
+
+
+def resolve_template(
+    template: str,
+    data: dict[str, FieldValue],
+    serialize: Callable[[FieldValue], str] = str,
+) -> str:
+    """Resolve a string template by substituting placeholders in the form `${nested.key}`
+    with their respective values taken from the data dict.
+    This method follows a naive approach and attempts to substitute all keys from the data dict
+    in the template.
+    If there are any placeholders which can not be resolved this way, they are kept as-is and no
+    error is raised.
+
+    Parameters
+    ----------
+    template : str
+        The template with dollar-curly-bracket based placeholders to be replaced
+    data : dict[str, FieldValue]
+        The data source for substituting placeholders
+    serialize : Callable[[FieldValue], str], optional
+        Used to convert :code:`FieldValue` to a string representation, by default str
+
+    Returns
+    -------
+    str
+        The resolved template string
+    """
+    result = template
+    for key, value in data.items():
+        escaped_key = key.replace("\\", "\\\\").replace(".", "\\.")
+        pattern = r"\$\{(" + rf"{escaped_key}" + r")\}"
+        result = re.sub(pattern, serialize(value), result)
+    return result
+
+
+def create_template_resolver(
+    data: dict[str, FieldValue],
+    serialize: Callable[[FieldValue], str] = str,
+) -> Callable[[str], str]:
+    """Prepares a template resolver for substituting placeholders in the form `${nested.key}`
+    with their respective values taken from the data dict.
+    This method follows a naive approach and attempts to substitute all keys from the data dict
+    in the template.
+    If there are any placeholders which can not be resolved this way, they are kept as-is and no
+    error is raised.
+
+    Parameters
+    ----------
+    data : dict[str, FieldValue]
+        The data source for substituting placeholders
+    serialize : Callable[[FieldValue], str], optional
+        Used to convert :code:`FieldValue` to a string representation, by default str
+
+    Returns
+    -------
+    Callable[[str], str]
+        The template resolver, transforming a string by substituting all placeholders for which it has values
+    """
+    resolve_dict = {}
+    for key, value in data.items():
+        escaped_key = key.replace("\\", "\\\\").replace(".", "\\.")
+        pattern = r"\$\{(" + rf"{escaped_key}" + r")\}"
+        resolve_dict[pattern] = serialize(value)
+
+    def resolve(template: str) -> str:
+        result = template
+        for pattern, value in resolve_dict.items():
+            result = re.sub(pattern, value, result)
+        return result
+
+    return resolve
+
+
+def reduce_field_value(func: Callable[[FieldValue, T], T], data: FieldValue, initial: T) -> T:
+    """Traverses the given :code:`FieldValue` and calls the given function per element.
+    :code:`dict` and :code:`list` are hereby considered nodes and their keys, values and items
+    are visited in the process.
+
+    Parameters
+    ----------
+    func : Callable[[FieldValue, T], T]
+        Callback for handling the element and integrating it into the constructed result
+    data : FieldValue
+        The potentially nested :code:`FieldValue` data structure
+    initial : T
+        The initial result value being modified on each callback call
+
+    Returns
+    -------
+    T
+        The result value after being transformed through all callback invocations
+
+    Raises
+    ------
+    ValueError
+        If an unexpected type is encountered
+    """
+    result = initial
+    match (data):
+        case dict():
+            for key, value in data.items():
+                result = func(data, result)
+                result = reduce_field_value(func, key, result)
+                result = reduce_field_value(func, value, result)
+        case list():
+            for item in data:
+                result = func(data, result)
+                result = reduce_field_value(func, item, result)
+        case str() | int() | float() | bool() | None:
+            result = func(data, result)
+        case _:
+            raise ValueError(f"unexpected type encountered: {type(data)}")
+    return result
+
+
+def transform_field_value(
+    transform_value: Callable[[FieldValue], FieldValue],
+    transform_key: Callable[[str], str],
+    data: FieldValue,
+) -> FieldValue:
+    """Transforms a field value by mapping all leafs (not :code:`dict` and :code:`list`)
+    to new values.
+
+    Parameters
+    ----------
+    transform_value : Callable[[FieldValue], FieldValue]
+        Transforms items of lists, values of dicts and all plain value types to a new value
+    transform_key : Callable[[str], str]
+        Transforms keys of dicts to a new value
+    data : FieldValue
+        The potentially complex :code:`FieldValue` to traverse and transform
+
+    Returns
+    -------
+    FieldValue
+        The transformed :code:`FieldValue`
+
+    Raises
+    ------
+    ValueError
+        If an unexpected type is encountered
+    """
+    match (data):
+        case dict():
+            return {transform_key(key): transform_value(value) for key, value in data.items()}
+        case list():
+            return [transform_value(item) for item in data]
+        case str() | int() | float() | bool() | None:
+            return transform_value(data)
+        case _:
+            raise ValueError(f"unexpected type encountered: {type(data)}")

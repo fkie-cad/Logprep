@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=too-many-positional-arguments
 import math
 import re
 
@@ -143,6 +144,33 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"key": {"source": {"source": {"field3": 2}, "field2": 6}, "field1": 4}},
         {"result": 12},
+    ),
+    (
+        "handles dotted fields & escaping in basic operands",
+        {
+            "filter": "*",
+            "calculator": {
+                "calc": "${field\\\\1} + ${key.field\\\\2}"
+                "+${key.sou\\\\rce.sou\\\\rce\\.\\\\field3}",
+                "target_field": "wrapper.calc\\.res\\\\ult",
+                "delete_source_fields": True,
+            },
+        },
+        {"key": {"sou\\rce": {"sou\\rce.\\field3": 2}, "field\\2": 6}, "field\\1": 4},
+        {"wrapper": {"calc.res\\ult": 12}},
+    ),
+    (
+        "handles dotted fields & escaping in operators",
+        {
+            "filter": "*",
+            "calculator": {
+                "calc": "${spec.calc\\.op\\\\erator}(${spec.ca\\\\lc\\.value})",
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"spec": {"calc.op\\erator": "round", "ca\\lc.value": "PI"}},
+        {"result": 3},
     ),
     (
         "Time conversion ms -> ns",
@@ -301,6 +329,22 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         r"ProcessingWarning.*could not be parsed",
     ),
     (
+        "Tags failure incorrect syntax",
+        {
+            "filter": "field1",
+            "calculator": {
+                "calc": "round(${field1}",
+                "target_field": "result",
+            },
+        },
+        {"field1": 1337},
+        {
+            "field1": 1337,
+            "tags": ["_calculator_failure"],
+        },
+        r"ProcessingWarning.*could not be parsed",
+    ),
+    (
         "division by zero",
         {
             "filter": "message",
@@ -332,7 +376,8 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "message": "This is a message",
             "tags": ["_calculator_failure"],
         },
-        r"ProcessingWarning.*(Timer expired|ioctl timeout)",  # "STREAM ioctl timeout" for MacOS/darwin
+        # "STREAM ioctl timeout" for MacOS/darwin
+        r"ProcessingWarning.*(Timer expired|ioctl timeout)",
     ),
 ]
 

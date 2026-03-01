@@ -14,7 +14,7 @@ from unittest import mock
 import pytest
 
 from logprep.abc.connector import Connector
-from logprep.abc.input import CriticalInputError, Input
+from logprep.abc.input import CriticalInputError, HmacConfig, Input
 from logprep.abc.output import Output
 from logprep.factory import Factory
 from logprep.util.helper import get_dotted_field_value
@@ -24,7 +24,7 @@ from tests.unit.component.base import BaseComponentTestCase
 
 class BaseConnectorTestCase(BaseComponentTestCase):
     CONFIG: dict = {}
-    object: Connector = None
+    object: Connector = None  # type: ignore
     logger = getLogger()
 
     expected_metrics = [
@@ -65,20 +65,11 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert connector._add_hmac is True
 
     def test_add_hmac_to_adds_hmac(self):
-        connector_config = deepcopy(self.CONFIG)
-        connector_config.update(
-            {
-                "preprocessing": {
-                    "hmac": {
-                        "target": "<RAW_MSG>",
-                        "key": "hmac-test-key",
-                        "output_field": "Hmac",
-                    }
-                }
-            }
+        processed_event = self.object._add_hmac_to(
+            {"message": "test message"},
+            b"test message",
+            HmacConfig(target="<RAW_MSG>", key="hmac-test-key", output_field="Hmac"),
         )
-        connector = Factory.create({"test connector": connector_config})
-        processed_event = connector._add_hmac_to({"message": "test message"}, b"test message")
         assert processed_event.get("Hmac")
         assert (
             processed_event.get("Hmac").get("hmac")
@@ -89,20 +80,11 @@ class BaseInputTestCase(BaseConnectorTestCase):
         )
 
     def test_add_hmac_to_adds_hmac_even_if_no_raw_message_was_given(self):
-        connector_config = deepcopy(self.CONFIG)
-        connector_config.update(
-            {
-                "preprocessing": {
-                    "hmac": {
-                        "target": "<RAW_MSG>",
-                        "key": "hmac-test-key",
-                        "output_field": "Hmac",
-                    }
-                }
-            }
+        processed_event = self.object._add_hmac_to(
+            {"message": "test message"},
+            None,
+            HmacConfig(target="<RAW_MSG>", key="hmac-test-key", output_field="Hmac"),
         )
-        connector = Factory.create({"test connector": connector_config})
-        processed_event = connector._add_hmac_to({"message": "test message"}, None)
         assert processed_event.get("Hmac")
         calculated_hmac = processed_event.get("Hmac").get("hmac")
         assert (

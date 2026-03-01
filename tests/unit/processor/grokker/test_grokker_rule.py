@@ -69,14 +69,6 @@ class TestGrokkerRule:
             (
                 {
                     "filter": "message",
-                    "grokker": {"mapping": {"message": "%{USER:{dotted.field}}"}},
-                },
-                ValueError,
-                "must match regex",
-            ),
-            (
-                {
-                    "filter": "message",
                     "grokker": {"mapping": {"message": "%{NUMBER:birthyear:int}"}},
                 },
                 None,
@@ -161,14 +153,6 @@ class TestGrokkerRule:
                 },
                 None,
                 None,
-            ),
-            (
-                {
-                    "filter": "message",
-                    "grokker": {"mapping": {"message": "%{NUMBER:[birthday.year]:int}"}},
-                },
-                ValueError,
-                "must match regex",
             ),
             (
                 {

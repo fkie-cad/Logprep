@@ -25,7 +25,6 @@ SOFTWARE.
 
 import re
 import string
-import sys
 from hashlib import md5
 from importlib import resources
 from itertools import chain
@@ -38,7 +37,7 @@ from attrs import define, field, validators
 from logprep.util.decorators import timeout
 
 DEFAULT_PATTERNS_DIRS = [str(resources.files(__package__) / "patterns/ecs-v1")]
-LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
+LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
 ONIGURUMA = r"\(\?<([^()]*)>\(?(([^()]*|\(([^()]*|\([^()]*\))*\))*)\)?\)"
 NON_RESOLVED_ONIGURUMA = r"\(\?<[^md5].*>"
@@ -53,7 +52,15 @@ class Grok:
     grok_pattern = re.compile(GROK)
     oniguruma = re.compile(ONIGURUMA)
 
-    pattern: str = field(validator=validators.instance_of((str, list)))
+    pattern: str | list[str] = field(
+        validator=validators.or_(
+            validators.instance_of(str),
+            validators.deep_iterable(
+                iterable_validator=validators.instance_of(list),
+                member_validator=validators.instance_of(str),
+            ),
+        )
+    )
     custom_patterns_dir: str = field(default="")
     custom_patterns: dict = field(factory=dict)
     fullmatch: bool = field(default=True)
@@ -128,7 +135,7 @@ class Grok:
     def _to_dotted_field(fields: str) -> str:
         if not "__" in fields:
             return fields
-        return fields.replace("__", ".")
+        return fields.replace(".", "\\.").replace("__", ".")
 
     def _resolve_grok(self, match: re.Match) -> str:
         name = match.group(1)

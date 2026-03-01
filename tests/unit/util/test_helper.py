@@ -7,7 +7,10 @@ import pytest
 
 from logprep.util.configuration import Configuration
 from logprep.util.helper import (
+    Missing,
+    Skip,
     camel_to_snake,
+    get_dotted_field_list,
     get_dotted_field_value,
     get_versions_string,
     pop_dotted_field_value,
@@ -15,6 +18,18 @@ from logprep.util.helper import (
 )
 from logprep.util.json_handling import is_json
 from tests.testdata.metadata import path_to_config
+
+
+class TestSentinels:
+    def test_no_collission_with_missing(self):
+        assert isinstance(Missing.MISSING, object)
+        assert "MISSING" != Missing.MISSING
+        assert "missing" != Missing.MISSING
+
+    def test_no_collission_with_skip(self):
+        assert isinstance(Skip.SKIP, object)
+        assert "SKIP" != Skip.SKIP
+        assert "skip" != Skip.SKIP
 
 
 class TestCamelToSnake:
@@ -113,6 +128,24 @@ class TestGetDottedFieldValue:
         value = get_dotted_field_value(event, dotted_field)
         assert value == "127.0.0.1"
 
+    def test_get_dotted_field_value_with_escaping(self):
+        event = {"dotted.field": "127.0.0.1", "dotted": {"field": "not me"}}
+        dotted_field = "dotted\\.field"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value is "127.0.0.1"
+
+    def test_get_dotted_field_value_with_double_escaping(self):
+        event = {"dotted\\.field": "127.0.0.1", "dotted": {"field": "not me"}}
+        dotted_field = "dotted\\\\\\.field"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value is "127.0.0.1", get_dotted_field_list(dotted_field)
+
+    def test_get_dotted_field_value_nesting_depth_one_with_escaping(self):
+        event = {"dotted": {"field.sub": "127.0.0.1"}}
+        dotted_field = "dotted.field\\.sub"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == "127.0.0.1"
+
     def test_get_dotted_field_retrieves_sub_dict(self):
         event = {"some": {"dotted": {"field": "127.0.0.1"}}}
         dotted_field = "some.dotted"
@@ -205,25 +238,39 @@ class TestGetDottedFieldValue:
 
 
 class TestPopDottedFieldValue:
-    def test_get_dotted_field_removes_source_field_in_nested_structure_but_leaves_sibling(self):
+    def test_removes_source_field_in_nested_structure_but_leaves_sibling(self):
         event = {"get": {"nested": "field", "other": "field"}}
         dotted_field = "get.nested"
         value = pop_dotted_field_value(event, dotted_field)
         assert value == "field"
         assert event == {"get": {"other": "field"}}
 
-    def test_get_dotted_field_removes_source_field(self):
+    def test_removes_source_field(self):
         event = {"get": {"nested": "field"}}
         dotted_field = "get.nested"
         value = pop_dotted_field_value(event, dotted_field)
         assert value == "field"
         assert not event
 
-    def test_get_dotted_field_removes_source_field2(self):
+    def test_removes_source_field2(self):
         event = {"get": {"very": {"deeply": {"nested": {"field": "value"}}}}}
         dotted_field = "get.very.deeply.nested"
         value = pop_dotted_field_value(event, dotted_field)
         assert value == {"field": "value"}
+        assert not event
+
+    def test_removes_source_field_with_escaping_in_node_key(self):
+        event = {"get": {"comp\\lex.nested": {"key": "field"}}}
+        dotted_field = "get.comp\\\\lex\\.nested.key"
+        value = pop_dotted_field_value(event, dotted_field)
+        assert value == "field"
+        assert not event
+
+    def test_removes_source_field_with_escaping_in_leaf_key(self):
+        event = {"get": {"nested": {"comp\\lex.key": "field"}}}
+        dotted_field = "get.nested.comp\\\\lex\\.key"
+        value = pop_dotted_field_value(event, dotted_field)
+        assert value == "field"
         assert not event
 
 
