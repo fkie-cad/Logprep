@@ -1,0 +1,4 @@
+comp\\lex\.field: "value"
+"comp\\\\lex\\.quoted\\.field": "quoted"
+comp\\lex\.nested.field: 42
+nested.comp\\lex\.field: 1337
