@@ -37,6 +37,16 @@ class TestDropper(BaseProcessorTestCase):
 
         assert log_event.data == expected
 
+    def test_nested_escaped_field_gets_dropped(self):
+        rule = {"filter": "\\\\drop", "dropper": {"drop": ["\\\\drop.me\\.pls\\\\"]}}
+        expected = {}
+        document = {"\\drop": {"me.pls\\": "something"}}
+        self._load_rule(rule)
+        log_event = LogEvent(document, original=b"")
+        self.object.process(log_event)
+
+        assert log_event.data == expected
+
     def test_nested_field_with_neighbour_gets_dropped(self):
         rule = {"filter": "keep_me.drop_me", "dropper": {"drop": ["keep_me.drop_me"]}}
         expected = {"keep_me": {"keep_me_too": "something"}}

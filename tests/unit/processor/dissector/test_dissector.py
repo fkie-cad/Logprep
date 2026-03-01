@@ -391,17 +391,23 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "handles special chars in captured content and target field names",
+        "handles escaping of dotted notation in captured content and target field names",
         {
             "filter": "message",
-            "dissector": {"mapping": {"message": "%{~field1} %{fie ld2} %{+field4}"}},
+            "dissector": {
+                "mapping": {
+                    "message": "%{~field1} %{fie ld2} %{field3} %{field\\.4} %{+field\\\\5}"
+                }
+            },
         },
-        {"message": "&This is\2 mess}age /1"},
+        {"message": "&This is\2 mess}a\3ge /4 /5"},
         {
-            "message": "&This is\2 mess}age /1",
+            "message": "&This is\2 mess}a\3ge /4 /5",
             "~field1": "&This",
             "fie ld2": "is\2",
-            "field4": "mess}age /1",
+            "field3": "mess}a\3ge",
+            "field.4": "/4",
+            "field\\5": "/5",
         },
     ),
     (
