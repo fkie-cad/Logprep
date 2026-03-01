@@ -23,7 +23,6 @@ Processor Configuration
 .. automodule:: logprep.processor.calculator.rule
 """
 
-import re
 from functools import cached_property
 
 from pyparsing import ParseException, ParseSyntaxException
@@ -32,7 +31,7 @@ from logprep.processor.calculator.fourFn import BNF
 from logprep.processor.calculator.rule import CalculatorRule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.decorators import timeout
-from logprep.util.helper import get_source_fields_dict
+from logprep.util.helper import get_source_fields_dict, resolve_template
 
 
 class Calculator(FieldManager):
@@ -47,7 +46,7 @@ class Calculator(FieldManager):
         if self._has_missing_values(event, rule, source_field_dict):
             return
 
-        expression = self._template(rule.calc, source_field_dict)
+        expression = resolve_template(rule.calc, source_field_dict)
         try:
             result = self._calculate(event, rule, expression)
             if result is not None:
@@ -65,14 +64,6 @@ class Calculator(FieldManager):
             a pyparsing Forward object
         """
         return BNF()
-
-    @staticmethod
-    def _template(string: str, source: dict) -> str:
-        for key, value in source.items():
-            key = key.replace("\\", "\\\\").replace(".", r"\.")
-            pattern = r"\$\{(" + rf"{key}" + r")\}"
-            string = re.sub(pattern, str(value), string)
-        return string
 
     def _calculate(self, event, rule, expression):
         @timeout(seconds=rule.timeout)
