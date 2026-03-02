@@ -1,7 +1,5 @@
 """This module implements functionality to add tags to filter expressions."""
 
-from typing import List, Union
-
 from logprep.filter.expression.filter_expression import (
     Exists,
     KeyBasedFilterExpression,
@@ -33,7 +31,7 @@ class RuleTagger:
         """
         self._tag_map = tag_map
 
-    def add(self, list_of_rule_expressions: List[List[Union[Exists, StringFilterExpression]]]):
+    def add(self, list_of_rule_expressions: list[list[Exists | StringFilterExpression]]):
         """Add tags to rule filter.
 
         This function adds tags to the parsed rule filter. Tags are added according to a defined
@@ -66,17 +64,13 @@ class RuleTagger:
                     self._add_tag(rule_expressions, self._tag_map[next_expression.key[0]])
 
     def _expression_in_tag_map(self, expression):
-        try:
-            return (
-                isinstance(expression, KeyBasedFilterExpression)
-                and expression.key[0] in self._tag_map.keys()
-            )
-        except IndexError as error:
-            print("LOL")
-            raise error
+        return (
+            isinstance(expression, KeyBasedFilterExpression)
+            and expression.key[0] in self._tag_map.keys()
+        )
 
     @staticmethod
-    def _add_tag(expressions: List[KeyBasedFilterExpression], tag_map_value: str):
+    def _add_tag(expressions: list[KeyBasedFilterExpression], tag_map_value: str):
         """Add tag helper function.
 
         This function implements the functionality to add a tag for _add_special_tags().
