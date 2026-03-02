@@ -218,6 +218,14 @@ def test_matches_with_special_characters_in_match_group():
     assert match["@number"] == 123, f"grok match failed: {text}, {pat}"
 
 
+def test_matches_with_deep_field_and_escaping():
+    text = "github"
+    pat = "%{WORD:[f1.f2][f3.f4\\]}"
+    grok = Grok(pat)
+    match = grok.match(text)
+    assert match["f1\\.f2.f3\\.f4\\"] == "github", f"grok match failed: {text}, {pat}"
+
+
 def test_matches_with_plain_oniguruma_syntax():
     text = "123"
     pat = "(?<number>.*)"
