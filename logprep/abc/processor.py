@@ -156,7 +156,7 @@ class Processor(Component):
 
         Returns
         -------
-        rules: list[Rule]
+        rules: Sequence[Rule]
         """
         return self._rule_tree.rules
 

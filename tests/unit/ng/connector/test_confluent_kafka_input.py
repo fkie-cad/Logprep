@@ -497,11 +497,11 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         assert len(metric_object.samples) == 0
 
     @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    def test_lost_callback_counts_warnings_and_logs(self, _):
+    def test_lost_callback_counts_warnings_and_logs(self, mock_consumer):
         self.object.metrics.number_of_warnings = 0
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
-            self.object._lost_callback(mock_partitions)
+            self.object._lost_callback(mock_consumer, mock_partitions)
         mock_warning.assert_called()
         assert self.object.metrics.number_of_warnings == 1
 

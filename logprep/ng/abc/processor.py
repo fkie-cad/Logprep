@@ -83,12 +83,12 @@ class Processor(Component):
         return typing.cast("Processor.Config", self._config)
 
     @property
-    def rules(self) -> list["Rule"]:
+    def rules(self) -> Sequence["Rule"]:
         """Returns all rules
 
         Returns
         -------
-        rules: list[Rule]
+        rules: Sequence[Rule]
         """
         return self._rule_tree.rules
 

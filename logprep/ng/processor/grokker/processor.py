@@ -33,7 +33,7 @@ import logging
 import re
 import tempfile
 import typing
-from collections.abc import Iterable
+from collections.abc import Sequence
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -72,6 +72,10 @@ class Grokker(FieldManager):
         """Provides the properly typed configuration object"""
         return typing.cast(Grokker.Config, self._config)
 
+    @property
+    def rules(self) -> Sequence[GrokkerRule]:
+        return typing.cast(Sequence[GrokkerRule], super().rules)
+
     def _apply_rules(self, event: dict, rule: Rule) -> None:
         rule = typing.cast(GrokkerRule, rule)
         matches = []
@@ -108,21 +112,20 @@ class Grokker(FieldManager):
     def setup(self) -> None:
         """Loads the action mapping. Has to be called before processing"""
         super().setup()
-        rules = typing.cast(Iterable[GrokkerRule], self.rules)
         custom_patterns_dir = self.config.custom_patterns_dir
         if re.search(r"http(s)?:\/\/.*?\.zip", custom_patterns_dir):
             with tempfile.TemporaryDirectory("grok") as patterns_tmp_path:
                 self._download_zip_file(
                     source_file=custom_patterns_dir, target_dir=Path(patterns_tmp_path)
                 )
-                for rule in rules:
+                for rule in self.rules:
                     rule.set_mapping_actions(patterns_tmp_path)
                 return
         if custom_patterns_dir:
-            for rule in rules:
+            for rule in self.rules:
                 rule.set_mapping_actions(custom_patterns_dir)
             return
-        for rule in rules:
+        for rule in self.rules:
             rule.set_mapping_actions()
 
     def _download_zip_file(self, source_file: str, target_dir: Path):
