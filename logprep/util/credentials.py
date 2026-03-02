@@ -591,13 +591,11 @@ class OAuth2PasswordFlowCredentials(Credentials):
             session.headers["Authorization"] = f"Bearer {self._get_token(payload)}"
 
         if self._token and self._token.is_expired and self._token.refresh_token is not None:
-            session = Session()
             payload = {
                 "grant_type": "refresh_token",
                 "refresh_token": self._token.refresh_token,
             }
             session.headers["Authorization"] = f"Bearer {self._get_token(payload)}"
-        self._session = session
         return session
 
     def _get_token(self, payload: dict[str, str]) -> AccessToken:
@@ -677,11 +675,10 @@ class OAuth2ClientFlowCredentials(Credentials):
         """
         session = super().get_session()
         if "Authorization" in session.headers and (not self._token or self._token.is_expired):
-            session.close()
-            session = Session()
+            session.headers["Authorization"] = f"Bearer {self._get_token()}"
         if self._no_authorization_header(session):
             session.headers["Authorization"] = f"Bearer {self._get_token()}"
-        self._session = session
+
         return session
 
     def _get_token(self) -> AccessToken:
