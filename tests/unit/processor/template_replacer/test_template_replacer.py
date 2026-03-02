@@ -38,6 +38,17 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         assert document.get("message")
         assert document["message"] == "Test %1 Test %2"
 
+    def test_replace_message_with_dots_via_template(self):
+        document = {
+            "winlog": {"channel": "Dotted.System", "provider_name": ".Test", "event_id": "123."},
+            "message": "foo",
+        }
+
+        self.object.process(document)
+
+        assert document.get("message")
+        assert document["message"] == "Test %1 Test %2"
+
     def test_replace_non_existing_message_via_template(self):
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
 

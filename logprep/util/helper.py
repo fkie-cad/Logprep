@@ -464,7 +464,7 @@ def get_dotted_field_list_tail(dotted_field: str) -> tuple[str | None, str]:
     return (None, dotted_field)
 
 
-def field_list_to_dotted_field(field_list: Sequence[str]) -> str:
+def field_list_to_dotted_field(field_list: Iterable[str]) -> str:
     """Combines a list of fields (or rather key names) to a single dotted field.
     The names are joined using dots and already existing dots will be considered
     part of the name, meaning they are escaped in the dotted representation.
@@ -473,7 +473,7 @@ def field_list_to_dotted_field(field_list: Sequence[str]) -> str:
 
     Parameters
     ----------
-    field_list : Sequence[str]
+    field_list : Iterable[str]
         The list of fields to be joined.
 
     Returns
@@ -484,7 +484,7 @@ def field_list_to_dotted_field(field_list: Sequence[str]) -> str:
     return ".".join(field.replace(".", "\\.") for field in field_list)
 
 
-def join_dotted_fields(dotted_fields: Sequence[str]) -> str:
+def join_dotted_fields(dotted_fields: Iterable[str]) -> str:
     """Combines a list of dotted fields to a single dotted field by joining them
     in order and without escaping already existing dots or other characters additionally.
     For instance, :code:`x.y` and :code:`z` would be mapped to :code:`x.y.z` and
@@ -492,7 +492,7 @@ def join_dotted_fields(dotted_fields: Sequence[str]) -> str:
 
     Parameters
     ----------
-    dotted_fields : Sequence[str]
+    dotted_fields : Iterable[str]
         The list of fields to be joined.
 
     Returns
