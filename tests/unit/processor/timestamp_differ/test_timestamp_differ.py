@@ -1,4 +1,4 @@
-# pylint: disable=missing-docstring
+# pylint: disable=missing-docstring,too-many-arguments,too-many-positional-arguments
 import re
 
 import pytest
@@ -121,6 +121,22 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 11:38:42",
             "subfield": {"field2": "2022-12-05 12:00:00"},
+            "time_diff": "1278.0",
+        },
+    ),
+    (
+        "Time difference between two timestamps in fields with escaping",
+        {
+            "filter": "field1\\. AND some\\.field\\\\2",
+            "timestamp_differ": {
+                "diff": "${some\\.field\\\\2:%Y-%m-%d %H:%M:%S} - ${field1\\.:%Y-%m-%d %H:%M:%S}",
+                "target_field": "time_diff",
+            },
+        },
+        {"field1.": "2022-12-05 11:38:42", "some.field\\2": "2022-12-05 12:00:00"},
+        {
+            "field1.": "2022-12-05 11:38:42",
+            "some.field\\2": "2022-12-05 12:00:00",
             "time_diff": "1278.0",
         },
     ),
@@ -427,7 +443,8 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "time_diff": "1278",
             "tags": ["_timestamp_differ_failure"],
         },
-        ".*FieldExistsWarning.*The following fields could not be written, because one or more subfields existed and could not be extended: time_diff",
+        ".*FieldExistsWarning.*The following fields could not be written, "
+        "because one or more subfields existed and could not be extended: time_diff",
     ),
 ]
 
