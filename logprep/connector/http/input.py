@@ -29,6 +29,7 @@ An example config file would look like:
           /firstendpoint: json
           /second*: plaintext
           /(third|fourth)/endpoint: jsonl
+          /endpoint_with_multiple_credentials: json
 
 The endpoint config supports regex and wildcard patterns:
   * :code:`/second*`: matches everything after asterisk
@@ -56,6 +57,11 @@ add basic authentication for a specific endpoint. The format of this file would 
         /second*:
           username: user
           password: secret_password
+        /endpoint_with_multiple_credentials:
+          - username: user
+            password: secret_password
+          - username: user2
+            password_file: examples/exampledata/config/user_password.txt
 
 You can choose between a plain secret with the key :code:`password` or a filebased secret
 with the key :code:`password_file`.
@@ -86,6 +92,7 @@ Behaviour of HTTP Requests
     * Responds with 405
 """
 
+import hmac
 import logging
 import multiprocessing as mp
 import queue
@@ -109,13 +116,18 @@ from falcon import (  # pylint: disable=no-name-in-module
     HTTPMethodNotAllowed,
     HTTPTooManyRequests,
     HTTPUnauthorized,
+    Request,
 )
 
 from logprep.abc.input import FatalInputError, Input
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util import http, rstr
-from logprep.util.credentials import Credentials, CredentialsFactory
+from logprep.util.credentials import (
+    BasicAuthCredentials,
+    Credentials,
+    CredentialsFactory,
+)
 from logprep.util.helper import add_fields_to
 
 logger = logging.getLogger("HTTPInput")
@@ -126,15 +138,24 @@ def basic_auth(func: Callable):
     Will raise 401 on wrong credentials or missing Authorization-Header"""
 
     async def func_wrapper(*args, **kwargs):
-        endpoint = args[0]
-        req = args[1]
+        endpoint: HttpEndpoint = args[0]
+        req: Request = args[1]
         if endpoint.credentials:
-            auth_request_header = req.get_header("Authorization")
-            if not auth_request_header:
+            if not req.auth or not isinstance(req.auth, str):
                 raise HTTPUnauthorized
-            basic_string = req.auth
-            if endpoint.basicauth_b64 not in basic_string:
+
+            auth_header_value_b64 = req.auth
+            lowered_auth_header = auth_header_value_b64.lower()
+            if lowered_auth_header.startswith("basic"):
+                auth_header_value_b64 = auth_header_value_b64[5:]
+                auth_header_value_b64 = auth_header_value_b64.lstrip()
+
+            for basicauth_b64 in endpoint.basicauth_b64:
+                if hmac.compare_digest(basicauth_b64, auth_header_value_b64):
+                    break
+            else:
                 raise HTTPUnauthorized
+
         func_wrapper = await func(*args, **kwargs)
         return func_wrapper
 
@@ -249,7 +270,7 @@ class HttpEndpoint(ABC):
         original_event_field: dict[str, str] | None,
         collect_meta: bool,
         metafield_name: str,
-        credentials: Credentials | None,
+        credentials: list[Credentials] | Credentials | None,
         metrics: "HttpInput.Metrics",
         copy_headers_to_logs: set[str],
     ) -> None:
@@ -259,14 +280,23 @@ class HttpEndpoint(ABC):
 
         # Deprecated
         self.collect_meta = collect_meta
+
         self.metafield_name = metafield_name
-        self.credentials = credentials
         self.metrics = metrics
-        if self.credentials:
-            # TODO what about other credential types?
-            self.basicauth_b64 = b64encode(
-                f"{self.credentials.username}:{self.credentials.password}".encode("utf-8")  # type: ignore
-            ).decode("utf-8")
+        self.basicauth_b64: list[str] = []
+
+        self.credentials = None
+
+        if credentials:
+            credentials = [credentials] if isinstance(credentials, Credentials) else credentials
+            for cred in credentials:
+                if isinstance(cred, BasicAuthCredentials):
+                    self.basicauth_b64.append(
+                        b64encode(f"{cred.username}:{cred.password}".encode("utf-8")).decode(
+                            "utf-8"
+                        )
+                    )
+            self.credentials = credentials
 
     def collect_metrics(self):
         """Increment number of requests"""
@@ -453,7 +483,7 @@ class HttpInput(Input):
         """
 
         message_backlog_size: int = field(
-            validator=validators.instance_of((int, float)), default=15000
+            validator=validators.instance_of(int), default=15000, converter=int
         )
         """Configures maximum size of input message queue for this connector. When limit is reached
         the server will answer with 429 Too Many Requests. For reasonable throughput this shouldn't
@@ -463,9 +493,7 @@ class HttpInput(Input):
         copy_headers_to_logs: set[str] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of(str),
-                iterable_validator=validators.or_(
-                    validators.instance_of(set), validators.instance_of(list)
-                ),
+                iterable_validator=validators.instance_of(set),
             ),
             converter=set,
             factory=lambda: set(DEFAULT_META_HEADERS),
@@ -549,6 +577,11 @@ class HttpInput(Input):
         """Provides the properly typed rule configuration object"""
         return typing.cast(HttpInput.Config, self._config)
 
+    @property
+    def _typed_metrics(self) -> Metrics:
+        """Returns metrics as typed HttpInput.Metrics"""
+        return typing.cast(HttpInput.Metrics, self.metrics)
+
     def setup(self) -> None:
         """setup starts the actual functionality of this connector.
         By checking against pipeline_index we're assuring this connector
@@ -587,7 +620,7 @@ class HttpInput(Input):
                 collect_meta,
                 metafield_name,
                 credentials,
-                self.metrics,
+                self._typed_metrics,
                 copy_headers_to_logs,
             )
 
@@ -609,7 +642,7 @@ class HttpInput(Input):
         """Returns the first message from the queue"""
         messages = typing.cast(Queue, self.messages)
 
-        self.metrics.message_backlog_size += messages.qsize()
+        self._typed_metrics.message_backlog_size += messages.qsize()
         try:
             message = messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
@@ -651,7 +684,7 @@ class HttpInput(Input):
                 ).raise_for_status()
             except (requests.exceptions.RequestException, requests.exceptions.Timeout) as error:
                 logger.error("Health check failed for endpoint: %s due to %s", endpoint, str(error))
-                self.metrics.number_of_errors += 1
+                self._typed_metrics.number_of_errors += 1
                 return False
 
         return super().health()

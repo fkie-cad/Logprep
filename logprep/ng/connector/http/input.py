@@ -29,6 +29,7 @@ An example config file would look like:
           /firstendpoint: json
           /second*: plaintext
           /(third|fourth)/endpoint: jsonl
+          /endpoint_with_multiple_credentials: json
 
 The endpoint config supports regex and wildcard patterns:
   * :code:`/second*`: matches everything after asterisk
@@ -56,6 +57,11 @@ add basic authentication for a specific endpoint. The format of this file would 
         /second*:
           username: user
           password: secret_password
+        /endpoint_with_multiple_credentials:
+          - username: user
+            password: secret_password
+          - username: user2
+            password_file: examples/exampledata/config/user_password.txt
 
 You can choose between a plain secret with the key :code:`password` or a filebased secret
 with the key :code:`password_file`.
