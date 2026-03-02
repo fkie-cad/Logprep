@@ -67,7 +67,7 @@ class DomainLabelExtractor(FieldManager):
         """Provides the properly typed rule configuration object"""
         return typing.cast(DomainLabelExtractor.Config, self._config)
 
-    def _apply_rules(self, event: Dict[str, Any], _rule: Rule) -> None:
+    def _apply_rules(self, event: Dict[str, Any], rule: Rule) -> None:
         """
         Apply matching rule to given log event. Such that a given domain,
         configured via rule, is split into it's labels and parts. The resulting
@@ -84,7 +84,7 @@ class DomainLabelExtractor(FieldManager):
         rule :
             Currently applied domain label extractor rule.
         """
-        rule = typing.cast(DomainLabelExtractorRule, _rule)
+        rule = typing.cast(DomainLabelExtractorRule, rule)
         source_field_values = self._get_field_values(event, rule.config.source_fields)
         self._handle_missing_fields(event, rule, rule.config.source_fields, source_field_values)
         domain = source_field_values[0]

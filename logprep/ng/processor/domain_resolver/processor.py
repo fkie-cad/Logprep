@@ -175,8 +175,8 @@ class DomainResolver(Processor):
     def _thread_pool(self) -> ThreadPool:
         return ThreadPool(processes=1)
 
-    def _apply_rules(self, event: dict[str, Any], _rule: Rule) -> None:
-        rule = typing.cast(DomainResolverRule, _rule)
+    def _apply_rules(self, event: dict[str, Any], rule: Rule) -> None:
+        rule = typing.cast(DomainResolverRule, rule)
         source_field = rule.source_fields[0]
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:

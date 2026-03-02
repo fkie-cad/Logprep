@@ -136,7 +136,7 @@ class GenericResolver(FieldManager):
 
     def _apply_rules(self, event: dict, rule: Rule) -> None:
         """Apply the given rule to the current event"""
-        assert isinstance(rule, GenericResolverRule)
+        rule = typing.cast(GenericResolverRule, rule)
         source_field_values = [
             get_dotted_field_value(event, source_field)
             for source_field in rule.field_mapping.keys()
@@ -210,7 +210,7 @@ class GenericResolver(FieldManager):
                 return
             self._cache_metrics_skip_count = 0
 
-            cache_info = cache_wrapper.cache_info()  # type: ignore
+            cache_info = cache_wrapper.cache_info()
             self.metrics.new_results += cache_info.misses
             self.metrics.cached_results += cache_info.hits
             self.metrics.num_cache_entries += cache_info.currsize

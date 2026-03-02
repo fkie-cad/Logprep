@@ -122,8 +122,8 @@ class PreDetector(Processor):
                 tags=["_pre_detector_timeparsing_failure"],
             ) from error
 
-    def _apply_rules(self, event: dict, _rule: Rule) -> None:
-        rule = typing.cast(PreDetectorRule, _rule)
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        rule = typing.cast(PreDetectorRule, rule)
         if not (
             self._ip_alerter.has_ip_fields(rule)
             and not self._ip_alerter.is_in_alerts_list(rule, event)

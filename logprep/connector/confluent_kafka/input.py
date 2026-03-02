@@ -454,7 +454,7 @@ class ConfluentKafkaInput(Input):
             )
         self._last_valid_record = message
         labels = {"description": f"topic: {self.config.topic} - partition: {message.partition()}"}
-        self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
+        self.metrics.current_offsets.add_with_labels(typing.cast(int, message.offset()) + 1, labels)
         return message.value()
 
     def _get_event(self, timeout: float) -> Tuple[None, None] | Tuple[dict, bytes]:

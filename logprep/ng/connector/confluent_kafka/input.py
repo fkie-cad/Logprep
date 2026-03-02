@@ -35,11 +35,11 @@ import typing
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
-from typing import Any, Union
+from typing import Union
 
 import msgspec
 from attrs import define, field, validators
-from confluent_kafka import (  # type: ignore
+from confluent_kafka import (
     OFFSET_BEGINNING,
     OFFSET_END,
     OFFSET_INVALID,
@@ -269,7 +269,7 @@ class ConfluentKafkaInput(Input):
 
         """
 
-    _last_valid_record: Message
+    _last_valid_record: Message | None
 
     __slots__ = ["_last_valid_record"]
 
@@ -424,7 +424,8 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
 
-    def _get_raw_event(self, timeout: float) -> Message | None:
+    def _get_raw_event(self, timeout: float) -> Message | None:  # type: ignore
+        # TODO type needs to be fixed
         """Get next raw Message from Kafka.
 
         Parameters
@@ -448,6 +449,9 @@ class ConfluentKafkaInput(Input):
             raise FatalInputError(self, str(error)) from error
         if message is None:
             return None
+        if message.value() is None or message.partition() is None or message.offset() is None:
+            logger.warning("Unexpected empty input message or empty metadata. Skipping")
+            return None
         kafka_error = message.error()
         if kafka_error:
             raise CriticalInputError(
@@ -455,7 +459,7 @@ class ConfluentKafkaInput(Input):
             )
         self._last_valid_record = message
         labels = {"description": f"topic: {self.config.topic} - partition: {message.partition()}"}
-        self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
+        self.metrics.current_offsets.add_with_labels(typing.cast(int, message.offset()) + 1, labels)
 
         return message
 
@@ -483,11 +487,12 @@ class ConfluentKafkaInput(Input):
         """
 
         message = self._get_raw_event(timeout)
+        # assert None not in (message.value(), message.partition(), message.offset())
 
         if message is None:
             return None, None, None
 
-        raw_event = message.value()
+        raw_event = typing.cast(bytes, message.value())
 
         try:
             event_dict = self._decoder.decode(raw_event.decode("utf-8"))
@@ -503,7 +508,10 @@ class ConfluentKafkaInput(Input):
         return (
             event_dict,
             raw_event,
-            ConfluentKafkaMetadata(partition=message.partition(), offset=message.offset()),
+            ConfluentKafkaMetadata(
+                partition=typing.cast(int, message.partition()),
+                offset=typing.cast(int, message.offset()),
+            ),
         )
 
     @property
@@ -529,7 +537,7 @@ class ConfluentKafkaInput(Input):
         except KafkaException as error:
             raise InputWarning(self, f"{error}, {self._last_valid_record}") from error
 
-    def _assign_callback(self, _, topic_partitions: list[TopicPartition]) -> None:
+    def _assign_callback(self, _: Consumer, topic_partitions: list[TopicPartition]) -> None:
         for topic_partition in topic_partitions:
             offset, partition = topic_partition.offset, topic_partition.partition
             member_id = self._get_memberid()
@@ -546,7 +554,7 @@ class ConfluentKafkaInput(Input):
             self.metrics.committed_offsets.add_with_labels(offset, labels)
             self.metrics.current_offsets.add_with_labels(offset, labels)
 
-    def _revoke_callback(self, _: Any, topic_partitions: list[TopicPartition]) -> None:
+    def _revoke_callback(self, _: Consumer, topic_partitions: list[TopicPartition]) -> None:
 
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
@@ -559,7 +567,7 @@ class ConfluentKafkaInput(Input):
             )
         self.batch_finished_callback()
 
-    def _lost_callback(self, topic_partitions: list[TopicPartition]) -> None:
+    def _lost_callback(self, _: Consumer, topic_partitions: list[TopicPartition]) -> None:
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
             member_id = self._get_memberid()

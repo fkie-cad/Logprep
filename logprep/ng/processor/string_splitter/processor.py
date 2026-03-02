@@ -42,15 +42,15 @@ class StringSplitter(FieldManager):
 
     @override
     def _apply_rules(self, event: dict, rule: Rule) -> None:
-        _rule = typing.cast(StringSplitterRule, rule)
+        rule = typing.cast(StringSplitterRule, rule)
 
-        source_field = _rule.source_fields[0]
+        source_field = rule.source_fields[0]
         source_field_content = get_dotted_field_value(event, source_field)
-        self._handle_missing_fields(event, _rule, _rule.source_fields, [source_field_content])
+        self._handle_missing_fields(event, rule, rule.source_fields, [source_field_content])
         if not isinstance(source_field_content, str):
             raise ProcessingWarning(f"source_field '{source_field}' is not a string", rule, event)
-        result = source_field_content.split(_rule.delimiter)
+        result = source_field_content.split(rule.delimiter)
 
-        if _rule.drop_empty:
+        if rule.drop_empty:
             result = [item for item in result if item != "" and not item.isspace()]
         self._write_target_field(event, rule, result)
