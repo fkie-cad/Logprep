@@ -34,19 +34,19 @@ jobs:
             exit 0
           fi
 
-          upcoming_changes_start=$(git diff -W origin/main -- CHANGELOG.md | grep "^ ## Upcoming Changes" -n | cut -d: -f1)
-          releases_start=$(git diff -W origin/main -- CHANGELOG.md | grep "^ ## " -n | tail -n +2 | head -n 1 | cut -d: -f1)
+          upcoming_changes=$(git diff -W origin/main -- CHANGELOG.md | grep "^ ## Upcoming Changes" -n | cut -d: -f1)
+          last_release=$(git diff -W origin/main -- CHANGELOG.md | grep "^ ## " -n | tail -n +2 | head -n 1 | cut -d: -f1)
           # +2 to skip first line
-          echo "All changes should be between $upcoming_changes_start and $releases_start"
+          echo "All changes should be between $upcoming_changes and $last_release"
 
           # +6 to skip diff header
           git diff -W origin/main -- CHANGELOG.md | grep "^[^ ]" -n | tail -n +6 | cut -d: -f1 \
             | while read -r changed_line_nr; do
             echo -n "Checking line $changed_line_nr...";
-            if [ $upcoming_changes_start -lt $changed_line_nr ] && [ $changed_line_nr -lt $releases_start ]; then
-              echo "...valid";
+            if [ $upcoming_changes -lt $changed_line_nr ] && [ $changed_line_nr -lt $last_release ]; then
+              echo " valid";
             else
-              echo "...invalid";
+              echo " invalid";
               echo "Detected illegal changes"
               exit 1
             fi
