@@ -19,6 +19,38 @@ jobs:
           enable-cache: true
       - name: Check lockfile is consistent with pyproject.toml
         run: uv lock --check
+  protect-changelog:
+    runs-on: ubuntu-24.04
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-history-fix') && !startsWith(github.event.pull_request.title, 'release:') }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check if changes are limited to upcoming changes
+        if:
+        run: |
+          if git diff origin/main --exit-code -- CHANGELOG.md; then
+            echo "CHANGELOD.md not changed"
+            exit 0
+          fi
+
+          upcoming_changes=$(git diff -W origin/main -- CHANGELOG.md | grep "^ ## Upcoming Changes" -n | cut -d: -f1)
+          last_release=$(git diff -W origin/main -- CHANGELOG.md | grep "^ ## " -n | tail -n +2 | head -n 1 | cut -d: -f1)
+          # +2 to skip first line
+          echo "All changes should be between $upcoming_changes and $last_release"
+
+          # +6 to skip diff header
+          git diff -W origin/main -- CHANGELOG.md | grep "^[^ ]" -n | tail -n +6 | cut -d: -f1 \
+            | while read -r changed_line_nr; do
+            echo -n "Checking line $changed_line_nr...";
+            if [ $upcoming_changes -lt $changed_line_nr ] && [ $changed_line_nr -lt $last_release ]; then
+              echo " valid";
+            else
+              echo " invalid";
+              echo "Detected illegal changes"
+              exit 1
+            fi
+          done
   test:
     uses: ./.github/workflows/testing.yml
   build-docs:
