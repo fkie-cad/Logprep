@@ -43,11 +43,11 @@ Processor Configuration
 .. automodule:: logprep.processor.clusterer.rule
 """
 
+import typing
 from typing import Tuple
 
 from attrs import define, field, validators
 
-from logprep.abc.processor import Processor
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
@@ -60,6 +60,7 @@ from logprep.util.helper import (
     get_dotted_field_value,
     get_field_value_no_slice,
     MISSING,
+    FieldValue,
 )
 
 
@@ -67,7 +68,7 @@ class Clusterer(FieldManager):
     """Cluster log events using a heuristic."""
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """Clusterer Configuration"""
 
         output_field_name: str = field(validator=validators.instance_of(str))
@@ -83,7 +84,12 @@ class Clusterer(FieldManager):
 
     _last_non_extracted_signature: str | None
 
-    def __init__(self, name: str, configuration: Processor.Config):
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(Clusterer.Config, self._config)
+
+    def __init__(self, name: str, configuration: Config):
         super().__init__(name=name, configuration=configuration)
         self.sps = SignaturePhaseStreaming()
 
@@ -148,7 +154,7 @@ class Clusterer(FieldManager):
             cluster_signature = cluster_signature_based_on_message
         add_fields_to(
             event,
-            fields={self._config.output_field_name: cluster_signature},
+            fields={self.config.output_field_name: cluster_signature},
             merge_with_target=rule.merge_with_target,
             overwrite_target=rule.overwrite_target,
         )
@@ -164,7 +170,7 @@ class Clusterer(FieldManager):
 
     def _get_text_to_cluster(
         self, rule: ClustererRule, event: dict
-    ) -> Tuple[str | None, str | None]:
+    ) -> Tuple[FieldValue, str | None]:
         sig_text = None
         if self._is_new_tree_iteration(rule):
             self._last_non_extracted_signature = None
@@ -179,6 +185,7 @@ class Clusterer(FieldManager):
     def test_rules(self) -> dict[str, list]:
         results: dict[str, list] = {}
         for _, rule in enumerate(self.rules):
+            rule = typing.cast(ClustererRule, rule)
             rule_repr = repr(rule)
             results[rule_repr] = []
             try:
