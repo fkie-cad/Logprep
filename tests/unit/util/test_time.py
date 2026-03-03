@@ -46,7 +46,10 @@ class TestTimeParser:
             assert getattr(timestamp, attribute) == value
 
     def test_from_timestamp_non_integer_input_raises_time_parser_exception(self):
-        with pytest.raises(TimeParserException, match="cannot be interpreted as an integer"):
+        with pytest.raises(
+            TimeParserException,
+            match="cannot be interpreted as an integer|argument must be int or float, not str",
+        ):
             TimeParser.from_timestamp("wrong")
 
     def test_now_returns_datetime(self):
