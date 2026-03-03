@@ -171,7 +171,7 @@ class Clusterer(FieldManager):
 
     def _get_text_to_cluster(
         self, rule: ClustererRule, event: dict
-    ) -> Tuple[FieldValue, str | None]:
+    ) -> tuple[FieldValue, str | None]:
         sig_text = None
         if self._is_new_tree_iteration(rule):
             self._last_non_extracted_signature = None
