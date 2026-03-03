@@ -86,7 +86,7 @@ class Clusterer(FieldManager):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast(Clusterer.Config, self._config)
 
     def __init__(self, name: str, configuration: Config):
