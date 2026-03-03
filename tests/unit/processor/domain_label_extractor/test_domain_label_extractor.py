@@ -308,16 +308,65 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             },
         }
 
+        result = self.object.process(document)
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert document == expected
+
+    def test_invalid_domain_with_escaped_dot_notation(self):
+        document = {
+            "url": {"comp\\lex.domain": "domain.fubarbo"},
+            "tags": ["url"],
+        }
+        expected_output = {
+            "url": {"comp\\lex.domain": "domain.fubarbo"},
+        }
+        expected_tags = [
+            "url",
+            "invalid_domain_in_url_comp\\lex.domain",
+        ]
+
         rule_dict = {
             "filter": "url",
             "domain_label_extractor": {
-                "source_fields": ["url.domain"],
+                "source_fields": ["url.comp\\\\lex\\.domain"],
                 "target_field": "url",
             },
             "description": "",
         }
         self._load_rule(rule_dict)
-        result = self.object.process(document)
-        assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
-        assert document == expected
+
+        self.object.process(document)
+        tags = document.pop("tags")
+
+        assert document == expected_output
+        assert set(tags) == set(expected_tags)
+
+    def test_ip_in_with_escaped_dot_notation(self):
+        document = {
+            "source": {"comp\\lex.ip": "123.123.123.123"},
+            "tags": ["source"],
+        }
+        expected_output = {
+            "source": {"comp\\lex.ip": "123.123.123.123"},
+        }
+        expected_tags = [
+            "source",
+            "ip_in_source_comp\\lex.ip",
+        ]
+
+        rule_dict = {
+            "filter": "source",
+            "domain_label_extractor": {
+                "source_fields": ["source.comp\\\\lex\\.ip"],
+                "target_field": "source",
+            },
+            "description": "",
+        }
+        self._load_rule(rule_dict)
+
+        self.object.process(document)
+        tags = document.pop("tags")
+
+        assert document == expected_output
+        assert set(tags) == set(expected_tags)

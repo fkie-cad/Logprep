@@ -42,7 +42,13 @@ from attrs import define, field, validators
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
-from logprep.util.helper import add_and_overwrite, add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    add_and_overwrite,
+    add_fields_to,
+    get_dotted_field_list,
+    get_dotted_field_value,
+    join_dotted_fields,
+)
 from logprep.util.url.url import Domain
 
 logger = logging.getLogger("DomainLabelExtractor")
@@ -97,7 +103,9 @@ class DomainLabelExtractor(FieldManager):
             raise ValueError("tagging_field already has a conflicting value")
 
         if self._is_valid_ip(domain):
-            tagging_field.append(f"ip_in_{rule.config.source_fields[0].replace('.', '_')}")
+            tagging_field.append(
+                f"ip_in_{'_'.join(get_dotted_field_list(rule.config.source_fields[0]))}"
+            )
             add_and_overwrite(
                 event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
             )
@@ -110,14 +118,16 @@ class DomainLabelExtractor(FieldManager):
         labels = Domain(domain)
         if labels.suffix != "":
             fields = {
-                f"{rule.config.target_field}.registered_domain": f"{labels.domain}.{labels.suffix}",
-                f"{rule.config.target_field}.top_level_domain": labels.suffix,
-                f"{rule.config.target_field}.subdomain": labels.subdomain,
+                join_dotted_fields(
+                    (rule.target_field, "registered_domain")
+                ): f"{labels.domain}.{labels.suffix}",
+                join_dotted_fields((rule.target_field, "top_level_domain")): labels.suffix,
+                join_dotted_fields((rule.target_field, "subdomain")): labels.subdomain,
             }
             add_fields_to(event, fields, rule, overwrite_target=rule.config.overwrite_target)
         else:
             tagging_field.append(
-                f"invalid_domain_in_{rule.config.source_fields[0].replace('.', '_')}"
+                f"invalid_domain_in_{'_'.join(get_dotted_field_list(rule.config.source_fields[0]))}"
             )
             add_and_overwrite(
                 event, fields={self.config.tagging_field_name: tagging_field}, rule=rule
