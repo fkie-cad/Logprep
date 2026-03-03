@@ -36,7 +36,7 @@ class Timestamper(FieldManager):
 
     rule_class = TimestamperRule
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: TimestamperRule) -> None:
         source_value = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [source_value]):
             return

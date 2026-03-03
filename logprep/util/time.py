@@ -114,7 +114,7 @@ class TimeParser:
         return time_object
 
     @classmethod
-    def _normalize_unix_timestamp(cls, timestamp):
+    def _normalize_unix_timestamp(cls, timestamp: str) -> int:
         try:
             return (
                 int(timestamp)
@@ -126,7 +126,7 @@ class TimeParser:
 
     @classmethod
     def parse_datetime(
-        cls, timestamp: str, source_format: str, source_timezone: Union[str, tzinfo]
+        cls, timestamp: str, source_format: str, source_timezone: tzinfo
     ) -> datetime:
         """
         Parses a timestamp based on different formats, besides a format string 'ISO8601' and
@@ -139,7 +139,7 @@ class TimeParser:
         source_format : str
             The format which should be used to parse the timestamp string. Besides a format string
             'ISO8601' and 'UNIX' are allowed formats.
-        source_timezone : str
+        source_timezone : tzinfo
 
 
         Returns

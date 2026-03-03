@@ -56,7 +56,7 @@ Examples for timestamper:
    :template: testcase-renderer.tmpl
 
 """
-
+import typing
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
@@ -133,16 +133,21 @@ class TimestamperRule(FieldManagerRule):
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
     @property
-    def source_format(self):
+    def config(self) -> Config:
+        """Provides the properly typed rule configuration object"""
+        return typing.cast(TimestamperRule.Config, self._config)
+
+    @property
+    def source_format(self) -> str | list[str]:
         """returns the source format"""
-        return self._config.source_format
+        return self.config.source_format
 
     @property
-    def target_timezone(self):
+    def target_timezone(self) -> ZoneInfo:
         """returns the target timezone"""
-        return self._config.target_timezone
+        return self.config.target_timezone
 
     @property
-    def source_timezone(self):
+    def source_timezone(self) -> ZoneInfo:
         """returns the source timezone"""
-        return self._config.source_timezone
+        return self.config.source_timezone
