@@ -3,6 +3,7 @@
 import itertools
 import re
 import sys
+import typing
 from enum import Enum, auto
 from functools import lru_cache, partial, reduce
 from importlib.metadata import version
@@ -423,6 +424,18 @@ def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
     return _retrieve_field_value_and_delete_field_if_configured(
         event, fields, delete_source_field=True
     )
+
+
+def get_field_value_no_slice(
+    event: dict[str, FieldValue], fields: Iterable[str]
+) -> FieldValue | Missing:
+    current: FieldValue = event
+    for field in fields:
+        try:
+            current = typing.cast(dict[str, FieldValue], current)[field]
+        except (KeyError, TypeError):
+            return MISSING
+    return current
 
 
 def _retrieve_field_value_and_delete_field_if_configured(

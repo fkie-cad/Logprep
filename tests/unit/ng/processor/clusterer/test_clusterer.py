@@ -69,11 +69,17 @@ class TestClusterer(BaseProcessorTestCase):
             "@version": "1",
             "event_id": 7036,
         }
+        sample_winevtlog_has_pri = {
+            **sample_winevtlog,
+            "syslog": {"facility": "foo"},
+            "event": {"severity": "foo"},
+        }
         invalid_syslog_with_missing_tag = {"message": "Listen normally on 5 lo ::1 UDP 123\n"}
         invalid_syslog_with_none_message = {"message": None, "tags": ["clusterable"]}
 
         assert self.object._is_clusterable(sample_syslog_without_pri, "message")
         assert not self.object._is_clusterable(sample_winevtlog, "message")
+        assert self.object._is_clusterable(sample_winevtlog_has_pri, "message")
         assert not self.object._is_clusterable(invalid_syslog_with_missing_tag, "message")
         assert not self.object._is_clusterable(invalid_syslog_with_none_message, "message")
 
@@ -304,6 +310,36 @@ class TestClusterer(BaseProcessorTestCase):
         for rule in rules:
             clusterer._cluster(document, rule)
         assert document == expected
+
+    def test_is_new_tree_iteration(self):
+        rule_1 = {
+            "filter": "rule_1",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"signature",
+                "repl": r"SIGN",
+            },
+            "description": "",
+        }
+        rule_2 = {
+            "filter": "rule_2",
+            "clusterer": {
+                "source_fields": ["message"],
+                "pattern": r"signature",
+                "repl": r"SIGN",
+            },
+            "description": "",
+        }
+        clusterer_rule_1 = ClustererRule.create_from_dict(rule_1)
+        clusterer_rule_2 = ClustererRule.create_from_dict(rule_2)
+        clusterer = Factory.create({"test instance": self.CONFIG})
+        assert clusterer._is_new_tree_iteration(clusterer_rule_1) is True
+        clusterer._rule_tree.add_rule(clusterer_rule_1)
+        assert clusterer._is_new_tree_iteration(clusterer_rule_2) is True
+        clusterer._rule_tree.add_rule(clusterer_rule_2)
+        assert clusterer._is_new_tree_iteration(clusterer_rule_1) is True
+        assert clusterer._is_new_tree_iteration(clusterer_rule_2) is False
+        assert clusterer._is_new_tree_iteration(clusterer_rule_1) is True
 
     def test_is_clusterable_with_syslog_has_pri(self):
         sample_syslog_with_pri = {

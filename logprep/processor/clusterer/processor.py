@@ -16,7 +16,12 @@ Logs are only clustered if at least one of the following criteria is fulfilled:
 
     Criteria 1: { "message": "A sample message", "tags": ["clusterable", ...], ... }
     Criteria 2: { "message": "A sample message", "clusterable": true, ... }
-    Criteria 3: { "message": "A sample message", "syslog": { "facility": <number> }, "event": { "severity": <string> }, ... }
+    Criteria 3: {
+      "message": "A sample message",
+      "syslog": { "facility": <number> },
+      "event": { "severity": <string> },
+      ...
+    }
 
 Processor Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,43 +43,57 @@ Processor Configuration
 .. automodule:: logprep.processor.clusterer.rule
 """
 
-import math
+import typing
 from typing import Tuple
 
 from attrs import define, field, validators
 
-from logprep.abc.processor import Processor
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
     LogRecord,
     SignatureEngine,
     SignaturePhaseStreaming,
 )
-from logprep.processor.field_manager.processor import FieldManager
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    add_fields_to,
+    get_dotted_field_value,
+    get_field_value_no_slice,
+    MISSING,
+    FieldValue,
+)
 
 
 class Clusterer(FieldManager):
     """Cluster log events using a heuristic."""
 
     @define(kw_only=True)
-    class Config(Processor.Config):
+    class Config(FieldManager.Config):
         """Clusterer Configuration"""
 
         output_field_name: str = field(validator=validators.instance_of(str))
         """defines in which field results of the clustering should be stored."""
 
-    __slots__ = ["sps"]
-
-    sps: SignaturePhaseStreaming
+    __slots__ = ("sps", "_last_rule_id", "_last_non_extracted_signature")
 
     rule_class = ClustererRule
 
-    def __init__(self, name: str, configuration: Processor.Config):
+    sps: SignaturePhaseStreaming
+
+    _last_rule_id: int | None
+
+    _last_non_extracted_signature: str | None
+
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(Clusterer.Config, self._config)
+
+    def __init__(self, name: str, configuration: Config):
         super().__init__(name=name, configuration=configuration)
         self.sps = SignaturePhaseStreaming()
 
-        self._last_rule_id = math.inf
+        self._last_rule_id = None
         self._last_non_extracted_signature = None
 
     def _apply_rules(self, event, rule):
@@ -91,28 +110,25 @@ class Clusterer(FieldManager):
             return False
 
         # Return clusterable state if it exists, since it can be true or false
-        clusterable = get_dotted_field_value(event, "clusterable")
+        clusterable = event.get("clusterable")
         if clusterable is not None:
-            return clusterable
+            return bool(clusterable)
 
         # Alternatively, check for a clusterable tag
-        tags = get_dotted_field_value(event, "tags")
+        tags = event.get("tags")
         if tags and "clusterable" in tags:
             return True
 
         # It is clusterable if a syslog with PRI exists even if no clusterable field exists
-        # has_facility = 'syslog' in event and 'facility' in event['syslog']
-        # has_severity = 'event' in event and 'severity' in event['event']
-        if self._syslog_has_pri(event):
-            return True
-
-        return False
+        return self._syslog_has_pri(event)
 
     @staticmethod
-    def _syslog_has_pri(event: dict):
-        syslog_value = get_dotted_field_value(event, "syslog")
-        event_value = get_dotted_field_value(event, "event")
-        return not (syslog_value is None or event_value is None)
+    def _syslog_has_pri(event: dict) -> bool:
+        facility = get_field_value_no_slice(event, ("syslog", "facility"))
+        severity = get_field_value_no_slice(event, ("event", "severity"))
+        if MISSING in (facility, severity):
+            return False
+        return None not in (facility, severity)
 
     def _cluster(self, event: dict, rule: ClustererRule):
         raw_text, sig_text = self._get_text_to_cluster(rule, event)
@@ -129,8 +145,8 @@ class Clusterer(FieldManager):
         if self._syslog_has_pri(event):
             cluster_signature = " , ".join(
                 [
-                    str(get_dotted_field_value(event, "syslog.facility")),
-                    str(get_dotted_field_value(event, "event.severity")),
+                    str(get_field_value_no_slice(event, ("syslog", "facility"))),
+                    str(get_field_value_no_slice(event, ("event", "severity"))),
                     cluster_signature_based_on_message,
                 ]
             )
@@ -138,7 +154,7 @@ class Clusterer(FieldManager):
             cluster_signature = cluster_signature_based_on_message
         add_fields_to(
             event,
-            fields={self._config.output_field_name: cluster_signature},
+            fields={self.config.output_field_name: cluster_signature},
             merge_with_target=rule.merge_with_target,
             overwrite_target=rule.overwrite_target,
         )
@@ -148,11 +164,13 @@ class Clusterer(FieldManager):
         rule_id = self._rule_tree.get_rule_id(rule)
         if rule_id is None:
             return True
-        is_new_iteration = rule_id <= self._last_rule_id
+        is_new_iteration = self._last_rule_id is None or rule_id <= self._last_rule_id
         self._last_rule_id = rule_id
         return is_new_iteration
 
-    def _get_text_to_cluster(self, rule: ClustererRule, event: dict) -> Tuple[str, str]:
+    def _get_text_to_cluster(
+        self, rule: ClustererRule, event: dict
+    ) -> tuple[FieldValue, str | None]:
         sig_text = None
         if self._is_new_tree_iteration(rule):
             self._last_non_extracted_signature = None
@@ -164,16 +182,17 @@ class Clusterer(FieldManager):
             raw_text = sig_text
         return raw_text, sig_text
 
-    def test_rules(self):
-        results = {}
+    def test_rules(self) -> dict[str, list]:
+        results: dict[str, list] = {}
         for _, rule in enumerate(self.rules):
-            rule_repr = rule.__repr__()
+            rule = typing.cast(ClustererRule, rule)
+            rule_repr = repr(rule)
             results[rule_repr] = []
             try:
                 for test in rule.tests:
                     result = SignatureEngine.apply_signature_rule(test["raw"], rule)
                     expected_result = test["result"]
                     results[rule_repr].append((result, expected_result))
-            except AttributeError:
+            except AttributeError:  # pragma: no cover
                 results[rule_repr].append(None)
         return results

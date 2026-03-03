@@ -6,6 +6,7 @@
 
 ### Improvements
 * improve http endpoint security by fully checking basic auth hashes, and doing that in a time constant manner to not expose secrets
+* improve clusterer performance by removing access via dotted fields where possible
 
 ### Bugfix
 * fix missing examples for processor decoder
