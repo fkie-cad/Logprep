@@ -385,8 +385,28 @@ def get_dotted_field_values(
     return result
 
 
-def has_dotted_field(event: dict[str, FieldValue], dotted_field: str) -> bool:
-    return get_dotted_field_value_with_explicit_missing(event, dotted_field) is not MISSING
+def has_dotted_field(
+    event: dict[str, FieldValue], dotted_field: str, allow_none: bool = True
+) -> bool:
+    """Check if the given dotted field can be found in in data structure.
+
+    Parameters
+    ----------
+    event : dict[str, FieldValue]
+        The data structure which might contain the field.
+    dotted_field : str
+        The dotted field descriptor which identifies the field.
+    allow_none: bool, optional
+        Whether fields with value :code:`None` are considered present, defaults to :code:`True`.
+
+    Returns
+    -------
+    bool
+        Whether the field could be found in the data structure.
+    """
+    if allow_none:
+        return get_dotted_field_value_with_explicit_missing(event, dotted_field) is not MISSING
+    return get_dotted_field_value(event, dotted_field) is not None
 
 
 @lru_cache(maxsize=100000)
