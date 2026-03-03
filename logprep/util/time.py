@@ -51,9 +51,12 @@ class TimeParser:
         datetime
             datetime object
         """
-        time_object = datetime.fromtimestamp(timestamp, tz=UTC)
-        time_object = cls._set_utc_if_timezone_is_missing(time_object)
-        return time_object
+        try:
+            time_object = datetime.fromtimestamp(timestamp, tz=UTC)
+            time_object = cls._set_utc_if_timezone_is_missing(time_object)
+            return time_object
+        except TypeError as error:
+            raise TimeParserException(str(error)) from error
 
     @classmethod
     def now(cls, timezone: tzinfo | None = UTC) -> datetime:
@@ -111,6 +114,17 @@ class TimeParser:
         return time_object
 
     @classmethod
+    def _normalize_unix_timestamp(cls, timestamp):
+        try:
+            return (
+                int(timestamp)
+                if len(timestamp) <= 10
+                else int(timestamp) / 10 ** (len(timestamp) - 10)
+            )
+        except ValueError as error:
+            raise TimeParserException(str(error)) from error
+
+    @classmethod
     def parse_datetime(
         cls, timestamp: str, source_format: str, source_timezone: Union[str, tzinfo]
     ) -> datetime:
@@ -134,12 +148,8 @@ class TimeParser:
             The parsed timestamp as datetime object.
         """
         if source_format == "UNIX":
-            parsed_datetime = (
-                int(timestamp)
-                if len(timestamp) <= 10
-                else int(timestamp) / 10 ** (len(timestamp) - 10)
-            )
-            parsed_datetime = cls.from_timestamp(parsed_datetime)
+            normalized_unix_timestamp = cls._normalize_unix_timestamp(timestamp)
+            parsed_datetime = cls.from_timestamp(normalized_unix_timestamp)
         elif source_format == "ISO8601":
             parsed_datetime = cls.from_string(timestamp, set_missing_utc=False)
         else:
