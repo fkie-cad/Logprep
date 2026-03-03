@@ -2,11 +2,14 @@
 ### Breaking
 
 ### Features
+* make it possible to assign multiple credentials to a single endpoint
 
 ### Improvements
+* improve http endpoint security by fully checking basic auth hashes, and doing that in a time constant manner to not expose secrets
 * improve clusterer performance by removing access via dotted fields where possible
 
 ### Bugfix
+* fix missing examples for processor decoder
 
 
 ## 18.1.0
@@ -27,6 +30,7 @@
 * generic_resolver now follows yaml standard and accepts a list instead of relying on the ordering of a dict
 * generic_resolver now properly handles falsy values in resolve_list and resolve_from_file
 * decoder errors are handled properly as warnings instead of causing pipeline failures
+* fix a bug in `dissector` not handling curly braces on the end of a dissect section properly
 
 ## 18.0.1
 ### Breaking
@@ -46,7 +50,6 @@
 * fix incorrect default-logger lookup by consistently resolving defaults from `DEFAULT_LOG_CONFIG["loggers"]`.
 * fix a possible race condition in the `geoip_enricher`
 * fix possible memory leaks in configuration refresh when processors set up scheduled jobs which were not cleaned up
-* fix a bug in `dissector` not handling curly braces on the end of a dissect section properly
 
 ## 18.0.0
 ### Breaking

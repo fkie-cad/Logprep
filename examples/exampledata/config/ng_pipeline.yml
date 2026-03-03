@@ -1,5 +1,5 @@
 version: 2
-process_count: 500
+process_count: 1
 timeout: 5.0
 restart_count: 2
 config_refresh_interval: 300
@@ -9,18 +9,17 @@ logger:
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
-    "py.warnings": { "level": "ERROR" }
-    "Runner": { "level": "INFO" }
-    "Processor": { "level": "ERROR" }
-    "Exporter": { "level": "ERROR" }
-    "uvicorn": { "level": "ERROR" }
-    "uvicorn.access": { "level": "ERROR" }
-    "OpenSearchOutput": { "level": "DEBUG" }
-    "KafkaOutput": { "level": "ERROR" }
+    "py.warnings": {"level": "ERROR"}
+    "Runner": {"level": "INFO"}
+    "Processor": {"level": "ERROR"}
+    "Exporter": {"level": "ERROR"}
+    "uvicorn": {"level": "ERROR"}
+    "uvicorn.access": {"level": "ERROR"}
+    "OpenSearchOutput": {"level": "DEBUG"}
+    "KafkaOutput": {"level": "ERROR"}
 metrics:
   enabled: true
   port: 8001
-
 pipeline:
   - labelername:
       type: ng_labeler
@@ -28,12 +27,10 @@ pipeline:
       include_parent_labels: true
       rules:
         - examples/exampledata/rules/labeler/rules
-
   - dissector:
       type: ng_dissector
       rules:
         - examples/exampledata/rules/dissector/rules
-
   - dropper:
       type: ng_dropper
       rules:
@@ -43,7 +40,6 @@ pipeline:
             drop:
               - drop_me
           description: "..."
-
   - pre_detector:
       type: ng_pre_detector
       rules:
@@ -52,7 +48,6 @@ pipeline:
         - opensearch: sre
       tree_config: examples/exampledata/rules/pre_detector/tree_config.json
       alert_ip_list_path: examples/exampledata/rules/pre_detector/alert_ips.yml
-
   - amides:
       type: ng_amides
       rules:
@@ -61,7 +56,6 @@ pipeline:
       num_rule_attributions: 10
       max_cache_entries: 1000000
       decision_threshold: 0.32
-
   - pseudonymizer:
       type: ng_pseudonymizer
       pubkey_analyst: examples/exampledata/rules/pseudonymizer/example_analyst_pub.pem
@@ -73,7 +67,6 @@ pipeline:
       rules:
         - examples/exampledata/rules/pseudonymizer/rules/
       max_cached_pseudonyms: 1000000
-
   - calculator:
       type: ng_calculator
       rules:
@@ -81,7 +74,6 @@ pipeline:
           calculator:
             target_field: "calculation"
             calc: "1 + 1"
-
 input:
   kafka:
     type: ng_confluentkafka_input
@@ -102,7 +94,6 @@ input:
         target: <RAW_MSG>
         key: "thisisasecureandrandomkey"
         output_field: Full_event
-
 output:
   opensearch:
     type: ng_opensearch_output
@@ -125,7 +116,6 @@ output:
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       statistics.interval.ms: "60000"
-
 error_output:
   kafka_error_output:
     type: ng_confluentkafka_output
