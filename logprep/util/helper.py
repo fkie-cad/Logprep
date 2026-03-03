@@ -286,9 +286,9 @@ def get_dotted_field_value(event: dict[str, FieldValue], dotted_field: str) -> F
     Parameters
     ----------
     event: dict[str, FieldValue]
-        The event from which the dotted field value should be extracted
+        The event from which the dotted field value should be extracted.
     dotted_field: str
-        The dotted field name which identifies the requested value
+        The dotted field name which identifies the requested value.
 
     Returns
     -------
@@ -320,15 +320,15 @@ def get_dotted_field_value_with_explicit_missing(
     Parameters
     ----------
     event: dict[str, FieldValue]
-        The event from which the dotted field value should be extracted
+        The event from which the dotted field value should be extracted.
     dotted_field: str
-        The dotted field name which identifies the requested value
+        The dotted field name which identifies the requested value.
 
     Returns
     -------
     FieldValue | Missing
         The value of the requested dotted field, which can be None.
-        None is also returnd when the field could not be found and silent_fail is True.
+        Or :code:`MISSING` if the field could not be found.
 
     Raises
     ------
@@ -342,6 +342,37 @@ def get_dotted_field_value_with_explicit_missing(
         return current
     except (KeyError, ValueError, TypeError, IndexError):
         return MISSING
+
+
+def get_field_value_no_slice(
+    event: dict[str, FieldValue], fields: Iterable[str]
+) -> FieldValue | Missing:
+    """Optimized low-level function to retrieve the value referenced by the sequence
+    of keys/fields.
+    This function assumes, that the dotted fields have already been resolved and
+    that all remaining dots are to be interpreted as part of their respective field names.
+    Also, no slicing is supported.
+
+    Parameters
+    ----------
+    event : dict[str, FieldValue]
+        The event from which the field value should be extracted.
+    fields : Iterable[str]
+        The field sequence which identifies the requested value.
+
+    Returns
+    -------
+    FieldValue | Missing
+        The value of the requested dotted field, which can be None.
+        Or :code:`MISSING` if the field could not be found.
+    """
+    current: FieldValue = event
+    for field in fields:
+        try:
+            current = typing.cast(dict[str, FieldValue], current)[field]
+        except (KeyError, TypeError):
+            return MISSING
+    return current
 
 
 def get_dotted_field_values(
@@ -568,18 +599,6 @@ def _pop_field_value(event: dict[str, FieldValue], dotted_field: str) -> FieldVa
     if parent_field_value and isinstance(parent_field_value, dict) and field in parent_field_value:
         return parent_field_value.pop(field)
     return MISSING
-
-
-def get_field_value_no_slice(
-    event: dict[str, FieldValue], fields: Iterable[str]
-) -> FieldValue | Missing:
-    current: FieldValue = event
-    for field in fields:
-        try:
-            current = typing.cast(dict[str, FieldValue], current)[field]
-        except (KeyError, TypeError):
-            return MISSING
-    return current
 
 
 def _pop_field_value_and_drop_empty(
