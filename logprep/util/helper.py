@@ -425,6 +425,18 @@ def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
     )
 
 
+def get_field_value_no_slice(
+    event: dict[str, FieldValue], fields: Iterable[str]
+) -> FieldValue | Missing:
+    current = event
+    for field in fields:
+        try:
+            current = current[field]
+        except (KeyError, TypeError):
+            return MISSING
+    return current
+
+
 def _retrieve_field_value_and_delete_field_if_configured(
     sub_dict, dotted_fields_path, delete_source_field=False
 ):

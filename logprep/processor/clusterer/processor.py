@@ -43,7 +43,6 @@ Processor Configuration
 .. automodule:: logprep.processor.clusterer.rule
 """
 
-import sys
 from typing import Tuple
 
 from attrs import define, field, validators
@@ -56,7 +55,12 @@ from logprep.processor.clusterer.signature_calculation.signature_phase import (
     SignatureEngine,
     SignaturePhaseStreaming,
 )
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    add_fields_to,
+    get_dotted_field_value,
+    get_field_value_no_slice,
+    MISSING,
+)
 
 
 class Clusterer(FieldManager):
@@ -75,7 +79,7 @@ class Clusterer(FieldManager):
 
     sps: SignaturePhaseStreaming
 
-    _last_rule_id: int
+    _last_rule_id: int | None
 
     _last_non_extracted_signature: str | None
 
@@ -83,7 +87,7 @@ class Clusterer(FieldManager):
         super().__init__(name=name, configuration=configuration)
         self.sps = SignaturePhaseStreaming()
 
-        self._last_rule_id = sys.maxsize
+        self._last_rule_id = None
         self._last_non_extracted_signature = None
 
     def _apply_rules(self, event, rule):
@@ -102,7 +106,7 @@ class Clusterer(FieldManager):
         # Return clusterable state if it exists, since it can be true or false
         clusterable = event.get("clusterable")
         if clusterable is not None:
-            return clusterable
+            return bool(clusterable)
 
         # Alternatively, check for a clusterable tag
         tags = event.get("tags")
@@ -110,17 +114,15 @@ class Clusterer(FieldManager):
             return True
 
         # It is clusterable if a syslog with PRI exists even if no clusterable field exists
-        if self._syslog_has_pri(event):
-            return True
-
-        return False
+        return self._syslog_has_pri(event)
 
     @staticmethod
     def _syslog_has_pri(event: dict) -> bool:
-        try:
-            return None not in (event["syslog"]["facility"], event["event"]["severity"])
-        except KeyError:
+        facility = get_field_value_no_slice(event, ("syslog", "facility"))
+        severity = get_field_value_no_slice(event, ("event", "severity"))
+        if MISSING in (facility, severity):
             return False
+        return None not in (facility, severity)
 
     def _cluster(self, event: dict, rule: ClustererRule):
         raw_text, sig_text = self._get_text_to_cluster(rule, event)
@@ -137,8 +139,8 @@ class Clusterer(FieldManager):
         if self._syslog_has_pri(event):
             cluster_signature = " , ".join(
                 [
-                    str(event["syslog"]["facility"]),
-                    str(event["event"]["severity"]),
+                    str(get_field_value_no_slice(event, ("syslog", "facility"))),
+                    str(get_field_value_no_slice(event, ("event", "severity"))),
                     cluster_signature_based_on_message,
                 ]
             )
@@ -156,7 +158,7 @@ class Clusterer(FieldManager):
         rule_id = self._rule_tree.get_rule_id(rule)
         if rule_id is None:
             return True
-        is_new_iteration = rule_id <= self._last_rule_id
+        is_new_iteration = self._last_rule_id is None or rule_id <= self._last_rule_id
         self._last_rule_id = rule_id
         return is_new_iteration
 
