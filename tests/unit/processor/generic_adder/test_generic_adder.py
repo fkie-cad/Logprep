@@ -274,28 +274,36 @@ test_cases = [  # testcase, rule, event, expected
             "comp\\lex.quoted.field": "quoted",
             "comp\\lex.nested": {"field": 42},
             "nested": {"comp\\lex.field": 1337},
+            "\\u\\0\\1\\x\y": 1338,  # pylint: disable=anomalous-backslash-in-string
         },
     ),
     (
         "Add from rule definition with escaping",
         {
-            "filter": "add_generic_test",
+            "filter": "\\u\\0\\1\\x\z",  # pylint: disable=anomalous-backslash-in-string
             "generic_adder": {
                 "add": {
                     "comp\\\\lex\\.field": "value",
                     "comp\\\\lex\\.nested.field": 42,
                     "nested.comp\\\\lex\\.field": 1337,
+                    "\\u\\0\\1\\x\y": 1338,  # pylint: disable=anomalous-backslash-in-string
                 }
             },
             "description": "",
         },
-        {"add_generic_test": "Test", "event_id": 123},
+        {
+            "add_generic_test": "Test",
+            "event_id": 123,
+            "\\u\\0\\1\\x\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
+        },
         {
             "add_generic_test": "Test",
             "event_id": 123,
             "comp\\lex.field": "value",
             "comp\\lex.nested": {"field": 42},
             "nested": {"comp\\lex.field": 1337},
+            "\\u\\0\\1\\x\y": 1338,  # pylint: disable=anomalous-backslash-in-string
+            "\\u\\0\\1\\x\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
         },
     ),
 ]
