@@ -3,6 +3,7 @@
 
 ### Features
 * make it possible to assign multiple credentials to a single endpoint
+* support escaping json dot notation in filter queries, processor fields and special processor syntaxes
 
 ### Improvements
 * improve http endpoint security by fully checking basic auth hashes, and doing that in a time constant manner to not expose secrets
