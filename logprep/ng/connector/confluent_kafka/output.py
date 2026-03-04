@@ -36,6 +36,7 @@ from confluent_kafka.admin import AdminClient
 from logprep.metrics.metrics import GaugeMetric, Metric
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import FatalOutputError, Output
+from logprep.ng.event.event_state import EventStateType
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -281,7 +282,7 @@ class ConfluentKafkaOutput(Output):
             f"{self.config.kafka_config.get('bootstrap.servers')}"
         )
 
-    def store(self, event: Event) -> None:
+    def store(self, event: Event) -> None:  # type: ignore  # TODO: fix mypy issue
         """Store a document in the producer topic.
 
         Parameters
@@ -303,7 +304,8 @@ class ConfluentKafkaOutput(Output):
         target : str
             Topic to store event data in.
         """
-        event.state.next_state()
+        event.state.current_state = EventStateType.STORING_IN_OUTPUT
+
         document = event.data
         self.metrics.number_of_processed_events += 1
         try:
@@ -358,12 +360,12 @@ class ConfluentKafkaOutput(Output):
     def on_delivery(self, event: Event, err: KafkaException, msg: Message) -> None:
         """Callback for delivery reports."""
         if err is not None:
-            event.state.next_state(success=False)
+            event.state.current_state = EventStateType.FAILED
             event.errors.append(err)
             logger.error("Message delivery failed: %s", err)
             self.metrics.number_of_errors += 1
             return
-        event.state.next_state(success=True)
+        event.state.current_state = EventStateType.DELIVERED
         logger.debug(
             "Message delivered to '%s' partition %s, offset %s",
             msg.topic(),
