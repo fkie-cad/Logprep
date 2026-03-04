@@ -43,7 +43,6 @@ from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_fields_to, get_dotted_field_value
-from logprep.util.typing import is_list_of
 
 logger = logging.getLogger("Grokker")
 
@@ -82,6 +81,10 @@ class Grokker(FieldManager):
         """Provides the properly typed configuration object"""
         return typing.cast(Grokker.Config, self._config)
 
+    @property
+    def rules(self):
+        return typing.cast(list[GrokkerRule], super().rules)
+
     def _apply_rules(self, event: dict, rule: GrokkerRule):
         matches = []
         source_values = []
@@ -117,7 +120,6 @@ class Grokker(FieldManager):
     def setup(self) -> None:
         """Loads the action mapping. Has to be called before processing"""
         super().setup()
-        assert is_list_of(self.rules, GrokkerRule)
         custom_patterns_dir = self.config.custom_patterns_dir
         if re.search(r"http(s)?:\/\/.*?\.zip", custom_patterns_dir):
             with tempfile.TemporaryDirectory("grok") as patterns_tmp_path:
