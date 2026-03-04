@@ -463,29 +463,17 @@ def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
 
     char_buffer = []
     itr = iter(dotted_field)
-    escaped = False
     for c in itr:
-        if escaped:
-            if c not in ("\\", "."):
-                # re-insert backslash, if it did not escape a control character
+        if c == "\\":
+            try:
+                char_buffer.append(next(itr))
+            except StopIteration:
                 char_buffer.append("\\")
-            # control characters have no meaning when escaped, add literally
-            char_buffer.append(c)
-            escaped = False
         elif c == ".":
-            # non-escaped dot --> split fields here
             result.append("".join(char_buffer))
             char_buffer = []
-        elif c == "\\":
-            # non-escaped backslash --> activate escaping mode
-            escaped = True
         else:
-            # non-escaped and no control character --> add literally
             char_buffer.append(c)
-    if escaped:
-        # re-insert trailing backslash literally
-        char_buffer.append("\\")
-    # finish final field chunk
     result.append("".join(char_buffer))
     return result
 

@@ -141,7 +141,7 @@ class LuceneFilter:
     """A filter that allows using lucene query strings."""
 
     last_quotation_pattern = re.compile(r'((?:\\)+")$')
-    escaping_pattern = re.compile(r'(?:\\)+"')
+    quote_escaping_pattern = re.compile(r'(?:\\)+"')
     end_escaping_pattern = re.compile(r'((?:\\)+"[\s\)]+(?:AND|OR|NOT|$))')
 
     @staticmethod
@@ -194,12 +194,12 @@ class LuceneFilter:
 
         It doubles all backslashes and adds one. This allows to revert the operation later on.
         """
-        matches = LuceneFilter.escaping_pattern.findall(query_string)
+        matches = LuceneFilter.quote_escaping_pattern.findall(query_string)
         for idx, match in enumerate(matches):
             cnt_backslashes = len(match) - 1
             if cnt_backslashes > 0:
                 matches[idx] = f'{2 * matches[idx][:-1]}\\"'
-        split = LuceneFilter.escaping_pattern.split(query_string)
+        split = LuceneFilter.quote_escaping_pattern.split(query_string)
         query_string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
         return query_string
@@ -229,12 +229,6 @@ class LuceneFilter:
             new_end = "\\" * cnt_backslashes * 2 + '"'
             new_string = new_string[: -(cnt_backslashes + 1)] + new_end
         return new_string
-
-    @staticmethod
-    def dotted_field_to_list(dotted_field: str, unescape: bool) -> Sequence[str]:
-        if unescape:
-            return [v.replace("\\\\", "\\") for v in get_dotted_field_list(dotted_field)]
-        return get_dotted_field_list(dotted_field)
 
 
 class LuceneTransformer:
@@ -312,7 +306,7 @@ class LuceneTransformer:
             Parsed filter expression.
 
         """
-        key = LuceneFilter.dotted_field_to_list(dotted_field, unescape=False)
+        key = get_dotted_field_list(dotted_field)
         value = self._strip_quote_from_string(tree.value)
         value = self._remove_lucene_escaping(value)
 
@@ -328,7 +322,7 @@ class LuceneTransformer:
 
     def _create_field(self, tree: luqum.tree) -> FilterExpression:
         if isinstance(tree.expr, (Phrase, Word)):
-            key = LuceneFilter.dotted_field_to_list(tree.name, unescape=True)
+            key = get_dotted_field_list(tree.name)
             if tree.expr.value == "null":
                 return Null(key)
 
@@ -336,7 +330,7 @@ class LuceneTransformer:
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression(key, value)
         if isinstance(tree.expr, Regex):
-            key = LuceneFilter.dotted_field_to_list(tree.name, unescape=True)
+            key = get_dotted_field_list(tree.name)
             if tree.expr.value == "null":
                 return Null(key)
 
@@ -389,7 +383,7 @@ class LuceneTransformer:
 
     @staticmethod
     def _create_value_expression(word: luqum.tree) -> Exists | Always:
-        value = LuceneFilter.dotted_field_to_list(word.value, unescape=True)
+        value = get_dotted_field_list(word.value)
         if value == ["*"]:
             return Always(True)
         return Exists(value)
