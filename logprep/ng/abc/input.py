@@ -317,7 +317,7 @@ class Input(Connector):
         self.event_backlog.unregister(state_type=EventStateType.ACKED)
 
         for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):
-            event.state.next_state()
+            event.state.current_state = EventStateType.ACKED
 
     @property
     def _add_hmac(self) -> bool:
@@ -488,7 +488,7 @@ class Input(Connector):
         )
 
         self.event_backlog.register(events=[log_event])
-        log_event.state.next_state()
+        log_event.state.current_state = EventStateType.RECEIVED
 
         return log_event
 

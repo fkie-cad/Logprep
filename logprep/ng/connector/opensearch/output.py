@@ -51,6 +51,7 @@ from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import Output
+from logprep.ng.event.event_state import EventStateType
 
 logger = logging.getLogger("OpenSearchOutput")
 
@@ -281,7 +282,7 @@ class OpensearchOutput(Output):
         target : str
             Index to store the document in.
         """
-        event.state.next_state()
+        event.state.current_state = EventStateType.STORING_IN_OUTPUT
         document = event.data
         document["_index"] = target
         document["_op_type"] = document.get("_op_type", self.config.default_op_type)
@@ -396,7 +397,7 @@ class OpensearchOutput(Output):
             except OpenSearchException as e:
                 # whole bulk request failed → mark all events failed
                 for ev in batch:
-                    ev.state.next_state(success=False)
+                    ev.state.current_state = EventStateType.FAILED
                     ev.errors.append(BulkError("Bulk request failed", exception=str(e)))
                 continue
 
@@ -417,7 +418,7 @@ class OpensearchOutput(Output):
 
                 ok = isinstance(status, int) and 200 <= status < 300 and not error_obj
                 if ok:
-                    ev.state.next_state(success=True)
+                    ev.state.current_state = EventStateType.STORED_IN_OUTPUT
                     continue
 
                 # normalize error into your BulkError shape
@@ -427,7 +428,7 @@ class OpensearchOutput(Output):
                 else:
                     message = str(error_obj) if error_obj else "Failed to index document"
 
-                ev.state.next_state(success=False)
+                ev.state.current_state = EventStateType.FAILED
                 ev.errors.append(
                     BulkError(
                         message,
