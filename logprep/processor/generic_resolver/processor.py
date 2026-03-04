@@ -203,18 +203,18 @@ class GenericResolver(FieldManager):
         return MISSING
 
     def _update_cache_metrics(self) -> None:
-        cache_wrapper = self._get_lru_cached_value_from_list
-        if is_lru_cached(cache_wrapper):
-            self._cache_metrics_skip_count += 1
-            if self._cache_metrics_skip_count < self.cache_metrics_interval:
-                return
-            self._cache_metrics_skip_count = 0
+        if not is_lru_cached(self._get_lru_cached_value_from_list):
+            return
+        self._cache_metrics_skip_count += 1
+        if self._cache_metrics_skip_count < self.cache_metrics_interval:
+            return
+        self._cache_metrics_skip_count = 0
 
-            cache_info = cache_wrapper.cache_info()
-            self.metrics.new_results += cache_info.misses
-            self.metrics.cached_results += cache_info.hits
-            self.metrics.num_cache_entries += cache_info.currsize
-            self.metrics.cache_load += cache_info.currsize / self.max_cache_entries
+        cache_info = self._get_lru_cached_value_from_list.cache_info()
+        self.metrics.new_results += cache_info.misses
+        self.metrics.cached_results += cache_info.hits
+        self.metrics.num_cache_entries += cache_info.currsize
+        self.metrics.cache_load += cache_info.currsize / self.max_cache_entries
 
     def setup(self) -> None:
         super().setup()
