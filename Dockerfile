@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1.7
 
 ARG PYTHON_VERSION=3.11
+ARG LOGPREP_VERSION
 
 FROM registry-1.docker.io/library/python:${PYTHON_VERSION} AS build
+
+ARG LOGPREP_VERSION
 
 RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
@@ -31,6 +34,8 @@ ENV UV_NO_DEV=1
 ENV UV_LINK_MODE=copy
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+
+ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_LOGPREP=${LOGPREP_VERSION}
 
 # Install deps using only the lockfile + pyproject.toml first (best layer caching)
 RUN --mount=type=cache,target=/root/.cache/uv \
