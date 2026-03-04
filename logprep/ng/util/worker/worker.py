@@ -187,7 +187,10 @@ class Worker(Generic[Input, Output]):
             else:
                 while not stop_event.is_set():
                     item = await anext(self.in_queue)
-                    await self.add(item)
+
+                    if item is not None:
+                        await self.add(item)
+
                     # TODO is this await really necessary?
                     await asyncio.sleep(0.0)
 
