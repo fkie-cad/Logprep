@@ -84,9 +84,14 @@ class Runner:
             async with self._task_group as tg:
                 tg.create_task(TerminateTaskGroup.raise_on_event(self._stop_event))
 
-                def start_pipeline(config: Configuration) -> asyncio.Task:
+                async def start_pipeline(config: Configuration) -> asyncio.Task:
+                    pipeline_manager = PipelineManager(
+                        config, shutdown_timeout_s=GRACEFUL_SHUTDOWN_TIMEOUT
+                    )
+                    await pipeline_manager.setup()
+
                     return tg.create_task(
-                        PipelineManager(config, shutdown_timeout_s=GRACEFUL_SHUTDOWN_TIMEOUT).run(),
+                        pipeline_manager.run(),
                         name="pipeline_manager",
                     )
 
@@ -95,7 +100,7 @@ class Runner:
                         source=self._refresh_configuration_gen(),
                         task_factory=start_pipeline,
                         cancel_timeout_s=HARD_SHUTDOWN_TIMEOUT,
-                        inital_task=start_pipeline(self.config),
+                        inital_task=await start_pipeline(self.config),
                     ):
                         logger.debug(
                             "A new pipeline task has been spawned based on the latest configuration"
