@@ -19,15 +19,25 @@ class EventStateType(StrEnum):
     PROCESSED = "processed"
     """The event has been processed by all pipeline processors."""
 
+    STORING_IN_OUTPUT = "storing_in_output"
+    """The event is storing in the output connector."""
+
     STORED_IN_OUTPUT = "stored_in_output"
     """The event was successfully stored in the output connector."""
 
     FAILED = "failed"
     """The event failed during processing or output storage."""
 
+    STORING_IN_ERROR = "storing_in_error"
+    """The event is storing in the error output (e.g. error queue or
+    fallback output)."""
+
     STORED_IN_ERROR = "stored_in_error"
     """The event was stored in the error output (e.g. error queue or
     fallback output)."""
+
+    DELIVERING = "delivering"
+    """The event is delivering to the target system or final destination."""
 
     DELIVERED = "delivered"
     """The event was delivered to the target system or final destination."""
