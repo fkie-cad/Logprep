@@ -1,5 +1,4 @@
 # pylint: disable=C0103
-
 """
 Benchmark runner for logprep (logprep-ng and non-ng).
 
@@ -284,6 +283,33 @@ def opensearch_count_processed(opensearch_url: str, processed_index: str) -> int
         return 0
     resp.raise_for_status()
     return int(resp.json()["count"])
+
+
+def opensearch_debug_snapshot(opensearch_url: str) -> None:
+    """
+    Print a small OpenSearch state snapshot for debugging.
+    Never raises (best-effort).
+    """
+    try:
+        r = requests.get(f"{opensearch_url}/_cat/indices?v", timeout=10)
+        print("\n--- _cat/indices ---")
+        print(r.text)
+    except Exception as e:
+        print(f"\n--- _cat/indices (failed) ---\n{e}")
+
+    try:
+        r = requests.get(f"{opensearch_url}/_cat/count?v", timeout=10)
+        print("\n--- _cat/count ---")
+        print(r.text)
+    except Exception as e:
+        print(f"\n--- _cat/count (failed) ---\n{e}")
+
+    try:
+        r = requests.get(f"{opensearch_url}/_cat/aliases?v", timeout=10)
+        print("\n--- _cat/aliases ---")
+        print(r.text)
+    except Exception as e:
+        print(f"\n--- _cat/aliases (failed) ---\n{e}")
 
 
 def reset_prometheus_dir(path: str) -> None:
@@ -596,6 +622,9 @@ def benchmark_run(
 
         time.sleep(sleep_after_logprep_start_s)
 
+        print("\n=== OpenSearch snapshot (before measurement) ===")
+        opensearch_debug_snapshot(opensearch_url)
+
         baseline = opensearch_count_processed(opensearch_url, processed_index)
         startup_s = time.time() - t_startup
 
@@ -610,27 +639,10 @@ def benchmark_run(
         # ensure near-real-time writes are visible to _count before measuring
         opensearch_refresh(opensearch_url, processed_index)
 
-        after = opensearch_count_processed(opensearch_url, processed_index)
-
-        def opensearch_debug_snapshot(opensearch_url: str) -> None:
-            # welche Indizes existieren überhaupt?
-            r = requests.get(f"{opensearch_url}/_cat/indices?v", timeout=10)
-            print("\n--- _cat/indices ---")
-            print(r.text)
-
-            # wie viele docs pro index? (sehr schnell, super aufschlussreich)
-            r = requests.get(f"{opensearch_url}/_cat/count?v", timeout=10)
-            print("\n--- _cat/count ---")
-            print(r.text)
-
-            # optional: aliases / data streams
-            r = requests.get(f"{opensearch_url}/_cat/aliases?v", timeout=10)
-            print("\n--- _cat/aliases ---")
-            print(r.text)
-
-        # im benchmark_run nach dem kill + refresh:
+        print("\n=== OpenSearch snapshot (after run / after refresh) ===")
         opensearch_debug_snapshot(opensearch_url)
 
+        after = opensearch_count_processed(opensearch_url, processed_index)
         processed = max(0, after - baseline)
 
         return RunResult(
