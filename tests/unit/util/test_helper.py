@@ -18,6 +18,7 @@ from logprep.util.helper import (
     pop_dotted_field_value,
     reduce_field_value,
     snake_to_camel,
+    transform_field_value,
 )
 from logprep.util.json_handling import is_json
 from tests.testdata.metadata import path_to_config
@@ -321,6 +322,73 @@ class TestGetVersionString:
 
         result = get_versions_string(None)
         assert re.search(expected_pattern, result)
+
+
+class TestTransformFieldValue:
+
+    def test_transform_complex_value(self):
+        value = [
+            "top-level",
+            {
+                "str": "whatever",
+                "int": 42,
+                "float": 13.37,
+                "bool_t": True,
+                "bool_f": False,
+                "none": None,
+                "soon_list": "make_list",
+                "soon_dict": "make_dict",
+                "list": [1, "1", 1.1, True, False, "make_list", "make_dict", None],
+                "dict": {"sub": "anything"},
+            },
+        ]
+        expected = [
+            "value:top-level",
+            {
+                "key:str": "value:whatever",
+                "key:int": 84,
+                "key:float": 26.74,
+                "key:bool_t": False,
+                "key:bool_f": True,
+                "key:none": None,
+                "key:soon_list": [],
+                "key:soon_dict": {},
+                "key:list": [2, "value:1", 2.2, False, True, [], {}, None],
+                "key:dict": {"key:sub": "value:anything"},
+            },
+        ]
+
+        def transform_value(v: FieldValue) -> FieldValue:
+            match (v):
+                case "make_list":
+                    return []
+                case "make_dict":
+                    return {}
+                case str():
+                    return f"value:{v}"
+                case bool():
+                    return not v
+                case int() | float():
+                    return 2 * v
+                case None:
+                    return None
+                case _:
+                    raise AssertionError("unexpected value encountered")
+
+        result = transform_field_value(
+            value, transform_key=lambda s: f"key:{s}", transform_value=transform_value
+        )
+
+        assert result == expected
+
+    def test_error_on_illegal_field_value(self):
+        value = typing.cast(FieldValue, tuple([1, 2, 3]))
+        with pytest.raises(ValueError, match="unexpected type"):
+            transform_field_value(
+                value,
+                transform_key=lambda x: x,
+                transform_value=lambda x: x,
+            )
 
 
 class TestReduceFieldValue:

@@ -1,5 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
 
+import functools
 import itertools
 import re
 import sys
@@ -894,9 +895,10 @@ def reduce_field_value(func: Callable[[FieldValue, T], T], data: FieldValue, ini
 
 
 def transform_field_value(
-    transform_value: Callable[[FieldValue], FieldValue],
-    transform_key: Callable[[str], str],
     data: FieldValue,
+    /,
+    transform_value: Callable[[str | int | float | bool | None], FieldValue],
+    transform_key: Callable[[str], str],
 ) -> FieldValue:
     """Transforms a field value by mapping all leafs (not :code:`dict` and :code:`list`)
     to new values.
@@ -922,9 +924,15 @@ def transform_field_value(
     """
     match (data):
         case dict():
-            return {transform_key(key): transform_value(value) for key, value in data.items()}
+            transform_recursive = functools.partial(
+                transform_field_value, transform_value=transform_value, transform_key=transform_key
+            )
+            return {transform_key(key): transform_recursive(value) for key, value in data.items()}
         case list():
-            return [transform_value(item) for item in data]
+            transform_recursive = functools.partial(
+                transform_field_value, transform_value=transform_value, transform_key=transform_key
+            )
+            return [transform_recursive(item) for item in data]
         case str() | int() | float() | bool() | None:
             return transform_value(data)
         case _:

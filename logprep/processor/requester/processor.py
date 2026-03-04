@@ -122,8 +122,8 @@ class Requester(FieldManager):
         for key, value in kwargs.items():
             if key in TEMPLATE_KWARGS:
                 kwargs[key] = transform_field_value(
+                    value,
                     transform_key=template_resolver,
                     transform_value=lambda d: template_resolver(d) if isinstance(d, str) else d,
-                    data=value,
                 )
         return kwargs
