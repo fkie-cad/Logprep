@@ -178,7 +178,7 @@ class GrokkerRule(DissectorRule):
             }
         except re.error as error:
             raise InvalidRuleDefinitionError(
-                f"The resolved grok pattern '{error.pattern!r}' is not valid"
+                f"The resolved grok pattern '{typing.cast(str, error.pattern)}' is not valid"
             ) from error
 
         # to ensure no string splitting is done during processing for target fields:
