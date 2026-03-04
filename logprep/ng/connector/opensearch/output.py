@@ -30,15 +30,21 @@ Example
         ca_cert: /path/to/cert.crt
 """
 
+import asyncio
+import json
 import logging
 import ssl
 import typing
 from functools import cached_property
 from typing import List, Optional
 
-import opensearchpy as search
 from attrs import define, field, validators
-from opensearchpy import OpenSearchException, helpers
+from opensearchpy import (
+    AsyncOpenSearch,
+    OpenSearchException,
+    SerializationError,
+    helpers,
+)
 from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.exceptions import LogprepException
@@ -82,7 +88,7 @@ class MSGPECSerializer(JSONSerializer):
         try:
             return self._encoder.encode(data).decode("utf-8")
         except (ValueError, TypeError) as e:
-            raise search.exceptions.SerializationError(data, e)
+            raise SerializationError(data, e)
 
     def loads(self, s):
         return self._decoder.decode(s)
@@ -160,7 +166,7 @@ class OpensearchOutput(Output):
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
 
-    __slots__ = ("_message_backlog",)
+    __slots__ = ("_message_backlog", "_flush_task")
 
     _message_backlog: list[Event]
     """List of messages to be sent to Opensearch."""
@@ -212,7 +218,7 @@ class OpensearchOutput(Output):
     @cached_property
     def _search_context(self):
         """Returns the opensearch client."""
-        return search.OpenSearch(
+        return AsyncOpenSearch(
             self.config.hosts,
             scheme=self.schema,
             http_auth=self.http_auth,
@@ -229,11 +235,22 @@ class OpensearchOutput(Output):
     def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
         super().__init__(name, configuration)
         self._message_backlog = []
+        self._flush_task: asyncio.Task | None = None
 
-    def setup(self):
-        super().setup()
+    async def _asetup(self):
+        await super()._asetup()
         flush_timeout = self.config.flush_timeout
-        self._schedule_task(task=self.flush, seconds=flush_timeout)
+
+        # TODO: improve flush task handling
+        async def flush_task() -> None:
+            try:
+                while True:
+                    await asyncio.sleep(flush_timeout)
+                    await self.flush()
+            except asyncio.CancelledError:
+                pass
+
+        self._flush_task = asyncio.create_task(flush_task())
 
     def describe(self) -> str:
         """Get name of Opensearch endpoint with the host.
@@ -247,13 +264,13 @@ class OpensearchOutput(Output):
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self.config.hosts}"
 
-    @Output._handle_errors
-    def store(self, event: Event) -> None:
+    # @Output._handle_errors
+    async def store(self, event: Event) -> None:
         """Store a document in the index defined in the document or to the default index."""
-        self.store_custom(event, event.data.get("_index", self.config.default_index))
+        await self.store_custom(event, event.data.get("_index", self.config.default_index))
 
-    @Output._handle_errors
-    def store_custom(self, event: Event, target: str) -> None:
+    # @Output._handle_errors
+    async def store_custom(self, event: Event, target: str) -> None:
         """Store document into backlog to be written into Opensearch with the target index.
         The target index is determined per document by parameter :code:`target`.
 
@@ -270,66 +287,160 @@ class OpensearchOutput(Output):
         document["_op_type"] = document.get("_op_type", self.config.default_op_type)
         self.metrics.number_of_processed_events += 1
         self._message_backlog.append(event)
-        self._write_to_search_context()
+        await self._write_to_search_context()
 
-    def _write_to_search_context(self):
+    async def _write_to_search_context(self):
         """Writes documents from a buffer into Opensearch indices.
 
         Writes documents in a bulk if the document buffer limit has been reached.
         This reduces connections to Opensearch and improves performance.
         """
         if len(self._message_backlog) >= self.config.message_backlog_size:
-            self.flush()
+            await self.flush()
 
-    @Metric.measure_time()
-    def flush(self):
+    # @Metric.measure_time()
+    async def flush(self):
         if not self._message_backlog:
             return
         logger.debug("Flushing %d documents to Opensearch", len(self._message_backlog))
-        self._bulk(self._search_context, self._message_backlog)
+        await self._bulk(self._search_context, self._message_backlog)
         self._message_backlog.clear()
 
-    def _bulk(self, client: search.OpenSearch, events: list[Event]) -> None:
-        """Bulk index documents into Opensearch.
-        Uses the parallel_bulk function from the opensearchpy library.
-
-        the error information is stored in a document with the following structure:
-
-        ```json
-        {
-            "op_type": {
-                "error": "error message",
-                "status": "status_code",
-                "exception": "exception message"
-                }
-            }
-        }
+    def _chunk_events_by_size(
+        self,
+        events: list["Event"],
+        *,
+        chunk_size: int,
+        max_chunk_bytes: int,
+    ) -> typing.Iterable[list["Event"]]:
         """
-        kwargs = {
-            "max_chunk_bytes": self.config.max_chunk_bytes,
-            "chunk_size": self.config.chunk_size,
-            "queue_size": self.config.queue_size,
-            "thread_count": self.config.thread_count,
-            "raise_on_error": False,
-            "raise_on_exception": False,
-        }
-        actions = (event.data for event in events)
-        for index, result in enumerate(helpers.parallel_bulk(client, actions, **kwargs)):  # type: ignore
-            success, item = result
-            if success:
-                events[index].state.next_state(success=True)
-                continue
-            op_type = item.get("_op_type", self.config.default_op_type)
-            error_info = item.get(op_type, {})
-            error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
-            event = events[index]
-            event.state.next_state(success=False)
-            event.errors.append(error)
+        Chunk events into batches respecting chunk_size and (best-effort) max_chunk_bytes.
 
-    def health(self) -> bool:
+        Note: max_chunk_bytes is approximate because we estimate bytes via json.dumps.
+        """
+        batch: list["Event"] = []
+        approx_bytes = 0
+
+        for ev in events:
+            # best-effort byte estimation
+            try:
+                approx_bytes += len(json.dumps(ev.data, ensure_ascii=False).encode("utf-8")) + 200
+            except Exception:
+                approx_bytes += 1000  # fallback guess
+
+            batch.append(ev)
+
+            if len(batch) >= chunk_size or approx_bytes >= max_chunk_bytes:
+                yield batch
+                batch = []
+                approx_bytes = 0
+
+        if batch:
+            yield batch
+
+    def _build_bulk_body(self, events: list["Event"], *, default_op_type: str) -> list[dict]:
+        """
+        Build bulk request body as a list of dicts (action/meta + source lines).
+        opensearch-py will serialize this into NDJSON.
+        """
+        body: list[dict] = []
+
+        for ev in events:
+            doc = ev.data
+            op_type = doc.get("_op_type", default_op_type)
+            index = doc.get("_index")
+
+            if not index:
+                # safety: fall back to whatever your pipeline expects
+                # (ideally _index is always set before bulk)
+                index = doc.get("_index")
+
+            if op_type not in ("index", "create"):
+                # keep it strict: your Config only allows create/index
+                op_type = default_op_type
+
+            # bulk action line
+            action_meta = {op_type: {"_index": index}}
+            # optionally pass _id if present
+            if "_id" in doc:
+                action_meta[op_type]["_id"] = doc["_id"]
+
+            body.append(action_meta)
+
+            # source line: must NOT include bulk meta keys
+            source = {k: v for k, v in doc.items() if k not in ("_index", "_op_type")}
+            body.append(source)
+
+        return body
+
+    async def _bulk(self, client: AsyncOpenSearch, events: list["Event"]) -> None:
+        """
+        Async bulk indexing.
+        Uses AsyncOpenSearch.bulk directly, and processes per-item results.
+
+        Behavior is intentionally close to your sync version:
+        - marks event.state success/failure
+        - appends BulkError for failures
+        """
+        default_op_type = self.config.default_op_type
+
+        for batch in self._chunk_events_by_size(
+            events,
+            chunk_size=self.config.chunk_size,
+            max_chunk_bytes=self.config.max_chunk_bytes,
+        ):
+            body = self._build_bulk_body(batch, default_op_type=default_op_type)
+
+            try:
+                resp = await client.bulk(body=body)
+            except OpenSearchException as e:
+                # whole bulk request failed → mark all events failed
+                for ev in batch:
+                    ev.state.next_state(success=False)
+                    ev.errors.append(BulkError("Bulk request failed", exception=str(e)))
+                continue
+
+            items = resp.get("items", [])
+            # One item per document (not per line). Our batch has N events, body has 2N lines.
+            # items length should match len(batch) if we're only doing index/create.
+            for i, item in enumerate(items):
+                if i >= len(batch):
+                    break
+
+                ev = batch[i]
+                # item shape: {"index": {...}} or {"create": {...}}
+                op_type = next(iter(item.keys()), default_op_type)
+                info = item.get(op_type, {}) if isinstance(item.get(op_type), dict) else {}
+
+                status = info.get("status")
+                error_obj = info.get("error")
+
+                ok = isinstance(status, int) and 200 <= status < 300 and not error_obj
+                if ok:
+                    ev.state.next_state(success=True)
+                    continue
+
+                # normalize error into your BulkError shape
+                # error_obj can be dict; keep it as "error" payload if present
+                if isinstance(error_obj, dict):
+                    message = error_obj.get("reason") or str(error_obj)
+                else:
+                    message = str(error_obj) if error_obj else "Failed to index document"
+
+                ev.state.next_state(success=False)
+                ev.errors.append(
+                    BulkError(
+                        message,
+                        status=str(status) if status is not None else None,
+                        exception=None,
+                        error=error_obj,  # keep original payload for debugging
+                    )
+                )
+
+    async def health(self) -> bool:  # type: ignore  # TODO: fix mypy issue
         """Check the health of the component."""
         try:
-            resp = self._search_context.cluster.health(
+            resp = await self._search_context.cluster.health(
                 params={"timeout": self.config.health_timeout}
             )
         except (OpenSearchException, ConnectionError) as error:

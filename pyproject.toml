@@ -51,7 +51,7 @@ dependencies = [
   "jsonref<2",
   "luqum<2",
   "numpy>=1.26.0,<3",
-  "opensearch-py>=3.2,<4", # [>=3.2]: #904
+  "opensearch-py[async]>=3.2,<4", # [>=3.2]: #904
   "prometheus_client<1",
   "pycryptodome<4",
   "pyparsing<4",

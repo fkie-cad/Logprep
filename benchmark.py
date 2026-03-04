@@ -611,6 +611,26 @@ def benchmark_run(
         opensearch_refresh(opensearch_url, processed_index)
 
         after = opensearch_count_processed(opensearch_url, processed_index)
+
+        def opensearch_debug_snapshot(opensearch_url: str) -> None:
+            # welche Indizes existieren überhaupt?
+            r = requests.get(f"{opensearch_url}/_cat/indices?v", timeout=10)
+            print("\n--- _cat/indices ---")
+            print(r.text)
+
+            # wie viele docs pro index? (sehr schnell, super aufschlussreich)
+            r = requests.get(f"{opensearch_url}/_cat/count?v", timeout=10)
+            print("\n--- _cat/count ---")
+            print(r.text)
+
+            # optional: aliases / data streams
+            r = requests.get(f"{opensearch_url}/_cat/aliases?v", timeout=10)
+            print("\n--- _cat/aliases ---")
+            print(r.text)
+
+        # im benchmark_run nach dem kill + refresh:
+        opensearch_debug_snapshot(opensearch_url)
+
         processed = max(0, after - baseline)
 
         return RunResult(
