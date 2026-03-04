@@ -1,5 +1,6 @@
 """abstract module for components"""
 
+import asyncio
 import functools
 import inspect
 import logging
@@ -77,7 +78,7 @@ class Component(ABC):
         """Labels for the metrics"""
         return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
 
-    def __init__(self, name: str, configuration: "Config", pipeline_index: int | None = None):
+    def __init__(self, name: str, configuration: Config, pipeline_index: int | None = None):
         self._config = configuration
         self.name = name
         self.pipeline_index = pipeline_index
@@ -104,6 +105,10 @@ class Component(ABC):
 
         """
         return f"{self.__class__.__name__} ({self.name})"
+
+    async def _asetup(self):
+        loop = asyncio.get_running_loop()
+        loop.run_in_executor(None, self.setup)
 
     def setup(self):
         """Set the component up."""
@@ -146,7 +151,7 @@ class Component(ABC):
         self._clear_scheduled_jobs()
         self._clear_properties()
 
-    def shut_down(self):
+    async def shut_down(self):
         """Stop processing of this component.
 
         Optional: Called when stopping the pipeline

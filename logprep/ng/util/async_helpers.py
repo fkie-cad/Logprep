@@ -2,10 +2,13 @@
 
 import asyncio
 from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Callable
-from typing import TypeVar
+from typing import Awaitable, TypeVar
 
 T = TypeVar("T")
 D = TypeVar("D")
+
+
+TaskFactory = Callable[[D], asyncio.Task[T] | Awaitable[asyncio.Task[T]]]
 
 
 class TerminateTaskGroup(Exception):
@@ -75,7 +78,7 @@ async def cancel_task_and_wait(task: asyncio.Task[T], timeout_s: float) -> None:
 
 async def restart_task_on_iter(
     source: AsyncIterator[D] | AsyncIterable[D],
-    task_factory: Callable[[D], asyncio.Task[T]],
+    task_factory: TaskFactory,
     cancel_timeout_s: float,
     inital_task: asyncio.Task[T] | None = None,
 ) -> AsyncGenerator[asyncio.Task[T], None]:
@@ -106,5 +109,5 @@ async def restart_task_on_iter(
     async for data in source:
         if task is not None:
             await cancel_task_and_wait(task, cancel_timeout_s)
-        task = task_factory(data)
+        task = await task_factory(data)
         yield task
