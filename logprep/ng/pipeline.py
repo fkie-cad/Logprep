@@ -3,6 +3,7 @@
 import logging
 
 from logprep.ng.abc.processor import Processor
+from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 
 logger = logging.getLogger("Pipeline")
@@ -12,15 +13,15 @@ def _process_event(event: LogEvent | None, processors: list[Processor]) -> LogEv
     """process all processors for one event"""
     if event is None or not event.data:
         raise ValueError("no event given")
-    event.state.next_state()
+    event.state.current_state = EventStateType.PROCESSING
     for processor in processors:
         if not event.data:
             break
         processor.process(event)
     if not event.errors:
-        event.state.next_state(success=True)
+        event.state.current_state = EventStateType.PROCESSED
     else:
-        event.state.next_state(success=False)
+        event.state.current_state = EventStateType.FAILED
         logger.error("event failed: %s with errors: %s", event, event.errors)
     return event
 
