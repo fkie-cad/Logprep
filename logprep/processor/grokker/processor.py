@@ -83,6 +83,7 @@ class Grokker(FieldManager):
 
     @property
     def rules(self):
+        """Returns all rules"""
         return typing.cast(list[GrokkerRule], super().rules)
 
     def _apply_rules(self, event: dict, rule: GrokkerRule):

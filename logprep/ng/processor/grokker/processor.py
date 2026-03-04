@@ -74,6 +74,7 @@ class Grokker(FieldManager):
 
     @property
     def rules(self) -> Sequence[GrokkerRule]:
+        """Returns all rules"""
         return typing.cast(Sequence[GrokkerRule], super().rules)
 
     def _apply_rules(self, event: dict, rule: Rule) -> None:
