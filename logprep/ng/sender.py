@@ -1,5 +1,6 @@
 """sender module"""
 
+import asyncio
 import logging
 import typing
 
@@ -32,62 +33,71 @@ class Sender:
         self._default_output = [output for output in outputs if output.default][0]
         self._error_output = error_output
 
-    def process(self, batch: list[LogEvent]) -> list[LogEvent]:
-        self._send_and_flush_processed_events(batch_events=batch)
+    async def process(self, batch: list[LogEvent]) -> list[LogEvent]:
+        await self._send_and_flush_processed_events(batch_events=batch)
         if self._error_output:
-            self._send_and_flush_failed_events(batch_events=batch)
+            await self._send_and_flush_failed_events(batch_events=batch)
         return batch
 
-    def _send_and_flush_failed_events(self, batch_events: list[LogEvent]) -> None:
-        error_events = [
-            self._send_failed(event)
+    async def _send_and_flush_failed_events(self, batch_events: list[LogEvent]) -> None:
+        failed = [
+            event
             for event in batch_events
             if event is not None and event.state == EventStateType.FAILED
         ]
-        if not error_events:
+        if not failed:
             return
 
-        self._error_output.flush()  # type: ignore[union-attr]
+        # send in parallel (minimal change vs. serial list comprehension)
+        error_events = await asyncio.gather(*(self._send_failed(event) for event in failed))
+
+        await self._error_output.flush()  # type: ignore[union-attr]
+
         failed_error_events = [
             event for event in error_events if event.state == EventStateType.FAILED
         ]
         for error_event in failed_error_events:
             logger.error("Error during sending to error output: %s", error_event)
 
-    def _send_and_flush_processed_events(self, batch_events: list[LogEvent]) -> None:
-        processed_events = [
-            self._send_processed(event)
+    async def _send_and_flush_processed_events(self, batch_events: list[LogEvent]) -> None:
+        processed = [
+            event
             for event in batch_events
             if event is not None and event.state == EventStateType.PROCESSED
         ]
-        if not processed_events:
+        if not processed:
             return
-        for output in self._outputs.values():
-            output.flush()
 
-    def _send_extra_data(self, event: LogEvent) -> None:
+        # send in parallel (minimal change vs. serial list comprehension)
+        await asyncio.gather(*(self._send_processed(event) for event in processed))
+
+        # flush once per output after sending
+        await asyncio.gather(*(output.flush() for output in self._outputs.values()))
+
+    async def _send_extra_data(self, event: LogEvent) -> None:
         extra_data_events = typing.cast(list[ExtraDataEvent], event.extra_data)
         for extra_data_event in extra_data_events:
             for output in extra_data_event.outputs:
                 for output_name, output_target in output.items():
                     if output_name in self._outputs:
-                        self._outputs[output_name].store_custom(extra_data_event, output_target)
+                        await self._outputs[output_name].store_custom(
+                            extra_data_event, output_target
+                        )
                     else:
                         raise ValueError(f"Output {output_name} not configured.")
 
-    def _send_processed(self, event: LogEvent) -> LogEvent:
+    async def _send_processed(self, event: LogEvent) -> LogEvent:
         if event.extra_data:
-            self._send_extra_data(event)
-        self._default_output.store(event)
+            await self._send_extra_data(event)
+        await self._default_output.store(event)
         return event
 
-    def _send_failed(self, event: LogEvent) -> ErrorEvent:
+    async def _send_failed(self, event: LogEvent) -> ErrorEvent:
         """Send the event to the error output.
         If event can't be sent, it will be logged as an error.
         """
-
         error_event = self._get_error_event(event)
-        self._error_output.store(error_event)  # type: ignore[union-attr]
+        await self._error_output.store(error_event)  # type: ignore[union-attr]
         return error_event
 
     def _get_error_event(self, event: LogEvent) -> ErrorEvent:
@@ -101,21 +111,19 @@ class Sender:
         )
         return ErrorEvent(log_event=event, reason=reason, state=EventStateType.PROCESSED)
 
-    def shut_down(self) -> None:
+    async def shut_down(self) -> None:
         """Shutdown all outputs gracefully."""
-
         for _, output in self._outputs.items():
-            output.shut_down()
+            await output.shut_down()
         if self._error_output:
-            self._error_output.shut_down()
+            await self._error_output.shut_down()
         logger.info("All outputs have been shut down.")
-
         logger.info("Sender has been shut down.")
 
-    def setup(self) -> None:
+    async def setup(self) -> None:
         """Setup all outputs."""
         for _, output in self._outputs.items():
-            output.setup()
+            await output._asetup()
         if self._error_output:
-            self._error_output.setup()
+            await self._error_output._asetup()
         logger.info("All outputs have been set up.")

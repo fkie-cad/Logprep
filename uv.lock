@@ -1347,7 +1347,7 @@ dependencies = [
     { name = "more-itertools" },
     { name = "msgspec" },
     { name = "numpy" },
-    { name = "opensearch-py" },
+    { name = "opensearch-py", extra = ["async"] },
     { name = "pandas" },
     { name = "prometheus-client" },
     { name = "protobuf" },
@@ -1428,7 +1428,7 @@ requires-dist = [
     { name = "nbsphinx", marker = "extra == 'doc'", specifier = ">=0.9" },
     { name = "numpy", specifier = ">=1.26.0,<3" },
     { name = "openpyxl", marker = "extra == 'doc'" },
-    { name = "opensearch-py", specifier = "<4" },
+    { name = "opensearch-py", extras = ["async"], specifier = "<4" },
     { name = "pandas", specifier = "<3" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "prometheus-client", specifier = "<1" },
@@ -2092,6 +2092,11 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/65/9f/d4969f7e8fa221bfebf254cc3056e7c743ce36ac9874e06110474f7c947d/opensearch_py-3.1.0.tar.gz", hash = "sha256:883573af13175ff102b61c80b77934a9e937bdcc40cda2b92051ad53336bc055", size = 258616, upload-time = "2025-11-20T16:37:36.777Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/08/a1/293c8ad81768ad625283d960685bde07c6302abf20a685e693b48ab6eb91/opensearch_py-3.1.0-py3-none-any.whl", hash = "sha256:e5af83d0454323e6ea9ddee8c0dcc185c0181054592d23cb701da46271a3b65b", size = 385729, upload-time = "2025-11-20T16:37:34.941Z" },
+]
+
+[package.optional-dependencies]
+async = [
+    { name = "aiohttp" },
 ]
 
 [[package]]

@@ -81,7 +81,7 @@ class Output(Connector):
         self.input_connector = None
 
     @abstractmethod
-    def store(self, event: Event) -> None:
+    async def store(self, event: Event) -> None:
         """Store the event in the output destination.
 
         Parameters
@@ -91,7 +91,7 @@ class Output(Connector):
         """
 
     @abstractmethod
-    def store_custom(self, event: Event, target: str) -> None:
+    async def store_custom(self, event: Event, target: str) -> None:
         """Store the event in the output destination.
 
         Parameters
@@ -103,7 +103,7 @@ class Output(Connector):
         """
 
     @abstractmethod
-    def flush(self):
+    async def flush(self):
         """Write the backlog to the output destination.
         Needs to be implemented in child classes to ensure
         that the backlog is written to the output destination.

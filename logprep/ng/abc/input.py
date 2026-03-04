@@ -455,7 +455,7 @@ class Input(Connector):
             if not isinstance(event, dict):
                 raise CriticalInputError(self, "not a dict", event)
 
-            # self.metrics.number_of_processed_events += 1
+            self.metrics.number_of_processed_events += 1
 
             try:
                 if self._add_full_event_to_target_field:
