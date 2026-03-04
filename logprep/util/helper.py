@@ -465,16 +465,19 @@ def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
     char_buffer = []
     itr = iter(dotted_field)
     for c in itr:
-        if c == "\\":
-            try:
-                char_buffer.append(next(itr))
-            except StopIteration:
-                char_buffer.append("\\")
-        elif c == ".":
-            result.append("".join(char_buffer))
-            char_buffer = []
-        else:
-            char_buffer.append(c)
+        match (c):
+            case _ if not c in ("\\", "."):
+                # most often encountered case first
+                char_buffer.append(c)
+            case ".":
+                result.append("".join(char_buffer))
+                char_buffer = []
+            case "\\":
+                try:
+                    char_buffer.append(next(itr))
+                except StopIteration:
+                    char_buffer.append("\\")
+
     result.append("".join(char_buffer))
     return result
 
