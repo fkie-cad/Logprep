@@ -31,20 +31,20 @@ class TestRequester(BaseProcessorTestCase):
     }
 
     @responses.activate
-    @pytest.mark.parametrize("testcase, rule, event, expected, response_kwargs", test_cases)
-    def test_testcases(self, testcase, rule, event, expected, response_kwargs):
+    @pytest.mark.parametrize("rule, event, expected, response_kwargs", test_cases)
+    def test_testcases(self, rule, event, expected, response_kwargs):
         responses.add(responses.Response(**response_kwargs))
         self._load_rule(rule)
         event = LogEvent(event, original=b"")
         self.object.process(event)
-        assert event.data == expected, testcase
+        assert event.data == expected
 
     @responses.activate
     @pytest.mark.parametrize(
-        "testcase, rule, event, expected, response_kwargs, error_message", failure_test_cases
+        "rule, event, expected, response_kwargs, error_message", failure_test_cases
     )
     def test_requester_testcases_failure_handling(
-        self, testcase, rule, event, expected, response_kwargs, error_message
+        self, rule, event, expected, response_kwargs, error_message
     ):
         if response_kwargs:
             responses.add(responses.Response(**response_kwargs))
@@ -53,4 +53,4 @@ class TestRequester(BaseProcessorTestCase):
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(error_message, str(result.warnings[0]))
-        assert event.data == expected, testcase
+        assert event.data == expected

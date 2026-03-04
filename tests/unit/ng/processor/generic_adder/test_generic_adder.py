@@ -37,25 +37,21 @@ class TestGenericAdder(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/generic_adder/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_generic_adder_testcases(
-        self, testcase, rule, event, expected
-    ):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize("rule, event, expected", test_cases)
+    def test_generic_adder_testcases(self, rule, event, expected):
         self._load_rule(rule)
         log_event = LogEvent(event, original=b"")
         self.object.process(log_event)
         assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_generic_adder_testcases_failure_handling(
-        self, testcase, rule, event, expected, error_message
-    ):
+    @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
+    def test_generic_adder_testcases_failure_handling(self, rule, event, expected, error_message):
         self._load_rule(rule)
         log_event = LogEvent(event, original=b"")
         result = self.object.process(log_event)
         assert len(result.warnings) == 1
         assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))
-        assert event == expected, testcase
+        assert event == expected
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
         with pytest.raises(InvalidRuleDefinitionError, match=r"files do not exist"):

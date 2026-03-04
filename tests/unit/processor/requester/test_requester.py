@@ -9,29 +9,28 @@ from responses import matchers
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [
-    (
-        "simple request",
+    pytest.param(
         {"filter": "message", "requester": {"url": "http://mock-mock", "method": "GET"}},
         {"message": "the message"},
         {"message": "the message"},
         {"method": "GET", "url": "http://mock-mock", "status": 200},
+        id="simple request",
     ),
-    (
-        "request with url from field",
+    pytest.param(
         {"filter": "message", "requester": {"url": "${url}", "method": "GET"}},
         {"message": "the message", "url": "http://mock-mock"},
         {"message": "the message", "url": "http://mock-mock"},
         {"method": "GET", "url": "http://mock-mock", "status": 200},
+        id="request with url from field",
     ),
-    (
-        "request with url from different fields",
+    pytest.param(
         {"filter": "message", "requester": {"url": "${url}/${file}", "method": "GET"}},
         {"message": "the message", "url": "http://mock-mock", "file": "file.yml"},
         {"message": "the message", "url": "http://mock-mock", "file": "file.yml"},
         {"method": "GET", "url": "http://mock-mock/file.yml", "status": 200},
+        id="request with url from different fields",
     ),
-    (
-        "request with url from different escaped fields",
+    pytest.param(
         {
             "filter": "message",
             "requester": {"url": "${m\\\\y\\.url}/${my\\.file}", "method": "GET"},
@@ -39,9 +38,9 @@ test_cases = [
         {"message": "the message", "m\\y.url": "http://mock-mock", "my.file": "file.yml"},
         {"message": "the message", "m\\y.url": "http://mock-mock", "my.file": "file.yml"},
         {"method": "GET", "url": "http://mock-mock/file.yml", "status": 200},
+        id="request with url from different escaped fields",
     ),
-    (
-        "post request with json",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -53,9 +52,9 @@ test_cases = [
         {"message": "the message", "url": "http://mock-mock"},
         {"message": "the message", "url": "http://mock-mock"},
         {"method": "POST", "url": "http://mock-mock/", "status": 200},
+        id="post request with json",
     ),
-    (
-        "post request with json from fields",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -72,9 +71,9 @@ test_cases = [
             "match": [matchers.json_params_matcher({"the": "the message"})],
             "status": 200,
         },
+        id="post request with json from fields",
     ),
-    (
-        "post request with complex json and url from dotted fields",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -92,9 +91,9 @@ test_cases = [
             "content_type": "application/json",
             "status": 200,
         },
+        id="post request with complex json and url from dotted fields",
     ),
-    (
-        "post request with complex json and url from escaped dotted fields",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -112,9 +111,9 @@ test_cases = [
             "content_type": "application/json",
             "status": 200,
         },
+        id="post request with complex json and url from escaped dotted fields",
     ),
-    (
-        "get request with auth from kwargs",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -130,9 +129,9 @@ test_cases = [
             "url": "http://mock-mock/",
             "status": 200,
         },
+        id="get request with auth from kwargs",
     ),
-    (
-        "post request with templated data",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -148,9 +147,9 @@ test_cases = [
             "url": "http://mock-mock/",
             "status": 200,
         },
+        id="post request with templated data",
     ),
-    (
-        "parses json result to target field",
+    pytest.param(
         {
             "filter": "message",
             "requester": {"url": "http://mock-mock/", "method": "GET", "target_field": "result"},
@@ -164,9 +163,9 @@ test_cases = [
             "content_type": "application/json",
             "status": 200,
         },
+        id="parses json result to target field",
     ),
-    (
-        "parses text result to target field",
+    pytest.param(
         {
             "filter": "message",
             "requester": {"url": "http://mock-mock/", "method": "GET", "target_field": "result"},
@@ -180,9 +179,9 @@ test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        id="parses text result to target field",
     ),
-    (
-        "parses json result with simple target field mapping",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -200,9 +199,9 @@ test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        id="parses json result with simple target field mapping",
     ),
-    (
-        "use target_field and target_field_mapping at the same time, with error in target_field",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -221,9 +220,9 @@ test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        id="use target_field and target_field_mapping at the same time, with error in target_field",
     ),
-    (
-        "parses json result with simple target field mapping and overwrite target",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -242,9 +241,9 @@ test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        id="parses json result with simple target field mapping and overwrite target",
     ),
-    (
-        "parses json list result with simple target field mapping and overwrite target",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -263,9 +262,9 @@ test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        id="parses json list result with simple target field mapping and overwrite target",
     ),
-    (
-        "parses text result to preexisting target field",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -284,9 +283,9 @@ test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        id="parses text result to preexisting target field",
     ),
-    (
-        "deletes source fields",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -306,9 +305,9 @@ test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        id="deletes source fields",
     ),
-    (
-        "merge response with existing dict",
+    pytest.param(
         {
             "filter": "data",
             "requester": {
@@ -328,12 +327,12 @@ test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        id="merge response with existing dict",
     ),
-]  # testcase, rule, event, expected, response
+]
 
 failure_test_cases = [
-    (
-        "handles HTTPError",
+    pytest.param(
         {"filter": "message", "requester": {"url": "http://failure_mock", "method": "GET"}},
         {"message": "the message"},
         {"message": "the message", "tags": ["_requester_failure"]},
@@ -345,9 +344,9 @@ failure_test_cases = [
             "status": 404,
         },
         ".*ProcessingWarning.*",
+        id="handles HTTPError",
     ),
-    (
-        "timout error",
+    pytest.param(
         {
             "filter": "message",
             "requester": {"url": "http://failure_mock", "method": "GET", "timeout": 0.2},
@@ -362,9 +361,9 @@ failure_test_cases = [
             "status": 200,
         },
         ".*ProcessingWarning.*",
+        id="timout error",
     ),
-    (
-        "does not overwrite if not permitted",
+    pytest.param(
         {
             "filter": "message",
             "requester": {
@@ -383,9 +382,9 @@ failure_test_cases = [
             "status": 200,
         },
         ".*FieldExistsWarning.*",
+        id="does not overwrite if not permitted",
     ),
-    (
-        "errors on missing fields",
+    pytest.param(
         {
             "filter": "message",
             "requester": {"url": "http://${missingfield}", "method": "GET"},
@@ -394,6 +393,7 @@ failure_test_cases = [
         {"message": "the message", "tags": ["_requester_missing_field_warning"]},
         {},
         ".*ProcessingWarning.*",
+        id="errors on missing fields",
     ),
 ]  # testcase, rule, event, expected, mock, error_message
 
@@ -405,19 +405,19 @@ class TestRequester(BaseProcessorTestCase):
     }
 
     @responses.activate
-    @pytest.mark.parametrize("testcase, rule, event, expected, response_kwargs", test_cases)
-    def test_testcases(self, testcase, rule, event, expected, response_kwargs):
+    @pytest.mark.parametrize("rule, event, expected, response_kwargs", test_cases)
+    def test_testcases(self, rule, event, expected, response_kwargs):
         responses.add(responses.Response(**response_kwargs))
         self._load_rule(rule)
         self.object.process(event)
-        assert event == expected, testcase
+        assert event == expected
 
     @responses.activate
     @pytest.mark.parametrize(
-        "testcase, rule, event, expected, response_kwargs, error_message", failure_test_cases
+        "rule, event, expected, response_kwargs, error_message", failure_test_cases
     )
     def test_requester_testcases_failure_handling(
-        self, testcase, rule, event, expected, response_kwargs, error_message
+        self, rule, event, expected, response_kwargs, error_message
     ):
         if response_kwargs:
             responses.add(responses.Response(**response_kwargs))
@@ -425,4 +425,4 @@ class TestRequester(BaseProcessorTestCase):
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(error_message, str(result.warnings[0]))
-        assert event == expected, testcase
+        assert event == expected

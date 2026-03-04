@@ -5,9 +5,8 @@ import pytest
 from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [  # testcase, rule, event, expected
-    (
-        "writes new fields with same separator",
+test_cases = [
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} %{field2} %{field3} %{field4}"}},
@@ -20,9 +19,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": "message",
         },
+        id="writes new fields with same separator",
     ),
-    (
-        "writes new fields with different separator",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} %{field2}:%{field3} %{field4}"}},
@@ -35,9 +34,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": "message",
         },
+        id="writes new fields with different separator",
     ),
-    (
-        "writes new fields with long separator",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} is %{field3} %{field4}"}},
@@ -49,9 +48,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": "message",
         },
+        id="writes new fields with long separator",
     ),
-    (
-        "writes new fields and appends to existing list",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
@@ -63,9 +62,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": ["preexisting", "message"],
         },
+        id="writes new fields and appends to existing list",
     ),
-    (
-        "writes new fields and appends to existing empty list",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
@@ -77,9 +76,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": ["message"],
         },
+        id="writes new fields and appends to existing empty list",
     ),
-    (
-        "writes new fields and appends to existing string",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+( )field4}"}},
@@ -91,9 +90,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": "preexisting message",
         },
+        id="writes new fields and appends to existing string",
     ),
-    (
-        "writes new dotted fields",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -108,9 +107,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": "preexistingmessage",
         },
+        id="writes new dotted fields",
     ),
-    (
-        "overwrites dotted fields",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -129,9 +128,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": "preexisting message",
         },
+        id="overwrites dotted fields",
     ),
-    (
-        "appends to dotted fields preexisting string",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -150,9 +149,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": "preexisting message",
         },
+        id="appends to dotted fields preexisting string",
     ),
-    (
-        "appends to dotted fields preexisting list",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -171,9 +170,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "a",
             "field4": "preexisting message",
         },
+        id="appends to dotted fields preexisting list",
     ),
-    (
-        "processes dotted source field",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -188,9 +187,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "the",
             "field4": "message",
         },
+        id="processes dotted source field",
     ),
-    (
-        "processes multiple mappings to different target fields",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -214,9 +213,9 @@ test_cases = [  # testcase, rule, event, expected
                 "source2": {"key1": "This", "key2": "is", "key3": "source2"},
             },
         },
+        id="processes multiple mappings to different target fields",
     ),
-    (
-        "processes multiple mappings to same target fields (overwrite)",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -237,9 +236,9 @@ test_cases = [  # testcase, rule, event, expected
             "source2": "This is source2",
             "extracted": {"key1": "This", "key2": "is", "key3": "source2"},
         },
+        id="processes multiple mappings to same target fields (overwrite)",
     ),
-    (
-        "processes multiple mappings to same target fields (appending)",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -260,9 +259,9 @@ test_cases = [  # testcase, rule, event, expected
             "source2": "This is source2",
             "extracted": {"key1": "This This", "key2": "is is", "key3": "source1 source2"},
         },
+        id="processes multiple mappings to same target fields (appending)",
     ),
-    (
-        "append to new field in different order as string",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -273,9 +272,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is the message"},
         {"message": "This is the message", "extracted": "message the is This"},
+        id="append to new field in different order as string",
     ),
-    (
-        "append to existing field in different order as string",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -286,9 +285,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is the message", "extracted": "preexisting"},
         {"message": "This is the message", "extracted": "preexisting message the is This"},
+        id="append to existing field in different order as string",
     ),
-    (
-        "append to existing empty list field in different order as list",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -299,9 +298,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is the message", "extracted": []},
         {"message": "This is the message", "extracted": ["message", "the", "is", "This"]},
+        id="append to existing empty list field in different order as list",
     ),
-    (
-        "append to existing prefilled field in different order as list",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -315,9 +314,9 @@ test_cases = [  # testcase, rule, event, expected
             "message": "This is the message",
             "extracted": ["preexisting", "message", "the", "is", "This"],
         },
+        id="append to existing prefilled field in different order as list",
     ),
-    (
-        "append to new field in specified order as string with multiple fields",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -333,15 +332,15 @@ test_cases = [  # testcase, rule, event, expected
             "message2": "The second message: second",
             "extracted": "second first",
         },
+        id="append to new field in specified order as string with multiple fields",
     ),
-    (
-        "converts datatype without mapping",
+    pytest.param(
         {"filter": "message", "dissector": {"convert_datatype": {"message": "int"}}},
         {"message": "42"},
         {"message": 42},
+        id="converts datatype without mapping",
     ),
-    (
-        "converts datatype with mapping in dotted field notation",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -359,24 +358,24 @@ test_cases = [  # testcase, rule, event, expected
             "message": "This message has a float of 1.23 and a int of 1337",
             "extracted": {"message_float": 1.23, "message_int": 1337},
         },
+        id="converts datatype with mapping in dotted field notation",
     ),
-    (
-        "indirect field notation: uses captured field as key",
+    pytest.param(
         {"filter": "message", "dissector": {"mapping": {"message": "%{?key} %{&key}"}}},
         {"message": "This is the message"},
         {"message": "This is the message", "This": "is the message"},
+        id="indirect field notation: uses captured field as key",
     ),
-    (
-        "indirect field notation: uses captured field as key and appends to it",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{?key} %{&key} %{} %{+( )&key}"}},
         },
         {"message": "This is the message"},
         {"message": "This is the message", "This": "is message"},
+        id="indirect field notation: uses captured field as key and appends to it",
     ),
-    (
-        "handles special chars as captured content",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} %{field2} %{field3} %{+field4}"}},
@@ -389,9 +388,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "\\a",
             "field4": "+ mess}age",
         },
+        id="handles special chars as captured content",
     ),
-    (
-        "handles escaping of dotted notation in captured content and target field names",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -409,9 +408,9 @@ test_cases = [  # testcase, rule, event, expected
             "field.4": "/4",
             "field\\5": "/5",
         },
+        id="handles escaping of dotted notation in captured content and target field names",
     ),
-    (
-        "deletes source fields",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -433,9 +432,9 @@ test_cases = [  # testcase, rule, event, expected
             "field23": "a",
             "field24": "message",
         },
+        id="deletes source fields",
     ),
-    (
-        "parses path elements",
+    pytest.param(
         {
             "filter": "path",
             "dissector": {
@@ -452,9 +451,9 @@ test_cases = [  # testcase, rule, event, expected
             "field3": "the",
             "field4": "path",
         },
+        id="parses path elements",
     ),
-    (
-        "Appending without separator",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "INFO#%{date}#%{+date}#MOREINFO%{}"}},
@@ -466,9 +465,9 @@ test_cases = [  # testcase, rule, event, expected
             "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
             "date": "2022 12 06 15:12:30:534+0100",
         },
+        id="Appending without separator",
     ),
-    (
-        "Appending with special field separator",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": r"INFO#%{+(\()date}#%{+(\))date}#MOREINFO%{}"}},
@@ -480,15 +479,15 @@ test_cases = [  # testcase, rule, event, expected
             "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
             "date": "(2022 12 06 15:12:30:534)+0100",
         },
+        id="Appending with special field separator",
     ),
-    (
-        "Dissection with delimiter ending",
+    pytest.param(
         {"filter": "message", "dissector": {"mapping": {"message": "this is %{target}."}}},
         {"message": "this is the message."},
         {"message": "this is the message.", "target": "the message"},
+        id="Dissection with delimiter ending",
     ),
-    (
-        "Convert datatype via dissect pattern",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -497,9 +496,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "this is 42 message and this is 0"},
         {"message": "this is 42 message and this is 0", "field1": 42, "field2": False},
+        id="Convert datatype via dissect pattern",
     ),
-    (
-        "Strip char after dissecting",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "[%{time-( )}] - %{ip}"}},
@@ -510,9 +509,9 @@ test_cases = [  # testcase, rule, event, expected
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
+        id="Strip char after dissecting",
     ),
-    (
-        "Strip special char after dissecting",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "[%{time-(#)}] - %{ip}"}},
@@ -523,9 +522,9 @@ test_cases = [  # testcase, rule, event, expected
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
+        id="Strip special char after dissecting",
     ),
-    (
-        "Strip another special char after dissecting",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "[%{time-(?)}] - %{ip}"}},
@@ -536,9 +535,9 @@ test_cases = [  # testcase, rule, event, expected
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
+        id="Strip another special char after dissecting",
     ),
-    (
-        "Strip char on both sides",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "[%{time-(*)}] - %{ip}"}},
@@ -549,9 +548,9 @@ test_cases = [  # testcase, rule, event, expected
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
+        id="Strip char on both sides",
     ),
-    (
-        "Strip char while appending",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "[%{time} %{+( )time} %{+( )time-(*)}] - %{ip}"}},
@@ -562,9 +561,9 @@ test_cases = [  # testcase, rule, event, expected
             "time": "2022-11-04 10:00:00 AM",
             "ip": "127.0.0.1",
         },
+        id="Strip char while appending",
     ),
-    (
-        "Strip char while changing position",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -577,18 +576,18 @@ test_cases = [  # testcase, rule, event, expected
             "time": "2022-11-04 AM 10:00:00",
             "ip": "127.0.0.1",
         },
+        id="Strip char while changing position",
     ),
-    (
-        "Strip char in indirect field notation",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{?key} %{&key-(#)} %{} %{+( )&key-(#)}"}},
         },
         {"message": "This is## the message####"},
         {"message": "This is## the message####", "This": "is message"},
+        id="Strip char in indirect field notation",
     ),
-    (
-        "Strip char while inferring datatype",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -599,9 +598,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "this is 42#### message and this is 0##"},
         {"message": "this is 42#### message and this is 0##", "field1": 42, "field2": False},
+        id="Strip char while inferring datatype",
     ),
-    (
-        "extract end of string",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "system_%{type}"}},
@@ -611,9 +610,9 @@ test_cases = [  # testcase, rule, event, expected
             "message": "system_monitor",
             "type": "monitor",
         },
+        id="extract end of string",
     ),
-    (
-        "copy field - dissect without separator",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{sys_type}"}},
@@ -623,9 +622,9 @@ test_cases = [  # testcase, rule, event, expected
             "message": "system_monitor",
             "sys_type": "system_monitor",
         },
+        id="copy field - dissect without separator",
     ),
-    (
-        "ignore missing fields",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -641,9 +640,9 @@ test_cases = [  # testcase, rule, event, expected
             "message": "system_monitor",
             "sys_type": "system_monitor",
         },
+        id="ignore missing fields",
     ),
-    (
-        "handle curly braces in message simple case",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -659,9 +658,9 @@ test_cases = [  # testcase, rule, event, expected
             },
             "message": "proxy{addr=10.99.172.10:4191}",
         },
+        id="handle curly braces in message simple case",
     ),
-    (
-        "handle curly braces in message full case",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -686,11 +685,11 @@ test_cases = [  # testcase, rule, event, expected
                 "address": "192.8.177.98:4191",
             },
         },
+        id="handle curly braces in message full case",
     ),
 ]
-failure_test_cases = [  # testcase, rule, event, expected
-    (
-        "Tags failure if convert is not possible",
+failure_test_cases = [
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -704,9 +703,9 @@ failure_test_cases = [  # testcase, rule, event, expected
             "message": "I can't be converted into int",
             "tags": ["_dissector_failure"],
         },
+        id="Tags failure if convert is not possible",
     ),
-    (
-        "Tags failure if convert is not possible and extends tags list",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -720,9 +719,9 @@ failure_test_cases = [  # testcase, rule, event, expected
             "message": "I can't be converted into int",
             "tags": ["_dissector_failure", "preexisting"],
         },
+        id="Tags failure if convert is not possible and extends tags list",
     ),
-    (
-        "Tags custom failure if convert is not possible",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -737,9 +736,9 @@ failure_test_cases = [  # testcase, rule, event, expected
             "message": "I can't be converted into int",
             "tags": ["custom_tag_1", "custom_tag_2"],
         },
+        id="Tags custom failure if convert is not possible",
     ),
-    (
-        "Tags custom failure if convert is not possible and extends tag list",
+    pytest.param(
         {
             "filter": "message",
             "dissector": {
@@ -754,18 +753,19 @@ failure_test_cases = [  # testcase, rule, event, expected
             "message": "I can't be converted into int",
             "tags": ["custom_tag_1", "custom_tag_2", "preexisting1", "preexisting2"],
         },
+        id="Tags custom failure if convert is not possible and extends tag list",
     ),
-    (
-        "Tags failure if mapping field does not exist",
+    pytest.param(
         {"filter": "message", "dissector": {"mapping": {"doesnotexist": "%{} %{}"}}},
         {"message": "This is the message which does not matter"},
         {"message": "This is the message which does not matter", "tags": ["_dissector_failure"]},
+        id="Tags failure if mapping field does not exist",
     ),
-    (
-        "indirect field notation in wrong order",
+    pytest.param(
         {"filter": "message", "dissector": {"mapping": {"message": "%{&key} %{?key}"}}},
         {"message": "This is the message"},
         {"message": "This is the message", "tags": ["_dissector_failure"]},
+        id="indirect field notation in wrong order",
     ),
 ]
 
@@ -776,16 +776,16 @@ class TestDissector(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/dissector/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize("rule, event, expected", test_cases)
+    def test_testcases(self, rule, event, expected):
         self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize("rule, event, expected", failure_test_cases)
+    def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert event == expected, testcase
+        assert event == expected

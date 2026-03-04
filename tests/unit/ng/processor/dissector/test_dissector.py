@@ -24,18 +24,18 @@ class TestDissector(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/dissector/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize("rule, event, expected", test_cases)
+    def test_testcases(self, rule, event, expected):
         self._load_rule(rule)
         log_event = LogEvent(event, original=b"test_message")
         self.object.process(log_event)
         assert log_event.data == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize("rule, event, expected", failure_test_cases)
+    def test_testcases_failure_handling(self, rule, event, expected):
         self._load_rule(rule)
         log_event = LogEvent(event, original=b"test_message")
         result = self.object.process(log_event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], ProcessingWarning)
-        assert log_event.data == expected, testcase
+        assert log_event.data == expected

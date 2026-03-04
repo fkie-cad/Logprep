@@ -16,8 +16,7 @@ RULES_DIR_INVALID = "tests/testdata/unit/generic_adder/rules_invalid"
 RULES_DIR_FIRST_EXISTING = "tests/testdata/unit/generic_adder/rules_first_existing"
 
 test_cases = [  # testcase, rule, event, expected
-    (
-        "Add from file",
+    pytest.param(
         {
             "filter": "add_list_generic_test",
             "generic_adder": {
@@ -32,9 +31,9 @@ test_cases = [  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        id="Add from file",
     ),
-    (
-        "Add from file in list",
+    pytest.param(
         {
             "filter": "add_lists_one_generic_test",
             "generic_adder": {
@@ -49,9 +48,9 @@ test_cases = [  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        id="Add from file in list",
     ),
-    (
-        "Add from two files",
+    pytest.param(
         {
             "filter": "add_lists_two_generic_test",
             "generic_adder": {
@@ -70,9 +69,9 @@ test_cases = [  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        id="Add from two files",
     ),
-    (
-        "Add from two files using only first existing file",
+    pytest.param(
         {
             "filter": "add_first_existing_generic_test",
             "generic_adder": {
@@ -91,9 +90,9 @@ test_cases = [  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        id="Add from two files using only first existing file",
     ),
-    (
-        "Add from two files using only first existing file, but first file doesn't exist",
+    pytest.param(
         {
             "filter": "add_first_existing_with_missing_generic_test",
             "generic_adder": {
@@ -115,9 +114,9 @@ test_cases = [  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        id="Add from two files using only first existing file, but first file doesn't exist",
     ),
-    (
-        "Add from rule definition",
+    pytest.param(
         {
             "filter": "add_generic_test",
             "generic_adder": {
@@ -137,9 +136,9 @@ test_cases = [  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        id="Add from rule definition",
     ),
-    (
-        "Add to existing dict without conflict",
+    pytest.param(
         {
             "filter": "add_generic_test",
             "generic_adder": {
@@ -163,9 +162,9 @@ test_cases = [  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}, "i_exist": "already"},
         },
+        id="Add to existing dict without conflict",
     ),
-    (
-        "Add to existing with setting overwrite",
+    pytest.param(
         {
             "filter": "add_generic_test",
             "generic_adder": {
@@ -189,9 +188,9 @@ test_cases = [  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        id="Add to existing with setting overwrite",
     ),
-    (
-        "Extend list field with 'merge_with_target' enabled",
+    pytest.param(
         {
             "filter": "extend_generic_test",
             "generic_adder": {
@@ -211,9 +210,9 @@ test_cases = [  # testcase, rule, event, expected
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         },
+        id="Extend list field with 'merge_with_target' enabled",
     ),
-    (
-        "Extend list field with 'merge_with_target' enabled",
+    pytest.param(
         {
             "filter": "*",
             "generic_adder": {
@@ -224,42 +223,42 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"extend_generic_test": "Test"},
         {"extend_generic_test": "Test", "some_added_field": ["some value"]},
+        id="Extend list field with 'merge_with_target' enabled",
     ),
-    (
-        "Add bool value",
+    pytest.param(
         {
             "filter": "*",
             "generic_adder": {"add": {"bool_field": True}},
         },
         {"bool_value_test": "Test"},
         {"bool_value_test": "Test", "bool_field": True},
+        id="Add bool value",
     ),
-    (
-        "Add string value",
+    pytest.param(
         {
             "filter": "*",
             "generic_adder": {"add": {"string_field": "123"}},
         },
         {"string_value_test": "Test"},
         {"string_value_test": "Test", "string_field": "123"},
+        id="Add string value",
     ),
-    (
-        "Add integer value",
+    pytest.param(
         {
             "filter": "*",
             "generic_adder": {"add": {"integer_field": 123}},
         },
         {"integer_value_test": "Test"},
         {"integer_value_test": "Test", "integer_field": 123},
+        id="Add integer value",
     ),
-    (
-        "Add float value",
+    pytest.param(
         {"filter": "*", "generic_adder": {"add": {"float_field": 12.3}}},
         {"float_value_test": "Test"},
         {"float_value_test": "Test", "float_field": 12.3},
+        id="Add float value",
     ),
-    (
-        "Add from file with escaping",
+    pytest.param(
         {
             "filter": "add_list_generic_test",
             "generic_adder": {
@@ -276,9 +275,9 @@ test_cases = [  # testcase, rule, event, expected
             "nested": {"comp\\lex.field": 1337},
             "\\u\\0\\1\\x\\y": 1338,
         },
+        id="Add from file with escaping",
     ),
-    (
-        "Add from rule definition with escaping",
+    pytest.param(
         {
             "filter": "\\\\u\\\\0\\\\1\\\\x\\\\z",  # pylint: disable=anomalous-backslash-in-string
             "generic_adder": {
@@ -305,12 +304,12 @@ test_cases = [  # testcase, rule, event, expected
             "\\u\\0\\1\\x\y": 1338,  # pylint: disable=anomalous-backslash-in-string
             "\\u\\0\\1\\x\z": "whatever",  # pylint: disable=anomalous-backslash-in-string
         },
+        id="Add from rule definition with escaping",
     ),
 ]
 
-failure_test_cases = [  # testcase, rule, event, expected, error_message
-    (
-        "Add to existing value with 'overwrite_target' disabled",
+failure_test_cases = [
+    pytest.param(
         {
             "filter": "add_generic_test",
             "generic_adder": {
@@ -336,9 +335,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_generic_adder_failure"],
         },
         r"subfields existed and could not be extended: some_added_field",
+        id="Add to existing value with 'overwrite_target' disabled",
     ),
-    (
-        "Extend list field with 'merge_with_target' disabled",
+    pytest.param(
         {
             "filter": "extend_generic_test",
             "generic_adder": {
@@ -360,9 +359,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_generic_adder_failure"],
         },
         r"subfields existed and could not be extended: some_added_field",
+        id="Extend list field with 'merge_with_target' disabled",
     ),
-    (
-        "Extend list field with 'merge_with_target' enabled, but non-list target",
+    pytest.param(
         {
             "filter": "extend_generic_test",
             "generic_adder": {
@@ -384,6 +383,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_generic_adder_failure"],
         },
         r"subfields existed and could not be extended: some_added_field",
+        id="Extend list field with 'merge_with_target' enabled, but non-list target",
     ),
 ]
 
@@ -395,23 +395,19 @@ class TestGenericAdder(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/generic_adder/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_generic_adder_testcases(
-        self, testcase, rule, event, expected
-    ):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize("rule, event, expected", test_cases)
+    def test_generic_adder_testcases(self, rule, event, expected):
         self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_generic_adder_testcases_failure_handling(
-        self, testcase, rule, event, expected, error_message
-    ):
+    @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
+    def test_generic_adder_testcases_failure_handling(self, rule, event, expected, error_message):
         self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(rf".*FieldExistsWarning.*{error_message}", str(result.warnings[0]))
-        assert event == expected, testcase
+        assert event == expected
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
         with pytest.raises(InvalidRuleDefinitionError, match=r"files do not exist"):
