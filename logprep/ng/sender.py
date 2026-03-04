@@ -68,11 +68,34 @@ class Sender:
         if not processed:
             return
 
-        # send in parallel (minimal change vs. serial list comprehension)
-        await asyncio.gather(*(self._send_processed(event) for event in processed))
+        # send in parallel
+        try:
+            results = await asyncio.gather(
+                *(self._send_processed(event) for event in processed),
+                return_exceptions=True,
+            )
+            for r in results:
+                if isinstance(r, Exception):
+                    logger.exception("Error while sending processed event", exc_info=r)
+
+        finally:
+            for output in self._outputs.values():
+                try:
+                    await output.flush()
+                except Exception as e:
+                    logger.exception("Error while flushing output %s", output.name, exc_info=e)
 
         # flush once per output after sending
-        await asyncio.gather(*(output.flush() for output in self._outputs.values()))
+        try:
+            results = await asyncio.gather(
+                *(output.flush() for output in self._outputs.values()),
+                return_exceptions=True,
+            )
+            for r in results:
+                if isinstance(r, Exception):
+                    logger.exception("Error during final output flush", exc_info=r)
+        except Exception as e:
+            logger.exception("Unexpected error during final output flush", exc_info=e)
 
     async def _send_extra_data(self, event: LogEvent) -> None:
         extra_data_events = typing.cast(list[ExtraDataEvent], event.extra_data)
