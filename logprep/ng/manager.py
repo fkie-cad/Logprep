@@ -70,7 +70,7 @@ class PipelineManager:
             logger.warning("No error output configured.")
 
         self._sender = Sender(outputs=output_connectors, error_output=error_output)
-        self._sender.setup()
+        await self._sender.setup()
 
         self._orchestrator = self._create_orchestrator()
 
@@ -96,7 +96,7 @@ class PipelineManager:
         )
 
         async def send(batch: list[LogEvent]) -> list[LogEvent]:
-            return self._sender.process(batch)
+            return await self._sender.process(batch)
 
         output_worker: Worker[LogEvent, LogEvent] = Worker(
             name="output_worker",
