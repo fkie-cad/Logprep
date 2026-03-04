@@ -1,12 +1,14 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 import re
+import typing
 from unittest import mock
 
 import pytest
 
 from logprep.util.configuration import Configuration
 from logprep.util.helper import (
+    FieldValue,
     Missing,
     Skip,
     camel_to_snake,
@@ -14,6 +16,7 @@ from logprep.util.helper import (
     get_dotted_field_value,
     get_versions_string,
     pop_dotted_field_value,
+    reduce_field_value,
     snake_to_camel,
 )
 from logprep.util.json_handling import is_json
@@ -318,3 +321,67 @@ class TestGetVersionString:
 
         result = get_versions_string(None)
         assert re.search(expected_pattern, result)
+
+
+class TestReduceFieldValue:
+
+    @staticmethod
+    def collect_node_type_or_leaf_value(
+        v: FieldValue, values: list[FieldValue | type[list] | type[dict]]
+    ) -> list[FieldValue | type[list] | type[dict]]:
+        if isinstance(v, (list, dict)):
+            values.append(type(v))
+        else:
+            values.append(v)
+        return values
+
+    def test_reduce_complex_value(self):
+        value = [
+            {
+                "str": "value",
+                "int": 42,
+                "float": 13.37,
+                "bool_t": True,
+                "bool_f": False,
+                "none": None,
+                "list": [1, "1", 1.1, True, False, None],
+                "dict": {"key": "value"},
+            }
+        ]
+        expected = [
+            list,
+            dict,
+            "str",
+            "value",
+            "int",
+            42,
+            "float",
+            13.37,
+            "bool_t",
+            True,
+            "bool_f",
+            False,
+            "none",
+            None,
+            "list",
+            list,
+            1,
+            "1",
+            1.1,
+            True,
+            False,
+            None,
+            "dict",
+            dict,
+            "key",
+            "value",
+        ]
+
+        result = reduce_field_value(self.collect_node_type_or_leaf_value, value, [])
+
+        assert result == expected
+
+    def test_error_on_illegal_field_value(self):
+        value = typing.cast(FieldValue, tuple([1, 2, 3]))
+        with pytest.raises(ValueError, match="unexpected type"):
+            reduce_field_value(self.collect_node_type_or_leaf_value, value, [])

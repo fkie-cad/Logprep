@@ -878,13 +878,13 @@ def reduce_field_value(func: Callable[[FieldValue, T], T], data: FieldValue, ini
     result = initial
     match (data):
         case dict():
+            result = func(data, result)
             for key, value in data.items():
-                result = func(data, result)
                 result = reduce_field_value(func, key, result)
                 result = reduce_field_value(func, value, result)
         case list():
+            result = func(data, result)
             for item in data:
-                result = func(data, result)
                 result = reduce_field_value(func, item, result)
         case str() | int() | float() | bool() | None:
             result = func(data, result)
