@@ -39,12 +39,12 @@ class PipelineManager:
         self.configuration = configuration
         self._shutdown_timeout_s = shutdown_timeout_s
 
-    def _setup(self):
+    async def setup(self):
         self._event_backlog = SetEventBacklog()
 
         self._input_connector = cast(Input, Factory.create(self.configuration.input))
         self._input_connector.event_backlog = self._event_backlog  # TODO needs to be disentagled
-        self._input_connector.setup()
+        await self._input_connector._asetup()
 
         processors = [
             typing.cast(Processor, Factory.create(processor_config))
@@ -123,7 +123,6 @@ class PipelineManager:
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
 
-        self._setup()
         try:
             await self._orchestrator.run()
         except CancelledError:

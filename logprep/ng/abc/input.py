@@ -1,3 +1,5 @@
+# pylint: disable=line-too-long
+
 """This module provides the abstract base class for all input endpoints.
 New input endpoint types are created by implementing it.
 """
@@ -14,14 +16,12 @@ from collections.abc import AsyncIterator
 from copy import deepcopy
 from functools import cached_property
 from hmac import HMAC
-from typing import Self
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
-from logprep.metrics.metrics import Metric
 from logprep.ng.abc.event import EventBacklog
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
@@ -104,18 +104,7 @@ class InputIterator(AsyncIterator):
         self.input_connector = input_connector
         self.timeout = timeout
 
-    def __iter__(self) -> Self:
-        """Return the iterator instance itself.
-
-        Returns
-        -------
-        Self
-            The iterator instance (self).
-        """
-
-        return self
-
-    def __next__(self) -> LogEvent | None:
+    async def __anext__(self) -> LogEvent | None:
         """Return the next event in the Input Connector within the configured timeout.
 
         Returns
@@ -123,17 +112,13 @@ class InputIterator(AsyncIterator):
         LogEvent | None
             The next event retrieved from the underlying data source.
         """
-        event = self.input_connector.get_next(timeout=self.timeout)
+        event = await self.input_connector.get_next(timeout=self.timeout)
         logger.debug(
             "InputIterator fetching next event with timeout %s, is None: %s",
             self.timeout,
             event is None,
         )
         return event
-
-    async def __anext__(self):
-        # TODO implement properly
-        return self.__next__()
 
 
 class Input(Connector):
@@ -274,7 +259,7 @@ class Input(Connector):
         return None
 
     @abstractmethod
-    def _get_event(self, timeout: float) -> tuple:
+    async def _get_event(self, timeout: float) -> tuple:
         """Implements the details how to get the event
 
         Parameters
@@ -299,15 +284,15 @@ class Input(Connector):
         error_log_event = LogEvent(
             data=event if isinstance(event, dict) else {},
             original=raw_event if raw_event is not None else b"",
-            metadata=metadata,  # type: ignore
+            metadata=metadata,  # type: ignore  # TODO: fix mypy issue
         )
         error_log_event.errors.append(error)
         error_log_event.state.current_state = EventStateType.FAILED
 
         self.event_backlog.register(events=[error_log_event])
 
-    @Metric.measure_time()
-    def get_next(self, timeout: float) -> LogEvent | None:
+    # @Metric.measure_time()
+    async def get_next(self, timeout: float) -> LogEvent | None:
         """Return the next document
 
         Parameters
@@ -326,7 +311,7 @@ class Input(Connector):
         metadata: dict | None = None
 
         try:
-            event, raw_event, metadata = self._get_event(timeout)
+            event, raw_event, metadata = await self._get_event(timeout)
 
             if event is None:
                 return None
@@ -334,7 +319,7 @@ class Input(Connector):
             if not isinstance(event, dict):
                 raise CriticalInputError(self, "not a dict", event)
 
-            self.metrics.number_of_processed_events += 1
+            # self.metrics.number_of_processed_events += 1
 
             try:
                 if self._add_full_event_to_target_field:
@@ -380,8 +365,8 @@ class Input(Connector):
 
         log_event = LogEvent(
             data=event,
-            original=raw_event,  # type: ignore
-            metadata=metadata,  # type: ignore
+            original=raw_event,
+            metadata=metadata,  # type: ignore  # TODO: fix mypy issue
         )
 
         self.event_backlog.register(events=[log_event])
@@ -448,8 +433,8 @@ class Input(Connector):
         log_arrival_time = get_dotted_field_value(event, log_arrival_time_target_field)
         if time_reference and isinstance(log_arrival_time, str) and isinstance(time_reference, str):
             delta_time_sec = (
-                TimeParser.from_string(log_arrival_time).astimezone(UTC)
-                - TimeParser.from_string(time_reference).astimezone(UTC)
+                TimeParser.from_string(log_arrival_time).astimezone(UTC)  # type: ignore  # TODO: fix mypy issue
+                - TimeParser.from_string(time_reference).astimezone(UTC)  # type: ignore  # TODO: fix mypy issue
             ).total_seconds()
             add_fields_to(event, fields={target_field: delta_time_sec})
 
