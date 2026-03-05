@@ -628,6 +628,8 @@ class ConfluentKafkaInput(Input):
 
     async def _asetup(self):
         """Set the component up."""
+        await super()._asetup()
+
         try:
             consumer = await self.get_consumer()
 
@@ -637,6 +639,5 @@ class ConfluentKafkaInput(Input):
                 on_revoke=self._revoke_callback,
                 on_lost=self._lost_callback,
             )
-            await super()._asetup()
         except KafkaException as error:
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error

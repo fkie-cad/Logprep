@@ -379,7 +379,9 @@ class Input(Connector):
             self._config.preprocessing.get("add_full_event_to_target_field")  # type: ignore  # TODO: fix mypy issue
         )
 
-    def _get_raw_event(self, timeout: float) -> bytes | None:  # pylint: disable=unused-argument
+    async def _get_raw_event(
+        self, timeout: float
+    ) -> bytes | None:  # pylint: disable=unused-argument
         """Implements the details how to get the raw event
 
         Parameters
