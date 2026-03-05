@@ -31,6 +31,12 @@ from logprep.util.helper import (
     get_dotted_field_value,
     get_dotted_field_value_with_explicit_missing,
 )
+from logprep.util.input_common import (
+    FullEventConfig,
+    HmacConfig,
+    PreprocessingConfig,
+    TimeDeltaConfig,
+)
 from logprep.util.time import UTC, TimeParser, TimeParserException
 
 
@@ -73,151 +79,6 @@ class SourceDisconnectedWarning(InputWarning):
     """Lost (or failed to establish) contact with the source."""
 
 
-@define(kw_only=True)
-class HmacConfig:
-    """Hmac Configurations
-    The hmac itself will be calculated with python's hashlib.sha256 algorithm and the compression
-    is based on the zlib library.
-    """
-
-    target: str = field(validator=validators.instance_of(str))
-    """Defines a field inside the log message which should be used for the hmac
-    calculation. If the target field is not found or does not exists an error message
-    is written into the configured output field. If the hmac should be calculated on
-    the full incoming raw message instead of a subfield the target option should be set to
-    :code:`<RAW_MSG>`."""
-    key: str = field(validator=validators.instance_of(str))
-    """The secret key that will be used to calculate the hmac."""
-    output_field: str = field(validator=validators.instance_of(str))
-    """The parent name of the field where the hmac result should be written to in the
-    original incoming log message. As subfields the result will have a field called :code:`hmac`,
-    containing the calculated hmac, and :code:`compressed_base64`, containing the original message
-    that was used to calculate the hmac in compressed and base64 encoded. In case the output
-    field exists already in the original message an error is raised."""
-
-    def all_set(self) -> bool:
-        """
-        Checks whether all essential attributes are set.
-        """
-        return all(map(bool, [self.target, self.key, self.output_field]))
-
-
-@define(kw_only=True)
-class TimeDeltaConfig:
-    """TimeDelta Configurations
-    Works only if the preprocessor log_arrival_time_target_field is set."""
-
-    target_field: str = field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
-    """Defines the fieldname to which the time difference should be written to."""
-    reference_field: str = field(validator=(validators.instance_of(str), lambda _, __, x: bool(x)))
-    """Defines a field with a timestamp that should be used for the time difference.
-    The calculation will be the arrival time minus the time of this reference field."""
-
-
-@define(kw_only=True)
-class FullEventConfig:
-    """Full Event Configurations
-    Works only if the preprocessor :code:`add_full_event_to_target_field` is set."""
-
-    format: str = field(validator=validators.in_(["dict", "str"]), default="str")
-    """Defines the Format in which the event should be written to the new field.
-    The default ist :code:`str`, which results in escaped json string"""
-    target_field: str = field(validator=validators.instance_of(str), default="event.original")
-    """Defines the fieldname which the event should be written to"""
-    clear_event: bool = field(validator=validators.instance_of(bool), default=True)
-    """Defines if raw event should be the only field."""
-
-
-@define(kw_only=True)
-class PreprocessingConfig:
-    """
-    All input connectors support different preprocessing methods:
-
-    - `log_arrival_time_target_field` - It is possible to automatically add the arrival time in
-        Logprep to every incoming log message. To enable adding arrival times to each event the
-        keyword :code:`log_arrival_time_target_field` has to be set under the field
-        :code:`preprocessing`. It defines the name of the dotted field in which the arrival
-        times should be stored. If the field :code:`preprocessing` and
-        :code:`log_arrival_time_target_field` are not present, no arrival timestamp is added
-        to the event.
-    - `log_arrival_timedelta` - It is possible to automatically calculate the difference
-        between the arrival time of logs in Logprep and their generation timestamp, which is then
-        added to every incoming log message. To enable adding delta times to each event, the
-        keyword :code:`log_arrival_time_target_field` has to be set as a precondition (see
-        above). Furthermore, two configurations for the timedelta are needed. A
-        :code:`target_field` as well as a :code:`reference_field` has to be set.
-
-        - `target_field` - Defines the fieldname to which the time difference should be
-            written to.
-        - `reference_field` - Defines a field with a timestamp that should be used for the time
-            difference. The calculation will be the arrival time minus the time of this
-            reference field.
-
-    - `version_info_target_field` - If required it is possible to automatically add the logprep
-        version and the used configuration version to every incoming log message. This helps to
-        keep track of the processing of the events when the configuration is changing often. To
-        enable adding the versions to each event the keyword :code:`version_info_target_field`
-        has to be set under the field :code:`preprocessing`. It defines the name of the parent
-        field under which the version info should be given. If the field :code:`preprocessing`
-        and :code:`version_info_target_field` are not present then no version information is
-        added to the event.
-    - `hmac` - If required it is possible to automatically attach an HMAC to incoming log
-        messages. To activate this preprocessor the following options should be appended to the
-        preprocessor options. This field is completely optional and can also be omitted if no
-        hmac is needed.
-
-        - `target` - Defines a field inside the log message which should be used for the hmac
-            calculation. If the target field is not found or does not exists an error message
-            is written into the configured output field. If the hmac should be calculated on
-            the full incoming raw message instead of a subfield the target option should be set to
-            :code:`<RAW_MSG>`.
-        - `key` - The secret key that will be used to calculate the hmac.
-        - `output_field` - The parent name of the field where the hmac result should be written
-            to in the original incoming log message. As subfields the result will have a field
-            called :code:`hmac`, containing the calculated hmac, and :code:`compressed_base64`,
-            containing the original message that was used to calculate the hmac in compressed and
-            base64 encoded. In case the output field exists already in the original message an
-            error is raised.
-
-    - `enrich_by_env_variables` - If required it is possible to automatically enrich incoming
-        events by environment variables. To activate this preprocessor the fields value has to be
-        a mapping from the target field name (key) to the environment variable name (value).
-    - `add_full_event_to_target_field` - If required it is possible to automatically copy
-        all event fields to one singular field or subfield. If needed as an escaped string.
-        The exact fields in the event do not have to be known to use this preprocessor. To use this
-        preprocessor the fields :code:`format` and :code:`target_field` have to bet set. When the
-        format :code:`str` ist set the event is automatically escaped. This can be used to identify
-        and resolve mapping errors thrown by opensearch.
-
-        - :code:`format` - specifies the format which the event is written in. The default
-            format ist :code:`str` which leads to automatic json escaping of the given event. Also
-            possible is the value :code:`dict` which copies the event as mapping to the specified
-            :code:`target_field`. If the format :code:`str` is set it is necessary to have a
-            timestamp set in the event for opensearch to receive the event in the string format.
-            This can be achived by using the :code:`log_arrival_time_target_field` preprocessor.
-        - :code:`target_field` - specifies the field to which the event should be written to.
-            the default is :code:`event.original`
-        - :code:`clear_event` - specifies if the singular field should be the only field or appended.
-            the default is :code: `True`
-    """
-
-    version_info_target_field: str = field(default="")
-    hmac: HmacConfig = field(
-        factory=lambda: HmacConfig(target="", key="", output_field=""),
-        converter=lambda d: convert_from_dict(HmacConfig, d),
-    )
-    log_arrival_time_target_field: str = field(default="")
-    log_arrival_timedelta: TimeDeltaConfig | None = field(
-        default=None,
-        converter=lambda d: convert_from_dict(TimeDeltaConfig, d),
-    )
-    enrich_by_env_variables: dict[str, str] = field(factory=dict)
-    add_full_event_to_target_field: FullEventConfig | None = field(
-        default=None,
-        converter=lambda d: convert_from_dict(FullEventConfig, d),
-    )
-
-
 class Input(Connector):
     """Connect to a source for log data."""
 
@@ -234,7 +95,7 @@ class Input(Connector):
             factory=PreprocessingConfig,
         )
         """
-        See :code:`PreprocessingConfig` for more details.
+        See :class:`.PreprocessingConfig` for further details.
         """
 
         _version_information: dict = field(

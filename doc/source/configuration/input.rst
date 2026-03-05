@@ -65,3 +65,5 @@ Input
    :undoc-members:
    :inherited-members:
    :noindex:
+
+.. automodule:: logprep.util.input_common
