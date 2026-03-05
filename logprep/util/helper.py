@@ -483,20 +483,24 @@ def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
 
 @lru_cache(maxsize=1000)
 def get_dotted_field_list_tail(dotted_field: str) -> tuple[str | None, str]:
-    """Make lookup of dotted field in the dotted_field_lookup_table and ensures
-    it is added if not found. Additionally, the string will be interned for faster
-    followup lookups.
+    """Splits the dotted field in the right-most field and the remainder on the left side.
 
     Parameters
     ----------
     dotted_field : str
-        the dotted field input
+        The dotted field to be split
 
     Returns
     -------
-    Sequence[str]
-        a readonly sequence keys for dictionary iteration
+    tuple[str | None, str]
+        The dotted path on the left side and the plain (unescaped) leaf key.
     """
+
+    def unescape(key: str) -> str:
+        """Used to unescape the leaf key and assumes there is no plain dot
+        which would require splitting"""
+        return key.replace("\\\\", "\\").replace("\\.", ".")
+
     dot_index = dotted_field.rfind(".")
     while dot_index >= 0:
 
@@ -511,11 +515,14 @@ def get_dotted_field_list_tail(dotted_field: str) -> tuple[str | None, str]:
 
         if escape_count % 2 == 0:
             # even escape count --> our dot is not escaped, e.g. r"\\."
-            return (dotted_field[:dot_index], dotted_field[dot_index + 1 :])
+            return (
+                dotted_field[:dot_index],
+                unescape(dotted_field[dot_index + 1 :]),
+            )
         else:
-            # odd escape count --> out dot is escaped
+            # odd escape count --> our dot is escaped
             dot_index = dotted_field.rfind(".", None, dot_index - escape_count)
-    return (None, dotted_field)
+    return (None, unescape(dotted_field))
 
 
 def field_list_to_dotted_field(field_list: Iterable[str]) -> str:

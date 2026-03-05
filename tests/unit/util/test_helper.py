@@ -136,13 +136,13 @@ class TestGetDottedFieldValue:
         event = {"dotted.field": "127.0.0.1", "dotted": {"field": "not me"}}
         dotted_field = "dotted\\.field"
         value = get_dotted_field_value(event, dotted_field)
-        assert value is "127.0.0.1"
+        assert value == "127.0.0.1"
 
     def test_get_dotted_field_value_with_double_escaping(self):
         event = {"dotted\\.field": "127.0.0.1", "dotted": {"field": "not me"}}
         dotted_field = "dotted\\\\\\.field"
         value = get_dotted_field_value(event, dotted_field)
-        assert value is "127.0.0.1", get_dotted_field_list(dotted_field)
+        assert value == "127.0.0.1", get_dotted_field_list(dotted_field)
 
     def test_get_dotted_field_value_nesting_depth_one_with_escaping(self):
         event = {"dotted": {"field.sub": "127.0.0.1"}}
@@ -242,6 +242,7 @@ class TestGetDottedFieldValue:
 
 
 class TestPopDottedFieldValue:
+
     def test_removes_source_field_in_nested_structure_but_leaves_sibling(self):
         event = {"get": {"nested": "field", "other": "field"}}
         dotted_field = "get.nested"
@@ -256,12 +257,26 @@ class TestPopDottedFieldValue:
         assert value == "field"
         assert not event
 
+    def test_removes_source_field_keep_empty(self):
+        event = {"get": {"nested": "field"}}
+        dotted_field = "get.nested"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == "field"
+        assert event == {"get": {}}
+
     def test_removes_source_field2(self):
         event = {"get": {"very": {"deeply": {"nested": {"field": "value"}}}}}
         dotted_field = "get.very.deeply.nested"
         value = pop_dotted_field_value(event, dotted_field)
         assert value == {"field": "value"}
         assert not event
+
+    def test_removes_source_field2_keep_empty(self):
+        event = {"get": {"very": {"deeply": {"nested": {"field": "value"}}}}}
+        dotted_field = "get.very.deeply.nested"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == {"field": "value"}
+        assert event == {"get": {"very": {"deeply": {}}}}
 
     def test_removes_source_field_with_escaping_in_node_key(self):
         event = {"get": {"comp\\lex.nested": {"key": "field"}}}
@@ -270,12 +285,26 @@ class TestPopDottedFieldValue:
         assert value == "field"
         assert not event
 
+    def test_removes_source_field_with_escaping_in_node_key_keep_empty(self):
+        event = {"get": {"comp\\lex.nested": {"key": "field"}}}
+        dotted_field = "get.comp\\\\lex\\.nested.key"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == "field"
+        assert event == {"get": {"comp\\lex.nested": {}}}
+
     def test_removes_source_field_with_escaping_in_leaf_key(self):
         event = {"get": {"nested": {"comp\\lex.key": "field"}}}
         dotted_field = "get.nested.comp\\\\lex\\.key"
         value = pop_dotted_field_value(event, dotted_field)
         assert value == "field"
         assert not event
+
+    def test_removes_source_field_with_escaping_in_leaf_key_keep_empty(self):
+        event = {"get": {"nested": {"comp\\lex.key": "field"}}}
+        dotted_field = "get.nested.comp\\\\lex\\.key"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == "field"
+        assert event == {"get": {"nested": {}}}
 
 
 class TestGetVersionString:
