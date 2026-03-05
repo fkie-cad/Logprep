@@ -23,8 +23,7 @@ Processor Configuration
 .. automodule:: logprep.processor.timestamp_differ.rule
 """
 
-from datetime import datetime
-from functools import reduce
+from datetime import datetime, timedelta
 
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
@@ -49,7 +48,7 @@ class TimestampDiffer(FieldManager):
             timestamp_objects = map(
                 self._create_timestamp_object, source_field_dict.values(), source_field_formats
             )
-            diff = reduce(lambda a, b: a - b, timestamp_objects)
+            diff = next(timestamp_objects) - next(timestamp_objects)
         except TimeParserException as error:
             error.args = [
                 f"{error.args[0]} Corresponding source fields and values are: {source_field_dict}."
@@ -57,8 +56,8 @@ class TimestampDiffer(FieldManager):
             self._handle_warning_error(event, rule, error)
 
         if diff is not None:
-            diff = self._apply_output_format(diff, rule)
-            self._write_target_field(event, rule, diff)
+            parsed_datetime = self._apply_output_format(diff, rule)
+            self._write_target_field(event, rule, parsed_datetime)
 
     @staticmethod
     def _create_timestamp_object(source: str | int, format_str: str) -> datetime:
@@ -69,7 +68,7 @@ class TimestampDiffer(FieldManager):
         return TimeParser.from_format(source, format_str).astimezone(UTC)
 
     @staticmethod
-    def _apply_output_format(diff: datetime, rule: TimestampDifferRule) -> str:
+    def _apply_output_format(diff: timedelta, rule: TimestampDifferRule) -> str:
         output_format = rule.output_format
         show_unit = rule.show_unit
         seconds = diff.total_seconds()
