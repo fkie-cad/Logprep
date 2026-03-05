@@ -2,11 +2,6 @@ name: Reusable Container Build
 on:
   workflow_call:
     inputs:
-      build-version:
-        description: |
-          "Logprep package version in format `X.Y.Z`. Falls back to setuptools_scm if not provided"
-        required: false
-        type: string
       tags:
         description: "Tags to apply to the image"
         required: true
@@ -22,12 +17,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set LOGPREP_VERSION from inputs.build-version
-        if: ${{ inputs.build-version != '' }}
-        run: |
-          echo "LOGPREP_VERSION=${{ inputs.build-version }}" >> $GITHUB_ENV
       - name: Set LOGPREP_VERSION from setuptools_scm
-        if: ${{ inputs.build-version == '' }}
         run: |
           pip install "setuptools>=82.0.0" "setuptools-scm>=9.2.2"
           echo "LOGPREP_VERSION=$(python -m setuptools_scm)" >> $GITHUB_ENV
