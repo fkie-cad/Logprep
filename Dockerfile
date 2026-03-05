@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 ARG PYTHON_VERSION=3.11
-ARG LOGPREP_VERSION
+ARG LOGPREP_VERSION=""
 
 FROM registry-1.docker.io/library/python:${PYTHON_VERSION} AS build
 
