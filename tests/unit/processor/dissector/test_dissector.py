@@ -665,12 +665,16 @@ test_cases = [
             "filter": "message",
             "dissector": {
                 "mapping": {
-                    "message": "proxy{addr=%{destination.address}}:service{ns=linkerd-multicluster name=%{destination.domain} port=4191}:endpoint{addr=%{source.address}}: %{log.logger}: %{message}",
+                    "message": "proxy{addr=%{destination.address}}:service{ns=linkerd-multicluster "
+                    "name=%{destination.domain} "
+                    "port=4191}:endpoint{addr=%{source.address}}: %{log.logger}: %{message}",
                 },
             },
         },
         {
-            "message": "proxy{addr=10.99.172.10:4191}:service{ns=linkerd-multicluster name=probe-gateway-bbb port=4191}:endpoint{addr=192.8.177.98:4191}: linkerd_reconnect: Failed to connect error=connect timed out after 1s"
+            "message": "proxy{addr=10.99.172.10:4191}:service{ns=linkerd-multicluster "
+            "name=probe-gateway-bbb port=4191}:endpoint{addr=192.8.177.98:4191}: "
+            "linkerd_reconnect: Failed to connect error=connect timed out after 1s"
         },
         {
             "destination": {
@@ -766,6 +770,48 @@ failure_test_cases = [
         {"message": "This is the message"},
         {"message": "This is the message", "tags": ["_dissector_failure"]},
         id="indirect field notation in wrong order",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"mapping": {"message": "%{key}"}}},
+        {"message": 1337},
+        {"message": 1337, "tags": ["_dissector_failure"]},
+        id="non-supported int message",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"mapping": {"message": "%{key}"}}},
+        {"message": 42.42},
+        {"message": 42.42, "tags": ["_dissector_failure"]},
+        id="unexpected float message",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"mapping": {"message": "%{key}"}}},
+        {"message": True},
+        {"message": True, "tags": ["_dissector_failure"]},
+        id="unexpected bool message",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"mapping": {"message": "%{key}"}}},
+        {"message": None},
+        {"message": None, "tags": ["_dissector_failure"]},
+        id="unexpected None message",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"mapping": {"message": "%{key}"}}},
+        {"message": ["abc"]},
+        {"message": ["abc"], "tags": ["_dissector_failure"]},
+        id="unexpected list message",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"mapping": {"message": "%{key}"}}},
+        {"message": 1337},
+        {"message": 1337, "tags": ["_dissector_failure"]},
+        id="non-string value type",
+    ),
+    pytest.param(
+        {"filter": "message", "dissector": {"mapping": {"message": "%{key}"}}},
+        {"message": {"key": "value"}},
+        {"message": {"key": "value"}, "tags": ["_dissector_failure"]},
+        id="unexpected dict message",
     ),
 ]
 
