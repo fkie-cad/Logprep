@@ -307,136 +307,66 @@ class OpensearchOutput(Output):
         await self._bulk(self._search_context, self._message_backlog)
         self._message_backlog.clear()
 
-    def _chunk_events_by_size(
-        self,
-        events: list["Event"],
-        *,
-        chunk_size: int,
-        max_chunk_bytes: int,
-    ) -> typing.Iterable[list["Event"]]:
+    async def _bulk(self, client: AsyncOpenSearch, events: list[Event]) -> None:
+        """Bulk index documents into Opensearch. Uses the parallel_bulk function from the opensearchpy library.
+        The error information is stored in a document with the following structure:
+            json
+            {
+                "op_type": {
+                    "error": "error message",
+                    "status": "status_code",
+                    "exception": "exception message"
+                    }
+                }
+            }
         """
-        Chunk events into batches respecting chunk_size and (best-effort) max_chunk_bytes.
 
-        Note: max_chunk_bytes is approximate because we estimate bytes via json.dumps.
-        """
-        batch: list["Event"] = []
-        approx_bytes = 0
+        kwargs = {
+            "max_chunk_bytes": self.config.max_chunk_bytes,
+            "chunk_size": self.config.chunk_size,
+            # "queue_size": self.config.queue_size,
+            # "thread_count": self.config.thread_count,
+            "raise_on_error": False,
+            "raise_on_exception": False,
+        }
 
-        for ev in events:
-            # best-effort byte estimation
-            try:
-                approx_bytes += len(json.dumps(ev.data, ensure_ascii=False).encode("utf-8")) + 200
-            except Exception:
-                approx_bytes += 1000  # fallback guess
+        actions = (event.data for event in events)
 
-            batch.append(ev)
+        index = 0
+        async for success, item in helpers.async_streaming_bulk(client, actions, **kwargs):  # type: ignore
+            if index >= len(events):
+                break
 
-            if len(batch) >= chunk_size or approx_bytes >= max_chunk_bytes:
-                yield batch
-                batch = []
-                approx_bytes = 0
+            event = events[index]
+            index += 1
 
-        if batch:
-            yield batch
-
-    def _build_bulk_body(self, events: list["Event"], *, default_op_type: str) -> list[dict]:
-        """
-        Build bulk request body as a list of dicts (action/meta + source lines).
-        opensearch-py will serialize this into NDJSON.
-        """
-        body: list[dict] = []
-
-        for ev in events:
-            doc = ev.data
-            op_type = doc.get("_op_type", default_op_type)
-            index = doc.get("_index")
-
-            if not index:
-                # safety: fall back to whatever your pipeline expects
-                # (ideally _index is always set before bulk)
-                index = doc.get("_index")
-
-            if op_type not in ("index", "create"):
-                # keep it strict: your Config only allows create/index
-                op_type = default_op_type
-
-            # bulk action line
-            action_meta = {op_type: {"_index": index}}
-            # optionally pass _id if present
-            if "_id" in doc:
-                action_meta[op_type]["_id"] = doc["_id"]
-
-            body.append(action_meta)
-
-            # source line: must NOT include bulk meta keys
-            source = {k: v for k, v in doc.items() if k not in ("_index", "_op_type")}
-            body.append(source)
-
-        return body
-
-    async def _bulk(self, client: AsyncOpenSearch, events: list["Event"]) -> None:
-        """
-        Async bulk indexing.
-        Uses AsyncOpenSearch.bulk directly, and processes per-item results.
-
-        Behavior is intentionally close to your sync version:
-        - marks event.state success/failure
-        - appends BulkError for failures
-        """
-        default_op_type = self.config.default_op_type
-
-        for batch in self._chunk_events_by_size(
-            events,
-            chunk_size=self.config.chunk_size,
-            max_chunk_bytes=self.config.max_chunk_bytes,
-        ):
-            body = self._build_bulk_body(batch, default_op_type=default_op_type)
-
-            try:
-                resp = await client.bulk(body=body)
-            except OpenSearchException as e:
-                # whole bulk request failed → mark all events failed
-                for ev in batch:
-                    ev.state.current_state = EventStateType.FAILED
-                    ev.errors.append(BulkError("Bulk request failed", exception=str(e)))
+            if success:
+                event.state.current_state = EventStateType.STORING_IN_OUTPUT
                 continue
 
-            items = resp.get("items", [])
-            # One item per document (not per line). Our batch has N events, body has 2N lines.
-            # items length should match len(batch) if we're only doing index/create.
-            for i, item in enumerate(items):
-                if i >= len(batch):
-                    break
+            # parallel_bulk often returned item that allowed item.get("_op_type")
+            # streaming_bulk usually returns {"index": {...}} / {"create": {...}}
+            op_type = item.get("_op_type") if isinstance(item, dict) else None
+            if not op_type and isinstance(item, dict) and item:
+                op_type = next(iter(item.keys()))
 
-                ev = batch[i]
-                # item shape: {"index": {...}} or {"create": {...}}
-                op_type = next(iter(item.keys()), default_op_type)
-                info = item.get(op_type, {}) if isinstance(item.get(op_type), dict) else {}
+            op_type = op_type or self.config.default_op_type
+            error_info = {}
 
-                status = info.get("status")
-                error_obj = info.get("error")
-
-                ok = isinstance(status, int) and 200 <= status < 300 and not error_obj
-                if ok:
-                    ev.state.current_state = EventStateType.STORED_IN_OUTPUT
-                    continue
-
-                # normalize error into your BulkError shape
-                # error_obj can be dict; keep it as "error" payload if present
-                if isinstance(error_obj, dict):
-                    message = error_obj.get("reason") or str(error_obj)
+            if isinstance(item, dict):
+                # streaming_bulk shape
+                if op_type in item and isinstance(item[op_type], dict):
+                    error_info = item[op_type]
+                # fallback: old shape
                 else:
-                    message = str(error_obj) if error_obj else "Failed to index document"
-
-                ev.state.current_state = EventStateType.FAILED
-                ev.errors.append(
-                    BulkError(
-                        message,
-                        status=str(status) if status is not None else None,
-                        exception=None,
-                        error=error_obj,  # keep original payload for debugging
+                    error_info = (
+                        item.get(op_type, {}) if isinstance(item.get(op_type), dict) else {}
                     )
-                )
+
+            error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
+
+            event.state.current_state = EventStateType.FAILED
+            event.errors.append(error)
 
     async def health(self) -> bool:  # type: ignore  # TODO: fix mypy issue
         """Check the health of the component."""
