@@ -1,4 +1,4 @@
-"""logprep time helpers module"""
+"""Logprep time helpers module"""
 
 from datetime import datetime, tzinfo, UTC
 
@@ -6,27 +6,32 @@ from logprep.abc.exceptions import LogprepException
 
 
 class TimeParserException(LogprepException):
-    """exception class for time parsing"""
+    """Exception class for time parsing"""
 
 
 class TimeParser:
-    """encapsulation of time related methods"""
+    """Encapsulation of time related methods"""
 
     @classmethod
     def from_string(cls, source: str, set_missing_utc: bool = True) -> datetime:
-        """parses input string to datetime object
+        """Parses input string to datetime object.
 
         Parameters
         ----------
         source : str
-            input string
+            Input string in ISO8601 format
         set_missing_utc : bool
             Set timezone to utc if it is missing and this is true
 
         Returns
         -------
         datetime
-            datetime object
+            Datetime object
+
+        Raises
+        ------
+        ValueError
+            Raises if source can't be parsed as datetime object from ISO8601 format
         """
         try:
             time_object = datetime.fromisoformat(source)  # pylint: disable=c-extension-no-member
@@ -38,17 +43,22 @@ class TimeParser:
 
     @classmethod
     def from_unix_timestamp(cls, timestamp: int | float) -> datetime:
-        """get datetime from unix timestamp
+        """Get datetime from unix timestamp.
 
         Parameters
         ----------
-        timestamp : int
-            unit timestamp
+        timestamp : int | float
+            Unix timestamp
 
         Returns
         -------
         datetime
-            datetime object
+            Datetime object
+
+        Raises
+        ------
+        TypeError
+            Raises if timestamp can't be parsed as datetime object from unix timestamp format
         """
         try:
             time_object = datetime.fromtimestamp(timestamp, tz=UTC)
@@ -59,17 +69,17 @@ class TimeParser:
 
     @staticmethod
     def now(timezone: tzinfo | None = UTC) -> datetime:
-        """returns the current time
+        """Returns the current time.
 
         Parameters
         ----------
         timezone : tzinfo | None
-            the timezone to use for the timestamp
+            The timezone to use for the timestamp
 
         Returns
         -------
         datetime
-            current date and time as datetime
+            Current date and time as datetime
         """
         timezone = timezone if timezone else UTC
         time_object = datetime.now(timezone)
@@ -77,26 +87,26 @@ class TimeParser:
 
     @classmethod
     def from_format(cls, source: str, format_str: str, set_missing_utc: bool = True) -> datetime:
-        """parse date from format
+        """Parse date from format.
 
         Parameters
         ----------
         source : str
-            the date string
+            The date string
         format_str : str
-            the format string
+            The format string
         set_missing_utc : bool
             Set timezone to utc if it is missing and this is true
 
         Returns
         -------
         datetime
-            the datetime object
+            The datetime object
 
         Raises
         ------
         TimeParserException
-            raised if something could not be parsed
+            Raised if something could not be parsed
         """
         try:
             time_object = datetime.strptime(source, format_str)
@@ -113,7 +123,29 @@ class TimeParser:
         return time_object
 
     @staticmethod
-    def _normalize_unix_timestamp(timestamp: str) -> int:
+    def _normalize_unix_timestamp(timestamp: str) -> int | float:
+        """Normalize the input timestamp string to unix timestamp in seconds.
+
+        The input string is assumed to be in seconds if it is 10 digits long or shorter,
+        since seconds with more than 10 digits would be far into the future.
+        For strings longer than 10 digits the parsed integer is divided to be 10 digits long
+        before the decimal point.
+
+        Parameters
+        ----------
+        timestamp : str
+            The date string in unix timestamp format
+
+        Returns
+        -------
+        int | float
+            Unix timestamp parsed as number in seconds
+
+        Raises
+        ------
+        ValueError
+            Raised if input timestamp string could not be parsed as integer
+        """
         try:
             return (
                 int(timestamp)
@@ -127,9 +159,9 @@ class TimeParser:
     def parse_datetime(
         cls, timestamp: str, source_format: str, source_timezone: tzinfo
     ) -> datetime:
-        """
-        Parses a timestamp based on different formats, besides a format string 'ISO8601' and
-        'UNIX' are allowed formats.
+        """Parse a timestamp based on different formats.
+
+        A format string, 'ISO8601' and 'UNIX' are allowed formats.
 
         Parameters
         ----------
