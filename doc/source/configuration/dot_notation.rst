@@ -18,11 +18,11 @@ Escaping Special Characters
 ---------------------------
 
 Since the dot is interpreted as a special character, it must be escaped with a backslash to be used literally:
-:code:`complex\\.field`.
+:code:`complex\\.field` for addressing :code:`data["complex.field"]`.
 Note that string literals with quotes typically require an additional layer of backslashes:
 :code:`target_field: "complex\\\\.field"`.
 If backslashes are part of the actual field name, they must also be escaped:
-:code:`complex\\field` or :code:`"complex\\\\field"`.
+:code:`complex\\\\field` or :code:`"complex\\\\\\\\field"`.
 
 Putting a backslash in front of a non-special character results in the *backslash being dropped* and the character being used literally.
 Therefore, a literal backslash can only be produced by using a double backslash in the field reference.
