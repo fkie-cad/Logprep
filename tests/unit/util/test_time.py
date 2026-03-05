@@ -40,7 +40,7 @@ class TestTimeParser:
 
     def test_from_timestamp_success(self):
         expected = {"year": 1969, "month": 12, "day": 31, "hour": 23, "minute": 59}
-        timestamp = TimeParser.from_timestamp(-1)
+        timestamp = TimeParser.from_unix_timestamp(-1)
         assert isinstance(timestamp, datetime)
         for attribute, value in expected.items():
             assert getattr(timestamp, attribute) == value
@@ -50,7 +50,7 @@ class TestTimeParser:
             TimeParserException,
             match="cannot be interpreted as an integer|argument must be int or float, not str",
         ):
-            TimeParser.from_timestamp("wrong")
+            TimeParser.from_unix_timestamp("wrong")
 
     def test_now_returns_datetime(self):
         assert isinstance(TimeParser.now(), datetime)

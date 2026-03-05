@@ -1,7 +1,6 @@
 """logprep time helpers module"""
 
 from datetime import datetime, tzinfo, UTC
-from typing import Union
 
 from logprep.abc.exceptions import LogprepException
 
@@ -38,7 +37,7 @@ class TimeParser:
             raise TimeParserException(str(error)) from error
 
     @classmethod
-    def from_timestamp(cls, timestamp: Union[int, float]) -> datetime:
+    def from_unix_timestamp(cls, timestamp: int | float) -> datetime:
         """get datetime from unix timestamp
 
         Parameters
@@ -58,8 +57,8 @@ class TimeParser:
         except TypeError as error:
             raise TimeParserException(str(error)) from error
 
-    @classmethod
-    def now(cls, timezone: tzinfo | None = UTC) -> datetime:
+    @staticmethod
+    def now(timezone: tzinfo | None = UTC) -> datetime:
         """returns the current time
 
         Parameters
@@ -107,14 +106,14 @@ class TimeParser:
         except ValueError as error:
             raise TimeParserException(str(error)) from error
 
-    @classmethod
-    def _set_utc_if_timezone_is_missing(cls, time_object: datetime) -> datetime:
+    @staticmethod
+    def _set_utc_if_timezone_is_missing(time_object: datetime) -> datetime:
         if time_object.tzinfo is None:
             time_object = time_object.replace(tzinfo=UTC)
         return time_object
 
-    @classmethod
-    def _normalize_unix_timestamp(cls, timestamp: str) -> int:
+    @staticmethod
+    def _normalize_unix_timestamp(timestamp: str) -> int:
         try:
             return (
                 int(timestamp)
@@ -149,7 +148,7 @@ class TimeParser:
         """
         if source_format == "UNIX":
             normalized_unix_timestamp = cls._normalize_unix_timestamp(timestamp)
-            parsed_datetime = cls.from_timestamp(normalized_unix_timestamp)
+            parsed_datetime = cls.from_unix_timestamp(normalized_unix_timestamp)
         elif source_format == "ISO8601":
             parsed_datetime = cls.from_string(timestamp, set_missing_utc=False)
         else:

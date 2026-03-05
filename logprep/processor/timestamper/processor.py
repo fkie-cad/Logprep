@@ -24,7 +24,10 @@ Processor Configuration
 .. automodule:: logprep.processor.timestamper.rule
 """
 
+import typing
+
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.timestamper.rule import TimestamperRule
 from logprep.util.helper import get_dotted_field_value
@@ -36,7 +39,8 @@ class Timestamper(FieldManager):
 
     rule_class = TimestamperRule
 
-    def _apply_rules(self, event: dict, rule: TimestamperRule) -> None:
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        rule = typing.cast(TimestamperRule, rule)
         source_value = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [source_value]):
             return

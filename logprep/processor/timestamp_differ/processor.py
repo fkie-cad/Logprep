@@ -64,7 +64,7 @@ class TimestampDiffer(FieldManager):
     @staticmethod
     def _create_timestamp_object(source: Union[str, int], format_str: str) -> datetime:
         if isinstance(source, int):
-            return TimeParser.from_timestamp(source).astimezone(UTC)
+            return TimeParser.from_unix_timestamp(source).astimezone(UTC)
         if format_str is None:
             return TimeParser.from_string(source).astimezone(UTC)
         return TimeParser.from_format(source, format_str).astimezone(UTC)
