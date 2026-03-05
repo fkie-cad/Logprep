@@ -33,3 +33,4 @@ requirements.*
 .dmypy.json
 tmp
 .envrc
+**/.DS_Store
