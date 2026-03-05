@@ -250,6 +250,20 @@ class TestPopDottedFieldValue:
         assert value == "field"
         assert event == {"get": {"other": "field"}}
 
+    def test_removes_plain_source_field(self):
+        event = {"key": "field"}
+        dotted_field = "key"
+        value = pop_dotted_field_value(event, dotted_field)
+        assert value == "field"
+        assert not event
+
+    def test_removes_plain_source_field_keep_empty(self):
+        event = {"key": "field"}
+        dotted_field = "key"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == "field"
+        assert not event
+
     def test_removes_source_field(self):
         event = {"get": {"nested": "field"}}
         dotted_field = "get.nested"
