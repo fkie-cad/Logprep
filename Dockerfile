@@ -34,6 +34,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_LOGPREP=${LOGPREP_VERSION}
 
 # Install deps using only the lockfile + pyproject.toml first (best layer caching)
+# adding relabel=shared after "readonly," can be necessary for builds on MacOS
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=/logprep/uv.lock,readonly \
     --mount=type=bind,source=pyproject.toml,target=/logprep/pyproject.toml,readonly \
