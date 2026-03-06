@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1.7
 
 ARG PYTHON_VERSION=3.11
+ARG LOGPREP_VERSION=""
 
 FROM registry-1.docker.io/library/python:${PYTHON_VERSION} AS build
+
+ARG LOGPREP_VERSION
 
 RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
@@ -16,10 +19,6 @@ ENV PATH="/opt/venv/bin:/root/.cargo/bin:${PATH}"
 # Install uv into the venv
 RUN pip install --disable-pip-version-check --no-cache-dir uv
 
-# [jaraco.context <6.1.0] CVE: GHSA-58pv-8j8x-9vj2
-#     The setuptools build backend includes jaraco.context as vendored code.
-RUN pip uninstall -y setuptools
-
 WORKDIR /logprep
 
 ENV UV_COMPILE_BYTECODE=1
@@ -32,7 +31,10 @@ ENV UV_LINK_MODE=copy
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
+ENV SETUPTOOLS_SCM_PRETEND_VERSION_FOR_LOGPREP=${LOGPREP_VERSION}
+
 # Install deps using only the lockfile + pyproject.toml first (best layer caching)
+# adding relabel=shared after "readonly," can be necessary for builds on MacOS
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=/logprep/uv.lock,readonly \
     --mount=type=bind,source=pyproject.toml,target=/logprep/pyproject.toml,readonly \
@@ -45,6 +47,10 @@ COPY . /logprep/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-editable --frozen && \
     logprep --version
+
+# Uninstall dependencies from pyproject.toml:build-system.requires
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip uninstall setuptools setuptools-scm setuptools-rust wheel
 
 FROM registry-1.docker.io/library/python:${PYTHON_VERSION}-slim AS prod
 
