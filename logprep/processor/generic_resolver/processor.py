@@ -42,7 +42,7 @@ from logprep.util.helper import (
     Missing,
     add_fields_to,
     get_dotted_field_value,
-    get_dotted_field_value_with_explicit_missing,
+    get_dotted_field_value_with_missing,
 )
 from logprep.util.typing import is_lru_cached
 
@@ -144,7 +144,7 @@ class GenericResolver(FieldManager):
         self._handle_missing_fields(event, rule, rule.field_mapping.keys(), source_field_values)
         conflicting_fields = []
         for source_field, target_field in rule.field_mapping.items():
-            source_field_value = get_dotted_field_value_with_explicit_missing(event, source_field)
+            source_field_value = get_dotted_field_value_with_missing(event, source_field)
             if source_field_value is MISSING:
                 continue
             resolved_content = self._find_content_of_first_matching_pattern(

@@ -35,7 +35,7 @@ from logprep.util.helper import (
     add_fields_to,
     get_dotted_field_list,
     get_dotted_field_value,
-    get_dotted_field_value_with_explicit_missing,
+    get_dotted_field_value_with_missing,
 )
 from logprep.util.input_common import (
     FullEventConfig,
@@ -496,7 +496,7 @@ class Input(Connector):
         if hmac_target_field_name == "<RAW_MSG>":
             received_orig_message = raw_event
         else:
-            received_orig_message = get_dotted_field_value_with_explicit_missing(
+            received_orig_message = get_dotted_field_value_with_missing(
                 event_dict, hmac_target_field_name
             )
 

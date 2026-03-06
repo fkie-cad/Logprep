@@ -36,7 +36,7 @@ from logprep.util.helper import (
     FieldValue,
     add_fields_to,
     get_dotted_field_value,
-    get_dotted_field_value_with_explicit_missing,
+    get_dotted_field_value_with_missing,
 )
 
 
@@ -62,7 +62,7 @@ class Dissector(FieldManager):
         target_field_mapping = {}
         for source_field, actions in rule.actions_by_source_field.items():
 
-            value = get_dotted_field_value_with_explicit_missing(event, source_field)
+            value = get_dotted_field_value_with_missing(event, source_field)
             if value is MISSING:
                 if rule.ignore_missing_fields:
                     continue

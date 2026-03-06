@@ -46,7 +46,7 @@ from logprep.util.helper import (
     Missing,
     add_fields_to,
     field_list_to_dotted_field,
-    get_dotted_field_value_with_explicit_missing,
+    get_dotted_field_value_with_missing,
 )
 
 
@@ -121,7 +121,7 @@ class TemplateReplacer(FieldManager):
 
     def _get_replacement_value(self, field_values: list[FieldValue]) -> FieldValue | Missing:
         dotted_field = field_list_to_dotted_field((str(value) for value in field_values))
-        return get_dotted_field_value_with_explicit_missing(self._mapping, dotted_field)
+        return get_dotted_field_value_with_missing(self._mapping, dotted_field)
 
     def _perform_replacement(
         self, event: dict, replacement: FieldValue, rule: TemplateReplacerRule
@@ -135,9 +135,7 @@ class TemplateReplacer(FieldManager):
         If target value isn't None, then it exists and its parents must be dicts.
         Therefore, they wouldn't be replaced, and we can overwrite the existing target field.
         """
-        overwrite = (
-            get_dotted_field_value_with_explicit_missing(event, self._target_field) is not MISSING
-        )
+        overwrite = get_dotted_field_value_with_missing(event, self._target_field) is not MISSING
         add_fields_to(
             event,
             fields={self._target_field: replacement},

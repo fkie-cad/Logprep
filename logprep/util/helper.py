@@ -311,7 +311,7 @@ def get_dotted_field_value(event: dict[str, FieldValue], dotted_field: str) -> F
         return None
 
 
-def get_dotted_field_value_with_explicit_missing(
+def get_dotted_field_value_with_missing(
     event: dict[str, FieldValue], dotted_field: str
 ) -> FieldValue | Missing:
     """
@@ -342,6 +342,35 @@ def get_dotted_field_value_with_explicit_missing(
             current = _get_item(current, field)
         return current
     except (KeyError, ValueError, TypeError, IndexError):
+        return MISSING
+
+
+def get_field_value(event: dict[str, FieldValue], fields: Iterable[str]) -> FieldValue | Missing:
+    """Low-level function to retrieve the value referenced by the sequence
+    of keys/fields.
+    This function assumes, that the dotted fields have already been resolved and
+    that all remaining dots are to be interpreted as part of their respective field names.
+    Also, no slicing is supported.
+
+    Parameters
+    ----------
+    event : dict[str, FieldValue]
+        The event from which the field value should be extracted.
+    fields : Iterable[str]
+        The field sequence which identifies the requested value.
+
+    Returns
+    -------
+    FieldValue | Missing
+        The value of the requested dotted field, which can be None.
+        Or :code:`MISSING` if the field could not be found.
+    """
+    current: FieldValue = event
+    try:
+        for field in fields:
+            current = _get_item(current, field)
+        return current
+    except (KeyError, TypeError):
         return MISSING
 
 
@@ -407,7 +436,7 @@ def get_dotted_field_values(
     """
     result: dict[str, FieldValue] = {}
     for field_to_copy in dotted_fields:
-        value = get_dotted_field_value_with_explicit_missing(event, field_to_copy)
+        value = get_dotted_field_value_with_missing(event, field_to_copy)
         if value is MISSING:
             fallback_value = on_missing(field_to_copy)
             if fallback_value is not SKIP:
@@ -437,7 +466,7 @@ def has_dotted_field(
         Whether the field could be found in the data structure.
     """
     if allow_none:
-        return get_dotted_field_value_with_explicit_missing(event, dotted_field) is not MISSING
+        return get_dotted_field_value_with_missing(event, dotted_field) is not MISSING
     return get_dotted_field_value(event, dotted_field) is not None
 
 
@@ -479,50 +508,6 @@ def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
 
     result.append("".join(char_buffer))
     return result
-
-
-@lru_cache(maxsize=1000)
-def get_dotted_field_list_tail(dotted_field: str) -> tuple[str | None, str]:
-    """Splits the dotted field in the right-most field and the remainder on the left side.
-
-    Parameters
-    ----------
-    dotted_field : str
-        The dotted field to be split
-
-    Returns
-    -------
-    tuple[str | None, str]
-        The dotted path on the left side and the plain (unescaped) leaf key.
-    """
-
-    def unescape(key: str) -> str:
-        """Used to unescape the leaf key and assumes there is no plain dot
-        which would require splitting"""
-        return key.replace("\\\\", "\\").replace("\\.", ".")
-
-    dot_index = dotted_field.rfind(".")
-    while dot_index >= 0:
-
-        previous_char_index = dot_index - 1
-
-        i = previous_char_index
-        while i >= 0:
-            if dotted_field[i] != "\\":
-                break
-            i -= 1
-        escape_count = previous_char_index - i
-
-        if escape_count % 2 == 0:
-            # even escape count --> our dot is not escaped, e.g. r"\\."
-            return (
-                dotted_field[:dot_index],
-                unescape(dotted_field[dot_index + 1 :]),
-            )
-        else:
-            # odd escape count --> our dot is escaped
-            dot_index = dotted_field.rfind(".", None, dot_index - escape_count)
-    return (None, unescape(dotted_field))
 
 
 def field_list_to_dotted_field(field_list: Iterable[str]) -> str:
@@ -590,10 +575,8 @@ def pop_dotted_field_value(
 
 
 def _pop_field_value(event: dict[str, FieldValue], dotted_field: str) -> FieldValue | Missing:
-    parent_dotted_field, field = get_dotted_field_list_tail(dotted_field)
-    parent_field_value = (
-        event if parent_dotted_field is None else get_dotted_field_value(event, parent_dotted_field)
-    )
+    *parent_fields, field = get_dotted_field_list(dotted_field)
+    parent_field_value = get_field_value(event, parent_fields)
     if parent_field_value and isinstance(parent_field_value, dict) and field in parent_field_value:
         return parent_field_value.pop(field)
     return MISSING
