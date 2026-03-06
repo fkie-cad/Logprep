@@ -21,3 +21,4 @@ Configuration
    getter
    metrics
    yaml_tags
+   dot_notation

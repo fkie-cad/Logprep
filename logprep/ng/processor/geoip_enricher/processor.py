@@ -136,8 +136,8 @@ class GeoipEnricher(FieldManager):
         except (ValueError, AddressNotFoundError):
             return {}
 
-    def _apply_rules(self, event: dict, _rule: Rule) -> None:
-        rule = typing.cast(GeoipEnricherRule, _rule)
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        rule = typing.cast(GeoipEnricherRule, rule)
         ip_string = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [ip_string]):
             return

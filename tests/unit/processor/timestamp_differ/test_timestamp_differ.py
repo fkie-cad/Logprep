@@ -1,13 +1,12 @@
-# pylint: disable=missing-docstring
+# pylint: disable=missing-docstring,too-many-arguments,too-many-positional-arguments
 import re
 
 import pytest
 
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [  # testcase, rule, event, expected
-    (
-        "Time difference between two timestamps",
+test_cases = [
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -17,9 +16,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00"},
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278.0"},
+        id="Time difference between two timestamps",
     ),
-    (
-        "Time difference between two timestamps with day change",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -33,9 +32,9 @@ test_cases = [  # testcase, rule, event, expected
             "field2": "2022-12-05 12:00:00",
             "time_diff": "86400.0",
         },
+        id="Time difference between two timestamps with day change",
     ),
-    (
-        "Time difference between two timestamps with timezone information",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -45,9 +44,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field2": "2022-05-09 03:56:47 -03:00", "field1": "2022-05-08"},
         {"field2": "2022-05-09 03:56:47 -03:00", "field1": "2022-05-08", "time_diff": "111407.0"},
+        id="Time difference between two timestamps with timezone information",
     ),
-    (
-        "Time difference between two timestamps with full weekday and month",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -61,9 +60,9 @@ test_cases = [  # testcase, rule, event, expected
             "field1": "2022-12-05",
             "time_diff": "40740.0",
         },
+        id="Time difference between two timestamps with full weekday and month",
     ),
-    (
-        "Time difference between two timestamps with AM/PM ",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -73,9 +72,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-03"},
         {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-03", "time_diff": "134071.0"},
+        id="Time difference between two timestamps with AM/PM ",
     ),
-    (
-        "Time difference between two timestamps with milliseconds output",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -90,9 +89,9 @@ test_cases = [  # testcase, rule, event, expected
             "field2": "2022-12-05 12:00:00",
             "time_diff": "1278000.0",
         },
+        id="Time difference between two timestamps with milliseconds output",
     ),
-    (
-        "Time difference between two timestamps with nanoseconds output",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -107,9 +106,9 @@ test_cases = [  # testcase, rule, event, expected
             "field2": "2022-12-05 12:00:00",
             "time_diff": "1278000000000.0",
         },
+        id="Time difference between two timestamps with nanoseconds output",
     ),
-    (
-        "Time difference between two timestamps in subfield",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -123,9 +122,25 @@ test_cases = [  # testcase, rule, event, expected
             "subfield": {"field2": "2022-12-05 12:00:00"},
             "time_diff": "1278.0",
         },
+        id="Time difference between two timestamps in subfield",
     ),
-    (
-        "Time difference between two timestamps without specific timestamp format",
+    pytest.param(
+        {
+            "filter": "field1\\. AND some\\.field\\\\2",
+            "timestamp_differ": {
+                "diff": "${some\\.field\\\\2:%Y-%m-%d %H:%M:%S} - ${field1\\.:%Y-%m-%d %H:%M:%S}",
+                "target_field": "time_diff",
+            },
+        },
+        {"field1.": "2022-12-05 11:38:42", "some.field\\2": "2022-12-05 12:00:00"},
+        {
+            "field1.": "2022-12-05 11:38:42",
+            "some.field\\2": "2022-12-05 12:00:00",
+            "time_diff": "1278.0",
+        },
+        id="Time difference between two timestamps in fields with escaping",
+    ),
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -139,9 +154,9 @@ test_cases = [  # testcase, rule, event, expected
             "subfield": {"field2": "2022-12-05T11:38:42-02:00"},
             "time_diff": "5922.0",
         },
+        id="Time difference between two timestamps without specific timestamp format",
     ),
-    (
-        "Time difference between two timestamps with removal of source fields",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -154,9 +169,9 @@ test_cases = [  # testcase, rule, event, expected
         {
             "time_diff": "5922.0",
         },
+        id="Time difference between two timestamps with removal of source fields",
     ),
-    (
-        "Time difference between two timestamps with overwriting of target",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -175,9 +190,9 @@ test_cases = [  # testcase, rule, event, expected
             "subfield": {"field2": "2022-12-05T11:38:42-02:00"},
             "time_diff": "5922.0",
         },
+        id="Time difference between two timestamps with overwriting of target",
     ),
-    (
-        "Time difference between two timestamps with extension of existing list in target field",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -196,9 +211,9 @@ test_cases = [  # testcase, rule, event, expected
             "subfield": {"field2": "2022-12-05T11:38:42-02:00"},
             "time_diff": ["some content", "5922.0"],
         },
+        id="Time difference between two timestamps with extension of existing list in target field",
     ),
-    (
-        "Timestamp diff with integer field (unix epoch)",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -212,9 +227,9 @@ test_cases = [  # testcase, rule, event, expected
             "subfield": {"field2": "2022-12-05 12:00:00"},
             "time_diff": "7200.0",
         },
+        id="Timestamp diff with integer field (unix epoch)",
     ),
-    (
-        "Timestamp diff with difference in milliseconds, output in seconds",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -228,9 +243,9 @@ test_cases = [  # testcase, rule, event, expected
             "subfield": {"field2": "2022-12-05 12:00:00.500"},
             "time_diff": "0.3",
         },
+        id="Timestamp diff with difference in milliseconds, output in seconds",
     ),
-    (
-        "Timestamp diff with difference in milliseconds, output in milliseconds",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -245,9 +260,9 @@ test_cases = [  # testcase, rule, event, expected
             "subfield": {"field2": "2022-12-05 12:00:00.500"},
             "time_diff": "300.0",
         },
+        id="Timestamp diff with difference in milliseconds, output in milliseconds",
     ),
-    (
-        "Timestamp diff with difference in milliseconds, output in nanoseconds",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -262,9 +277,9 @@ test_cases = [  # testcase, rule, event, expected
             "subfield": {"field2": "2022-12-05 12:00:00.500"},
             "time_diff": "300000000.0",
         },
+        id="Timestamp diff with difference in milliseconds, output in nanoseconds",
     ),
-    (
-        "Time difference between two timestamps with negative result",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -274,9 +289,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field2": "2022-12-09", "field1": "2022-12-10"},
         {"field2": "2022-12-09", "field1": "2022-12-10", "time_diff": "-86400.0"},
+        id="Time difference between two timestamps with negative result",
     ),
-    (
-        "Time difference between two timestamps with visible second unit",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -288,9 +303,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00"},
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278.0 s"},
+        id="Time difference between two timestamps with visible second unit",
     ),
-    (
-        "Time difference between two timestamps with visible millisecond unit",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -306,9 +321,9 @@ test_cases = [  # testcase, rule, event, expected
             "field2": "2022-12-05 12:00:00",
             "time_diff": "1278000.0 ms",
         },
+        id="Time difference between two timestamps with visible millisecond unit",
     ),
-    (
-        "Time difference between two timestamps with visible nanosecond unit",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -324,12 +339,12 @@ test_cases = [  # testcase, rule, event, expected
             "field2": "2022-12-05 12:00:00",
             "time_diff": "1278000000000.0 ns",
         },
+        id="Time difference between two timestamps with visible nanosecond unit",
     ),
 ]
 
 failure_test_cases = [  # testcase, rule, event, expected, error_message
-    (
-        "Timestamp diff with string field",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -344,9 +359,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_timestamp_differ_failure"],
         },
         r".*ProcessingWarning.*Invalid isoformat string: 'non-timestamp'",
+        id="Timestamp diff with string field",
     ),
-    (
-        "diff between two timestamps with partial timestamp format match",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -361,9 +376,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_timestamp_differ_failure"],
         },
         ".*ProcessingWarning.*does not match",
+        id="diff between two timestamps with partial timestamp format match",
     ),
-    (
-        "diff between two timestamps with one empty field",
+    pytest.param(
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -378,9 +393,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_timestamp_differ_failure"],
         },
         r".*ProcessingWarning.*no value for fields: \['subfield.field2'\]",
+        id="diff between two timestamps with one empty field",
     ),
-    (
-        "diff between two timestamps with one non existing field",
+    pytest.param(
         {
             "filter": "field1",
             "timestamp_differ": {
@@ -394,9 +409,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_timestamp_differ_missing_field_warning"],
         },
         r".*ProcessingWarning.*missing source_fields: \['subfield.field2'\]",
+        id="diff between two timestamps with one non existing field",
     ),
-    (
-        "diff between two timestamps with non existing fields",
+    pytest.param(
         {
             "filter": "some_field",
             "timestamp_differ": {
@@ -410,9 +425,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_timestamp_differ_missing_field_warning"],
         },
         r".*ProcessingWarning.*missing source_fields: \['subfield.field2', 'field1']",
+        id="diff between two timestamps with non existing fields",
     ),
-    (
-        "diff between two timestamps with already existing output field",
+    pytest.param(
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -427,7 +442,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "time_diff": "1278",
             "tags": ["_timestamp_differ_failure"],
         },
-        ".*FieldExistsWarning.*The following fields could not be written, because one or more subfields existed and could not be extended: time_diff",
+        ".*FieldExistsWarning.*The following fields could not be written, "
+        "because one or more subfields existed and could not be extended: time_diff",
+        id="diff between two timestamps with already existing output field",
     ),
 ]
 
@@ -438,16 +455,16 @@ class TestTimestampDiffer(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/timestamp_differ/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_testcases(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize("rule, event, expected", test_cases)
+    def test_testcases(self, rule, event, expected):
         self._load_rule(rule)
         self.object.process(event)
-        assert event == expected, testcase
+        assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
+    @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
+    def test_testcases_failure_handling(self, rule, event, expected, error_message):
         self._load_rule(rule)
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(error_message, str(result.warnings[0]))
-        assert event == expected, testcase
+        assert event == expected

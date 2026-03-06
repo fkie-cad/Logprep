@@ -12,33 +12,32 @@ from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.util.getter import GetterFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [  # testcase, rule, event, expected
-    (
-        "matches simple grok pattern",
+test_cases = [
+    pytest.param(
         {"filter": "message", "grokker": {"mapping": {"message": "this is the %{USER:userfield}"}}},
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "userfield": "MyUser586"},
+        id="matches simple grok pattern",
     ),
-    (
-        "matches simple grok pattern with dotted field target",
+    pytest.param(
         {
             "filter": "message",
             "grokker": {"mapping": {"message": "this is the %{USER:user.subfield}"}},
         },
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "user": {"subfield": "MyUser586"}},
+        id="matches simple grok pattern with dotted field target",
     ),
-    (
-        "matches simple grok pattern with logstash field target",
+    pytest.param(
         {
             "filter": "message",
             "grokker": {"mapping": {"message": "this is the %{USER:[user][subfield]}"}},
         },
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "user": {"subfield": "MyUser586"}},
+        id="matches simple grok pattern with logstash field target",
     ),
-    (
-        "matches custom patterns",
+    pytest.param(
         {
             "filter": "message",
             "grokker": {
@@ -48,9 +47,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "user": {"subfield": "MyUser586"}},
+        id="matches custom patterns",
     ),
-    (
-        "normalize from grok",
+    pytest.param(
         {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
@@ -73,9 +72,9 @@ test_cases = [  # testcase, rule, event, expected
             "some_ip": "123.123.123.123",
             "port": 1234,
         },
+        id="normalize from grok",
     ),
-    (
-        "grok list match first matching after skipping non matching",
+    pytest.param(
         {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
@@ -103,9 +102,9 @@ test_cases = [  # testcase, rule, event, expected
             "some_ip_2": "123.123.123.123",
             "port_2": 1234,
         },
+        id="grok list match first matching after skipping non matching",
     ),
-    (
-        "grok list match first matching after skipping non matching and does not match twice",
+    pytest.param(
         {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
@@ -134,9 +133,9 @@ test_cases = [  # testcase, rule, event, expected
             "some_ip_2": "123.123.123.123",
             "port_2": 1234,
         },
+        id="grok list match first matching after skipping non matching and does not match twice",
     ),
-    (
-        "grok list match first matching after skipping non matching with same target fields",
+    pytest.param(
         {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
@@ -164,9 +163,9 @@ test_cases = [  # testcase, rule, event, expected
             "some_ip": "123.123.123.123",
             "port": 1234,
         },
+        id="grok list match first matching after skipping non matching with same target fields",
     ),
-    (
-        "normalization from nested grok",
+    pytest.param(
         {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
@@ -191,9 +190,36 @@ test_cases = [  # testcase, rule, event, expected
             "test": 11,
             "parent": {"some_ip": "123.123.123.123", "port": 1234},
         },
+        id="normalization from nested grok",
     ),
-    (
-        "example log message",
+    pytest.param(
+        {
+            "filter": "win\\.log.event\\._id: 123456789",
+            "grokker": {
+                "mapping": {
+                    "win\\.log.event_data.normalize me!": r"%{IP:[par\\ent][...]} \w+ %{NUMBER:[par\\ent][\\port\\]:int} %[ts]+ %{NUMBER:te\\.st\\:int}"
+                },
+            },
+        },
+        {
+            "win.log": {
+                "api": "wineventlog",
+                "event._id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 555 1234 %ttss 11"},
+            }
+        },
+        {
+            "win.log": {
+                "api": "wineventlog",
+                "event._id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 555 1234 %ttss 11"},
+            },
+            "te.st\\": 11,
+            "par\\ent": {"...": "123.123.123.123", "\\port\\": 1234},
+        },
+        id="normalization from escaped & nested grok",
+    ),
+    pytest.param(
         {
             "filter": "message",
             "grokker": {
@@ -209,9 +235,9 @@ test_cases = [  # testcase, rule, event, expected
             "logLevel": "DEBUG",
             "logMessage": "This is a sample log",
         },
+        id="example log message",
     ),
-    (
-        "example for ecs conform output",
+    pytest.param(
         {
             "filter": "message",
             "grokker": {"mapping": {"message": "%{COMBINEDAPACHELOG}"}},
@@ -233,18 +259,18 @@ test_cases = [  # testcase, rule, event, expected
                 "original": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:25.0) Gecko/20100101 Firefox/25.0"
             },
         },
+        id="example for ecs conform output",
     ),
-    (
-        "matches simple oniguruma pattern",
+    pytest.param(
         {
             "filter": "message",
             "grokker": {"mapping": {"message": "this is the (?<userfield>[A-Za-z0-9]+)"}},
         },
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "userfield": "MyUser586"},
+        id="matches simple oniguruma pattern",
     ),
-    (
-        "oniguruma with nested parentheses (3 levels supported)",
+    pytest.param(
         {
             "filter": "message",
             "grokker": {
@@ -263,9 +289,9 @@ test_cases = [  # testcase, rule, event, expected
             "rest": "/4",
             "remains": "SEND INFO BAL/4",
         },
+        id="oniguruma with nested parentheses (3 levels supported)",
     ),
-    (
-        "two oniguruma with same target names, applies only the last target",
+    pytest.param(
         {
             "filter": "message",
             "grokker": {
@@ -279,9 +305,9 @@ test_cases = [  # testcase, rule, event, expected
             "message": "13 37 21 42",
             "action": "42",
         },
+        id="two oniguruma with same target names, applies only the last target",
     ),
-    (
-        "ignore_missing_fields",
+    pytest.param(
         {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
@@ -308,9 +334,9 @@ test_cases = [  # testcase, rule, event, expected
             "some_ip": "123.123.123.123",
             "port": 1234,
         },
+        id="ignore_missing_fields",
     ),
-    (
-        "Subfield with common prefix",
+    pytest.param(
         {
             "filter": "message",
             "grokker": {
@@ -324,19 +350,19 @@ test_cases = [  # testcase, rule, event, expected
             "message": "Facility spain primary",
             "facility": {"location": "spain", "location_level": "primary"},
         },
+        id="Subfield with common prefix",
     ),
 ]
 
 failure_test_cases = [
-    (
-        "only field does not exist",
+    pytest.param(
         {"filter": "message", "grokker": {"mapping": {"unknown": "this is the %{USER:userfield}"}}},
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "tags": ["_grokker_missing_field_warning"]},
         r"missing source_fields: \['unknown']",
+        id="only field does not exist",
     ),
-    (
-        "only one field does not exist",
+    pytest.param(
         {
             "filter": "message",
             "grokker": {
@@ -353,9 +379,9 @@ failure_test_cases = [
             "tags": ["_grokker_missing_field_warning"],
         },
         r"missing source_fields: \['unknown']",
+        id="only one field does not exist",
     ),
-    (
-        "writes failure tag if no grok patterns matches",
+    pytest.param(
         {
             "filter": "grok_me",
             "grokker": {
@@ -370,9 +396,9 @@ failure_test_cases = [
         {"grok_me": "123.123.123.123 1234"},
         {"grok_me": "123.123.123.123 1234", "tags": ["_grokker_failure"]},
         "no grok pattern matched",
+        id="writes failure tag if no grok patterns matches",
     ),
-    (
-        "normalize from grok match only exact",
+    pytest.param(
         {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
@@ -395,9 +421,9 @@ failure_test_cases = [
             "tags": ["_grokker_failure"],
         },
         "no grok pattern matched",
+        id="normalize from grok match only exact",
     ),
-    (
-        "grok pattern timeout",
+    pytest.param(
         {
             "filter": "url",
             "grokker": {
@@ -409,8 +435,9 @@ failure_test_cases = [
         {"url": "is-ascdwa-fv458.sdcfvfdaq.ascg:316"},
         {"url": "is-ascdwa-fv458.sdcfvfdaq.ascg:316"},
         ProcessingCriticalError,
+        id="grok pattern timeout",
     ),
-]  # testcase, rule, event, expected
+]
 
 
 class TestGrokker(BaseProcessorTestCase):
@@ -419,22 +446,22 @@ class TestGrokker(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/grokker/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_testcases(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize("rule, event, expected", test_cases)
+    def test_testcases(self, rule, event, expected):
         self._load_rule(rule)
         self.object.setup()
         self.object.process(event)
-        assert event == expected, testcase
+        assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, error):
+    @pytest.mark.parametrize("rule, event, expected, error", failure_test_cases)
+    def test_testcases_failure_handling(self, rule, event, expected, error):
         self._load_rule(rule)
         self.object.setup()
         if isinstance(error, str):
             result = self.object.process(event)
             assert len(result.warnings) == 1
             assert re.match(rf".*{error}", str(result.warnings[0]))
-            assert event == expected, testcase
+            assert event == expected
         else:
             result = self.object.process(event)
             assert isinstance(result.errors[0], ProcessingCriticalError)

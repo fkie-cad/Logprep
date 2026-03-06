@@ -1,5 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
 
+import functools
 import itertools
 import re
 import sys
@@ -286,9 +287,9 @@ def get_dotted_field_value(event: dict[str, FieldValue], dotted_field: str) -> F
     Parameters
     ----------
     event: dict[str, FieldValue]
-        The event from which the dotted field value should be extracted
+        The event from which the dotted field value should be extracted.
     dotted_field: str
-        The dotted field name which identifies the requested value
+        The dotted field name which identifies the requested value.
 
     Returns
     -------
@@ -310,7 +311,7 @@ def get_dotted_field_value(event: dict[str, FieldValue], dotted_field: str) -> F
         return None
 
 
-def get_dotted_field_value_with_explicit_missing(
+def get_dotted_field_value_with_missing(
     event: dict[str, FieldValue], dotted_field: str
 ) -> FieldValue | Missing:
     """
@@ -320,15 +321,15 @@ def get_dotted_field_value_with_explicit_missing(
     Parameters
     ----------
     event: dict[str, FieldValue]
-        The event from which the dotted field value should be extracted
+        The event from which the dotted field value should be extracted.
     dotted_field: str
-        The dotted field name which identifies the requested value
+        The dotted field name which identifies the requested value.
 
     Returns
     -------
     FieldValue | Missing
         The value of the requested dotted field, which can be None.
-        None is also returnd when the field could not be found and silent_fail is True.
+        Or :code:`MISSING` if the field could not be found.
 
     Raises
     ------
@@ -342,6 +343,66 @@ def get_dotted_field_value_with_explicit_missing(
         return current
     except (KeyError, ValueError, TypeError, IndexError):
         return MISSING
+
+
+def get_field_value(event: dict[str, FieldValue], fields: Iterable[str]) -> FieldValue | Missing:
+    """Low-level function to retrieve the value referenced by the sequence
+    of keys/fields.
+    This function assumes, that the dotted fields have already been resolved and
+    that all remaining dots are to be interpreted as part of their respective field names.
+    Also, no slicing is supported.
+
+    Parameters
+    ----------
+    event : dict[str, FieldValue]
+        The event from which the field value should be extracted.
+    fields : Iterable[str]
+        The field sequence which identifies the requested value.
+
+    Returns
+    -------
+    FieldValue | Missing
+        The value of the requested dotted field, which can be None.
+        Or :code:`MISSING` if the field could not be found.
+    """
+    current: FieldValue = event
+    try:
+        for field in fields:
+            current = _get_item(current, field)
+        return current
+    except (KeyError, TypeError):
+        return MISSING
+
+
+def get_field_value_no_slice(
+    event: dict[str, FieldValue], fields: Iterable[str]
+) -> FieldValue | Missing:
+    """Optimized low-level function to retrieve the value referenced by the sequence
+    of keys/fields.
+    This function assumes, that the dotted fields have already been resolved and
+    that all remaining dots are to be interpreted as part of their respective field names.
+    Also, no slicing is supported.
+
+    Parameters
+    ----------
+    event : dict[str, FieldValue]
+        The event from which the field value should be extracted.
+    fields : Iterable[str]
+        The field sequence which identifies the requested value.
+
+    Returns
+    -------
+    FieldValue | Missing
+        The value of the requested dotted field, which can be None.
+        Or :code:`MISSING` if the field could not be found.
+    """
+    current: FieldValue = event
+    for field in fields:
+        try:
+            current = typing.cast(dict[str, FieldValue], current)[field]
+        except (KeyError, TypeError):
+            return MISSING
+    return current
 
 
 def get_dotted_field_values(
@@ -375,7 +436,7 @@ def get_dotted_field_values(
     """
     result: dict[str, FieldValue] = {}
     for field_to_copy in dotted_fields:
-        value = get_dotted_field_value_with_explicit_missing(event, field_to_copy)
+        value = get_dotted_field_value_with_missing(event, field_to_copy)
         if value is MISSING:
             fallback_value = on_missing(field_to_copy)
             if fallback_value is not SKIP:
@@ -383,6 +444,30 @@ def get_dotted_field_values(
             continue
         result[field_to_copy] = value
     return result
+
+
+def has_dotted_field(
+    event: dict[str, FieldValue], dotted_field: str, allow_none: bool = True
+) -> bool:
+    """Check if the given dotted field can be found in in data structure.
+
+    Parameters
+    ----------
+    event : dict[str, FieldValue]
+        The data structure which might contain the field.
+    dotted_field : str
+        The dotted field descriptor which identifies the field.
+    allow_none: bool, optional
+        Whether fields with value :code:`None` are considered present, defaults to :code:`True`.
+
+    Returns
+    -------
+    bool
+        Whether the field could be found in the data structure.
+    """
+    if allow_none:
+        return get_dotted_field_value_with_missing(event, dotted_field) is not MISSING
+    return get_dotted_field_value(event, dotted_field) is not None
 
 
 @lru_cache(maxsize=100000)
@@ -401,10 +486,72 @@ def get_dotted_field_list(dotted_field: str) -> Sequence[str]:
     Sequence[str]
         a readonly sequence keys for dictionary iteration
     """
-    return dotted_field.split(".")
+    if dotted_field.find("\\") == -1:
+        return dotted_field.split(".")
+
+    result = []
+
+    char_buffer: list[str] = []
+    itr = iter(dotted_field)
+    for c in itr:
+        match (c):
+            case ".":
+                result.append("".join(char_buffer))
+                char_buffer = []
+            case "\\":
+                try:
+                    char_buffer.append(next(itr))
+                except StopIteration:
+                    char_buffer.append("\\")
+            case _:
+                char_buffer.append(c)
+
+    result.append("".join(char_buffer))
+    return result
 
 
-def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
+def field_list_to_dotted_field(field_list: Iterable[str]) -> str:
+    """Combines a list of fields (or rather key names) to a single dotted field.
+    The names are joined using dots and already existing dots will be considered
+    part of the name, meaning they are escaped in the dotted representation.
+    For instance, :code:`x.y` and :code:`z` would be mapped to :code:`x\\.y.z` and
+    joining :code:`x\\.y` and :code:`z` would result in :code:`x\\\\.y.z`.
+
+    Parameters
+    ----------
+    field_list : Iterable[str]
+        The list of fields to be joined.
+
+    Returns
+    -------
+    str
+        A single dotted field.
+    """
+    return ".".join(field.replace(".", "\\.") for field in field_list)
+
+
+def join_dotted_fields(dotted_fields: Iterable[str]) -> str:
+    """Combines a list of dotted fields to a single dotted field by joining them
+    in order and without escaping already existing dots or other characters additionally.
+    For instance, :code:`x.y` and :code:`z` would be mapped to :code:`x.y.z` and
+    joining :code:`x\\.y` and :code:`z` would result in :code:`x\\.y.z`.
+
+    Parameters
+    ----------
+    dotted_fields : Iterable[str]
+        The list of fields to be joined.
+
+    Returns
+    -------
+    str
+        A single dotted field.
+    """
+    return ".".join(dotted_fields)
+
+
+def pop_dotted_field_value(
+    event: dict[str, FieldValue], dotted_field: str, drop_empty: bool = True
+) -> FieldValue | Missing:
     """
     Remove and return dotted field. Returns None is field does not exist.
 
@@ -414,53 +561,49 @@ def pop_dotted_field_value(event: dict, dotted_field: str) -> FieldValue:
         The event from which the dotted field value should be extracted
     dotted_field: str
         The dotted field name which identifies the requested value
+    drop_empty: bool
+        Whether to drop empty dicts along the way
 
     Returns
     -------
-    dict_: dict, list, str
-        The value of the requested dotted field.
+    FieldValue | Missing
+        The value of the requested dotted field or the MISSING sentinel
     """
-    fields = dotted_field.split(".")
-    return _retrieve_field_value_and_delete_field_if_configured(
-        event, fields, delete_source_field=True
-    )
+    if drop_empty:
+        return _pop_field_value_and_drop_empty(event, list(get_dotted_field_list(dotted_field)))
+    return _pop_field_value(event, dotted_field)
 
 
-def get_field_value_no_slice(
-    event: dict[str, FieldValue], fields: Iterable[str]
+def _pop_field_value(event: dict[str, FieldValue], dotted_field: str) -> FieldValue | Missing:
+    *parent_fields, field = get_dotted_field_list(dotted_field)
+    parent_field_value = get_field_value(event, parent_fields)
+    if parent_field_value and isinstance(parent_field_value, dict) and field in parent_field_value:
+        return parent_field_value.pop(field)
+    return MISSING
+
+
+def _pop_field_value_and_drop_empty(
+    sub_dict: FieldValue,
+    field_list: list[str],
 ) -> FieldValue | Missing:
-    current: FieldValue = event
-    for field in fields:
-        try:
-            current = typing.cast(dict[str, FieldValue], current)[field]
-        except (KeyError, TypeError):
-            return MISSING
-    return current
-
-
-def _retrieve_field_value_and_delete_field_if_configured(
-    sub_dict, dotted_fields_path, delete_source_field=False
-):
     """
     Iterates recursively over the given dictionary retrieving the dotted field. If set the source
     field will be removed. When again going back up the stack trace it deletes the empty left over
     dicts.
     """
-    next_key = dotted_fields_path.pop(0)
-    if next_key in sub_dict and isinstance(sub_dict, dict):
-        if not dotted_fields_path:
-            field_value = sub_dict[next_key]
-            if delete_source_field:
-                del sub_dict[next_key]
-            return field_value
-        field_value = _retrieve_field_value_and_delete_field_if_configured(
-            sub_dict[next_key], dotted_fields_path, delete_source_field
-        )
-        # If remaining subdict is empty delete it
+    next_key = field_list.pop(0)
+    if isinstance(sub_dict, dict) and next_key in sub_dict:
+        if not field_list:
+            # next_key is the final key in the traversion
+            leaf_value = sub_dict[next_key]
+            del sub_dict[next_key]
+            return leaf_value
+        field_value = _pop_field_value_and_drop_empty(sub_dict[next_key], field_list)
+        # if remaining subdict is empty delete it
         if not sub_dict[next_key]:
             del sub_dict[next_key]
         return field_value
-    return None
+    return MISSING
 
 
 def recursive_compare(test_output, expected_output):
@@ -627,3 +770,162 @@ def deduplicate_with_order(items: Iterable[T]) -> list[T]:
         The deduplicated list
     """
     return list(dict.fromkeys(items))
+
+
+def resolve_template(
+    template: str,
+    data: dict[str, FieldValue],
+    serialize: Callable[[FieldValue], str] = str,
+) -> str:
+    """Resolve a string template by substituting placeholders in the form `${nested.key}`
+    with their respective values taken from the data dict.
+    This method follows a naive approach and attempts to substitute all keys from the data dict
+    in the template.
+    If there are any placeholders which can not be resolved this way, they are kept as-is and no
+    error is raised.
+
+    Parameters
+    ----------
+    template : str
+        The template with dollar-curly-bracket based placeholders to be replaced
+    data : dict[str, FieldValue]
+        The data source for substituting placeholders
+    serialize : Callable[[FieldValue], str], optional
+        Used to convert :code:`FieldValue` to a string representation, by default str
+
+    Returns
+    -------
+    str
+        The resolved template string
+    """
+    result = template
+    for key, value in data.items():
+        escaped_key = key.replace("\\", "\\\\").replace(".", "\\.")
+        pattern = r"\$\{(" + rf"{escaped_key}" + r")\}"
+        result = re.sub(pattern, serialize(value), result)
+    return result
+
+
+def create_template_resolver(
+    data: dict[str, FieldValue],
+    serialize: Callable[[FieldValue], str] = str,
+) -> Callable[[str], str]:
+    """Prepares a template resolver for substituting placeholders in the form `${nested.key}`
+    with their respective values taken from the data dict.
+    This method follows a naive approach and attempts to substitute all keys from the data dict
+    in the template.
+    If there are any placeholders which can not be resolved this way, they are kept as-is and no
+    error is raised.
+
+    Parameters
+    ----------
+    data : dict[str, FieldValue]
+        The data source for substituting placeholders
+    serialize : Callable[[FieldValue], str], optional
+        Used to convert :code:`FieldValue` to a string representation, by default str
+
+    Returns
+    -------
+    Callable[[str], str]
+        The template resolver, transforming a string by substituting all placeholders for which it has values
+    """
+    resolve_dict = {}
+    for key, value in data.items():
+        escaped_key = key.replace("\\", "\\\\").replace(".", "\\.")
+        pattern = r"\$\{(" + rf"{escaped_key}" + r")\}"
+        resolve_dict[pattern] = serialize(value)
+
+    def resolve(template: str) -> str:
+        result = template
+        for pattern, value in resolve_dict.items():
+            result = re.sub(pattern, value, result)
+        return result
+
+    return resolve
+
+
+def reduce_field_value(func: Callable[[FieldValue, T], T], data: FieldValue, initial: T) -> T:
+    """Traverses the given :code:`FieldValue` and calls the given function per element.
+    :code:`dict` and :code:`list` are hereby considered nodes and their keys, values and items
+    are visited in the process.
+
+    Parameters
+    ----------
+    func : Callable[[FieldValue, T], T]
+        Callback for handling the element and integrating it into the constructed result
+    data : FieldValue
+        The potentially nested :code:`FieldValue` data structure
+    initial : T
+        The initial result value being modified on each callback call
+
+    Returns
+    -------
+    T
+        The result value after being transformed through all callback invocations
+
+    Raises
+    ------
+    ValueError
+        If an unexpected type is encountered
+    """
+    result = initial
+    match (data):
+        case dict():
+            result = func(data, result)
+            for key, value in data.items():
+                result = reduce_field_value(func, key, result)
+                result = reduce_field_value(func, value, result)
+        case list():
+            result = func(data, result)
+            for item in data:
+                result = reduce_field_value(func, item, result)
+        case str() | int() | float() | bool() | None:
+            result = func(data, result)
+        case _:
+            raise ValueError(f"unexpected type encountered: {type(data)}")
+    return result
+
+
+def transform_field_value(
+    data: FieldValue,
+    /,
+    transform_value: Callable[[str | int | float | bool | None], FieldValue],
+    transform_key: Callable[[str], str],
+) -> FieldValue:
+    """Transforms a field value by mapping all leafs (not :code:`dict` and :code:`list`)
+    to new values.
+
+    Parameters
+    ----------
+    transform_value : Callable[[FieldValue], FieldValue]
+        Transforms items of lists, values of dicts and all plain value types to a new value
+    transform_key : Callable[[str], str]
+        Transforms keys of dicts to a new value
+    data : FieldValue
+        The potentially complex :code:`FieldValue` to traverse and transform
+
+    Returns
+    -------
+    FieldValue
+        The transformed :code:`FieldValue`
+
+    Raises
+    ------
+    ValueError
+        If an unexpected type is encountered
+    """
+    match (data):
+        case dict():
+            transform_recursive = functools.partial(
+                transform_field_value, transform_value=transform_value, transform_key=transform_key
+            )
+            return {transform_key(key): transform_recursive(value) for key, value in data.items()}
+        case list():
+            transform_recursive = functools.partial(
+                transform_field_value, transform_value=transform_value, transform_key=transform_key
+            )
+            return [transform_recursive(item) for item in data]
+        case str() | int() | float() | bool() | None:
+            return transform_value(data)
+        case _:
+            raise ValueError(f"unexpected type encountered: {type(data)}")

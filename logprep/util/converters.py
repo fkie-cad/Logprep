@@ -1,5 +1,6 @@
 from typing import TypeVar
 
+T = TypeVar("T")
 Key = TypeVar("Key")
 Value = TypeVar("Value")
 
@@ -7,7 +8,8 @@ Value = TypeVar("Value")
 def convert_ordered_mapping_or_keep_mapping(
     dict_or_sequence: dict[Key, Value] | list[dict[Key, Value]],
 ) -> dict[Key, Value]:
-    """Convert a list of key Values to a single dict, with no reocurring keys and only single item dicts, if input is already singular dict, return early"""
+    """Convert a list of key Values to a single dict, with no reocurring keys
+    and only single item dicts, if input is already singular dict, return early"""
     if isinstance(dict_or_sequence, dict):
         return dict_or_sequence
 
@@ -18,7 +20,8 @@ def convert_ordered_mapping_or_keep_mapping(
 
 
 def convert_ordered_mapping(dicts: list[dict[Key, Value]]) -> dict[Key, Value]:
-    """Convert a list of key Values to a single dict, with no reocurring keys and only single item dicts"""
+    """Convert a list of key Values to a single dict, with no reocurring keys
+    and only single item dicts"""
     ordered_mapping = {}
     for element in dicts:
         keys = list(element.keys())
@@ -29,3 +32,26 @@ def convert_ordered_mapping(dicts: list[dict[Key, Value]]) -> dict[Key, Value]:
         ordered_mapping[keys[0]] = element[keys[0]]
 
     return ordered_mapping
+
+
+def convert_from_dict(constructor: type[T], data: T | dict) -> T:
+    """Converter function which either constructs an instance of type :code:`T`
+    by calling the given constructor with the kwargs from the data dict, or simply
+    returns the already existing object instance if passed as data parameter.
+
+    Parameters
+    ----------
+    constructor : type[T]
+        A function accepting all kwargs from the potential data dict.
+    data : T | dict
+        Either already an instance, or a dict with all the relevant parameters
+        for instantiation.
+
+    Returns
+    -------
+    T
+        An object of type :code:`T`
+    """
+    if isinstance(data, dict):
+        return constructor(**data)
+    return data

@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=too-many-positional-arguments
 import math
 import re
 
@@ -7,9 +8,8 @@ import pytest
 from logprep.processor.calculator.fourFn import BNF
 from tests.unit.processor.base import BaseProcessorTestCase
 
-test_cases = [  # testcase, rule, event, expected
-    (
-        "sums integers",
+test_cases = [
+    pytest.param(
         {
             "filter": "message",
             "calculator": {
@@ -19,9 +19,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message"},
         {"message": "This is a message", "new_field": 2},
+        id="sums integers",
     ),
-    (
-        "sums integers from single field",
+    pytest.param(
         {
             "filter": "message",
             "calculator": {
@@ -31,9 +31,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message", "field1": "1"},
         {"message": "This is a message", "field1": "1", "new_field": 2},
+        id="sums integers from single field",
     ),
-    (
-        "sums floats from multiple fields",
+    pytest.param(
         {
             "filter": "message",
             "calculator": {
@@ -43,9 +43,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message", "field1": "1.2", "field2": 4.5},
         {"message": "This is a message", "field1": "1.2", "field2": 4.5, "result": 6.7},
+        id="sums floats from multiple fields",
     ),
-    (
-        "multiplies before sum",
+    pytest.param(
         {
             "filter": "message",
             "calculator": {
@@ -55,9 +55,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message", "field1": "3", "field2": 5, "field3": "2"},
         {"message": "This is a message", "field1": "3", "field2": 5, "field3": "2", "result": 13},
+        id="multiplies before sum",
     ),
-    (
-        "do not raise if field value is 0",
+    pytest.param(
         {
             "filter": "field2 AND field3",
             "calculator": {
@@ -67,9 +67,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field1": "0", "field2": "4", "field3": 2},
         {"field1": "0", "field2": "4", "field3": 2, "result": 8},
+        id="do not raise if field value is 0",
     ),
-    (
-        "logical evaluates fields to False",
+    pytest.param(
         {
             "filter": "field2 AND field3",
             "calculator": {
@@ -79,9 +79,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field1": "0", "field2": "4", "field3": 2},
         {"field1": "0", "field2": "4", "field3": 2, "result": False},
+        id="logical evaluates fields to False",
     ),
-    (
-        "logical evaluates fields",
+    pytest.param(
         {
             "filter": "field2 AND field3",
             "calculator": {
@@ -91,9 +91,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field1": "6", "field2": "4", "field3": 2},
         {"field1": "6", "field2": "4", "field3": 2, "result": True},
+        id="logical evaluates fields",
     ),
-    (
-        "overwrites target",
+    pytest.param(
         {
             "filter": "field2 AND field3",
             "calculator": {
@@ -104,9 +104,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field1": "6", "field2": "4", "field3": 2},
         {"field1": 12, "field2": "4", "field3": 2},
+        id="overwrites target",
     ),
-    (
-        "delete source fields",
+    pytest.param(
         {
             "filter": "field2 AND field3",
             "calculator": {
@@ -117,9 +117,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field1": "6", "field2": "4", "field3": 2},
         {"result": 12},
+        id="delete source fields",
     ),
-    (
-        "extend list",
+    pytest.param(
         {
             "filter": "field2 AND field3",
             "calculator": {
@@ -130,9 +130,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3]},
         {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3, 12]},
+        id="extend list",
     ),
-    (
-        "handles dotted fields",
+    pytest.param(
         {
             "filter": "*",
             "calculator": {
@@ -143,9 +143,36 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"key": {"source": {"source": {"field3": 2}, "field2": 6}, "field1": 4}},
         {"result": 12},
+        id="handles dotted fields",
     ),
-    (
-        "Time conversion ms -> ns",
+    pytest.param(
+        {
+            "filter": "*",
+            "calculator": {
+                "calc": "${field\\\\1} + ${key.field\\\\2}"
+                "+${key.sou\\\\rce.sou\\\\rce\\.\\\\field3}",
+                "target_field": "wrapper.calc\\.res\\\\ult",
+                "delete_source_fields": True,
+            },
+        },
+        {"key": {"sou\\rce": {"sou\\rce.\\field3": 2}, "field\\2": 6}, "field\\1": 4},
+        {"wrapper": {"calc.res\\ult": 12}},
+        id="handles dotted fields & escaping in basic operands",
+    ),
+    pytest.param(
+        {
+            "filter": "*",
+            "calculator": {
+                "calc": "${spec.calc\\.op\\\\erator}(${spec.ca\\\\lc\\.value})",
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"spec": {"calc.op\\erator": "round", "ca\\lc.value": "PI"}},
+        {"result": 3},
+        id="handles dotted fields & escaping in operators",
+    ),
+    pytest.param(
         {
             "filter": "duration",
             "calculator": {
@@ -156,9 +183,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"duration": "0.01"},
         {"duration": 10000.0},
+        id="Time conversion ms -> ns",
     ),
-    (
-        "Ignore missing source fields",
+    pytest.param(
         {
             "filter": "duration",
             "calculator": {
@@ -169,9 +196,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"duration": "0.01"},
         {"duration": "0.01"},
+        id="Ignore missing source fields",
     ),
-    (
-        "convert hex to int",
+    pytest.param(
         {
             "filter": "message",
             "calculator": {
@@ -181,9 +208,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message", "field1": "ff"},
         {"message": "This is a message", "field1": "ff", "new_field": 255},
+        id="convert hex to int",
     ),
-    (
-        "convert hex to int with prefix",
+    pytest.param(
         {
             "filter": "message",
             "calculator": {
@@ -193,9 +220,9 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message", "field1": "0xff"},
         {"message": "This is a message", "field1": "0xff", "new_field": 255},
+        id="convert hex to int with prefix",
     ),
-    (
-        "convert hex to int with prefix",
+    pytest.param(
         {
             "filter": "message",
             "calculator": {
@@ -205,13 +232,13 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message", "field1": "FF"},
         {"message": "This is a message", "field1": "FF", "new_field": 255},
+        id="convert hex to int with prefix",
     ),
 ]
 
 
-failure_test_cases = [  # testcase, rule, event, expected, error_message
-    (
-        "Tags failure if parse is not possible",
+failure_test_cases = [
+    pytest.param(
         {
             "filter": "field1 AND field2 AND field3",
             "calculator": {
@@ -227,9 +254,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_failure"],
         },
         r"ProcessingWarning.*expression 'not parsable \+ 4 \* 2' could not be parsed",
+        id="Tags failure if parse is not possible",
     ),
-    (
-        "Tags failure if target_field exist",
+    pytest.param(
         {
             "filter": "field1 AND field2 AND field3",
             "calculator": {
@@ -246,9 +273,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_failure"],
         },
         "FieldExistsWarning.*one or more subfields existed and could not be extended: result",
+        id="Tags failure if target_field exist",
     ),
-    (
-        "Tags failure if source_field missing",
+    pytest.param(
         {
             "filter": "field2 AND field3",
             "calculator": {
@@ -263,9 +290,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_missing_field_warning"],
         },
         r"ProcessingWarning.*missing source_fields: \['field1']",
+        id="Tags failure if source_field missing",
     ),
-    (
-        "Tags failure if source_field is empty",
+    pytest.param(
         {
             "filter": "field2 AND field3",
             "calculator": {
@@ -281,9 +308,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_failure"],
         },
         r"ProcessingWarning.*no value for fields: \['field1'\]",
+        id="Tags failure if source_field is empty",
     ),
-    (
-        "Tags failure try to escape",
+    pytest.param(
         {
             "filter": "field2 AND field3",
             "calculator": {
@@ -299,9 +326,25 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_failure"],
         },
         r"ProcessingWarning.*could not be parsed",
+        id="Tags failure try to escape",
     ),
-    (
-        "division by zero",
+    pytest.param(
+        {
+            "filter": "field1",
+            "calculator": {
+                "calc": "round(${field1}",
+                "target_field": "result",
+            },
+        },
+        {"field1": 1337},
+        {
+            "field1": 1337,
+            "tags": ["_calculator_failure"],
+        },
+        r"ProcessingWarning.*could not be parsed",
+        id="Tags failure incorrect syntax",
+    ),
+    pytest.param(
         {
             "filter": "message",
             "calculator": {
@@ -317,9 +360,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_failure"],
         },
         r"ProcessingWarning.*'3/0' => '3/0' results in division by zero",
+        id="division by zero",
     ),
-    (
-        "raises timout",
+    pytest.param(
         {
             "filter": "message",
             "calculator": {
@@ -331,8 +374,9 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {
             "message": "This is a message",
             "tags": ["_calculator_failure"],
-        },
-        r"ProcessingWarning.*(Timer expired|ioctl timeout)",  # "STREAM ioctl timeout" for MacOS/darwin
+        },  # "STREAM ioctl timeout" for MacOS/darwin
+        r"ProcessingWarning.*(Timer expired|ioctl timeout)",
+        id="raises timout",
     ),
 ]
 
@@ -343,20 +387,20 @@ class TestCalculator(BaseProcessorTestCase):
         "rules": ["tests/testdata/unit/calculator/rules"],
     }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
+    @pytest.mark.parametrize("rule, event, expected", test_cases)
+    def test_testcases(self, rule, event, expected):  # pylint: disable=unused-argument
         self._load_rule(rule)
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
+    @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
+    def test_testcases_failure_handling(self, rule, event, expected, error_message):
         self._load_rule(rule)
 
         result = self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(rf".*{error_message}", str(result.warnings[0]))
-        assert event == expected, testcase
+        assert event == expected
 
     @pytest.mark.parametrize(
         "expression, expected",

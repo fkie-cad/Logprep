@@ -25,7 +25,6 @@ SOFTWARE.
 
 import re
 import string
-import sys
 from hashlib import md5
 from importlib import resources
 from itertools import chain
@@ -36,9 +35,10 @@ import numpy as np
 from attrs import define, field, validators
 
 from logprep.util.decorators import timeout
+from logprep.util.helper import field_list_to_dotted_field
 
 DEFAULT_PATTERNS_DIRS = [str(resources.files(__package__) / "patterns/ecs-v1")]
-LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
+LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
 ONIGURUMA = r"\(\?<([^()]*)>\(?(([^()]*|\(([^()]*|\([^()]*\))*\))*)\)?\)"
 NON_RESOLVED_ONIGURUMA = r"\(\?<[^md5].*>"
@@ -49,11 +49,18 @@ INT_FLOAT = {"int": int, "float": float}
 class Grok:
     """Grok object"""
 
-    field_pattern = re.compile(r"\[(.*?)\]")
     grok_pattern = re.compile(GROK)
     oniguruma = re.compile(ONIGURUMA)
 
-    pattern: str = field(validator=validators.instance_of((str, list)))
+    pattern: str | list[str] = field(
+        validator=validators.or_(
+            validators.instance_of(str),
+            validators.deep_iterable(
+                iterable_validator=validators.instance_of(list),
+                member_validator=validators.instance_of(str),
+            ),
+        )
+    )
     custom_patterns_dir: str = field(default="")
     custom_patterns: dict = field(factory=dict)
     fullmatch: bool = field(default=True)
@@ -119,16 +126,13 @@ class Grok:
         self._load_search_pattern()
 
     @staticmethod
-    def _to_dundered_field(fields: str) -> str:
-        if not "[" in fields:
-            return fields
-        return re.sub(Grok.field_pattern, r"\g<1>__", fields).strip("__")
+    def _logstash_to_dotted_field(bracketed_fields: str) -> str:
+        if bracketed_fields.startswith("["):
+            fields = bracketed_fields[1:-1].split("][")
+            return field_list_to_dotted_field(fields)
 
-    @staticmethod
-    def _to_dotted_field(fields: str) -> str:
-        if not "__" in fields:
-            return fields
-        return fields.replace("__", ".")
+        # no brackets, assuming dotted field notation
+        return bracketed_fields
 
     def _resolve_grok(self, match: re.Match) -> str:
         name = match.group(1)
@@ -139,8 +143,7 @@ class Grok:
         if fields is None:
             return pattern.regex_str
         type_str = match.group(8)
-        dundered_fields = self._to_dundered_field(fields)
-        dotted_fields = self._to_dotted_field(dundered_fields)
+        dotted_fields = self._logstash_to_dotted_field(fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
         if fields_hash in self.field_mapper:
             fields_hash += (
@@ -154,8 +157,7 @@ class Grok:
     def _resolve_oniguruma(self, match: re.Match) -> str:
         fields = match.group(1)
         pattern = match.group(2)
-        dundered_fields = self._to_dundered_field(fields)
-        dotted_fields = self._to_dotted_field(dundered_fields)
+        dotted_fields = self._logstash_to_dotted_field(fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
         if fields_hash in self.field_mapper:
             fields_hash += (

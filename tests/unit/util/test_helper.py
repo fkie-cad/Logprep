@@ -1,20 +1,39 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 import re
+import typing
 from unittest import mock
 
 import pytest
 
 from logprep.util.configuration import Configuration
 from logprep.util.helper import (
+    FieldValue,
+    Missing,
+    Skip,
     camel_to_snake,
+    get_dotted_field_list,
     get_dotted_field_value,
     get_versions_string,
     pop_dotted_field_value,
+    reduce_field_value,
     snake_to_camel,
+    transform_field_value,
 )
 from logprep.util.json_handling import is_json
 from tests.testdata.metadata import path_to_config
+
+
+class TestSentinels:
+    def test_no_collission_with_missing(self):
+        assert isinstance(Missing.MISSING, object)
+        assert "MISSING" != Missing.MISSING
+        assert "missing" != Missing.MISSING
+
+    def test_no_collission_with_skip(self):
+        assert isinstance(Skip.SKIP, object)
+        assert "SKIP" != Skip.SKIP
+        assert "skip" != Skip.SKIP
 
 
 class TestCamelToSnake:
@@ -113,6 +132,24 @@ class TestGetDottedFieldValue:
         value = get_dotted_field_value(event, dotted_field)
         assert value == "127.0.0.1"
 
+    def test_get_dotted_field_value_with_escaping(self):
+        event = {"dotted.field": "127.0.0.1", "dotted": {"field": "not me"}}
+        dotted_field = "dotted\\.field"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == "127.0.0.1"
+
+    def test_get_dotted_field_value_with_double_escaping(self):
+        event = {"dotted\\.field": "127.0.0.1", "dotted": {"field": "not me"}}
+        dotted_field = "dotted\\\\\\.field"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == "127.0.0.1", get_dotted_field_list(dotted_field)
+
+    def test_get_dotted_field_value_nesting_depth_one_with_escaping(self):
+        event = {"dotted": {"field.sub": "127.0.0.1"}}
+        dotted_field = "dotted.field\\.sub"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == "127.0.0.1"
+
     def test_get_dotted_field_retrieves_sub_dict(self):
         event = {"some": {"dotted": {"field": "127.0.0.1"}}}
         dotted_field = "some.dotted"
@@ -205,26 +242,83 @@ class TestGetDottedFieldValue:
 
 
 class TestPopDottedFieldValue:
-    def test_get_dotted_field_removes_source_field_in_nested_structure_but_leaves_sibling(self):
+
+    def test_removes_source_field_in_nested_structure_but_leaves_sibling(self):
         event = {"get": {"nested": "field", "other": "field"}}
         dotted_field = "get.nested"
         value = pop_dotted_field_value(event, dotted_field)
         assert value == "field"
         assert event == {"get": {"other": "field"}}
 
-    def test_get_dotted_field_removes_source_field(self):
+    def test_removes_plain_source_field(self):
+        event = {"key": "field"}
+        dotted_field = "key"
+        value = pop_dotted_field_value(event, dotted_field)
+        assert value == "field"
+        assert not event
+
+    def test_removes_plain_source_field_keep_empty(self):
+        event = {"key": "field"}
+        dotted_field = "key"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == "field"
+        assert not event
+
+    def test_removes_source_field(self):
         event = {"get": {"nested": "field"}}
         dotted_field = "get.nested"
         value = pop_dotted_field_value(event, dotted_field)
         assert value == "field"
         assert not event
 
-    def test_get_dotted_field_removes_source_field2(self):
+    def test_removes_source_field_keep_empty(self):
+        event = {"get": {"nested": "field"}}
+        dotted_field = "get.nested"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == "field"
+        assert event == {"get": {}}
+
+    def test_removes_source_field2(self):
         event = {"get": {"very": {"deeply": {"nested": {"field": "value"}}}}}
         dotted_field = "get.very.deeply.nested"
         value = pop_dotted_field_value(event, dotted_field)
         assert value == {"field": "value"}
         assert not event
+
+    def test_removes_source_field2_keep_empty(self):
+        event = {"get": {"very": {"deeply": {"nested": {"field": "value"}}}}}
+        dotted_field = "get.very.deeply.nested"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == {"field": "value"}
+        assert event == {"get": {"very": {"deeply": {}}}}
+
+    def test_removes_source_field_with_escaping_in_node_key(self):
+        event = {"get": {"comp\\lex.nested": {"key": "field"}}}
+        dotted_field = "get.comp\\\\lex\\.nested.key"
+        value = pop_dotted_field_value(event, dotted_field)
+        assert value == "field"
+        assert not event
+
+    def test_removes_source_field_with_escaping_in_node_key_keep_empty(self):
+        event = {"get": {"comp\\lex.nested": {"key": "field"}}}
+        dotted_field = "get.comp\\\\lex\\.nested.key"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == "field"
+        assert event == {"get": {"comp\\lex.nested": {}}}
+
+    def test_removes_source_field_with_escaping_in_leaf_key(self):
+        event = {"get": {"nested": {"comp\\lex.key": "field"}}}
+        dotted_field = "get.nested.comp\\\\lex\\.key"
+        value = pop_dotted_field_value(event, dotted_field)
+        assert value == "field"
+        assert not event
+
+    def test_removes_source_field_with_escaping_in_leaf_key_keep_empty(self):
+        event = {"get": {"nested": {"comp\\lex.key": "field"}}}
+        dotted_field = "get.nested.comp\\\\lex\\.key"
+        value = pop_dotted_field_value(event, dotted_field, False)
+        assert value == "field"
+        assert event == {"get": {"nested": {}}}
 
 
 class TestGetVersionString:
@@ -271,3 +365,134 @@ class TestGetVersionString:
 
         result = get_versions_string(None)
         assert re.search(expected_pattern, result)
+
+
+class TestTransformFieldValue:
+
+    def test_transform_complex_value(self):
+        value = [
+            "top-level",
+            {
+                "str": "whatever",
+                "int": 42,
+                "float": 13.37,
+                "bool_t": True,
+                "bool_f": False,
+                "none": None,
+                "soon_list": "make_list",
+                "soon_dict": "make_dict",
+                "list": [1, "1", 1.1, True, False, "make_list", "make_dict", None],
+                "dict": {"sub": "anything"},
+            },
+        ]
+        expected = [
+            "value:top-level",
+            {
+                "key:str": "value:whatever",
+                "key:int": 84,
+                "key:float": 26.74,
+                "key:bool_t": False,
+                "key:bool_f": True,
+                "key:none": None,
+                "key:soon_list": [],
+                "key:soon_dict": {},
+                "key:list": [2, "value:1", 2.2, False, True, [], {}, None],
+                "key:dict": {"key:sub": "value:anything"},
+            },
+        ]
+
+        def transform_value(v: FieldValue) -> FieldValue:
+            match (v):
+                case "make_list":
+                    return []
+                case "make_dict":
+                    return {}
+                case str():
+                    return f"value:{v}"
+                case bool():
+                    return not v
+                case int() | float():
+                    return 2 * v
+                case None:
+                    return None
+                case _:
+                    raise AssertionError("unexpected value encountered")
+
+        result = transform_field_value(
+            value, transform_key=lambda s: f"key:{s}", transform_value=transform_value
+        )
+
+        assert result == expected
+
+    def test_error_on_illegal_field_value(self):
+        value = typing.cast(FieldValue, tuple([1, 2, 3]))
+        with pytest.raises(ValueError, match="unexpected type"):
+            transform_field_value(
+                value,
+                transform_key=lambda x: x,
+                transform_value=lambda x: x,
+            )
+
+
+class TestReduceFieldValue:
+
+    @staticmethod
+    def collect_node_type_or_leaf_value(
+        v: FieldValue, values: list[FieldValue | type[list] | type[dict]]
+    ) -> list[FieldValue | type[list] | type[dict]]:
+        if isinstance(v, (list, dict)):
+            values.append(type(v))
+        else:
+            values.append(v)
+        return values
+
+    def test_reduce_complex_value(self):
+        value = [
+            {
+                "str": "value",
+                "int": 42,
+                "float": 13.37,
+                "bool_t": True,
+                "bool_f": False,
+                "none": None,
+                "list": [1, "1", 1.1, True, False, None],
+                "dict": {"key": "value"},
+            }
+        ]
+        expected = [
+            list,
+            dict,
+            "str",
+            "value",
+            "int",
+            42,
+            "float",
+            13.37,
+            "bool_t",
+            True,
+            "bool_f",
+            False,
+            "none",
+            None,
+            "list",
+            list,
+            1,
+            "1",
+            1.1,
+            True,
+            False,
+            None,
+            "dict",
+            dict,
+            "key",
+            "value",
+        ]
+
+        result = reduce_field_value(self.collect_node_type_or_leaf_value, value, [])
+
+        assert result == expected
+
+    def test_error_on_illegal_field_value(self):
+        value = typing.cast(FieldValue, tuple([1, 2, 3]))
+        with pytest.raises(ValueError, match="unexpected type"):
+            reduce_field_value(self.collect_node_type_or_leaf_value, value, [])

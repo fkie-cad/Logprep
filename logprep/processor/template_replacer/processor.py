@@ -32,14 +32,22 @@ Processor Configuration
 .. automodule:: logprep.processor.template_replacer.rule
 """
 
-from typing import Any, List
+import typing
+from typing import Any
 
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import (
+    MISSING,
+    FieldValue,
+    Missing,
+    add_fields_to,
+    field_list_to_dotted_field,
+    get_dotted_field_value_with_missing,
+)
 
 
 class TemplateReplacerError(Exception):
@@ -97,20 +105,27 @@ class TemplateReplacer(FieldManager):
 
     rule_class = TemplateReplacerRule
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(TemplateReplacer.Config, self._config)
+
     def _apply_rules(self, event, rule):
         source_field_values = self._get_field_values(event, self._fields)
         if self._handle_missing_fields(event, rule, self._fields, source_field_values):
             return
 
         replacement = self._get_replacement_value(source_field_values)
-        if replacement is not None:
+        if replacement is not MISSING:
             self._perform_replacement(event, replacement, rule)
 
-    def _get_replacement_value(self, field_values: list) -> str | None:
-        dotted_field = ".".join((str(value) for value in field_values))
-        return get_dotted_field_value(self._mapping, dotted_field)
+    def _get_replacement_value(self, field_values: list[FieldValue]) -> FieldValue | Missing:
+        dotted_field = field_list_to_dotted_field((str(value) for value in field_values))
+        return get_dotted_field_value_with_missing(self._mapping, dotted_field)
 
-    def _perform_replacement(self, event: dict, replacement: str, rule: TemplateReplacerRule):
+    def _perform_replacement(
+        self, event: dict, replacement: FieldValue, rule: TemplateReplacerRule
+    ):
         """Replace the target value, but not its parent fields.
 
         If target field is None, then its parents could be non-dict/None and might be replaced.
@@ -120,7 +135,7 @@ class TemplateReplacer(FieldManager):
         If target value isn't None, then it exists and its parents must be dicts.
         Therefore, they wouldn't be replaced, and we can overwrite the existing target field.
         """
-        overwrite = get_dotted_field_value(event, self._target_field) is not None
+        overwrite = get_dotted_field_value_with_missing(event, self._target_field) is not MISSING
         add_fields_to(
             event,
             fields={self._target_field: replacement},
@@ -130,15 +145,15 @@ class TemplateReplacer(FieldManager):
 
     def setup(self):
         super().setup()
-        self._target_field = self._config.pattern["target_field"]
-        self._fields = self._config.pattern["fields"]
+        self._target_field = self.config.pattern["target_field"]
+        self._fields = self.config.pattern["fields"]
         self._initialize_replacement_mapping()
 
     def _initialize_replacement_mapping(self):
-        allow_delimiter_field = self._config.pattern["allowed_delimiter_field"]
+        allow_delimiter_field = self.config.pattern["allowed_delimiter_field"]
         allow_delimiter_index = self._fields.index(allow_delimiter_field)
         self._mapping = {}
-        template = GetterFactory.from_string(self._config.template).get_yaml()
+        template = GetterFactory.from_string(self.config.template).get_dict()
         for keys_string, value in template.items():
             recombined_keys = self._recombine_keys(allow_delimiter_index, keys_string)
             try:
@@ -148,8 +163,8 @@ class TemplateReplacer(FieldManager):
                     self.name, "template_replacer template is invalid!"
                 ) from error
 
-    def _recombine_keys(self, allow_delimiter_index: int, keys_string: str) -> List[str]:
-        split_key = keys_string.split(self._config.pattern["delimiter"])
+    def _recombine_keys(self, allow_delimiter_index: int, keys_string: str) -> list[str]:
+        split_key = keys_string.split(self.config.pattern["delimiter"])
         left, middle_and_right = (
             split_key[:allow_delimiter_index],
             split_key[allow_delimiter_index:],
@@ -160,12 +175,11 @@ class TemplateReplacer(FieldManager):
         if len(recombined_key) != len(self._fields):
             raise TemplateReplacerError(
                 self.name,
-                f"Not enough delimiters in '{self._config.template}' "
-                f"to populate {self._fields}",
+                f"Not enough delimiters in '{self.config.template}' " f"to populate {self._fields}",
             )
         return recombined_key
 
-    def _set_value_for_recombined_keys(self, recombined_keys: List[str], value: Any):
+    def _set_value_for_recombined_keys(self, recombined_keys: list[str], value: Any):
         mapping = self._mapping
         for idx, recombined_key in enumerate(recombined_keys):
             if idx < len(self._fields) - 1:
