@@ -1,13 +1,16 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
-# pylint: disable=protected-access
 # pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=protected-access
+
 from datetime import datetime, UTC
 from math import isclose
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from logprep.util.time import TimeParser
+from logprep.util.time import TimeParser, TimeParserException
 
 
 class TestTimeParser:
@@ -35,12 +38,19 @@ class TestTimeParser:
         for attribute, value in expected.items():
             assert getattr(timestamp, attribute) == value
 
-    def test_from_timestamp(self):
+    def test_from_timestamp_success(self):
         expected = {"year": 1969, "month": 12, "day": 31, "hour": 23, "minute": 59}
-        timestamp = TimeParser.from_timestamp(-1)
+        timestamp = TimeParser.from_unix_timestamp(-1)
         assert isinstance(timestamp, datetime)
         for attribute, value in expected.items():
             assert getattr(timestamp, attribute) == value
+
+    def test_from_timestamp_non_integer_input_raises_time_parser_exception(self):
+        with pytest.raises(
+            TimeParserException,
+            match="cannot be interpreted as an integer|argument must be int or float, not str",
+        ):
+            TimeParser.from_unix_timestamp("wrong")
 
     def test_now_returns_datetime(self):
         assert isinstance(TimeParser.now(), datetime)
@@ -209,3 +219,7 @@ class TestTimeParser:
         assert parsed_timestamp.tzinfo.tzname(parsed_timestamp) == expected_timezone_name
         for attribute, value in expected.items():
             assert getattr(parsed_timestamp, attribute) == value
+
+    def test_parse_datetime_unix_timestamp_not_number_raises_time_parser_exception(self):
+        with pytest.raises(TimeParserException, match=r"invalid literal"):
+            TimeParser.parse_datetime("foo", "UNIX", UTC)

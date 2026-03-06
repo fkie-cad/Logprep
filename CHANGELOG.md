@@ -13,6 +13,7 @@
 ### Bugfix
 * fix missing examples for processor decoder
 * fix calculator silently failing on syntax errors
+* raise TimeParserException if an invalid UNIX timestamp is parsed to prevent timestamper from crashing
 
 
 ## 18.1.0

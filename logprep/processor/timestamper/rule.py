@@ -57,6 +57,7 @@ Examples for timestamper:
 
 """
 
+import typing
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
@@ -122,27 +123,36 @@ class TimestamperRule(FieldManagerRule):
         a tag :code:`_timestamper_failure` will be added to the event.
         """
         source_timezone: ZoneInfo = field(
-            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)),
+            converter=lambda x: ZoneInfo(x) if isinstance(x, str) else x,
+            default=ZoneInfo("UTC"),
         )
         """ timezone of source_fields. defaults to :code:`UTC`"""
         target_timezone: ZoneInfo = field(
-            validator=(validators.instance_of(ZoneInfo)), converter=ZoneInfo, default="UTC"
+            validator=(validators.instance_of(ZoneInfo)),
+            converter=lambda x: ZoneInfo(x) if isinstance(x, str) else x,
+            default=ZoneInfo("UTC"),
         )
         """ timezone for target_field. defaults to :code:`UTC`"""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
     @property
-    def source_format(self):
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(TimestamperRule.Config, self._config)
+
+    @property
+    def source_format(self) -> str | list[str]:
         """returns the source format"""
-        return self._config.source_format
+        return self.config.source_format
 
     @property
-    def target_timezone(self):
+    def target_timezone(self) -> ZoneInfo:
         """returns the target timezone"""
-        return self._config.target_timezone
+        return self.config.target_timezone
 
     @property
-    def source_timezone(self):
+    def source_timezone(self) -> ZoneInfo:
         """returns the source timezone"""
-        return self._config.source_timezone
+        return self.config.source_timezone

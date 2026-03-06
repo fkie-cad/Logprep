@@ -1,4 +1,8 @@
+# pylint: disable=duplicate-code
 # pylint: disable=missing-docstring
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+
 import re
 
 import pytest
@@ -78,6 +82,44 @@ test_cases = [  # testcase, rule, event, expected
         },
         {
             "message": "1642160449843",
+            "@timestamp": "2022-01-14T12:40:49.843000+01:00",
+        },
+    ),
+    (
+        "parses ISO8601 timestamp first and then UNIX after it failed",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": ["ISO8601", "UNIX"],
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1642160449843",
+        },
+        {
+            "message": "1642160449843",
+            "@timestamp": "2022-01-14T12:40:49.843000+01:00",
+        },
+    ),
+    (
+        "parses UNIX timestamp first and then ISO8601 after it failed",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": ["UNIX", "ISO8601"],
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "2022-01-14T11:40:49.843000+00:00",
+        },
+        {
+            "message": "2022-01-14T11:40:49.843000+00:00",
             "@timestamp": "2022-01-14T12:40:49.843000+01:00",
         },
     ),
@@ -272,6 +314,36 @@ failure_test_cases = [
             "message": "2000 12 31 - 22:59:59",
         },
         {"message": "2000 12 31 - 22:59:59", "tags": ["_timestamper_failure"]},
+        r"Could not parse timestamp",
+    ),
+    (
+        "attempt parsing ISO8601 timestamp with UNIX format",
+        {
+            "filter": "@timestamp",
+            "timestamper": {
+                "source_fields": ["@timestamp"],
+                "source_format": "UNIX",
+            },
+        },
+        {
+            "@timestamp": "2000-12-31T22:59:59Z",
+        },
+        {"@timestamp": "2000-12-31T22:59:59Z", "tags": ["_timestamper_failure"]},
+        r"Could not parse timestamp",
+    ),
+    (
+        "attempt parsing UNIX timestamp with ISO8601 format",
+        {
+            "filter": "@timestamp",
+            "timestamper": {
+                "source_fields": ["@timestamp"],
+                "source_format": "UNIX",
+            },
+        },
+        {
+            "@timestamp": "2000-12-31T22:59:59Z",
+        },
+        {"@timestamp": "2000-12-31T22:59:59Z", "tags": ["_timestamper_failure"]},
         r"Could not parse timestamp",
     ),
     (
