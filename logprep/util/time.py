@@ -30,7 +30,7 @@ class TimeParser:
 
         Raises
         ------
-        ValueError
+        TimeParserException
             Raises if source can't be parsed as datetime object from ISO8601 format
         """
         try:
@@ -57,7 +57,7 @@ class TimeParser:
 
         Raises
         ------
-        TypeError
+        TimeParserException
             Raises if timestamp can't be parsed as datetime object from unix timestamp format
         """
         try:
@@ -143,7 +143,7 @@ class TimeParser:
 
         Raises
         ------
-        ValueError
+        TimeParserException
             Raised if input timestamp string could not be parsed as integer
         """
         try:
