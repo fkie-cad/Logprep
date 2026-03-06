@@ -23,9 +23,11 @@ Processor Configuration
 .. automodule:: logprep.processor.timestamp_differ.rule
 """
 
+import typing
 from datetime import datetime, timedelta
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.rule import Rule
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
 from logprep.util.helper import get_source_fields_dict
 from logprep.util.time import UTC, TimeParser, TimeParserException
@@ -36,7 +38,8 @@ class TimestampDiffer(FieldManager):
 
     rule_class = TimestampDifferRule
 
-    def _apply_rules(self, event: dict, rule: TimestampDifferRule) -> None:
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        rule = typing.cast(TimestampDifferRule, rule)
         source_field_formats = rule.source_field_formats
         source_field_dict = get_source_fields_dict(event, rule)
         if self._handle_missing_fields(event, rule, rule.source_fields, source_field_dict.values()):
@@ -50,9 +53,9 @@ class TimestampDiffer(FieldManager):
             )
             diff = next(timestamp_objects) - next(timestamp_objects)
         except TimeParserException as error:
-            error.args = [
-                f"{error.args[0]} Corresponding source fields and values are: {source_field_dict}."
-            ]
+            error.args = (
+                f"{error.args[0]} Corresponding source fields and values are: {source_field_dict}.",
+            )
             self._handle_warning_error(event, rule, error)
 
         if diff is not None:
