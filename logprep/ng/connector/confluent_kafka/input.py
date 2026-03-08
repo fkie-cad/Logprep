@@ -632,9 +632,9 @@ class ConfluentKafkaInput(Input):
             return False
         return super().health()
 
-    async def _asetup(self):
+    async def setup(self):
         """Set the component up."""
-        await super()._asetup()
+        await super().setup()
 
         try:
             consumer = await self.get_consumer()
