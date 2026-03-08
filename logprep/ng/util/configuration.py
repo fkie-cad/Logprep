@@ -208,12 +208,12 @@ from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
 from schedule import Scheduler
 
-from logprep.abc.component import Component
 from logprep.abc.getter import Getter
-from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.ng.abc.component import NgComponent
+from logprep.ng.abc.processor import Processor
 from logprep.ng.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
     DEFAULT_LOG_CONFIG,
@@ -256,9 +256,9 @@ yaml = MyYAML(pure=True)
 class InvalidConfigurationErrors(InvalidConfigurationError):
     """Raise for multiple Configuration related exceptions."""
 
-    errors: List[InvalidConfigurationError]
+    errors: Sequence[InvalidConfigurationError]
 
-    def __init__(self, errors: List[Exception]) -> None:
+    def __init__(self, errors: Sequence[Exception]) -> None:
         unique_errors = []
         for error in errors:
             if not isinstance(error, InvalidConfigurationError):
@@ -686,7 +686,7 @@ class Configuration:
     )
 
     @define(kw_only=True)
-    class Metrics(Component.Metrics):
+    class Metrics(NgComponent.Metrics):
         """Metrics for the Logprep Runner."""
 
         version_info: GaugeMetric = field(
@@ -778,7 +778,7 @@ class Configuration:
         return config
 
     @classmethod
-    def from_sources(cls, config_paths: Iterable[str] | None = None) -> "Configuration":
+    async def from_sources(cls, config_paths: Iterable[str] | None = None) -> "Configuration":
         """Creates configuration from a list of configuration sources.
 
         Parameters
@@ -820,7 +820,7 @@ class Configuration:
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         try:
-            configuration._verify()
+            await configuration._verify()
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         if errors:
@@ -843,7 +843,7 @@ class Configuration:
         """Return the configuration as yaml string."""
         return yaml.dump(self.as_dict())
 
-    def reload(self) -> None:
+    async def reload(self) -> None:
         """Reload the application's configuration from the configured sources.
 
         This method attempts to rebuild the configuration from all paths listed in
@@ -873,7 +873,7 @@ class Configuration:
 
         errors: List[Exception] = []
         try:
-            new_config = Configuration.from_sources(self.config_paths)
+            new_config = await Configuration.from_sources(self.config_paths)
             if new_config.config_refresh_interval is None:
                 new_config.config_refresh_interval = self.config_refresh_interval
             self._configs = new_config._configs  # pylint: disable=protected-access
@@ -1007,7 +1007,7 @@ class Configuration:
             return values[-1]
         return getattr(Configuration(), attribute)
 
-    def _verify(self) -> None:
+    async def _verify(self) -> None:
         """Verify the configuration."""
         errors: list[Exception] = []
         try:
@@ -1036,9 +1036,8 @@ class Configuration:
                     errors.append(error)
         for processor_config in self.pipeline:
             try:
-                processor = Factory.create(deepcopy(processor_config))
-                processor = typing.cast(Processor, processor)
-                processor.setup()
+                processor = typing.cast(Processor, Factory.create(deepcopy(processor_config)))
+                await processor.setup()
                 self._verify_rules(processor)
             except (
                 FactoryError,

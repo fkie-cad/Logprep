@@ -31,7 +31,6 @@ Example
 """
 
 import asyncio
-import json
 import logging
 import ssl
 import typing
@@ -48,7 +47,6 @@ from opensearchpy import (
 from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.exceptions import LogprepException
-from logprep.metrics.metrics import Metric
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
@@ -238,8 +236,8 @@ class OpensearchOutput(Output):
         self._message_backlog = []
         self._flush_task: asyncio.Task | None = None
 
-    async def _asetup(self):
-        await super()._asetup()
+    async def setup(self):
+        await super().setup()
         flush_timeout = self.config.flush_timeout
 
         # TODO: improve flush task handling
