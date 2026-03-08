@@ -95,8 +95,8 @@ class GeoipEnricher(FieldManager):
             logger.exception("failed to load GeoIP database")
             raise
 
-    def setup(self) -> None:
-        super().setup()
+    async def setup(self) -> None:
+        await super().setup()
         _ = self._city_db  # trigger download
 
     def _try_getting_geoip_data(self, ip_string: str) -> dict:

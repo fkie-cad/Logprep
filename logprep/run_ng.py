@@ -28,9 +28,9 @@ def _print_version(config: "Configuration") -> None:
     sys.exit(EXITCODES.SUCCESS)
 
 
-def _get_configuration(config_paths: tuple[str]) -> Configuration:
+async def _get_configuration(config_paths: tuple[str]) -> Configuration:
     try:
-        config = Configuration.from_sources(config_paths)
+        config = await Configuration.from_sources(config_paths)
         logger.info("Log level set to '%s'", config.logger.level)
         return config
     except InvalidConfigurationError as error:
@@ -67,36 +67,40 @@ def run(configs: tuple[str], version=None) -> None:
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    configuration = _get_configuration(configs)
-    runner = Runner(configuration)
-    runner.setup_logging()
-    if version:
-        _print_version(configuration)
-    for version in get_versions_string(configuration).split("\n"):
-        logger.info(version)
-    logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
-    logger.debug(f"Config path: {configs}")
-    try:
-        if "pytest" not in sys.modules:  # needed for not blocking tests
-            signal.signal(signal.SIGTERM, signal_handler)
-            signal.signal(signal.SIGINT, signal_handler)
-        logger.debug("Configuration loaded")
-        uvloop.run(runner.run())
-    except SystemExit as error:
-        logger.debug(f"Exit received with code {error.code}")
-        sys.exit(error.code)
-    # pylint: disable=broad-except
-    except ExceptionGroup as error_group:
-        logger.exception(f"Multiple errors occurred: {error_group}")
-    except Exception as error:
-        if os.environ.get("DEBUG", False):
-            logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
-        else:
-            logger.critical(f"A critical error occurred: {error}")
-        if runner:
-            runner.stop()
-        sys.exit(EXITCODES.ERROR)
-    # pylint: enable=broad-except
+
+    async def _run(configs: tuple[str], version=None):
+        configuration = await _get_configuration(configs)
+        runner = Runner(configuration)
+        runner.setup_logging()
+        if version:
+            _print_version(configuration)
+        for v in get_versions_string(configuration).split("\n"):
+            logger.info(v)
+        logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
+        logger.debug(f"Config path: {configs}")
+        try:
+            if "pytest" not in sys.modules:  # needed for not blocking tests
+                signal.signal(signal.SIGTERM, signal_handler)
+                signal.signal(signal.SIGINT, signal_handler)
+            logger.debug("Configuration loaded")
+            await runner.run()
+        except SystemExit as error:
+            logger.debug(f"Exit received with code {error.code}")
+            sys.exit(error.code)
+        # pylint: disable=broad-except
+        except ExceptionGroup as error_group:
+            logger.exception(f"Multiple errors occurred: {error_group}")
+        except Exception as error:
+            if os.environ.get("DEBUG", False):
+                logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
+            else:
+                logger.critical(f"A critical error occurred: {error}")
+            if runner:
+                runner.stop()
+            sys.exit(EXITCODES.ERROR)
+        # pylint: enable=broad-except
+
+    uvloop.run(_run(configs, version))
 
 
 def signal_handler(__: int, _) -> None:
