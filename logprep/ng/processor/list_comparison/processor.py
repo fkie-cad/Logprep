@@ -26,6 +26,9 @@ Processor Configuration
 .. automodule:: logprep.processor.list_comparison.rule
 """
 
+import typing
+from collections.abc import Sequence
+
 from attrs import define, field, validators
 
 from logprep.ng.abc.processor import Processor
@@ -49,10 +52,20 @@ class ListComparison(Processor):
 
     rule_class = ListComparisonRule
 
-    def setup(self) -> None:
-        super().setup()
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(ListComparison.Config, self._config)
+
+    @property
+    def rules(self) -> Sequence[ListComparisonRule]:
+        """Returns all rules"""
+        return typing.cast(Sequence[ListComparisonRule], super().rules)
+
+    async def setup(self) -> None:
+        await super().setup()
         for rule in self.rules:
-            rule.init_list_comparison(self._config.list_search_base_path)
+            rule.init_list_comparison(self.config.list_search_base_path)
 
     def _apply_rules(self, event, rule):
         """Apply matching rule to given log event.
