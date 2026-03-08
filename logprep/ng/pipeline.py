@@ -1,5 +1,6 @@
 """pipeline module for processing events through a series of processors."""
 
+import asyncio
 import logging
 
 from logprep.ng.abc.processor import Processor
@@ -50,19 +51,20 @@ class Pipeline:
         """
         return _process_event(event, processors=self.processors)
 
-    def shut_down(self) -> None:
+    async def shut_down(self) -> None:
         """Shutdown the pipeline gracefully."""
 
         for processor in self.processors:
-            processor.shut_down()
+            await processor.shut_down()
 
         logger.info("All processors has been shut down.")
         logger.info("Pipeline has been shut down.")
 
-    def setup(self) -> None:
+    async def setup(self) -> None:
         """Setup the pipeline components."""
 
-        for processor in self.processors:
-            processor.setup()
+        await asyncio.gather(
+            *(processor.setup() for processor in self.processors), return_exceptions=True
+        )
 
         logger.info("Pipeline has been set up.")

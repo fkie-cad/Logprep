@@ -25,6 +25,7 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 if TYPE_CHECKING:  # pragma: no cover
+    from logprep.ng.util.configuration import Configuration as NgConfiguration
     from logprep.processor.base.rule import Rule
     from logprep.util.configuration import Configuration
 
@@ -144,6 +145,7 @@ def _add_field_to(
     elif isinstance(existing_value, (int, float, str, bool)) and isinstance(content, list):
         target_parent[target_key] = [existing_value, *content]
     else:
+        # FIXME combining ll 117 & 135, overwrite_target can never be True here
         if not overwrite_target:
             raise FieldExistsWarning(rule, event, [target_field])
         target_parent[target_key] = [existing_value, content]
@@ -738,7 +740,9 @@ def get_source_fields_dict(event, rule):
     return source_field_dict
 
 
-def get_versions_string(config: Optional["Configuration"] = None) -> str:
+def get_versions_string(
+    config: Optional["Configuration"] | Optional["NgConfiguration"] = None,
+) -> str:
     """
     Prints the version and exists. If a configuration was found then it's version
     is printed as well

@@ -297,10 +297,10 @@ class HttpInput(Input):
         """Provides the properly typed rule configuration object"""
         return typing.cast(HttpInput.Config, self._config)
 
-    def setup(self) -> None:
+    async def setup(self) -> None:
         """setup starts the actual functionality of this connector."""
 
-        super().setup()
+        await super().setup()
 
         if self.messages is None:
             raise ValueError("message queue `messages` has not been set")
@@ -344,7 +344,7 @@ class HttpInput(Input):
             app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
         return app
 
-    def _get_event(self, timeout: float) -> tuple:
+    async def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the queue"""
         messages = typing.cast(Queue, self.messages)
 

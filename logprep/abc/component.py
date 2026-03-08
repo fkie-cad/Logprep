@@ -1,6 +1,5 @@
 """abstract module for components"""
 
-import asyncio
 import functools
 import inspect
 import logging
@@ -105,10 +104,6 @@ class Component(ABC):
 
         """
         return f"{self.__class__.__name__} ({self.name})"
-
-    async def _asetup(self):
-        loop = asyncio.get_running_loop()
-        loop.run_in_executor(None, self.setup)
 
     def setup(self):
         """Set the component up."""

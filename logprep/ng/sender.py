@@ -146,7 +146,7 @@ class Sender:
     async def setup(self) -> None:
         """Setup all outputs."""
         for _, output in self._outputs.items():
-            await output._asetup()
+            await output.setup()
         if self._error_output:
-            await self._error_output._asetup()
+            await self._error_output.setup()
         logger.info("All outputs have been set up.")
