@@ -83,6 +83,7 @@ cache-related metrics like the number of hits and misses and the current cache l
 """
 
 import logging
+import typing
 from functools import cached_property, lru_cache
 from multiprocessing import current_process
 from pathlib import Path
@@ -97,6 +98,7 @@ from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
 from logprep.processor.amides.rule import AmidesRule
+from logprep.processor.base.rule import Rule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
 
@@ -201,8 +203,8 @@ class Amides(FieldManager):
     def _evaluate_cmdline_cached(self):
         return lru_cache(maxsize=self._config.max_cache_entries)(self._evaluate_cmdline)
 
-    def setup(self):
-        super().setup()
+    async def setup(self):
+        await super().setup()
         models = self._load_and_unpack_models()
 
         self._misuse_detector = MisuseDetector(models["single"], self._config.decision_threshold)
@@ -227,7 +229,8 @@ class Amides(FieldManager):
 
         return models
 
-    def _apply_rules(self, event: dict, rule: AmidesRule):
+    def _apply_rules(self, event: dict, rule: Rule):
+        rule = typing.cast(AmidesRule, rule)
         cmdline = get_dotted_field_value(event, rule.source_fields[0])
         if self._handle_missing_fields(event, rule, rule.source_fields, [cmdline]):
             return
