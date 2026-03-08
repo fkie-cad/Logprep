@@ -2,19 +2,19 @@
 
 from attrs import define, field
 
-from logprep.abc.component import Component
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
+from logprep.ng.abc.component import NgComponent
 
 
-class Connector(Component):
+class Connector(NgComponent):
     """Abstract Connector Class to define the Interface"""
 
     @define(kw_only=True)
-    class Config(Component.Config):
+    class Config(NgComponent.Config):
         """Configuration for the connector"""
 
     @define(kw_only=True)
-    class Metrics(Component.Metrics):
+    class Metrics(NgComponent.Metrics):
         """Tracks statistics about this connector"""
 
         number_of_processed_events: CounterMetric = field(

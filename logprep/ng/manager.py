@@ -44,14 +44,14 @@ class PipelineManager:
 
         self._input_connector = cast(Input, Factory.create(self.configuration.input))
         self._input_connector.event_backlog = self._event_backlog  # TODO needs to be disentagled
-        await self._input_connector._asetup()
+        await self._input_connector.setup()
 
         processors = [
             typing.cast(Processor, Factory.create(processor_config))
             for processor_config in self.configuration.pipeline
         ]
         for processor in processors:
-            processor.setup()
+            await processor.setup()
 
         self._pipeline = Pipeline(processors)
 

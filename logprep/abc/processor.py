@@ -151,7 +151,7 @@ class Processor(Component):
         self._result = value
 
     @property
-    def rules(self) -> list["Rule"]:
+    def rules(self) -> Sequence["Rule"]:
         """Returns all rules
 
         Returns
