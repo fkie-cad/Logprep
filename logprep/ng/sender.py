@@ -60,22 +60,24 @@ class Sender:
         for r in results:
             if isinstance(r, Exception):
                 logger.exception("Error while sending processed event", exc_info=r)
-        # TODO handle successful, failed
+
+        # TODO: filter and handle successful + failed
+        # succeed_events, failed_events = (
+        #    [e for e in batch_events if e.state == EventStateType.DELIVERED],
+        #    [e for e in batch_events if e.state == EventStateType.FAILED],
+        # )
+        # assert len(succeed_events) + len(failed_events) == len(batch_events), "Lost events in batch"
 
         logger.debug("return send_extras %d", len(batch_events))
+
         return batch_events
 
     async def send_default_output(self, batch_events: Sequence[LogEvent]) -> Sequence[LogEvent]:
         logger.debug("send_default_output %d", len(batch_events))
-        await self._default_output.store_batch(batch_events)
-        return batch_events
+        return await self._default_output.store_batch(batch_events)  # type: ignore
 
     async def _send_and_flush_failed_events(self, batch_events: list[LogEvent]) -> None:
-        failed = [
-            event
-            for event in batch_events
-            if event is not None and event.state == EventStateType.FAILED
-        ]
+        failed = [event for event in batch_events if event.state is EventStateType.FAILED]
         if not failed:
             return
 
@@ -85,7 +87,7 @@ class Sender:
         await self._error_output.flush()  # type: ignore[union-attr]
 
         failed_error_events = [
-            event for event in error_events if event.state == EventStateType.FAILED
+            event for event in error_events if event.state is EventStateType.FAILED
         ]
         for error_event in failed_error_events:
             logger.error("Error during sending to error output: %s", error_event)
