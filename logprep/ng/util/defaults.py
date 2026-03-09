@@ -36,7 +36,7 @@ DEFAULT_LOG_CONFIG: dict = {
     "version": 1,
     "formatters": {
         "logprep": {
-            "class": "logprep.util.logging.LogprepFormatter",
+            "class": "logprep.ng.util.logging.LogprepFormatter",
             "format": DEFAULT_LOG_FORMAT,
             "datefmt": DEFAULT_LOG_DATE_FORMAT,
         }
