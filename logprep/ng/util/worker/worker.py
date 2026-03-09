@@ -88,10 +88,8 @@ class Worker(Generic[Input, Output]):
         if the batch has not already been drained by the size trigger.
         """
         try:
-            logger.debug("timer sleeping")
             await asyncio.sleep(self._batch_interval_s)
         except asyncio.CancelledError:
-            logger.debug("timer caught cancelled error")
             return
 
         batch: list[Input] | None = None
@@ -102,6 +100,7 @@ class Worker(Generic[Input, Output]):
                 self._flush_timer = None
 
         if batch:
+            logger.debug("Flushing messages based on timer")
             await self._flush_batch(batch)
 
     def _drain_locked(self) -> list[Input]:
@@ -136,6 +135,9 @@ class Worker(Generic[Input, Output]):
                 batch_to_flush = self._drain_locked()
 
         if batch_to_flush:
+            logger.debug("Flushing messages based on backlog size")
+            logger.debug("Remaining items in _batch_buffer: %d", len(self._batch_buffer))
+            logger.debug("Batch size to flush after: %d", self._batch_size)
             await self._flush_batch(batch_to_flush)
 
     async def flush(self) -> None:
@@ -150,6 +152,7 @@ class Worker(Generic[Input, Output]):
             if self._batch_buffer:
                 batch_to_flush = self._drain_locked()
         if batch_to_flush:
+            logger.debug("Flushing messages based on manual trigger")
             await self._flush_batch(batch_to_flush)
 
     async def _process_batch(self, batch: list[Input]) -> list[Output]:
