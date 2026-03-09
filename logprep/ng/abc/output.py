@@ -3,6 +3,7 @@ New output endpoint types are created by implementing it.
 """
 
 from abc import abstractmethod
+from collections.abc import Sequence
 from copy import deepcopy
 from typing import Any, Callable
 
@@ -100,6 +101,25 @@ class Output(Connector):
            Processed log event that will be stored.
         target : str
             Custom target for the event.
+        """
+
+    @abstractmethod
+    async def store_batch(
+        self, events: Sequence[Event], target: str | None = None
+    ) -> tuple[Sequence[Event], Sequence[Event]]:
+        """Stores the events in the output destination.
+
+        Parameters
+        ----------
+        events : Sequence[Event]
+            Events to be stored.
+        target : str | None
+            Custom target for the events, defaults to None
+
+        Returns
+        -------
+        tuple[Sequence[Event], Sequence[Event]]
+            Successful and failed events after sending.
         """
 
     @abstractmethod

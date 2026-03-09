@@ -30,10 +30,10 @@ Example
         ca_cert: /path/to/cert.crt
 """
 
-import asyncio
 import logging
 import ssl
 import typing
+from collections.abc import Sequence
 from functools import cached_property
 from typing import List, Optional
 
@@ -233,23 +233,9 @@ class OpensearchOutput(Output):
 
     def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
         super().__init__(name, configuration)
-        self._message_backlog = []
-        self._flush_task: asyncio.Task | None = None
 
     async def setup(self):
         await super().setup()
-        flush_timeout = self.config.flush_timeout
-
-        # TODO: improve flush task handling
-        async def flush_task() -> None:
-            try:
-                while True:
-                    await asyncio.sleep(flush_timeout)
-                    await self.flush()
-            except asyncio.CancelledError:
-                pass
-
-        self._flush_task = asyncio.create_task(flush_task())
 
     def describe(self) -> str:
         """Get name of Opensearch endpoint with the host.
@@ -263,10 +249,9 @@ class OpensearchOutput(Output):
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self.config.hosts}"
 
-    # @Output._handle_errors
     async def store(self, event: Event) -> None:
         """Store a document in the index defined in the document or to the default index."""
-        await self.store_custom(event, event.data.get("_index", self.config.default_index))
+        await self.store_batch([event], event.data.get("_index", self.config.default_index))
 
     # @Output._handle_errors
     async def store_custom(self, event: Event, target: str) -> None:
@@ -280,32 +265,34 @@ class OpensearchOutput(Output):
         target : str
             Index to store the document in.
         """
-        event.state.current_state = EventStateType.STORING_IN_OUTPUT
-        document = event.data
-        document["_index"] = target
-        document["_op_type"] = document.get("_op_type", self.config.default_op_type)
-        self.metrics.number_of_processed_events += 1
-        self._message_backlog.append(event)
-        await self._write_to_search_context()
+        await self.store_batch([event], target)
 
-    async def _write_to_search_context(self):
-        """Writes documents from a buffer into Opensearch indices.
-
-        Writes documents in a bulk if the document buffer limit has been reached.
-        This reduces connections to Opensearch and improves performance.
-        """
-        if len(self._message_backlog) >= self.config.message_backlog_size:
-            await self.flush()
+    # @Output._handle_errors
+    async def store_batch(
+        self, events: Sequence[Event], target: str | None = None
+    ) -> tuple[Sequence[Event], Sequence[Event]]:
+        logger.debug("store_batch called with %d events, target=%s", len(events), target)
+        for event in events:
+            event.state.current_state = EventStateType.STORING_IN_OUTPUT
+            document = event.data
+            if target is None:
+                document["_index"] = document.get("_index", self.config.default_index)
+            else:
+                document["_index"] = document.get("_index", target)
+            document["_op_type"] = document.get("_op_type", self.config.default_op_type)
+        self.metrics.number_of_processed_events += len(events)
+        logger.debug("Flushing %d documents to Opensearch", len(events))
+        await self._bulk(self._search_context, events)
+        return (
+            [e for e in events if e.state == EventStateType.DELIVERED],
+            [e for e in events if e.state == EventStateType.FAILED],
+        )
 
     # @Metric.measure_time()
     async def flush(self):
-        if not self._message_backlog:
-            return
-        logger.debug("Flushing %d documents to Opensearch", len(self._message_backlog))
-        await self._bulk(self._search_context, self._message_backlog)
-        self._message_backlog.clear()
+        logger.debug("flush is not required")
 
-    async def _bulk(self, client: AsyncOpenSearch, events: list[Event]) -> None:
+    async def _bulk(self, client: AsyncOpenSearch, events: Sequence[Event]) -> None:
         """Bulk index documents into Opensearch. Uses the parallel_bulk function from the opensearchpy library.
         The error information is stored in a document with the following structure:
             json
