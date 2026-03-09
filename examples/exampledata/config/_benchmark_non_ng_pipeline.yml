@@ -3,7 +3,7 @@ process_count: 1
 timeout: 5.0
 restart_count: 2
 config_refresh_interval: 5
-error_backlog_size: 1500000
+error_backlog_size: 15000
 logger:
   level: DEBUG
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
