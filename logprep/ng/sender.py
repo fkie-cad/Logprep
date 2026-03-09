@@ -3,6 +3,8 @@
 import asyncio
 import logging
 import typing
+from collections import defaultdict
+from collections.abc import Sequence
 
 from logprep.ng.abc.event import ExtraDataEvent
 from logprep.ng.abc.output import Output
@@ -33,12 +35,40 @@ class Sender:
         self._default_output = [output for output in outputs if output.default][0]
         self._error_output = error_output
 
-    async def process(self, batch: list[LogEvent]) -> list[LogEvent]:
-        logger.debug("Receiving event from worker: %d", len(batch))
-        await self._send_and_flush_processed_events(batch_events=batch)
-        if self._error_output:
-            await self._send_and_flush_failed_events(batch_events=batch)
-        return batch
+    async def send_extras(self, batch_events: Sequence[LogEvent]) -> Sequence[LogEvent]:
+        output_buffers: dict[str, dict[str, list[ExtraDataEvent]]] = {
+            output_name: defaultdict(list) for output_name in self._outputs.keys()
+        }
+
+        for event in batch_events:
+            for extra in typing.cast(Sequence[ExtraDataEvent], event.extra_data):
+                for output in extra.outputs:
+                    for name, target in output.items():
+                        try:
+                            output_buffers[name][target].append(extra)
+                        except KeyError as error:
+                            raise ValueError(f"Output {name} not configured.") from error
+
+        results = await asyncio.gather(
+            *(
+                self._outputs[name].store_batch(events, target)
+                for name, target_events in output_buffers.items()
+                for target, events in target_events.items()
+            ),
+            return_exceptions=True,
+        )
+        for r in results:
+            if isinstance(r, Exception):
+                logger.exception("Error while sending processed event", exc_info=r)
+        # TODO handle successful, failed
+
+        logger.debug("return send_extras %d", len(batch_events))
+        return batch_events
+
+    async def send_default_output(self, batch_events: Sequence[LogEvent]) -> Sequence[LogEvent]:
+        logger.debug("send_default_output %d", len(batch_events))
+        await self._default_output.store_batch(batch_events)
+        return batch_events
 
     async def _send_and_flush_failed_events(self, batch_events: list[LogEvent]) -> None:
         failed = [
@@ -59,58 +89,6 @@ class Sender:
         ]
         for error_event in failed_error_events:
             logger.error("Error during sending to error output: %s", error_event)
-
-    async def _send_and_flush_processed_events(self, batch_events: list[LogEvent]) -> None:
-        processed = [
-            event
-            for event in batch_events
-            if event is not None and event.state == EventStateType.PROCESSED
-        ]
-        if not processed:
-            return
-
-        # TODO send bulk of events
-        try:
-            for event in processed:
-                await self._send_processed(event)
-
-        finally:
-            for output in self._outputs.values():
-                try:
-                    await output.flush()
-                except Exception as e:
-                    logger.exception("Error while flushing output %s", output.name, exc_info=e)
-
-        # flush once per output after sending
-        try:
-            logger.debug("Flushing all outputs after sending %d events", len(batch_events))
-            results = await asyncio.gather(
-                *(output.flush() for output in self._outputs.values()),
-                return_exceptions=True,
-            )
-            for r in results:
-                if isinstance(r, Exception):
-                    logger.exception("Error during final output flush", exc_info=r)
-        except Exception as e:
-            logger.exception("Unexpected error during final output flush", exc_info=e)
-
-    async def _send_extra_data(self, event: LogEvent) -> None:
-        extra_data_events = typing.cast(list[ExtraDataEvent], event.extra_data)
-        for extra_data_event in extra_data_events:
-            for output in extra_data_event.outputs:
-                for output_name, output_target in output.items():
-                    if output_name in self._outputs:
-                        await self._outputs[output_name].store_custom(
-                            extra_data_event, output_target
-                        )
-                    else:
-                        raise ValueError(f"Output {output_name} not configured.")
-
-    async def _send_processed(self, event: LogEvent) -> LogEvent:
-        if event.extra_data:
-            await self._send_extra_data(event)
-        await self._default_output.store(event)
-        return event
 
     async def _send_failed(self, event: LogEvent) -> ErrorEvent:
         """Send the event to the error output.
