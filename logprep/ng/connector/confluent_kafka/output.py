@@ -25,6 +25,7 @@ Example
 
 import logging
 import typing
+from collections.abc import Sequence
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
@@ -33,7 +34,7 @@ from attrs import define, field, validators
 from confluent_kafka import KafkaException, Message, Producer  # type: ignore
 from confluent_kafka.admin import AdminClient
 
-from logprep.metrics.metrics import GaugeMetric, Metric
+from logprep.metrics.metrics import GaugeMetric
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import FatalOutputError, Output
 from logprep.ng.event.event_state import EventStateType
@@ -282,7 +283,18 @@ class ConfluentKafkaOutput(Output):
             f"{self.config.kafka_config.get('bootstrap.servers')}"
         )
 
-    def store(self, event: Event) -> None:  # type: ignore  # TODO: fix mypy issue
+    async def store_batch(
+        self, events: Sequence[Event], target: str | None = None
+    ) -> tuple[Sequence[Event], Sequence[Event]]:
+        store_target = target if target is not None else self.config.topic
+        for event in events:
+            await self.store_custom(event, store_target)
+        return (
+            [e for e in events if e.state == EventStateType.DELIVERED],
+            [e for e in events if e.state == EventStateType.FAILED],
+        )
+
+    async def store(self, event: Event) -> None:
         """Store a document in the producer topic.
 
         Parameters
@@ -290,11 +302,11 @@ class ConfluentKafkaOutput(Output):
         event : Event
             The event to store.
         """
-        self.store_custom(event, self.config.topic)
+        await self.store_custom(event, self.config.topic)
 
-    @Output._handle_errors
-    @Metric.measure_time()
-    def store_custom(self, event: Event, target: str) -> None:
+    # @Output._handle_errors
+    # @Metric.measure_time()
+    async def store_custom(self, event: Event, target: str) -> None:
         """Write document to Kafka into target topic.
 
         Parameters
@@ -316,12 +328,13 @@ class ConfluentKafkaOutput(Output):
             )
             logger.debug("Produced message %s to topic %s", str(document), target)
             self._producer.poll(self.config.send_timeout)
+            self._producer.flush()
         except BufferError:
             # block program until buffer is empty or timeout is reached
             self._producer.flush(timeout=self.config.flush_timeout)
             logger.debug("Buffer full, flushing")
 
-    def flush(self) -> None:
+    async def flush(self) -> None:
         """ensures that all messages are flushed. According to
         https://confluent-kafka-python.readthedocs.io/en/latest/#confluent_kafka.Producer.flush
         flush without the timeout parameter will block until all messages are delivered.
