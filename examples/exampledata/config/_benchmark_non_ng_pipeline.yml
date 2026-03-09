@@ -102,7 +102,7 @@ output:
       - 127.0.0.1:9200
     default_index: processed
     default_op_type: create
-    message_backlog_size: 2500
+    message_backlog_size: 1
     timeout: 10000
     flush_timeout: 60
     user: admin
@@ -116,7 +116,7 @@ error_output:
       - 127.0.0.1:9200
     default_index: errors
     default_op_type: create
-    message_backlog_size: 2500
+    message_backlog_size: 1
     timeout: 10000
     flush_timeout: 60
     user: admin
