@@ -170,7 +170,8 @@ class Worker(Generic[Input, Output]):
         if self.out_queue is not None:
             for item in batch_result:
                 await self.out_queue.put(item)
-            await asyncio.sleep(0)
+
+        await asyncio.sleep(0)
 
     async def run(self, stop_event: asyncio.Event) -> None:
         """
