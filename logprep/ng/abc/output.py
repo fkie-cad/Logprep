@@ -106,7 +106,7 @@ class Output(Connector):
     @abstractmethod
     async def store_batch(
         self, events: Sequence[Event], target: str | None = None
-    ) -> tuple[Sequence[Event], Sequence[Event]]:
+    ) -> Sequence[Event]:
         """Stores the events in the output destination.
 
         Parameters
@@ -118,8 +118,8 @@ class Output(Connector):
 
         Returns
         -------
-        tuple[Sequence[Event], Sequence[Event]]
-            Successful and failed events after sending.
+        Sequence[Event]
+            Events after sending.
         """
 
     @abstractmethod
