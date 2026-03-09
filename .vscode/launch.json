@@ -2,11 +2,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug non-ng example pipeline",
+            "name": "non-ng example pipeline",
             "type": "debugpy",
             "request": "launch",
             "program": "logprep/run_logprep.py",
-            "console": "integratedTerminal",
+            "console": "internalConsole",
             "args": [
                 "run",
                 "examples/exampledata/config/pipeline.yml"
@@ -17,11 +17,11 @@
             "justMyCode": false
         },
         {
-            "name": "Debug ng example pipeline",
+            "name": "ng example pipeline",
             "type": "debugpy",
             "request": "launch",
             "program": "logprep/run_ng.py",
-            "console": "integratedTerminal",
+            "console": "internalConsole",
             "args": [
                 "run",
                 "examples/exampledata/config/ng_pipeline.yml"
