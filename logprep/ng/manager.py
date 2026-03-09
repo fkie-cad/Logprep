@@ -95,16 +95,28 @@ class PipelineManager:
             handler=process,
         )
 
-        async def send(batch: list[LogEvent]) -> list[LogEvent]:
-            return await self._sender.process(batch)
+        async def send_extras(batch: list[LogEvent]) -> list[LogEvent]:
+            return await self._sender.send_extras(batch)
+
+        extra_output_worker: Worker[LogEvent, LogEvent] = Worker(
+            name="extra_output_worker",
+            batch_size=BATCH_SIZE,
+            batch_interval_s=BATCH_INTERVAL_S,
+            in_queue=processing_worker.out_queue,  # type: ignore
+            out_queue=SizeLimitedQueue(maxsize=MAX_QUEUE_SIZE),
+            handler=send_extras,
+        )
+
+        async def send_default_output(batch: list[LogEvent]) -> list[LogEvent]:
+            return await self._sender.send_default_output(batch)
 
         output_worker: Worker[LogEvent, LogEvent] = Worker(
             name="output_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
-            in_queue=processing_worker.out_queue,  # type: ignore
+            in_queue=extra_output_worker.out_queue,  # type: ignore
             out_queue=SizeLimitedQueue(maxsize=MAX_QUEUE_SIZE),
-            handler=send,
+            handler=send_default_output,
         )
 
         acknowledge_worker: Worker[LogEvent, LogEvent] = Worker(
@@ -117,7 +129,13 @@ class PipelineManager:
         )
 
         return WorkerOrchestrator(
-            workers=[input_worker, processing_worker, output_worker, acknowledge_worker]
+            workers=[
+                input_worker,
+                processing_worker,
+                extra_output_worker,
+                output_worker,
+                acknowledge_worker,
+            ]
         )
 
     async def run(self) -> None:
