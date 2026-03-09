@@ -8,6 +8,8 @@ import typing
 from asyncio import CancelledError
 from typing import cast
 
+from numpy.random.mtrand import Sequence
+
 from logprep.factory import Factory
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
@@ -75,12 +77,19 @@ class PipelineManager:
         self._orchestrator = self._create_orchestrator()
 
     def _create_orchestrator(self) -> WorkerOrchestrator:
-        input_worker: Worker[LogEvent, LogEvent] = TransferWorker(
+        async def transfer_batch(batch: list[LogEvent]) -> list[LogEvent]:
+            for event in batch:
+                event.state.current_state = EventStateType.RECEIVED
+
+            return batch
+
+        input_worker: Worker[LogEvent, LogEvent] = Worker(
             name="input_worker",
             batch_size=1,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=self._input_connector(timeout=self.configuration.timeout),
             out_queue=SizeLimitedQueue(maxsize=MAX_QUEUE_SIZE),
+            handler=transfer_batch,
         )
 
         async def process(batch: list[LogEvent]) -> list[LogEvent]:
@@ -95,7 +104,7 @@ class PipelineManager:
             handler=process,
         )
 
-        async def send_extras(batch: list[LogEvent]) -> list[LogEvent]:
+        async def send_extras(batch: list[LogEvent]) -> Sequence:
             return await self._sender.send_extras(batch)
 
         extra_output_worker: Worker[LogEvent, LogEvent] = Worker(
@@ -119,13 +128,17 @@ class PipelineManager:
             handler=send_default_output,
         )
 
+        async def _handle_sent_events(batch: list[LogEvent]) -> list[LogEvent]:
+            # TODO: call await self._input_connector.acknowledge() ???
+            return await self._process_sent_events(batch)
+
         acknowledge_worker: Worker[LogEvent, LogEvent] = Worker(
             name="acknowledge_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=output_worker.out_queue,  # type: ignore
             out_queue=SizeLimitedQueue(maxsize=MAX_QUEUE_SIZE),
-            handler=self._process_sent_events,
+            handler=_handle_sent_events,
         )
 
         return WorkerOrchestrator(
@@ -161,7 +174,7 @@ class PipelineManager:
             await self._orchestrator.shut_down(self._shutdown_timeout_s)
 
         if self._sender is not None:
-            self._sender.shut_down()
+            await self._sender.shut_down()
         self._input_connector.acknowledge()
 
         len_delivered_events = len(

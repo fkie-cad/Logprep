@@ -270,10 +270,9 @@ class OpensearchOutput(Output):
     # @Output._handle_errors
     async def store_batch(
         self, events: Sequence[Event], target: str | None = None
-    ) -> tuple[Sequence[Event], Sequence[Event]]:
+    ) -> Sequence[Event]:
         logger.debug("store_batch called with %d events, target=%s", len(events), target)
         for event in events:
-            event.state.current_state = EventStateType.STORING_IN_OUTPUT
             document = event.data
             if target is None:
                 document["_index"] = document.get("_index", self.config.default_index)
@@ -283,10 +282,7 @@ class OpensearchOutput(Output):
         self.metrics.number_of_processed_events += len(events)
         logger.debug("Flushing %d documents to Opensearch", len(events))
         await self._bulk(self._search_context, events)
-        return (
-            [e for e in events if e.state == EventStateType.DELIVERED],
-            [e for e in events if e.state == EventStateType.FAILED],
-        )
+        return events
 
     # @Metric.measure_time()
     async def flush(self):
@@ -323,11 +319,15 @@ class OpensearchOutput(Output):
                 break
 
             event = events[index]
+            event.state.current_state = EventStateType.STORING_IN_OUTPUT
+
             index += 1
 
             if success:
-                event.state.current_state = EventStateType.STORING_IN_OUTPUT
+                event.state.current_state = EventStateType.DELIVERED
                 continue
+
+            event.state.current_state = EventStateType.FAILED
 
             # parallel_bulk often returned item that allowed item.get("_op_type")
             # streaming_bulk usually returns {"index": {...}} / {"create": {...}}
@@ -349,8 +349,6 @@ class OpensearchOutput(Output):
                     )
 
             error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
-
-            event.state.current_state = EventStateType.FAILED
             event.errors.append(error)
 
     async def health(self) -> bool:  # type: ignore  # TODO: fix mypy issue
