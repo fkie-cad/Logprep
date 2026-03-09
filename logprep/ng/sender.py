@@ -34,6 +34,7 @@ class Sender:
         self._error_output = error_output
 
     async def process(self, batch: list[LogEvent]) -> list[LogEvent]:
+        logger.debug("Receiving event from worker: %d", len(batch))
         await self._send_and_flush_processed_events(batch_events=batch)
         if self._error_output:
             await self._send_and_flush_failed_events(batch_events=batch)
@@ -87,6 +88,7 @@ class Sender:
 
         # flush once per output after sending
         try:
+            logger.debug("Flushing all outputs after sending %d events", len(batch_events))
             results = await asyncio.gather(
                 *(output.flush() for output in self._outputs.values()),
                 return_exceptions=True,
