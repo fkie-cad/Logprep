@@ -69,15 +69,10 @@ class Sender:
         if not processed:
             return
 
-        # send in parallel
+        # TODO send bulk of events
         try:
-            results = await asyncio.gather(
-                *(self._send_processed(event) for event in processed),
-                return_exceptions=True,
-            )
-            for r in results:
-                if isinstance(r, Exception):
-                    logger.exception("Error while sending processed event", exc_info=r)
+            for event in processed:
+                await self._send_processed(event)
 
         finally:
             for output in self._outputs.values():
