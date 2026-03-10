@@ -60,6 +60,7 @@ from logprep.ng.abc.input import (
     InputWarning,
 )
 from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
+from logprep.ng.event.log_event import LogEvent
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -631,6 +632,9 @@ class ConfluentKafkaInput(Input):
             self.metrics.number_of_errors += 1
             return False
         return super().health()
+
+    async def acknowledge(self, events: list[LogEvent]):
+        logger.debug("acknowledge called")
 
     async def setup(self):
         """Set the component up."""
