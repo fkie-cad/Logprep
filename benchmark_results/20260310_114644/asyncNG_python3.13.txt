@@ -1,0 +1,465 @@
+
+=== BENCHMARK CONFIGURATION ===
+timestamp (local)             : 2026-03-10T12:54:33.437232
+timestamp (UTC)               : 2026-03-10T11:54:33.437236+00:00
+python version                : 3.13.9
+----------------------------------------
+bootstrap_servers             : 127.0.0.1:9092
+compose_dir                   : examples/compose
+event_num                     : 120_000
+gen_input_dir                 : examples/exampledata/kafka_generate_input_logdata
+ng                            : 1
+  ↳ mode                      : logprep-ng
+  ↳ pipeline_config           : examples/exampledata/config/_benchmark_ng_pipeline.yml
+opensearch_url                : http://localhost:9200
+out                           : benchmark_results/20260310_114644/asyncNG_python3.13.txt
+processed_index               : processed
+prometheus_multiproc_dir      : /tmp/logprep
+runs                          : [30, 30, 30, 45, 45, 45, 60, 60, 60]
+services                      : ['kafka', 'opensearch']
+sleep_after_compose_up_s      : 30
+sleep_after_generate_s        : 2
+sleep_after_logprep_start_s   : 5
+================================
+
+----- Run Round 1: 30 seconds -----
+
+=== OpenSearch snapshot (before measurement) ===
+
+--- _cat/indices ---
+health status index                        uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   top_queries-2026.03.10-25342 I_xv31UiQriOJfobYjhmOg   1   0          8           16     41.8kb         41.8kb
+green  open   .opensearch-observability    ztMiR5HIRvqpmGZsU_BnBQ   1   0          0            0       208b           208b
+green  open   .plugins-ml-config           ji8Y9AnSTAaOfSVm9AMhXg   1   0          1            0      3.9kb          3.9kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773143728 11:55:28  9
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+
+=== OpenSearch snapshot (after run / after refresh) ===
+
+--- _cat/indices ---
+health status index                        uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   top_queries-2026.03.10-25342 I_xv31UiQriOJfobYjhmOg   1   0          8           16     41.8kb         41.8kb
+yellow open   processed                    MnfF_3PCTaelpIquQ-D2VA   1   1      30000            0      3.4mb          3.4mb
+green  open   .opensearch-observability    ztMiR5HIRvqpmGZsU_BnBQ   1   0          0            0       208b           208b
+green  open   .plugins-ml-config           ji8Y9AnSTAaOfSVm9AMhXg   1   0          1            0      3.9kb          3.9kb
+yellow open   sre                          wgZ-y1VASkGvBKTnZixmcQ   1   1       4372            0    915.8kb        915.8kb
+yellow open   pseudonyms                   o_SYaU7bQg-BqXpo7X1BRA   1   1       4370            0    257.6kb        257.6kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773143761 11:56:01  38751
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+--- RESULT ---
+run_seconds:            30
+events generated:       120_000
+startup time:           5.032 s
+measurement window:     30.000 s
+processed (OpenSearch): 30_000
+throughput:             1,000.00 docs/s
+--------------
+
+----- Run Round 2: 30 seconds -----
+
+=== OpenSearch snapshot (before measurement) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   .opensearch-observability X2ZS_rvBRjuY3T8XGagaWw   1   0          0            0       208b           208b
+green  open   .plugins-ml-config        7XhPz67bTluTSndxZ5AzXg   1   0          1            0      3.9kb          3.9kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773143825 11:57:05  1
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+
+=== OpenSearch snapshot (after run / after refresh) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   processed                 6643q4wQRmWk7ZjvgsZ0rQ   1   1      30000            0      3.4mb          3.4mb
+green  open   .opensearch-observability X2ZS_rvBRjuY3T8XGagaWw   1   0          0            0       208b           208b
+green  open   .plugins-ml-config        7XhPz67bTluTSndxZ5AzXg   1   0          1            0      3.9kb          3.9kb
+yellow open   sre                       dJYe8r6ARte2dXTaUr4bkw   1   1       4365            0    936.5kb        936.5kb
+yellow open   pseudonyms                jWUGsg__RXKXE4Wmi2a68A   1   1       4368            0    259.6kb        259.6kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773143858 11:57:38  38734
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+--- RESULT ---
+run_seconds:            30
+events generated:       120_000
+startup time:           5.035 s
+measurement window:     30.000 s
+processed (OpenSearch): 30_000
+throughput:             1,000.00 docs/s
+--------------
+
+----- Run Round 3: 30 seconds -----
+
+=== OpenSearch snapshot (before measurement) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   .opensearch-observability YBGrVG7rSSuAa6JjVVXfXw   1   0          0            0       208b           208b
+green  open   .plugins-ml-config        eidC_2AuSgmzQ3mcQSfg7Q   1   0          1            0      3.9kb          3.9kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773143921 11:58:41  1
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+
+=== OpenSearch snapshot (after run / after refresh) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   processed                 DPq2_avaS9C3r1_EJ5nmVg   1   1      30000            0      3.3mb          3.3mb
+green  open   .opensearch-observability YBGrVG7rSSuAa6JjVVXfXw   1   0          0            0       208b           208b
+green  open   .plugins-ml-config        eidC_2AuSgmzQ3mcQSfg7Q   1   0          1            0      3.9kb          3.9kb
+yellow open   sre                       E2it4BdxRmW9uqS-CRHl2A   1   1       4368            0    914.7kb        914.7kb
+yellow open   pseudonyms                zex0d1kjQvKySA_NX7zqog   1   1       4376            0    239.5kb        239.5kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773143954 11:59:14  38745
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+--- RESULT ---
+run_seconds:            30
+events generated:       120_000
+startup time:           5.033 s
+measurement window:     30.000 s
+processed (OpenSearch): 30_000
+throughput:             1,000.00 docs/s
+--------------
+
+----- Run Round 4: 45 seconds -----
+
+=== OpenSearch snapshot (before measurement) ===
+
+--- _cat/indices ---
+health status index                        uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   top_queries-2026.03.10-25342 hz-t4A3wQUOqXFynvq94Tg   1   0          8           16     79.9kb         79.9kb
+green  open   .opensearch-observability    vJraBAgiTz-TRcZA-qkxow   1   0          0            0       208b           208b
+green  open   .plugins-ml-config           CpvyXPTGTtuSxtNv_4Owmg   1   0          1            0      3.9kb          3.9kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144017 12:00:17  9
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+
+=== OpenSearch snapshot (after run / after refresh) ===
+
+--- _cat/indices ---
+health status index                        uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   top_queries-2026.03.10-25342 hz-t4A3wQUOqXFynvq94Tg   1   0          8           16     79.9kb         79.9kb
+yellow open   processed                    rkucaoTuT-GlrmWwPcTQ0w   1   1      50000            0      4.8mb          4.8mb
+green  open   .plugins-ml-config           CpvyXPTGTtuSxtNv_4Owmg   1   0          1            0      3.9kb          3.9kb
+green  open   .opensearch-observability    vJraBAgiTz-TRcZA-qkxow   1   0          0            0       208b           208b
+yellow open   sre                          MGimxtLFSIeCTkYBrL3WvQ   1   1       4807            0      1.1mb          1.1mb
+yellow open   pseudonyms                   m4ugOB34RJqstihgsvM30g   1   1       4707            0      293kb          293kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144067 12:01:07  63751
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+--- RESULT ---
+run_seconds:            45
+events generated:       120_000
+startup time:           5.038 s
+measurement window:     45.000 s
+processed (OpenSearch): 50_000
+throughput:             1,111.11 docs/s
+--------------
+
+----- Run Round 5: 45 seconds -----
+
+=== OpenSearch snapshot (before measurement) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   .opensearch-observability F8SYagy1TDWVgHRJJUN77w   1   0          0            0       208b           208b
+green  open   .plugins-ml-config        z0vOy7RxTym2hFi7y0Buew   1   0          1            0      3.9kb          3.9kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144130 12:02:10  1
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+
+=== OpenSearch snapshot (after run / after refresh) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   processed                 Ynngz-V5Ts29CRZU79LfIg   1   1      47500            0      4.7mb          4.7mb
+green  open   .opensearch-observability F8SYagy1TDWVgHRJJUN77w   1   0          0            0       208b           208b
+green  open   .plugins-ml-config        z0vOy7RxTym2hFi7y0Buew   1   0          1            0      3.9kb          3.9kb
+yellow open   sre                       qsdSGzxgR6io2o69J1uULQ   1   1       4712            0        1mb            1mb
+yellow open   pseudonyms                ZkY7ZyJ6T5e7arGy0Cdd5A   1   1       4698            0    231.5kb        231.5kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144179 12:02:59  60629
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+--- RESULT ---
+run_seconds:            45
+events generated:       120_000
+startup time:           5.032 s
+measurement window:     45.000 s
+processed (OpenSearch): 47_500
+throughput:             1,055.55 docs/s
+--------------
+
+----- Run Round 6: 45 seconds -----
+
+=== OpenSearch snapshot (before measurement) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   .plugins-ml-config        4mVF2oh0R5eo8X7okMFMRg   1   0          1            0      3.9kb          3.9kb
+green  open   .opensearch-observability kB9ZgpZuTKe7Jfuigv70-A   1   0          0            0       208b           208b
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144243 12:04:03  1
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+
+=== OpenSearch snapshot (after run / after refresh) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   processed                 u8sS3SX8TrqtMJjqU1BqOg   1   1      47500            0      4.6mb          4.6mb
+green  open   .plugins-ml-config        4mVF2oh0R5eo8X7okMFMRg   1   0          1            0      3.9kb          3.9kb
+green  open   .opensearch-observability kB9ZgpZuTKe7Jfuigv70-A   1   0          0            0       208b           208b
+yellow open   sre                       27TIfJxPQAmJdYBGa_V2gw   1   1       4691            0      1.1mb          1.1mb
+yellow open   pseudonyms                eM8L7T3zRa6s3FEC_FMAKw   1   1       4687            0    283.3kb        283.3kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144292 12:04:52  60626
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+--- RESULT ---
+run_seconds:            45
+events generated:       120_000
+startup time:           5.033 s
+measurement window:     45.000 s
+processed (OpenSearch): 47_500
+throughput:             1,055.55 docs/s
+--------------
+
+----- Run Round 7: 60 seconds -----
+
+=== OpenSearch snapshot (before measurement) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   .opensearch-observability WlSHsARmRvuKZ08uNrjUGg   1   0          0            0       208b           208b
+green  open   .plugins-ml-config        3Yj4LkPFRImpm7VbEHhwTQ   1   0          1            0      3.9kb          3.9kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144356 12:05:56  1
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+
+=== OpenSearch snapshot (after run / after refresh) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   processed                 lQ6WSC1dQOOmD1Oimv0BXg   1   1      62500            0      6.1mb          6.1mb
+green  open   .plugins-ml-config        3Yj4LkPFRImpm7VbEHhwTQ   1   0          1            0      3.9kb          3.9kb
+green  open   .opensearch-observability WlSHsARmRvuKZ08uNrjUGg   1   0          0            0       208b           208b
+yellow open   sre                       iqMuWQZjQnGjB98-uiS-cA   1   1       4695            0      1.1mb          1.1mb
+yellow open   pseudonyms                t4iNpAx-TU6e6IsTQ1gjTQ   1   1       4552            0    277.1kb        277.1kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144417 12:06:57  79377
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+--- RESULT ---
+run_seconds:            60
+events generated:       120_000
+startup time:           5.034 s
+measurement window:     60.000 s
+processed (OpenSearch): 62_500
+throughput:             1,041.66 docs/s
+--------------
+
+----- Run Round 8: 60 seconds -----
+
+=== OpenSearch snapshot (before measurement) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   .opensearch-observability dBLmUMg7RoaDKtbBLRtSbw   1   0          0            0       208b           208b
+green  open   .plugins-ml-config        7onXSIPETwCIS0WuVjMYBQ   1   0          1            0      3.9kb          3.9kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144481 12:08:01  1
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+
+=== OpenSearch snapshot (after run / after refresh) ===
+
+--- _cat/indices ---
+health status index                     uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   processed                 8vYXllK0QhGDJYr9DKurTg   1   1      65000            0      6.2mb          6.2mb
+green  open   .opensearch-observability dBLmUMg7RoaDKtbBLRtSbw   1   0          0            0       208b           208b
+green  open   .plugins-ml-config        7onXSIPETwCIS0WuVjMYBQ   1   0          1            0      3.9kb          3.9kb
+yellow open   sre                       MVfehTxTROeCPxHlWNbEHw   1   1       4691            0      1.1mb          1.1mb
+yellow open   pseudonyms                uxw3LtF5RNyNzp9D6mOZGw   1   1       4683            0    278.1kb        278.1kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144542 12:09:02  82501
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+--- RESULT ---
+run_seconds:            60
+events generated:       120_000
+startup time:           5.032 s
+measurement window:     60.000 s
+processed (OpenSearch): 65_000
+throughput:             1,083.33 docs/s
+--------------
+
+----- Run Round 9: 60 seconds -----
+
+=== OpenSearch snapshot (before measurement) ===
+
+--- _cat/indices ---
+health status index                        uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   top_queries-2026.03.10-25342 SxW3D0SRQ52N_EF5tMaRwg   1   0          8           16     80.2kb         80.2kb
+green  open   .plugins-ml-config           7dTZoopnS9aS1aFDO_zG-A   1   0          1            0      3.9kb          3.9kb
+green  open   .opensearch-observability    1hyqTPRzQWKkYsV3swCWsQ   1   0          0            0       208b           208b
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144605 12:10:05  9
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+
+=== OpenSearch snapshot (after run / after refresh) ===
+
+--- _cat/indices ---
+health status index                        uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+green  open   top_queries-2026.03.10-25342 SxW3D0SRQ52N_EF5tMaRwg   1   0          8           16     80.2kb         80.2kb
+yellow open   processed                    A3FCiy-2QnKDOY2wrqW8iw   1   1      65000            0      6.2mb          6.2mb
+green  open   .plugins-ml-config           7dTZoopnS9aS1aFDO_zG-A   1   0          1            0      3.9kb          3.9kb
+green  open   .opensearch-observability    1hyqTPRzQWKkYsV3swCWsQ   1   0          0            0       208b           208b
+yellow open   sre                          N0HqW2xRR3GCrWXaPIO6PQ   1   1       4679            0      1.2mb          1.2mb
+yellow open   pseudonyms                   neSFnajFRxGv1mrognFv2g   1   1       4691            0    270.7kb        270.7kb
+
+
+--- _cat/count ---
+epoch      timestamp count
+1773144667 12:11:07  82509
+
+
+--- _cat/aliases ---
+alias index filter routing.index routing.search is_write_index
+
+--- RESULT ---
+run_seconds:            60
+events generated:       120_000
+startup time:           5.033 s
+measurement window:     60.000 s
+processed (OpenSearch): 65_000
+throughput:             1,083.33 docs/s
+--------------
+
+
+=== FINAL BENCHMARK SUMMARY ===
+runs:                  9
+total runtime:         405.001 s
+total processed:       427_500
+
+throughput (weighted): 1,055.55 docs/s
+throughput (median):   1,055.55 docs/s
+throughput (average):  1,047.84 docs/s
+throughput (min/max):  1,000.00 / 1,111.11 docs/s
+throughput (std dev):  41.15 docs/s
+================================
