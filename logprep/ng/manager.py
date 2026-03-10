@@ -19,15 +19,15 @@ from logprep.ng.pipeline import Pipeline
 from logprep.ng.sender import Sender
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.worker.types import SizeLimitedQueue
-from logprep.ng.util.worker.worker import TransferWorker, Worker, WorkerOrchestrator
+from logprep.ng.util.worker.worker import Worker, WorkerOrchestrator
 
 logger = logging.getLogger("PipelineManager")
 
 
-MAX_QUEUE_SIZE = 100_000
-
 BATCH_SIZE = 2_500
 BATCH_INTERVAL_S = 5
+
+MAX_QUEUE_SIZE = BATCH_SIZE
 
 
 class PipelineManager:
@@ -83,7 +83,7 @@ class PipelineManager:
 
         input_worker: Worker[LogEvent, LogEvent] = Worker(
             name="input_worker",
-            batch_size=1,
+            batch_size=250,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=self._input_connector(timeout=self.configuration.timeout),
             out_queue=SizeLimitedQueue(maxsize=MAX_QUEUE_SIZE),
