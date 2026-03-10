@@ -136,8 +136,6 @@ class Worker(Generic[Input, Output]):
 
         if batch_to_flush:
             logger.debug("Flushing messages based on backlog size")
-            logger.debug("Remaining items in _batch_buffer: %d", len(self._batch_buffer))
-            logger.debug("Batch size to flush after: %d", self._batch_size)
             await self._flush_batch(batch_to_flush)
 
     async def flush(self) -> None:
