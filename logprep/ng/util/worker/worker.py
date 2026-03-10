@@ -62,8 +62,13 @@ class Worker(Generic[Input, Output]):
         Must be called with _buffer_lock held. Ensures that at most one
         timer task is active for the current batch window.
         """
-        if self._flush_timer and not self._flush_timer.done():
-            self._flush_timer.cancel()
+        if self._flush_timer:
+            if self._flush_timer.done():
+                exc = self._flush_timer.exception()
+                if exc is not None:
+                    logger.error("flush timer task has failed", exc_info=exc)
+            else:
+                self._flush_timer.cancel()
         self._flush_timer = asyncio.create_task(self._flush_after_interval())
 
     def _cancel_timer_if_needed(self) -> None:
@@ -74,7 +79,12 @@ class Worker(Generic[Input, Output]):
         self-cancellation race conditions.
         """
         t = self._flush_timer
-        if not t or t.done():
+        if not t:
+            return
+        if t.done():
+            exc = t.exception()
+            if exc is not None:
+                logger.error("flush timer task has failed", exc_info=exc)
             return
         if t is asyncio.current_task():
             return
