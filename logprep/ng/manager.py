@@ -26,7 +26,6 @@ logger = logging.getLogger("PipelineManager")
 
 BATCH_SIZE = 2_500
 BATCH_INTERVAL_S = 5
-
 MAX_QUEUE_SIZE = BATCH_SIZE
 
 
@@ -43,7 +42,6 @@ class PipelineManager:
         self._event_backlog = SetEventBacklog()
 
         self._input_connector = cast(Input, Factory.create(self.configuration.input))
-        self._input_connector.event_backlog = self._event_backlog  # TODO needs to be disentagled
         await self._input_connector.setup()
 
         processors = [
@@ -173,11 +171,9 @@ class PipelineManager:
 
         if self._sender is not None:
             await self._sender.shut_down()
-        self._input_connector.acknowledge()
+        # self._input_connector.acknowledge()
 
-        len_delivered_events = len(
-            list(self._input_connector.event_backlog.get(EventStateType.DELIVERED))
-        )
+        len_delivered_events = len(list(self._event_backlog.get(EventStateType.DELIVERED)))
         if len_delivered_events:
             logger.error(
                 "Input connector has %d non-acked events in event_backlog.", len_delivered_events
