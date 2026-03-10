@@ -22,10 +22,8 @@ from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
-from logprep.ng.abc.event import EventBacklog
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.converters import convert_from_dict
 from logprep.util.helper import (
@@ -149,7 +147,6 @@ class Input(Connector):
         )
 
     def __init__(self, name: str, configuration: "Input.Config") -> None:
-        self.event_backlog: EventBacklog = SetEventBacklog()
         super().__init__(name, configuration)
 
     @property
@@ -182,17 +179,9 @@ class Input(Connector):
 
         return InputIterator(self, timeout)
 
-    def acknowledge(self) -> None:
-        """Acknowledge all delivered events, so Input Connector can return final ACK state.
-
-        As side effect, all older events with state ACKED has to be removed from `event_backlog`
-        before acknowledging new ones.
-        """
-
-        self.event_backlog.unregister(state_type=EventStateType.ACKED)
-
-        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):
-            event.state.current_state = EventStateType.ACKED
+    @abstractmethod
+    async def acknowledge(self, events: list[LogEvent]) -> None:
+        """Acknowledge all delivered events, so Input Connector can return final ACK state."""
 
     @property
     def _add_hmac(self) -> bool:
@@ -274,13 +263,13 @@ class Input(Connector):
         (event, raw_event, metadata)
         """
 
-    def _register_failed_event(
+    def _produce_failed_event(
         self,
         event: dict | None,
         raw_event: bytes | None,
         metadata: dict | None,
         error: Exception,
-    ) -> None:
+    ) -> LogEvent:
         """Helper method to register the failed event to event backlog."""
 
         error_log_event = LogEvent(
@@ -291,7 +280,7 @@ class Input(Connector):
         error_log_event.errors.append(error)
         error_log_event.state.current_state = EventStateType.FAILED
 
-        self.event_backlog.register(events=[error_log_event])
+        return error_log_event
 
     # @Metric.measure_time()
     async def get_next(self, timeout: float) -> LogEvent | None:
@@ -307,7 +296,7 @@ class Input(Connector):
         input : LogEvent, None
             Input log data.
         """
-        self.acknowledge()
+        # self.acknowledge()
         event: dict | None = None
         raw_event: bytes | None = None
         metadata: dict | None = None
@@ -357,7 +346,8 @@ class Input(Connector):
             except (FieldExistsWarning, TimeParserException) as error:
                 raise CriticalInputError(self, error.args[0], event) from error
         except CriticalInputError as error:
-            self._register_failed_event(
+            # TODO handle failed events
+            self._produce_failed_event(
                 event=event,
                 raw_event=raw_event,
                 metadata=metadata,  # type: ignore
@@ -371,12 +361,11 @@ class Input(Connector):
             metadata=metadata,  # type: ignore  # TODO: fix mypy issue
         )
 
-        self.event_backlog.register(events=[log_event])
         log_event.state.current_state = EventStateType.RECEIVED
 
         return log_event
 
-    def batch_finished_callback(self) -> None:
+    async def batch_finished_callback(self) -> None:
         """Can be called by output connectors after processing a batch of one or more records."""
 
     def _add_env_enrichment_to_event(self, event: dict, enrichments: dict) -> None:
