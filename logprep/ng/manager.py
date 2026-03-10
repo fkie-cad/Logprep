@@ -133,7 +133,6 @@ class PipelineManager:
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=output_worker.out_queue,  # type: ignore
-            out_queue=SizeLimitedQueue(maxsize=MAX_QUEUE_SIZE),
             handler=_handle_sent_events,
         )
 
