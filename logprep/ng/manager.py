@@ -8,8 +8,6 @@ import typing
 from asyncio import CancelledError
 from typing import cast
 
-from numpy.random.mtrand import Sequence
-
 from logprep.factory import Factory
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
@@ -104,7 +102,7 @@ class PipelineManager:
             handler=process,
         )
 
-        async def send_extras(batch: list[LogEvent]) -> Sequence:
+        async def send_extras(batch: list[LogEvent]) -> list[LogEvent]:
             return await self._sender.send_extras(batch)
 
         extra_output_worker: Worker[LogEvent, LogEvent] = Worker(
