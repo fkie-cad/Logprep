@@ -630,9 +630,10 @@ def benchmark_run(
 
         t_run = time.time()
         time.sleep(run_seconds)
-        window_s = time.time() - t_run
 
         kill_hard(logprep_proc)
+
+        window_s = time.time() - t_run
         logprep_proc = None
         _current_logprep_proc = None
 
