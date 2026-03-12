@@ -16,8 +16,8 @@ RUN python -m venv --upgrade-deps /opt/venv
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/opt/venv/bin:/root/.cargo/bin:${PATH}"
 
-# Install uv into the venv
-RUN pip install --disable-pip-version-check --no-cache-dir uv
+# Install uv with pinned version 0.10.9
+COPY --from=ghcr.io/astral-sh/uv@sha256:cc0c5a8573e7d6d78aecb954e0a62b5c0d18217bb81f1e19363b428c57a9962a /uv /uvx /bin/
 
 WORKDIR /logprep
 
@@ -61,8 +61,7 @@ RUN pip3 uninstall \
     --no-cache-dir \
     --yes \
     'setuptools' \
-    'wheel' \
-    'uv'
+    'wheel'
 
 RUN apt-get update && apt-get -y upgrade && \
     apt-get clean && \
