@@ -61,7 +61,8 @@ RUN pip3 uninstall \
     --no-cache-dir \
     --yes \
     'setuptools' \
-    'wheel'
+    'wheel' \
+    'uv'
 
 RUN apt-get update && apt-get -y upgrade && \
     apt-get clean && \
