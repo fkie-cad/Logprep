@@ -17,7 +17,7 @@ RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/opt/venv/bin:/root/.cargo/bin:${PATH}"
 
 # Install uv latest
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv@sha256:5205384ad2a34f8126789fa8a76b65fa289b810c9e908400ca6c91bc11953c53 /uv /uvx /bin/
 
 WORKDIR /logprep
 
