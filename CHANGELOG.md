@@ -2,6 +2,17 @@
 ### Breaking
 
 ### Features
+
+### Improvements
+
+### Bugfix
+
+
+## 19.0.0
+### Breaking
+* backslash in filter and many more expressions gets new meaning, breaking filters or rules that use a plain backslash
+
+### Features
 * make it possible to assign multiple credentials to a single endpoint
 * support escaping json dot notation in filter queries, processor fields and special processor syntaxes
 

@@ -16,8 +16,8 @@ RUN python -m venv --upgrade-deps /opt/venv
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/opt/venv/bin:/root/.cargo/bin:${PATH}"
 
-# Install uv into the venv
-RUN pip install --disable-pip-version-check --no-cache-dir uv
+# Install uv 0.10.9
+COPY --from=ghcr.io/astral-sh/uv:0.10.9 /uv /uvx /bin/
 
 WORKDIR /logprep
 
