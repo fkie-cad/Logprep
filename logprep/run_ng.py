@@ -1,6 +1,7 @@
 # pylint: disable=logging-fstring-interpolation
 """This module can be used to start the logprep."""
 
+import asyncio
 import logging
 import os
 import signal
@@ -8,7 +9,6 @@ import sys
 from multiprocessing import set_start_method
 
 import click
-import uvloop
 
 from logprep.ng.runner import Runner
 from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
@@ -70,8 +70,8 @@ def run(configs: tuple[str], version=None) -> None:
 
     async def _run(configs: tuple[str], version=None):
         configuration = await _get_configuration(configs)
-        runner = Runner(configuration)
-        runner.setup_logging()
+        _runner = Runner(configuration)
+        _runner.setup_logging()
         if version:
             _print_version(configuration)
         for v in get_versions_string(configuration).split("\n"):
@@ -83,7 +83,7 @@ def run(configs: tuple[str], version=None) -> None:
                 signal.signal(signal.SIGTERM, signal_handler)
                 signal.signal(signal.SIGINT, signal_handler)
             logger.debug("Configuration loaded")
-            await runner.run()
+            await _runner.run()
         except SystemExit as error:
             logger.debug(f"Exit received with code {error.code}")
             sys.exit(error.code)
@@ -95,12 +95,27 @@ def run(configs: tuple[str], version=None) -> None:
                 logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
             else:
                 logger.critical(f"A critical error occurred: {error}")
-            if runner:
-                runner.stop()
+            if _runner:
+                _runner.stop()
             sys.exit(EXITCODES.ERROR)
         # pylint: enable=broad-except
 
-    uvloop.run(_run(configs, version))
+    def _get_loop_factory(mode: str):
+        match mode:
+            case "uvloop":
+                import uvloop
+
+                logger.info("Using event loop: uvloop")
+                return uvloop.new_event_loop
+            case "asyncio":
+                logger.info("Using event loop: asyncio")
+                return asyncio.new_event_loop
+
+            case _:
+                raise ValueError(f"Unknown loop mode: {mode}")
+
+    with asyncio.Runner(loop_factory=_get_loop_factory(mode="uvloop")) as runner:
+        runner.run(_run(configs, version))
 
 
 def signal_handler(__: int, _) -> None:
