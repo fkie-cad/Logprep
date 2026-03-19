@@ -18,9 +18,7 @@ T = TypeVar("T")
 Input = TypeVar("Input")
 Output = TypeVar("Output")
 
-SyncHandler = Callable[[list[Input]], list[Output]]
 AsyncHandler = Callable[[list[Input]], Coroutine[object, object, list[Output]]]
-Handler = SyncHandler[Input, Output] | AsyncHandler[Input, Output]
 
 
 class SizeLimitedQueue(asyncio.Queue[T]):
