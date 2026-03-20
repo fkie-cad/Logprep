@@ -240,7 +240,7 @@ class LuceneTransformer:
     }
 
     find_unescaping_quote_pattern = re.compile(r'(?:\\)*"')
-    find_unescaping_end_pattern = re.compile(r"(?:\\)*$")
+    find_unescaping_end_pattern = re.compile(r"(?:\\)*\Z")
 
     def __init__(self, tree: luqum.tree, special_fields: dict | None = None):
         self._tree = tree
