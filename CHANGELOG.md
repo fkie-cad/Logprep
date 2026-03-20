@@ -9,6 +9,7 @@
 * fix vulnerable python dependencies
 
 ### Bugfix
+* properly handle trailing newlines in lucene filters
 
 
 ## 19.0.0
