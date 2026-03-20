@@ -38,6 +38,7 @@ class TestRequester(BaseProcessorTestCase):
         event = LogEvent(event, original=b"")
         self.object.process(event)
         assert event.data == expected
+        assert len(responses.calls) == 1
 
     @responses.activate
     @pytest.mark.parametrize(
