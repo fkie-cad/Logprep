@@ -42,6 +42,28 @@ test_cases = [
     ),
     pytest.param(
         {
+            "filter": 'value\\.nl: "\n" AND value\\.tab: "\t" AND value\\.backslash: "\\"',
+            "requester": {"url": "${url}/${file}", "method": "GET"},
+        },
+        {
+            "value.nl": "\n",
+            "value.tab": "\t",
+            "value.backslash": "\\",
+            "url": "http://mock-mock",
+            "file": "file.yml",
+        },
+        {
+            "value.nl": "\n",
+            "value.tab": "\t",
+            "value.backslash": "\\",
+            "url": "http://mock-mock",
+            "file": "file.yml",
+        },
+        {"method": "GET", "url": "http://mock-mock/file.yml", "status": 200},
+        id="request with url from escaped fields and special characters",
+    ),
+    pytest.param(
+        {
             "filter": "message",
             "requester": {
                 "url": "http://mock-mock",
@@ -411,6 +433,7 @@ class TestRequester(BaseProcessorTestCase):
         self._load_rule(rule)
         self.object.process(event)
         assert event == expected
+        assert len(responses.calls) == 1
 
     @responses.activate
     @pytest.mark.parametrize(

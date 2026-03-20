@@ -59,6 +59,32 @@ class TestLueceneFilter:
 
         assert lucene_filter.matches({"key": "value"})
 
+    def test_created_filter_matches_document_with_special_characters(self):
+        assert LuceneFilter.create('key: "\n"').matches({"key": "\n"})
+        assert LuceneFilter.create('key: "\t"').matches({"key": "\t"})
+        assert LuceneFilter.create('key: "\\a"').matches({"key": "\\a"})
+        assert LuceneFilter.create('key: "a\\"').matches({"key": "a\\"})
+        assert LuceneFilter.create('key: "\\\\n"').matches({"key": "\\\\n"})
+        assert LuceneFilter.create('a\\ key: "x"').matches({"a key": "x"})
+        assert LuceneFilter.create('a\\\tkey: "x"').matches({"a\tkey": "x"})
+        assert LuceneFilter.create('key\\\\n: "x"').matches({"key\\n": "x"})
+
+    @pytest.mark.xfail(reason="luqum disallows triple escapes in values", strict=True)
+    def test_created_filter_matches_document_with_triple_escape(self):
+        assert LuceneFilter.create('key: "\\\n"')
+
+    @pytest.mark.xfail(reason="luqum interprets newlines in keys as separators", strict=True)
+    def test_created_filter_matches_document_with_newline_in_key(self):
+        assert LuceneFilter.create('k\ney: "x"')
+
+    @pytest.mark.xfail(reason="luqum does not allow escaping newlines in keys", strict=True)
+    def test_created_filter_matches_document_with_escaped_newline_in_key(self):
+        assert LuceneFilter.create('a\\\nkey: "x"').matches({"a\nkey": "x"})
+
+    @pytest.mark.xfail(reason="luqum interprets unquoted tabs as separators", strict=True)
+    def test_created_filter_matches_document_with_tab_in_key(self):
+        assert LuceneFilter.create('k\tey: "x"')
+
     def test_created_filter_matches_document_with_parenthesis(self):
         lucene_filter = LuceneFilter.create('(key: "value")')
 
@@ -491,12 +517,12 @@ class TestLueceneFilter:
     def test_new_lucene_compliance_double_escape(self):
         lucene_filter = LuceneFilter.create("regex_key_one:/\\/.*value.*/")
 
-        assert lucene_filter == RegExFilterExpression(["regex_key_one"], "\/.*value.*")
+        assert lucene_filter == RegExFilterExpression(["regex_key_one"], r"\/.*value.*")
 
     def test_new_lucene_compliance_single_escape(self):
-        lucene_filter = LuceneFilter.create("regex_key_one:/\/.*value.*/")
+        lucene_filter = LuceneFilter.create(r"regex_key_one:/\/.*value.*/")
 
-        assert lucene_filter == RegExFilterExpression(["regex_key_one"], "\/.*value.*")
+        assert lucene_filter == RegExFilterExpression(["regex_key_one"], r"\/.*value.*")
 
     def test_new_lucene_compliance_parentheses(self):
         lucene_filter = LuceneFilter.create("regex_key_one:(/.*value.*/)")
