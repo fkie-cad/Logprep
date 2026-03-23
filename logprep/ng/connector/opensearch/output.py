@@ -334,8 +334,8 @@ class OpensearchOutput(Output):
 
             event.state.current_state = EventStateType.FAILED
 
-            extracted = next(iter(item.keys()))
-            op_type = extracted if extracted else self.config.default_op_type
+            keys_list = list(item.keys())
+            op_type = keys_list[0] if len(keys_list) >= 1 else self.config.default_op_type
 
             error_info = item[op_type] if op_type in item else {}
 
