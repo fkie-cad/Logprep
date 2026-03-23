@@ -30,20 +30,25 @@ Example
         ca_cert: /path/to/cert.crt
 """
 
+import asyncio
 import logging
 import ssl
 import typing
 from collections.abc import Sequence
 from functools import cached_property
-from typing import List, Optional
+from operator import methodcaller
+from typing import Iterable, List, Optional
 
+from aiohttp import payload
 from attrs import define, field, validators
+from msgspec import json
 from opensearchpy import (
     AsyncOpenSearch,
     OpenSearchException,
     SerializationError,
     helpers,
 )
+from opensearchpy._async.transport import TransportError
 from opensearchpy.serializer import JSONSerializer
 from typing_extensions import override
 
@@ -273,6 +278,56 @@ class OpensearchOutput(Output):
         """
         await self.store_batch([event], target)
 
+    def _chunk(self, events: Sequence[Event], chunk_size: int) -> Iterable[Sequence[Event]]:
+        if chunk_size >= len(events):
+            yield events
+            return
+
+        for i in range(0, len(events), chunk_size):
+            yield events[i : i + chunk_size]
+
+    @staticmethod
+    async def _send_chunk(
+        client: AsyncOpenSearch, events: Sequence[Event], target: str, default_op_type: str
+    ):
+        data: list[str] = []
+
+        for event in events:
+            event.state.current_state = EventStateType.STORING_IN_OUTPUT
+
+            document = event.data.copy()
+
+            op_type = document.pop("_op_type", default_op_type)
+            target_index = document.pop("_index", target)
+
+            # action = json.encode({op_type: {"_index": target_index}})
+            action = f'{{"{op_type}": {{"_index": "{target_index}"}}}}'
+            doc = json.encode(document)
+
+            # payload = f'{{"{op_type}": {{"_index": {"target_index"}}}}}\n{str(json.encode(document), "utf-8")}'
+
+            # logger.debug("payload %s", payload)
+
+            # payload = action + b"\n" + doc
+            data.append(action)
+            data.append(str(doc, "utf-8"))
+
+        try:
+            resp = await client.bulk(body="\n".join(data) + "\n")
+        except TransportError as e:
+            for event in events:
+                event.state.current_state = EventStateType.FAILED
+            logger.error("Error occured on transport to opensearch, err: %s", e)
+        else:
+            for event, (op_type, item) in zip(events, map(methodcaller("popitem"), resp["items"])):
+                status_code = item.get("status", 500)
+
+                if not (200 <= status_code < 300):
+                    event.state.current_state = EventStateType.FAILED
+                    continue
+
+                event.state.current_state = EventStateType.DELIVERED
+
     # @Output._handle_errors
     async def store_batch(
         self, events: Sequence[Event], target: str | None = None
@@ -280,16 +335,20 @@ class OpensearchOutput(Output):
         logger.debug("store_batch called with %d events, target=%s", len(events), target)
         target = target if target else self.config.default_index
 
-        for event in events:
-            document = event.data
-            document["_index"] = document.get("_index", target)
-            document["_op_type"] = document.get("_op_type", self.config.default_op_type)
+        logger.debug("Flushing %d documents to Opensearch", len(events))
+        tasks = []
+        for chunk in self._chunk(events, self.config.chunk_size):
+            tasks.append(
+                asyncio.create_task(
+                    OpensearchOutput._send_chunk(
+                        self._search_context, chunk, target, self.config.default_op_type
+                    )
+                )
+            )
 
-            event.state.current_state = EventStateType.STORING_IN_OUTPUT
+        await asyncio.gather(*tasks)
 
         self._metrics.number_of_processed_events += len(events)
-        logger.debug("Flushing %d documents to Opensearch", len(events))
-        await self._bulk(self._search_context, events)
         return events
 
     # @Metric.measure_time()
