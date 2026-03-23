@@ -313,8 +313,6 @@ class OpensearchOutput(Output):
         kwargs = {
             "max_chunk_bytes": self.config.max_chunk_bytes,
             "chunk_size": self.config.chunk_size,
-            # "queue_size": self.config.queue_size,
-            # "thread_count": self.config.thread_count,
             "raise_on_error": False,
             "raise_on_exception": False,
         }
@@ -336,18 +334,10 @@ class OpensearchOutput(Output):
 
             event.state.current_state = EventStateType.FAILED
 
-            # parallel_bulk often returned item that allowed item.get("_op_type")
-            # streaming_bulk usually returns {"index": {...}} / {"create": {...}}
-            op_type = self.config.default_op_type
-            if "_op_type" in item:
-                op_type = item["_op_type"]
-            elif isinstance(item, dict):
-                op_type = next(iter(item.keys()))
+            extracted = next(iter(item.keys()))
+            op_type = extracted if extracted else self.config.default_op_type
 
-            error_info = {}
-
-            if op_type in item and isinstance(item[op_type], dict):
-                error_info = item[op_type]
+            error_info = item[op_type] if op_type in item else {}
 
             error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
             event.errors.append(error)
