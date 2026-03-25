@@ -232,7 +232,7 @@ from logprep.util.getter import (
 )
 from logprep.util.rule_loader import RuleLoader
 
-logger = logging.getLogger("Config")  # pylint: disable=no-member
+logger = logging.getLogger("Config")
 
 
 class MyYAML(YAML):
