@@ -190,6 +190,7 @@ The following config file will be valid by setting the given environment variabl
                 group.id: test"
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -197,7 +198,6 @@ import typing
 from copy import deepcopy
 from importlib.metadata import version
 from itertools import chain
-from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
@@ -232,20 +232,20 @@ from logprep.util.getter import (
 )
 from logprep.util.rule_loader import RuleLoader
 
-logger = logging.getLogger("Config")
+logger = logging.getLogger("Config")  # pylint: disable=no-member
 
 
 class MyYAML(YAML):
     """helper class to dump yaml with ruamel.yaml"""
 
     def dump(self, data: Any, stream: Any | None = None, **kw: Any) -> Any:
-        inefficient = False
         if stream is None:
-            inefficient = True
             stream = StringIO()
-        YAML.dump(self, data, stream, **kw)
-        if inefficient:
+            YAML.dump(self, data, stream, **kw)
             return stream.getvalue()
+
+        YAML.dump(self, data, stream, **kw)
+        return None
 
 
 yaml = MyYAML(pure=True)
@@ -340,7 +340,7 @@ class LoggerConfig:
     compatible with :func:`logging.config.dictConfig`.
     """
 
-    _LOG_LEVELS = (
+    _log_levels = (
         logging.NOTSET,  # 0
         logging.DEBUG,  # 10
         logging.INFO,  # 20
@@ -358,7 +358,7 @@ class LoggerConfig:
         default="INFO",
         validator=[
             validators.instance_of(str),
-            validators.in_([logging.getLevelName(level) for level in _LOG_LEVELS]),
+            validators.in_([logging.getLevelName(level) for level in _log_levels]),
         ],
         eq=False,
     )
@@ -443,7 +443,7 @@ class LoggerConfig:
 
         log_config = asdict(self)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
-        dictConfig(log_config)
+        logging.config.dictConfig(log_config)
 
     def _set_loggers_levels(self) -> None:
         """Normalize per-logger configuration and preserve explicit levels.
@@ -673,6 +673,22 @@ class Configuration:
 
     _config_failure: bool = field(default=False, repr=False, eq=False, init=False)
 
+    _background_tasks: set = field(
+        factory=set,
+        validator=validators.instance_of(set),
+        repr=False,
+        eq=False,
+        init=False,
+    )
+
+    _reload_lock: asyncio.Lock = field(
+        factory=asyncio.Lock,
+        validator=validators.instance_of(asyncio.Lock),
+        repr=False,
+        eq=False,
+        init=False,
+    )
+
     _unserializable_fields = (
         "_getter",
         "_configs",
@@ -680,6 +696,8 @@ class Configuration:
         "_scheduler",
         "_metrics",
         "_unserializable_fields",
+        "_reload_lock",
+        "_background_tasks",
     )
 
     @define(kw_only=True)
@@ -943,7 +961,28 @@ class Configuration:
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, int):
-            scheduler.every(refresh_interval).seconds.do(self.reload)
+
+            async def _reload_wrapper() -> None:
+                if self._reload_lock.locked():
+                    logger.warning(
+                        "config reload already running; skipping scheduled config reload run",
+                    )
+                    return
+
+                async with self._reload_lock:
+                    try:
+                        await self.reload()
+                    except Exception:
+                        logger.exception("config reload failed")
+                        raise
+
+            def _schedule_reload() -> None:
+                task = asyncio.create_task(_reload_wrapper())
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
+
+            scheduler.every(refresh_interval).seconds.do(_schedule_reload)
+
             logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
 
     def refresh(self) -> None:
