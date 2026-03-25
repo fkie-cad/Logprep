@@ -8,6 +8,7 @@ import sys
 from multiprocessing import set_start_method
 
 import click
+import uvloop
 
 from logprep.ng.runner import Runner
 from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
@@ -97,18 +98,7 @@ def run(configs: tuple[str], version=None) -> None:
             sys.exit(EXITCODES.ERROR)
         # pylint: enable=broad-except
 
-    def _get_loop_factory(mode: str):
-        match mode:
-            case "uvloop":
-                import uvloop  # pylint: disable=import-outside-toplevel
-
-                return uvloop.new_event_loop
-            case "asyncio":
-                return asyncio.new_event_loop
-            case _:
-                raise ValueError(f"Unknown loop mode: {mode}")
-
-    with asyncio.Runner(loop_factory=_get_loop_factory(mode="uvloop")) as runner:
+    with asyncio.Runner(loop_factory=uvloop.new_event_loop) as runner:
         runner.run(_run(configs, version))
 
 
