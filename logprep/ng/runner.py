@@ -143,7 +143,7 @@ class Runner:
         """
 
         warnings.simplefilter("always", DeprecationWarning)
-        logging.captureWarnings(True)  # pylint: disable=no-member
+        logging.captureWarnings(True)
         log_config = DEFAULT_LOG_CONFIG | asdict(self.config.logger)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
-        logging.config.dictConfig(log_config)  # pylint: disable=no-member
+        logging.config.dictConfig(log_config)

@@ -19,7 +19,7 @@ from typing import Any, Generic, TypeVar
 
 from logprep.ng.util.worker.types import AsyncHandler, SizeLimitedQueue
 
-logger = logging.getLogger("Worker")  # pylint: disable=no-member
+logger = logging.getLogger("Worker")
 
 T = TypeVar("T")
 Input = TypeVar("Input")
