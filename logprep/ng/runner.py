@@ -54,33 +54,38 @@ class Runner:
         self._running_config_version = self.config.version
         refresh_interval = self.config.config_refresh_interval
 
-        while True:
-            self.config.refresh()
+        try:
+            while True:
+                self.config.refresh()
 
-            if self.config.version != self._running_config_version:
-                logger.info(f"Detected new config version: {self.config.version}")
+                if self.config.version != self._running_config_version:
+                    logger.info(f"Detected new config version: {self.config.version}")
 
-                self._running_config_version = self.config.version
-                refresh_interval = self.config.config_refresh_interval
+                    self._running_config_version = self.config.version
+                    refresh_interval = self.config.config_refresh_interval
 
-                yield self.config
+                    yield self.config
 
-            if refresh_interval is not None:
-                try:
-                    await asyncio.sleep(
-                        # realistic bad case: starting to sleep just a moment before scheduled time
-                        # unlikely worst case: starting to sleep even after scheduled time
-                        #                      (if yield takes some time and interval is short)
-                        # --> compensate bad case by giving an upper boundary to the deviation
-                        refresh_interval
-                        * MAX_CONFIG_REFRESH_INTERVAL_DEVIATION_PERCENT
-                    )
-                except asyncio.CancelledError:
-                    logger.debug("Config refresh cancelled. Exiting...")
-                    raise
-            else:
-                logger.debug("Config refresh has been disabled.")
-                break
+                if refresh_interval is not None:
+                    try:
+                        await asyncio.sleep(
+                            # realistic bad case: starting to sleep just a moment before scheduled time
+                            # unlikely worst case: starting to sleep even after scheduled time
+                            #                      (if yield takes some time and interval is short)
+                            # --> compensate bad case by giving an upper boundary to the deviation
+                            refresh_interval
+                            * MAX_CONFIG_REFRESH_INTERVAL_DEVIATION_PERCENT
+                        )
+                    except asyncio.CancelledError:
+                        logger.debug("Config refresh cancelled. Exiting...")
+                        raise
+                else:
+                    logger.debug("Config refresh has been disabled.")
+                    break
+        except Exception:
+            raise
+        finally:
+            self.config.stop_config_refresh()
 
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
