@@ -5,12 +5,14 @@ import asyncio
 import logging
 import signal
 import sys
+from functools import partial
 from multiprocessing import set_start_method
 
 import click
 import uvloop
 
 from logprep.ng.runner import Runner
+from logprep.ng.util.async_helpers import asyncio_exception_handler
 from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import EXITCODES
 from logprep.util.helper import get_versions_string
@@ -20,7 +22,7 @@ EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 init_yaml_loader_tags("safe", "rt")
 
 
-logger = logging.getLogger("root")  # pylint: disable=no-member
+logger = logging.getLogger("root")
 
 
 def _print_version(config: "Configuration") -> None:
@@ -99,6 +101,9 @@ def run(configs: tuple[str], version=None) -> None:
         # pylint: enable=broad-except
 
     with asyncio.Runner(loop_factory=uvloop.new_event_loop) as runner:
+        handler = partial(asyncio_exception_handler, logger=logger)
+        loop = runner.get_loop()
+        loop.set_exception_handler(handler)
         runner.run(_run(configs, version))
 
 

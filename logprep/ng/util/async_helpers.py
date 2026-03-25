@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Callable
+from logging import Logger
 from typing import Awaitable, TypeVar
 
 T = TypeVar("T")
@@ -111,3 +112,35 @@ async def restart_task_on_iter(
             await cancel_task_and_wait(task, cancel_timeout_s)
         task = await task_factory(data)
         yield task
+
+
+def asyncio_exception_handler(
+    loop: asyncio.AbstractEventLoop,  # pylint: disable=unused-argument
+    context: dict,
+    logger: Logger,
+) -> None:
+    """
+    Handle unhandled exceptions reported by the asyncio event loop.
+
+    Covers exceptions from background tasks, callbacks, and loop internals.
+    Does not handle exceptions from awaited coroutines (e.g. runner.run()).
+
+    Args:
+        loop: The current event loop.
+        context: Asyncio error context (may contain message, exception, task/future).
+        logger: Logger used to record the error.
+    """
+
+    msg = context.get("message", "Unhandled exception in event loop")
+    exception = context.get("exception")
+    task = context.get("task") or context.get("future")
+
+    logger.error(f"[asyncio] {msg}")
+
+    if task:
+        logger.error(f"[asyncio] Task: {task!r}")
+
+    if exception:
+        logger.error("[asyncio] Exception:", exc_info=exception)
+    else:
+        logger.error("[asyncio] Context: %s", context)
