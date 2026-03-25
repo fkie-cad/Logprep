@@ -22,7 +22,7 @@ from logprep.ng.util.events import partition_by_state
 from logprep.ng.util.worker.types import SizeLimitedQueue
 from logprep.ng.util.worker.worker import Worker, WorkerOrchestrator
 
-logger = logging.getLogger("PipelineManager")  # pylint: disable=no-member
+logger = logging.getLogger("PipelineManager")
 
 
 BATCH_SIZE = 2_500
