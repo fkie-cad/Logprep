@@ -3,7 +3,6 @@
 
 import asyncio
 import logging
-import os
 import signal
 import sys
 from multiprocessing import set_start_method
@@ -20,7 +19,7 @@ EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 init_yaml_loader_tags("safe", "rt")
 
 
-logger = logging.getLogger("root")
+logger = logging.getLogger("root")  # pylint: disable=no-member
 
 
 def _print_version(config: "Configuration") -> None:
@@ -68,16 +67,16 @@ def run(configs: tuple[str], version=None) -> None:
     CONFIG is a path to configuration file (filepath or URL).
     """
 
-    async def _run(configs: tuple[str], version=None):
-        configuration = await _get_configuration(configs)
+    async def _run(configs_: tuple[str], version_=None):
+        configuration = await _get_configuration(configs_)
         _runner = Runner(configuration)
         _runner.setup_logging()
-        if version:
+        if version_:
             _print_version(configuration)
         for v in get_versions_string(configuration).split("\n"):
             logger.info(v)
         logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
-        logger.debug(f"Config path: {configs}")
+        logger.debug(f"Config path: {configs_}")
         try:
             if "pytest" not in sys.modules:  # needed for not blocking tests
                 signal.signal(signal.SIGTERM, signal_handler)
@@ -91,10 +90,8 @@ def run(configs: tuple[str], version=None) -> None:
         except ExceptionGroup as error_group:
             logger.exception(f"Multiple errors occurred: {error_group}")
         except Exception as error:
-            if os.environ.get("DEBUG", False):
-                logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
-            else:
-                logger.critical(f"A critical error occurred: {error}")
+            logger.exception(f"A critical error occurred: {error}")
+
             if _runner:
                 _runner.stop()
             sys.exit(EXITCODES.ERROR)
@@ -103,14 +100,11 @@ def run(configs: tuple[str], version=None) -> None:
     def _get_loop_factory(mode: str):
         match mode:
             case "uvloop":
-                import uvloop
+                import uvloop  # pylint: disable=import-outside-toplevel
 
-                logger.info("Using event loop: uvloop")
                 return uvloop.new_event_loop
             case "asyncio":
-                logger.info("Using event loop: asyncio")
                 return asyncio.new_event_loop
-
             case _:
                 raise ValueError(f"Unknown loop mode: {mode}")
 

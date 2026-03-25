@@ -50,14 +50,20 @@ class Runner:
 
     async def _refresh_configuration_gen(self) -> AsyncGenerator[Configuration, None]:
         self.config.schedule_config_refresh()
+
+        self._running_config_version = self.config.version
         refresh_interval = self.config.config_refresh_interval
+
         while True:
             self.config.refresh()
 
             if self.config.version != self._running_config_version:
-                yield self.config
+                logger.info(f"Detected new config version: {self.config.version}")
+
                 self._running_config_version = self.config.version
                 refresh_interval = self.config.config_refresh_interval
+
+                yield self.config
 
             if refresh_interval is not None:
                 try:
@@ -85,13 +91,14 @@ class Runner:
                 tg.create_task(TerminateTaskGroup.raise_on_event(self._stop_event))
 
                 async def start_pipeline(config: Configuration) -> asyncio.Task:
-                    pipeline_manager = PipelineManager(
+                    logger.debug(">>>>> Starting pipeline")
+                    self._pipeline_manager = PipelineManager(
                         config, shutdown_timeout_s=GRACEFUL_SHUTDOWN_TIMEOUT
                     )
-                    await pipeline_manager.setup()
+                    await self._pipeline_manager.setup()
 
                     return tg.create_task(
-                        pipeline_manager.run(),
+                        self._pipeline_manager.run(),
                         name="pipeline_manager",
                     )
 
@@ -136,7 +143,7 @@ class Runner:
         """
 
         warnings.simplefilter("always", DeprecationWarning)
-        logging.captureWarnings(True)
+        logging.captureWarnings(True)  # pylint: disable=no-member
         log_config = DEFAULT_LOG_CONFIG | asdict(self.config.logger)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
-        logging.config.dictConfig(log_config)
+        logging.config.dictConfig(log_config)  # pylint: disable=no-member
