@@ -202,6 +202,7 @@ from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 from attrs import asdict, define, field, fields, validators
+from numpy.distutils.conv_template import named_re
 from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
@@ -673,9 +674,9 @@ class Configuration:
 
     _config_failure: bool = field(default=False, repr=False, eq=False, init=False)
 
-    _background_tasks: set = field(
-        factory=set,
-        validator=validators.instance_of(set),
+    _refresh_task: asyncio.Task | None = field(
+        default=None,
+        validator=validators.optional(validators.instance_of(asyncio.Task)),
         repr=False,
         eq=False,
         init=False,
@@ -696,8 +697,8 @@ class Configuration:
         "_scheduler",
         "_metrics",
         "_unserializable_fields",
+        "_refresh_task",
         "_reload_lock",
-        "_background_tasks",
     )
 
     @define(kw_only=True)
@@ -952,6 +953,12 @@ class Configuration:
         if self.config_refresh_interval is None:
             if scheduler.jobs:
                 scheduler.cancel_job(scheduler.jobs[0])
+
+                if self._refresh_task is not None:
+                    self._refresh_task.cancel()
+
+                self._refresh_task = None
+
             return
 
         self.config_refresh_interval = max(
@@ -960,9 +967,17 @@ class Configuration:
         refresh_interval = self.config_refresh_interval
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
+
+            if self._refresh_task is not None:
+                self._refresh_task.cancel()
+
+            self._refresh_task = None
+
         if isinstance(refresh_interval, int):
 
             async def _reload_wrapper() -> None:
+                current_task = asyncio.current_task()
+
                 if self._reload_lock.locked():
                     logger.warning(
                         "config reload already running; skipping scheduled config reload run",
@@ -972,22 +987,41 @@ class Configuration:
                 async with self._reload_lock:
                     try:
                         await self.reload()
-                    except Exception:
-                        logger.exception("config reload failed")
+                    except asyncio.CancelledError:
+                        logger.info("scheduled config reload task cancelled")
                         raise
+                    except Exception:
+                        logger.exception("scheduled config reload failed")
+                        raise
+                    finally:
+                        if self._refresh_task is current_task:
+                            self._refresh_task = None
 
             def _schedule_reload() -> None:
-                task = asyncio.create_task(_reload_wrapper())
-                self._background_tasks.add(task)
-                task.add_done_callback(self._background_tasks.discard)
+                old_task = self._refresh_task
+
+                if old_task is not None:
+                    old_task.cancel()
+
+                self._refresh_task = asyncio.create_task(_reload_wrapper())
 
             scheduler.every(refresh_interval).seconds.do(_schedule_reload)
-
-            logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
+            logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 
     def refresh(self) -> None:
         """Wrap the scheduler run_pending method hide the implementation details."""
         self._scheduler.run_pending()
+
+    def stop_config_refresh(self) -> None:
+        """Stop scheduled config refresh."""
+
+        self._scheduler.clear()
+
+        task = self._refresh_task
+        self._refresh_task = None
+
+        if task is not None:
+            task.cancel()
 
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, fields(self.__class__)):
