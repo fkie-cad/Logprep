@@ -79,7 +79,7 @@ SPECIAL_OFFSETS = {
 
 DEFAULT_RETURN = 0
 
-logger = logging.getLogger("KafkaInput")  # pylint: disable=no-member
+logger = logging.getLogger("KafkaInput")
 
 
 class ConfluentKafkaInput(Input):
