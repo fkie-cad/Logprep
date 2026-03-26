@@ -84,8 +84,6 @@ class Runner:
                     break
         except Exception:
             raise
-        finally:
-            self.config.stop_config_refresh()
 
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
@@ -131,6 +129,8 @@ class Runner:
                     logger.debug("Task group terminated")
                 case _:
                     raise
+        finally:
+            self.config.stop_config_refresh()
 
         logger.debug("End log processing.")
 
