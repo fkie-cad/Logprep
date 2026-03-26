@@ -37,7 +37,7 @@ class Worker(Generic[Input, Output]):
         batch_size: int,
         batch_interval_s: float,
         handler: AsyncHandler[Input, Output],
-        in_queue: asyncio.Queue[Input] | AsyncIterator[Input],
+        in_queue: SizeLimitedQueue[Input] | AsyncIterator[Input],
         out_queue: SizeLimitedQueue[Output] | None = None,
     ) -> None:
         self.name = name
