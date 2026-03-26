@@ -19,6 +19,6 @@ class NgComponent(Component):
         return super().setup()
 
     async def shut_down(self) -> None:
-        return super().shut_down()
+        return await super().shut_down()
 
     # pylint: enable=invalid-overridden-method,useless-parent-delegation

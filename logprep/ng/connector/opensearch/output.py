@@ -45,6 +45,7 @@ from opensearchpy import (
     helpers,
 )
 from opensearchpy.serializer import JSONSerializer
+from typing_extensions import override
 
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.event import Event
@@ -171,6 +172,11 @@ class OpensearchOutput(Output):
     """List of messages to be sent to Opensearch."""
 
     @property
+    def _metrics(self) -> Output.Metrics:
+        """Provides the properly typed metrics object"""
+        return typing.cast(Output.Metrics, self.metrics)
+
+    @property
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
         return typing.cast(OpensearchOutput.Config, self._config)
@@ -272,14 +278,16 @@ class OpensearchOutput(Output):
         self, events: Sequence[Event], target: str | None = None
     ) -> Sequence[Event]:
         logger.debug("store_batch called with %d events, target=%s", len(events), target)
+        target = target if target else self.config.default_index
+
         for event in events:
             document = event.data
-            if target is None:
-                document["_index"] = document.get("_index", self.config.default_index)
-            else:
-                document["_index"] = document.get("_index", target)
+            document["_index"] = document.get("_index", target)
             document["_op_type"] = document.get("_op_type", self.config.default_op_type)
-        self.metrics.number_of_processed_events += len(events)
+
+            event.state.current_state = EventStateType.STORING_IN_OUTPUT
+
+        self._metrics.number_of_processed_events += len(events)
         logger.debug("Flushing %d documents to Opensearch", len(events))
         await self._bulk(self._search_context, events)
         return events
@@ -305,8 +313,6 @@ class OpensearchOutput(Output):
         kwargs = {
             "max_chunk_bytes": self.config.max_chunk_bytes,
             "chunk_size": self.config.chunk_size,
-            # "queue_size": self.config.queue_size,
-            # "thread_count": self.config.thread_count,
             "raise_on_error": False,
             "raise_on_exception": False,
         }
@@ -314,13 +320,12 @@ class OpensearchOutput(Output):
         actions = (event.data for event in events)
 
         index = 0
-        async for success, item in helpers.async_streaming_bulk(client, actions, **kwargs):  # type: ignore
-            if index >= len(events):
-                break
+        async for success, item in helpers.async_streaming_bulk(client, actions, **kwargs):
+
+            # This should not be possible!
+            assert index < len(events)
 
             event = events[index]
-            event.state.current_state = EventStateType.STORING_IN_OUTPUT
-
             index += 1
 
             if success:
@@ -329,24 +334,10 @@ class OpensearchOutput(Output):
 
             event.state.current_state = EventStateType.FAILED
 
-            # parallel_bulk often returned item that allowed item.get("_op_type")
-            # streaming_bulk usually returns {"index": {...}} / {"create": {...}}
-            op_type = item.get("_op_type") if isinstance(item, dict) else None
-            if not op_type and isinstance(item, dict) and item:
-                op_type = next(iter(item.keys()))
+            keys_list = list(item.keys())
+            op_type = keys_list[0] if len(keys_list) >= 1 else self.config.default_op_type
 
-            op_type = op_type or self.config.default_op_type
-            error_info = {}
-
-            if isinstance(item, dict):
-                # streaming_bulk shape
-                if op_type in item and isinstance(item[op_type], dict):
-                    error_info = item[op_type]
-                # fallback: old shape
-                else:
-                    error_info = (
-                        item.get(op_type, {}) if isinstance(item.get(op_type), dict) else {}
-                    )
+            error_info = item[op_type] if op_type in item else {}
 
             error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
             event.errors.append(error)
@@ -359,6 +350,10 @@ class OpensearchOutput(Output):
             )
         except (OpenSearchException, ConnectionError) as error:
             logger.error("Health check failed: %s", error)
-            self.metrics.number_of_errors += 1
+            self._metrics.number_of_errors += 1
             return False
         return super().health() and resp.get("status") in self.config.desired_cluster_status
+
+    @override
+    async def shut_down(self):
+        await self._search_context.close()
