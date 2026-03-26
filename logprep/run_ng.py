@@ -72,8 +72,8 @@ def run(configs: tuple[str], version=None) -> None:
 
     async def _run(configs_: tuple[str], version_=None):
         configuration = await _get_configuration(configs_)
-        _runner = Runner(configuration)
-        _runner.setup_logging()
+        runner_ = Runner(configuration)
+        runner_.setup_logging()
         if version_:
             _print_version(configuration)
         for v in get_versions_string(configuration).split("\n"):
@@ -85,7 +85,7 @@ def run(configs: tuple[str], version=None) -> None:
                 signal.signal(signal.SIGTERM, signal_handler)
                 signal.signal(signal.SIGINT, signal_handler)
             logger.debug("Configuration loaded")
-            await _runner.run()
+            await runner_.run()
         except SystemExit as error:
             logger.debug(f"Exit received with code {error.code}")
             sys.exit(error.code)
@@ -95,8 +95,8 @@ def run(configs: tuple[str], version=None) -> None:
         except Exception as error:
             logger.exception(f"A critical error occurred: {error}")
 
-            if _runner:
-                _runner.stop()
+            if runner_:
+                runner_.stop()
             sys.exit(EXITCODES.ERROR)
         # pylint: enable=broad-except
 
