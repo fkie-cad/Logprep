@@ -50,31 +50,40 @@ class Runner:
 
     async def _refresh_configuration_gen(self) -> AsyncGenerator[Configuration, None]:
         self.config.schedule_config_refresh()
+
+        self._running_config_version = self.config.version
         refresh_interval = self.config.config_refresh_interval
-        while True:
-            self.config.refresh()
 
-            if self.config.version != self._running_config_version:
-                yield self.config
-                self._running_config_version = self.config.version
-                refresh_interval = self.config.config_refresh_interval
+        try:
+            while True:
+                self.config.refresh()
 
-            if refresh_interval is not None:
-                try:
-                    await asyncio.sleep(
-                        # realistic bad case: starting to sleep just a moment before scheduled time
-                        # unlikely worst case: starting to sleep even after scheduled time
-                        #                      (if yield takes some time and interval is short)
-                        # --> compensate bad case by giving an upper boundary to the deviation
-                        refresh_interval
-                        * MAX_CONFIG_REFRESH_INTERVAL_DEVIATION_PERCENT
-                    )
-                except asyncio.CancelledError:
-                    logger.debug("Config refresh cancelled. Exiting...")
-                    raise
-            else:
-                logger.debug("Config refresh has been disabled.")
-                break
+                if self.config.version != self._running_config_version:
+                    logger.info(f"Detected new config version: {self.config.version}")
+
+                    self._running_config_version = self.config.version
+                    refresh_interval = self.config.config_refresh_interval
+
+                    yield self.config
+
+                if refresh_interval is not None:
+                    try:
+                        await asyncio.sleep(
+                            # realistic bad case: starting to sleep just a moment before scheduled time
+                            # unlikely worst case: starting to sleep even after scheduled time
+                            #                      (if yield takes some time and interval is short)
+                            # --> compensate bad case by giving an upper boundary to the deviation
+                            refresh_interval
+                            * MAX_CONFIG_REFRESH_INTERVAL_DEVIATION_PERCENT
+                        )
+                    except asyncio.CancelledError:
+                        logger.debug("Config refresh cancelled. Exiting...")
+                        raise
+                else:
+                    logger.debug("Config refresh has been disabled.")
+                    break
+        except Exception:
+            raise
 
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
@@ -85,13 +94,14 @@ class Runner:
                 tg.create_task(TerminateTaskGroup.raise_on_event(self._stop_event))
 
                 async def start_pipeline(config: Configuration) -> asyncio.Task:
-                    pipeline_manager = PipelineManager(
+                    logger.debug(">>>>> Starting pipeline")
+                    self._pipeline_manager = PipelineManager(
                         config, shutdown_timeout_s=GRACEFUL_SHUTDOWN_TIMEOUT
                     )
-                    await pipeline_manager.setup()
+                    await self._pipeline_manager.setup()
 
                     return tg.create_task(
-                        pipeline_manager.run(),
+                        self._pipeline_manager.run(),
                         name="pipeline_manager",
                     )
 
@@ -119,6 +129,8 @@ class Runner:
                     logger.debug("Task group terminated")
                 case _:
                     raise
+        finally:
+            self.config.stop_config_refresh()
 
         logger.debug("End log processing.")
 

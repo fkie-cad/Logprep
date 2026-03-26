@@ -37,7 +37,7 @@ class Worker(Generic[Input, Output]):
         batch_size: int,
         batch_interval_s: float,
         handler: AsyncHandler[Input, Output],
-        in_queue: asyncio.Queue[Input] | AsyncIterator[Input],
+        in_queue: SizeLimitedQueue[Input] | AsyncIterator[Input],
         out_queue: SizeLimitedQueue[Output] | None = None,
     ) -> None:
         self.name = name
@@ -194,7 +194,6 @@ class Worker(Generic[Input, Output]):
                 while not stop_event.is_set():
                     item = await self.in_queue.get()
                     await self.add(item)
-                    # TODO is this await really necessary?
                     await asyncio.sleep(0.0)
             else:
                 while not stop_event.is_set():
@@ -203,7 +202,6 @@ class Worker(Generic[Input, Output]):
                     if item is not None:
                         await self.add(item)
 
-                    # TODO is this await really necessary?
                     await asyncio.sleep(0.0)
 
         except asyncio.CancelledError:
@@ -211,29 +209,6 @@ class Worker(Generic[Input, Output]):
             raise
         finally:
             await self.flush()
-
-
-class TransferWorker(Worker[T, T]):
-    def __init__(
-        self,
-        name: str,
-        batch_size: int,
-        batch_interval_s: float,
-        in_queue: asyncio.Queue[T] | AsyncIterator[T],
-        out_queue: SizeLimitedQueue[T] | None = None,
-    ) -> None:
-        super().__init__(
-            name=name,
-            batch_size=batch_size,
-            batch_interval_s=batch_interval_s,
-            in_queue=in_queue,
-            out_queue=out_queue,
-            handler=self.__handle_noop,
-        )
-
-    async def __handle_noop(self, batch: list[T]) -> list[T]:
-        await asyncio.sleep(0)
-        return [e for e in batch if e is not None]
 
 
 class WorkerOrchestrator:

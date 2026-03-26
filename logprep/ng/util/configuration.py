@@ -190,6 +190,7 @@ The following config file will be valid by setting the given environment variabl
                 group.id: test"
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -197,11 +198,11 @@ import typing
 from copy import deepcopy
 from importlib.metadata import version
 from itertools import chain
-from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 from attrs import asdict, define, field, fields, validators
+from numpy.distutils.conv_template import named_re
 from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
@@ -239,13 +240,13 @@ class MyYAML(YAML):
     """helper class to dump yaml with ruamel.yaml"""
 
     def dump(self, data: Any, stream: Any | None = None, **kw: Any) -> Any:
-        inefficient = False
         if stream is None:
-            inefficient = True
             stream = StringIO()
-        YAML.dump(self, data, stream, **kw)
-        if inefficient:
+            YAML.dump(self, data, stream, **kw)
             return stream.getvalue()
+
+        YAML.dump(self, data, stream, **kw)
+        return None
 
 
 yaml = MyYAML(pure=True)
@@ -340,7 +341,7 @@ class LoggerConfig:
     compatible with :func:`logging.config.dictConfig`.
     """
 
-    _LOG_LEVELS = (
+    _log_levels = (
         logging.NOTSET,  # 0
         logging.DEBUG,  # 10
         logging.INFO,  # 20
@@ -358,7 +359,7 @@ class LoggerConfig:
         default="INFO",
         validator=[
             validators.instance_of(str),
-            validators.in_([logging.getLevelName(level) for level in _LOG_LEVELS]),
+            validators.in_([logging.getLevelName(level) for level in _log_levels]),
         ],
         eq=False,
     )
@@ -443,7 +444,7 @@ class LoggerConfig:
 
         log_config = asdict(self)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
-        dictConfig(log_config)
+        logging.config.dictConfig(log_config)
 
     def _set_loggers_levels(self) -> None:
         """Normalize per-logger configuration and preserve explicit levels.
@@ -673,6 +674,22 @@ class Configuration:
 
     _config_failure: bool = field(default=False, repr=False, eq=False, init=False)
 
+    _refresh_task: asyncio.Task | None = field(
+        default=None,
+        validator=validators.optional(validators.instance_of(asyncio.Task)),
+        repr=False,
+        eq=False,
+        init=False,
+    )
+
+    _reload_lock: asyncio.Lock = field(
+        factory=asyncio.Lock,
+        validator=validators.instance_of(asyncio.Lock),
+        repr=False,
+        eq=False,
+        init=False,
+    )
+
     _unserializable_fields = (
         "_getter",
         "_configs",
@@ -680,6 +697,8 @@ class Configuration:
         "_scheduler",
         "_metrics",
         "_unserializable_fields",
+        "_refresh_task",
+        "_reload_lock",
     )
 
     @define(kw_only=True)
@@ -934,6 +953,12 @@ class Configuration:
         if self.config_refresh_interval is None:
             if scheduler.jobs:
                 scheduler.cancel_job(scheduler.jobs[0])
+
+                if self._refresh_task is not None:
+                    self._refresh_task.cancel()
+
+                self._refresh_task = None
+
             return
 
         self.config_refresh_interval = max(
@@ -942,13 +967,63 @@ class Configuration:
         refresh_interval = self.config_refresh_interval
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
+
+            if self._refresh_task is not None:
+                self._refresh_task.cancel()
+
+            self._refresh_task = None
+
         if isinstance(refresh_interval, int):
-            scheduler.every(refresh_interval).seconds.do(self.reload)
-            logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
+
+            async def _reload_wrapper() -> None:
+                current_task = asyncio.current_task()
+
+                if self._reload_lock.locked():
+                    logger.warning(
+                        "config reload already running; skipping scheduled config reload run",
+                    )
+                    return
+
+                async with self._reload_lock:
+                    try:
+                        await self.reload()
+                    except asyncio.CancelledError:
+                        logger.info("scheduled config reload task cancelled")
+                        raise
+                    except Exception:
+                        logger.exception("scheduled config reload failed")
+                        raise
+                    finally:
+                        if self._refresh_task is current_task:
+                            self._refresh_task = None
+
+            def _schedule_reload() -> None:
+                old_task = self._refresh_task
+
+                if old_task is not None:
+                    old_task.cancel()
+
+                self._refresh_task = asyncio.create_task(_reload_wrapper())
+
+            scheduler.every(refresh_interval).seconds.do(_schedule_reload)
+            logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 
     def refresh(self) -> None:
         """Wrap the scheduler run_pending method hide the implementation details."""
         self._scheduler.run_pending()
+
+    def stop_config_refresh(self) -> None:
+        """Stop scheduled config refresh."""
+
+        self._scheduler.clear()
+
+        task = self._refresh_task
+        self._refresh_task = None
+
+        if task is not None:
+            task.cancel()
+
+        logger.debug("Config refresh task cancelled")
 
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, fields(self.__class__)):

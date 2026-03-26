@@ -40,6 +40,8 @@ class PipelineManager:
         self._shutdown_timeout_s = shutdown_timeout_s
 
     async def setup(self):
+        """Setup the pipeline manager."""
+
         self._event_backlog = SetEventBacklog()
 
         self._input_connector = cast(Input, Factory.create(self.configuration.input))
@@ -74,7 +76,7 @@ class PipelineManager:
         self._queues = []
         self._orchestrator = self._create_orchestrator()
 
-    def _create_orchestrator(self) -> WorkerOrchestrator:
+    def _create_orchestrator(self) -> WorkerOrchestrator:  # pylint: disable=too-many-locals
         process_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
         send_to_default_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
         send_to_extras_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
@@ -194,14 +196,13 @@ class PipelineManager:
         try:
             await self._orchestrator.run()
         except CancelledError:
-            # TODO cancelling() > 0 is no safe discriminator; improve
-            current_task = asyncio.current_task()
-            if current_task and current_task.cancelling() > 0:
-                logger.debug("PipelineManager.run has been cancelled. Shutting down")
-                await self._shut_down()
-            else:
-                logger.error("Orchestrator has been cancelled. Shutting down")
-                await self._shut_down()
+            logger.debug("PipelineManager.run cancelled. Shutting down.")
+            await self._shut_down()
+            raise
+        except Exception:
+            logger.exception("PipelineManager.run failed. Shutting down.")
+            await self._shut_down()
+            raise
 
     async def _shut_down(self) -> None:
         """Shut down runner components, and required runner attributes."""

@@ -28,14 +28,12 @@ Example
             auto.offset.reset: "earliest"
 """
 
-# pylint: enable=line-too-long
 import logging
 import os
 import typing
 from functools import cached_property, partial
 from socket import getfqdn
-from types import MappingProxyType
-from typing import Union
+from types import MappingProxyType  # pylint: disable=no-name-in-module
 
 import msgspec
 from attrs import define, field, validators
@@ -396,7 +394,9 @@ class ConfluentKafkaInput(Input):
         )
 
     def _commit_callback(
-        self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
+        self,
+        error: KafkaException | None,
+        topic_partitions: list[TopicPartition],
     ) -> None:
         """Callback used to indicate success or failure of asynchronous and
         automatic commit requests. This callback is served upon calling consumer.poll()
@@ -461,8 +461,6 @@ class ConfluentKafkaInput(Input):
             message = await consumer.poll(timeout=timeout)
         except RuntimeError as error:
             raise FatalInputError(self, str(error)) from error
-        except Exception as error:  # remove this
-            pass
         if message is None:
             return None
         if message.value() is None or message.partition() is None or message.offset() is None:
@@ -602,7 +600,7 @@ class ConfluentKafkaInput(Input):
         member_id = None
         try:
             consumer = await self.get_consumer()
-            member_id = consumer._consumer.memberid()
+            member_id = consumer._consumer.memberid()  # pylint: disable=protected-access
         except RuntimeError as error:
             logger.error("Failed to retrieve member ID: %s", error)
         return member_id
