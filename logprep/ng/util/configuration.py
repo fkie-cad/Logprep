@@ -1023,6 +1023,8 @@ class Configuration:
         if task is not None:
             task.cancel()
 
+        logger.debug("Config refresh task cancelled")
+
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, fields(self.__class__)):
             setattr(
