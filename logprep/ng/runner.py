@@ -94,7 +94,6 @@ class Runner:
                 tg.create_task(TerminateTaskGroup.raise_on_event(self._stop_event))
 
                 async def start_pipeline(config: Configuration) -> asyncio.Task:
-                    logger.debug(">>>>> Starting pipeline")
                     self._pipeline_manager = PipelineManager(
                         config, shutdown_timeout_s=GRACEFUL_SHUTDOWN_TIMEOUT
                     )
