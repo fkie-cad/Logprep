@@ -202,7 +202,6 @@ from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 from attrs import asdict, define, field, fields, validators
-from numpy.distutils.conv_template import named_re
 from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
