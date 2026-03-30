@@ -24,13 +24,13 @@ jobs:
       - name: Set up SSH
         uses: MrSquaare/ssh-setup-action@c818628b924a4bd863903a56c0e526db47bba6f4 # https://github.com/MrSquaare/ssh-setup-action/releases/tag/v3.1.3
         with:
-          host: ${{ secrets.DOCKER_BUILD_SERVER_01 }}
-          private-key: ${{ secrets.DOCKER_BUILD_SERVER_IDENTITY_FILE }}
+          host: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
+          private-key: ${{ secrets.BUILD_SERVER_ARM64_PRIVATE_KEY }}
       - name: Set up SSH
         uses: MrSquaare/ssh-setup-action@c818628b924a4bd863903a56c0e526db47bba6f4 # https://github.com/MrSquaare/ssh-setup-action/releases/tag/v3.1.3
         with:
-          host: ${{ secrets.DOCKER_BUILD_SERVER_02 }}
-          private-key: ${{ secrets.DOCKER_BUILD_SERVER_IDENTITY_FILE }}
+          host: ${{ secrets.BUILD_SERVER_ARM64_HOST_02 }}
+          private-key: ${{ secrets.BUILD_SERVER_ARM64_PRIVATE_KEY }}
       - name: Set up Docker
         uses: docker/setup-docker-action@e43656e248c0bd0647d3f5c195d116aacf6fcaf4 # https://github.com/docker/setup-docker-action/releases/tag/v4.7.0
         with:
@@ -64,9 +64,9 @@ jobs:
           driver: docker-container
           platforms: linux/amd64
           append: |
-            - endpoint: ssh://root@${{ secrets.DOCKER_BUILD_SERVER_01 }}
+            - endpoint: ssh://root@${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
               platforms: linux/arm64
-            - endpoint: ssh://root@${{ secrets.DOCKER_BUILD_SERVER_02 }}
+            - endpoint: ssh://root@${{ secrets.BUILD_SERVER_ARM64_HOST_02 }}
               platforms: linux/arm64
       - name: Build image and push to registry
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # https://github.com/docker/build-push-action/releases/tag/v6.19.2
