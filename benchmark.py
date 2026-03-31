@@ -38,12 +38,17 @@ _current_env: dict[str, str] | None = None
 
 def _handle_sigint(signum, frame):
     """
-    Handle Ctrl+C (SIGINT) and perform graceful shutdown.
+    Handle Ctrl+C (SIGINT) and request graceful shutdown.
+
+    Avoid tearing down compose services directly from the signal handler,
+    because the main benchmark flow may still be interacting with them.
+    Cleanup is handled by the normal control flow / finally blocks.
     """
+    del signum, frame  # unused
     global _shutdown_requested
     _shutdown_requested = True
 
-    print("\n\n⚠ Ctrl+C detected. Shutting down benchmark...")
+    print("\n\n⚠ Ctrl+C detected. Stopping benchmark gracefully...")
 
     if _current_logprep_proc is not None:
         try:
@@ -51,18 +56,13 @@ def _handle_sigint(signum, frame):
         except Exception:
             pass
 
-    if _current_compose_dir is not None and _current_env is not None:
-        try:
-            run_cmd(
-                ["docker", "compose", "down"],
-                cwd=_current_compose_dir,
-                env=_current_env,
-                ignore_error=True,
-            )
-        except Exception:
-            pass
 
-    sys.exit(130)
+def raise_if_shutdown_requested() -> None:
+    """
+    Abort current benchmark flow if a shutdown was requested.
+    """
+    if _shutdown_requested:
+        raise KeyboardInterrupt("Benchmark shutdown requested")
 
 
 # -------------------------
@@ -134,14 +134,10 @@ def print_benchmark_config(args: argparse.Namespace) -> None:
     for key in sorted(args_dict):
         value = args_dict[key]
 
-        # Format integers with underscore separator
         if isinstance(value, int):
             formatted = f"{value:_}"
-
-        # Format list of integers (e.g. runs)
         elif isinstance(value, list) and all(isinstance(v, int) for v in value):
             formatted = "[" + ", ".join(f"{v:_}" for v in value) + "]"
-
         else:
             formatted = value
 
@@ -385,6 +381,7 @@ def wait_for_tcp(host: str, port: int, *, timeout_s: float, interval_s: float = 
     last_err: OSError | None = None
 
     while time.time() < deadline:
+        raise_if_shutdown_requested()
         try:
             with socket.create_connection((host, port), timeout=2):
                 return
@@ -408,6 +405,7 @@ def wait_for_opensearch(opensearch_url: str, *, timeout_s: float, interval_s: fl
     last_err: Exception | None = None
 
     while time.time() < deadline:
+        raise_if_shutdown_requested()
         try:
             resp = requests.get(f"{opensearch_url}/_cluster/health", timeout=2)
             if resp.status_code == 200:
@@ -436,6 +434,7 @@ def wait_for_kafka_topic(
     last_err: Exception | None = None
 
     while time.time() < deadline:
+        raise_if_shutdown_requested()
         try:
             proc = subprocess.run(
                 [
@@ -569,11 +568,13 @@ def benchmark_run(
     _current_env = env
 
     try:
+        raise_if_shutdown_requested()
         ensure_vm_max_map_count()
 
         run_cmd(["docker", "compose", "down"], cwd=compose_dir, env=env)
         run_cmd(["docker", "volume", "rm", "compose_opensearch-data"], env=env, ignore_error=True)
 
+        raise_if_shutdown_requested()
         run_cmd(
             ["docker", "compose", "up", "-d", "--no-deps", *services],
             cwd=compose_dir,
@@ -591,6 +592,8 @@ def benchmark_run(
         if "opensearch" in set(services):
             wait_for_tcp("127.0.0.1", 9200, timeout_s=float(sleep_after_compose_up_s))
             wait_for_opensearch(opensearch_url, timeout_s=float(sleep_after_compose_up_s))
+
+        raise_if_shutdown_requested()
 
         batch_size = max(event_num // 10, 10)
         output_config = f'{{"bootstrap.servers": "{bootstrap_servers}"}}'
@@ -612,7 +615,9 @@ def benchmark_run(
             env=env,
         )
 
+        raise_if_shutdown_requested()
         time.sleep(sleep_after_generate_s)
+        raise_if_shutdown_requested()
 
         binary = "logprep-ng" if ng == 1 else "logprep"
 
@@ -621,15 +626,18 @@ def benchmark_run(
         _current_logprep_proc = logprep_proc
 
         time.sleep(sleep_after_logprep_start_s)
+        raise_if_shutdown_requested()
 
         print("\n=== OpenSearch snapshot (before measurement) ===")
         opensearch_debug_snapshot(opensearch_url)
 
+        raise_if_shutdown_requested()
         baseline = opensearch_count_processed(opensearch_url, processed_index)
         startup_s = time.time() - t_startup
 
         t_run = time.time()
         time.sleep(run_seconds)
+        raise_if_shutdown_requested()
 
         kill_hard(logprep_proc)
 
@@ -637,12 +645,13 @@ def benchmark_run(
         logprep_proc = None
         _current_logprep_proc = None
 
-        # ensure near-real-time writes are visible to _count before measuring
+        raise_if_shutdown_requested()
         opensearch_refresh(opensearch_url, processed_index)
 
         print("\n=== OpenSearch snapshot (after run / after refresh) ===")
         opensearch_debug_snapshot(opensearch_url)
 
+        raise_if_shutdown_requested()
         after = opensearch_count_processed(opensearch_url, processed_index)
         processed = max(0, after - baseline)
 
@@ -838,36 +847,42 @@ def setup_output_tee(out_path: Path | None) -> None:
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, _handle_sigint)
 
-    args_ = parse_args()
-    setup_output_tee(args_.out)
+    try:
+        args_ = parse_args()
+        setup_output_tee(args_.out)
 
-    print_benchmark_config(args_)
+        print_benchmark_config(args_)
 
-    pipeline_config_ = resolve_pipeline_config(args_.ng)
+        pipeline_config_ = resolve_pipeline_config(args_.ng)
 
-    results: list[RunResult] = []
+        results: list[RunResult] = []
 
-    benchmark_seconds = args_.runs
-    for run_idx, seconds in enumerate(benchmark_seconds, start=1):
-        print(f"----- Run Round {run_idx}: {seconds} seconds -----")
-        result = benchmark_run(
-            run_seconds=seconds,
-            ng=args_.ng,
-            event_num=args_.event_num,
-            prometheus_multiproc_dir=args_.prometheus_multiproc_dir,
-            compose_dir=args_.compose_dir,
-            pipeline_config=pipeline_config_,
-            gen_input_dir=args_.gen_input_dir,
-            bootstrap_servers=args_.bootstrap_servers,
-            sleep_after_compose_up_s=args_.sleep_after_compose_up_s,
-            sleep_after_generate_s=args_.sleep_after_generate_s,
-            sleep_after_logprep_start_s=args_.sleep_after_logprep_start_s,
-            opensearch_url=args_.opensearch_url,
-            processed_index=args_.processed_index,
-            services=args_.services,
-        )
-        results.append(result)
-        print_single_run_result(result, event_num=args_.event_num)
-        print()
+        benchmark_seconds = args_.runs
+        for run_idx, seconds in enumerate(benchmark_seconds, start=1):
+            raise_if_shutdown_requested()
+            print(f"----- Run Round {run_idx}: {seconds} seconds -----")
+            result = benchmark_run(
+                run_seconds=seconds,
+                ng=args_.ng,
+                event_num=args_.event_num,
+                prometheus_multiproc_dir=args_.prometheus_multiproc_dir,
+                compose_dir=args_.compose_dir,
+                pipeline_config=pipeline_config_,
+                gen_input_dir=args_.gen_input_dir,
+                bootstrap_servers=args_.bootstrap_servers,
+                sleep_after_compose_up_s=args_.sleep_after_compose_up_s,
+                sleep_after_generate_s=args_.sleep_after_generate_s,
+                sleep_after_logprep_start_s=args_.sleep_after_logprep_start_s,
+                opensearch_url=args_.opensearch_url,
+                processed_index=args_.processed_index,
+                services=args_.services,
+            )
+            results.append(result)
+            print_single_run_result(result, event_num=args_.event_num)
+            print()
 
-    print_runs_table_and_summary(results)
+        print_runs_table_and_summary(results)
+
+    except KeyboardInterrupt:
+        print("\nBenchmark aborted.")
+        sys.exit(130)
