@@ -77,12 +77,8 @@ class Sender:
         return await self._default_output.store_batch(batch_events)  # type: ignore
 
     async def _send_and_flush_failed_events(self, batch_events: list[LogEvent]) -> None:
-        failed = [event for event in batch_events if event.state is EventStateType.FAILED]
-        if not failed:
-            return
-
         # send in parallel (minimal change vs. serial list comprehension)
-        error_events = await asyncio.gather(*(self._send_failed(event) for event in failed))
+        error_events = await asyncio.gather(*(self._send_failed(event) for event in batch_events))
 
         await self._error_output.flush()  # type: ignore[union-attr]
 
