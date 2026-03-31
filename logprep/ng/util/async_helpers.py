@@ -115,7 +115,7 @@ async def restart_task_on_iter(
 
 
 def asyncio_exception_handler(
-    loop: asyncio.AbstractEventLoop,  # pylint: disable=unused-argument
+    _: asyncio.AbstractEventLoop,
     context: dict,
     logger: Logger,
 ) -> None:
@@ -126,7 +126,7 @@ def asyncio_exception_handler(
     Does not handle exceptions from awaited coroutines (e.g. runner.run()).
 
     Args:
-        loop: The current event loop.
+        _: The current event loop. Currently not used.
         context: Asyncio error context (may contain message, exception, task/future).
         logger: Logger used to record the error.
     """
