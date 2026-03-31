@@ -5,6 +5,9 @@ from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Callab
 from logging import Logger
 from typing import Awaitable, TypeVar
 
+from logprep.ng.event.log_event import LogEvent
+from logprep.ng.util.events import partition_by_state
+
 T = TypeVar("T")
 D = TypeVar("D")
 
@@ -115,7 +118,7 @@ async def restart_task_on_iter(
 
 
 def asyncio_exception_handler(
-    _: asyncio.AbstractEventLoop,
+    loop: asyncio.AbstractEventLoop,  # pylint: disable=unused-argument
     context: dict,
     logger: Logger,
 ) -> None:
@@ -124,6 +127,11 @@ def asyncio_exception_handler(
 
     Covers exceptions from background tasks, callbacks, and loop internals.
     Does not handle exceptions from awaited coroutines (e.g. runner.run()).
+
+    Args:
+        loop: The current event loop.
+        context: Asyncio error context (may contain message, exception, task/future).
+        logger: Logger used to record the error.
     """
 
     msg = context.get("message", "Unhandled exception in event loop")
@@ -142,3 +150,13 @@ def asyncio_exception_handler(
         logger.error(f"Unhandled exception: {exception!r}", exc_info=exception)
     else:
         logger.error(f"Context: {context!r}")
+
+
+async def report_event_state(logger: Logger, batch: list[LogEvent]) -> list[LogEvent]:
+    events_by_state = partition_by_state(batch)
+    logger.info(
+        "Finished processing %d events: %s",
+        len(batch),
+        ", ".join(f"#{state}={len(events)}" for state, events in events_by_state.items()),
+    )
+    return batch
