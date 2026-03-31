@@ -17,8 +17,8 @@ from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
 from logprep.ng.sender import Sender
+from logprep.ng.util.async_helpers import report_event_state
 from logprep.ng.util.configuration import Configuration
-from logprep.ng.util.events import partition_by_state
 from logprep.ng.util.worker.types import SizeLimitedQueue
 from logprep.ng.util.worker.worker import Worker, WorkerOrchestrator
 
@@ -90,10 +90,14 @@ class PipelineManager:
             acknowledge_queue,
         ]
 
+        async def _report_event_state(batch: list[LogEvent]) -> list[LogEvent]:
+            return await report_event_state(logger, batch)
+
         async def transfer_batch(batch: list[LogEvent]) -> list[LogEvent]:
             for event in batch:
                 event.state.current_state = EventStateType.RECEIVED
 
+            _ = await _report_event_state(batch)
             return batch
 
         input_worker: Worker[LogEvent, LogEvent] = Worker(
@@ -119,6 +123,8 @@ class PipelineManager:
                     await send_to_error_queue.put(event)
 
             await asyncio.gather(*map(_handle, batch))
+
+            _ = await _report_event_state(batch)
             return batch
 
         processing_worker: Worker[LogEvent, LogEvent] = Worker(
@@ -130,6 +136,7 @@ class PipelineManager:
         )
 
         async def _send_extras_handler(batch: list[LogEvent]) -> list[LogEvent]:
+            _ = await _report_event_state(batch)
             return await self._sender.send_extras(batch)
 
         extra_output_worker: Worker[LogEvent, LogEvent] = Worker(
@@ -142,6 +149,7 @@ class PipelineManager:
         )
 
         async def _send_default_output_handler(batch: list[LogEvent]) -> list[LogEvent]:
+            _ = await _report_event_state(batch)
             return await self._sender.send_default_output(batch)
 
         output_worker: Worker[LogEvent, LogEvent] = Worker(
@@ -153,22 +161,16 @@ class PipelineManager:
             handler=_send_default_output_handler,
         )
 
-        async def _report_event_state(batch: list[LogEvent]) -> list[LogEvent]:
-            events_by_state = partition_by_state(batch)
-            logger.info(
-                "Finished processing %d events: %s",
-                len(batch),
-                ", ".join(f"#{state}={len(events)}" for state, events in events_by_state.items()),
-            )
-            return batch
+        async def _send_error_output_handler(batch: list[LogEvent]) -> list[LogEvent]:
+            _ = await _report_event_state(batch)
+            return await self._sender._send_and_flush_failed_events(batch)
 
         error_worker: Worker[LogEvent, LogEvent] = Worker(
             name="error_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=send_to_error_queue,
-            # TODO implement handling and sending failed events
-            handler=_report_event_state,
+            handler=_send_error_output_handler,
         )
 
         acknowledge_worker: Worker[LogEvent, LogEvent] = Worker(
