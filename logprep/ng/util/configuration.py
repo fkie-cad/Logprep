@@ -190,7 +190,6 @@ The following config file will be valid by setting the given environment variabl
                 group.id: test"
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -206,7 +205,6 @@ from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
-from schedule import Scheduler
 
 from logprep.abc.getter import Getter
 from logprep.factory import Factory
@@ -663,41 +661,14 @@ class Configuration:
         validator=validators.instance_of(tuple), factory=tuple, repr=False, eq=False
     )
 
-    _scheduler: Scheduler = field(
-        factory=Scheduler,
-        validator=validators.instance_of(Scheduler),
-        repr=False,
-        eq=False,
-        init=False,
-    )
-
     _config_failure: bool = field(default=False, repr=False, eq=False, init=False)
-
-    _refresh_task: asyncio.Task | None = field(
-        default=None,
-        validator=validators.optional(validators.instance_of(asyncio.Task)),
-        repr=False,
-        eq=False,
-        init=False,
-    )
-
-    _reload_lock: asyncio.Lock = field(
-        factory=asyncio.Lock,
-        validator=validators.instance_of(asyncio.Lock),
-        repr=False,
-        eq=False,
-        init=False,
-    )
 
     _unserializable_fields = (
         "_getter",
         "_configs",
         "_config_failure",
-        "_scheduler",
         "_metrics",
         "_unserializable_fields",
-        "_refresh_task",
-        "_reload_lock",
     )
 
     @define(kw_only=True)
@@ -894,8 +865,16 @@ class Configuration:
         errors: List[Exception] = []
         try:
             new_config = await Configuration.from_sources(self.config_paths)
+            refresh_interval = (
+                MIN_CONFIG_REFRESH_INTERVAL
+                if self.config_refresh_interval is None
+                else max(
+                    self.config_refresh_interval,
+                    MIN_CONFIG_REFRESH_INTERVAL,
+                )
+            )
             if new_config.config_refresh_interval is None:
-                new_config.config_refresh_interval = self.config_refresh_interval
+                new_config.config_refresh_interval = refresh_interval
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
             self._set_version_info_metric()
@@ -925,104 +904,7 @@ class Configuration:
             return
         config_refresh_interval = max(config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL)
         self.config_refresh_interval = config_refresh_interval
-        self.schedule_config_refresh()
         self._metrics.config_refresh_interval += config_refresh_interval
-
-    def schedule_config_refresh(self) -> None:
-        """
-        Schedules a periodic configuration refresh based on the specified interval.
-
-        Cancels any existing scheduled configuration refresh job and schedules a new one
-        using the current :code:`config_refresh_interval`.
-        The refresh job will call the :code:`reload` method at the specified interval
-        in seconds on invoking the :code:`refresh` method.
-
-        Notes
-        -----
-        - Only one configuration refresh job is scheduled at a time
-        - Any existing job is cancelled before scheduling a new one.
-        - The interval must be an integer representing seconds.
-
-        Examples
-        --------
-        >>> self.schedule_config_refresh()
-        Config refresh interval is set to: 60 seconds
-        """
-        scheduler = self._scheduler
-        if self.config_refresh_interval is None:
-            if scheduler.jobs:
-                scheduler.cancel_job(scheduler.jobs[0])
-
-                if self._refresh_task is not None:
-                    self._refresh_task.cancel()
-
-                self._refresh_task = None
-
-            return
-
-        self.config_refresh_interval = max(
-            self.config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL
-        )
-        refresh_interval = self.config_refresh_interval
-        if scheduler.jobs:
-            scheduler.cancel_job(scheduler.jobs[0])
-
-            if self._refresh_task is not None:
-                self._refresh_task.cancel()
-
-            self._refresh_task = None
-
-        if isinstance(refresh_interval, int):
-
-            async def _reload_wrapper() -> None:
-                current_task = asyncio.current_task()
-
-                if self._reload_lock.locked():
-                    logger.warning(
-                        "config reload already running; skipping scheduled config reload run",
-                    )
-                    return
-
-                async with self._reload_lock:
-                    try:
-                        await self.reload()
-                    except asyncio.CancelledError:
-                        logger.info("scheduled config reload task cancelled")
-                        raise
-                    except Exception:
-                        logger.exception("scheduled config reload failed")
-                        raise
-                    finally:
-                        if self._refresh_task is current_task:
-                            self._refresh_task = None
-
-            def _schedule_reload() -> None:
-                old_task = self._refresh_task
-
-                if old_task is not None:
-                    old_task.cancel()
-
-                self._refresh_task = asyncio.create_task(_reload_wrapper())
-
-            scheduler.every(refresh_interval).seconds.do(_schedule_reload)
-            logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
-
-    def refresh(self) -> None:
-        """Wrap the scheduler run_pending method hide the implementation details."""
-        self._scheduler.run_pending()
-
-    def stop_config_refresh(self) -> None:
-        """Stop scheduled config refresh."""
-
-        self._scheduler.clear()
-
-        task = self._refresh_task
-        self._refresh_task = None
-
-        if task is not None:
-            task.cancel()
-
-        logger.debug("Config refresh task cancelled")
 
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, fields(self.__class__)):
