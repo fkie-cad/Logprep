@@ -14,7 +14,7 @@ from attrs import asdict
 from logprep.ng.manager import PipelineManager
 from logprep.ng.util.async_helpers import TerminateTaskGroup, restart_task_on_iter
 from logprep.ng.util.configuration import Configuration
-from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
+from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG, MIN_CONFIG_REFRESH_INTERVAL
 
 logger = logging.getLogger("Runner")
 
@@ -46,44 +46,48 @@ class Runner:
         self._task_group = asyncio.TaskGroup()
         self._stop_event = asyncio.Event()
 
-        self._pipeline_manager: PipelineManager | None = None
-
     async def _refresh_configuration_gen(self) -> AsyncGenerator[Configuration, None]:
-        self.config.schedule_config_refresh()
-
         self._running_config_version = self.config.version
         refresh_interval = self.config.config_refresh_interval
 
-        try:
-            while True:
-                self.config.refresh()
+        if refresh_interval is None:
+            logger.debug("Config refresh has been disabled.")
+            return
 
+        loop = asyncio.get_running_loop()
+        next_run = loop.time() + refresh_interval
+
+        while True:
+            sleep_time = next_run - loop.time()
+            if sleep_time < 0:
+                sleep_time = 0.0
+
+            try:
+                await asyncio.sleep(sleep_time)
+            except asyncio.CancelledError:
+                logger.debug("Config refresh cancelled. Exiting...")
+                raise
+
+            try:
+                await self.config.reload()
+            except asyncio.CancelledError:
+                logger.debug("Config reload cancelled. Exiting...")
+                raise
+            except Exception:
+                logger.exception("scheduled config reload failed")
+                raise
+            else:
                 if self.config.version != self._running_config_version:
                     logger.info(f"Detected new config version: {self.config.version}")
-
                     self._running_config_version = self.config.version
-                    refresh_interval = self.config.config_refresh_interval
-
                     yield self.config
 
-                if refresh_interval is not None:
-                    try:
-                        await asyncio.sleep(
-                            # realistic bad case: starting to sleep just a moment before scheduled time
-                            # unlikely worst case: starting to sleep even after scheduled time
-                            #                      (if yield takes some time and interval is short)
-                            # --> compensate bad case by giving an upper boundary to the deviation
-                            refresh_interval
-                            * MAX_CONFIG_REFRESH_INTERVAL_DEVIATION_PERCENT
-                        )
-                    except asyncio.CancelledError:
-                        logger.debug("Config refresh cancelled. Exiting...")
-                        raise
-                else:
-                    logger.debug("Config refresh has been disabled.")
-                    break
-        except Exception:
-            raise
+            refresh_interval = self.config.config_refresh_interval
+            if refresh_interval is None:
+                logger.debug("Config refresh has been disabled.")
+                break
+
+            next_run += refresh_interval
 
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
@@ -94,13 +98,13 @@ class Runner:
                 tg.create_task(TerminateTaskGroup.raise_on_event(self._stop_event))
 
                 async def start_pipeline(config: Configuration) -> asyncio.Task:
-                    self._pipeline_manager = PipelineManager(
+                    pipeline_manager = PipelineManager(
                         config, shutdown_timeout_s=GRACEFUL_SHUTDOWN_TIMEOUT
                     )
-                    await self._pipeline_manager.setup()
+                    await pipeline_manager.setup()
 
                     return tg.create_task(
-                        self._pipeline_manager.run(),
+                        pipeline_manager.run(),
                         name="pipeline_manager",
                     )
 
@@ -128,8 +132,6 @@ class Runner:
                     logger.debug("Task group terminated")
                 case _:
                     raise
-        finally:
-            self.config.stop_config_refresh()
 
         logger.debug("End log processing.")
 
