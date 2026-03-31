@@ -234,9 +234,6 @@ class OpensearchOutput(Output):
     def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
         super().__init__(name, configuration)
 
-    async def setup(self):
-        await super().setup()
-
     def describe(self) -> str:
         """Get name of Opensearch endpoint with the host.
 
@@ -362,3 +359,17 @@ class OpensearchOutput(Output):
             self.metrics.number_of_errors += 1
             return False
         return super().health() and resp.get("status") in self.config.desired_cluster_status
+
+    async def setup(self):
+        """Set up the OpenSearch output connector."""
+
+        await super().setup()
+
+    async def shut_down(self) -> None:
+        """Shut down the OpenSearch output connector and cleanup resources."""
+
+        search_context = self.__dict__.get("_search_context")
+        if search_context is not None:
+            await search_context.close()
+
+        await super().shut_down()

@@ -16,9 +16,13 @@ class NgComponent(Component):
     # This is unclean from an interface perspective, but works if the worlds doen't mix.
 
     async def setup(self) -> None:
-        return super().setup()
+        """Set up the ng component."""
+
+        super().setup()
 
     async def shut_down(self) -> None:
-        return super().shut_down()
+        """Shut down ng component and cleanup resources."""
+
+        super().shut_down()
 
     # pylint: enable=invalid-overridden-method,useless-parent-delegation

@@ -144,7 +144,13 @@ class Output(Connector):
 
         return wrapper
 
-    def _shut_down(self) -> None:
-        """Shut down the output connector."""
-        self.flush()
-        return super()._shut_down()
+    async def setup(self) -> None:
+        """Set up the output connector."""
+
+        await super().setup()
+
+    async def shut_down(self) -> None:
+        """Shut down the output connector and cleanup resources."""
+
+        await self.flush()
+        await super().shut_down()

@@ -1,5 +1,6 @@
 """Abstract module for processors"""
 
+import asyncio
 import logging
 import os
 import typing
@@ -256,6 +257,13 @@ class Processor(NgComponent):
             )
 
     async def setup(self) -> None:
+        """Set up the processor."""
+
         await super().setup()
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup
+
+    async def shut_down(self) -> None:
+        """Shut down the processor and run required cleanups"""
+
+        await super().shut_down()
