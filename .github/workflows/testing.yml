@@ -2,12 +2,6 @@ name: Testing
 on:
   workflow_call:
 jobs:
-  rust:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-      - name: Perform tests for rust modules
-        run: cargo test
   python:
     runs-on: ubuntu-24.04
     strategy:

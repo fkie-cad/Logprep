@@ -12,10 +12,6 @@ RUN apt-get update && \
 
 RUN python -m venv --upgrade-deps /opt/venv
 
-# Install the Rust toolchain
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-ENV PATH="/opt/venv/bin:/root/.cargo/bin:${PATH}"
-
 # Install uv 0.10.9
 COPY --from=ghcr.io/astral-sh/uv:0.10.9 /uv /uvx /bin/
 
@@ -50,7 +46,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Uninstall dependencies from pyproject.toml:build-system.requires
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip uninstall setuptools setuptools-scm setuptools-rust wheel
+    uv pip uninstall setuptools setuptools-scm wheel
 
 FROM registry-1.docker.io/library/python:${PYTHON_VERSION}-slim AS prod
 
