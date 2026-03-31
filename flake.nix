@@ -97,8 +97,27 @@
       }
     );
 
-    packages = forAllSystems (system: {
-      default = pythonSets.${system}.mkVirtualEnv "logprep-env" workspace.deps.default;
-    });
+    packages = forAllSystems (
+    system: 
+    let
+      pkgs = nixpkgs.legacyPackages.${system};
+
+      logprep = pythonSets.${system}.mkVirtualEnv "logprep-env" workspace.deps.default;
+    in
+    {
+      default = logprep;
+
+      docker = pkgs.dockerTools.buildImage {
+        name = "logprep";
+        tag = "latest";
+        
+        copyToRoot = logprep;
+
+        config = {
+          Cmd = [ "logprep"];
+        };
+      };
+    }
+    );
   };
 }
