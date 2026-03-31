@@ -741,6 +741,7 @@ def benchmark_run(
         kill_processes_listening_on_port(EXPORTER_PORT)
 
         t_startup = time.time()
+
         logprep_proc = popen_cmd([binary, "run", str(pipeline_config)], env=env)
         _current_logprep_proc = logprep_proc
 
