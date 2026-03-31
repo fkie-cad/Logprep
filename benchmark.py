@@ -35,6 +35,9 @@ _current_logprep_proc: subprocess.Popen | None = None
 _current_compose_dir: Path | None = None
 _current_env: dict[str, str] | None = None
 
+# Exporter / metrics port used by logprep
+EXPORTER_PORT = 8001
+
 
 def _handle_sigint(signum, frame):
     """
@@ -149,6 +152,7 @@ def print_benchmark_config(args: argparse.Namespace) -> None:
             print(f"{'  ↳ mode':30s}: {mode}")
             print(f"{'  ↳ pipeline_config':30s}: {pipeline_config}")
 
+    print(f"{'exporter_port':30s}: {EXPORTER_PORT}")
     print("================================\n")
 
 
@@ -247,6 +251,118 @@ def kill_hard(proc: subprocess.Popen) -> None:
     except ProcessLookupError:
         return
     proc.wait()
+
+
+def is_tcp_port_open(host: str, port: int, timeout: float = 0.5) -> bool:
+    """
+    Return True if a TCP connection to host:port can be established.
+
+    Args:
+        host: Hostname or IP address.
+        port: TCP port.
+        timeout: Socket timeout in seconds.
+
+    Returns:
+        True if the TCP port accepts connections, otherwise False.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(timeout)
+        return sock.connect_ex((host, port)) == 0
+
+
+def find_pids_listening_on_port(port: int) -> list[int]:
+    """
+    Return a list of PIDs listening on the given TCP port.
+
+    Uses lsof and returns an empty list if no processes are found.
+
+    Args:
+        port: TCP port.
+
+    Returns:
+        List of PIDs.
+    """
+    result = subprocess.run(
+        ["lsof", "-ti", f":{port}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode not in (0, 1):
+        raise RuntimeError(
+            f"Failed to query listener processes on port {port}: {result.stderr.strip()}"
+        )
+
+    pids: list[int] = []
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if line.isdigit():
+            pids.append(int(line))
+
+    return pids
+
+
+def kill_processes_listening_on_port(
+    port: int,
+    *,
+    sigterm_wait_s: float = 1.0,
+    final_wait_s: float = 2.0,
+) -> None:
+    """
+    Kill processes listening on the given TCP port.
+
+    First sends SIGTERM, then SIGKILL if the port is still occupied.
+
+    Args:
+        port: TCP port to free.
+        sigterm_wait_s: Time to wait after SIGTERM.
+        final_wait_s: Time to wait after SIGKILL.
+
+    Raises:
+        RuntimeError: If the port is still in use after cleanup.
+    """
+    pids = find_pids_listening_on_port(port)
+    if not pids:
+        return
+
+    print(
+        f"Port {port} is already in use. Terminating listener processes: {', '.join(map(str, pids))}"
+    )
+
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
+    deadline = time.time() + sigterm_wait_s
+    while time.time() < deadline:
+        if not is_tcp_port_open("127.0.0.1", port):
+            return
+        time.sleep(0.1)
+
+    remaining_pids = find_pids_listening_on_port(port)
+    if remaining_pids:
+        print(
+            f"Port {port} still in use after SIGTERM. Sending SIGKILL to: "
+            f"{', '.join(map(str, remaining_pids))}"
+        )
+
+    for pid in remaining_pids:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+    deadline = time.time() + final_wait_s
+    while time.time() < deadline:
+        if not is_tcp_port_open("127.0.0.1", port):
+            return
+        time.sleep(0.1)
+
+    if is_tcp_port_open("127.0.0.1", port):
+        raise RuntimeError(f"Port {port} is still in use after cleanup.")
 
 
 def opensearch_refresh(opensearch_url: str, processed_index: str) -> None:
@@ -621,6 +737,9 @@ def benchmark_run(
 
         binary = "logprep-ng" if ng == 1 else "logprep"
 
+        # Ensure exporter port is free before starting logprep.
+        kill_processes_listening_on_port(EXPORTER_PORT)
+
         t_startup = time.time()
         logprep_proc = popen_cmd([binary, "run", str(pipeline_config)], env=env)
         _current_logprep_proc = logprep_proc
@@ -640,6 +759,9 @@ def benchmark_run(
         raise_if_shutdown_requested()
 
         kill_hard(logprep_proc)
+
+        # Ensure exporter port is released after forceful process termination.
+        kill_processes_listening_on_port(EXPORTER_PORT)
 
         window_s = time.time() - t_run
         logprep_proc = None
@@ -662,6 +784,12 @@ def benchmark_run(
     finally:
         if logprep_proc is not None:
             kill_hard(logprep_proc)
+
+        try:
+            kill_processes_listening_on_port(EXPORTER_PORT)
+        except Exception as exc:
+            print(f"Warning: failed to clean up exporter port {EXPORTER_PORT}: {exc}")
+
         _current_logprep_proc = None
         run_cmd(["docker", "compose", "down"], cwd=compose_dir, env=env, ignore_error=True)
 
