@@ -124,23 +124,21 @@ def asyncio_exception_handler(
 
     Covers exceptions from background tasks, callbacks, and loop internals.
     Does not handle exceptions from awaited coroutines (e.g. runner.run()).
-
-    Args:
-        _: The current event loop. Currently not used.
-        context: Asyncio error context (may contain message, exception, task/future).
-        logger: Logger used to record the error.
     """
 
     msg = context.get("message", "Unhandled exception in event loop")
     exception = context.get("exception")
     task = context.get("task") or context.get("future")
 
-    logger.error(f"[asyncio] {msg}")
+    logger.error(f"{msg}")
 
     if task:
-        logger.error(f"[asyncio] Task: {task!r}")
+        logger.error(f"Task: {task!r}")
+
+        if isinstance(task, asyncio.Task):
+            logger.error(f"Task name: {task.get_name()}")
 
     if exception:
-        logger.error("[asyncio] Exception:", exc_info=exception)
+        logger.error(f"Unhandled exception: {exception!r}", exc_info=exception)
     else:
-        logger.error("[asyncio] Context: %s", context)
+        logger.error(f"Context: {context!r}")
