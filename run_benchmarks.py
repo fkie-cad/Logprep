@@ -38,8 +38,6 @@ def run_benchmarks() -> None:
                 "30",
                 "45",
                 "45",
-                "60",
-                "60",
                 "--ng",
                 ng_flag,
                 "--out",
