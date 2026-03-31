@@ -302,13 +302,9 @@ class WorkerOrchestrator:
             unfinished_workers = [w for w in tasks_but_current if not w.done()]
             if unfinished_workers:
                 logger.debug(
-                    "[%d/%d] did not stop gracefully. Cancelling: [%s]",
+                    "[%d/%d] did not stop gracefully. Awaiting cancellation: [%s]",
                     len(unfinished_workers),
                     len(tasks_but_current),
                     ", ".join(map(asyncio.Task.get_name, unfinished_workers)),
                 )
-
-                for worker in unfinished_workers:
-                    worker.cancel()
-
                 await asyncio.gather(*unfinished_workers, return_exceptions=True)
