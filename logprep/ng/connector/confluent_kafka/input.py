@@ -501,7 +501,6 @@ class ConfluentKafkaInput(Input):
         """
 
         message = await self._get_raw_event(timeout)
-        # assert None not in (message.value(), message.partition(), message.offset())
 
         if message is None:
             return None, None, None
