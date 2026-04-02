@@ -11,7 +11,7 @@
 
 ### Bugfix
 * properly handle trailing newlines in lucene filters
-
+* handle LuceneException to avoid crashing
 
 ## 19.0.0
 ### Breaking

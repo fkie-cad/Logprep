@@ -214,6 +214,7 @@ from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.filter.lucene_filter import LuceneFilterError
 from logprep.util import http
 from logprep.util.credentials import CredentialsEnvNotFoundError, CredentialsFactory
 from logprep.util.defaults import (
@@ -961,6 +962,7 @@ class Configuration:
                 ValueError,
                 InvalidRuleDefinitionError,
                 RefreshableGetterError,
+                LuceneFilterError,
             ) as error:
                 errors.append(error)
         if errors:
@@ -1034,6 +1036,7 @@ class Configuration:
                 ValueError,
                 InvalidRuleDefinitionError,
                 RefreshableGetterError,
+                LuceneFilterError,
             ) as error:
                 errors.append(error)
             except FileNotFoundError as error:
