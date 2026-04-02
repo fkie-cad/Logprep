@@ -7,6 +7,7 @@
 * harden GHA workflows against supply chain attacks
 * centralize trivy cache across branches using a daily workflow
 * fix vulnerable python dependencies
+* add .editorconfig for python
 
 ### Bugfix
 * properly handle trailing newlines in lucene filters
