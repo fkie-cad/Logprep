@@ -142,6 +142,10 @@ class Component(ABC):
         if hasattr(self, "__dict__"):
             self.__dict__.clear()
 
+    def _shut_down(self) -> None:
+        self._clear_scheduled_jobs()
+        self._clear_properties()
+
     def shut_down(self):
         """Stop processing of this component.
 
@@ -150,8 +154,7 @@ class Component(ABC):
         """
         if not self._is_shut_down:
             self._is_shut_down = True
-            self._clear_scheduled_jobs()
-            self._clear_properties()
+            self._shut_down()
 
     def health(self) -> bool:
         """Check the health of the component.
