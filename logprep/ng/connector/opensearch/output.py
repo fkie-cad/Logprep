@@ -338,10 +338,8 @@ class OpensearchOutput(Output):
 
             event.state.current_state = EventStateType.FAILED
 
-            keys_list = list(item.keys())
-            op_type = keys_list[0] if len(keys_list) >= 1 else self.config.default_op_type
-
-            error_info = item[op_type] if op_type in item else {}
+            op_infos = item.values()
+            error_info = op_infos[0] if len(op_infos) > 0 else {}
 
             error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
             event.errors.append(error)
