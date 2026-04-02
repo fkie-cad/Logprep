@@ -154,16 +154,7 @@ max-line-length=100
 no-docstring-rgx="^test_|^.*TestCase|^_|^Test"
 
 [tool.pylint."MESAGES CONTROL"]
-disable = [
-  "too-few-public-methods",
-  "unsupported-membership-test",
-  "too-many-positional-arguments",
-  "too-many-arguments",
-  "too-many-branches",
-  "too-many-instance-attributes",
-  "too-many-lines",
-  "line-too-long",
-]
+disable="too-few-public-methods,unsupported-membership-test"
 
 [tool.pylint.DESIGN]
 min-public-methods=1
