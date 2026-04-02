@@ -152,7 +152,8 @@ class OpensearchOutput(Output):
         )
         """Chunk size to use for bulk requests."""
         max_chunk_bytes: int = field(
-            default=100 * 1024 * 1024, validator=(validators.instance_of(int), validators.gt(1))
+            default=100 * 1024 * 1024,
+            validator=(validators.instance_of(int), validators.gt(1)),
         )
         """Max chunk size to use for bulk requests. The default is 100MB."""
         max_retries: int = field(
@@ -165,7 +166,10 @@ class OpensearchOutput(Output):
         """Desired cluster status for health check as list of strings. Default is ["green"]"""
         default_op_type: str = field(
             default="index",
-            validator=(validators.instance_of(str), validators.in_(["create", "index"])),
+            validator=(
+                validators.instance_of(str),
+                validators.in_(["create", "index"]),
+            ),
         )
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
@@ -325,10 +329,6 @@ class OpensearchOutput(Output):
 
         index = 0
         async for success, item in helpers.async_streaming_bulk(client, actions, **kwargs):
-
-            # This should not be possible!
-            assert index < len(events)
-
             event = events[index]
             index += 1
 
