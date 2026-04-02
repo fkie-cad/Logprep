@@ -35,7 +35,6 @@ import typing
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
-from typing import Union
 
 import msgspec
 from attrs import define, field, validators
@@ -44,12 +43,14 @@ from confluent_kafka import (
     OFFSET_END,
     OFFSET_INVALID,
     OFFSET_STORED,
+    KafkaError,
     KafkaException,
     Message,
     TopicPartition,
 )
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.aio import AIOConsumer
+from typing_extensions import override
 
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.input import (
@@ -230,7 +231,7 @@ class ConfluentKafkaInput(Input):
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
 
-        kafka_config: MappingProxyType = field(
+        kafka_config: MappingProxyType[str, str] = field(
             validator=(
                 validators.instance_of(MappingProxyType),
                 validators.deep_mapping(
@@ -261,7 +262,7 @@ class ConfluentKafkaInput(Input):
         .. security-best-practice::
            :title: Kafka Input Consumer Authentication and Encryption
 
-           Kafka authentication is a critical aspect of securing your data pipeline.
+           Kafka authentication is a critical asect of securing your data pipeline.
            Ensure that you have the following configurations in place:
 
            - Use SSL/mTLS encryption for data in transit.
@@ -272,7 +273,7 @@ class ConfluentKafkaInput(Input):
 
     _last_valid_record: Message | None
 
-    __slots__ = ["_last_valid_record", "_consumer"]
+    __slots__: list[str] = ["_last_valid_record", "_consumer"]
 
     def __init__(self, name: str, configuration: "ConfluentKafkaInput.Config") -> None:
         super().__init__(name, configuration)
@@ -280,12 +281,13 @@ class ConfluentKafkaInput(Input):
         self._consumer: AIOConsumer | None = None
 
     @property
+    @override
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
         return typing.cast(ConfluentKafkaInput.Config, self._config)
 
     @property
-    def _kafka_config(self) -> dict:
+    def _kafka_config(self) -> dict[str, typing.Any]:
         """Get the kafka configuration.
 
         Returns
@@ -304,8 +306,7 @@ class ConfluentKafkaInput(Input):
         DEFAULTS.update({"client.id": getfqdn()})
         DEFAULTS.update(
             {
-                "group.instance.id": f"{getfqdn().strip('.')}-"
-                f"Pipeline{self.pipeline_index}-pid{os.getpid()}"
+                "group.instance.id": f"{getfqdn().strip('.')}-Pipeline{self.pipeline_index}-pid{os.getpid()}"
             }
         )
         return DEFAULTS | self.config.kafka_config | injected_config
@@ -324,6 +325,10 @@ class ConfluentKafkaInput(Input):
             if key.startswith(("security.", "ssl.")):
                 admin_config[key] = value
         return AdminClient(admin_config)
+
+    @property
+    def _typed_metrics(self) -> Metrics:
+        return typing.cast(ConfluentKafkaInput.Metrics, self.metrics)
 
     async def get_consumer(self, max_workers: int = 4) -> AIOConsumer:
         """
@@ -358,7 +363,7 @@ class ConfluentKafkaInput(Input):
         error : KafkaException
             the error that occurred
         """
-        self.metrics.number_of_errors += 1
+        self._typed_metrics.number_of_errors += 1
         logger.error("%s: %s", self.describe(), error)
 
     def _stats_callback(self, stats_raw: str) -> None:
@@ -374,29 +379,29 @@ class ConfluentKafkaInput(Input):
         """
 
         stats = self._decoder.decode(stats_raw)
-        self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
-        self.metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
-        self.metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
-        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
-        self.metrics.librdkafka_tx_bytes += stats.get("tx_bytes", DEFAULT_RETURN)
-        self.metrics.librdkafka_rxmsgs += stats.get("rxmsgs", DEFAULT_RETURN)
-        self.metrics.librdkafka_rxmsg_bytes += stats.get("rxmsg_bytes", DEFAULT_RETURN)
+        self._typed_metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
+        self._typed_metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
+        self._typed_metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
+        self._typed_metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
+        self._typed_metrics.librdkafka_tx_bytes += stats.get("tx_bytes", DEFAULT_RETURN)
+        self._typed_metrics.librdkafka_rxmsgs += stats.get("rxmsgs", DEFAULT_RETURN)
+        self._typed_metrics.librdkafka_rxmsg_bytes += stats.get("rxmsg_bytes", DEFAULT_RETURN)
 
-        self.metrics.librdkafka_cgrp_stateage += stats.get("cgrp", {}).get(
+        self._typed_metrics.librdkafka_cgrp_stateage += stats.get("cgrp", {}).get(
             "stateage", DEFAULT_RETURN
         )
-        self.metrics.librdkafka_cgrp_rebalance_age += stats.get("cgrp", {}).get(
+        self._typed_metrics.librdkafka_cgrp_rebalance_age += stats.get("cgrp", {}).get(
             "rebalance_age", DEFAULT_RETURN
         )
-        self.metrics.librdkafka_cgrp_rebalance_cnt += stats.get("cgrp", {}).get(
+        self._typed_metrics.librdkafka_cgrp_rebalance_cnt += stats.get("cgrp", {}).get(
             "rebalance_cnt", DEFAULT_RETURN
         )
-        self.metrics.librdkafka_cgrp_assignment_size += stats.get("cgrp", {}).get(
+        self._typed_metrics.librdkafka_cgrp_assignment_size += stats.get("cgrp", {}).get(
             "assignment_size", DEFAULT_RETURN
         )
 
     def _commit_callback(
-        self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
+        self, error: KafkaException | None, topic_partitions: list[TopicPartition]
     ) -> None:
         """Callback used to indicate success or failure of asynchronous and
         automatic commit requests. This callback is served upon calling consumer.poll()
@@ -422,11 +427,11 @@ class ConfluentKafkaInput(Input):
             if offset in SPECIAL_OFFSETS:
                 offset = 0
             labels = {
-                "description": f"topic: {self.config.topic} - "
-                f"partition: {topic_partition.partition}"
+                "description": f"topic: {self.config.topic} - partition: {topic_partition.partition}"
             }
-            self.metrics.committed_offsets.add_with_labels(offset, labels)
+            self._typed_metrics.committed_offsets.add_with_labels(offset, labels)
 
+    @override
     def describe(self) -> str:
         """Get name of Kafka endpoint and bootstrap servers.
 
@@ -438,7 +443,7 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
 
-    async def _get_raw_event(self, timeout: float) -> Message | None:  # type: ignore  # TODO: fix mypy issue
+    async def _get_raw_event(self, timeout: float) -> Message:  # type: ignore  # TODO: fix mypy issue
         """Get next raw Message from Kafka.
 
         Parameters
@@ -461,21 +466,26 @@ class ConfluentKafkaInput(Input):
             message = await consumer.poll(timeout=timeout)
         except RuntimeError as error:
             raise FatalInputError(self, str(error)) from error
-        except Exception as error:  # remove this
-            pass
-        if message is None:
-            return None
-        if message.value() is None or message.partition() is None or message.offset() is None:
-            logger.warning("Unexpected empty input message or empty metadata. Skipping")
-            return None
-        kafka_error = message.error()
+
+        kafka_error: None | KafkaError = message.error()
         if kafka_error:
             raise CriticalInputError(
-                self, "A confluent-kafka record contains an error code", str(kafka_error)
+                self,
+                "A confluent-kafka record contains an error code",
+                str(kafka_error),
             )
+
+        assert message is not None and None not in [
+            message.value(),
+            message.partition(),
+            message.offset(),
+        ]
+
         self._last_valid_record = message
         labels = {"description": f"topic: {self.config.topic} - partition: {message.partition()}"}
-        self.metrics.current_offsets.add_with_labels(typing.cast(int, message.offset()) + 1, labels)
+        self._typed_metrics.current_offsets.add_with_labels(
+            typing.cast(int, message.offset()) + 1, labels
+        )
 
         return message
 
@@ -503,10 +513,6 @@ class ConfluentKafkaInput(Input):
         """
 
         message = await self._get_raw_event(timeout)
-        # assert None not in (message.value(), message.partition(), message.offset())
-
-        if message is None:
-            return None, None, None
 
         raw_event = typing.cast(bytes, message.value())
 
@@ -531,18 +537,18 @@ class ConfluentKafkaInput(Input):
         )
 
     @property
-    def _enable_auto_offset_store(self) -> bool:
+    def _is_enabled_auto_offset_store(self) -> bool:
         return self.config.kafka_config.get("enable.auto.offset.store") == "true"
 
     @property
-    def _enable_auto_commit(self) -> bool:
+    def _is_enabled_auto_commit(self) -> bool:
         return self.config.kafka_config.get("enable.auto.commit") == "true"
 
     async def batch_finished_callback(self) -> None:  # type: ignore  # TODO: fix mypy issue
         """Store offsets for last message referenced by `self._last_valid_records`.
         Should be called after delivering the current message to the output or error queue.
         """
-        if self._enable_auto_offset_store:
+        if self._is_enabled_auto_offset_store:
             return
         # in case the ConfluentKafkaInput._revoke_callback is triggered before the first message
         # was polled
@@ -570,14 +576,14 @@ class ConfluentKafkaInput(Input):
                 offset = 0
 
             labels = {"description": f"topic: {self.config.topic} - partition: {partition}"}
-            self.metrics.committed_offsets.add_with_labels(offset, labels)
-            self.metrics.current_offsets.add_with_labels(offset, labels)
+            self._typed_metrics.committed_offsets.add_with_labels(offset, labels)
+            self._typed_metrics.current_offsets.add_with_labels(offset, labels)
 
     async def _revoke_callback(
         self, _: AIOConsumer, topic_partitions: list[TopicPartition]
     ) -> None:
         for topic_partition in topic_partitions:
-            self.metrics.number_of_warnings += 1
+            self._typed_metrics.number_of_warnings += 1
             member_id = await self._get_memberid()
             logger.warning(
                 "%s to be revoked from topic: %s | partition %s",
@@ -589,7 +595,7 @@ class ConfluentKafkaInput(Input):
 
     async def _lost_callback(self, _: AIOConsumer, topic_partitions: list[TopicPartition]) -> None:
         for topic_partition in topic_partitions:
-            self.metrics.number_of_warnings += 1
+            self._typed_metrics.number_of_warnings += 1
             member_id = await self._get_memberid()
             logger.warning(
                 "%s has lost topic: %s | partition %s - try to reassign",
@@ -629,7 +635,7 @@ class ConfluentKafkaInput(Input):
                 return False
         except KafkaException as error:
             logger.error("Health check failed: %s", error)
-            self.metrics.number_of_errors += 1
+            self._typed_metrics.number_of_errors += 1
             return False
         return super().health()
 
