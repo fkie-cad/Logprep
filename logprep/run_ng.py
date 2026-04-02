@@ -1,16 +1,18 @@
 # pylint: disable=logging-fstring-interpolation
 """This module can be used to start the logprep."""
 
+import asyncio
 import logging
-import os
 import signal
 import sys
+from functools import partial
 from multiprocessing import set_start_method
 
 import click
 import uvloop
 
 from logprep.ng.runner import Runner
+from logprep.ng.util.async_helpers import asyncio_exception_handler
 from logprep.ng.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.defaults import EXITCODES
 from logprep.util.helper import get_versions_string
@@ -68,22 +70,22 @@ def run(configs: tuple[str], version=None) -> None:
     CONFIG is a path to configuration file (filepath or URL).
     """
 
-    async def _run(configs: tuple[str], version=None):
-        configuration = await _get_configuration(configs)
-        runner = Runner(configuration)
-        runner.setup_logging()
-        if version:
+    async def _run(configs_: tuple[str], version_=None):
+        configuration = await _get_configuration(configs_)
+        runner_ = Runner(configuration)
+        runner_.setup_logging()
+        if version_:
             _print_version(configuration)
         for v in get_versions_string(configuration).split("\n"):
             logger.info(v)
         logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
-        logger.debug(f"Config path: {configs}")
+        logger.debug(f"Config path: {configs_}")
         try:
             if "pytest" not in sys.modules:  # needed for not blocking tests
                 signal.signal(signal.SIGTERM, signal_handler)
                 signal.signal(signal.SIGINT, signal_handler)
             logger.debug("Configuration loaded")
-            await runner.run()
+            await runner_.run()
         except SystemExit as error:
             logger.debug(f"Exit received with code {error.code}")
             sys.exit(error.code)
@@ -91,16 +93,18 @@ def run(configs: tuple[str], version=None) -> None:
         except ExceptionGroup as error_group:
             logger.exception(f"Multiple errors occurred: {error_group}")
         except Exception as error:
-            if os.environ.get("DEBUG", False):
-                logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
-            else:
-                logger.critical(f"A critical error occurred: {error}")
-            if runner:
-                runner.stop()
+            logger.exception(f"A critical error occurred: {error}")
+
+            if runner_:
+                runner_.stop()
             sys.exit(EXITCODES.ERROR)
         # pylint: enable=broad-except
 
-    uvloop.run(_run(configs, version))
+    with asyncio.Runner(loop_factory=uvloop.new_event_loop) as runner:
+        handler = partial(asyncio_exception_handler, logger=logger)
+        loop = runner.get_loop()
+        loop.set_exception_handler(handler)
+        runner.run(_run(configs, version))
 
 
 def signal_handler(__: int, _) -> None:
