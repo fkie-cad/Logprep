@@ -4,18 +4,16 @@ on:
     types: [published]
 jobs:
   build-wheel-and-tarball:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Build Logprep
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
       - name: Initialize Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # https://github.com/actions/setup-python/releases/tag/v6.2.0
         with:
           python-version: "3.11"
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-        with:
-          platforms: all
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # https://github.com/docker/setup-qemu-action/releases/tag/v4.0.0
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel
       - name: Build wheels
@@ -25,13 +23,13 @@ jobs:
       - name: copy artifacts to dist folder
         run: cp ./wheelhouse/* ./dist/
       - name: Upload Artifact for next job
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # https://github.com/actions/upload-artifact/releases/tag/v7.0.0
         with:
           name: logprep-build
           path: dist
   publish-latest-release-to-pypi:
-    runs-on: ubuntu-latest
-    name: Publish release to PyPi
+    runs-on: ubuntu-24.04
+    name: Publish release to PyPI
     environment:
       name: pypi
       url: https://pypi.org/p/logprep
@@ -40,7 +38,7 @@ jobs:
     needs: build-wheel-and-tarball
     steps:
       - name: Download artifact from previous job
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # https://github.com/actions/download-artifact/releases/tag/v8.0.1
         with:
           name: logprep-build
           path: dist

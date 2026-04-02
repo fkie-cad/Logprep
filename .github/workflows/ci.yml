@@ -12,9 +12,9 @@ jobs:
   check-uv-lockfile:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
       - name: Install uv and set the Python version
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # https://github.com/astral-sh/setup-uv/releases/tag/v8.0.0
         with:
           enable-cache: true
       - name: Check lockfile is consistent with pyproject.toml
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: ${{ !contains(github.event.pull_request.labels.*.name, 'changelog-history-fix') && !startsWith(github.event.pull_request.title, 'release:') }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
         with:
           fetch-depth: 0
       - name: Check if changes are limited to upcoming changes
@@ -59,9 +59,9 @@ jobs:
       matrix:
         python-version: ["3.11"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
       - name: Install uv and set the Python version
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # https://github.com/astral-sh/setup-uv/releases/tag/v8.0.0
         with:
           enable-cache: true
       - name: Install pandoc
@@ -79,7 +79,7 @@ jobs:
   documentation-preview:
     runs-on: ubuntu-latest
     steps:
-      - uses: readthedocs/actions/preview@v1
+      - uses: readthedocs/actions/preview@b8bba1484329bda1a3abe986df7ebc80a8950333 # https://github.com/readthedocs/actions/releases/tag/v1.5
         with:
           project-slug: logprep
           project-language: en
