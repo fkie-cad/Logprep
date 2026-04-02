@@ -138,11 +138,15 @@ class OpensearchOutput(Output):
         thread_count: int = field(
             default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
-        """Number of threads to use for bulk requests."""
+        """Number of threads to use for bulk requests.
+        DEPCRECATED: This Argument is deprecated and doesnt do anything anymore,
+        it will be removed in the future"""
         queue_size: int = field(
             default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
-        """Number of queue size to use for bulk requests."""
+        """Number of queue size to use for bulk requests.
+        DEPCRECATED: This Argument is deprecated and doesnt do anything anymore,
+        it will be removed in the future"""
         chunk_size: int = field(
             default=500, validator=(validators.instance_of(int), validators.gt(1))
         )
