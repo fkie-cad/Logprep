@@ -1,4 +1,5 @@
 # pylint: disable=C0103
+
 """
 Benchmark runner for logprep (logprep-ng and non-ng).
 
@@ -35,23 +36,15 @@ _current_logprep_proc: subprocess.Popen | None = None
 _current_compose_dir: Path | None = None
 _current_env: dict[str, str] | None = None
 
-# Exporter / metrics port used by logprep
-EXPORTER_PORT = 8001
-
 
 def _handle_sigint(signum, frame):
     """
-    Handle Ctrl+C (SIGINT) and request graceful shutdown.
-
-    Avoid tearing down compose services directly from the signal handler,
-    because the main benchmark flow may still be interacting with them.
-    Cleanup is handled by the normal control flow / finally blocks.
+    Handle Ctrl+C (SIGINT) and perform graceful shutdown.
     """
-    del signum, frame  # unused
     global _shutdown_requested
     _shutdown_requested = True
 
-    print("\n\n⚠ Ctrl+C detected. Stopping benchmark gracefully...")
+    print("\n\n⚠ Ctrl+C detected. Shutting down benchmark...")
 
     if _current_logprep_proc is not None:
         try:
@@ -59,13 +52,18 @@ def _handle_sigint(signum, frame):
         except Exception:
             pass
 
+    if _current_compose_dir is not None and _current_env is not None:
+        try:
+            run_cmd(
+                ["docker", "compose", "down"],
+                cwd=_current_compose_dir,
+                env=_current_env,
+                ignore_error=True,
+            )
+        except Exception:
+            pass
 
-def raise_if_shutdown_requested() -> None:
-    """
-    Abort current benchmark flow if a shutdown was requested.
-    """
-    if _shutdown_requested:
-        raise KeyboardInterrupt("Benchmark shutdown requested")
+    sys.exit(130)
 
 
 # -------------------------
@@ -137,10 +135,14 @@ def print_benchmark_config(args: argparse.Namespace) -> None:
     for key in sorted(args_dict):
         value = args_dict[key]
 
+        # Format integers with underscore separator
         if isinstance(value, int):
             formatted = f"{value:_}"
+
+        # Format list of integers (e.g. runs)
         elif isinstance(value, list) and all(isinstance(v, int) for v in value):
             formatted = "[" + ", ".join(f"{v:_}" for v in value) + "]"
+
         else:
             formatted = value
 
@@ -152,7 +154,6 @@ def print_benchmark_config(args: argparse.Namespace) -> None:
             print(f"{'  ↳ mode':30s}: {mode}")
             print(f"{'  ↳ pipeline_config':30s}: {pipeline_config}")
 
-    print(f"{'exporter_port':30s}: {EXPORTER_PORT}")
     print("================================\n")
 
 
@@ -253,118 +254,6 @@ def kill_hard(proc: subprocess.Popen) -> None:
     proc.wait()
 
 
-def is_tcp_port_open(host: str, port: int, timeout: float = 0.5) -> bool:
-    """
-    Return True if a TCP connection to host:port can be established.
-
-    Args:
-        host: Hostname or IP address.
-        port: TCP port.
-        timeout: Socket timeout in seconds.
-
-    Returns:
-        True if the TCP port accepts connections, otherwise False.
-    """
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(timeout)
-        return sock.connect_ex((host, port)) == 0
-
-
-def find_pids_listening_on_port(port: int) -> list[int]:
-    """
-    Return a list of PIDs listening on the given TCP port.
-
-    Uses lsof and returns an empty list if no processes are found.
-
-    Args:
-        port: TCP port.
-
-    Returns:
-        List of PIDs.
-    """
-    result = subprocess.run(
-        ["lsof", "-ti", f":{port}"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    if result.returncode not in (0, 1):
-        raise RuntimeError(
-            f"Failed to query listener processes on port {port}: {result.stderr.strip()}"
-        )
-
-    pids: list[int] = []
-    for line in result.stdout.splitlines():
-        line = line.strip()
-        if line.isdigit():
-            pids.append(int(line))
-
-    return pids
-
-
-def kill_processes_listening_on_port(
-    port: int,
-    *,
-    sigterm_wait_s: float = 1.0,
-    final_wait_s: float = 2.0,
-) -> None:
-    """
-    Kill processes listening on the given TCP port.
-
-    First sends SIGTERM, then SIGKILL if the port is still occupied.
-
-    Args:
-        port: TCP port to free.
-        sigterm_wait_s: Time to wait after SIGTERM.
-        final_wait_s: Time to wait after SIGKILL.
-
-    Raises:
-        RuntimeError: If the port is still in use after cleanup.
-    """
-    pids = find_pids_listening_on_port(port)
-    if not pids:
-        return
-
-    print(
-        f"Port {port} is already in use. Terminating listener processes: {', '.join(map(str, pids))}"
-    )
-
-    for pid in pids:
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-
-    deadline = time.time() + sigterm_wait_s
-    while time.time() < deadline:
-        if not is_tcp_port_open("127.0.0.1", port):
-            return
-        time.sleep(0.1)
-
-    remaining_pids = find_pids_listening_on_port(port)
-    if remaining_pids:
-        print(
-            f"Port {port} still in use after SIGTERM. Sending SIGKILL to: "
-            f"{', '.join(map(str, remaining_pids))}"
-        )
-
-    for pid in remaining_pids:
-        try:
-            os.kill(pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-
-    deadline = time.time() + final_wait_s
-    while time.time() < deadline:
-        if not is_tcp_port_open("127.0.0.1", port):
-            return
-        time.sleep(0.1)
-
-    if is_tcp_port_open("127.0.0.1", port):
-        raise RuntimeError(f"Port {port} is still in use after cleanup.")
-
-
 def opensearch_refresh(opensearch_url: str, processed_index: str) -> None:
     """
     Force a refresh of the processed index so counts reflect recent writes.
@@ -397,33 +286,6 @@ def opensearch_count_processed(opensearch_url: str, processed_index: str) -> int
     return int(resp.json()["count"])
 
 
-def opensearch_debug_snapshot(opensearch_url: str) -> None:
-    """
-    Print a small OpenSearch state snapshot for debugging.
-    Never raises (best-effort).
-    """
-    try:
-        r = requests.get(f"{opensearch_url}/_cat/indices?v", timeout=10)
-        print("\n--- _cat/indices ---")
-        print(r.text)
-    except Exception as e:
-        print(f"\n--- _cat/indices (failed) ---\n{e}")
-
-    try:
-        r = requests.get(f"{opensearch_url}/_cat/count?v", timeout=10)
-        print("\n--- _cat/count ---")
-        print(r.text)
-    except Exception as e:
-        print(f"\n--- _cat/count (failed) ---\n{e}")
-
-    try:
-        r = requests.get(f"{opensearch_url}/_cat/aliases?v", timeout=10)
-        print("\n--- _cat/aliases ---")
-        print(r.text)
-    except Exception as e:
-        print(f"\n--- _cat/aliases (failed) ---\n{e}")
-
-
 def reset_prometheus_dir(path: str) -> None:
     """
     Recreate PROMETHEUS_MULTIPROC_DIR.
@@ -446,8 +308,8 @@ def resolve_pipeline_config(ng: int) -> Path:
         Pipeline config path.
     """
     if ng == 1:
-        return Path("./examples/exampledata/config/_benchmark_ng_pipeline.yml")
-    return Path("./examples/exampledata/config/_benchmark_non_ng_pipeline.yml")
+        return Path("./examples/exampledata/config/ng_pipeline.yml")
+    return Path("./examples/exampledata/config/pipeline.yml")
 
 
 def read_vm_max_map_count() -> int:
@@ -497,7 +359,6 @@ def wait_for_tcp(host: str, port: int, *, timeout_s: float, interval_s: float = 
     last_err: OSError | None = None
 
     while time.time() < deadline:
-        raise_if_shutdown_requested()
         try:
             with socket.create_connection((host, port), timeout=2):
                 return
@@ -521,7 +382,6 @@ def wait_for_opensearch(opensearch_url: str, *, timeout_s: float, interval_s: fl
     last_err: Exception | None = None
 
     while time.time() < deadline:
-        raise_if_shutdown_requested()
         try:
             resp = requests.get(f"{opensearch_url}/_cluster/health", timeout=2)
             if resp.status_code == 200:
@@ -550,7 +410,6 @@ def wait_for_kafka_topic(
     last_err: Exception | None = None
 
     while time.time() < deadline:
-        raise_if_shutdown_requested()
         try:
             proc = subprocess.run(
                 [
@@ -684,13 +543,11 @@ def benchmark_run(
     _current_env = env
 
     try:
-        raise_if_shutdown_requested()
         ensure_vm_max_map_count()
 
         run_cmd(["docker", "compose", "down"], cwd=compose_dir, env=env)
         run_cmd(["docker", "volume", "rm", "compose_opensearch-data"], env=env, ignore_error=True)
 
-        raise_if_shutdown_requested()
         run_cmd(
             ["docker", "compose", "up", "-d", "--no-deps", *services],
             cwd=compose_dir,
@@ -708,8 +565,6 @@ def benchmark_run(
         if "opensearch" in set(services):
             wait_for_tcp("127.0.0.1", 9200, timeout_s=float(sleep_after_compose_up_s))
             wait_for_opensearch(opensearch_url, timeout_s=float(sleep_after_compose_up_s))
-
-        raise_if_shutdown_requested()
 
         batch_size = max(event_num // 10, 10)
         output_config = f'{{"bootstrap.servers": "{bootstrap_servers}"}}'
@@ -731,49 +586,30 @@ def benchmark_run(
             env=env,
         )
 
-        raise_if_shutdown_requested()
         time.sleep(sleep_after_generate_s)
-        raise_if_shutdown_requested()
 
         binary = "logprep-ng" if ng == 1 else "logprep"
-
-        # Ensure exporter port is free before starting logprep.
-        kill_processes_listening_on_port(EXPORTER_PORT)
 
         t_startup = time.time()
         logprep_proc = popen_cmd([binary, "run", str(pipeline_config)], env=env)
         _current_logprep_proc = logprep_proc
 
         time.sleep(sleep_after_logprep_start_s)
-        raise_if_shutdown_requested()
 
-        print("\n=== OpenSearch snapshot (before measurement) ===")
-        opensearch_debug_snapshot(opensearch_url)
-
-        raise_if_shutdown_requested()
         baseline = opensearch_count_processed(opensearch_url, processed_index)
         startup_s = time.time() - t_startup
 
         t_run = time.time()
         time.sleep(run_seconds)
-        raise_if_shutdown_requested()
+        window_s = time.time() - t_run
 
         kill_hard(logprep_proc)
-
-        # Ensure exporter port is released after forceful process termination.
-        kill_processes_listening_on_port(EXPORTER_PORT)
-
-        window_s = time.time() - t_run
         logprep_proc = None
         _current_logprep_proc = None
 
-        raise_if_shutdown_requested()
+        # ensure near-real-time writes are visible to _count before measuring
         opensearch_refresh(opensearch_url, processed_index)
 
-        print("\n=== OpenSearch snapshot (after run / after refresh) ===")
-        opensearch_debug_snapshot(opensearch_url)
-
-        raise_if_shutdown_requested()
         after = opensearch_count_processed(opensearch_url, processed_index)
         processed = max(0, after - baseline)
 
@@ -784,12 +620,6 @@ def benchmark_run(
     finally:
         if logprep_proc is not None:
             kill_hard(logprep_proc)
-
-        try:
-            kill_processes_listening_on_port(EXPORTER_PORT)
-        except Exception as exc:
-            print(f"Warning: failed to clean up exporter port {EXPORTER_PORT}: {exc}")
-
         _current_logprep_proc = None
         run_cmd(["docker", "compose", "down"], cwd=compose_dir, env=env, ignore_error=True)
 
@@ -975,42 +805,36 @@ def setup_output_tee(out_path: Path | None) -> None:
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, _handle_sigint)
 
-    try:
-        args_ = parse_args()
-        setup_output_tee(args_.out)
+    args_ = parse_args()
+    setup_output_tee(args_.out)
 
-        print_benchmark_config(args_)
+    print_benchmark_config(args_)
 
-        pipeline_config_ = resolve_pipeline_config(args_.ng)
+    pipeline_config_ = resolve_pipeline_config(args_.ng)
 
-        results: list[RunResult] = []
+    results: list[RunResult] = []
 
-        benchmark_seconds = args_.runs
-        for run_idx, seconds in enumerate(benchmark_seconds, start=1):
-            raise_if_shutdown_requested()
-            print(f"----- Run Round {run_idx}: {seconds} seconds -----")
-            result = benchmark_run(
-                run_seconds=seconds,
-                ng=args_.ng,
-                event_num=args_.event_num,
-                prometheus_multiproc_dir=args_.prometheus_multiproc_dir,
-                compose_dir=args_.compose_dir,
-                pipeline_config=pipeline_config_,
-                gen_input_dir=args_.gen_input_dir,
-                bootstrap_servers=args_.bootstrap_servers,
-                sleep_after_compose_up_s=args_.sleep_after_compose_up_s,
-                sleep_after_generate_s=args_.sleep_after_generate_s,
-                sleep_after_logprep_start_s=args_.sleep_after_logprep_start_s,
-                opensearch_url=args_.opensearch_url,
-                processed_index=args_.processed_index,
-                services=args_.services,
-            )
-            results.append(result)
-            print_single_run_result(result, event_num=args_.event_num)
-            print()
+    benchmark_seconds = args_.runs
+    for run_idx, seconds in enumerate(benchmark_seconds, start=1):
+        print(f"----- Run Round {run_idx}: {seconds} seconds -----")
+        result = benchmark_run(
+            run_seconds=seconds,
+            ng=args_.ng,
+            event_num=args_.event_num,
+            prometheus_multiproc_dir=args_.prometheus_multiproc_dir,
+            compose_dir=args_.compose_dir,
+            pipeline_config=pipeline_config_,
+            gen_input_dir=args_.gen_input_dir,
+            bootstrap_servers=args_.bootstrap_servers,
+            sleep_after_compose_up_s=args_.sleep_after_compose_up_s,
+            sleep_after_generate_s=args_.sleep_after_generate_s,
+            sleep_after_logprep_start_s=args_.sleep_after_logprep_start_s,
+            opensearch_url=args_.opensearch_url,
+            processed_index=args_.processed_index,
+            services=args_.services,
+        )
+        results.append(result)
+        print_single_run_result(result, event_num=args_.event_num)
+        print()
 
-        print_runs_table_and_summary(results)
-
-    except KeyboardInterrupt:
-        print("\nBenchmark aborted.")
-        sys.exit(130)
+    print_runs_table_and_summary(results)
