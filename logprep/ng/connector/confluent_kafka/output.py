@@ -33,6 +33,7 @@ from types import MappingProxyType
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Message, Producer  # type: ignore
 from confluent_kafka.admin import AdminClient
+from confluent_kafka.aio import AIOProducer
 
 from logprep.metrics.metrics import GaugeMetric
 from logprep.ng.abc.event import Event
@@ -235,8 +236,8 @@ class ConfluentKafkaOutput(Output):
         return AdminClient(admin_config)
 
     @cached_property
-    def _producer(self) -> Producer:
-        return Producer(self._kafka_config)
+    def _producer(self) -> AIOProducer:
+        return AIOProducer(self._kafka_config)
 
     def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
@@ -314,48 +315,22 @@ class ConfluentKafkaOutput(Output):
         target : str
             Topic to store event data in.
         """
-        event.state.current_state = EventStateType.STORING_IN_OUTPUT
-
         document = event.data
         self.metrics.number_of_processed_events += 1
+
         try:
-            self._producer.produce(
+            delivery_future = await self._producer.produce(
                 topic=target,
                 value=self._encoder.encode(document),
-                on_delivery=partial(self.on_delivery, event),
             )
-
-        except BufferError:
-            self._producer.flush(timeout=self.config.flush_timeout)
-            logger.debug("Buffer full, flushing")
-
-            try:
-                self._producer.produce(
-                    topic=target,
-                    value=self._encoder.encode(document),
-                    on_delivery=partial(self.on_delivery, event),
-                )
-            except BufferError as err:
-                event.state.current_state = EventStateType.FAILED
-                event.errors.append(err)
-                logger.error("Message delivery failed after retry: %s", err)
-                self.metrics.number_of_errors += 1
-                return
-
+            msg = await delivery_future
         except KafkaException as err:
             event.state.current_state = EventStateType.FAILED
             event.errors.append(err)
             logger.error("Kafka exception during produce: %s", err)
             self.metrics.number_of_errors += 1
             return
-
-        logger.debug("Produced message %s to topic %s", str(document), target)
-        self._producer.poll(self.config.send_timeout)
-
-    def on_delivery(self, event: Event, err: KafkaException, msg: Message) -> None:
-        """Callback for delivery reports."""
-
-        if err is not None:
+        except Exception as err:
             event.state.current_state = EventStateType.FAILED
             event.errors.append(err)
             logger.error("Message delivery failed: %s", err)
