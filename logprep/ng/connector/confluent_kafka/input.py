@@ -414,9 +414,9 @@ class ConfluentKafkaInput(Input):
             if `error` is not None
         """
         if error is not None:
-            #   self.metrics.commit_failures += 1
+            self.metrics.commit_failures += 1
             raise InputWarning(self, f"Could not commit offsets for {topic_partitions}: {error}")
-        # self.metrics.commit_success += 1
+        self.metrics.commit_success += 1
         for topic_partition in topic_partitions:
             offset = topic_partition.offset
             if offset in SPECIAL_OFFSETS:
