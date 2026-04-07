@@ -292,7 +292,7 @@ class WorkerOrchestrator:
         current_task = asyncio.current_task()
         tasks_but_current = [t for t in self._worker_tasks if t is not current_task]
 
-        logger.debug(f"waiting for termination of {len(tasks_but_current)} tasks")
+        logger.debug("waiting for termination of %d tasks", len(tasks_but_current))
 
         try:
             await asyncio.wait_for(
