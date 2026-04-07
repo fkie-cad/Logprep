@@ -19,6 +19,7 @@ def _process_event(event: LogEvent | None, processors: list[Processor]) -> LogEv
         if not event.data:
             break
         processor.process(event)
+        event.errors.append(ValueError("test"))
     if not event.errors:
         event.state.current_state = EventStateType.PROCESSED
     else:

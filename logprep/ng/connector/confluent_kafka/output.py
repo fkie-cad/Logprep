@@ -198,6 +198,12 @@ class ConfluentKafkaOutput(Output):
            - Regularly rotate your Kafka credentials and secrets.
         """
 
+    __slots__ = ["_producer"]
+
+    def __init__(self, name: str, configuration: "ConfluentKafkaOutput.Config"):
+        super().__init__(name, configuration)
+        self._producer: AIOProducer | None = None
+
     @property
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
@@ -236,8 +242,20 @@ class ConfluentKafkaOutput(Output):
         return AdminClient(admin_config)
 
     @cached_property
-    def _producer(self) -> AIOProducer:
-        return AIOProducer(self._kafka_config)
+    async def get_producer(self) -> AIOProducer:
+        """
+        Configures and returns the asynchronous Kafka producer.
+
+        Returns
+        -------
+        AIOProducer
+            The pre-configured aiokafka producer object.
+        """
+
+        if self._producer is None:
+            self._producer = AIOProducer(self._kafka_config)
+
+        return self._producer
 
     def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
@@ -353,7 +371,7 @@ class ConfluentKafkaOutput(Output):
         flush without the timeout parameter will block until all messages are delivered.
         This ensures no messages will get lost on shutdown.
         """
-        remaining_messages = self._producer.flush()
+        remaining_messages = await self._producer.flush()
         if remaining_messages:
             self.metrics.number_of_errors += 1
             logger.error(
@@ -387,7 +405,7 @@ class ConfluentKafkaOutput(Output):
     async def shut_down(self) -> None:
         """Shut down the confluent kafka output connector and cleanup resources."""
 
-        if "_producer" in self.__dict__:
-            await self.flush()
+        if self._producer is not None:
+            await self._producer.close()
 
         await super().shut_down()
