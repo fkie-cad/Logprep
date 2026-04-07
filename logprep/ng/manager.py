@@ -163,7 +163,8 @@ class PipelineManager:
 
         async def _send_error_output_handler(batch: list[LogEvent]) -> list[LogEvent]:
             _ = await _report_event_state(batch)
-            return await self._sender._send_and_flush_failed_events(batch)
+            await self._sender._send_and_flush_failed_events(batch)
+            return batch
 
         error_worker: Worker[LogEvent, LogEvent] = Worker(
             name="error_worker",
