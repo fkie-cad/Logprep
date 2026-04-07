@@ -315,6 +315,8 @@ class ConfluentKafkaOutput(Output):
         target : str
             Topic to store event data in.
         """
+        event.state.current_state = EventStateType.STORING_IN_OUTPUT
+
         document = event.data
         self.metrics.number_of_processed_events += 1
 
