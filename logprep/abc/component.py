@@ -142,11 +142,7 @@ class Component(ABC):
         if hasattr(self, "__dict__"):
             self.__dict__.clear()
 
-    def _shut_down(self) -> None:
-        self._clear_scheduled_jobs()
-        self._clear_properties()
-
-    async def shut_down(self):
+    def shut_down(self):
         """Stop processing of this component.
 
         Optional: Called when stopping the pipeline
@@ -154,7 +150,8 @@ class Component(ABC):
         """
         if not self._is_shut_down:
             self._is_shut_down = True
-            self._shut_down()
+            self._clear_scheduled_jobs()
+            self._clear_properties()
 
     def health(self) -> bool:
         """Check the health of the component.
