@@ -341,8 +341,7 @@ class ConfluentKafkaInput(Input):
         """
 
         if self._consumer is None:
-            consumer = AIOConsumer(self._kafka_config, max_workers=max_workers)
-            self._consumer = consumer
+            self._consumer = AIOConsumer(self._kafka_config, max_workers=max_workers)
 
         return self._consumer
 
