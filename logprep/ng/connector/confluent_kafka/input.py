@@ -647,10 +647,7 @@ class ConfluentKafkaInput(Input):
     async def shut_down(self) -> None:
         """Shut down the confluent kafka input connector and cleanup resources."""
 
-        consumer = await self.get_consumer()
-
-        if consumer is not None:
-            await consumer.unsubscribe()
-            await consumer.close()
+        if self._consumer is not None:
+            await self._consumer.close()
 
         await super().shut_down()
