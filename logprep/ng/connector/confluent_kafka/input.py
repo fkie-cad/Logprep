@@ -346,7 +346,7 @@ class ConfluentKafkaInput(Input):
 
         return self._consumer
 
-    def _error_callback(self, error: KafkaException) -> None:
+    async def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
         This callback is served upon calling client.poll()
@@ -359,7 +359,7 @@ class ConfluentKafkaInput(Input):
         self.metrics.number_of_errors += 1
         logger.error("%s: %s", self.describe(), error)
 
-    def _stats_callback(self, stats_raw: str) -> None:
+    async def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
@@ -393,7 +393,7 @@ class ConfluentKafkaInput(Input):
             "assignment_size", DEFAULT_RETURN
         )
 
-    def _commit_callback(
+    async def _commit_callback(
         self,
         error: KafkaException | None,
         topic_partitions: list[TopicPartition],
@@ -605,12 +605,6 @@ class ConfluentKafkaInput(Input):
             logger.error("Failed to retrieve member ID: %s", error)
         return member_id
 
-    async def shut_down(self) -> None:
-        """Close consumer, which also commits kafka offsets."""
-        consumer = await self.get_consumer()
-        await consumer.close()
-        super()._shut_down()
-
     def health(self) -> bool:
         """Check the health of the component.
 
@@ -635,7 +629,8 @@ class ConfluentKafkaInput(Input):
         logger.debug("acknowledge called")
 
     async def setup(self):
-        """Set the component up."""
+        """Set the confluent kafka input connector."""
+
         await super().setup()
 
         try:
@@ -649,3 +644,14 @@ class ConfluentKafkaInput(Input):
             )
         except KafkaException as error:
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
+
+    async def shut_down(self) -> None:
+        """Shut down the confluent kafka input connector and cleanup resources."""
+
+        consumer = await self.get_consumer()
+
+        if consumer is not None:
+            await consumer.unsubscribe()
+            await consumer.close()
+
+        await super().shut_down()

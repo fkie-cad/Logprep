@@ -356,11 +356,11 @@ class HttpInput(Input):
         except queue.Empty:
             return None, None, None
 
-    def _shut_down(self):
+    async def shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
         if self.http_server:
             self.http_server.shut_down()
-        return super()._shut_down()
+        await super().shut_down()
 
     @cached_property
     def health_endpoints(self) -> list[str]:
