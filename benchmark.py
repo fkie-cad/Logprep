@@ -1,4 +1,5 @@
 # pylint: disable=C0103
+
 """
 Benchmark runner for logprep (logprep-ng and non-ng).
 
@@ -285,33 +286,6 @@ def opensearch_count_processed(opensearch_url: str, processed_index: str) -> int
     return int(resp.json()["count"])
 
 
-def opensearch_debug_snapshot(opensearch_url: str) -> None:
-    """
-    Print a small OpenSearch state snapshot for debugging.
-    Never raises (best-effort).
-    """
-    try:
-        r = requests.get(f"{opensearch_url}/_cat/indices?v", timeout=10)
-        print("\n--- _cat/indices ---")
-        print(r.text)
-    except Exception as e:
-        print(f"\n--- _cat/indices (failed) ---\n{e}")
-
-    try:
-        r = requests.get(f"{opensearch_url}/_cat/count?v", timeout=10)
-        print("\n--- _cat/count ---")
-        print(r.text)
-    except Exception as e:
-        print(f"\n--- _cat/count (failed) ---\n{e}")
-
-    try:
-        r = requests.get(f"{opensearch_url}/_cat/aliases?v", timeout=10)
-        print("\n--- _cat/aliases ---")
-        print(r.text)
-    except Exception as e:
-        print(f"\n--- _cat/aliases (failed) ---\n{e}")
-
-
 def reset_prometheus_dir(path: str) -> None:
     """
     Recreate PROMETHEUS_MULTIPROC_DIR.
@@ -334,8 +308,8 @@ def resolve_pipeline_config(ng: int) -> Path:
         Pipeline config path.
     """
     if ng == 1:
-        return Path("./examples/exampledata/config/_benchmark_ng_pipeline.yml")
-    return Path("./examples/exampledata/config/_benchmark_non_ng_pipeline.yml")
+        return Path("./examples/exampledata/config/ng_pipeline.yml")
+    return Path("./examples/exampledata/config/pipeline.yml")
 
 
 def read_vm_max_map_count() -> int:
@@ -622,26 +596,19 @@ def benchmark_run(
 
         time.sleep(sleep_after_logprep_start_s)
 
-        print("\n=== OpenSearch snapshot (before measurement) ===")
-        opensearch_debug_snapshot(opensearch_url)
-
         baseline = opensearch_count_processed(opensearch_url, processed_index)
         startup_s = time.time() - t_startup
 
         t_run = time.time()
         time.sleep(run_seconds)
+        window_s = time.time() - t_run
 
         kill_hard(logprep_proc)
-
-        window_s = time.time() - t_run
         logprep_proc = None
         _current_logprep_proc = None
 
         # ensure near-real-time writes are visible to _count before measuring
         opensearch_refresh(opensearch_url, processed_index)
-
-        print("\n=== OpenSearch snapshot (after run / after refresh) ===")
-        opensearch_debug_snapshot(opensearch_url)
 
         after = opensearch_count_processed(opensearch_url, processed_index)
         processed = max(0, after - baseline)

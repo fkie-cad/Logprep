@@ -5,10 +5,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-PYTHON_VERSIONS = ["3.11"]  # , "3.12", "3.13", "3.14"]
+PYTHON_VERSIONS = ["3.11", "3.12", "3.13", "3.14"]
 MODES = [
-    ("nonNG", "0"),
     ("asyncNG", "1"),
+    ("nonNG", "0"),
 ]
 
 
@@ -32,9 +32,12 @@ def run_benchmarks() -> None:
                 py,
                 "benchmark.py",
                 "--event-num",
-                "120000",
+                "250000",
                 "--runs",
                 "30",
+                "30",
+                "45",
+                "45",
                 "--ng",
                 ng_flag,
                 "--out",

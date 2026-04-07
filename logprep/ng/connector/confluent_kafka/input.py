@@ -28,14 +28,12 @@ Example
             auto.offset.reset: "earliest"
 """
 
-# pylint: enable=line-too-long
 import logging
 import os
 import typing
 from functools import cached_property, partial
 from socket import getfqdn
-from types import MappingProxyType
-from typing import Union
+from types import MappingProxyType  # pylint: disable=no-name-in-module
 
 import msgspec
 from attrs import define, field, validators
@@ -348,7 +346,7 @@ class ConfluentKafkaInput(Input):
 
         return self._consumer
 
-    def _error_callback(self, error: KafkaException) -> None:
+    async def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
         This callback is served upon calling client.poll()
@@ -361,7 +359,7 @@ class ConfluentKafkaInput(Input):
         self.metrics.number_of_errors += 1
         logger.error("%s: %s", self.describe(), error)
 
-    def _stats_callback(self, stats_raw: str) -> None:
+    async def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
@@ -395,8 +393,10 @@ class ConfluentKafkaInput(Input):
             "assignment_size", DEFAULT_RETURN
         )
 
-    def _commit_callback(
-        self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
+    async def _commit_callback(
+        self,
+        error: KafkaException | None,
+        topic_partitions: list[TopicPartition],
     ) -> None:
         """Callback used to indicate success or failure of asynchronous and
         automatic commit requests. This callback is served upon calling consumer.poll()
@@ -461,8 +461,6 @@ class ConfluentKafkaInput(Input):
             message = await consumer.poll(timeout=timeout)
         except RuntimeError as error:
             raise FatalInputError(self, str(error)) from error
-        except Exception as error:  # remove this
-            pass
         if message is None:
             return None
         if message.value() is None or message.partition() is None or message.offset() is None:
@@ -503,7 +501,6 @@ class ConfluentKafkaInput(Input):
         """
 
         message = await self._get_raw_event(timeout)
-        # assert None not in (message.value(), message.partition(), message.offset())
 
         if message is None:
             return None, None, None
@@ -602,16 +599,10 @@ class ConfluentKafkaInput(Input):
         member_id = None
         try:
             consumer = await self.get_consumer()
-            member_id = consumer._consumer.memberid()
+            member_id = consumer._consumer.memberid()  # pylint: disable=protected-access
         except RuntimeError as error:
             logger.error("Failed to retrieve member ID: %s", error)
         return member_id
-
-    async def shut_down(self) -> None:
-        """Close consumer, which also commits kafka offsets."""
-        consumer = await self.get_consumer()
-        await consumer.close()
-        super()._shut_down()
 
     def health(self) -> bool:
         """Check the health of the component.
@@ -637,7 +628,8 @@ class ConfluentKafkaInput(Input):
         logger.debug("acknowledge called")
 
     async def setup(self):
-        """Set the component up."""
+        """Set the confluent kafka input connector."""
+
         await super().setup()
 
         try:
@@ -651,3 +643,11 @@ class ConfluentKafkaInput(Input):
             )
         except KafkaException as error:
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
+
+    async def shut_down(self) -> None:
+        """Shut down the confluent kafka input connector and cleanup resources."""
+
+        if self._consumer is not None:
+            await self._consumer.close()
+
+        await super().shut_down()

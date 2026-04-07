@@ -146,7 +146,7 @@ class Component(ABC):
         self._clear_scheduled_jobs()
         self._clear_properties()
 
-    async def shut_down(self):
+    def shut_down(self):
         """Stop processing of this component.
 
         Optional: Called when stopping the pipeline

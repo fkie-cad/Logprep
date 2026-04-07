@@ -33,6 +33,7 @@ from types import MappingProxyType
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Message, Producer  # type: ignore
 from confluent_kafka.admin import AdminClient
+from confluent_kafka.aio import AIOProducer
 
 from logprep.metrics.metrics import GaugeMetric
 from logprep.ng.abc.event import Event
@@ -235,8 +236,8 @@ class ConfluentKafkaOutput(Output):
         return AdminClient(admin_config)
 
     @cached_property
-    def _producer(self) -> Producer:
-        return Producer(self._kafka_config)
+    def _producer(self) -> AIOProducer:
+        return AIOProducer(self._kafka_config)
 
     def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
@@ -285,14 +286,12 @@ class ConfluentKafkaOutput(Output):
 
     async def store_batch(
         self, events: Sequence[Event], target: str | None = None
-    ) -> tuple[Sequence[Event], Sequence[Event]]:
+    ) -> Sequence[Event]:
         store_target = target if target is not None else self.config.topic
         for event in events:
             await self.store_custom(event, store_target)
-        return (
-            [e for e in events if e.state == EventStateType.DELIVERED],
-            [e for e in events if e.state == EventStateType.FAILED],
-        )
+
+        return events
 
     async def store(self, event: Event) -> None:
         """Store a document in the producer topic.
@@ -316,23 +315,35 @@ class ConfluentKafkaOutput(Output):
         target : str
             Topic to store event data in.
         """
-        event.state.current_state = EventStateType.STORING_IN_OUTPUT
-
         document = event.data
         self.metrics.number_of_processed_events += 1
+
         try:
-            self._producer.produce(
+            delivery_future = await self._producer.produce(
                 topic=target,
                 value=self._encoder.encode(document),
-                on_delivery=partial(self.on_delivery, event),
             )
-            logger.debug("Produced message %s to topic %s", str(document), target)
-            self._producer.poll(self.config.send_timeout)
-            self._producer.flush()
-        except BufferError:
-            # block program until buffer is empty or timeout is reached
-            self._producer.flush(timeout=self.config.flush_timeout)
-            logger.debug("Buffer full, flushing")
+            msg = await delivery_future
+        except KafkaException as err:
+            event.state.current_state = EventStateType.FAILED
+            event.errors.append(err)
+            logger.error("Kafka exception during produce: %s", err)
+            self.metrics.number_of_errors += 1
+            return
+        except Exception as err:
+            event.state.current_state = EventStateType.FAILED
+            event.errors.append(err)
+            logger.error("Message delivery failed: %s", err)
+            self.metrics.number_of_errors += 1
+            return
+
+        event.state.current_state = EventStateType.DELIVERED
+        logger.debug(
+            "Message delivered to '%s' partition %s, offset %s",
+            msg.topic(),
+            msg.partition(),
+            msg.offset(),
+        )
 
     async def flush(self) -> None:
         """ensures that all messages are flushed. According to
@@ -364,24 +375,17 @@ class ConfluentKafkaOutput(Output):
         return super().health()
 
     async def setup(self) -> None:
-        """Set the component up."""
+        """Set the confluent kafka output connector."""
+
         try:
             await super().setup()
         except KafkaException as error:
             raise FatalOutputError(self, f"Could not setup kafka producer: {error}") from error
 
-    def on_delivery(self, event: Event, err: KafkaException, msg: Message) -> None:
-        """Callback for delivery reports."""
-        if err is not None:
-            event.state.current_state = EventStateType.FAILED
-            event.errors.append(err)
-            logger.error("Message delivery failed: %s", err)
-            self.metrics.number_of_errors += 1
-            return
-        event.state.current_state = EventStateType.DELIVERED
-        logger.debug(
-            "Message delivered to '%s' partition %s, offset %s",
-            msg.topic(),
-            msg.partition(),
-            msg.offset(),
-        )
+    async def shut_down(self) -> None:
+        """Shut down the confluent kafka output connector and cleanup resources."""
+
+        if "_producer" in self.__dict__:
+            await self.flush()
+
+        await super().shut_down()
