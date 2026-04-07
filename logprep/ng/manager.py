@@ -197,14 +197,14 @@ class PipelineManager:
             await self._orchestrator.run()
         except CancelledError:
             logger.debug("PipelineManager.run cancelled. Shutting down.")
-            await self._shut_down()
+            await self.shut_down()
             raise
         except Exception:
             logger.exception("PipelineManager.run failed. Shutting down.")
-            await self._shut_down()
+            await self.shut_down()
             raise
 
-    async def _shut_down(self) -> None:
+    async def shut_down(self) -> None:
         """Shut down runner components, and required runner attributes."""
 
         logger.debug(
@@ -222,6 +222,7 @@ class PipelineManager:
         if self._sender is not None:
             await self._sender.shut_down()
         # self._input_connector.acknowledge()
+        await self._input_connector.shut_down()
 
         len_delivered_events = len(list(self._event_backlog.get(EventStateType.DELIVERED)))
         if len_delivered_events:
