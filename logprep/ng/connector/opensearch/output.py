@@ -45,7 +45,6 @@ from opensearchpy import (
     helpers,
 )
 from opensearchpy.serializer import JSONSerializer
-from typing_extensions import override
 
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.event import Event
@@ -356,6 +355,7 @@ class OpensearchOutput(Output):
             return False
         return super().health() and resp.get("status") in self.config.desired_cluster_status
 
-    @override
     async def shut_down(self):
-        await self._search_context.close()
+        if "_search_context" in self.__dict__:
+            await self._search_context.close()
+        await super().shut_down()
