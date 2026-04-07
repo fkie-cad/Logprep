@@ -97,7 +97,7 @@ jobs:
         with:
           cosign-release: "v2.6.2"
       - name: Create SBOM of container image
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # https://github.com/anchore/sbom-action/releases/tag/v0.24.0
         with:
           image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.Digest }}
           artifact-name: logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json
