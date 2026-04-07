@@ -292,7 +292,7 @@ class WorkerOrchestrator:
         current_task = asyncio.current_task()
         tasks_but_current = [t for t in self._worker_tasks if t is not current_task]
 
-        logger.debug("waiting for termination of %d tasks", len(tasks_but_current))
+        logger.debug(f"waiting for termination of {len(tasks_but_current)} tasks")
 
         try:
             await asyncio.wait_for(
@@ -300,11 +300,15 @@ class WorkerOrchestrator:
             )
         except TimeoutError:
             unfinished_workers = [w for w in tasks_but_current if not w.done()]
-            if len(unfinished_workers) > 0:
+            if unfinished_workers:
                 logger.debug(
                     "[%d/%d] did not stop gracefully. Cancelling: [%s]",
                     len(unfinished_workers),
                     len(tasks_but_current),
                     ", ".join(map(asyncio.Task.get_name, unfinished_workers)),
                 )
-                await asyncio.gather(*tasks_but_current, return_exceptions=True)
+
+                for worker in unfinished_workers:
+                    worker.cancel()
+
+                await asyncio.gather(*unfinished_workers, return_exceptions=True)

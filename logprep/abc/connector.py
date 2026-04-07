@@ -48,3 +48,13 @@ class Connector(NgComponent):
             )
         )
         """Number of errors that occurred while processing events"""
+
+    async def setup(self) -> None:
+        """Set up the connector."""
+
+        await super().setup()
+
+    async def shut_down(self) -> None:
+        """Shutdown the connector and cleanup resources."""
+
+        await super().shut_down()

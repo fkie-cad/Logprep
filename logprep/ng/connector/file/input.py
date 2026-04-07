@@ -191,7 +191,7 @@ class FileInput(Input):
                 file_name=self.config.logfile_path,
             )
 
-    def _shut_down(self) -> None:
+    async def shut_down(self) -> None:
         """Raises the Stop Event Flag that will stop the thread that monitors the logfile"""
         self.stop_flag.set()
-        return super()._shut_down()
+        await super().shut_down()

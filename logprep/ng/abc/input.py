@@ -504,3 +504,13 @@ class Input(Connector):
         }
         add_fields_to(event_dict, new_field)
         return event_dict
+
+    async def setup(self) -> None:
+        """Set up the input connector."""
+
+        await super().setup()
+
+    async def shut_down(self) -> None:
+        """Shut down input components and cleanup resources."""
+
+        await super().shut_down()
