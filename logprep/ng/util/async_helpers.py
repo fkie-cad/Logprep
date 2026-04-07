@@ -12,7 +12,7 @@ T = TypeVar("T")
 D = TypeVar("D")
 
 
-TaskFactory = Callable[[D], asyncio.Task[T] | Awaitable[asyncio.Task[T]]]
+TaskFactory = Callable[[D], Awaitable[asyncio.Task[T]]]
 
 
 class TerminateTaskGroup(Exception):
