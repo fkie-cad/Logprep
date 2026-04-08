@@ -241,8 +241,7 @@ class ConfluentKafkaOutput(Output):
                 admin_config[key] = value
         return AdminClient(admin_config)
 
-    @cached_property
-    async def get_producer(self) -> AIOProducer:
+    def get_producer(self) -> AIOProducer:
         """
         Configures and returns the asynchronous Kafka producer.
 
@@ -339,7 +338,8 @@ class ConfluentKafkaOutput(Output):
         self.metrics.number_of_processed_events += 1
 
         try:
-            delivery_future = await self._producer.produce(
+            producer = self.get_producer()
+            delivery_future = await producer.produce(
                 topic=target,
                 value=self._encoder.encode(document),
             )
@@ -371,7 +371,8 @@ class ConfluentKafkaOutput(Output):
         flush without the timeout parameter will block until all messages are delivered.
         This ensures no messages will get lost on shutdown.
         """
-        remaining_messages = await self._producer.flush()
+        producer = self.get_producer()
+        remaining_messages = await producer.flush()
         if remaining_messages:
             self.metrics.number_of_errors += 1
             logger.error(
@@ -405,7 +406,7 @@ class ConfluentKafkaOutput(Output):
     async def shut_down(self) -> None:
         """Shut down the confluent kafka output connector and cleanup resources."""
 
+        await super().shut_down()
+
         if self._producer is not None:
             await self._producer.close()
-
-        await super().shut_down()
