@@ -155,6 +155,7 @@ class Worker(Generic[Input, Output]):
         Drains and processes the current buffer regardless of size or
         timer state.
         """
+
         batch_to_flush: list[Input] | None = None
         async with self._buffer_lock:
             if self._batch_buffer:
@@ -252,8 +253,7 @@ class WorkerOrchestrator:
             self._add_worker_task(t)
 
     def _add_worker_task(self, task: asyncio.Task[Any]) -> None:
-        """Track a worker task and fail-fast on exceptions."""
-        self._worker_tasks.add(task)
+        self.exceptions_ = """Track a worker task and fail-fast on exceptions."""
 
         def _done(t: asyncio.Task[Any]) -> None:
             self._worker_tasks.discard(t)
@@ -267,6 +267,7 @@ class WorkerOrchestrator:
                 self._stop_event.set()
 
         task.add_done_callback(_done)
+        self._worker_tasks.add(task)
 
     async def run(self) -> None:
         """
@@ -289,22 +290,19 @@ class WorkerOrchestrator:
         """
         self._stop_event.set()
 
-        current_task = asyncio.current_task()
-        tasks_but_current = [t for t in self._worker_tasks if t is not current_task]
-
-        logger.debug("waiting for termination of %d tasks", len(tasks_but_current))
+        logger.debug("waiting for termination of %d tasks", len(self._worker_tasks))
 
         try:
             await asyncio.wait_for(
-                asyncio.gather(*tasks_but_current, return_exceptions=True), timeout_s
+                asyncio.gather(*self._worker_tasks, return_exceptions=True), timeout_s
             )
         except TimeoutError:
-            unfinished_workers = [w for w in tasks_but_current if not w.done()]
+            unfinished_workers = [w for w in self._worker_tasks if not w.done()]
             if unfinished_workers:
                 logger.debug(
                     "[%d/%d] did not stop gracefully. Awaiting cancellation: [%s]",
                     len(unfinished_workers),
-                    len(tasks_but_current),
+                    len(self._worker_tasks),
                     ", ".join(map(asyncio.Task.get_name, unfinished_workers)),
                 )
                 await asyncio.gather(*unfinished_workers, return_exceptions=True)
