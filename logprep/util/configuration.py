@@ -212,6 +212,7 @@ from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
+from logprep.filter.lucene_filter import LuceneFilterError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
@@ -961,6 +962,7 @@ class Configuration:
                 ValueError,
                 InvalidRuleDefinitionError,
                 RefreshableGetterError,
+                LuceneFilterError,
             ) as error:
                 errors.append(error)
         if errors:
@@ -1034,6 +1036,7 @@ class Configuration:
                 ValueError,
                 InvalidRuleDefinitionError,
                 RefreshableGetterError,
+                LuceneFilterError,
             ) as error:
                 errors.append(error)
             except FileNotFoundError as error:
