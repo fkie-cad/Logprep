@@ -194,7 +194,10 @@ class Worker(Generic[Input, Output]):
             if isinstance(self.in_queue, asyncio.Queue):
                 while not stop_event.is_set():
                     item = await self.in_queue.get()
-                    await self.add(item)
+
+                    if item is not None:
+                        await self.add(item)
+
                     await asyncio.sleep(0.0)
             else:
                 while not stop_event.is_set():
