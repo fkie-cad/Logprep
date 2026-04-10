@@ -20,8 +20,8 @@ from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
-from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
+from logprep.ng.abc.connector import Connector
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
