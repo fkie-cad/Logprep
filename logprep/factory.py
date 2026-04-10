@@ -25,7 +25,7 @@ class Factory:
             )
         # we know configuration has exactly one entry
         [(component_name, component_configuration_dict)] = configuration.items()
-        if configuration == {} or component_configuration_dict is None:
+        if component_configuration_dict is None:
             raise InvalidConfigurationError(
                 f'The definition of component "{component_name}" is empty.'
             )

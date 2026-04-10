@@ -11,7 +11,7 @@ from attrs import define, field, validators
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
-from logprep.ng.abc.component import NgComponent
+from logprep.ng.abc.component import NgComponent as Component
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.helper import (
@@ -28,11 +28,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger("Processor")
 
 
-class Processor(NgComponent):
+class Processor(Component):
     """Abstract Processor Class to define the Interface"""
 
     @define(kw_only=True, slots=False)
-    class Config(NgComponent.Config):
+    class Config(Component.Config):
         """Common Configurations"""
 
         rules: list[str] = field(
