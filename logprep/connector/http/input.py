@@ -266,7 +266,7 @@ class HttpEndpoint(ABC):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        messages: mp.Queue,
+        messages: mp.Queue[dict],
         original_event_field: dict[str, str] | None,
         collect_meta: bool,
         metafield_name: str,
@@ -336,7 +336,7 @@ class HttpEndpoint(ABC):
 class JSONHttpEndpoint(HttpEndpoint):
     """:code:`json` endpoint to get json from request"""
 
-    _decoder = msgspec.json.Decoder()
+    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder()
 
     @raise_request_exceptions
     @basic_auth
@@ -360,7 +360,7 @@ class JSONHttpEndpoint(HttpEndpoint):
 class JSONLHttpEndpoint(HttpEndpoint):
     """:code:`jsonl` endpoint to get jsonl from request"""
 
-    _decoder = msgspec.json.Decoder()
+    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder()
 
     @raise_request_exceptions
     @basic_auth
@@ -555,7 +555,7 @@ class HttpInput(Input):
 
     __slots__: list[str] = ["target", "app", "http_server"]
 
-    messages: typing.Optional[Queue] = None
+    messages: Queue[dict] | None = None
 
     _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
