@@ -2,8 +2,8 @@
 
 from attrs import define, field
 
-from logprep.abc.component import Component
 from logprep.metrics.metrics import CounterMetric, HistogramMetric
+from logprep.ng.abc.component import NgComponent as Component
 
 
 class Connector(Component):

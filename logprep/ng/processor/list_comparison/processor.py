@@ -79,8 +79,8 @@ class ListComparison(Processor):
         """Returns all rules"""
         return typing.cast(Sequence[ListComparisonRule], super().rules)
 
-    def setup(self) -> None:
-        super().setup()
+    async def setup(self) -> None:
+        await super().setup()
         for rule in self.rules:
             rule.init_list_comparison(self._job_tag_for_cleanup, self.config.list_search_base_path)
 
