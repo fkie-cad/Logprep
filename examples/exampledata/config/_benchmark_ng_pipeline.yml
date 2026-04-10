@@ -2,10 +2,10 @@ version: 2
 process_count: 1
 timeout: 5.0
 restart_count: 2
-config_refresh_interval: 300
-error_backlog_size: 1500000
+config_refresh_interval: 5
+error_backlog_size: 15000
 logger:
-  level: INFO
+  level: DEBUG
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
@@ -102,33 +102,24 @@ output:
       - 127.0.0.1:9200
     default_index: processed
     default_op_type: create
-    message_backlog_size: 7000
+    message_backlog_size: 2500
     timeout: 10000
     flush_timeout: 60
     user: admin
     secret: admin
     desired_cluster_status: ["green", "yellow"]
     chunk_size: 25
-  kafka:
-    type: ng_confluentkafka_output
-    default: false
-    topic: producer
-    flush_timeout: 300
-    kafka_config:
-      bootstrap.servers: 127.0.0.1:9092
-      statistics.interval.ms: "60000"
 error_output:
-  kafka_error_output:
-    type: ng_confluentkafka_output
-    topic: errors
-    flush_timeout: 300
-    send_timeout: 0
-    kafka_config:
-      bootstrap.servers: 127.0.0.1:9092
-      compression.type: none
-      statistics.interval.ms: "60000"
-      queue.buffering.max.messages: "10"
-      queue.buffering.max.kbytes: "1024"
-      queue.buffering.max.ms: "1000"
-      batch.size: "100"
-      request.required.acks: "-1"
+  opensearch:
+    type: ng_opensearch_output
+    hosts:
+      - 127.0.0.1:9200
+    default_index: errors
+    default_op_type: create
+    message_backlog_size: 2500
+    timeout: 10000
+    flush_timeout: 60
+    user: admin
+    secret: admin
+    desired_cluster_status: ["green", "yellow"]
+    chunk_size: 25

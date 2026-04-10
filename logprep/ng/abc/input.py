@@ -1,3 +1,5 @@
+# pylint: disable=line-too-long
+
 """This module provides the abstract base class for all input endpoints.
 New input endpoint types are created by implementing it.
 """
@@ -10,22 +12,19 @@ import os
 import typing
 import zlib
 from abc import abstractmethod
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from copy import deepcopy
 from functools import cached_property
 from hmac import HMAC
-from typing import Self
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
-from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
-from logprep.metrics.metrics import Metric
-from logprep.ng.abc.event import EventBacklog
+from logprep.ng.abc.connector import Connector
+from logprep.ng.abc.event import EventMetadata
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.converters import convert_from_dict
 from logprep.util.helper import (
@@ -87,7 +86,7 @@ class SourceDisconnectedWarning(InputWarning):
     """Lost (or failed to establish) contact with the source."""
 
 
-class InputIterator(Iterator):
+class InputIterator(AsyncIterator):
     """Base Class for an input Iterator"""
 
     def __init__(self, input_connector: "Input", timeout: float):
@@ -104,18 +103,7 @@ class InputIterator(Iterator):
         self.input_connector = input_connector
         self.timeout = timeout
 
-    def __iter__(self) -> Self:
-        """Return the iterator instance itself.
-
-        Returns
-        -------
-        Self
-            The iterator instance (self).
-        """
-
-        return self
-
-    def __next__(self) -> LogEvent | None:
+    async def __anext__(self) -> LogEvent | None:
         """Return the next event in the Input Connector within the configured timeout.
 
         Returns
@@ -123,7 +111,7 @@ class InputIterator(Iterator):
         LogEvent | None
             The next event retrieved from the underlying data source.
         """
-        event = self.input_connector.get_next(timeout=self.timeout)
+        event = await self.input_connector.get_next(timeout=self.timeout)
         logger.debug(
             "InputIterator fetching next event with timeout %s, is None: %s",
             self.timeout,
@@ -160,7 +148,6 @@ class Input(Connector):
         )
 
     def __init__(self, name: str, configuration: "Input.Config") -> None:
-        self.event_backlog: EventBacklog = SetEventBacklog()
         super().__init__(name, configuration)
 
     @property
@@ -193,17 +180,9 @@ class Input(Connector):
 
         return InputIterator(self, timeout)
 
-    def acknowledge(self) -> None:
-        """Acknowledge all delivered events, so Input Connector can return final ACK state.
-
-        As side effect, all older events with state ACKED has to be removed from `event_backlog`
-        before acknowledging new ones.
-        """
-
-        self.event_backlog.unregister(state_type=EventStateType.ACKED)
-
-        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):
-            event.state.next_state()
+    @abstractmethod
+    async def acknowledge(self, events: list[LogEvent]) -> None:
+        """Acknowledge all delivered events, so Input Connector can return final ACK state."""
 
     @property
     def _add_hmac(self) -> bool:
@@ -254,23 +233,8 @@ class Input(Connector):
         """Check and return if the event should be written into one singular field."""
         return bool(self.config.preprocessing.add_full_event_to_target_field)
 
-    def _get_raw_event(self, timeout: float) -> bytes | None:  # pylint: disable=unused-argument
-        """Implements the details how to get the raw event
-
-        Parameters
-        ----------
-        timeout : float
-            timeout
-
-        Returns
-        -------
-        raw_event : bytes
-            The retrieved raw event
-        """
-        return None
-
     @abstractmethod
-    def _get_event(self, timeout: float) -> tuple:
+    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
         """Implements the details how to get the event
 
         Parameters
@@ -280,30 +244,30 @@ class Input(Connector):
 
         Returns
         -------
-        (event, raw_event, metadata)
+        (event, raw_event, metadata) | None
         """
 
-    def _register_failed_event(
+    def _produce_failed_event(
         self,
         event: dict | None,
-        raw_event: bytes | None,
-        metadata: dict | None,
+        raw_event: bytes,
+        metadata: EventMetadata,
         error: Exception,
-    ) -> None:
+    ) -> LogEvent:
         """Helper method to register the failed event to event backlog."""
 
         error_log_event = LogEvent(
-            data=event if isinstance(event, dict) else {},
-            original=raw_event if raw_event is not None else b"",
-            metadata=metadata,  # type: ignore
+            data=event if event is not None else {},
+            original=raw_event,
+            metadata=metadata,
         )
         error_log_event.errors.append(error)
         error_log_event.state.current_state = EventStateType.FAILED
 
-        self.event_backlog.register(events=[error_log_event])
+        return error_log_event
 
-    @Metric.measure_time()
-    def get_next(self, timeout: float) -> LogEvent | None:
+    # @Metric.measure_time()
+    async def get_next(self, timeout: float) -> LogEvent | None:
         """Return the next document
 
         Parameters
@@ -316,17 +280,14 @@ class Input(Connector):
         input : LogEvent, None
             Input log data.
         """
-        self.acknowledge()
-        event: dict | None = None
-        raw_event: bytes | None = None
-        metadata: dict | None = None
+        event_tuple = await self._get_event(timeout)
+
+        if event_tuple is None:
+            return None
+
+        event, raw_event, metadata = event_tuple
 
         try:
-            event, raw_event, metadata = self._get_event(timeout)
-
-            if event is None:
-                return None
-
             if not isinstance(event, dict):
                 raise CriticalInputError(self, "not a dict", event)
 
@@ -366,26 +327,25 @@ class Input(Connector):
             except (FieldExistsWarning, TimeParserException) as error:
                 raise CriticalInputError(self, error.args[0], event) from error
         except CriticalInputError as error:
-            self._register_failed_event(
+            self._produce_failed_event(
                 event=event,
                 raw_event=raw_event,
-                metadata=metadata,  # type: ignore
+                metadata=metadata if metadata is not None else None,
                 error=error,
             )
             return None
 
         log_event = LogEvent(
             data=event,
-            original=raw_event,  # type: ignore
-            metadata=metadata,  # type: ignore
+            original=raw_event,
+            metadata=metadata,
         )
 
-        self.event_backlog.register(events=[log_event])
-        log_event.state.next_state()
+        log_event.state.current_state = EventStateType.RECEIVED
 
         return log_event
 
-    def batch_finished_callback(self) -> None:
+    async def batch_finished_callback(self) -> None:
         """Can be called by output connectors after processing a batch of one or more records."""
 
     def _add_env_enrichment_to_event(self, event: dict, enrichments: dict) -> None:
@@ -524,3 +484,13 @@ class Input(Connector):
         }
         add_fields_to(event_dict, new_field)
         return event_dict
+
+    async def setup(self) -> None:
+        """Set up the input connector."""
+
+        await super().setup()
+
+    async def shut_down(self) -> None:
+        """Shut down input components and cleanup resources."""
+
+        await super().shut_down()

@@ -114,6 +114,7 @@ from logprep.connector.http.input import (
 )
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.ng.abc.event import EventMetadata
 from logprep.ng.abc.input import Input
 from logprep.util import http, rstr
 from logprep.util.credentials import CredentialsFactory
@@ -272,7 +273,7 @@ class HttpInput(Input):
 
     __slots__: list[str] = ["target", "app", "http_server"]
 
-    messages: typing.Optional[Queue] = None
+    messages: typing.Optional[Queue[dict]] = None
 
     _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
@@ -297,10 +298,10 @@ class HttpInput(Input):
         """Provides the properly typed rule configuration object"""
         return typing.cast(HttpInput.Config, self._config)
 
-    def setup(self) -> None:
+    async def setup(self) -> None:
         """setup starts the actual functionality of this connector."""
 
-        super().setup()
+        await super().setup()
 
         if self.messages is None:
             raise ValueError("message queue `messages` has not been set")
@@ -344,23 +345,23 @@ class HttpInput(Input):
             app.add_sink(endpoint, prefix=route_compile_helper(endpoint_path))
         return app
 
-    def _get_event(self, timeout: float) -> tuple:
+    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
         """Returns the first message from the queue"""
-        messages = typing.cast(Queue, self.messages)
+        messages = typing.cast(Queue[dict], self.messages)
 
         self.metrics.message_backlog_size += messages.qsize()
         try:
             message = messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
-            return message, raw_message, None
+            return message, raw_message, EventMetadata.from_dict({})
         except queue.Empty:
-            return None, None, None
+            return None
 
-    def _shut_down(self):
+    async def shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
         if self.http_server:
             self.http_server.shut_down()
-        return super()._shut_down()
+        await super().shut_down()
 
     @cached_property
     def health_endpoints(self) -> list[str]:

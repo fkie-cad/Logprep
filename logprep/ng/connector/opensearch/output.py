@@ -33,18 +33,23 @@ Example
 import logging
 import ssl
 import typing
+from collections.abc import Sequence
 from functools import cached_property
 from typing import List, Optional
 
-import opensearchpy as search
 from attrs import define, field, validators
-from opensearchpy import OpenSearchException, helpers
+from opensearchpy import (
+    AsyncOpenSearch,
+    OpenSearchException,
+    SerializationError,
+    helpers,
+)
 from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.exceptions import LogprepException
-from logprep.metrics.metrics import Metric
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import Output
+from logprep.ng.event.event_state import EventStateType
 
 logger = logging.getLogger("OpenSearchOutput")
 
@@ -82,7 +87,7 @@ class MSGPECSerializer(JSONSerializer):
         try:
             return self._encoder.encode(data).decode("utf-8")
         except (ValueError, TypeError) as e:
-            raise search.exceptions.SerializationError(data, e)
+            raise SerializationError(data, e)
 
     def loads(self, s):
         return self._decoder.decode(s)
@@ -132,17 +137,22 @@ class OpensearchOutput(Output):
         thread_count: int = field(
             default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
-        """Number of threads to use for bulk requests."""
+        """Number of threads to use for bulk requests.
+        DEPCRECATED: This Argument is deprecated and doesnt do anything anymore,
+        it will be removed in the future"""
         queue_size: int = field(
             default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
-        """Number of queue size to use for bulk requests."""
+        """Number of queue size to use for bulk requests.
+        DEPCRECATED: This Argument is deprecated and doesnt do anything anymore,
+        it will be removed in the future"""
         chunk_size: int = field(
             default=500, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Chunk size to use for bulk requests."""
         max_chunk_bytes: int = field(
-            default=100 * 1024 * 1024, validator=(validators.instance_of(int), validators.gt(1))
+            default=100 * 1024 * 1024,
+            validator=(validators.instance_of(int), validators.gt(1)),
         )
         """Max chunk size to use for bulk requests. The default is 100MB."""
         max_retries: int = field(
@@ -155,15 +165,23 @@ class OpensearchOutput(Output):
         """Desired cluster status for health check as list of strings. Default is ["green"]"""
         default_op_type: str = field(
             default="index",
-            validator=(validators.instance_of(str), validators.in_(["create", "index"])),
+            validator=(
+                validators.instance_of(str),
+                validators.in_(["create", "index"]),
+            ),
         )
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
 
-    __slots__ = ("_message_backlog",)
+    __slots__ = ("_message_backlog", "_flush_task")
 
     _message_backlog: list[Event]
     """List of messages to be sent to Opensearch."""
+
+    @property
+    def _metrics(self) -> Output.Metrics:
+        """Provides the properly typed metrics object"""
+        return typing.cast(Output.Metrics, self.metrics)
 
     @property
     def config(self) -> Config:
@@ -212,7 +230,7 @@ class OpensearchOutput(Output):
     @cached_property
     def _search_context(self):
         """Returns the opensearch client."""
-        return search.OpenSearch(
+        return AsyncOpenSearch(
             self.config.hosts,
             scheme=self.schema,
             http_auth=self.http_auth,
@@ -228,12 +246,9 @@ class OpensearchOutput(Output):
 
     def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
         super().__init__(name, configuration)
-        self._message_backlog = []
 
-    def setup(self):
-        super().setup()
-        flush_timeout = self.config.flush_timeout
-        self._schedule_task(task=self.flush, seconds=flush_timeout)
+    async def setup(self):
+        await super().setup()
 
     def describe(self) -> str:
         """Get name of Opensearch endpoint with the host.
@@ -247,13 +262,12 @@ class OpensearchOutput(Output):
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self.config.hosts}"
 
-    @Output._handle_errors
-    def store(self, event: Event) -> None:
+    async def store(self, event: Event) -> None:
         """Store a document in the index defined in the document or to the default index."""
-        self.store_custom(event, event.data.get("_index", self.config.default_index))
+        await self.store_batch([event], event.data.get("_index", self.config.default_index))
 
-    @Output._handle_errors
-    def store_custom(self, event: Event, target: str) -> None:
+    # @Output._handle_errors
+    async def store_custom(self, event: Event, target: str) -> None:
         """Store document into backlog to be written into Opensearch with the target index.
         The target index is determined per document by parameter :code:`target`.
 
@@ -264,76 +278,84 @@ class OpensearchOutput(Output):
         target : str
             Index to store the document in.
         """
-        event.state.next_state()
-        document = event.data
-        document["_index"] = target
-        document["_op_type"] = document.get("_op_type", self.config.default_op_type)
-        self.metrics.number_of_processed_events += 1
-        self._message_backlog.append(event)
-        self._write_to_search_context()
+        await self.store_batch([event], target)
 
-    def _write_to_search_context(self):
-        """Writes documents from a buffer into Opensearch indices.
+    # @Output._handle_errors
+    async def store_batch(
+        self, events: Sequence[Event], target: str | None = None
+    ) -> Sequence[Event]:
+        logger.debug("store_batch called with %d events, target=%s", len(events), target)
+        target = target if target else self.config.default_index
 
-        Writes documents in a bulk if the document buffer limit has been reached.
-        This reduces connections to Opensearch and improves performance.
-        """
-        if len(self._message_backlog) >= self.config.message_backlog_size:
-            self.flush()
+        for event in events:
+            document = event.data
+            document["_index"] = document.get("_index", target)
+            document["_op_type"] = document.get("_op_type", self.config.default_op_type)
 
-    @Metric.measure_time()
-    def flush(self):
-        if not self._message_backlog:
-            return
-        logger.debug("Flushing %d documents to Opensearch", len(self._message_backlog))
-        self._bulk(self._search_context, self._message_backlog)
-        self._message_backlog.clear()
+            event.state.current_state = EventStateType.STORING_IN_OUTPUT
 
-    def _bulk(self, client: search.OpenSearch, events: list[Event]) -> None:
-        """Bulk index documents into Opensearch.
-        Uses the parallel_bulk function from the opensearchpy library.
+        self._metrics.number_of_processed_events += len(events)
+        logger.debug("Flushing %d documents to Opensearch", len(events))
+        await self._bulk(self._search_context, events)
+        return events
 
-        the error information is stored in a document with the following structure:
+    # @Metric.measure_time()
+    async def flush(self):
+        logger.debug("flush is not required")
 
-        ```json
-        {
-            "op_type": {
-                "error": "error message",
-                "status": "status_code",
-                "exception": "exception message"
+    async def _bulk(self, client: AsyncOpenSearch, events: Sequence[Event]) -> None:
+        """Bulk index documents into Opensearch. Uses the parallel_bulk function from the opensearchpy library.
+        The error information is stored in a document with the following structure:
+            json
+            {
+                "op_type": {
+                    "error": "error message",
+                    "status": "status_code",
+                    "exception": "exception message"
+                    }
                 }
             }
-        }
         """
+
         kwargs = {
             "max_chunk_bytes": self.config.max_chunk_bytes,
             "chunk_size": self.config.chunk_size,
-            "queue_size": self.config.queue_size,
-            "thread_count": self.config.thread_count,
             "raise_on_error": False,
             "raise_on_exception": False,
         }
+
         actions = (event.data for event in events)
-        for index, result in enumerate(helpers.parallel_bulk(client, actions, **kwargs)):  # type: ignore
-            success, item = result
-            if success:
-                events[index].state.next_state(success=True)
-                continue
-            op_type = item.get("_op_type", self.config.default_op_type)
-            error_info = item.get(op_type, {})
-            error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
+
+        index = 0
+        async for success, item in helpers.async_streaming_bulk(client, actions, **kwargs):
             event = events[index]
-            event.state.next_state(success=False)
+            index += 1
+
+            if success:
+                event.state.current_state = EventStateType.DELIVERED
+                continue
+
+            event.state.current_state = EventStateType.FAILED
+
+            op_infos = item.values()
+            error_info = op_infos[0] if len(op_infos) > 0 else {}
+
+            error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
             event.errors.append(error)
 
-    def health(self) -> bool:
+    async def health(self) -> bool:  # type: ignore  # TODO: fix mypy issue
         """Check the health of the component."""
         try:
-            resp = self._search_context.cluster.health(
+            resp = await self._search_context.cluster.health(
                 params={"timeout": self.config.health_timeout}
             )
         except (OpenSearchException, ConnectionError) as error:
             logger.error("Health check failed: %s", error)
-            self.metrics.number_of_errors += 1
+            self._metrics.number_of_errors += 1
             return False
         return super().health() and resp.get("status") in self.config.desired_cluster_status
+
+    async def shut_down(self):
+        if "_search_context" in self.__dict__:
+            await self._search_context.close()
+        await super().shut_down()
