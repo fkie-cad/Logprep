@@ -50,6 +50,7 @@ from confluent_kafka.admin import AdminClient
 from confluent_kafka.aio import AIOConsumer
 
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.ng.abc.event import EventMetadata
 from logprep.ng.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
@@ -265,17 +266,23 @@ class ConfluentKafkaInput(Input):
            - Use SSL/mTLS encryption for data in transit.
            - Configure SASL or mTLS authentication for your Kafka clients.
            - Regularly rotate your Kafka credentials and secrets.
-
         """
 
-    _last_valid_record: Message | None
+        max_workers: int = field(
+            validator=validators.instance_of(int),
+            default=4,
+        )
+        """
+        The maximum number of concurrent worker tasks for message processing.
+        Should generally not exceed the number of topic partitions.
+        Defaults to 4.
+        """
 
     __slots__ = ["_last_valid_record", "_consumer"]
 
     def __init__(self, name: str, configuration: "ConfluentKafkaInput.Config") -> None:
         super().__init__(name, configuration)
-        self._last_valid_record = None
-        self._consumer: AIOConsumer | None = None
+        self._last_valid_record: Message | None = None
 
     @property
     def config(self) -> Config:
@@ -308,6 +315,23 @@ class ConfluentKafkaInput(Input):
         )
         return DEFAULTS | self.config.kafka_config | injected_config
 
+    async def setup(self):
+        """Set the confluent kafka input connector."""
+
+        await super().setup()
+
+        try:
+            self._consumer = AIOConsumer(self._kafka_config, max_workers=self.config.max_workers)
+
+            await self._consumer.subscribe(
+                [self.config.topic],
+                on_assign=self._assign_callback,
+                on_revoke=self._revoke_callback,
+                on_lost=self._lost_callback,
+            )
+        except KafkaException as error:
+            raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
+
     @cached_property
     def _admin(self) -> AdminClient:
         """configures and returns the admin client
@@ -330,9 +354,7 @@ class ConfluentKafkaInput(Input):
         Parameters
         ----------
         max_workers : int, optional
-            The maximum number of concurrent worker tasks for message processing.
-            Should generally not exceed the number of topic partitions.
-            Defaults to 4.
+
 
         Returns
         -------
@@ -437,7 +459,7 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
 
-    async def _get_raw_event(self, timeout: float) -> Message | None:  # type: ignore  # TODO: fix mypy issue
+    async def _get_raw_event(self, timeout: float) -> Message | None:
         """Get next raw Message from Kafka.
 
         Parameters
@@ -476,7 +498,7 @@ class ConfluentKafkaInput(Input):
 
         return message
 
-    async def _get_event(self, timeout: float) -> tuple:
+    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
         """Parse the raw document from Kafka into a json.
 
         Parameters
@@ -502,7 +524,7 @@ class ConfluentKafkaInput(Input):
         message = await self._get_raw_event(timeout)
 
         if message is None:
-            return None, None, None
+            return None
 
         raw_event = typing.cast(bytes, message.value())
 
@@ -534,7 +556,7 @@ class ConfluentKafkaInput(Input):
     def _enable_auto_commit(self) -> bool:
         return self.config.kafka_config.get("enable.auto.commit") == "true"
 
-    async def batch_finished_callback(self) -> None:  # type: ignore  # TODO: fix mypy issue
+    async def batch_finished_callback(self) -> None:
         """Store offsets for last message referenced by `self._last_valid_records`.
         Should be called after delivering the current message to the output or error queue.
         """
@@ -545,8 +567,7 @@ class ConfluentKafkaInput(Input):
         if not self._last_valid_record:
             return
         try:
-            consumer = await self.get_consumer()
-            await consumer.store_offsets(message=self._last_valid_record)
+            await self._consumer.store_offsets(message=self._last_valid_record)
         except KafkaException as error:
             raise InputWarning(self, f"{error}, {self._last_valid_record}") from error
 
@@ -597,8 +618,7 @@ class ConfluentKafkaInput(Input):
     async def _get_memberid(self) -> str | None:
         member_id = None
         try:
-            consumer = await self.get_consumer()
-            member_id = consumer._consumer.memberid()  # pylint: disable=protected-access
+            member_id = self._consumer._consumer.memberid()  # pylint: disable=protected-access
         except RuntimeError as error:
             logger.error("Failed to retrieve member ID: %s", error)
         return member_id
@@ -625,23 +645,6 @@ class ConfluentKafkaInput(Input):
 
     async def acknowledge(self, events: list[LogEvent]):
         logger.debug("acknowledge called")
-
-    async def setup(self):
-        """Set the confluent kafka input connector."""
-
-        await super().setup()
-
-        try:
-            consumer = await self.get_consumer()
-
-            await consumer.subscribe(
-                [self.config.topic],
-                on_assign=self._assign_callback,
-                on_revoke=self._revoke_callback,
-                on_lost=self._lost_callback,
-            )
-        except KafkaException as error:
-            raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
 
     async def shut_down(self) -> None:
         """Shut down the confluent kafka input connector and cleanup resources."""

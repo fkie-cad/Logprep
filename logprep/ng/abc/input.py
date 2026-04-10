@@ -22,6 +22,7 @@ from attrs import define, field, validators
 
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.connector import Connector
+from logprep.ng.abc.event import EventMetadata
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
@@ -232,25 +233,8 @@ class Input(Connector):
         """Check and return if the event should be written into one singular field."""
         return bool(self.config.preprocessing.add_full_event_to_target_field)
 
-    async def _get_raw_event(
-        self, timeout: float
-    ) -> bytes | None:  # pylint: disable=unused-argument
-        """Implements the details how to get the raw event
-
-        Parameters
-        ----------
-        timeout : float
-            timeout
-
-        Returns
-        -------
-        raw_event : bytes
-            The retrieved raw event
-        """
-        return None
-
     @abstractmethod
-    async def _get_event(self, timeout: float) -> tuple:
+    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
         """Implements the details how to get the event
 
         Parameters
@@ -260,22 +244,22 @@ class Input(Connector):
 
         Returns
         -------
-        (event, raw_event, metadata)
+        (event, raw_event, metadata) | None
         """
 
     def _produce_failed_event(
         self,
         event: dict | None,
-        raw_event: bytes | None,
-        metadata: dict | None,
+        raw_event: bytes,
+        metadata: EventMetadata,
         error: Exception,
     ) -> LogEvent:
         """Helper method to register the failed event to event backlog."""
 
         error_log_event = LogEvent(
-            data=event if isinstance(event, dict) else {},
-            original=raw_event if raw_event is not None else b"",
-            metadata=metadata,  # type: ignore  # TODO: fix mypy issue
+            data=event if event is not None else {},
+            original=raw_event,
+            metadata=metadata,
         )
         error_log_event.errors.append(error)
         error_log_event.state.current_state = EventStateType.FAILED
@@ -296,17 +280,14 @@ class Input(Connector):
         input : LogEvent, None
             Input log data.
         """
-        # self.acknowledge()
-        event: dict | None = None
-        raw_event: bytes | None = None
-        metadata: dict | None = None
+        event_tuple = await self._get_event(timeout)
+
+        if event_tuple is None:
+            return None
+
+        event, raw_event, metadata = event_tuple
 
         try:
-            event, raw_event, metadata = await self._get_event(timeout)
-
-            if event is None:
-                return None
-
             if not isinstance(event, dict):
                 raise CriticalInputError(self, "not a dict", event)
 
@@ -346,11 +327,10 @@ class Input(Connector):
             except (FieldExistsWarning, TimeParserException) as error:
                 raise CriticalInputError(self, error.args[0], event) from error
         except CriticalInputError as error:
-            # TODO handle failed events
             self._produce_failed_event(
                 event=event,
                 raw_event=raw_event,
-                metadata=metadata,  # type: ignore
+                metadata=metadata if metadata is not None else None,
                 error=error,
             )
             return None
@@ -358,7 +338,7 @@ class Input(Connector):
         log_event = LogEvent(
             data=event,
             original=raw_event,
-            metadata=metadata,  # type: ignore  # TODO: fix mypy issue
+            metadata=metadata,
         )
 
         log_event.state.current_state = EventStateType.RECEIVED
@@ -424,8 +404,8 @@ class Input(Connector):
         log_arrival_time = get_dotted_field_value(event, log_arrival_time_target_field)
         if time_reference and isinstance(log_arrival_time, str) and isinstance(time_reference, str):
             delta_time_sec = (
-                TimeParser.from_string(log_arrival_time).astimezone(UTC)  # type: ignore  # TODO: fix mypy issue
-                - TimeParser.from_string(time_reference).astimezone(UTC)  # type: ignore  # TODO: fix mypy issue
+                TimeParser.from_string(log_arrival_time).astimezone(UTC)
+                - TimeParser.from_string(time_reference).astimezone(UTC)
             ).total_seconds()
             add_fields_to(event, fields={target_field: delta_time_sec})
 
