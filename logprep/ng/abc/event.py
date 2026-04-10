@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
     FieldValue,
+    Missing,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
@@ -20,6 +21,14 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class EventMetadata(ABC):
     """Abstract EventMetadata Class to define the Interface"""
+
+    @staticmethod
+    def from_dict(_: dict):
+        """
+        Constructs a metadata object from the given dict.
+        Currently implemented as a placeholder for future development.
+        """
+        return EventMetadata()
 
 
 class Event(ABC):
@@ -197,7 +206,7 @@ class Event(ABC):
         """
         return get_dotted_field_value(self.data, dotted_field)
 
-    def pop_dotted_field_value(self, dotted_field: str) -> FieldValue:
+    def pop_dotted_field_value(self, dotted_field: str) -> FieldValue | Missing:
         """
         Shortcut method that delegates to the global `pop_dotted_field_value` helper.
 

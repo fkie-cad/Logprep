@@ -10,10 +10,8 @@ from logprep.ng.event.log_event import LogEvent
 logger = logging.getLogger("Pipeline")
 
 
-def _process_event(event: LogEvent | None, processors: list[Processor]) -> LogEvent:
+def _process_event(event: LogEvent, processors: list[Processor]) -> LogEvent:
     """process all processors for one event"""
-    if event is None or not event.data:
-        raise ValueError("no event given")
     event.state.current_state = EventStateType.PROCESSING
     for processor in processors:
         if not event.data:
