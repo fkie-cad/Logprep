@@ -14,7 +14,7 @@ from attrs import asdict
 from logprep.ng.manager import PipelineManager
 from logprep.ng.util.async_helpers import TerminateTaskGroup, restart_task_on_iter
 from logprep.ng.util.configuration import Configuration
-from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG, MIN_CONFIG_REFRESH_INTERVAL
+from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 
 logger = logging.getLogger("Runner")
 
@@ -41,12 +41,12 @@ class Runner:
         """
 
         self.config = configuration
-        self._running_config_version: None | str = None
-        self._task_group = asyncio.TaskGroup()
         self._stop_event = asyncio.Event()
 
-    async def _refresh_configuration_gen(self) -> AsyncGenerator[Configuration, None]:
-        self._running_config_version = self.config.version
+    async def _refresh_configuration_gen(
+        self, initial_config_version: str | None = None
+    ) -> AsyncGenerator[Configuration, None]:
+        current_config_version = initial_config_version
         refresh_interval = self.config.config_refresh_interval
 
         if refresh_interval is None:
@@ -76,9 +76,9 @@ class Runner:
                 logger.exception("scheduled config reload failed")
                 raise
             else:
-                if self.config.version != self._running_config_version:
-                    logger.info(f"Detected new config version: {self.config.version}")
-                    self._running_config_version = self.config.version
+                if self.config.version != current_config_version:
+                    logger.info("Detected new config version: %s", self.config.version)
+                    current_config_version = self.config.version
                     yield self.config
 
             refresh_interval = self.config.config_refresh_interval
@@ -90,10 +90,9 @@ class Runner:
 
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
-        self._running_config_version = self.config.version
 
         try:
-            async with self._task_group as tg:
+            async with asyncio.TaskGroup() as tg:
                 tg.create_task(TerminateTaskGroup.raise_on_event(self._stop_event))
 
                 async def start_pipeline(config: Configuration) -> asyncio.Task:
@@ -109,7 +108,9 @@ class Runner:
 
                 try:
                     async for _ in restart_task_on_iter(
-                        source=self._refresh_configuration_gen(),
+                        source=self._refresh_configuration_gen(
+                            initial_config_version=self.config.version
+                        ),
                         task_factory=start_pipeline,
                         cancel_timeout_s=HARD_SHUTDOWN_TIMEOUT,
                         inital_task=await start_pipeline(self.config),
