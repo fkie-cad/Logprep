@@ -199,8 +199,9 @@ A HTML documentation can be then found in `doc/_build/html/index.html`.
 From release 15 on, Logprep containers are signed using the
 [cosign](https://github.com/sigstore/cosign) tool.
 To verify the container, you can copy the following public key into a file
-`logprep.pub`:
+`logprep.pub`.
 
+Up to and including version 19.0.0:
 ```
 -----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEgkQXDi/N4TDFE2Ao0pulOFfbGm5g
@@ -208,7 +209,15 @@ kVtARE+LJfSFI25BanOG9jaxxRGVt+Sa1KtQbMcy7Glxu0s7XgD9VFGjTA==
 -----END PUBLIC KEY-----
 ```
 
-And use it to verify the signature:
+After version 19.0.0:
+```
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEtthQd5Jw8p+j86HZXt5og4TZVDw8
+ug+CDyNxksyCvHcyUEdoU3AfwlRfB7WIHY62kmVfKk+HDqWELQZieE3W/w==
+-----END PUBLIC KEY-----
+```
+
+Use it to verify the signature:
 
 ```
 cosign verify --key logprep.pub ghcr.io/fkie-cad/logprep:py3.11-latest
