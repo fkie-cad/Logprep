@@ -49,23 +49,29 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          python = lib.head (
-            pyproject-nix.lib.util.filterPythonInterpreters {
-              inherit (workspace) requires-python;
-              inherit (pkgs) pythonInterpreters;
-            }
-          );
+          pythons = pyproject-nix.lib.util.filterPythonInterpreters {
+            inherit (workspace) requires-python;
+            inherit (pkgs) pythonInterpreters;
+          };
+          mkSet =
+            python:
+            (pkgs.callPackage pyproject-nix.build.packages {
+              inherit python;
+            }).overrideScope
+              (
+                lib.composeManyExtensions [
+                  pyproject-build-systems.overlays.wheel
+                  overlay
+                ]
+              );
 
         in
-        (pkgs.callPackage pyproject-nix.build.packages {
-          inherit python;
-        }).overrideScope
-          (
-            lib.composeManyExtensions [
-              pyproject-build-systems.overlays.wheel
-              overlay
-            ]
-          )
+        builtins.listToAttrs (
+          map (python: {
+            name = "python${lib.replaceStrings [ "." ] [ "" ] python.pythonVersion}";
+            value = mkSet python;
+          }) pythons
+        )
       );
     in
     {
@@ -73,29 +79,39 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          pythonSet = pythonSets.${system}.overrideScope editableOverlay;
-          virtualenv = pythonSet.mkVirtualEnv "logprep-dev-env" workspace.deps.all;
-        in
-        {
-          default = pkgs.mkShell {
-            packages = [
-              virtualenv
-              pkgs.uv
-              pkgs.kubernetes-helm
-              pkgs.basedpyright
-            ];
+          sets = pythonSets.${system};
 
-            env = {
-              UV_NO_SYNC = "1";
-              UV_PYTHON = pythonSet.python.interpreter;
-              UV_PYTHON_DOWNLOADS = "never";
+          mkShellFor =
+            pyVer: pythonSet:
+            let
+              pythonSetEditable = pythonSet.overrideScope editableOverlay;
+              virtualenv = pythonSetEditable.mkVirtualEnv "logprep-dev-${pyVer}" workspace.deps.all;
+            in
+            pkgs.mkShell {
+              packages = [
+                virtualenv
+                pkgs.uv
+                pkgs.kubernetes-helm
+                pkgs.basedpyright
+              ];
+
+              env = {
+                UV_NO_SYNC = "1";
+                UV_PYTHON = pythonSet.python.interpreter;
+                UV_PYTHON_DOWNLOADS = "never";
+              };
+
+              shellHook = ''
+                unset PYTHONPATH
+                export REPO_ROOT=$(git rev-parse --show-toplevel)
+              '';
             };
 
-            shellHook = ''
-              unset PYTHONPATH
-              export REPO_ROOT=$(git rev-parse --show-toplevel)
-            '';
-          };
+          shells = builtins.mapAttrs mkShellFor sets;
+        in
+        shells
+        // {
+          default = lib.head (lib.attrValues shells);
         }
       );
 
@@ -103,23 +119,33 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          sets = pythonSets.${system};
 
-          logprep = pythonSets.${system}.mkVirtualEnv "logprep-env" workspace.deps.default;
+          mkEnv = pyVer: pythonSet: pythonSet.mkVirtualEnv "logprep-${pyVer}" workspace.deps.default;
+
+          envs = builtins.mapAttrs mkEnv sets;
+
+          dockerImages = builtins.mapAttrs (
+            pyVer: env:
+            pkgs.dockerTools.buildLayeredImage {
+              name = "logprep";
+              tag = pyVer;
+
+              created = "now";
+              contents = [ env ];
+
+              config = {
+                Entrypoint = [ "logprep" ];
+              };
+            }
+          ) envs;
+
         in
         {
-          default = logprep;
+          default = lib.head (lib.attrValues envs);
 
-          docker = pkgs.dockerTools.buildLayeredImage {
-            name = "logprep";
-            tag = "latest";
-            created = "now";
-
-            contents = [ logprep ];
-
-            config = {
-              Cmd = [ "logprep" ];
-            };
-          };
+          envs = envs;
+          docker = dockerImages;
         }
       );
     };
