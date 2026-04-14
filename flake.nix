@@ -46,21 +46,6 @@
         root = "$REPO_ROOT";
       };
 
-      # Maybe this isnt needed and we should just read the version from pyproject if its needed
-      version =
-        if builtins.getEnv "VERSION" != "" then
-          builtins.getEnv "VERSION"
-        else
-          "0.0.0.dev+${self.dirtyRev or self.rev}";
-
-      overlayWithVersion = final: prev: {
-        logprep = prev.logprep.overrideAttrs (old: {
-          env = (old.env or { }) // {
-            SETUPTOOLS_SCM_PRETEND_VERSION = version;
-          };
-        });
-      };
-
       pythonSets = forAllSystems (
         system:
         let
@@ -78,7 +63,6 @@
                 lib.composeManyExtensions [
                   pyproject-build-systems.overlays.wheel
                   overlay
-                  overlayWithVersion
                 ]
               );
 
