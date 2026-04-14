@@ -46,18 +46,21 @@
         root = "$REPO_ROOT";
       };
 
-      overlayWithVersion =
-        final: prev:
-        let
-          version = if self ? rev then builtins.substring 0 7 self.rev else "0.0.0";
-        in
-        {
-          logprep = prev.logprep.overrideAttrs (old: {
-            env = (old.env or { }) // {
-              SETUPTOOLS_SCM_PRETEND_VERSION = version;
-            };
-          });
-        };
+      version =
+        if builtins.getEnv "VERSION" != "" then
+          builtins.getEnv "VERSION"
+        else
+          "0.0.0.dev+${self.dirtyRev or self.rev}";
+
+      branch = if builtins.getEnv "BRANCH" != "" then builtins.getEnv "BRANCH" else "unkown";
+
+      overlayWithVersion = final: prev: {
+        logprep = prev.logprep.overrideAttrs (old: {
+          env = (old.env or { }) // {
+            SETUPTOOLS_SCM_PRETEND_VERSION = version;
+          };
+        });
+      };
 
       pythonSets = forAllSystems (
         system:
@@ -83,7 +86,7 @@
         in
         builtins.listToAttrs (
           map (python: {
-            name = "python${lib.replaceStrings [ "." ] [ "" ] python.pythonVersion}";
+            name = python.pythonVersion;
             value = mkSet python;
           }) pythons
         )
@@ -122,7 +125,14 @@
               '';
             };
 
-          shells = builtins.mapAttrs mkShellFor sets;
+          shells =
+            let
+              mk = pyVer: pythonSet: {
+                name = "python${lib.replaceStrings [ "." ] [ "" ] pyVer}";
+                value = mkShellFor pyVer pythonSet;
+              };
+            in
+            builtins.listToAttrs (lib.mapAttrsToList mk sets);
         in
         shells
         // {
@@ -140,23 +150,35 @@
 
           envs = builtins.mapAttrs mkEnv sets;
 
-          dockerImages = builtins.mapAttrs (
-            pyVer: env:
-            pkgs.dockerTools.buildLayeredImage {
-              name = "logprep";
-              tag = pyVer;
+          dockerImages =
+            let
+              mk = pyVer: env: {
+                name = "python${lib.replaceStrings [ "." ] [ "" ] pyVer}";
+                value = pkgs.dockerTools.buildLayeredImage {
+                  name = "logprep";
+                  tag = "py${pyVer}-${branch}";
 
-              created = "now";
-              contents = [ env ];
+                  created = "now";
+                  contents = [ env ];
 
-              config = {
-                Entrypoint = [ "logprep" ];
+                  config = {
+                    Entrypoint = [ "logprep" ];
+                  };
+                };
               };
-            }
-          ) envs;
+            in
+            builtins.listToAttrs (lib.mapAttrsToList mk envs);
 
+          packageEnvs =
+            let
+              mk = pyVer: env: {
+                name = "python${lib.replaceStrings [ "." ] [ "" ] pyVer}";
+                value = env;
+              };
+            in
+            builtins.listToAttrs (lib.mapAttrsToList mk envs);
         in
-        envs
+        packageEnvs
         // {
           default = lib.head (lib.attrValues envs);
 
