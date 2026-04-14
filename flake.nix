@@ -46,13 +46,12 @@
         root = "$REPO_ROOT";
       };
 
+      # Maybe this isnt needed and we should just read the version from pyproject if its needed
       version =
         if builtins.getEnv "VERSION" != "" then
           builtins.getEnv "VERSION"
         else
           "0.0.0.dev+${self.dirtyRev or self.rev}";
-
-      branch = if builtins.getEnv "BRANCH" != "" then builtins.getEnv "BRANCH" else "unkown";
 
       overlayWithVersion = final: prev: {
         logprep = prev.logprep.overrideAttrs (old: {
@@ -156,7 +155,7 @@
                 name = "python${lib.replaceStrings [ "." ] [ "" ] pyVer}";
                 value = pkgs.dockerTools.buildLayeredImage {
                   name = "logprep";
-                  tag = "py${pyVer}-${branch}";
+                  tag = "py${pyVer}";
 
                   created = "now";
                   contents = [ env ];

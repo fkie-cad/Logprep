@@ -1,24 +1,19 @@
 [build-system]
 requires = [
-  "setuptools>=82.0.0",
-  "setuptools-scm>=9.2.2",
-  "wheel",
+"uv_build>=0.11.6,<0.12"
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "uv_build"
 
-[tool.setuptools]
-package-dir = { "logprep" = "logprep" }
-packages = ["logprep"]
-
-[tool.setuptools_scm]
-fallback_version = "0.0.0"
+[tool.uv.build-backend]
+module-name = "logprep"
+module-root = ""
 
 [project]
 name = "logprep"
 description = "Logprep allows to collect, process and forward log messages from various data sources."
 requires-python = ">=3.11"
 readme = "README.md"
-dynamic = ["version"]
+version = "19.0.1"
 license = { file = "LICENSE" }
 classifiers = [
   "Development Status :: 3 - Alpha",
