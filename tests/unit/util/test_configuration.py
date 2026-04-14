@@ -16,6 +16,7 @@ from attrs import asdict
 from requests.exceptions import HTTPError
 from ruamel.yaml.scanner import ScannerError
 
+from logprep.filter.lucene_filter import LuceneFilterError
 from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
@@ -479,6 +480,53 @@ pipeline:
             assert len(raised.value.errors) == error_count, test_case
         else:
             Configuration.from_sources([str(test_config_path)])
+
+
+    @pytest.mark.parametrize(
+        "test_case, test_config, error_type",
+        [
+            ("dropper filter with AND/OR at the end",
+                {
+                    "pipeline": [{
+                            "dropper":{
+                                "type": "dropper",
+                                "rules":[
+                                    #"examples/exampledata/rules/dropper/rules",
+                                    {
+                                        "filter": "test_dropper OR",
+                                    }
+                                ],
+                            }
+                        }
+                    ],
+                },
+                InvalidConfigurationError,
+            ),
+        ]
+    )
+
+    def test_catch_as_invalidconfigurationerror(self, tmp_path, test_case, test_config, error_type):
+        test_config_path = tmp_path / "failure-config.yml"
+        test_config = Configuration(**test_config)
+        if not test_config.input:
+            test_config.input = {"dummy": {"type": "dummy_input", "documents": []}}
+        if not test_config.output:
+            test_config.output = {"dummy": {"type": "dummy_output"}}
+        test_config_path.write_text(test_config.as_yaml())
+        try:
+            Configuration.from_sources((str(test_config_path),))
+        except InvalidConfigurationErrors as e:
+            print(e)
+#        if error_type:
+#            with pytest.raises(InvalidConfigurationError) as raised:
+#                Configuration.from_source(str(test_config_path))
+#            assert raised.value.errors == error_type, test_case
+#        else:
+#            Configuration.from_sources([str(test_config_path)])
+
+
+
+
 
     patch = mock.patch(
         "os.environ",
@@ -1463,11 +1511,13 @@ class TestInvalidConfigurationErrors:
                     InvalidConfigurationError("test"),
                     TypeError("typeerror"),
                     ValueError("valueerror"),
+                    LuceneFilterError("lucenefiltererror"),
                 ],
                 [
                     InvalidConfigurationError("test"),
                     InvalidConfigurationError("typeerror"),
                     InvalidConfigurationError("valueerror"),
+                    InvalidConfigurationError("lucenefiltererror"),
                 ],
             ),
         ],

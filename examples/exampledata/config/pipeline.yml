@@ -34,7 +34,7 @@ pipeline:
       type: dropper
       rules:
         - examples/exampledata/rules/dropper/rules
-        - filter: "test_dropper"
+        - filter: "test_dropper OR"
           dropper:
             drop:
               - drop_me
