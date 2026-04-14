@@ -156,10 +156,10 @@
           ) envs;
 
         in
-        {
+        envs
+        // {
           default = lib.head (lib.attrValues envs);
 
-          envs = envs;
           docker = dockerImages;
         }
       );
