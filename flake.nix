@@ -25,6 +25,7 @@
 
   outputs =
     {
+      self,
       nixpkgs,
       pyproject-nix,
       uv2nix,
@@ -45,6 +46,19 @@
         root = "$REPO_ROOT";
       };
 
+      overlayWithVersion =
+        final: prev:
+        let
+          version = if self ? rev then builtins.substring 0 7 self.rev else "0.0.0";
+        in
+        {
+          logprep = prev.logprep.overrideAttrs (old: {
+            env = (old.env or { }) // {
+              SETUPTOOLS_SCM_PRETEND_VERSION = version;
+            };
+          });
+        };
+
       pythonSets = forAllSystems (
         system:
         let
@@ -62,6 +76,7 @@
                 lib.composeManyExtensions [
                   pyproject-build-systems.overlays.wheel
                   overlay
+                  overlayWithVersion
                 ]
               );
 
