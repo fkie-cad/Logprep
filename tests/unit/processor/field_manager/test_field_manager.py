@@ -575,6 +575,81 @@ test_cases = [  # testcase, rule, event, expected
         {"host": "example.com"},
         {"host": {"name": "example.com"}},
     ),
+    (
+        "move trees",
+        {
+            "filter": "kubernetes.labels",
+            "field_manager": {
+                "mapping": {
+                    "kubernetes.labels": "orchestrator.resources.labels",
+                },
+                "overwrite_target": False,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "time": "2025-12-11T13:08:38.152495266Z",
+            "logtag": "F",
+            "message": "2025-12-11T13:08:38.152Z [INFO]  storage.raft: snapshot complete up to: index=1234567890",
+            "tags": "intdev,",
+            "kubernetes": {
+                "labels": {
+                    "app.kubernetes.io/name": "vault",
+                    "apps.kubernetes.io/pod-index": "2",
+                    "controller-revision-hash": "vault-123456789",
+                    "statefulset.kubernetes.io/pod-name": "vault-2",
+                    "vault-active": "false",
+                    "vault-initialized": "true",
+                    "vault-perf-standby": "true",
+                    "vault-sealed": "false",
+                    "vault-version": "1.17.5-ent",
+                    "vault_cr": "vault",
+                },
+                "annotations": {
+                    "common/annotation": "true",
+                    "prometheus.io/path": "/metrics",
+                    "prometheus.io/port": "9102",
+                    "prometheus.io/scrape": "true",
+                    "type/instance": "vault",
+                    "vault.banzaicloud.io/tls-expiration-date": "2026-08-29T11:39:20Z",
+                    "vault.banzaicloud.io/vault-config": "aaaaaaaaaabbbbbbbbbbcccccccccc9620589d2a8603aa9e599d45677b67389a",
+                },
+            },
+        },
+        {
+            "time": "2025-12-11T13:08:38.152495266Z",
+            "logtag": "F",
+            "message": "2025-12-11T13:08:38.152Z [INFO]  storage.raft: snapshot complete up to: index=1234567890",
+            "tags": "intdev,",
+            "kubernetes": {
+                "annotations": {
+                    "common/annotation": "true",
+                    "prometheus.io/path": "/metrics",
+                    "prometheus.io/port": "9102",
+                    "prometheus.io/scrape": "true",
+                    "type/instance": "vault",
+                    "vault.banzaicloud.io/tls-expiration-date": "2026-08-29T11:39:20Z",
+                    "vault.banzaicloud.io/vault-config": "aaaaaaaaaabbbbbbbbbbcccccccccc9620589d2a8603aa9e599d45677b67389a",
+                }
+            },
+            "orchestrator": {
+                "resources": {
+                    "labels": {
+                        "app.kubernetes.io/name": "vault",
+                        "apps.kubernetes.io/pod-index": "2",
+                        "controller-revision-hash": "vault-123456789",
+                        "statefulset.kubernetes.io/pod-name": "vault-2",
+                        "vault-active": "false",
+                        "vault-initialized": "true",
+                        "vault-perf-standby": "true",
+                        "vault-sealed": "false",
+                        "vault-version": "1.17.5-ent",
+                        "vault_cr": "vault",
+                    }
+                }
+            },
+        },
+    ),
 ]
 
 failure_test_cases = [
