@@ -482,50 +482,44 @@ pipeline:
             Configuration.from_sources([str(test_config_path)])
 
 
+    invalid_config_test_cases = [
+        pytest.param(
+        """
+        version: test_version
+        process_count: 2
+        timeout: 0.1
+        logger:
+            level: DEBUG
+        input:
+            dummy:
+                type: dummy_input
+                documents: []
+        output:
+            dummy:
+                type: dummy_output
+        pipeline:
+          - dropper:
+              type: dropper
+              rules:
+                - examples/exampledata/rules/dropper/rules
+                - filter: "test_dropper OR"
+                  dropper:
+                    drop:
+                      - drop_me
+                  description: "..."
+        """,
+        id="lucene filter definition ends unexpectedly"
+        ),
+    ]
     @pytest.mark.parametrize(
-        "test_case, test_config, error_type",
-        [
-            ("dropper filter with AND/OR at the end",
-                {
-                    "pipeline": [{
-                            "dropper":{
-                                "type": "dropper",
-                                "rules":[
-                                    #"examples/exampledata/rules/dropper/rules",
-                                    {
-                                        "filter": "test_dropper OR",
-                                    }
-                                ],
-                            }
-                        }
-                    ],
-                },
-                InvalidConfigurationError,
-            ),
-        ]
-    )
-
-    def test_catch_as_invalidconfigurationerror(self, tmp_path, test_case, test_config, error_type):
-        test_config_path = tmp_path / "failure-config.yml"
-        test_config = Configuration(**test_config)
-        if not test_config.input:
-            test_config.input = {"dummy": {"type": "dummy_input", "documents": []}}
-        if not test_config.output:
-            test_config.output = {"dummy": {"type": "dummy_output"}}
-        test_config_path.write_text(test_config.as_yaml())
-        try:
+            "test_config",
+            invalid_config_test_cases
+        )
+    def test_invalid_config_error_handling(self, tmp_path, test_config):
+        test_config_path = tmp_path / "failure-unexpected_end.yml"
+        test_config_path.write_text(test_config)
+        with pytest.raises(InvalidConfigurationError, match="unexpected end of expression"):
             Configuration.from_sources((str(test_config_path),))
-        except InvalidConfigurationErrors as e:
-            print(e)
-#        if error_type:
-#            with pytest.raises(InvalidConfigurationError) as raised:
-#                Configuration.from_source(str(test_config_path))
-#            assert raised.value.errors == error_type, test_case
-#        else:
-#            Configuration.from_sources([str(test_config_path)])
-
-
-
 
 
     patch = mock.patch(
