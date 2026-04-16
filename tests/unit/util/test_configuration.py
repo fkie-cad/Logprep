@@ -481,10 +481,9 @@ pipeline:
         else:
             Configuration.from_sources([str(test_config_path)])
 
-
     invalid_config_test_cases = [
         pytest.param(
-        """
+            """
         version: test_version
         process_count: 2
         timeout: 0.1
@@ -508,19 +507,16 @@ pipeline:
                       - drop_me
                   description: "..."
         """,
-        id="lucene filter definition ends unexpectedly"
+            id="lucene filter definition ends unexpectedly",
         ),
     ]
-    @pytest.mark.parametrize(
-            "test_config",
-            invalid_config_test_cases
-        )
+
+    @pytest.mark.parametrize("test_config", invalid_config_test_cases)
     def test_from_sources_error_handling(self, tmp_path, test_config):
         test_config_path = tmp_path / "failure-from_sources.yml"
         test_config_path.write_text(test_config)
         with pytest.raises(InvalidConfigurationError, match="unexpected end of expression"):
             Configuration.from_sources((str(test_config_path),))
-
 
     patch = mock.patch(
         "os.environ",
