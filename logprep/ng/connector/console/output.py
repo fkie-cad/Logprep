@@ -28,18 +28,14 @@ class ConsoleOutput(Output):
     @Output._handle_errors
     def store(self, event: Event) -> None:
         """Store a document to the console."""
-        event.state.next_state()
         pprint(event.data)
         self.metrics.number_of_processed_events += 1
-        event.state.next_state(success=True)
 
     @Output._handle_errors
     def store_custom(self, event: Event, target: str) -> None:
         """Store a custom document to the console."""
-        event.state.next_state()
         pprint(event.data, stream=getattr(sys, target))
         self.metrics.number_of_processed_events += 1
-        event.state.next_state(success=True)
 
     def flush(self):
         """Flush the console output.

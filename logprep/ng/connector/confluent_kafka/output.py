@@ -31,14 +31,13 @@ from socket import getfqdn
 from types import MappingProxyType
 
 from attrs import define, field, validators
-from confluent_kafka import KafkaException, Message, Producer  # type: ignore
+from confluent_kafka import KafkaException  # type: ignore
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.aio import AIOProducer
 
 from logprep.metrics.metrics import GaugeMetric
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import FatalOutputError, Output
-from logprep.ng.event.event_state import EventStateType
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -332,7 +331,6 @@ class ConfluentKafkaOutput(Output):
         target : str
             Topic to store event data in.
         """
-        event.state.current_state = EventStateType.STORING_IN_OUTPUT
 
         document = event.data
         self.metrics.number_of_processed_events += 1
@@ -345,19 +343,16 @@ class ConfluentKafkaOutput(Output):
             )
             msg = await delivery_future
         except KafkaException as err:
-            event.state.current_state = EventStateType.FAILED
             event.errors.append(err)
             logger.error("Kafka exception during produce: %s", err)
             self.metrics.number_of_errors += 1
             return
         except Exception as err:
-            event.state.current_state = EventStateType.FAILED
             event.errors.append(err)
             logger.error("Message delivery failed: %s", err)
             self.metrics.number_of_errors += 1
             return
 
-        event.state.current_state = EventStateType.DELIVERED
         logger.debug(
             "Message delivered to '%s' partition %s, offset %s",
             msg.topic(),

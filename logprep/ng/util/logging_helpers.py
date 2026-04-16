@@ -36,7 +36,7 @@ class LogprepFormatter(NonNgLogprepFormatter):
         # patch taskName for older python version (at least 3.11)
         try:
             record.taskName = asyncio.current_task().get_name()
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:  # pylint: disable=W0718
             record.taskName = threading.current_thread().name
         return super().format(record)
 

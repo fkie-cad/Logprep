@@ -30,6 +30,7 @@ Example
         ca_cert: /path/to/cert.crt
 """
 
+import contextlib
 import logging
 import ssl
 import typing
@@ -49,7 +50,6 @@ from opensearchpy.serializer import JSONSerializer
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import Output
-from logprep.ng.event.event_state import EventStateType
 
 logger = logging.getLogger("OpenSearchOutput")
 
@@ -292,8 +292,6 @@ class OpensearchOutput(Output):
             document["_index"] = document.get("_index", target)
             document["_op_type"] = document.get("_op_type", self.config.default_op_type)
 
-            event.state.current_state = EventStateType.STORING_IN_OUTPUT
-
         self._metrics.number_of_processed_events += len(events)
         logger.debug("Flushing %d documents to Opensearch", len(events))
         await self._bulk(self._search_context, events)
@@ -317,31 +315,35 @@ class OpensearchOutput(Output):
             }
         """
 
-        kwargs = {
-            "max_chunk_bytes": self.config.max_chunk_bytes,
-            "chunk_size": self.config.chunk_size,
-            "raise_on_error": False,
-            "raise_on_exception": False,
-        }
-
         actions = (event.data for event in events)
 
         index = 0
-        async for success, item in helpers.async_streaming_bulk(client, actions, **kwargs):
-            event = events[index]
-            index += 1
+        async with contextlib.aclosing(
+            helpers.async_streaming_bulk(
+                client,
+                actions,
+                max_chunk_bytes=self.config.max_chunk_bytes,
+                chunk_size=self.config.chunk_size,
+                raise_on_error=False,
+                raise_on_exception=False,
+            )
+        ) as send_results:
+            async for success, item in send_results:
+                event = events[index]
+                index += 1
 
-            if success:
-                event.state.current_state = EventStateType.DELIVERED
-                continue
+                if success:
+                    continue
 
-            event.state.current_state = EventStateType.FAILED
+                logger.debug("event failed to send: %s", item)
 
-            op_infos = item.values()
-            error_info = op_infos[0] if len(op_infos) > 0 else {}
+                op_infos = item.values()
+                error_info = op_infos[0] if len(op_infos) > 0 else {}
 
-            error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
-            event.errors.append(error)
+                error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
+                event.errors.append(error)
+
+    logger.debug("done sending")
 
     async def health(self) -> bool:  # type: ignore  # TODO: fix mypy issue
         """Check the health of the component."""

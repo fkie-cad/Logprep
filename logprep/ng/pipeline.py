@@ -4,25 +4,17 @@ import asyncio
 import logging
 
 from logprep.ng.abc.processor import Processor
-from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 
 logger = logging.getLogger("Pipeline")
 
 
-def _process_event(event: LogEvent, processors: list[Processor]) -> LogEvent:
+async def _process_event(event: LogEvent, processors: list[Processor]) -> LogEvent:
     """process all processors for one event"""
-    event.state.current_state = EventStateType.PROCESSING
     for processor in processors:
         if not event.data:
             break
-        processor.process(event)
-        event.errors.append(ValueError("test"))
-    if not event.errors:
-        event.state.current_state = EventStateType.PROCESSED
-    else:
-        event.state.current_state = EventStateType.FAILED
-        logger.error("event failed: %s with errors: %s", event, event.errors)
+        await processor.process(event)
     return event
 
 
@@ -35,7 +27,7 @@ class Pipeline:
     ) -> None:
         self.processors = processors
 
-    def process(self, event: LogEvent) -> LogEvent:
+    async def process(self, event: LogEvent) -> LogEvent:
         """Process the given event through the series of configured processors
 
         Parameters
@@ -48,7 +40,7 @@ class Pipeline:
         LogEvent
             The event which was presented as an input and modified in-place.
         """
-        return _process_event(event, processors=self.processors)
+        return await _process_event(event, processors=self.processors)
 
     async def shut_down(self) -> None:
         """Shutdown the pipeline gracefully."""
