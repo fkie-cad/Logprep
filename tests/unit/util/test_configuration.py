@@ -515,8 +515,8 @@ pipeline:
             "test_config",
             invalid_config_test_cases
         )
-    def test_invalid_config_error_handling(self, tmp_path, test_config):
-        test_config_path = tmp_path / "failure-unexpected_end.yml"
+    def test_from_sources_error_handling(self, tmp_path, test_config):
+        test_config_path = tmp_path / "failure-from_sources.yml"
         test_config_path.write_text(test_config)
         with pytest.raises(InvalidConfigurationError, match="unexpected end of expression"):
             Configuration.from_sources((str(test_config_path),))
