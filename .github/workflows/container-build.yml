@@ -71,38 +71,36 @@ jobs:
               file.write(f"tags={', '.join(full_image)}")
           EOF
       - run: |
-          echo "${GITHUB_HEAD_REF}"
-
           export PY_VERSION=${{ matrix.python-version }}
-          uv version "$(uv version --short).dev0+${GITHUB_REF##*/}.$(git rev-parse --short HEAD)"
+          uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
           nix build .#docker.python${PY_VERSION//.} -o image
           docker load < image
 
           docker images
-      # - name: Build image and push to registry
-      #   uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # https://github.com/docker/build-push-action/releases/tag/v6.19.2
-      #   id: build-and-push
-      #   with:
-      #     context: .
-      #     push: true
-      #     build-args: |
-      #       PYTHON_VERSION=${{ matrix.python-version }}
-      #       LOGPREP_VERSION=${{ env.LOGPREP_VERSION }}
-      #     tags: ${{ steps.image-tag.outputs.tags }}
-      #     platforms: "linux/arm64,linux/amd64"
-      #     cache-from: type=gha
-      #     cache-to: type=gha,mode=max
-      - name: Extract image ID from sha256
-        id: pushed-imageid
-        run: |
-          python - <<EOF
-          import os
-          imageid = "${{ steps.build-and-push.outputs.ImageID }}"
-          digest = "${{ steps.build-and-push.outputs.Digest }}"
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
-              file.write(f"digest={digest.split(':')[1]}")
-              file.write(f"imageid={imageid.split(':')[1]}")
-          EOF
+        # - name: Build image and push to registry
+        #   uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # https://github.com/docker/build-push-action/releases/tag/v6.19.2
+        #   id: build-and-push
+        #   with:
+        #     context: .
+        #     push: true
+        #     build-args: |
+        #       PYTHON_VERSION=${{ matrix.python-version }}
+        #       LOGPREP_VERSION=${{ env.LOGPREP_VERSION }}
+        #     tags: ${{ steps.image-tag.outputs.tags }}
+        #     platforms: "linux/arm64,linux/amd64"
+        #     cache-from: type=gha
+        #     cache-to: type=gha,mode=max
+        # - name: Extract image ID from sha256
+        #   id: pushed-imageid
+        #   run: |
+        #     python - <<EOF
+        #     import os
+        #     imageid = "${{ steps.build-and-push.outputs.ImageID }}"
+        #     digest = "${{ steps.build-and-push.outputs.Digest }}"
+        #     with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
+        #         file.write(f"digest={digest.split(':')[1]}")
+        #         file.write(f"imageid={imageid.split(':')[1]}")
+        #     EOF
     # - name: Install Cosign
     #   uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # https://github.com/sigstore/cosign-installer/releases/tag/v3.10.1
     #   with:
