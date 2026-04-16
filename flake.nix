@@ -25,7 +25,6 @@
 
   outputs =
     {
-      self,
       nixpkgs,
       pyproject-nix,
       uv2nix,
