@@ -2,8 +2,9 @@
 
 """abstract module for event"""
 
-from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from abc import ABC
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
 
 from logprep.ng.event.event_state import EventState, EventStateType
@@ -223,6 +224,12 @@ class Event(ABC):
         return pop_dotted_field_value(self.data, dotted_field)
 
 
+@dataclass
+class OutputSpec:
+    output_name: str
+    output_target: str
+
+
 class ExtraDataEvent(Event):
     """
     Abstract base class for events that can contain extra data.
@@ -233,10 +240,14 @@ class ExtraDataEvent(Event):
 
     __slots__ = ("outputs",)
 
-    outputs: tuple[dict[str, str]]
+    outputs: Sequence[OutputSpec]
 
     def __init__(
-        self, data: dict[str, str], *, outputs: tuple[dict], state: EventStateType | None = None
+        self,
+        data: dict[str, str],
+        *,
+        outputs: Sequence[OutputSpec],
+        state: EventStateType | None = None,
     ) -> None:
         """
         Parameters
@@ -245,104 +256,9 @@ class ExtraDataEvent(Event):
             The main data payload for the SRE event.
         state : EventStateType
             The state of the SRE event.
-        outputs : Iterable[str]
+        outputs : Sequence[OutputSpec]
             The collection of output connector names associated with the SRE event
         """
         self.outputs = outputs
         state = state if state is not None else EventStateType.PROCESSED
         super().__init__(data=data, state=state)
-
-
-class EventBacklog(ABC):
-    """
-    Abstract base class for event backlogs.
-
-    Defines the interface for managing the registration, unregistration, and retrieval of events
-    based on their processing state. Subclasses must implement the core methods. The `unregister`
-    method is automatically wrapped to prevent misuse with disallowed final states.
-    """
-
-    def __init_subclass__(cls, **kwargs: dict) -> None:
-        """
-        Automatically wraps the subclass's `unregister` method to enforce a state check.
-
-        Wrapping only happens if the subclass explicitly overrides `unregister`.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Additional keyword arguments passed to the superclass.
-        """
-        super().__init_subclass__(**kwargs)
-
-        if "unregister" in cls.__dict__:
-            original = cls.__dict__["unregister"]
-
-            def guarded_unregister(self, state_type: EventStateType) -> Iterable[Event]:
-                """
-                Wrapper that enforces allowed final states for `unregister`.
-
-                Raises
-                ------
-                ValueError
-                    If an invalid state is passed.
-                """
-
-                if state_type not in (EventStateType.FAILED, EventStateType.ACKED):
-                    raise ValueError(
-                        f"Invalid state_type: {state_type}, state must be in "
-                        f"{(EventStateType.FAILED, EventStateType.ACKED)}"
-                    )
-
-                return original(self, state_type)
-
-            setattr(cls, "unregister", guarded_unregister)
-
-    @abstractmethod
-    def register(self, events: Iterable[Event]) -> None:
-        """
-        Register one or more events to the backlog.
-
-        Parameters
-        ----------
-        events : Iterable[Event]
-            An iterable of event instances to be added to the backlog.
-        """
-
-    @abstractmethod
-    def unregister(self, state_type: EventStateType) -> Iterable[Event]:
-        """
-        Unregister events from the backlog with the given final state.
-
-        Parameters
-        ----------
-        state_type : EventStateType
-            Final state indicating why the events should be removed.
-            Only `FAILED` and `ACKED` are permitted.
-
-        Returns
-        -------
-        Iterable[Event]
-            Events that were unregistered from the backlog.
-
-        Raises
-        ------
-        ValueError
-            If an invalid state is passed (automatically enforced).
-        """
-
-    @abstractmethod
-    def get(self, state_type: EventStateType) -> Iterable[Event]:
-        """
-        Retrieve all events currently in the backlog that match a specific processing state.
-
-        Parameters
-        ----------
-        state_type : EventStateType
-            The processing state used to filter events.
-
-        Returns
-        -------
-        Iterable[Event]
-            All events currently in the backlog with the specified state.
-        """
