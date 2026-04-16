@@ -103,7 +103,7 @@ class Processor(Component):
             "name": self.name,
         }
 
-    def process(self, event: LogEvent) -> LogEvent:
+    async def process(self, event: LogEvent) -> LogEvent:
         """Process a log event.
 
         Parameters
@@ -118,6 +118,7 @@ class Processor(Component):
             extra data
 
         """
+        # TODO make processors async
         self._event = event
         logger.debug("%s processing event %s", self.describe(), event)
         if self._bypass_rule_tree:

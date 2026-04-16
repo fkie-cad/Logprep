@@ -14,7 +14,6 @@
             "env": {
                 "PROMETHEUS_MULTIPROC_DIR": "/tmp/logprep"
             },
-            "justMyCode": false
         },
         {
             "name": "ng example pipeline",
@@ -27,7 +26,9 @@
                 "examples/exampledata/config/ng_pipeline.yml"
             ],
             "env": {
-                "PROMETHEUS_MULTIPROC_DIR": "tmp/logprep"
+                "PROMETHEUS_MULTIPROC_DIR": "/tmp/logprep",
+                // async debug can lead to segfaults with opensearch and maybe kafka as well
+                "PYTHONASYNCIODEBUG": "1",
             },
             "justMyCode": false
         }

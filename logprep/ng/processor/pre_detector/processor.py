@@ -29,18 +29,21 @@ Processor Configuration
 """
 
 import typing
+from collections.abc import Sequence
 from functools import cached_property
 from typing import cast
 from uuid import uuid4
 
 from attrs import define, field, validators
 
+from logprep.ng.abc.event import OutputSpec
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.sre_event import SreEvent
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.base.rule import Rule
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
+from logprep.util.converters import convert_ordered_tuples_with_factory
 from logprep.util.helper import (
     FieldValue,
     add_fields_to,
@@ -57,22 +60,8 @@ class PreDetector(Processor):
     class Config(Processor.Config):
         """PreDetector config"""
 
-        outputs: tuple[dict[str, str]] = field(
-            validator=(
-                validators.deep_iterable(
-                    member_validator=(
-                        validators.instance_of(dict),
-                        validators.deep_mapping(
-                            key_validator=validators.instance_of(str),
-                            value_validator=validators.instance_of(str),
-                            mapping_validator=validators.max_len(1),
-                        ),
-                    ),
-                    iterable_validator=validators.instance_of(tuple),
-                ),
-                validators.min_len(1),
-            ),
-            converter=tuple,
+        outputs: Sequence[OutputSpec] = field(
+            converter=lambda d: convert_ordered_tuples_with_factory(d, OutputSpec),
         )
         """list of output mappings in form of :code:`output_name:topic`.
         Only one mapping is allowed per list element"""
@@ -98,7 +87,7 @@ class PreDetector(Processor):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast(PreDetector.Config, self._config)
 
     @cached_property

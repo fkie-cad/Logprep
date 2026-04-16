@@ -27,9 +27,12 @@ Processor Configuration
 .. automodule:: logprep.processor.selective_extractor.rule
 """
 
+import typing
+
 from logprep.ng.event.filtered_event import FilteredEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
-from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
+from logprep.ng.processor.selective_extractor.rule import SelectiveExtractorRule
+from logprep.processor.base.rule import Rule
 from logprep.util.helper import add_fields_to, get_source_fields_dict
 
 
@@ -38,7 +41,7 @@ class SelectiveExtractor(FieldManager):
 
     rule_class = SelectiveExtractorRule
 
-    def _apply_rules(self, event: dict, rule: SelectiveExtractorRule) -> None:
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
         """
         Generates a filtered event based on the incoming event and the configured
         extraction_fields list in processor configuration or from rule.
@@ -53,6 +56,7 @@ class SelectiveExtractor(FieldManager):
             The rule to apply
 
         """
+        rule = typing.cast(SelectiveExtractorRule, rule)
         flattened_fields = get_source_fields_dict(event, rule)
         if self._handle_missing_fields(event, rule, rule.source_fields, flattened_fields.values()):
             return

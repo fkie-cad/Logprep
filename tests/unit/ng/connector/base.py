@@ -25,7 +25,6 @@ from logprep.ng.abc.input import CriticalInputError, Input, InputIterator
 from logprep.ng.abc.output import Output
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase

@@ -6,18 +6,20 @@ import asyncio
 import logging
 import typing
 from asyncio import CancelledError
+from collections import defaultdict
+from collections.abc import Sequence
 from typing import cast
 
 from logprep.factory import Factory
+from logprep.ng.abc.component import NgComponent
+from logprep.ng.abc.event import ExtraDataEvent
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
+from logprep.ng.event.error_event import ErrorEvent
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.ng.pipeline import Pipeline
-from logprep.ng.sender import Sender
-from logprep.ng.util.async_helpers import report_event_state
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.worker.types import SizeLimitedQueue
 from logprep.ng.util.worker.worker import Worker, WorkerOrchestrator
@@ -25,9 +27,17 @@ from logprep.ng.util.worker.worker import Worker, WorkerOrchestrator
 logger = logging.getLogger("PipelineManager")
 
 
-BATCH_SIZE = 2_500
+BATCH_SIZE = 1000
 BATCH_INTERVAL_S = 5
 MAX_QUEUE_SIZE = BATCH_SIZE
+
+
+class LogprepExceptionGroup(ExceptionGroup):
+    """Custom ExceptionGroup for Logprep exceptions to override the default
+    string representation."""
+
+    def __str__(self) -> str:
+        return f"{self.message}: {self.exceptions}"
 
 
 class PipelineManager:
@@ -39,41 +49,45 @@ class PipelineManager:
         self.configuration = configuration
         self._shutdown_timeout_s = shutdown_timeout_s
 
-    async def setup(self):
+    async def setup(self) -> None:
         """Setup the pipeline manager."""
 
-        self._event_backlog = SetEventBacklog()
+        self._components: list[NgComponent] = []
 
         self._input_connector = cast(Input, Factory.create(self.configuration.input))
-        await self._input_connector.setup()
+        self._components.append(self._input_connector)
 
         processors = [
-            typing.cast(Processor, Factory.create(processor_config))
+            cast(Processor, Factory.create(processor_config))
             for processor_config in self.configuration.pipeline
         ]
-        for processor in processors:
-            await processor.setup()
+        self._components.extend(processors)
 
         self._pipeline = Pipeline(processors)
 
-        output_connectors = [
-            typing.cast(Output, Factory.create({output_name: output}))
+        self._outputs = {
+            output_name: cast(Output, Factory.create({output_name: output}))
             for output_name, output in self.configuration.output.items()
-        ]
+        }
+        self._components.extend(self._outputs.values())
 
-        error_output = (
-            typing.cast(Output, Factory.create(self.configuration.error_output))
+        # there must always be one!
+        self._default_output = [output for output in self._outputs.values() if output.default][0]
+
+        self._error_output = (
+            cast(Output, Factory.create(self.configuration.error_output))
             if self.configuration.error_output
             else None
         )
 
-        if error_output is None:
+        if self._error_output is not None:
+            self._components.append(self._error_output)
+        else:
             logger.warning("No error output configured.")
 
-        self._sender = Sender(outputs=output_connectors, error_output=error_output)
-        await self._sender.setup()
+        await asyncio.gather(*(component.setup() for component in self._components))
 
-        self._queues = []
+        self._queues: list[SizeLimitedQueue] = []
         self._orchestrator = self._create_orchestrator()
 
     def _create_orchestrator(self) -> WorkerOrchestrator:  # pylint: disable=too-many-locals
@@ -90,31 +104,25 @@ class PipelineManager:
             acknowledge_queue,
         ]
 
-        async def _report_event_state(batch: list[LogEvent]) -> list[LogEvent]:
-            return await report_event_state(logger, batch)
+        async def transfer_batch(batch: list[LogEvent]) -> None:
+            batch = [e for e in batch if e is not None]
 
-        async def transfer_batch(batch: list[LogEvent]) -> list[LogEvent]:
             for event in batch:
-                event.state.current_state = EventStateType.RECEIVED
-
-            _ = await _report_event_state(batch)
-            return batch
+                await process_queue.put(event)
 
         input_worker: Worker[LogEvent, LogEvent] = Worker(
             name="input_worker",
             batch_size=500,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=self._input_connector(timeout=self.configuration.timeout),
-            out_queue=process_queue,
+            out_queues=[process_queue],
             handler=transfer_batch,
         )
 
-        async def _processor_handler(batch: list[LogEvent]) -> list[LogEvent]:
+        async def _processor_handler(batch: list[LogEvent]) -> None:
             async def _handle(event: LogEvent):
-                # TODO make processing async
-                self._pipeline.process(event)
-                # TODO handle all possible states
-                if event.state != EventStateType.FAILED:
+                await self._pipeline.process(event)
+                if not event.errors:
                     if event.extra_data:
                         await send_to_extras_queue.put(event)
                     else:
@@ -124,53 +132,91 @@ class PipelineManager:
 
             await asyncio.gather(*map(_handle, batch))
 
-            _ = await _report_event_state(batch)
-            return batch
-
         processing_worker: Worker[LogEvent, LogEvent] = Worker(
             name="processing_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=process_queue,
+            out_queues=[send_to_extras_queue, send_to_default_queue, send_to_error_queue],
             handler=_processor_handler,
         )
 
-        async def _send_extras_handler(batch: list[LogEvent]) -> list[LogEvent]:
-            _ = await _report_event_state(batch)
-            return await self._sender.send_extras(batch)
+        async def _send_extras_handler(batch: list[LogEvent]) -> None:
+            output_buffers: dict[str, dict[str, list[ExtraDataEvent]]] = {
+                output_name: defaultdict(list) for output_name in self._outputs.keys()
+            }
+
+            for event in batch:
+                for extra in typing.cast(Sequence[ExtraDataEvent], event.extra_data):
+                    for out in extra.outputs:
+                        try:
+                            output_buffers[out.output_name][out.output_target].append(extra)
+                        except KeyError as error:
+                            raise ValueError(f"Output {out.output_name} not configured.") from error
+
+            results = await asyncio.gather(
+                *(
+                    self._outputs[name].store_batch(events, target)
+                    for name, target_events in output_buffers.items()
+                    for target, events in target_events.items()
+                ),
+                return_exceptions=True,
+            )
+            for r in results:
+                if isinstance(r, Exception):
+                    logger.exception("Error while sending processed event", exc_info=r)
+            # TODO implement error handling
+
+            logger.debug("return send_extras %d", len(batch))
+
+            # extra events are assumed to be sent successfully, primary events can now be sent
+            for event in batch:
+                await send_to_default_queue.put(event)
 
         extra_output_worker: Worker[LogEvent, LogEvent] = Worker(
             name="extra_output_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=send_to_extras_queue,
-            out_queue=send_to_default_queue,
+            out_queues=[send_to_default_queue],
             handler=_send_extras_handler,
         )
 
-        async def _send_default_output_handler(batch: list[LogEvent]) -> list[LogEvent]:
-            _ = await _report_event_state(batch)
-            return await self._sender.send_default_output(batch)
+        async def _send_default_output_handler(batch: list[LogEvent]):
+            await self._default_output.store_batch(batch)
 
         output_worker: Worker[LogEvent, LogEvent] = Worker(
             name="output_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=send_to_default_queue,
-            out_queue=acknowledge_queue,
+            out_queues=[acknowledge_queue],
             handler=_send_default_output_handler,
         )
 
-        async def _send_error_output_handler(batch: list[LogEvent]) -> list[LogEvent]:
-            await _report_event_state(batch)
-            await self._sender._send_and_flush_failed_events(batch)
-            return batch
+        async def _send_error_output_handler(batch: list[LogEvent]) -> None:
+            def _to_error(event: LogEvent) -> ErrorEvent:
+                reason = (
+                    LogprepExceptionGroup("Error during processing", event.errors)
+                    if event.errors
+                    else Exception("Unknown error")
+                )
+                return ErrorEvent(log_event=event, reason=reason, state=EventStateType.PROCESSED)
+
+            if self._error_output is not None:
+                await self._error_output.store_batch(list(map(_to_error, batch)))
+            # TODO handle error events which failed to be sent
+            # logger.error("Error during sending to error output: %s", error_event)
+
+            for event in batch:
+                await acknowledge_queue.put(event)
 
         error_worker: Worker[LogEvent, LogEvent] = Worker(
             name="error_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=send_to_error_queue,
+            out_queues=[],
             handler=_send_error_output_handler,
         )
 
@@ -179,7 +225,8 @@ class PipelineManager:
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=acknowledge_queue,
-            handler=_report_event_state,
+            out_queues=[],
+            handler=self._input_connector.acknowledge,
         )
 
         return WorkerOrchestrator(
@@ -193,44 +240,27 @@ class PipelineManager:
             ]
         )
 
-    async def run(self) -> None:
+    async def run(self, stop_event: asyncio.Event) -> None:
         """Run the runner and continuously process events until stopped."""
 
         try:
-            await self._orchestrator.run()
-        except CancelledError:
-            logger.debug("PipelineManager.run cancelled. Shutting down.")
-            await self.shut_down()
+            await self._orchestrator.run(stop_event, self._shutdown_timeout_s)
+        except (CancelledError, Exception):
+            logger.error("PipelineManager.run cancelled or failed; shutting down...", exc_info=True)
+            await self._shut_down()
             raise
-        except Exception:
-            logger.exception("PipelineManager.run failed. Shutting down.")
-            await self.shut_down()
-            raise
+        await self._shut_down()
 
-    async def shut_down(self) -> None:
+    async def _shut_down(self) -> None:
         """Shut down runner components, and required runner attributes."""
 
-        logger.debug(
-            "Remaining items in queues: [%s]", ", ".join(f"{q.qsize()}" for q in self._queues)
-        )
+        await asyncio.gather(*(component.shut_down() for component in self._components))
 
-        if self._orchestrator is not None:
-            # TODO only a fraction of shutdown_timeout_s should be passed to the orchestrator
-            await self._orchestrator.shut_down(self._shutdown_timeout_s)
-
-        logger.debug(
-            "Remaining items in queues: [%s]", ", ".join(f"{q.qsize()}" for q in self._queues)
-        )
-
-        if self._sender is not None:
-            await self._sender.shut_down()
-        # self._input_connector.acknowledge()
-        await self._input_connector.shut_down()
-
-        len_delivered_events = len(list(self._event_backlog.get(EventStateType.DELIVERED)))
+        # TODO: acknowledge queue is the last queue
+        len_delivered_events = self._queues[-1].qsize()
         if len_delivered_events:
             logger.error(
-                "Input connector has %d non-acked events in event_backlog.", len_delivered_events
+                "Input connector has %d non-acked events in the queue.", len_delivered_events
             )
 
-        logger.info("Runner shut down complete.")
+        logger.info("Manager shut down complete.")
