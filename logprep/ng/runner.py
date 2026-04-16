@@ -12,15 +12,19 @@ from collections.abc import AsyncGenerator
 from attrs import asdict
 
 from logprep.ng.manager import PipelineManager
-from logprep.ng.util.async_helpers import TerminateTaskGroup, restart_task_on_iter
+from logprep.ng.util.async_helpers import (
+    StoppableTask,
+    TerminateTaskGroup,
+    restart_task_on_iter,
+)
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.util.defaults import DEFAULT_LOG_CONFIG
 
 logger = logging.getLogger("Runner")
 
 
-GRACEFUL_SHUTDOWN_TIMEOUT = 3
-HARD_SHUTDOWN_TIMEOUT = 5
+GRACEFUL_SHUTDOWN_TIMEOUT = 5
+HARD_SHUTDOWN_TIMEOUT = 10
 
 
 class Runner:
@@ -93,27 +97,40 @@ class Runner:
 
         try:
             async with asyncio.TaskGroup() as tg:
-                tg.create_task(TerminateTaskGroup.raise_on_event(self._stop_event))
+                # tg.create_task(TerminateTaskGroup.raise_on_event(self._stop_event))
 
-                async def start_pipeline(config: Configuration) -> asyncio.Task:
+                async def start_pipeline(config: Configuration) -> StoppableTask:
                     pipeline_manager = PipelineManager(
                         config, shutdown_timeout_s=GRACEFUL_SHUTDOWN_TIMEOUT
                     )
                     await pipeline_manager.setup()
 
-                    return tg.create_task(
-                        pipeline_manager.run(),
-                        name="pipeline_manager",
+                    return StoppableTask(
+                        tg.create_task(
+                            pipeline_manager.run(),
+                            name="pipeline_manager",
+                        ),
+                        pipeline_manager.shut_down,
                     )
 
+                initial_pipeline_task = await start_pipeline(self.config)
+
                 try:
-                    async for _ in restart_task_on_iter(
+                    pipeline_gen = restart_task_on_iter(
                         source=self._refresh_configuration_gen(
                             initial_config_version=self.config.version
                         ),
                         task_factory=start_pipeline,
                         cancel_timeout_s=HARD_SHUTDOWN_TIMEOUT,
-                        inital_task=await start_pipeline(self.config),
+                        initial_task=initial_pipeline_task,
+                    )
+
+                    async for _ in restart_task_on_iter(
+                        source=pipeline_gen,
+                        task_factory=lambda t: tg.create_task(t.stop_on_event(self._stop_event)),
+                        initial_task=tg.create_task(
+                            initial_pipeline_task.stop_on_event(self._stop_event)
+                        ),
                     ):
                         logger.debug(
                             "A new pipeline task has been spawned based on the latest configuration"
@@ -124,6 +141,7 @@ class Runner:
                         exc_info=True,
                     )
                     raise
+
         except ExceptionGroup as eg:
             if not eg.exceptions or len(eg.exceptions) > 1:
                 raise

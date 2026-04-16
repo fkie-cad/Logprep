@@ -1,18 +1,48 @@
 """A collection of helper utilitites for async code"""
 
 import asyncio
+import logging
 from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Callable
+from dataclasses import dataclass
 from logging import Logger
-from typing import Awaitable, TypeVar
+from typing import Awaitable, Generic, TypeVar
 
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.util.events import partition_by_state
 
+logger = logging.getLogger("async_helpers")
+
 T = TypeVar("T")
 D = TypeVar("D")
 
+STOP_SENTINEL = object()
+
+
+@dataclass
+class StoppableTask(Generic[T]):
+    """
+    A task wrapper for long-running tasks which can be gracefully stopped.
+    """
+
+    task: asyncio.Task[T]
+    stop: Callable[[], Awaitable[T]]
+
+    async def stop_on_event(self, event: asyncio.Event) -> None:
+        logger.debug("waiting for event to stop task")
+        await event.wait()
+        logger.debug("event received. stopping")
+        await self.stop()
+        logger.debug("event received. stopped")
+
 
 TaskFactory = Callable[[D], Awaitable[asyncio.Task[T]]]
+StoppableTaskFactory = Callable[[D], Awaitable[StoppableTask[T]]]
+
+
+class StoppableAsyncIterator(AsyncIterator):
+
+    def stop(self):
+        pass
 
 
 class TerminateTaskGroup(Exception):
@@ -82,10 +112,10 @@ async def cancel_task_and_wait(task: asyncio.Task[T], timeout_s: float) -> None:
 
 async def restart_task_on_iter(
     source: AsyncIterator[D] | AsyncIterable[D],
-    task_factory: TaskFactory,
-    cancel_timeout_s: float,
-    inital_task: asyncio.Task[T] | None = None,
-) -> AsyncGenerator[asyncio.Task[T], None]:
+    task_factory: TaskFactory | StoppableTaskFactory,
+    cancel_timeout_s: float | None = None,
+    initial_task: asyncio.Task[T] | StoppableTask[T] | None = None,
+) -> AsyncGenerator[asyncio.Task[T] | StoppableTask[T], None]:
     """Consumes an iterable data source and ensures that there is always one task executing on the latest data.
 
     Parameters
@@ -109,10 +139,18 @@ async def restart_task_on_iter(
     Iterator[AsyncGenerator[asyncio.Task[T], None]]
         The stream of tasks which result from spawning fresh tasks on new data
     """
-    task = inital_task
+    task = initial_task
     async for data in source:
         if task is not None:
-            await cancel_task_and_wait(task, cancel_timeout_s)
+            match (task):
+                case asyncio.Task() if cancel_timeout_s is None:
+                    task.cancel()
+                    await task
+                case asyncio.Task() if cancel_timeout_s is not None:
+                    await cancel_task_and_wait(task, cancel_timeout_s)
+                case StoppableTask():
+                    # TODO different meaning of cancel_timeout_s for StoppableTasks
+                    await asyncio.wait_for(task.stop(), cancel_timeout_s)
         task = await task_factory(data)
         yield task
 

@@ -577,7 +577,7 @@ class ConfluentKafkaInput(Input):
         for topic_partition in topic_partitions:
             offset, partition = topic_partition.offset, topic_partition.partition
             member_id = await self._get_memberid()
-            logger.info(
+            logger.debug(
                 "%s was assigned to topic: %s | partition %s",
                 member_id,
                 topic_partition.topic,

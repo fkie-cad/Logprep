@@ -14,7 +14,6 @@
             "env": {
                 "PROMETHEUS_MULTIPROC_DIR": "tmp/logprep"
             },
-            "justMyCode": false
         },
         {
             "name": "ng example pipeline",
@@ -27,7 +26,8 @@
                 "examples/exampledata/config/ng_pipeline.yml"
             ],
             "env": {
-                "PROMETHEUS_MULTIPROC_DIR": "tmp/logprep"
+                "PROMETHEUS_MULTIPROC_DIR": "tmp/logprep",
+                "PYTHONASYNCIODEBUG": "1",
             },
             "justMyCode": false
         }

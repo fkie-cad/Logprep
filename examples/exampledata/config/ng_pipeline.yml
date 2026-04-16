@@ -18,6 +18,9 @@ logger:
     "OpenSearchOutput": {"level": "DEBUG"}
     "KafkaOutput": {"level": "ERROR"}
     "Input": {"level": "ERROR"}
+    "Worker": {"level": "DEBUG"}
+    "PipelineManager": {"level": "DEBUG"}
+    "async_helpers": {"level": "DEBUG"}
 metrics:
   enabled: true
   port: 8001

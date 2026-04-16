@@ -11,12 +11,14 @@ interaction with the output queue.
 """
 
 import asyncio
+import graphlib
 import logging
-from asyncio import AbstractEventLoop
+from asyncio import AbstractEventLoop, CancelledError, QueueEmpty, Task, TaskGroup
 from collections import deque
-from collections.abc import AsyncIterator
-from typing import Any, Generic, TypeVar
+from collections.abc import AsyncIterator, Generator, Iterable, Sequence
+from typing import Any, Generic, TypeAlias, TypeVar
 
+from logprep.ng.util.async_helpers import STOP_SENTINEL
 from logprep.ng.util.worker.types import AsyncHandler, SizeLimitedQueue
 
 logger = logging.getLogger("Worker")  # pylint: disable=no-member
@@ -26,9 +28,12 @@ Input = TypeVar("Input")
 Output = TypeVar("Output")
 
 
+WorkerSource: TypeAlias = SizeLimitedQueue[Input] | AsyncIterator[Input]
+
+
 class Worker(Generic[Input, Output]):
     """
-    Generic batching worker with cooperative shutdown semantics.
+    Generic batching worker.
     """
 
     def __init__(
@@ -36,24 +41,28 @@ class Worker(Generic[Input, Output]):
         name: str,
         batch_size: int,
         batch_interval_s: float,
-        handler: AsyncHandler[Input, Output],
-        in_queue: SizeLimitedQueue[Input] | AsyncIterator[Input],
-        out_queue: SizeLimitedQueue[Output] | None = None,
+        handler: AsyncHandler[Input],
+        in_queue: WorkerSource[Input],
+        out_queues: Sequence[SizeLimitedQueue[Output]],
+        *,
+        drain_in_queue_on_shutdown: bool = False,
     ) -> None:
         self.name = name
 
         self._handler = handler
 
         self.in_queue = in_queue
-        self.out_queue = out_queue
+        self.out_queues = out_queues
 
         self._batch_interval_s = batch_interval_s
         self._batch_size = batch_size
 
         self._batch_buffer: deque[Input] = deque()
-        self._buffer_lock = asyncio.Lock()  # TODO is locking really required?
+        self._buffer_lock = asyncio.Lock()
 
         self._flush_timer: asyncio.Task[None] | None = None
+
+        self._drain_in_queue_on_shutdown = drain_in_queue_on_shutdown
 
     def _start_timer_locked(self) -> None:
         """
@@ -164,8 +173,8 @@ class Worker(Generic[Input, Output]):
             logger.debug("Flushing messages based on manual trigger")
             await self._flush_batch(batch_to_flush)
 
-    async def _process_batch(self, batch: list[Input]) -> list[Output]:
-        return await self._handler(batch)
+    async def _process_batch(self, batch: list[Input]) -> None:
+        await self._handler(batch)
 
     async def _flush_batch(self, batch: list[Input]) -> None:
         """
@@ -174,15 +183,48 @@ class Worker(Generic[Input, Output]):
         Applies the optional handler and forwards the resulting items to
         the output queue if configured.
         """
-        batch_result: list[Output] = await self._process_batch(batch)
-
-        if self.out_queue is not None:
-            for item in batch_result:
-                await self.out_queue.put(item)
+        await self._process_batch(batch)
 
         await asyncio.sleep(0)
 
-    async def run(self, stop_event: asyncio.Event) -> None:
+    async def _process_items_continuous(self) -> None:
+        match self.in_queue:
+            case AsyncIterator():
+                while True:
+                    item = await anext(self.in_queue)
+                    if item == STOP_SENTINEL:
+                        break
+                    await self.add(item)
+                    await asyncio.sleep(1.0)  # HACK to provoke draining
+            case SizeLimitedQueue():
+                while True:
+                    item = await self.in_queue.get()
+                    if item == STOP_SENTINEL:
+                        break
+                    await self.add(item)
+                    await asyncio.sleep(1.0)  # HACK to provoke draining
+
+    async def _process_items_exhaustive(self) -> None:
+        try:
+            match self.in_queue:
+                case SizeLimitedQueue():
+                    while True:
+                        item = self.in_queue.get_nowait()
+                        if item == STOP_SENTINEL:
+                            break
+                        await self.add(item)
+                        await asyncio.sleep(0.0)
+                case AsyncIterator():
+                    while True:
+                        item = await anext(self.in_queue)
+                        if item == STOP_SENTINEL:
+                            break
+                        await self.add(item)
+                        await asyncio.sleep(0.0)
+        except (StopAsyncIteration, QueueEmpty):
+            logger.debug("input drained successfully")
+
+    async def run(self) -> None:
         """
         Execute the worker processing loop.
 
@@ -191,28 +233,41 @@ class Worker(Generic[Input, Output]):
         """
 
         try:
-            if isinstance(self.in_queue, asyncio.Queue):
-                while not stop_event.is_set():
-                    item = await self.in_queue.get()
-
-                    if item is not None:
-                        await self.add(item)
-
-                    await asyncio.sleep(0.0)
-            else:
-                while not stop_event.is_set():
-                    item = await anext(self.in_queue)
-
-                    if item is not None:
-                        await self.add(item)
-
-                    await asyncio.sleep(0.0)
+            logger.debug("Start continuous processing")
+            await self._process_items_continuous()
+            logger.debug(
+                "Stop continuous processing (# remaining in_queue items = %d)",
+                self.in_queue.qsize() if isinstance(self.in_queue, SizeLimitedQueue) else None,
+            )
 
         except asyncio.CancelledError:
-            logger.debug("Worker cancelled")
+            logger.error("Worker cancelled")
             raise
         finally:
-            await self.flush()
+            pass
+            # self._cancel_timer_if_needed()
+            # await self.flush()
+
+
+def create_worker_graph(workers: Iterable[Worker]) -> dict[Worker, Sequence[Worker]]:
+    queue2worker: dict[WorkerSource, Worker] = {worker.in_queue: worker for worker in workers}
+    return {worker: [queue2worker[queue] for queue in worker.out_queues] for worker in workers}
+
+
+def iterate_workers_topologically(
+    workers: Iterable[Worker],
+) -> Generator[Iterable[Worker]]:
+    successors = create_worker_graph(workers)
+    predecessors = {
+        w: [source for source, targets in successors.items() if w in targets] for w in workers
+    }
+    sorter = graphlib.TopologicalSorter(graph=predecessors)
+
+    sorter.prepare()
+    while sorter.is_active():
+        nodes = sorter.get_ready()
+        yield nodes
+        sorter.done(*nodes)
 
 
 class WorkerOrchestrator:
@@ -235,42 +290,34 @@ class WorkerOrchestrator:
         self._loop: AbstractEventLoop = loop if loop is not None else asyncio.get_event_loop()
         self._workers: list[Worker] = workers
 
-        self._stop_event = asyncio.Event()
-
-        self._worker_tasks: set[asyncio.Task[Any]] = set()
+        self._worker_tasks: dict[Worker, Task] = {}
 
         self._exceptions: list[BaseException] = []
-        self._reload_lock = asyncio.Lock()
 
-    def _setup(self) -> None:
-        """Perform manager initialization steps that require a fully constructed instance."""
+    @property
+    def _all_worker_tasks(self) -> Sequence[Task]:
+        return tuple(self._worker_tasks.values())
 
-    def run_workers(self) -> None:
-        """
-        Start worker tasks (data-plane).
-
-        Worker tasks may be restarted on reload; background tasks are not.
-        """
-        for worker in self._workers:
-            t = self._loop.create_task(worker.run(self._stop_event), name=worker.name)
-            self._add_worker_task(t)
-
-    def _add_worker_task(self, task: asyncio.Task[Any]) -> None:
-        self.exceptions_ = """Track a worker task and fail-fast on exceptions."""
+    def _create_worker_task(self, worker: Worker, task_group: TaskGroup) -> Task:
+        task = task_group.create_task(worker.run(), name=worker.name)
+        self._worker_tasks[worker] = task
 
         def _done(t: asyncio.Task[Any]) -> None:
-            self._worker_tasks.discard(t)
+            assert self._worker_tasks[worker] == task
+            del self._worker_tasks[worker]
+
+            logger.debug("worker task %s is finished", worker.name)
 
             if t.cancelled():
                 return
 
             exc = t.exception()
             if exc is not None:
+                logger.error("worker task %s failed due to an exception", exc_info=exc)
                 self._exceptions.append(exc)
-                self._stop_event.set()
 
         task.add_done_callback(_done)
-        self._worker_tasks.add(task)
+        return task
 
     async def run(self) -> None:
         """
@@ -279,10 +326,13 @@ class WorkerOrchestrator:
         Starts workers and background tasks and then blocks waiting for shutdown.
         """
 
-        self._setup()
-        self.run_workers()
-
-        await self._stop_event.wait()
+        try:
+            async with asyncio.TaskGroup() as tg:
+                for worker in self._workers:
+                    self._create_worker_task(worker, tg)
+        except CancelledError:
+            logger.error("orchestrator cancelled; workers are being shut down hard")
+            raise
 
     async def shut_down(self, timeout_s: float) -> None:
         """
@@ -291,21 +341,65 @@ class WorkerOrchestrator:
         Stops workers and background tasks, clears registrations, and signals stop_event
         so run() can exit.
         """
-        self._stop_event.set()
 
-        logger.debug("waiting for termination of %d tasks", len(self._worker_tasks))
+        logger.debug(
+            "waiting %f seconds for termination of %d tasks", timeout_s, len(self._worker_tasks)
+        )
 
         try:
-            await asyncio.wait_for(
-                asyncio.gather(*self._worker_tasks, return_exceptions=True), timeout_s
-            )
+            await asyncio.wait_for(self._stop_workers_in_topological_order(), timeout_s)
         except TimeoutError:
-            unfinished_workers = [w for w in self._worker_tasks if not w.done()]
+            logger.debug("Encountered TimeoutError")
+            unfinished_workers = [t for t in self._all_worker_tasks if not t.done()]
             if unfinished_workers:
+                for t in unfinished_workers:
+                    t.cancel()
                 logger.debug(
                     "[%d/%d] did not stop gracefully. Awaiting cancellation: [%s]",
                     len(unfinished_workers),
-                    len(self._worker_tasks),
+                    len(self._all_worker_tasks),
                     ", ".join(map(asyncio.Task.get_name, unfinished_workers)),
                 )
                 await asyncio.gather(*unfinished_workers, return_exceptions=True)
+
+    async def _stop_workers_in_topological_order(self) -> None:
+        group_timeout_s = 5
+
+        logger.debug("Stopping workers in topological order")
+        for group in iterate_workers_topologically(self._workers):
+
+            logger.debug("Stopping next worker group: %s", ", ".join(w.name for w in group))
+            async with asyncio.TaskGroup() as sentinel_senders:
+                for worker in group:
+                    if isinstance(worker.in_queue, SizeLimitedQueue):
+                        sentinel_senders.create_task(worker.in_queue.put(STOP_SENTINEL))
+                    if isinstance(worker.in_queue, AsyncIterator):
+                        # TODO inject SENTINEL in in_queue instead
+                        self._worker_tasks[worker].cancel()
+
+            logger.debug("Waiting for worker group to stop gracefully")
+            group_tasks = [self._worker_tasks[worker] for worker in group]
+            try:
+                logger.debug("bla")
+                for t in group_tasks:
+                    logger.debug(
+                        "done = %s, cancelled = %s, cancelling = %s",
+                        t.done(),
+                        t.cancelled(),
+                        t.cancelling(),
+                    )
+                results = await asyncio.wait_for(
+                    asyncio.gather(*group_tasks, return_exceptions=True), group_timeout_s
+                )
+                logger.debug("stopped gracefully")
+
+            except TimeoutError:
+                logger.error(
+                    "Worker group did not stop gracefully after %f seconds and had to be cancelled",
+                    group_timeout_s,
+                )
+                results = await asyncio.gather(*group_tasks, return_exceptions=True)
+
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error("Exception encountered while stopping worker", exc_info=result)

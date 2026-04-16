@@ -90,26 +90,30 @@ class PipelineManager:
             acknowledge_queue,
         ]
 
-        async def _report_event_state(batch: list[LogEvent]) -> list[LogEvent]:
-            return await report_event_state(logger, batch)
+        async def _report_event_state(batch: list[LogEvent]) -> None:
+            await report_event_state(logger, batch)
 
-        async def transfer_batch(batch: list[LogEvent]) -> list[LogEvent]:
+        async def transfer_batch(batch: list[LogEvent]) -> None:
+            batch = [e for e in batch if e is not None]
+
             for event in batch:
                 event.state.current_state = EventStateType.RECEIVED
 
-            _ = await _report_event_state(batch)
-            return batch
+            await _report_event_state(batch)
+
+            for event in batch:
+                await process_queue.put(event)
 
         input_worker: Worker[LogEvent, LogEvent] = Worker(
             name="input_worker",
             batch_size=500,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=self._input_connector(timeout=self.configuration.timeout),
-            out_queue=process_queue,
+            out_queues=[process_queue],
             handler=transfer_batch,
         )
 
-        async def _processor_handler(batch: list[LogEvent]) -> list[LogEvent]:
+        async def _processor_handler(batch: list[LogEvent]) -> None:
             async def _handle(event: LogEvent):
                 # TODO make processing async
                 self._pipeline.process(event)
@@ -124,53 +128,59 @@ class PipelineManager:
 
             await asyncio.gather(*map(_handle, batch))
 
-            _ = await _report_event_state(batch)
-            return batch
+            await _report_event_state(batch)
 
         processing_worker: Worker[LogEvent, LogEvent] = Worker(
             name="processing_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=process_queue,
+            out_queues=[send_to_extras_queue, send_to_default_queue, send_to_error_queue],
             handler=_processor_handler,
         )
 
-        async def _send_extras_handler(batch: list[LogEvent]) -> list[LogEvent]:
-            _ = await _report_event_state(batch)
-            return await self._sender.send_extras(batch)
+        async def _send_extras_handler(batch: list[LogEvent]) -> None:
+            await _report_event_state(batch)
+            # TODO implement
+            # await self._sender.send_extras(batch)
+            for event in batch:
+                await send_to_default_queue.put(event)
 
         extra_output_worker: Worker[LogEvent, LogEvent] = Worker(
             name="extra_output_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
+            drain_in_queue_on_shutdown=True,
             in_queue=send_to_extras_queue,
-            out_queue=send_to_default_queue,
+            out_queues=[send_to_default_queue],
             handler=_send_extras_handler,
         )
 
-        async def _send_default_output_handler(batch: list[LogEvent]) -> list[LogEvent]:
-            _ = await _report_event_state(batch)
-            return await self._sender.send_default_output(batch)
+        async def _send_default_output_handler(batch: list[LogEvent]):
+            await _report_event_state(batch)
+            await self._sender.send_default_output(batch)
 
         output_worker: Worker[LogEvent, LogEvent] = Worker(
             name="output_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
+            drain_in_queue_on_shutdown=True,
             in_queue=send_to_default_queue,
-            out_queue=acknowledge_queue,
+            out_queues=[acknowledge_queue],
             handler=_send_default_output_handler,
         )
 
-        async def _send_error_output_handler(batch: list[LogEvent]) -> list[LogEvent]:
+        async def _send_error_output_handler(batch: list[LogEvent]) -> None:
             await _report_event_state(batch)
             await self._sender._send_and_flush_failed_events(batch)
-            return batch
 
         error_worker: Worker[LogEvent, LogEvent] = Worker(
             name="error_worker",
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
+            drain_in_queue_on_shutdown=True,
             in_queue=send_to_error_queue,
+            out_queues=[],
             handler=_send_error_output_handler,
         )
 
@@ -179,6 +189,8 @@ class PipelineManager:
             batch_size=BATCH_SIZE,
             batch_interval_s=BATCH_INTERVAL_S,
             in_queue=acknowledge_queue,
+            drain_in_queue_on_shutdown=True,
+            out_queues=[],
             handler=_report_event_state,
         )
 
@@ -214,9 +226,9 @@ class PipelineManager:
             "Remaining items in queues: [%s]", ", ".join(f"{q.qsize()}" for q in self._queues)
         )
 
-        if self._orchestrator is not None:
-            # TODO only a fraction of shutdown_timeout_s should be passed to the orchestrator
-            await self._orchestrator.shut_down(self._shutdown_timeout_s)
+        # if self._workers is not None:
+        # TODO only a fraction of shutdown_timeout_s should be passed to the orchestrator
+        await self._orchestrator.shut_down(self._shutdown_timeout_s)
 
         logger.debug(
             "Remaining items in queues: [%s]", ", ".join(f"{q.qsize()}" for q in self._queues)

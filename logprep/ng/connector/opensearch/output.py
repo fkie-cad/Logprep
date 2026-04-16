@@ -30,6 +30,7 @@ Example
         ca_cert: /path/to/cert.crt
 """
 
+import contextlib
 import logging
 import ssl
 import typing
@@ -327,21 +328,24 @@ class OpensearchOutput(Output):
         actions = (event.data for event in events)
 
         index = 0
-        async for success, item in helpers.async_streaming_bulk(client, actions, **kwargs):
-            event = events[index]
-            index += 1
+        async with contextlib.aclosing(
+            helpers.async_streaming_bulk(client, actions, **kwargs)
+        ) as send_results:
+            async for success, item in send_results:
+                event = events[index]
+                index += 1
 
-            if success:
-                event.state.current_state = EventStateType.DELIVERED
-                continue
+                if success:
+                    event.state.current_state = EventStateType.DELIVERED
+                    continue
 
-            event.state.current_state = EventStateType.FAILED
+                event.state.current_state = EventStateType.FAILED
 
-            op_infos = item.values()
-            error_info = op_infos[0] if len(op_infos) > 0 else {}
+                op_infos = item.values()
+                error_info = op_infos[0] if len(op_infos) > 0 else {}
 
-            error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
-            event.errors.append(error)
+                error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
+                event.errors.append(error)
 
     async def health(self) -> bool:  # type: ignore  # TODO: fix mypy issue
         """Check the health of the component."""
