@@ -72,7 +72,7 @@ jobs:
           EOF
       - run: |
           export PY_VERSION=${{ matrix.python-version }}
-          uv version "$(uv version --short).dev0+$(git branch --show-current).$(git rev-parse --short HEAD)"
+          uv version "$(uv version --short).dev0+${GITHUB_REF##*/}.$(git rev-parse --short HEAD)"
           nix build .#docker.python${PY_VERSION//.} -o image
           docker load < image
 
