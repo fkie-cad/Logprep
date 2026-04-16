@@ -3,13 +3,14 @@ New output endpoint types are created by implementing it.
 """
 
 from abc import abstractmethod
+from collections.abc import Sequence
 from copy import deepcopy
 from typing import Any, Callable
 
 from attrs import define, field, validators
 
-from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
+from logprep.ng.abc.connector import Connector
 from logprep.ng.abc.event import Event
 from logprep.ng.event.event_state import EventStateType
 
@@ -81,7 +82,7 @@ class Output(Connector):
         self.input_connector = None
 
     @abstractmethod
-    def store(self, event: Event) -> None:
+    async def store(self, event: Event) -> None:
         """Store the event in the output destination.
 
         Parameters
@@ -91,7 +92,7 @@ class Output(Connector):
         """
 
     @abstractmethod
-    def store_custom(self, event: Event, target: str) -> None:
+    async def store_custom(self, event: Event, target: str) -> None:
         """Store the event in the output destination.
 
         Parameters
@@ -103,7 +104,26 @@ class Output(Connector):
         """
 
     @abstractmethod
-    def flush(self):
+    async def store_batch(
+        self, events: Sequence[Event], target: str | None = None
+    ) -> Sequence[Event]:
+        """Stores the events in the output destination.
+
+        Parameters
+        ----------
+        events : Sequence[Event]
+            Events to be stored.
+        target : str | None
+            Custom target for the events, defaults to None
+
+        Returns
+        -------
+        Sequence[Event]
+            Events after sending.
+        """
+
+    @abstractmethod
+    async def flush(self):
         """Write the backlog to the output destination.
         Needs to be implemented in child classes to ensure
         that the backlog is written to the output destination.
@@ -124,7 +144,13 @@ class Output(Connector):
 
         return wrapper
 
-    def _shut_down(self) -> None:
-        """Shut down the output connector."""
-        self.flush()
-        return super()._shut_down()
+    async def setup(self) -> None:
+        """Set up the output connector."""
+
+        await super().setup()
+
+    async def shut_down(self) -> None:
+        """Shut down the output connector and cleanup resources."""
+
+        await self.flush()
+        await super().shut_down()

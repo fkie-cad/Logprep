@@ -1,0 +1,200 @@
+"""A collection of helper utilitites for async code"""
+
+import asyncio
+import logging
+from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Callable
+from dataclasses import dataclass
+from logging import Logger
+from typing import Awaitable, Generic, TypeVar
+
+from logprep.ng.event.log_event import LogEvent
+from logprep.ng.util.events import partition_by_state
+
+logger = logging.getLogger("async_helpers")
+
+T = TypeVar("T")
+D = TypeVar("D")
+
+STOP_SENTINEL = object()
+
+
+@dataclass
+class StoppableTask(Generic[T]):
+    """
+    A task wrapper for long-running tasks which can be gracefully stopped.
+    """
+
+    task: asyncio.Task[T]
+    stop: Callable[[], Awaitable[T]]
+
+    async def stop_on_event(self, event: asyncio.Event) -> None:
+        logger.debug("waiting for event to stop task")
+        await event.wait()
+        logger.debug("event received. stopping")
+        await self.stop()
+        logger.debug("event received. stopped")
+
+
+TaskFactory = Callable[[D], Awaitable[asyncio.Task[T]]]
+StoppableTaskFactory = Callable[[D], Awaitable[StoppableTask[T]]]
+
+
+class StoppableAsyncIterator(AsyncIterator):
+
+    def stop(self):
+        pass
+
+
+class TerminateTaskGroup(Exception):
+    """Exception raised to terminate a task group."""
+
+    @staticmethod
+    async def raise_on_timeout(timeout_s: float, msg: str | None = None):
+        """Raises this exception type as soon as the timeout (in seconds) expires.
+
+        Parameters
+        ----------
+        timeout_s : float
+            Number of seconds after which the exception should be raised
+        msg : str | None, optional
+            Message for the exception, by default None
+
+        Raises
+        ------
+        TerminateTaskGroup
+            The exception for terminating the task group.
+        """
+        await asyncio.sleep(timeout_s)
+        raise TerminateTaskGroup(msg)
+
+    @staticmethod
+    async def raise_on_event(event: asyncio.Event, msg: str | None = None):
+        """Raises this exception type as soon as the event is set.
+
+        Parameters
+        ----------
+        event : asyncio.Event
+            Triggering event for the exception
+        msg : str | None, optional
+            Message for the exception, by default None
+
+        Raises
+        ------
+        TerminateTaskGroup
+            The exception for terminating the task group.
+        """
+        await event.wait()
+        raise TerminateTaskGroup(msg)
+
+
+async def cancel_task_and_wait(task: asyncio.Task[T], timeout_s: float) -> None:
+    """Cancels the given task and waits for it to actually stop.
+    Raises a :code:`TimeoutError` if timeout expires.
+    A :code:`CancelledError` will only be raised if the parent task is cancelled.
+
+    Parameters
+    ----------
+    task : asyncio.Task[T]
+        The task to cancel
+    timeout_s : float
+        The timeout in seconds to wait
+
+    Raises
+    ------
+    TimeoutError
+        Raised if the timeout expires and the task is still not done.
+    """
+    task.cancel()
+    done, _ = await asyncio.wait([task], timeout=timeout_s)
+    if not done:
+        raise TimeoutError(f"Task {task.get_name()} did not stop in time after cancellation")
+
+
+async def restart_task_on_iter(
+    source: AsyncIterator[D] | AsyncIterable[D],
+    task_factory: TaskFactory | StoppableTaskFactory,
+    cancel_timeout_s: float | None = None,
+    initial_task: asyncio.Task[T] | StoppableTask[T] | None = None,
+) -> AsyncGenerator[asyncio.Task[T] | StoppableTask[T], None]:
+    """Consumes an iterable data source and ensures that there is always one task executing on the latest data.
+
+    Parameters
+    ----------
+    source : AsyncIterator[D] | AsyncIterable[D]
+        The data source producing parameters for the spawned tasks
+    task_factory : Callable[[D], asyncio.Task[T]]
+        The factory to create new tasks from new data items
+    cancel_timeout_s : float
+        The number of seconds after which task cancellation is deemed not successful
+    inital_task : asyncio.Task[T] | None, optional
+        The initial task, by default None
+
+    Returns
+    -------
+    AsyncGenerator[asyncio.Task[T], None]
+        The stream of tasks which result from spawning fresh tasks on new data
+
+    Yields
+    ------
+    Iterator[AsyncGenerator[asyncio.Task[T], None]]
+        The stream of tasks which result from spawning fresh tasks on new data
+    """
+    task = initial_task
+    async for data in source:
+        if task is not None:
+            match (task):
+                case asyncio.Task() if cancel_timeout_s is None:
+                    task.cancel()
+                    await task
+                case asyncio.Task() if cancel_timeout_s is not None:
+                    await cancel_task_and_wait(task, cancel_timeout_s)
+                case StoppableTask():
+                    # TODO different meaning of cancel_timeout_s for StoppableTasks
+                    await asyncio.wait_for(task.stop(), cancel_timeout_s)
+        task = await task_factory(data)
+        yield task
+
+
+def asyncio_exception_handler(
+    loop: asyncio.AbstractEventLoop,  # pylint: disable=unused-argument
+    context: dict,
+    logger: Logger,
+) -> None:
+    """
+    Handle unhandled exceptions reported by the asyncio event loop.
+
+    Covers exceptions from background tasks, callbacks, and loop internals.
+    Does not handle exceptions from awaited coroutines (e.g. runner.run()).
+
+    Args:
+        loop: The current event loop.
+        context: Asyncio error context (may contain message, exception, task/future).
+        logger: Logger used to record the error.
+    """
+
+    msg = context.get("message", "Unhandled exception in event loop")
+    exception = context.get("exception")
+    task = context.get("task") or context.get("future")
+
+    logger.error(f"{msg}")
+
+    if task:
+        logger.error(f"Task: {task!r}")
+
+        if isinstance(task, asyncio.Task):
+            logger.error(f"Task name: {task.get_name()}")
+
+    if exception:
+        logger.error(f"Unhandled exception: {exception!r}", exc_info=exception)
+    else:
+        logger.error(f"Context: {context!r}")
+
+
+async def report_event_state(logger: Logger, batch: list[LogEvent]) -> list[LogEvent]:
+    events_by_state = partition_by_state(batch)
+    logger.info(
+        "Finished processing %d events: %s",
+        len(batch),
+        ", ".join(f"#{state}={len(events)}" for state, events in events_by_state.items()),
+    )
+    return batch

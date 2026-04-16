@@ -67,7 +67,7 @@ dependencies = [
   "luqum<2",
   "more-itertools==8.10.0",
   "numpy>=1.26.0,<3",
-  "opensearch-py<4",
+  "opensearch-py[async]<4",
   "prometheus_client<1",
   "protobuf>=3.20.2,<7",
   "pycryptodome<4",
@@ -162,7 +162,7 @@ before-build = "curl -sSf https://sh.rustup.rs | sh -s -- -y"
 environment = 'PATH=$HOME/.cargo/bin:$PATH'
 
 [tool.pylint.MAIN]
-ignore = ".venv"
+ignore = ".venv, poc"
 fail-under = 9.5
 
 [tool.pylint.FORMAT]
@@ -182,7 +182,7 @@ max-attributes=12
 [tool.pylint.CLASSES]
 
 # List of method names used to declare (i.e. assign) instance attributes.
-defining-attr-methods="__init__,__new__,setup"
+defining-attr-methods="__init__,__new__,setup,_setup"
 
 [tool.mypy]
 # use imported type information but don't report issues if not a file under check

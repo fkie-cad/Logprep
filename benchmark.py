@@ -591,6 +591,7 @@ def benchmark_run(
         binary = "logprep-ng" if ng == 1 else "logprep"
 
         t_startup = time.time()
+
         logprep_proc = popen_cmd([binary, "run", str(pipeline_config)], env=env)
         _current_logprep_proc = logprep_proc
 

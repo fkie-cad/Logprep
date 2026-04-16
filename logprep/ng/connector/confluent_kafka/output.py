@@ -25,6 +25,7 @@ Example
 
 import logging
 import typing
+from collections.abc import Sequence
 from functools import cached_property, partial
 from socket import getfqdn
 from types import MappingProxyType
@@ -32,10 +33,12 @@ from types import MappingProxyType
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Message, Producer  # type: ignore
 from confluent_kafka.admin import AdminClient
+from confluent_kafka.aio import AIOProducer
 
-from logprep.metrics.metrics import GaugeMetric, Metric
+from logprep.metrics.metrics import GaugeMetric
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import FatalOutputError, Output
+from logprep.ng.event.event_state import EventStateType
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -195,6 +198,12 @@ class ConfluentKafkaOutput(Output):
            - Regularly rotate your Kafka credentials and secrets.
         """
 
+    __slots__ = ["_producer"]
+
+    def __init__(self, name: str, configuration: "ConfluentKafkaOutput.Config"):
+        super().__init__(name, configuration)
+        self._producer: AIOProducer | None = None
+
     @property
     def config(self) -> Config:
         """Provides the properly typed rule configuration object"""
@@ -232,9 +241,20 @@ class ConfluentKafkaOutput(Output):
                 admin_config[key] = value
         return AdminClient(admin_config)
 
-    @cached_property
-    def _producer(self) -> Producer:
-        return Producer(self._kafka_config)
+    def get_producer(self) -> AIOProducer:
+        """
+        Configures and returns the asynchronous Kafka producer.
+
+        Returns
+        -------
+        AIOProducer
+            The pre-configured aiokafka producer object.
+        """
+
+        if self._producer is None:
+            self._producer = AIOProducer(self._kafka_config)
+
+        return self._producer
 
     def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
@@ -281,7 +301,16 @@ class ConfluentKafkaOutput(Output):
             f"{self.config.kafka_config.get('bootstrap.servers')}"
         )
 
-    def store(self, event: Event) -> None:
+    async def store_batch(
+        self, events: Sequence[Event], target: str | None = None
+    ) -> Sequence[Event]:
+        store_target = target if target is not None else self.config.topic
+        for event in events:
+            await self.store_custom(event, store_target)
+
+        return events
+
+    async def store(self, event: Event) -> None:
         """Store a document in the producer topic.
 
         Parameters
@@ -289,11 +318,11 @@ class ConfluentKafkaOutput(Output):
         event : Event
             The event to store.
         """
-        self.store_custom(event, self.config.topic)
+        await self.store_custom(event, self.config.topic)
 
-    @Output._handle_errors
-    @Metric.measure_time()
-    def store_custom(self, event: Event, target: str) -> None:
+    # @Output._handle_errors
+    # @Metric.measure_time()
+    async def store_custom(self, event: Event, target: str) -> None:
         """Write document to Kafka into target topic.
 
         Parameters
@@ -303,29 +332,47 @@ class ConfluentKafkaOutput(Output):
         target : str
             Topic to store event data in.
         """
-        event.state.next_state()
+        event.state.current_state = EventStateType.STORING_IN_OUTPUT
+
         document = event.data
         self.metrics.number_of_processed_events += 1
+
         try:
-            self._producer.produce(
+            producer = self.get_producer()
+            delivery_future = await producer.produce(
                 topic=target,
                 value=self._encoder.encode(document),
-                on_delivery=partial(self.on_delivery, event),
             )
-            logger.debug("Produced message %s to topic %s", str(document), target)
-            self._producer.poll(self.config.send_timeout)
-        except BufferError:
-            # block program until buffer is empty or timeout is reached
-            self._producer.flush(timeout=self.config.flush_timeout)
-            logger.debug("Buffer full, flushing")
+            msg = await delivery_future
+        except KafkaException as err:
+            event.state.current_state = EventStateType.FAILED
+            event.errors.append(err)
+            logger.error("Kafka exception during produce: %s", err)
+            self.metrics.number_of_errors += 1
+            return
+        except Exception as err:
+            event.state.current_state = EventStateType.FAILED
+            event.errors.append(err)
+            logger.error("Message delivery failed: %s", err)
+            self.metrics.number_of_errors += 1
+            return
 
-    def flush(self) -> None:
+        event.state.current_state = EventStateType.DELIVERED
+        logger.debug(
+            "Message delivered to '%s' partition %s, offset %s",
+            msg.topic(),
+            msg.partition(),
+            msg.offset(),
+        )
+
+    async def flush(self) -> None:
         """ensures that all messages are flushed. According to
         https://confluent-kafka-python.readthedocs.io/en/latest/#confluent_kafka.Producer.flush
         flush without the timeout parameter will block until all messages are delivered.
         This ensures no messages will get lost on shutdown.
         """
-        remaining_messages = self._producer.flush()
+        producer = self.get_producer()
+        remaining_messages = await producer.flush()
         if remaining_messages:
             self.metrics.number_of_errors += 1
             logger.error(
@@ -348,25 +395,18 @@ class ConfluentKafkaOutput(Output):
             return False
         return super().health()
 
-    def setup(self) -> None:
-        """Set the component up."""
+    async def setup(self) -> None:
+        """Set the confluent kafka output connector."""
+
         try:
-            super().setup()
+            await super().setup()
         except KafkaException as error:
             raise FatalOutputError(self, f"Could not setup kafka producer: {error}") from error
 
-    def on_delivery(self, event: Event, err: KafkaException, msg: Message) -> None:
-        """Callback for delivery reports."""
-        if err is not None:
-            event.state.next_state(success=False)
-            event.errors.append(err)
-            logger.error("Message delivery failed: %s", err)
-            self.metrics.number_of_errors += 1
-            return
-        event.state.next_state(success=True)
-        logger.debug(
-            "Message delivered to '%s' partition %s, offset %s",
-            msg.topic(),
-            msg.partition(),
-            msg.offset(),
-        )
+    async def shut_down(self) -> None:
+        """Shut down the confluent kafka output connector and cleanup resources."""
+
+        await super().shut_down()
+
+        if self._producer is not None:
+            await self._producer.close()
