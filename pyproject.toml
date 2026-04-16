@@ -13,7 +13,7 @@ name = "logprep"
 description = "Logprep allows to collect, process and forward log messages from various data sources."
 requires-python = ">=3.11"
 readme = "README.md"
-version = "19.0.1"
+version = "19.0.0"
 license = { file = "LICENSE" }
 classifiers = [
   "Development Status :: 3 - Alpha",
