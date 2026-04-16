@@ -74,7 +74,7 @@ jobs:
           export PY_VERSION="${{ matrix.python-version }}"
 
           uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
-          nix build .#docker.python${PY_VERSION//.} -o image
+          nix build .#packages.x86_64-linux.docker.python${PY_VERSION//.} -o image
           docker load < image
 
           for tag in $(echo "${{ steps.image-tag.outputs.tags }}" | tr ", " "\n")
