@@ -73,15 +73,16 @@ jobs:
       - run: |
           export PY_VERSION="${{ matrix.python-version }}"
 
-          # uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
-          # nix build .#docker.python${PY_VERSION//.} -o image
-          # docker load < image
+          uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
+          nix build .#docker.python${PY_VERSION//.} -o image
+          docker load < image
 
-          # docker images --format json | jq
+          for tag in $(echo "${{ steps.image-tag.outputs.tags }}" | tr ", " "\n")
+          do
+            docker image tag logprep:${PY_VERSION} $tag
+          done
 
-          echo "${{ steps.image-tag.outputs.tags }}"
-
-          # docker image tag logprep:${PY_VERSION} ${{ steps.image-tag.output.tags }}
+          docker images
         # - name: Build image and push to registry
         #   uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # https://github.com/docker/build-push-action/releases/tag/v6.19.2
         #   id: build-and-push
