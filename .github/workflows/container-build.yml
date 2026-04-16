@@ -79,7 +79,7 @@ jobs:
 
           for tag in $(echo "${{ steps.image-tag.outputs.tags }}" | tr ", " "\n")
           do
-            docker image tag logprep:${PY_VERSION} $tag
+            docker image tag logprep:py${PY_VERSION} $tag
           done
 
           docker images
