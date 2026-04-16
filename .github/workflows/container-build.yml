@@ -71,8 +71,7 @@ jobs:
               file.write(f"tags={', '.join(full_image)}")
           EOF
       - run: |
-          echo "${{ github.ref }}"
-          echo "${GITHUB_REF##*/}"
+          echo "${GITHUB_HEAD_REF}"
 
           export PY_VERSION=${{ matrix.python-version }}
           uv version "$(uv version --short).dev0+${GITHUB_REF##*/}.$(git rev-parse --short HEAD)"
