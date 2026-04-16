@@ -28,6 +28,7 @@ Example
             auto.offset.reset: "earliest"
 """
 
+import concurrent
 import logging
 import os
 import typing
@@ -278,7 +279,7 @@ class ConfluentKafkaInput(Input):
         Defaults to 4.
         """
 
-    __slots__ = ["_last_valid_record", "_consumer"]
+    __slots__ = ["_last_valid_record", "_consumer", "_executor"]
 
     def __init__(self, name: str, configuration: "ConfluentKafkaInput.Config") -> None:
         super().__init__(name, configuration)
@@ -321,7 +322,10 @@ class ConfluentKafkaInput(Input):
         await super().setup()
 
         try:
-            self._consumer = AIOConsumer(self._kafka_config, max_workers=self.config.max_workers)
+            self._executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.config.max_workers
+            )
+            self._consumer = AIOConsumer(self._kafka_config, executor=self._executor)
 
             await self._consumer.subscribe(
                 [self.config.topic],
@@ -346,26 +350,6 @@ class ConfluentKafkaInput(Input):
             if key.startswith(("security.", "ssl.")):
                 admin_config[key] = value
         return AdminClient(admin_config)
-
-    async def get_consumer(self, max_workers: int = 4) -> AIOConsumer:
-        """
-        Configures and returns the asynchronous Kafka consumer.
-
-        Parameters
-        ----------
-        max_workers : int, optional
-
-
-        Returns
-        -------
-        AIOConsumer
-            The pre-configured aiokafka consumer object.
-        """
-
-        if self._consumer is None:
-            self._consumer = AIOConsumer(self._kafka_config, max_workers=max_workers)
-
-        return self._consumer
 
     async def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
@@ -478,8 +462,7 @@ class ConfluentKafkaInput(Input):
             Raises if an input is invalid or if it causes an error.
         """
         try:
-            consumer = await self.get_consumer()
-            message = await consumer.poll(timeout=timeout)
+            message = await self._consumer.poll(timeout=timeout)
         except RuntimeError as error:
             raise FatalInputError(self, str(error)) from error
         if message is None:
@@ -577,7 +560,7 @@ class ConfluentKafkaInput(Input):
         for topic_partition in topic_partitions:
             offset, partition = topic_partition.offset, topic_partition.partition
             member_id = await self._get_memberid()
-            logger.info(
+            logger.debug(
                 "%s was assigned to topic: %s | partition %s",
                 member_id,
                 topic_partition.topic,
@@ -595,7 +578,7 @@ class ConfluentKafkaInput(Input):
     ) -> None:
         for topic_partition in topic_partitions:
             self.metrics.number_of_warnings += 1
-            member_id = await self._get_memberid()
+            member_id = await self._get_memberid() if self._consumer is not None else None
             logger.warning(
                 "%s to be revoked from topic: %s | partition %s",
                 member_id,
@@ -618,7 +601,8 @@ class ConfluentKafkaInput(Input):
     async def _get_memberid(self) -> str | None:
         member_id = None
         try:
-            member_id = self._consumer._consumer.memberid()  # pylint: disable=protected-access
+            if self._consumer is not None:
+                return self._consumer._consumer.memberid()  # pylint: disable=protected-access
         except RuntimeError as error:
             logger.error("Failed to retrieve member ID: %s", error)
         return member_id
@@ -651,5 +635,8 @@ class ConfluentKafkaInput(Input):
 
         if self._consumer is not None:
             await self._consumer.close()
+            self._consumer = None
+        if self._executor is not None:
+            self._executor.shutdown()
 
         await super().shut_down()

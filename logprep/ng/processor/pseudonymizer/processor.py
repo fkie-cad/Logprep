@@ -56,10 +56,12 @@ from attrs import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.ng.abc.event import OutputSpec
 from logprep.ng.event.pseudonym_event import PseudonymEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
 from logprep.processor.base.rule import Rule
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
+from logprep.util.converters import convert_ordered_tuples_with_factory
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_fields_to, get_dotted_field_values
@@ -79,18 +81,8 @@ class Pseudonymizer(FieldManager):
     class Config(FieldManager.Config):
         """Pseudonymizer config"""
 
-        outputs: tuple[dict[str, str]] = field(
-            validator=validators.deep_iterable(
-                member_validator=[
-                    validators.deep_mapping(
-                        key_validator=validators.instance_of(str),
-                        value_validator=validators.instance_of(str),
-                        mapping_validator=(validators.instance_of(dict), validators.max_len(1)),
-                    ),
-                ],
-                iterable_validator=(validators.instance_of(tuple), validators.min_len(1)),
-            ),
-            converter=tuple,
+        outputs: Sequence[OutputSpec] = field(
+            converter=lambda d: convert_ordered_tuples_with_factory(d, OutputSpec),
         )
         """list of output mappings in form of :code:`output_name:topic`.
         Only one mapping is allowed per list element"""

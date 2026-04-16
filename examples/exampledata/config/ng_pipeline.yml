@@ -1,23 +1,26 @@
 version: 2
 process_count: 1
-timeout: 5.0
+timeout: 0.1
 restart_count: 2
-config_refresh_interval: 300
-error_backlog_size: 1500000
+config_refresh_interval: 5
+error_backlog_size: 15000
 logger:
   level: INFO
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
     "py.warnings": {"level": "ERROR"}
-    "Runner": {"level": "INFO"}
+    "Runner": {"level": "ERROR"}
     "Processor": {"level": "ERROR"}
     "Exporter": {"level": "ERROR"}
     "uvicorn": {"level": "ERROR"}
     "uvicorn.access": {"level": "ERROR"}
-    "OpenSearchOutput": {"level": "DEBUG"}
+    "OpenSearchOutput": {"level": "ERROR"}
     "KafkaOutput": {"level": "ERROR"}
     "Input": {"level": "ERROR"}
+    "Worker": {"level": "ERROR"}
+    "PipelineManager": {"level": "ERROR"}
+    "async_helpers": {"level": "ERROR"}
 metrics:
   enabled: true
   port: 8001

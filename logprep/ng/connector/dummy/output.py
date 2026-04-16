@@ -24,7 +24,6 @@ from attrs import define, field, validators
 
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import Output
-from logprep.ng.event.log_event import LogEvent
 
 logger = logging.getLogger("DummyOutput")
 
@@ -57,8 +56,8 @@ class DummyOutput(Output):
         reset_on_flush: bool = field(default=False)
         """If set to True, the stored events will be cleared when flush() is called."""
 
-    events: list[LogEvent]
-    failed_events: list[LogEvent]
+    events: list[Event]
+    failed_events: list[Event]
     setup_called_count: int
     shut_down_called_count: int
     _exceptions: list
@@ -94,13 +93,11 @@ class DummyOutput(Output):
         """
         if self.config.do_nothing:
             return
-        event.state.next_state()
         if self._exceptions:
             exception = self._exceptions.pop(0)
             if exception is not None:
                 raise Exception(exception)  # pylint: disable=broad-exception-raised
         self.events.append(event)
-        event.state.next_state(success=True)
         self.metrics.number_of_processed_events += 1
 
     def store_custom(self, event: Event, target: str):
