@@ -87,7 +87,8 @@ Examples for replacer:
 """
 
 import re
-from typing import NamedTuple, List
+from dataclasses import dataclass
+from typing import List
 
 from attrs import define, field, validators
 
@@ -100,7 +101,8 @@ START = "%{"
 END = "}"
 
 
-class Replacement(NamedTuple):
+@dataclass
+class Replacement:
     """Contains information how to replace the target text"""
 
     value: str
@@ -110,7 +112,8 @@ class Replacement(NamedTuple):
     greedy: bool
 
 
-class ReplacementTemplate(NamedTuple):
+@dataclass
+class ReplacementTemplate:
     """Contains list of Replacement tuples and prefix that should not be replaced"""
 
     prefix: str

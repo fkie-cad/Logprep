@@ -266,7 +266,7 @@ class HttpEndpoint(ABC):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        messages: mp.Queue[dict],
+        messages: mp.Queue,
         original_event_field: dict[str, str] | None,
         collect_meta: bool,
         metafield_name: str,
@@ -555,7 +555,7 @@ class HttpInput(Input):
 
     __slots__: list[str] = ["target", "app", "http_server"]
 
-    messages: Queue[dict] | None = None
+    messages: typing.Optional[Queue] = None
 
     _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,

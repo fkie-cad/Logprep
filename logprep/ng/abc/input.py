@@ -23,7 +23,6 @@ from attrs import define, field, validators
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.connector import Connector
 from logprep.ng.abc.event import EventMetadata
-from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.converters import convert_from_dict
@@ -247,25 +246,6 @@ class Input(Connector):
         (event, raw_event, metadata) | None
         """
 
-    def _produce_failed_event(
-        self,
-        event: dict | None,
-        raw_event: bytes,
-        metadata: EventMetadata,
-        error: Exception,
-    ) -> LogEvent:
-        """Helper method to register the failed event to event backlog."""
-
-        error_log_event = LogEvent(
-            data=event if event is not None else {},
-            original=raw_event,
-            metadata=metadata,
-        )
-        error_log_event.errors.append(error)
-        error_log_event.state.current_state = EventStateType.FAILED
-
-        return error_log_event
-
     # @Metric.measure_time()
     async def get_next(self, timeout: float) -> LogEvent | None:
         """Return the next document
@@ -326,13 +306,16 @@ class Input(Connector):
                     )
             except (FieldExistsWarning, TimeParserException) as error:
                 raise CriticalInputError(self, error.args[0], event) from error
-        except CriticalInputError as error:
-            self._produce_failed_event(
-                event=event,
-                raw_event=raw_event,
-                metadata=metadata if metadata is not None else None,
-                error=error,
-            )
+        except CriticalInputError:
+            logger.exception("Failed to produce event")
+            # TODO handle failed event
+            # self._produce_failed_event(
+            #     event=event,
+            #     raw_event=raw_event,
+            #     metadata=metadata if metadata is not None else None,
+            #     error=error,
+            # )
+            # return None
             return None
 
         log_event = LogEvent(
@@ -340,8 +323,6 @@ class Input(Connector):
             original=raw_event,
             metadata=metadata,
         )
-
-        log_event.state.current_state = EventStateType.RECEIVED
 
         return log_event
 
