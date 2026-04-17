@@ -97,8 +97,8 @@ jobs:
             digest=$(docker inspect $tag | jq --raw-output ".[].Id")
 
             # What happens with multiple tags?
-            echo "Digest=$digest" >> $GITHUB_OUTPUT
-            echo "Digest_no_sha=${digest#"sha256:"}" >> $GITHUB_OUTPUT
+            echo "digest=$digest" >> $GITHUB_OUTPUT
+            echo "digest_no_sha=${digest#"sha256:"}" >> $GITHUB_OUTPUT
           done
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # https://github.com/sigstore/cosign-installer/releases/tag/v3.10.1
@@ -107,13 +107,13 @@ jobs:
       - name: Create SBOM of container image
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # https://github.com/anchore/sbom-action/releases/tag/v0.24.0
         with:
-          image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.Digest }}
-          artifact-name: logprep@${{ steps.build-and-push.outputs.Digest_no_sha }}.spdx.json
-          output-file: logprep@${{ steps.build-and-push.outputs.Digest_no_sha }}.spdx.json
+          image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          artifact-name: logprep@${{ steps.build-and-push.outputs.digest_no_sha }}.spdx.json
+          output-file: logprep@${{ steps.build-and-push.outputs.digest_no_sha }}.spdx.json
       - name: Sign image with a key and add sbom attestation
         run: |
           cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.build-and-push.outputs.Digest_no_sha }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.build-and-push.outputs.digest_no_sha }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
