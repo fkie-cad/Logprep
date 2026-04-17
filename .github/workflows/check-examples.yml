@@ -33,7 +33,7 @@ jobs:
           COMPOSE_PROFILES: ${{ matrix.profile }}
       - name: Run Compose setup
         working-directory: examples/compose
-        run: docker compose up -d
+        run: PYTHON_VERSION="${{ matrix.python-version }}" docker compose up -d
         env: *compose-env
       - name: Debug - show compose services
         working-directory: examples/compose
