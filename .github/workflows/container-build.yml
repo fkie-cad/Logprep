@@ -73,15 +73,25 @@ jobs:
       - name: Build and Push Image
         id: build-and-push
         run: |
-          export PY_VERSION="${{ matrix.python-version }}"
+          export PYTHON_VERSION="${{ matrix.python-version }}"
 
+          # version for dev builds looks like this
+          # 19.0.0.dev0+feat-abc.h31hd73
+          # ^----^      ^-------^      ^
+          # |           |       |------|
+          # |           |       |
+          # |           |       commit hash
+          # |           |
+          # |           branch name
+          # |
+          # Previous latest released version
           uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
-          nix build .#packages.x86_64-linux.docker.python${PY_VERSION//.} -o image
+          nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
           docker load < image
 
           for tag in $(echo "${{ steps.image-tag.outputs.tags }}" | tr ", " "\n")
           do
-            docker image tag logprep:py${PY_VERSION} $tag
+            docker image tag logprep:py${PYTHON_VERSION} $tag
             docker image push $tag
 
             digest=$(docker inspect $tag | jq --raw-output ".[].Id")
