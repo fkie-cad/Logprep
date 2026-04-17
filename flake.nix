@@ -140,10 +140,25 @@
                   name = "logprep";
                   tag = "py${pyVer}";
 
+                  extraCommands = ''
+                    mkdir -p etc
+                    cat > etc/passwd <<EOF
+                    logprep:x:1000:1000::/home/logprep:/bin/sh
+                    EOF
+
+                    cat > etc/group <<EOF
+                    logprep:x:1000:
+                    EOF
+
+                    mkdir -p home/logprep
+                  '';
+
                   created = "now";
                   contents = [ env ];
 
                   config = {
+                    User = "logprep";
+                    WorkingDir = "/home/logprep";
                     Entrypoint = [ "logprep" ];
                   };
                 };

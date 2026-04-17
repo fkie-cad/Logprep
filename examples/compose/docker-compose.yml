@@ -88,13 +88,9 @@ services:
       - kafka
       - prometheus
   logprep:
-    build:
-      context: ../..
-      args:
-        PYTHON_VERSION: ${PYTHON_VERSION:-3.11}
+    image: logprep:py${PYTHON_VERSION:-3.11}
     environment:
       PROMETHEUS_MULTIPROC_DIR: /tmp/logprep/prometheus_multiproc
-    image: logprep
     container_name: logprep
     profiles:
       - logprep

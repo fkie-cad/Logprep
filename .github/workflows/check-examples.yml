@@ -19,7 +19,10 @@ jobs:
           version: latest
       - name: Build images
         working-directory: examples/compose
-        run: docker compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+        run: |
+          uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
+          nix build .#packages.x86_64-linux.docker.python${PY_VERSION//.} -o image
+          docker load < image
         env: &compose-env
           COMPOSE_PROFILES: ${{ matrix.profile }}
       - name: Run Compose setup
