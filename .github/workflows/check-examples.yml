@@ -17,10 +17,15 @@ jobs:
         uses: docker/setup-compose-action@364cc21a5de5b1ee4a7f5f9d3fa374ce0ccde746 # https://github.com/docker/setup-compose-action/releases/tag/v1.2.0
         with:
           version: latest
+      - name: Set up Nix
+        uses: cachix/install-nix-action@v31
       - name: Build images
         working-directory: examples/compose
         run: |
-          uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
+          # We dont set the actual version here,
+          # so if you would look into the container,
+          # to find out the version its running
+          # you would see the latest released version
           nix build .#packages.x86_64-linux.docker.python${PY_VERSION//.} -o image
           docker load < image
         env: &compose-env
