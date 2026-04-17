@@ -81,6 +81,8 @@ jobs:
           do
             docker image tag logprep:py${PY_VERSION} $tag
             docker image push $tag
+
+            docker inspect $tag
           done
 
           docker image ls --format json
