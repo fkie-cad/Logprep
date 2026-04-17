@@ -83,7 +83,7 @@ jobs:
             docker image push $tag
           done
 
-          docker image ls
+          docker image ls --format
         # - name: Build image and push to registry
         #   uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # https://github.com/docker/build-push-action/releases/tag/v6.19.2
         #   id: build-and-push
@@ -108,33 +108,33 @@ jobs:
         #         file.write(f"digest={digest.split(':')[1]}")
         #         file.write(f"imageid={imageid.split(':')[1]}")
         #     EOF
-
-# - name: Install Cosign
-#   uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # https://github.com/sigstore/cosign-installer/releases/tag/v3.10.1
-#   with:
-#     cosign-release: "v2.6.2"
-# - name: Create SBOM of container image
-#   uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # https://github.com/anchore/sbom-action/releases/tag/v0.24.0
-#   with:
-#     image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.Digest }}
-#     artifact-name: logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json
-#     output-file: logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json
-# - name: Sign image with a key and add sbom attestation
-#   run: |
-#     cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-#     cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-#   env:
-#     COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-#     COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-# - name: Scan image using Trivy
-#   uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # https://github.com/aquasecurity/trivy-action/releases/tag/v0.35.0
-#   env:
-#     TRIVY_PLATFORM: linux/amd64
-#     # use daily updated databases from main branch
-#     # https://github.com/aquasecurity/trivy-action?tab=readme-ov-file#updating-caches-in-the-default-branch
-#     TRIVY_SKIP_DB_UPDATE: true
-#     TRIVY_SKIP_JAVA_DB_UPDATE: true
-#   with:
-#     scan-type: image
-#     image-ref: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
-#     trivy-config: trivy.yaml
+    #
+    # - name: Install Cosign
+    #   uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # https://github.com/sigstore/cosign-installer/releases/tag/v3.10.1
+    #   with:
+    #     cosign-release: "v2.6.2"
+    # - name: Create SBOM of container image
+    #   uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # https://github.com/anchore/sbom-action/releases/tag/v0.24.0
+    #   with:
+    #     image: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.Digest }}
+    #     artifact-name: logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json
+    #     output-file: logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json
+    # - name: Sign image with a key and add sbom attestation
+    #   run: |
+    #     cosign sign --yes --key env://COSIGN_PRIVATE_KEY ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+    #     cosign attest --yes --key env://COSIGN_PRIVATE_KEY --predicate logprep@${{ steps.pushed-imageid.outputs.digest }}.spdx.json ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+    #   env:
+    #     COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+    #     COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+    # - name: Scan image using Trivy
+    #   uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # https://github.com/aquasecurity/trivy-action/releases/tag/v0.35.0
+    #   env:
+    #     TRIVY_PLATFORM: linux/amd64
+    #     # use daily updated databases from main branch
+    #     # https://github.com/aquasecurity/trivy-action?tab=readme-ov-file#updating-caches-in-the-default-branch
+    #     TRIVY_SKIP_DB_UPDATE: true
+    #     TRIVY_SKIP_JAVA_DB_UPDATE: true
+    #   with:
+    #     scan-type: image
+    #     image-ref: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
+    #     trivy-config: trivy.yaml
