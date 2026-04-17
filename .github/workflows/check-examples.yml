@@ -22,12 +22,12 @@ jobs:
       - name: Build images
         working-directory: examples/compose
         run: |
-          export PY_VERSION="${{ matrix.python-version }}"
+          export PYTHON_VERSION="${{ matrix.python-version }}"
           # We dont set the actual version here,
           # so if you would look into the container,
           # to find out the version its running
           # you would see the latest released version
-          nix build .#packages.x86_64-linux.docker.python${PY_VERSION//.} -o image
+          nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
           docker load < image
         env: &compose-env
           COMPOSE_PROFILES: ${{ matrix.profile }}
