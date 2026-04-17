@@ -8,6 +8,7 @@
 * centralize trivy cache across branches using a daily workflow
 * fix vulnerable python dependencies
 * add .editorconfig for python
+* add flake.nix and change container building to nix build aswell
 
 ### Bugfix
 * properly handle trailing newlines in lucene filters

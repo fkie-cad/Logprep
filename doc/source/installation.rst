@@ -60,6 +60,14 @@ contribute to them.
     uv sync --frozen
     uv sync --frozen --extra dev # if you intend to contribute
 
+There is also the option of using nix
+
+.. code-block:: bash
+
+   git clone https://github.com/fkie-cad/Logprep.git
+   cd Logprep
+   nix develop
+
 To see if the installation was successful run
 :code:`logprep --version`.
 

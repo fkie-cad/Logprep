@@ -92,6 +92,7 @@
                 virtualenv
                 pkgs.uv
                 pkgs.kubernetes-helm
+                pkgs.pandoc
                 pkgs.basedpyright
               ];
 

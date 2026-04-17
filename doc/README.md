@@ -2,3 +2,6 @@
 
 * install pandoc with `apt-get install pandoc`
 * install requirements with `uv sync --frozen --extra doc` in project root
+
+## nix version
+* nix develop
