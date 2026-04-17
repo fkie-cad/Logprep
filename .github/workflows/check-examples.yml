@@ -22,6 +22,7 @@ jobs:
       - name: Build images
         working-directory: examples/compose
         run: |
+          export PY_VERSION="${{ matrix.python-version }}"
           # We dont set the actual version here,
           # so if you would look into the container,
           # to find out the version its running
