@@ -507,15 +507,16 @@ pipeline:
                       - drop_me
                   description: "..."
         """,
+            "unexpected end of expression",
             id="lucene filter definition ends unexpectedly",
         ),
     ]
 
-    @pytest.mark.parametrize("test_config", invalid_config_test_cases)
-    def test_from_sources_error_handling(self, tmp_path, test_config):
+    @pytest.mark.parametrize("test_config, expected_msg", invalid_config_test_cases)
+    def test_from_sources_error_handling(self, tmp_path, test_config, expected_msg):
         test_config_path = tmp_path / "failure-from_sources.yml"
         test_config_path.write_text(test_config)
-        with pytest.raises(InvalidConfigurationError, match="unexpected end of expression"):
+        with pytest.raises(InvalidConfigurationError, match=expected_msg):
             Configuration.from_sources((str(test_config_path),))
 
     patch = mock.patch(
