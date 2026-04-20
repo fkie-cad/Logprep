@@ -5,8 +5,9 @@ import os
 import re
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from email.headerregistry import ContentTypeHeader
 from string import Template
-from typing import Dict, List, Union
+from typing import Dict, List, TypeAlias, Union
 
 from attrs import define, field, validators
 from ruamel.yaml import YAML, YAMLError
@@ -21,6 +22,11 @@ BLOCKLIST_VARIABLE_NAMES = [
 
 VALID_PREFIXES = ["LOGPREP_", "CI_", "GITHUB_", "PYTEST_"]
 
+# TODO: get config informations for related processor and pass it to the _get method:
+CONTENT_JSON_KEY = "content"
+
+ContentType: TypeAlias = str
+
 
 @define(kw_only=True)
 class Getter(ABC):
@@ -30,13 +36,13 @@ class Getter(ABC):
         """Template class for uppercase only template variables"""
 
         pattern = r"""
-        \$(?:
-            (?P<escaped>\$\$\$)|
-            (?P<named>(?!LOGPREP_LIST)(?=LOGPREP_|CI_|GITHUB_|PYTEST_)[_A-Z0-9]*)|
-            {(?P<braced>(?!LOGPREP_LIST)(?=LOGPREP_|CI_|GITHUB_|PYTEST_)[_A-Z0-9]*)}|
-            (?P<invalid>)
-        )
-        """
+            \$(?:
+                (?P<escaped>\$\$\$)|
+                (?P<named>(?!LOGPREP_LIST)(?=LOGPREP_|CI_|GITHUB_|PYTEST_)[_A-Z0-9]*)|
+                {(?P<braced>(?!LOGPREP_LIST)(?=LOGPREP_|CI_|GITHUB_|PYTEST_)[_A-Z0-9]*)}|
+                (?P<invalid>)
+            )
+            """  # type: ignore[assignment]
         flags = re.VERBOSE
 
     protocol: str = field(validator=validators.instance_of(str))
@@ -54,10 +60,36 @@ class Getter(ABC):
     )
     """used variables in content but not set in environment"""
 
-    def get(self) -> str:
+    content_type: ContentType | None = None
+    """content/mime type of the underlying content, defaults to None"""
+
+    def get(self) -> str | list:
         """calls the get_raw method, decodes the bytes to string and
         enriches by environment variables.
         """
+
+        match self.content_type:
+            case "application/json":
+                json_content: dict | list = self.get_json()
+
+                if isinstance(json_content, list):
+                    return json_content
+                elif isinstance(json_content, dict):
+                    content = json_content.get(CONTENT_JSON_KEY)
+
+                    if content is None:
+                        raise ValueError(f"Content key not found: '{CONTENT_JSON_KEY}'")
+
+                    return content
+                else:
+                    raise ValueError(f"Expected json dict in Getter content")
+
+            case "text/plain":
+                return self._substitute_raw_content().splitlines()
+            case _:
+                return self._substitute_raw_content()
+
+    def _substitute_raw_content(self):
         content = self.get_raw().decode("utf8")
         template = self.EnvTemplate(content)
         kwargs = self._get_kwargs(template, content)
@@ -81,7 +113,7 @@ class Getter(ABC):
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""
-        raw = self.get()
+        raw = self._substitute_raw_content()
         parsed_yaml = list(yaml.load_all(raw))
         if not parsed_yaml:
             return {}
@@ -91,7 +123,7 @@ class Getter(ABC):
 
     def get_json(self) -> Union[Dict, List]:
         """gets and parses the raw content to json"""
-        return json.loads(self.get())
+        return json.loads(self._substitute_raw_content())
 
     def get_collection(self) -> Union[Dict, List]:
         """Gets and parses the raw content to yaml or json if yaml fails"""
@@ -117,7 +149,7 @@ class Getter(ABC):
     def get_jsonl(self) -> List:
         """Gets and parses the raw content to jsonl"""
         parsed_events = []
-        for json_string in self.get().splitlines():
+        for json_string in self._substitute_raw_content().splitlines():
             if json_string.strip() != "":
                 event = json.loads(json_string)
                 parsed_events.append(event)

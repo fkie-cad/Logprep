@@ -15,13 +15,12 @@ from typing import ClassVar, Tuple
 from urllib.parse import urlparse
 
 import requests
-from aiohttp.web_fileresponse import content_type
 from attrs import define, field, validators
 from requests import Response
 from schedule import Scheduler
 
 from logprep.abc.exceptions import LogprepException
-from logprep.abc.getter import Getter
+from logprep.abc.getter import ContentType, Getter
 from logprep.util.credentials import (
     Credentials,
     CredentialsEnvNotFoundError,
@@ -31,8 +30,6 @@ from logprep.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
     ENV_NAME_LOGPREP_GETTER_CONFIG,
 )
-
-ContentType = str
 
 
 class GetterNotFoundError(LogprepException):
@@ -261,7 +258,7 @@ class RefreshableGetter(Getter, ABC):
             return
         self.shared.refreshing = True
         try:
-            was_modified, _ = self._update_cache()
+            was_modified = self._update_cache()
         except RefreshableGetterError as error:
             self._log_cache_warning(error)
             was_modified = False
@@ -272,14 +269,16 @@ class RefreshableGetter(Getter, ABC):
             callback["function"](*callback["args"], **callback["kwargs"])
         self.shared.refreshing = False
 
-    def _update_cache(self) -> tuple[bool, ContentType]:
+    def _update_cache(self) -> bool:
         """Update the cache of the current http getter"""
         content, was_modified, content_type = self._get_from_target()
+        self.content_type = content_type
+
         if was_modified and content is not None:
             self.cache = content
         if self.cache is None:
             raise ValueError(f"{type(self).__name__} cache is empty")
-        return was_modified, content_type
+        return was_modified
 
     @abstractmethod
     def _get_from_target(self) -> tuple[bytes | None, bool, ContentType]:
@@ -442,48 +441,16 @@ class HttpGetter(RefreshableGetter):
             )
         ) from error
 
-    def get_list(self) -> list[str]:
-        """Get the content as list based on header information.
+    def get(self) -> list[str]:
+        """Get the content as list based on header information."""
 
-        This method calls the target URL to retrieve the initial header
-        information and initialize the cache state.
+        self._update_cache()
+        content = super().get()
 
-        For the content type `application/json`, it defaults to using the
-        `content` key. This can also be configured via `content_json_key`
-        in the corresponding `list_comparison` or `network_comparison`
-        processor configuration.
+        if isinstance(content, str):
+            return [content]
 
-        See the configuration examples of these processors for details.
-        """
-
-        _, content_type = self._update_cache()
-
-        # TODO: get config informations for related processor and pass it to the _get method:
-        content_json_key = "content"
-
-        return self._get(content_type=content_type, content_json_key=content_json_key)
-
-    def _get(self, content_type: ContentType, content_json_key: str) -> list[str]:
-        match content_type:
-            case "application/json":
-                json_content: dict | list = self.get_json()
-
-                if isinstance(json_content, list):
-                    return json_content
-                elif isinstance(json_content, dict):
-                    content = json_content.get(content_json_key)
-
-                    if content is None:
-                        raise RefreshableGetterError(f"Content key not found: '{content_json_key}'")
-
-                    return content
-                else:
-                    raise RefreshableGetterError(f"Expected json dict in HttpGetter content")
-
-            case "text/plain":
-                return self.get().splitlines()
-            case _:
-                raise RefreshableGetterError(f"Not supported content type: '{content_type}'")
+        return content
 
 
 def refresh_getters():

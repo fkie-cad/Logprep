@@ -125,7 +125,7 @@ class ListComparisonRule(FieldManagerRule):
             http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
 
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
-        compare_elements: list[str] = http_getter.get_list()
+        compare_elements: list[str] = http_getter.get()
         self._compare_sets.update({list_path: set(compare_elements)})
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
@@ -141,8 +141,13 @@ class ListComparisonRule(FieldManagerRule):
         ]
         list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
         for list_path in list_paths:
-            content = GetterFactory.from_string(list_path).get()
-            compare_elements = content.splitlines()
+            content: str | list = GetterFactory.from_string(list_path).get()
+
+            if isinstance(content, str):
+                compare_elements = content.splitlines()
+            else:
+                compare_elements = content
+
             file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)
             self._compare_sets.update({filename: set(file_elem_tuples)})

@@ -1310,7 +1310,7 @@ class TestHttpGetter:
         http_getter._refresh()
         assert re.search(r"Not updating .+ cache with URI .+", caplog.text)
 
-    @mock.patch("logprep.util.getter.HttpGetter._get_from_target", return_value=(b"", False))
+    @mock.patch("logprep.util.getter.HttpGetter._get_from_target", return_value=(b"", False, None))
     def test_update_cache_raises_error_if_empty(self, _):
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         http_getter.cache = None
