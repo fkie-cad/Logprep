@@ -318,38 +318,6 @@ Hans
         processor.setup()
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
-    @pytest.skip(reason="logprep does not support objects in json result yet.")
-    @responses.activate
-    def test_list_comparison_content_json_object(self):
-        responses.add(
-            responses.GET,
-            "http://localhost:8080/v2/valuestore/test_4",
-            json.dumps({"content": {"name_1": "Franz", "name_2": "Heinz", "name_3": "Hans"}}),
-            content_type="application/json",
-        )
-        rule_dict = {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["bad_users.list"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "list_comparison",
-            "rules": [],
-            "list_search_base_path": "http://localhost:8080/v2/valuestore/test_4",
-        }
-
-        HttpGetter._shared.clear()
-
-        processor = Factory.create({"custom_lister": config})
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-        processor.setup()
-        assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
-
     @responses.activate
     def test_list_comparison_loads_rule_using_http_and_updates_with_callback(self, tmp_path):
         target = "localhost/tests/testdata/bad_users.list?ref=bla"
