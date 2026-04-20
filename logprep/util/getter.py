@@ -15,6 +15,7 @@ from typing import ClassVar, Tuple
 from urllib.parse import urlparse
 
 import requests
+from aiohttp.web_fileresponse import content_type
 from attrs import define, field, validators
 from requests import Response
 from schedule import Scheduler
@@ -30,6 +31,8 @@ from logprep.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
     ENV_NAME_LOGPREP_GETTER_CONFIG,
 )
+
+ContentType = str
 
 
 class GetterNotFoundError(LogprepException):
@@ -258,7 +261,7 @@ class RefreshableGetter(Getter, ABC):
             return
         self.shared.refreshing = True
         try:
-            was_modified = self._update_cache()
+            was_modified, _ = self._update_cache()
         except RefreshableGetterError as error:
             self._log_cache_warning(error)
             was_modified = False
@@ -269,17 +272,17 @@ class RefreshableGetter(Getter, ABC):
             callback["function"](*callback["args"], **callback["kwargs"])
         self.shared.refreshing = False
 
-    def _update_cache(self) -> bool:
+    def _update_cache(self) -> tuple[bool, ContentType]:
         """Update the cache of the current http getter"""
-        content, was_modified = self._get_from_target()
+        content, was_modified, content_type = self._get_from_target()
         if was_modified and content is not None:
             self.cache = content
         if self.cache is None:
             raise ValueError(f"{type(self).__name__} cache is empty")
-        return was_modified
+        return was_modified, content_type
 
     @abstractmethod
-    def _get_from_target(self) -> tuple[bytes | None, bool]:
+    def _get_from_target(self) -> tuple[bytes | None, bool, ContentType]:
         """Get value from target and return if it changed or not since it was last obtained"""
 
     def _handle_cache_error(self, error: RefreshableGetterError | ValueError):
@@ -393,11 +396,11 @@ class HttpGetter(RefreshableGetter):
             creds = CredentialsFactory.from_target(self.uri)
         return creds if creds else Credentials()
 
-    def _get_from_target(self) -> tuple[bytes | None, bool]:
+    def _get_from_target(self) -> tuple[bytes | None, bool, ContentType]:
         response = self._do_request()
-        self._headers["Content-Type"] = response.headers["Content-Type"]
+        content_type = response.headers["Content-Type"]
         was_modified = response.status_code != 304
-        return response.content, was_modified
+        return response.content, was_modified, content_type
 
     def _do_request(self) -> Response:
         """Gets the content from a http server via a URI"""
@@ -453,15 +456,15 @@ class HttpGetter(RefreshableGetter):
         See the configuration examples of these processors for details.
         """
 
-        self._update_cache()
+        _, content_type = self._update_cache()
 
         # TODO: get config informations for related processor and pass it to the _get method:
         content_json_key = "content"
 
-        return self._get(content_json_key=content_json_key)
+        return self._get(content_type=content_type, content_json_key=content_json_key)
 
-    def _get(self, content_json_key: str) -> list[str]:
-        match ct := self._headers.get("Content-Type"):
+    def _get(self, content_type: ContentType, content_json_key: str) -> list[str]:
+        match content_type:
             case "application/json":
                 json_content = self.get_json()
 
@@ -475,7 +478,7 @@ class HttpGetter(RefreshableGetter):
             case "text/plain":
                 content = self.get().splitlines()
             case _:
-                raise RefreshableGetterError(f"Not supported content type: '{ct}'")
+                raise RefreshableGetterError(f"Not supported content type: '{content_type}'")
 
         return content
 
