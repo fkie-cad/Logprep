@@ -190,10 +190,10 @@ The following config file will be valid by setting the given environment variabl
                 group.id: test"
 """
 
+from __future__ import annotations  # Fixes mypy reporting wrong lines
 import json
 import logging
 import os
-from __future__ import annotations  # Fixes mypy reporting wrong lines
 from copy import deepcopy
 from importlib.metadata import version
 from itertools import chain
