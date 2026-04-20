@@ -146,10 +146,10 @@
               });
             in
             pythonSet.pkgs.runCommand "logprep-dist-${pyVer}" { } ''
-              mkdir -p $out/dist/
+              mkdir -p $out/
 
-              cp ${wheel}/*.whl $out/dist/
-              cp ${sdist}/*.tar.gz $out/dist/
+              cp ${wheel}/*.whl $out/
+              cp ${sdist}/*.tar.gz $out/
             '';
 
           envs = builtins.mapAttrs mkEnv sets;
