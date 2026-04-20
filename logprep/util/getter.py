@@ -11,12 +11,12 @@ from functools import cached_property
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
-from typing import Tuple, ClassVar
+from typing import ClassVar, Tuple
 from urllib.parse import urlparse
 
 import requests
-from requests import Response
 from attrs import define, field, validators
+from requests import Response
 from schedule import Scheduler
 
 from logprep.abc.exceptions import LogprepException
@@ -26,7 +26,10 @@ from logprep.util.credentials import (
     CredentialsEnvNotFoundError,
     CredentialsFactory,
 )
-from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE, ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.defaults import (
+    ENV_NAME_LOGPREP_CREDENTIALS_FILE,
+    ENV_NAME_LOGPREP_GETTER_CONFIG,
+)
 
 
 class GetterNotFoundError(LogprepException):
@@ -392,6 +395,7 @@ class HttpGetter(RefreshableGetter):
 
     def _get_from_target(self) -> tuple[bytes | None, bool]:
         response = self._do_request()
+        self._headers["Content-Type"] = response.headers["Content-Type"]
         was_modified = response.status_code != 304
         return response.content, was_modified
 
@@ -409,7 +413,7 @@ class HttpGetter(RefreshableGetter):
         except requests.exceptions.HTTPError as error:
             self._handle_http_error(error)
         if "etag" in resp.headers:
-            self.hash = resp.headers.get("etag")
+            self.hash = resp.headers["etag"]
         return resp
 
     def _get_requests_session(self) -> requests.Session:
@@ -434,6 +438,46 @@ class HttpGetter(RefreshableGetter):
                 f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
             )
         ) from error
+
+    def get_list(self) -> list[str]:
+        """Get the content as list based on header information.
+
+        This method calls the target URL to retrieve the initial header
+        information and initialize the cache state.
+
+        For the content type `application/json`, it defaults to using the
+        `content` key. This can also be configured via `content_json_key`
+        in the corresponding `list_comparison` or `network_comparison`
+        processor configuration.
+
+        See the configuration examples of these processors for details.
+        """
+
+        self._update_cache()
+
+        # TODO: get config informations for related processor and pass it to the _get method:
+        content_json_key = "content"
+
+        return self._get(content_json_key=content_json_key)
+
+    def _get(self, content_json_key: str) -> list[str]:
+        match ct := self._headers.get("Content-Type"):
+            case "application/json":
+                json_content = self.get_json()
+
+                if isinstance(json_content, dict):
+                    content = json_content.get(content_json_key)
+                    if content is None:
+                        raise RefreshableGetterError(f"Content key not found: '{content_json_key}'")
+                else:
+                    raise RefreshableGetterError(f"Expected json dict in HttpGetter content")
+
+            case "text/plain":
+                content = self.get().splitlines()
+            case _:
+                raise RefreshableGetterError(f"Not supported content type: '{ct}'")
+
+        return content
 
 
 def refresh_getters():
