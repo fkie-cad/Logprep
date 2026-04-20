@@ -466,21 +466,24 @@ class HttpGetter(RefreshableGetter):
     def _get(self, content_type: ContentType, content_json_key: str) -> list[str]:
         match content_type:
             case "application/json":
-                json_content = self.get_json()
+                json_content: dict | list = self.get_json()
 
-                if isinstance(json_content, dict):
+                if isinstance(json_content, list):
+                    return json_content
+                elif isinstance(json_content, dict):
                     content = json_content.get(content_json_key)
+
                     if content is None:
                         raise RefreshableGetterError(f"Content key not found: '{content_json_key}'")
+
+                    return content
                 else:
                     raise RefreshableGetterError(f"Expected json dict in HttpGetter content")
 
             case "text/plain":
-                content = self.get().splitlines()
+                return self.get().splitlines()
             case _:
                 raise RefreshableGetterError(f"Not supported content type: '{content_type}'")
-
-        return content
 
 
 def refresh_getters():
