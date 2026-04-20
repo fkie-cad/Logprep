@@ -193,6 +193,7 @@ The following config file will be valid by setting the given environment variabl
 import json
 import logging
 import os
+from __future__ import annotations  # Fixes mypy reporting wrong lines
 from copy import deepcopy
 from importlib.metadata import version
 from itertools import chain
@@ -256,9 +257,11 @@ class InvalidConfigurationErrors(InvalidConfigurationError):
 
     errors: List[InvalidConfigurationError]
 
-    def __init__(self, errors: List[Exception]) -> None:
+    def __init__(self, errors: List) -> None:
         unique_errors = []
         for error in errors:
+            if not isinstance(error, Exception):
+                raise TypeError(f'Error {error} is not of expected type "Exception"')
             if not isinstance(error, InvalidConfigurationError):
                 error = InvalidConfigurationError(*error.args)
                 if error not in unique_errors:
@@ -1028,8 +1031,9 @@ class Configuration:
             processor = None
             try:
                 processor = Factory.create(deepcopy(processor_config))
-                processor.setup()
-                self._verify_rules(processor)
+                if processor is not None:
+                    processor.setup()
+                    self._verify_rules(processor)
             except (
                 FactoryError,
                 TypeError,
