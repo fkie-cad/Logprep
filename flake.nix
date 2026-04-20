@@ -131,6 +131,26 @@
 
           mkEnv = pyVer: pythonSet: pythonSet.mkVirtualEnv "logprep-${pyVer}" workspace.deps.default;
 
+          mkDist =
+            pyVer: pythonSet:
+            let
+              base = pythonSet.logprep;
+
+              wheel = base.override {
+                pyprojectHook = pythonSet.pyprojectDistHook;
+              };
+
+              sdist = wheel.overrideAttrs (old: {
+                env.uvBuildType = "sdist";
+              });
+            in
+            pythonSet.pkgs.runCommand "logprep-dist-${pyVer}" { } ''
+              mkdir -p $out/dist/
+
+              cp ${wheel}/*.whl $out/dist/ 
+              cp ${sdist}/*.tar.gz $out/dist/
+            '';
+
           envs = builtins.mapAttrs mkEnv sets;
 
           dockerImages =
@@ -164,6 +184,7 @@
                   };
                 };
               };
+
             in
             builtins.listToAttrs (lib.mapAttrsToList mk envs);
 
@@ -175,12 +196,23 @@
               };
             in
             builtins.listToAttrs (lib.mapAttrsToList mk envs);
+
+          distPackages =
+            let
+              mk = pyVer: pythonSet: {
+                name = "python${lib.replaceStrings [ "." ] [ "" ] pyVer}";
+                value = mkDist pyVer pythonSet;
+              };
+            in
+            builtins.listToAttrs (lib.mapAttrsToList mk sets);
         in
         packageEnvs
         // {
           default = lib.head (lib.attrValues envs);
 
           docker = dockerImages;
+
+          dist = distPackages;
         }
       );
     };
