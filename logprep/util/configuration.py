@@ -639,7 +639,7 @@ class Configuration:
     _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 
     _getter: Getter = field(
-        validator=validators.instance_of(Getter),
+        validator=validators.instance_of(Getter),  # type: ignore
         default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
         repr=False,
         eq=False,
@@ -1030,8 +1030,7 @@ class Configuration:
         for processor_config in self.pipeline:
             processor = None
             try:
-                processor = Factory.create(deepcopy(processor_config))
-                if processor is not None:
+                if isinstance(processor, Processor):
                     processor.setup()
                     self._verify_rules(processor)
             except (
