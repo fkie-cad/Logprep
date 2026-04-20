@@ -153,7 +153,7 @@ class RefreshableGetter(Getter, ABC):
         self._shared[self.target] = value
 
     @property
-    def scheduler(self) -> Scheduler:
+    def scheduler(self) -> Scheduler | None:
         """Returns the scheduler for the current target"""
         return self.shared.scheduler
 
