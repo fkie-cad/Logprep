@@ -60,7 +60,14 @@ contribute to them.
     uv sync --frozen
     uv sync --frozen --extra dev # if you intend to contribute
 
-There is also the option of using nix
+There is also the option of using nix flakes.
+
+Flakes are theoretically experimental so depending on which nix installer you used,
+you might have to follow this short guide:
+
+https://wiki.nixos.org/wiki/Flakes#Nix_standalone
+
+after that, you should be able to run the following code and just start developing.
 
 .. code-block:: bash
 
