@@ -129,20 +129,9 @@ jobs:
           scan-type: image
           image-ref: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
           trivy-config: trivy.yaml
-  build-wheel-and-tarball:
-    runs-on: ubuntu-24.04
-    name: Build Logprep
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
-      - name: Set up Nix
-        uses: cachix/install-nix-action@v31
       - name: Build wheels
         run: |
           mkdir -p dist
           nix build .#dist.python311 -o dist_sl
           cp -rL dist_sl dist
-      - name: Upload Artifact for next job
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # https://github.com/actions/upload-artifact/releases/tag/v7.0.0
-        with:
-          name: logprep-build
-          path: dist
+          ls dist
