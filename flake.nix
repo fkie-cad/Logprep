@@ -94,6 +94,7 @@
                 pkgs.kubernetes-helm
                 pkgs.pandoc
                 pkgs.basedpyright
+                pkgs.pre-commit
               ];
 
               env = {
@@ -147,7 +148,7 @@
             pythonSet.pkgs.runCommand "logprep-dist-${pyVer}" { } ''
               mkdir -p $out/dist/
 
-              cp ${wheel}/*.whl $out/dist/ 
+              cp ${wheel}/*.whl $out/dist/
               cp ${sdist}/*.tar.gz $out/dist/
             '';
 
