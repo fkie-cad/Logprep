@@ -190,6 +190,7 @@ The following config file will be valid by setting the given environment variabl
                 group.id: test"
 """
 
+from __future__ import annotations  # Fixes mypy reporting wrong lines
 import json
 import logging
 import os
@@ -212,6 +213,7 @@ from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
+from logprep.filter.lucene_filter import LuceneFilterError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
@@ -255,9 +257,11 @@ class InvalidConfigurationErrors(InvalidConfigurationError):
 
     errors: List[InvalidConfigurationError]
 
-    def __init__(self, errors: List[Exception]) -> None:
+    def __init__(self, errors: List) -> None:
         unique_errors = []
         for error in errors:
+            if not isinstance(error, Exception):
+                raise TypeError(f'Error {error} is not of expected type "Exception"')
             if not isinstance(error, InvalidConfigurationError):
                 error = InvalidConfigurationError(*error.args)
                 if error not in unique_errors:
@@ -635,7 +639,7 @@ class Configuration:
     _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 
     _getter: Getter = field(
-        validator=validators.instance_of(Getter),
+        validator=validators.instance_of(Getter),  # type: ignore
         default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
         repr=False,
         eq=False,
@@ -961,6 +965,7 @@ class Configuration:
                 ValueError,
                 InvalidRuleDefinitionError,
                 RefreshableGetterError,
+                LuceneFilterError,
             ) as error:
                 errors.append(error)
         if errors:
@@ -1025,15 +1030,16 @@ class Configuration:
         for processor_config in self.pipeline:
             processor = None
             try:
-                processor = Factory.create(deepcopy(processor_config))
-                processor.setup()
-                self._verify_rules(processor)
+                if isinstance(processor, Processor):
+                    processor.setup()
+                    self._verify_rules(processor)
             except (
                 FactoryError,
                 TypeError,
                 ValueError,
                 InvalidRuleDefinitionError,
                 RefreshableGetterError,
+                LuceneFilterError,
             ) as error:
                 errors.append(error)
             except FileNotFoundError as error:

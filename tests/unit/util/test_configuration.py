@@ -16,6 +16,7 @@ from attrs import asdict
 from requests.exceptions import HTTPError
 from ruamel.yaml.scanner import ScannerError
 
+from logprep.filter.lucene_filter import LuceneFilterError
 from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
@@ -52,11 +53,11 @@ class TestConfiguration:
             ("config_refresh_interval", type(None), None),
             ("process_count", int, 1),
             ("timeout", float, 5.0),
-            ("logger", LoggerConfig, LoggerConfig(**{"level": "INFO"})),
+            ("logger", LoggerConfig, LoggerConfig(level="INFO")),
             ("pipeline", list, []),
             ("input", dict, {}),
             ("output", dict, {}),
-            ("metrics", MetricsConfig, MetricsConfig(**{"enabled": False, "port": 8000})),
+            ("metrics", MetricsConfig, MetricsConfig(enabled=False, port=8000)),
         ],
     )
     def test_configuration_init(self, attribute, attribute_type, default):
@@ -479,6 +480,44 @@ pipeline:
             assert len(raised.value.errors) == error_count, test_case
         else:
             Configuration.from_sources([str(test_config_path)])
+
+    invalid_config_test_cases = [
+        pytest.param(
+            """
+        version: test_version
+        process_count: 2
+        timeout: 0.1
+        logger:
+            level: DEBUG
+        input:
+            dummy:
+                type: dummy_input
+                documents: []
+        output:
+            dummy:
+                type: dummy_output
+        pipeline:
+          - dropper:
+              type: dropper
+              rules:
+                - examples/exampledata/rules/dropper/rules
+                - filter: "test_dropper OR"
+                  dropper:
+                    drop:
+                      - drop_me
+                  description: "..."
+        """,
+            "unexpected end of expression",
+            id="lucene filter definition ends unexpectedly",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_config, expected_msg", invalid_config_test_cases)
+    def test_from_sources_error_handling(self, tmp_path, test_config, expected_msg):
+        test_config_path = tmp_path / "failure-from_sources.yml"
+        test_config_path.write_text(test_config)
+        with pytest.raises(InvalidConfigurationError, match=expected_msg):
+            Configuration.from_sources((str(test_config_path),))
 
     patch = mock.patch(
         "os.environ",
@@ -1463,11 +1502,13 @@ class TestInvalidConfigurationErrors:
                     InvalidConfigurationError("test"),
                     TypeError("typeerror"),
                     ValueError("valueerror"),
+                    LuceneFilterError("lucenefiltererror"),
                 ],
                 [
                     InvalidConfigurationError("test"),
                     InvalidConfigurationError("typeerror"),
                     InvalidConfigurationError("valueerror"),
+                    InvalidConfigurationError("lucenefiltererror"),
                 ],
             ),
         ],
