@@ -32,5 +32,6 @@ requirements.*
 /scripts/
 .dmypy.json
 tmp
-.envrc
+.direnv
 **/.DS_Store
+result
