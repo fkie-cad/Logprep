@@ -133,5 +133,5 @@ jobs:
         run: |
           mkdir -p dist
           nix build .#dist.python311 -o dist_sl
-          cp -rL dist_sl dist
+          cp -rL dist_sl/* dist
           ls dist
