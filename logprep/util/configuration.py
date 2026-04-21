@@ -1030,6 +1030,7 @@ class Configuration:
         for processor_config in self.pipeline:
             processor = None
             try:
+                processor = Factory.create(deepcopy(processor_config))
                 if isinstance(processor, Processor):
                     processor.setup()
                     self._verify_rules(processor)
