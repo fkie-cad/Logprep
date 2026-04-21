@@ -125,8 +125,13 @@ class ListComparisonRule(FieldManagerRule):
             http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
 
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
-        compare_elements: list[str] = http_getter.get()
-        self._compare_sets.update({list_path: set(compare_elements)})
+        compare_elements = http_getter.get()
+
+        if isinstance(compare_elements, str):
+            compare_elements = http_getter.parse_list(compare_elements)
+
+        file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
+        self._compare_sets.update({list_path: set(file_elem_tuples)})
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
         absolute_list_paths = [
@@ -141,12 +146,14 @@ class ListComparisonRule(FieldManagerRule):
         ]
         list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
         for list_path in list_paths:
-            content: str | list = GetterFactory.from_string(list_path).get()
+            content: str | list | dict = GetterFactory.from_string(list_path).get()
 
             if isinstance(content, str):
                 compare_elements = content.splitlines()
-            else:
+            elif isinstance(content, list):
                 compare_elements = content
+            else:
+                raise TypeError(f"The content must be a string or a list")
 
             file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)

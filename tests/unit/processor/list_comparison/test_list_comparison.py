@@ -515,6 +515,6 @@ Heinz
         processor.process(document)
 
         assert document == expected_document
-        assert len(responses.calls) == 2
+        assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
         assert rule.compare_sets[list_name] == expected_result

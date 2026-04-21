@@ -11,7 +11,7 @@ from functools import cached_property
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
-from typing import ClassVar, Tuple
+from typing import ClassVar, Tuple, cast
 from urllib.parse import urlparse
 
 import requests
@@ -30,6 +30,9 @@ from logprep.util.defaults import (
     ENV_NAME_LOGPREP_CREDENTIALS_FILE,
     ENV_NAME_LOGPREP_GETTER_CONFIG,
 )
+
+# TODO: get config informations for related processor
+CONTENT_JSON_KEY = "content"
 
 
 class GetterNotFoundError(LogprepException):
@@ -101,6 +104,9 @@ class DataSharedPerTarget:
     cache: bytes | None = None
     """Value of the resource when it was last obtained"""
 
+    content_type: ContentType | None = None
+    """Content type of the resource when it was last obtained"""
+
     scheduler: Scheduler | None = None
     """Scheduler used to trigger getter refreshes"""
 
@@ -158,6 +164,16 @@ class RefreshableGetter(Getter, ABC):
     def scheduler(self, value: Scheduler) -> None:
         """sets the scheduler for the target"""
         self.shared.scheduler = value
+
+    @property
+    def content_type(self) -> ContentType | None:
+        """Returns the content_type for the current target"""
+        return self.shared.content_type
+
+    @content_type.setter
+    def content_type(self, value: ContentType | None) -> None:
+        """sets the content_type for the target"""
+        self.shared.content_type = value
 
     @property
     def cache(self) -> bytes | None:
@@ -271,17 +287,17 @@ class RefreshableGetter(Getter, ABC):
 
     def _update_cache(self) -> bool:
         """Update the cache of the current http getter"""
-        content, was_modified, content_type = self._get_from_target()
-        self.content_type = content_type
+        content, content_type, was_modified = self._get_from_target()
 
         if was_modified and content is not None:
             self.cache = content
+            self.content_type = content_type
         if self.cache is None:
             raise ValueError(f"{type(self).__name__} cache is empty")
         return was_modified
 
     @abstractmethod
-    def _get_from_target(self) -> tuple[bytes | None, bool, ContentType]:
+    def _get_from_target(self) -> tuple[bytes | None, ContentType | None, bool]:
         """Get value from target and return if it changed or not since it was last obtained"""
 
     def _handle_cache_error(self, error: RefreshableGetterError | ValueError):
@@ -289,6 +305,7 @@ class RefreshableGetter(Getter, ABC):
         if self._default_return_value is None:
             raise error
         self.cache = self._default_return_value
+        self.content_type = None
 
     def _log_cache_warning(self, error: Exception):
         self._logger.warning(
@@ -322,6 +339,34 @@ class RefreshableGetter(Getter, ABC):
         for shared_target_data in cls._shared.values():
             if shared_target_data.scheduler:
                 shared_target_data.scheduler.run_pending()
+
+    def get(self) -> dict | list | str:
+        """Get the content as list based on header information."""
+
+        content = super().get()
+
+        match self.content_type:
+            case "application/json":
+                json_content = self.parse_json(cast(str, content))
+
+                if isinstance(json_content, list):
+                    return json_content
+                elif isinstance(json_content, dict):
+                    content = cast(list, json_content.get(CONTENT_JSON_KEY))
+
+                    if content is None:
+                        raise ValueError(f"Content key not found: '{CONTENT_JSON_KEY}'")
+                    if not isinstance(content, list):
+                        raise ValueError(f"Content is not a list.")
+
+                    return content
+                else:
+                    raise ValueError(f"Expected json dict in Getter content")
+
+            case "text/plain":
+                return self.parse_list(cast(str, content))
+            case _:
+                return content
 
 
 @define(kw_only=True)
@@ -395,11 +440,11 @@ class HttpGetter(RefreshableGetter):
             creds = CredentialsFactory.from_target(self.uri)
         return creds if creds else Credentials()
 
-    def _get_from_target(self) -> tuple[bytes | None, bool, ContentType]:
+    def _get_from_target(self) -> tuple[bytes | None, ContentType | None, bool]:
         response = self._do_request()
-        content_type = response.headers["Content-Type"]
+        content_type = response.headers.get("Content-Type")
         was_modified = response.status_code != 304
-        return response.content, was_modified, content_type
+        return response.content, content_type, was_modified
 
     def _do_request(self) -> Response:
         """Gets the content from a http server via a URI"""
@@ -440,17 +485,6 @@ class HttpGetter(RefreshableGetter):
                 f"'{ENV_NAME_LOGPREP_CREDENTIALS_FILE}'"
             )
         ) from error
-
-    def get(self) -> list[str]:
-        """Get the content as list based on header information."""
-
-        self._update_cache()
-        content = super().get()
-
-        if isinstance(content, str):
-            return [content]
-
-        return content
 
 
 def refresh_getters():

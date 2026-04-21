@@ -5,9 +5,8 @@ import os
 import re
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from email.headerregistry import ContentTypeHeader
 from string import Template
-from typing import Dict, List, TypeAlias, Union
+from typing import TypeAlias
 
 from attrs import define, field, validators
 from ruamel.yaml import YAML, YAMLError
@@ -21,9 +20,6 @@ BLOCKLIST_VARIABLE_NAMES = [
 ]
 
 VALID_PREFIXES = ["LOGPREP_", "CI_", "GITHUB_", "PYTEST_"]
-
-# TODO: get config informations for related processor and pass it to the _get method:
-CONTENT_JSON_KEY = "content"
 
 ContentType: TypeAlias = str
 
@@ -60,36 +56,13 @@ class Getter(ABC):
     )
     """used variables in content but not set in environment"""
 
-    content_type: ContentType | None = None
-    """content/mime type of the underlying content, defaults to None"""
-
-    def get(self) -> str | list:
+    def get(self) -> dict | list | str:
         """calls the get_raw method, decodes the bytes to string and
         enriches by environment variables.
         """
+        return self._substitute_raw_content()
 
-        match self.content_type:
-            case "application/json":
-                json_content: dict | list = self.get_json()
-
-                if isinstance(json_content, list):
-                    return json_content
-                elif isinstance(json_content, dict):
-                    content = json_content.get(CONTENT_JSON_KEY)
-
-                    if content is None:
-                        raise ValueError(f"Content key not found: '{CONTENT_JSON_KEY}'")
-
-                    return content
-                else:
-                    raise ValueError(f"Expected json dict in Getter content")
-
-            case "text/plain":
-                return self._substitute_raw_content().splitlines()
-            case _:
-                return self._substitute_raw_content()
-
-    def _substitute_raw_content(self):
+    def _substitute_raw_content(self) -> str:
         content = self.get_raw().decode("utf8")
         template = self.EnvTemplate(content)
         kwargs = self._get_kwargs(template, content)
@@ -111,21 +84,29 @@ class Getter(ABC):
         used_braced_env_vars = map(lambda x: x[2], found_variables)
         return (item for item in {*used_named_env_vars, *used_braced_env_vars} if item)
 
-    def get_yaml(self) -> Union[Dict, List]:
+    def get_yaml(self) -> dict | list:
         """gets and parses the raw content to yaml"""
-        raw = self._substitute_raw_content()
-        parsed_yaml = list(yaml.load_all(raw))
+        content = self._substitute_raw_content()
+        return self.parse_yaml(content)
+
+    def parse_yaml(self, content: str) -> dict | list:
+        parsed_yaml = list(yaml.load_all(content))
         if not parsed_yaml:
             return {}
         if len(parsed_yaml) > 1:
             return parsed_yaml
         return parsed_yaml.pop()
 
-    def get_json(self) -> Union[Dict, List]:
+    def get_json(self) -> dict | list:
         """gets and parses the raw content to json"""
-        return json.loads(self._substitute_raw_content())
+        content = self._substitute_raw_content()
+        return self.parse_json(content)
 
-    def get_collection(self) -> Union[Dict, List]:
+    def parse_json(self, content: str) -> dict | list:
+        """parses the content to json"""
+        return json.loads(content)
+
+    def get_collection(self) -> dict | list:
         """Gets and parses the raw content to yaml or json if yaml fails"""
         try:
             return self.get_yaml()
@@ -139,21 +120,22 @@ class Getter(ABC):
             raise ValueError("Value is not a dictionary")
         return result
 
-    def get_list(self) -> list:
-        """Gets list and fails otherwise"""
-        result = self.get_collection()
-        if not isinstance(result, list):
-            raise ValueError("Value is not a list")
-        return result
+    def parse_list(self, content: str) -> list:
+        """parses the content to list"""
+        return content.splitlines()
 
-    def get_jsonl(self) -> List:
+    def get_jsonl(self) -> list:
         """Gets and parses the raw content to jsonl"""
         parsed_events = []
-        for json_string in self._substitute_raw_content().splitlines():
-            if json_string.strip() != "":
-                event = json.loads(json_string)
+        for content in self.parse_list(self._substitute_raw_content()):
+            if content.strip() != "":
+                event = self.parse_json(content)
                 parsed_events.append(event)
         return parsed_events
+
+    def parse_jsonl(self, content: str) -> list:
+        """parses the content to jsonl"""
+        return json.loads(content)
 
     @abstractmethod
     def get_raw(self) -> bytes:

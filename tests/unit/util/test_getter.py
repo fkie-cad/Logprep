@@ -1335,17 +1335,6 @@ class TestHttpGetter:
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter.get_dict() == {"something": "foo"}
 
-    @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a list")
-    def test_get_list_raises_exception_if_result_not_list(self, _):
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
-        with pytest.raises(ValueError, match="Value is not a list"):
-            http_getter.get_list()
-
-    @mock.patch("logprep.abc.getter.Getter.get_collection", return_value=["something"])
-    def test_get_list_returns_if_result_is_list(self, _):
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
-        assert http_getter.get_list() == ["something"]
-
     def test_handle_http_error_401_raises_refreshable_getter_error(self):
         response = MagicMock()
         response.status_code = 123
