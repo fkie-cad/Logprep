@@ -9,6 +9,7 @@
 * fix vulnerable python dependencies
 * add .editorconfig for python
 * add flake.nix and change container building to nix build as well
+* remove stale rust dependency and code
 
 ### Bugfix
 * properly handle trailing newlines in lucene filters

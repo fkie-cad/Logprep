@@ -22,7 +22,6 @@ jobs:
       - name: Build images
         working-directory: examples/compose
         run: |
-          export PYTHON_VERSION="${{ matrix.python-version }}"
           # We dont set the actual version here,
           # so if you would look into the container,
           # to find out the version its running
@@ -31,9 +30,10 @@ jobs:
           docker load < image
         env: &compose-env
           COMPOSE_PROFILES: ${{ matrix.profile }}
+          PYTHON_VERSION: ${{ matrix.python-version }}
       - name: Run Compose setup
         working-directory: examples/compose
-        run: PYTHON_VERSION="${{ matrix.python-version }}" docker compose up -d
+        run: docker compose up -d
         env: *compose-env
       - name: Debug - show compose services
         working-directory: examples/compose
