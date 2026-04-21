@@ -43,7 +43,7 @@ target field :code:`List_comparison.example`.
 
 import os.path
 from string import Template
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from attrs import define, field, validators
 
@@ -146,10 +146,11 @@ class ListComparisonRule(FieldManagerRule):
         ]
         list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
         for list_path in list_paths:
-            content: str | list | dict = GetterFactory.from_string(list_path).get()
+            getter = GetterFactory.from_string(list_path)
+            content: str | list | dict = getter.get()
 
             if isinstance(content, str):
-                compare_elements = content.splitlines()
+                compare_elements = getter.parse_list(cast(str, content))
             elif isinstance(content, list):
                 compare_elements = content
             else:
