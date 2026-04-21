@@ -199,8 +199,7 @@ from importlib.metadata import version
 from itertools import chain
 from logging.config import dictConfig
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence, Tuple
-
+from typing import Any, cast, Iterable, List, Optional, Sequence, Tuple
 from attrs import asdict, define, field, fields, validators
 from requests import RequestException
 from ruamel.yaml import YAML
@@ -257,11 +256,9 @@ class InvalidConfigurationErrors(InvalidConfigurationError):
 
     errors: List[InvalidConfigurationError]
 
-    def __init__(self, errors: List) -> None:
+    def __init__(self, errors: Sequence[Exception]) -> None:
         unique_errors = []
         for error in errors:
-            if not isinstance(error, Exception):
-                raise TypeError(f'Error {error} is not of expected type "Exception"')
             if not isinstance(error, InvalidConfigurationError):
                 error = InvalidConfigurationError(*error.args)
                 if error not in unique_errors:
@@ -1030,10 +1027,10 @@ class Configuration:
         for processor_config in self.pipeline:
             processor = None
             try:
-                processor = Factory.create(deepcopy(processor_config))
-                if isinstance(processor, Processor):
-                    processor.setup()
-                    self._verify_rules(processor)
+                processor_component = Factory.create(deepcopy(processor_config))
+                processor = cast(Processor, processor_component)
+                processor.setup()
+                self._verify_rules(processor)
             except (
                 FactoryError,
                 TypeError,
