@@ -194,12 +194,13 @@ from __future__ import annotations  # Fixes mypy reporting wrong lines
 import json
 import logging
 import os
+import typing
 from copy import deepcopy
 from importlib.metadata import version
 from itertools import chain
 from logging.config import dictConfig
 from pathlib import Path
-from typing import Any, cast, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Iterable, List, Optional, Sequence, Tuple
 from attrs import asdict, define, field, fields, validators
 from requests import RequestException
 from ruamel.yaml import YAML
@@ -256,7 +257,7 @@ class InvalidConfigurationErrors(InvalidConfigurationError):
 
     errors: List[InvalidConfigurationError]
 
-    def __init__(self, errors: Sequence[Exception]) -> None:
+    def __init__(self, errors: List[Exception]) -> None:
         unique_errors = []
         for error in errors:
             if not isinstance(error, InvalidConfigurationError):
@@ -1027,8 +1028,8 @@ class Configuration:
         for processor_config in self.pipeline:
             processor = None
             try:
-                processor_component = Factory.create(deepcopy(processor_config))
-                processor = cast(Processor, processor_component)
+                processor = Factory.create(deepcopy(processor_config))
+                processor = typing.cast(processor)
                 processor.setup()
                 self._verify_rules(processor)
             except (
