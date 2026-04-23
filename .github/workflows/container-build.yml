@@ -99,7 +99,10 @@ jobs:
           # docker load < image
 
           # Remote ARM64 version
-          nix build .#packages.aarch64-linux.docker.python${PYTHON_VERSION//.} -o image --builders $RUNNER_ENDPOINT
+          nix build .#packages.aarch64-linux.docker.python${PYTHON_VERSION//.}  \
+            --system aarch64-linux \
+            --builders '$RUNNER_ENDPOINT aarch64-linux' \
+            -o image
           docker load < image
 
           for tag in $(echo "${{ steps.image-tag.outputs.tags }}" | tr ", " "\n")
