@@ -78,7 +78,7 @@ jobs:
       - name: Build and Push Image
         id: build-and-push
         env:
-          RUNNER_ENDPOINT: ssh://nixremote@${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
+          RUNNER_ENDPOINT: ssh-ng://nixremote@${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
         run: |
           export PYTHON_VERSION="${{ matrix.python-version }}"
 
@@ -99,6 +99,7 @@ jobs:
           # docker load < image
 
           # Remote ARM64 version
+          export NIX_SSHOPTS='-o StrictHostKeyChecking=accept-new'
           nix build .#packages.aarch64-linux.docker.python${PYTHON_VERSION//.}  \
             --system aarch64-linux \
             --builders "$RUNNER_ENDPOINT aarch64-linux" \
