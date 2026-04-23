@@ -260,6 +260,7 @@ class Processor(Component):
         """Set up the processor."""
 
         await super().setup()
+
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup
 
