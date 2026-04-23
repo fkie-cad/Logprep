@@ -187,3 +187,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["luqum.*"]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+# automatically run async test_* methods as test (instead of @pytest.mark.asyncio)
+asyncio_mode = "auto"
