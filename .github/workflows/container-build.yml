@@ -60,8 +60,10 @@ jobs:
           ssh-keyscan -H $RUNNER_ADDR >> ~/.ssh/known_hosts
           sudo mkdir -p /root/.ssh
           sudo cp ~/.ssh/known_hosts /root/.ssh/
+          sudo echo $RUNNER_SECRET > /root/.ssh/id_ed25519
         env:
           RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
+          RUNNER_SECRET: ${{ secrets.BUILD_SERVER_ARM64_PRIVATE_KEY }}
       - name: Generate Image Tags
         id: image-tag
         run: |
