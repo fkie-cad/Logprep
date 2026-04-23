@@ -52,11 +52,11 @@ class TestConfiguration:
             ("config_refresh_interval", type(None), None),
             ("process_count", int, 1),
             ("timeout", float, 5.0),
-            ("logger", LoggerConfig, LoggerConfig(**{"level": "INFO"})),
+            ("logger", LoggerConfig, LoggerConfig(**{"level": "INFO"})),  # type: ignore[arg-type]
             ("pipeline", list, []),
             ("input", dict, {}),
             ("output", dict, {}),
-            ("metrics", MetricsConfig, MetricsConfig(**{"enabled": False, "port": 8000})),
+            ("metrics", MetricsConfig, MetricsConfig(**{"enabled": False, "port": 8000})),  # type: ignore[arg-type]
         ],
     )
     def test_configuration_init(self, attribute, attribute_type, default):
@@ -1000,7 +1000,7 @@ output:
             ),
             (
                 "getter raises FileNotFoundError",
-                "logprep.util.getter.FileGetter.get",
+                "logprep.util.getter.FileGetter._get_raw",
                 FileNotFoundError,
                 r"One or more of the given config file\(s\) does not exist:",
             ),
