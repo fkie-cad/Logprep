@@ -78,7 +78,7 @@ jobs:
       - name: Build and Push Image
         id: build-and-push
         env:
-          RUNNER_ENDPOINT: ssh-ng://nixremote@${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
+          RUNNER_ENDPOINT: ssh://nixremote@${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
           RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
         run: |
           export PYTHON_VERSION="${{ matrix.python-version }}"
