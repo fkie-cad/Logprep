@@ -16,6 +16,7 @@ import pytest
 
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
+from logprep.ng.abc.event import OutputSpec
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.pseudonym_event import PseudonymEvent
 from logprep.util.pseudo.encrypter import (
@@ -744,7 +745,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             (
                 {"outputs": [{"kafka": "topic", "opensearch": "index_1"}]},
                 ValueError,
-                "Length of 'outputs' must be <= 1",
+                "not allowed to have more than one mapping item",
             ),
         ],
     )
@@ -934,7 +935,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         pseudonym_event = event.extra_data[0]
         assert pseudonym_event.data
         assert isinstance(pseudonym_event, PseudonymEvent)
-        assert pseudonym_event.outputs == ({"kafka": "topic"},), "Output is set as in CONFIG"
+        assert pseudonym_event.outputs == [
+            OutputSpec("kafka", "topic"),
+        ], "Output is set as in CONFIG"
         assert pseudonym_event.data.get("pseudonym"), "pseudonym is set"
         assert pseudonym_event.data.get("origin"), "encrypted original is set"
         assert pseudonym_event.data.get("@timestamp"), "timestamp is set if present in event"
@@ -970,7 +973,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         ), "Should contain only one pseudonym, as the value for both is the same"
         pseudonym_event = event.extra_data[0]
         assert pseudonym_event
-        assert pseudonym_event.outputs == ({"kafka": "topic"},), "Output is set as in CONFIG"
+        assert pseudonym_event.outputs == [
+            OutputSpec("kafka", "topic"),
+        ], "Output is set as in CONFIG"
         assert pseudonym_event.data.get("pseudonym"), "pseudonym is set"
         assert pseudonym_event.data.get("origin"), "encrypted original is set"
         assert pseudonym_event.data.get("@timestamp"), "timestamp is set if present in event"

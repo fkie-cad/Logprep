@@ -56,6 +56,8 @@ def convert_ordered_tuples_with_factory(
     Sequence[T]
         The sequence of produced objects by the factory
     """
+    if any(len(d) > 1 for d in dicts):
+        raise ValueError(f"entries are not allowed to have more than one mapping item: {dicts}")
     return [factory(key, value) for d in dicts for key, value in d.items()]
 
 
