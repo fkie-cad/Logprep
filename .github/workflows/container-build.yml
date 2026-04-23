@@ -64,7 +64,7 @@ jobs:
           sudo chmod 600 /root/.ssh/id_ed25519
         env:
           RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
-          RUNNER_SECRET: ${{ secrets.BUILD_SERVER_ARM64_PRIVATE_KEY }}
+          RUNNER_SECRET: ${{ secrets.BUILD_SERVER_NIX_ARM64_PRIVATE_KEY }}
       - name: Generate Image Tags
         id: image-tag
         run: |
