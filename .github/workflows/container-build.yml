@@ -79,6 +79,7 @@ jobs:
         id: build-and-push
         env:
           RUNNER_ENDPOINT: ssh-ng://nixremote@${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
+          RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
         run: |
           export PYTHON_VERSION="${{ matrix.python-version }}"
 
@@ -97,6 +98,9 @@ jobs:
           # Local AMD64 version
           # nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
           # docker load < image
+          #
+
+          ssh -vvv -o StrictHostKeyChecking=accept-new nixremote@$RUNNER_ADDR true
 
           # Remote ARM64 version
           export NIX_SSHOPTS='-o StrictHostKeyChecking=accept-new'
