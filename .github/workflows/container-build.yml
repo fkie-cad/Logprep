@@ -21,16 +21,6 @@ jobs:
         uses: MrSquaare/ssh-setup-action@c818628b924a4bd863903a56c0e526db47bba6f4 # https://github.com/MrSquaare/ssh-setup-action/releases/tag/v3.1.3
         with:
           host: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
-          private-key: ${{ secrets.BUILD_SERVER_ARM64_PRIVATE_KEY }}
-      - name: Set up SSH
-        uses: MrSquaare/ssh-setup-action@c818628b924a4bd863903a56c0e526db47bba6f4 # https://github.com/MrSquaare/ssh-setup-action/releases/tag/v3.1.3
-        with:
-          host: ${{ secrets.BUILD_SERVER_ARM64_HOST_02 }}
-          private-key: ${{ secrets.BUILD_SERVER_ARM64_PRIVATE_KEY }}
-      - name: Set up SSH
-        uses: MrSquaare/ssh-setup-action@c818628b924a4bd863903a56c0e526db47bba6f4 # https://github.com/MrSquaare/ssh-setup-action/releases/tag/v3.1.3
-        with:
-          host: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
           private-key: ${{ secrets.BUILD_SERVER_NIX_ARM64_PRIVATE_KEY }}
       - name: Set up Docker
         uses: docker/setup-docker-action@e43656e248c0bd0647d3f5c195d116aacf6fcaf4 # https://github.com/docker/setup-docker-action/releases/tag/v4.7.0
@@ -60,6 +50,7 @@ jobs:
           ssh-keyscan -H $RUNNER_ADDR >> ~/.ssh/known_hosts
           sudo mkdir -p /root/.ssh
           sudo cp ~/.ssh/known_hosts /root/.ssh/
+          ls ~/.ssh
         env:
           RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
       - name: Generate Image Tags
