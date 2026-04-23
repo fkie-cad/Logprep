@@ -13,7 +13,7 @@ class NgComponent(Component):
     # pylint: disable=invalid-overridden-method, useless-parent-delegation
     # TODO fork ng-based Component properly
     # We override the setup to be async in the ng component tree.
-    # This is unclean from an interface perspective, but works if the worlds doen't mix.
+    # This is unclean from an interface perspective, but works if the worlds don't mix.
 
     async def setup(self) -> None:
         """Set up the ng component."""
@@ -24,5 +24,16 @@ class NgComponent(Component):
         """Shut down ng component and cleanup resources."""
 
         super().shut_down()
+
+    async def health(self) -> bool:
+        """Check the health of the component.
+
+        Returns
+        -------
+        bool
+            True if the component is healthy, False otherwise.
+
+        """
+        return super().health()
 
     # pylint: enable=invalid-overridden-method,useless-parent-delegation
