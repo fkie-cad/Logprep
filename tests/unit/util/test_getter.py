@@ -313,6 +313,11 @@ second_dict:
                 b"""""",
                 {},
             ),
+            (
+                "get",
+                b""""{"version": '1',"process_count": 1,"logger": {"version":1}}""",
+                '"{"version": \'1\',"process_count": 1,"logger": {"version":1}}',
+            ),
         ],
     )
     def test_parses_content(self, method_name, input_content, expected_output):
