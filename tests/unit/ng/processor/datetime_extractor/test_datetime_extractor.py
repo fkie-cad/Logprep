@@ -13,17 +13,17 @@ from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
-class TestDatetimeExtractor(BaseProcessorTestCase):
+class TestDatetimeExtractor(BaseProcessorTestCase[DatetimeExtractor]):
     CONFIG = {
         "type": "ng_datetime_extractor",
         "rules": ["tests/testdata/unit/datetime_extractor/rules"],
     }
 
-    def test_an_event_extracted_datetime_utc(self):
+    async def test_an_event_extracted_datetime_utc(self):
         timestamp = "2019-07-30T14:37:42.861Z"
         document = LogEvent({"@timestamp": timestamp, "winlog": {"event_id": 123}}, original=b"")
 
-        self.object.process(document)
+        await self.object.process(document)
 
         expected = LogEvent(
             {
@@ -45,18 +45,18 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         )
         assert document == expected
 
-    def test_an_event_extracted_datetime_missing_field(self):
+    async def test_an_event_extracted_datetime_missing_field(self):
         document = LogEvent({"@timestamp": None, "winlog": {"event_id": 123}}, original=b"")
         mock_rule = mock.MagicMock()
         with mock.patch.object(self.object, "_handle_missing_fields", return_value=True):
             result = self.object._apply_rules(document, mock_rule)
             assert result is None
 
-    def test_an_event_extracted_datetime_plus_one(self):
+    async def test_an_event_extracted_datetime_plus_one(self):
         timestamp = "2019-07-30T14:37:42.861+01:00"
         document = LogEvent({"@timestamp": timestamp, "winlog": {"event_id": 123}}, original=b"")
 
-        self.object.process(document)
+        await self.object.process(document)
 
         expected = LogEvent(
             {
@@ -78,7 +78,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         )
         assert document == expected
 
-    def test_an_event_extracted_datetime_and_local_utc_without_delta(self):
+    async def test_an_event_extracted_datetime_and_local_utc_without_delta(self):
         self.object._local_timezone = tzutc()
         self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
             self.object._local_timezone
@@ -87,7 +87,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         timestamp = "2019-07-30T14:37:42.861+00:00"
         document = LogEvent({"@timestamp": timestamp, "winlog": {"event_id": 123}}, original=b"")
 
-        self.object.process(document)
+        await self.object.process(document)
 
         tz_local_name = "+0000"
         local_hour_delta, local_minute_delta, local_timezone = self._parse_local_tz(tz_local_name)
@@ -112,12 +112,12 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         )
         assert document == expected
 
-    def test_non_utc_timezone(self):
+    async def test_non_utc_timezone(self):
         tz_plus3 = tzoffset(None, 3 * 3600)
         result = DatetimeExtractor._get_timezone_name(tz_plus3)
         assert result == "UTC+03:00"
 
-    def test_deletes_source_field(self):
+    async def test_deletes_source_field(self):
         document = LogEvent(
             {"@timestamp": "2019-07-30T14:37:42.861+00:00", "winlog": {"event_id": 123}},
             original=b"test_message",
@@ -131,12 +131,12 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
         self.object._local_timezone = tzutc()
         self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
             self.object._local_timezone
         )
-        self.object.process(document)
+        await self.object.process(document)
         expected = LogEvent(
             {
                 "winlog": {"event_id": 123},
@@ -156,7 +156,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         )
         assert document == expected
 
-    def test_overwrite_target(self):
+    async def test_overwrite_target(self):
         document = LogEvent(
             {"@timestamp": "2019-07-30T14:37:42.861+00:00", "winlog": {"event_id": 123}},
             original=b"",
@@ -170,12 +170,12 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
         self.object._local_timezone = tzutc()
         self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
             self.object._local_timezone
         )
-        self.object.process(document)
+        await self.object.process(document)
         expected = LogEvent(
             {
                 "winlog": {"event_id": 123},
@@ -195,7 +195,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         )
         assert document == expected
 
-    def test_existing_target_raises_if_not_overwrite_target(self):
+    async def test_existing_target_raises_if_not_overwrite_target(self):
         document = LogEvent(
             {"@timestamp": "2019-07-30T14:37:42.861+00:00", "winlog": {"event_id": 123}},
             original=b"",
@@ -209,8 +209,8 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             },
             "description": "",
         }
-        self._load_rule(rule)
-        result = self.object.process(document)
+        await self._load_rule(rule)
+        result = await self.object.process(document)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
 
