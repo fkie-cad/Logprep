@@ -11,22 +11,25 @@ from functools import cached_property
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
-from typing import Tuple, ClassVar
+from typing import ClassVar, Tuple
 from urllib.parse import urlparse
 
 import requests
-from requests import Response
 from attrs import define, field, validators
+from requests import Response
 from schedule import Scheduler
 
 from logprep.abc.exceptions import LogprepException
-from logprep.abc.getter import Getter
+from logprep.abc.getter import ContentType, Getter
 from logprep.util.credentials import (
     Credentials,
     CredentialsEnvNotFoundError,
     CredentialsFactory,
 )
-from logprep.util.defaults import ENV_NAME_LOGPREP_CREDENTIALS_FILE, ENV_NAME_LOGPREP_GETTER_CONFIG
+from logprep.util.defaults import (
+    ENV_NAME_LOGPREP_CREDENTIALS_FILE,
+    ENV_NAME_LOGPREP_GETTER_CONFIG,
+)
 
 
 class GetterNotFoundError(LogprepException):
@@ -98,6 +101,9 @@ class DataSharedPerTarget:
     cache: bytes | None = None
     """Value of the resource when it was last obtained"""
 
+    content_type: ContentType | None = None
+    """Content type of the resource when it was last obtained"""
+
     scheduler: Scheduler | None = None
     """Scheduler used to trigger getter refreshes"""
 
@@ -147,13 +153,13 @@ class RefreshableGetter(Getter, ABC):
         self._shared[self.target] = value
 
     @property
-    def scheduler(self) -> Scheduler:
+    def scheduler(self) -> Scheduler | None:
         """Returns the scheduler for the current target"""
         return self.shared.scheduler
 
     @scheduler.setter
     def scheduler(self, value: Scheduler) -> None:
-        """sets the scheduler for the target"""
+        """Sets the scheduler for the target"""
         self.shared.scheduler = value
 
     @property
@@ -165,6 +171,16 @@ class RefreshableGetter(Getter, ABC):
     def cache(self, value: bytes) -> None:
         """Sets the cache for the current targe"""
         self.shared.cache = value
+
+    @property
+    def content_type(self) -> ContentType | None:
+        """Returns the content_type for the current target"""
+        return self.shared.content_type
+
+    @content_type.setter
+    def content_type(self, value: ContentType | None) -> None:
+        """Sets the content_type for the target"""
+        self.shared.content_type = value
 
     @property
     def hash(self) -> str | None:
@@ -268,21 +284,24 @@ class RefreshableGetter(Getter, ABC):
 
     def _update_cache(self) -> bool:
         """Update the cache of the current http getter"""
-        content, was_modified = self._get_from_target()
+        content, content_type, was_modified = self._get_from_target()
         if was_modified and content is not None:
+            self.content_type = content_type
             self.cache = content
         if self.cache is None:
             raise ValueError(f"{type(self).__name__} cache is empty")
         return was_modified
 
     @abstractmethod
-    def _get_from_target(self) -> tuple[bytes | None, bool]:
+    def _get_from_target(self) -> tuple[bytes | None, ContentType | None, bool]:
         """Get value from target and return if it changed or not since it was last obtained"""
 
     def _handle_cache_error(self, error: RefreshableGetterError | ValueError):
         """Return default value if it was configured else raise error"""
         if self._default_return_value is None:
             raise error
+
+        self.content_type = None
         self.cache = self._default_return_value
 
     def _log_cache_warning(self, error: Exception):
@@ -290,7 +309,7 @@ class RefreshableGetter(Getter, ABC):
             f"Not updating {type(self).__name__} cache with URI '{self.uri}' due to: %s", error
         )
 
-    def get_raw(self) -> bytes:
+    def _get_raw(self) -> tuple[bytes, ContentType | None]:
         """Gets the content from cache and update cache if needed"""
         if self._refresh_interval > 0 and self.scheduler:
             self.scheduler.run_pending()
@@ -309,7 +328,7 @@ class RefreshableGetter(Getter, ABC):
                 self._log_cache_warning(error)
         if self.cache is None:
             raise ValueError(f"Cache is empty for {type(self).__name__} with URI '{self.uri}'")
-        return self.cache
+        return self.cache, self.content_type
 
     @classmethod
     def refresh(cls):
@@ -330,10 +349,12 @@ class FileGetter(Getter):
 
     """
 
-    def get_raw(self) -> bytes:
-        """Opens file and returns its binary content."""
+    def _get_raw(self) -> tuple[bytes, ContentType | None]:
+        """Opens file and returns its binary content as a tuple of bytes and
+        content type, which defaults currently to None."""
+
         path = Path(self.target)
-        return path.read_bytes()
+        return path.read_bytes(), None
 
 
 @define(kw_only=True)
@@ -390,10 +411,11 @@ class HttpGetter(RefreshableGetter):
             creds = CredentialsFactory.from_target(self.uri)
         return creds if creds else Credentials()
 
-    def _get_from_target(self) -> tuple[bytes | None, bool]:
+    def _get_from_target(self) -> tuple[bytes | None, ContentType | None, bool]:
         response = self._do_request()
+        content_type = response.headers.get("Content-Type")
         was_modified = response.status_code != 304
-        return response.content, was_modified
+        return response.content, content_type, was_modified
 
     def _do_request(self) -> Response:
         """Gets the content from a http server via a URI"""
@@ -409,7 +431,7 @@ class HttpGetter(RefreshableGetter):
         except requests.exceptions.HTTPError as error:
             self._handle_http_error(error)
         if "etag" in resp.headers:
-            self.hash = resp.headers.get("etag")
+            self.hash = resp.headers["etag"]
         return resp
 
     def _get_requests_session(self) -> requests.Session:
