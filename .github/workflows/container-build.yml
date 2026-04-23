@@ -101,12 +101,16 @@ jobs:
           #
 
           ssh -vvv -o StrictHostKeyChecking=accept-new nixremote@$RUNNER_ADDR true
+          nix store ping --store "ssh-ng://nixremote@$RUNNER_ADDR"
 
           # Remote ARM64 version
           export NIX_SSHOPTS='-o StrictHostKeyChecking=accept-new'
-          nix build .#packages.aarch64-linux.docker.python${PYTHON_VERSION//.}  \
+          nix --extra-experimental-features 'nix-command flakes' build .#packages.aarch64-linux.docker.python${PYTHON_VERSION//.}  \
             --system aarch64-linux \
             --builders "$RUNNER_ENDPOINT aarch64-linux" \
+            --max-jobs 0 \
+            - L \
+            -v \
             -o image
           docker load < image
 
