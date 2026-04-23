@@ -33,17 +33,17 @@ class TestCalculator(BaseProcessorTestCase):
     }
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
-    def test_testcases(self, rule, event, expected):
+    async def test_testcases(self, rule, event, expected):
         self._load_rule(rule)
         event = LogEvent(event, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data == expected
 
     @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, rule, event, expected, error_message):
+    async def test_testcases_failure_handling(self, rule, event, expected, error_message):
         self._load_rule(rule)
         event = LogEvent(event, original=b"")
-        result = self.object.process(event)
+        result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(rf".*{error_message}", str(result.warnings[0]))
         assert event.data == expected
