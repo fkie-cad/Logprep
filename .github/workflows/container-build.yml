@@ -60,7 +60,7 @@ jobs:
           ssh-keyscan -H $RUNNER_ADDR >> ~/.ssh/known_hosts
           sudo mkdir -p /root/.ssh
           sudo cp ~/.ssh/known_hosts /root/.ssh/
-          sudo printf "%s" "$RUNNER_SECRET" | sudo tee /root/.ssh/id_ed25519 > /dev/null
+          sudo printf "%s" "$RUNNER_SECRET" | tr -d '\r' | sudo tee /root/.ssh/id_ed25519 > /dev/null
           sudo chmod 600 /root/.ssh/id_ed25519
         env:
           RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
