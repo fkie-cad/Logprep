@@ -109,7 +109,7 @@ jobs:
             --system aarch64-linux \
             --builders "$RUNNER_ENDPOINT aarch64-linux" \
             --max-jobs 0 \
-            - L \
+            -L \
             -v \
             -o image
           docker load < image
