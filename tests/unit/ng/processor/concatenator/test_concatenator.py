@@ -8,11 +8,12 @@
 import pytest
 
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.processor.concatenator.processor import Concatenator
 from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
-class TestConcatenator(BaseProcessorTestCase):
+class TestConcatenator(BaseProcessorTestCase[Concatenator]):
     CONFIG = {
         "type": "ng_concatenator",
         "rules": ["tests/testdata/unit/concatenator/rules"],
@@ -161,13 +162,13 @@ class TestConcatenator(BaseProcessorTestCase):
             ),
         ],
     )
-    def test_for_expected_output(self, test_case, rule, document, expected_output):
+    async def test_for_expected_output(self, test_case, rule, document, expected_output):
         log_event = LogEvent(document, original=b"test_message")
-        self._load_rule(rule)
-        self.object.process(log_event)
+        await self._load_rule(rule)
+        await self.object.process(log_event)
         assert log_event == LogEvent(expected_output, original=b"test_message"), test_case
 
-    def test_process_handles_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
+    async def test_process_handles_field_exists_warning_if_target_field_exists_and_should_not_be_overwritten(
         self,
     ):
         rule = {
@@ -180,12 +181,12 @@ class TestConcatenator(BaseProcessorTestCase):
                 "delete_source_fields": False,
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
         document = LogEvent(
             {"field": {"a": "first", "b": "second"}, "target_field": "has already content"},
             original=b"test_message",
         )
-        result = self.object.process(document)
+        result = await self.object.process(document)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert "target_field" in document.data
