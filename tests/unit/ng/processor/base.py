@@ -4,6 +4,7 @@
 
 import itertools
 import json
+import typing
 from copy import deepcopy
 from logging import getLogger
 from pathlib import Path
@@ -30,15 +31,15 @@ from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
 
+ProcessorTypeT = typing.TypeVar("ProcessorTypeT", bound=Processor)
 
-class BaseProcessorTestCase(BaseComponentTestCase):
+
+class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generic[ProcessorTypeT]):
     mocks: dict = {}
 
     CONFIG: dict = {}
 
     logger = getLogger()
-
-    object: Processor | None = None
 
     patchers: list | None = None
 
@@ -76,17 +77,17 @@ class BaseProcessorTestCase(BaseComponentTestCase):
                         rules.append(rule)
         return rules
 
-    def _load_rule(self, rule: dict | Rule):
+    async def _load_rule(self, rule: dict | Rule):
         assert isinstance(self.object, Processor)
         self.object._rule_tree = RuleTree()
-        rule = (
-            self.object.rule_class.create_from_dict(rule)
-            if isinstance(rule, dict) and self.object.rule_class is not None
-            else rule
-        )
+
+        if isinstance(rule, dict):
+            assert self.object.rule_class is not None, "rule_class is required if dict is passed"
+            rule = self.object.rule_class.create_from_dict(rule)
+
         self.object._rule_tree.add_rule(rule)
 
-    def setup_method(self) -> None:
+    async def setup_method(self) -> None:
         """
         setUp class for the imported TestCase
         """
@@ -95,7 +96,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             patcher = mock.patch(name, **kwargs)
             patcher.start()
             self.patchers.append(patcher)
-        super().setup_method()
+        await super().setup_method()
         self.rules = self.set_rules(self.rules_dirs)
         self.match_all_event = LogEvent(
             {
@@ -120,10 +121,10 @@ class BaseProcessorTestCase(BaseComponentTestCase):
                 "applyrule": "yes",
                 "A": "foobarfoo",
             },
-            original="",
+            original=b"",
         )  # this is an event that can be used in all processor tests, cause it matches everywhere
 
-    def teardown_method(self) -> None:
+    async def teardown_method(self) -> None:
         """teardown for all methods"""
         assert isinstance(self.patchers, list)
         while len(self.patchers) > 0:
