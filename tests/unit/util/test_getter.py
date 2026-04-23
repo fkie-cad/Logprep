@@ -455,6 +455,7 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
+
         with mock.patch.dict(
             "os.environ", {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
         ):
@@ -1317,12 +1318,19 @@ class TestHttpGetter:
         with pytest.raises(ValueError, match="HttpGetter cache is empty"):
             http_getter._update_cache()
 
-    @mock.patch("logprep.abc.getter.Getter.get_yaml", side_effect=YAMLError)
-    @mock.patch("logprep.abc.getter.Getter.get_json")
-    def test_get_collection_parses_json_if_yaml_fails(self, mock_get_json, _):
+    @mock.patch("logprep.abc.getter.Getter._to_yaml", side_effect=YAMLError)
+    @mock.patch("logprep.abc.getter.Getter._to_json")
+    @responses.activate
+    def test_get_collection_parses_json_if_yaml_fails(self, mock_to_json, _):
+        responses.add(
+            responses.GET,
+            "http://something",
+            "{}",
+        )
+
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         http_getter.get_collection()
-        mock_get_json.assert_called_once()
+        mock_to_json.assert_called_once()
 
     @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a dict")
     def test_get_dict_raises_exception_if_result_not_dict(self, _):
@@ -1336,13 +1344,26 @@ class TestHttpGetter:
         assert http_getter.get_dict() == {"something": "foo"}
 
     @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a list")
+    @responses.activate
     def test_get_list_raises_exception_if_result_not_list(self, _):
+        responses.add(
+            responses.GET,
+            "http://something",
+            "",
+        )
+
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
-        with pytest.raises(ValueError, match="Value is not a list"):
+        with pytest.raises(ValueError, match="Content is not a list"):
             http_getter.get_list()
 
-    @mock.patch("logprep.abc.getter.Getter.get_collection", return_value=["something"])
-    def test_get_list_returns_if_result_is_list(self, _):
+    @responses.activate
+    def test_get_list_returns_if_result_is_list(self):
+        responses.add(
+            responses.GET,
+            "http://something",
+            "['something']",
+        )
+
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter.get_list() == ["something"]
 
