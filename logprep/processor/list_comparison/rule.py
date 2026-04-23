@@ -151,7 +151,14 @@ class ListComparisonRule(FieldManagerRule):
         list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
         for list_path in list_paths:
             content = GetterFactory.from_string(list_path).get()
-            compare_elements = content.splitlines()
+
+            if isinstance(content, str):
+                compare_elements = content.splitlines()
+            elif isinstance(content, list):
+                compare_elements = content
+            else:
+                raise ValueError("Expected list or str as content")
+
             file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)
             self._compare_sets.update({filename: set(file_elem_tuples)})
