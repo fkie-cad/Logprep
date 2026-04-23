@@ -91,17 +91,17 @@ class Getter(ABC):
         """Get content with enriched environment variables parsed based on content type."""
 
         raw, content_type = self._get_raw()
-        resolved_content = self._resolve_content(raw)
+        content = self._resolve_content(raw)
 
         match content_type:
             case "application/json":
-                return self._to_json(resolved_content)
+                return self._to_json(content)
             case "application/yaml":
-                return self._to_yaml(resolved_content)
+                return self._to_yaml(content)
             case "text/plain":
-                return resolved_content
+                return content
             case _:
-                return resolved_content
+                return content
 
     @staticmethod
     def _to_yaml(content: str) -> dict | list:
