@@ -129,8 +129,8 @@ class BaseComponentTestCase(ABC):
         assert fullnames == set(self.expected_metrics)
 
     @mock.patch("inspect.getmembers", return_value=[("mock_prop", lambda: None)])
-    def test_setup_populates_cached_properties(self, mock_getmembers):
-        self.object.setup()
+    async def test_setup_populates_cached_properties(self, mock_getmembers):
+        await self.object.setup()
         mock_getmembers.assert_called_with(self.object)
 
     @pytest.fixture(scope="function")
@@ -138,7 +138,7 @@ class BaseComponentTestCase(ABC):
         with mock.patch.object(Component, "_scheduler", schedule.Scheduler()) as scheduler:
             yield scheduler
 
-    def test_job_cleanup_on_shutdown(self, component_scheduler):
+    async def test_job_cleanup_on_shutdown(self, component_scheduler):
         """
         Tests if setup/shut_down properly affect the class-wide scheduler.
         This test does not use `self.object` as the base classes treat this instance
@@ -158,7 +158,7 @@ class BaseComponentTestCase(ABC):
             len(scheduler.get_jobs()) == n_jobs_after_init + 1
         ), "adding a job should increase job count"
 
-        instance.setup()
+        await instance.setup()
         n_jobs_after_setup = len(scheduler.get_jobs())
 
         instance._schedule_task(lambda: "irrelevant", seconds=42)
@@ -166,18 +166,18 @@ class BaseComponentTestCase(ABC):
             len(scheduler.get_jobs()) == n_jobs_after_setup + 1
         ), "adding a job via component interface should also increase the job count"
 
-        instance.shut_down()
+        await instance.shut_down()
         assert (
             len(scheduler.get_jobs()) == 1
         ), f"shut_down should clear component instance specific jobs, {scheduler.jobs}"
 
-    def test_setup_calls_wait_for_health(self):
-        self.object.setup()
+    async def test_setup_calls_wait_for_health(self):
+        await self.object.setup()
         self.object._wait_for_health.assert_called()
 
     def test_config_is_immutable(self):
         with pytest.raises(FrozenInstanceError):
             self.object._config.type = "new_type"
 
-    def test_health_returns_bool(self):
-        assert isinstance(self.object.health(), bool)
+    async def test_health_returns_bool(self):
+        assert isinstance(await self.object.health(), bool)
