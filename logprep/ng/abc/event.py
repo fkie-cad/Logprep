@@ -4,8 +4,9 @@
 
 from abc import ABC
 from collections.abc import Sequence
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional
+
+from attrs import define, field, validators
 
 from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
@@ -224,10 +225,14 @@ class Event(ABC):
         return pop_dotted_field_value(self.data, dotted_field)
 
 
-@dataclass
+@define
 class OutputSpec:
-    output_name: str
-    output_target: str
+    """
+    Specifies an output by name and which target (e.g. topic for kafka, index for opensearch) should be addressed.
+    """
+
+    output_name: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
+    output_target: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
 
 
 class ExtraDataEvent(Event):

@@ -48,12 +48,11 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
 
     def test_process_returns_selective_extractor_outputs(self):
         field_name = f"{uuid.uuid4()}"
-        outputs = ({"opensearch": "my topic"},)
         rule = {
             "filter": field_name,
             "selective_extractor": {
                 "source_fields": [field_name],
-                "outputs": outputs,
+                "outputs": [{"opensearch": "my topic"}],
             },
         }
         self._load_rule(rule)
@@ -61,7 +60,9 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         event = LogEvent(document, original=document)
         event = self.object.process(event)
         filtered_event = event.extra_data[0]
-        assert filtered_event.outputs == outputs
+        assert filtered_event.outputs == [
+            OutputSpec(output_name="opensearch", output_target="my topic"),
+        ]
 
     def test_process_returns_extracted_fields(self):
         document = {"message": "test_message", "other": "field"}

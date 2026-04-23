@@ -61,6 +61,10 @@ class PreDetector(Processor):
         """PreDetector config"""
 
         outputs: Sequence[OutputSpec] = field(
+            validator=validators.deep_iterable(
+                iterable_validator=validators.min_len(1),
+                member_validator=validators.instance_of(OutputSpec),
+            ),
             converter=lambda d: convert_ordered_tuples_with_factory(d, OutputSpec),
         )
         """list of output mappings in form of :code:`output_name:topic`.
