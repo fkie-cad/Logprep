@@ -77,7 +77,7 @@ jobs:
           EOF
       - name: Build and Push Image
         id: build-and-push
-        with:
+        env:
           RUNNER_ENDPOINT: ssh://nixremote@${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
         run: |
           export PYTHON_VERSION="${{ matrix.python-version }}"
