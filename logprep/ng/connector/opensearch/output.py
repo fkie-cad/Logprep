@@ -138,13 +138,13 @@ class OpensearchOutput(Output):
             default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Number of threads to use for bulk requests.
-        DEPCRECATED: This Argument is deprecated and doesnt do anything anymore,
+        DEPRECATED: This Argument is deprecated and doesnt do anything anymore,
         it will be removed in the future"""
         queue_size: int = field(
             default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Number of queue size to use for bulk requests.
-        DEPCRECATED: This Argument is deprecated and doesnt do anything anymore,
+        DEPRECATED: This Argument is deprecated and doesnt do anything anymore,
         it will be removed in the future"""
         chunk_size: int = field(
             default=500, validator=(validators.instance_of(int), validators.gt(1))
@@ -173,7 +173,7 @@ class OpensearchOutput(Output):
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
 
-    __slots__ = ("_message_backlog", "_flush_task")
+    __slots__ = ("_message_backlog",)
 
     _message_backlog: list[Event]
     """List of messages to be sent to Opensearch."""
