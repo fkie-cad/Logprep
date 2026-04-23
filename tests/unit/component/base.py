@@ -1,10 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import itertools
+import typing
 from abc import ABC
 from functools import partial
 from logging import getLogger
-from typing import Callable, Iterable
+from typing import Callable, Generic, Iterable, TypeVar
 from unittest import mock
 
 import pytest
@@ -18,10 +19,12 @@ from logprep.factory import Factory
 from logprep.metrics.metrics import Metric
 from logprep.util.helper import camel_to_snake
 
+ComponentTypeT = TypeVar("ComponentTypeT", bound=Component)
 
-class BaseComponentTestCase(ABC):
+
+class BaseComponentTestCase(ABC, Generic[ComponentTypeT]):
     CONFIG: dict = {}
-    object: Component | None = None
+    _object: ComponentTypeT | None = None
     logger = getLogger()
     expected_metrics: list = []
 
@@ -32,15 +35,30 @@ class BaseComponentTestCase(ABC):
 
     metric_attributes: dict
 
-    def _create_test_instance(self, config: dict | None = None) -> Component:
+    @property
+    def object(self) -> ComponentTypeT:
+        """Return the instantiated processor"""
+        return typing.cast(ComponentTypeT, self._object)
+
+    @object.setter
+    def object(self, value: ComponentTypeT) -> None:
+        self._object = value
+
+    def _create_test_instance(self, config: dict | None = None) -> ComponentTypeT:
         config_or_default = config if config else {"Test Instance Name": self.CONFIG}
-        instance = Factory.create(configuration=config_or_default)
+        instance = typing.cast(ComponentTypeT, Factory.create(configuration=config_or_default))
         assert instance is not None
         instance._wait_for_health = mock.MagicMock()  # type: ignore
         return instance
 
-    def setup_method(self) -> None:
-        self.object = self._create_test_instance()
+    @pytest.fixture(autouse=True)
+    async def automatic_setup_and_teardown(self):
+        await self.setup_method()
+        yield
+        await self.teardown_method()
+
+    async def setup_method(self) -> None:
+        self._object = self._create_test_instance()
 
         assert "metrics" not in self.object.__dict__, "metrics should be a cached_property"
         self.metric_attributes = asdict(
@@ -48,6 +66,9 @@ class BaseComponentTestCase(ABC):
             filter=partial(self.asdict_filter, block_list=self.block_list),
             recurse=False,
         )
+
+    async def teardown_method(self) -> None:
+        """teardown for all methods"""
 
     def test_uses_python_slots(self):
         assert isinstance(self.object.__slots__, Iterable)
