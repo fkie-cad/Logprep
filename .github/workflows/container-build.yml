@@ -57,7 +57,7 @@ jobs:
         id: setup-known-hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }} >> ~/.ssh/known_hosts
           sudo mkdir -p /root/.ssh
           sudo cp ~/.ssh/known_hosts /root/.ssh/
       - name: Generate Image Tags
