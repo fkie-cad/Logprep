@@ -53,20 +53,15 @@ jobs:
           version: "0.11.6"
       - name: Set up Nix
         uses: cachix/install-nix-action@616559265b40713947b9c190a8ff4b507b5df49b # https://github.com/cachix/install-nix-action/releases/tag/v31.10.4
-        # - name: Setup SSH known_hosts
-        #   id: setup-known-hosts
-        #   run: |
-        #     mkdir -p ~/.ssh
-        #     ssh-keyscan -H $RUNNER_ADDR >> ~/.ssh/known_hosts
-        #     sudo mkdir -p /root/.ssh
-        #     sudo cp ~/.ssh/known_hosts /root/.ssh/
-        #     sudo printf "%s" "${{ secrets.BUILD_SERVER_NIX_ARM64_PRIVATE_KEY }}" | tr -d '\r' | sudo tee /root/.ssh/id_ed25519 > /dev/null
-        #     sudo chmod 600 /root/.ssh/id_ed25519
-        #     sudo wc -l /root/.ssh/id_ed25519
-        # sudo ssh-keygen -l -f /root/.ssh/id_ed25519
+      - name: Setup SSH known_hosts
+        id: setup-known-hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H $RUNNER_ADDR >> ~/.ssh/known_hosts
+          sudo mkdir -p /root/.ssh
+          sudo cp ~/.ssh/known_hosts /root/.ssh/
         env:
           RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
-          RUNNER_SECRET: ${{ secrets.BUILD_SERVER_NIX_ARM64_PRIVATE_KEY }}
       - name: Generate Image Tags
         id: image-tag
         run: |
