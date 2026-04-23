@@ -57,9 +57,11 @@ jobs:
         id: setup-known-hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H $RUNNER_ADDR >> ~/.ssh/known_hosts
           sudo mkdir -p /root/.ssh
           sudo cp ~/.ssh/known_hosts /root/.ssh/
+        env:
+          RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
       - name: Generate Image Tags
         id: image-tag
         run: |
