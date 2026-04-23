@@ -11,7 +11,7 @@ from typing import TypeAlias
 from attrs import define, field, validators
 from ruamel.yaml import YAML, YAMLError
 
-yaml = YAML(pure=True, typ="safe")
+yaml = YAML(typ="safe", pure=True)
 
 BLOCKLIST_VARIABLE_NAMES = [
     "",
