@@ -22,7 +22,8 @@ BLOCKLIST_VARIABLE_NAMES = [
 VALID_PREFIXES = ["LOGPREP_", "CI_", "GITHUB_", "PYTEST_"]
 
 # TODO: get config informations for related processor
-CONTENT_JSON_KEY = "content"
+CONTENT_FIELD: None | str = None
+"""If the resolved content is a mapping, use this field name to extract the actual content."""
 
 ContentType: TypeAlias = str
 
@@ -60,10 +61,10 @@ class Getter(ABC):
     )
     """used variables in content but not set in environment"""
 
-    def get(self) -> str:
+    def get(self) -> dict | list | str:
         """Returns content with enriched environment variables."""
-        raw = self.get_raw()
-        return self._resolve_content(raw)
+        content = self._get_parsed_content()
+        return content
 
     def _resolve_content(self, raw_content: bytes) -> str:
         content = raw_content.decode("utf8")
@@ -95,13 +96,43 @@ class Getter(ABC):
 
         match content_type:
             case "application/json":
-                return self._to_json(content)
+                if isinstance(content, dict | list):
+                    return content
+
+                json_content: dict | list = self._to_json(content)
+
+                if isinstance(json_content, dict) and CONTENT_FIELD is not None:
+                    if CONTENT_FIELD in json_content:
+                        json_content = json_content[CONTENT_FIELD]
+                    else:
+                        raise ValueError(f"Field '{CONTENT_FIELD}' not found in content.")
+
+                return json_content
             case "application/yaml":
-                return self._to_yaml(content)
+                if isinstance(content, dict | list):
+                    return content
+
+                yaml_content: dict | list = self._to_yaml(content)
+
+                if isinstance(yaml_content, dict) and CONTENT_FIELD is not None:
+                    if CONTENT_FIELD in yaml_content:
+                        yaml_content = yaml_content[CONTENT_FIELD]
+                    else:
+                        raise ValueError(f"Field '{CONTENT_FIELD}' not found in content.")
+
+                return yaml_content
             case "text/plain":
-                return content
+                if isinstance(content, str):
+                    return content
+                raise ValueError(
+                    f"Content type '{content_type}' does not match with parsed content"
+                )
             case _:
-                return content
+                if isinstance(content, str):
+                    return content
+                raise ValueError(
+                    f"Content type not set. Expecting a simple str (decoded raw content from bytes)"
+                )
 
     @staticmethod
     def _to_yaml(content: str) -> dict | list:
@@ -128,8 +159,13 @@ class Getter(ABC):
         return json.loads(content)
 
     def get_json(self) -> dict | list:
-        """gets and parses the raw content to json"""
-        return self._to_json(self.get())
+        """Gets and parses the raw content to json"""
+        content = self._get_parsed_content()
+
+        if isinstance(content, dict | list):
+            return content
+
+        return self._to_json(content)
 
     def get_collection(self) -> dict | list:
         """Gets and parses the raw content to yaml or json if yaml fails"""
@@ -170,7 +206,7 @@ class Getter(ABC):
 
         match content:
             case dict():
-                any_content = content.get(CONTENT_JSON_KEY)
+                any_content = content.get(CONTENT_FIELD)
 
                 if isinstance(any_content, list):
                     content = any_content
