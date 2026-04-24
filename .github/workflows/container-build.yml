@@ -17,11 +17,6 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # https://github.com/actions/checkout/releases/tag/v6.0.2
         with:
           fetch-depth: 0
-      - name: Set up SSH
-        uses: MrSquaare/ssh-setup-action@c818628b924a4bd863903a56c0e526db47bba6f4 # https://github.com/MrSquaare/ssh-setup-action/releases/tag/v3.1.3
-        with:
-          host: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
-          private-key: ${{ secrets.BUILD_SERVER_NIX_ARM64_PRIVATE_KEY }}
       - name: Set up Docker
         uses: docker/setup-docker-action@e43656e248c0bd0647d3f5c195d116aacf6fcaf4 # https://github.com/docker/setup-docker-action/releases/tag/v4.7.0
         with:
@@ -43,16 +38,6 @@ jobs:
           version: "0.11.6"
       - name: Set up Nix
         uses: cachix/install-nix-action@616559265b40713947b9c190a8ff4b507b5df49b # https://github.com/cachix/install-nix-action/releases/tag/v31.10.4
-      - name: Setup SSH known_hosts
-        id: setup-known-hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H $RUNNER_ADDR >> ~/.ssh/known_hosts
-          sudo mkdir -p /root/.ssh
-          sudo cp ~/.ssh/known_hosts /root/.ssh/
-          ls ~/.ssh
-        env:
-          RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
       - name: Generate Image Tags
         id: image-tag
         run: |
@@ -67,9 +52,6 @@ jobs:
           EOF
       - name: Build and Push Image
         id: build-and-push
-        env:
-          RUNNER_ENDPOINT: ssh://nixremote@${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
-          RUNNER_ADDR: ${{ secrets.BUILD_SERVER_ARM64_HOST_01 }}
         run: |
           export PYTHON_VERSION="${{ matrix.python-version }}"
 
@@ -85,22 +67,7 @@ jobs:
           # Previous latest released version
           uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
 
-          # Local AMD64 version
-          # nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
-          # docker load < image
-
-          # sudo ssh -vvv -o StrictHostKeyChecking=accept-new -i /root/.ssh/id_ed25519 nixremote@$RUNNER_ADDR true
-          # nix store ping --store "ssh-ng://nixremote@$RUNNER_ADDR"
-
-          # Remote ARM64 version
-          export NIX_SSHOPTS="-i $SSH_PATH/id_rsa -o StrictHostKeyChecking=accept-new"
-          nix --extra-experimental-features 'nix-command flakes' build .#packages.aarch64-linux.docker.python${PYTHON_VERSION//.}  \
-            --system aarch64-linux \
-            --builders "$RUNNER_ENDPOINT aarch64-linux" \
-            --max-jobs 0 \
-            -L \
-            -v \
-            -o image
+          nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
           docker load < image
 
           for tag in $(echo "${{ steps.image-tag.outputs.tags }}" | tr ", " "\n")
@@ -143,9 +110,3 @@ jobs:
           scan-type: image
           image-ref: ghcr.io/fkie-cad/logprep@${{ steps.build-and-push.outputs.digest }}
           trivy-config: trivy.yaml
-      - name: Build wheels
-        run: |
-          mkdir -p dist
-          nix build .#dist.python311 -o dist_sl
-          cp -rL dist_sl/* dist
-          ls dist
