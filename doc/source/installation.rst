@@ -2,48 +2,11 @@
 Installation
 ============
 
-UV
-==
-
-Python should be present on the system. Currently, **Python 3.11 – 3.14** are supported.
-
-Logprep can be installed with **uv**, a fast drop-in replacement for pip.
-Using uv is optional – Logprep can still be installed with regular pip as well.
-
-We recommend using **uv**, because uv uses a lock file during installation.
-This ensures that Logprep is installed with the *exact same dependency versions*
-that are used and tested during development, providing more reproducible and stable installations.
-
-If you want to install uv, refer to the official installation guide:
-
-https://docs.astral.sh/uv/getting-started/installation/#installing-uv
-
-To install Logprep you have the following options:
-
-**1. Option:** latest stable release
-
-This option is recommended if you just want to use the latest stable release of Logprep.
-
-.. code-block:: bash
-
-    git clone https://github.com/fkie-cad/Logprep.git logprep && cd logprep && uv sync --frozen
-
-Alternative: directly from PyPI via pip:
-
+PyPI
+====
 .. code-block:: bash
 
     pip install logprep
-
-
-To see if the installation was successful run :code:`logprep --version`.
-
-**2. Option:** latest development release
-
-This option is recommended if you want to try out the latest developments.
-
-.. code-block:: bash
-
-    git clone https://github.com/fkie-cad/Logprep.git logprep && cd logprep && uv sync --all-extras
 
 To see if the installation was successful run :code:`logprep --version`.
 
@@ -55,7 +18,17 @@ contribute to them.
 
 UV
 --
-Using uv (a python package manager) to install needed dependencies and binaries
+Python should be present on the system. Currently, **Python 3.11 – 3.14** are supported.
+
+We recommend using **uv**, because uv uses a lock file during installation.
+This ensures that Logprep is installed with the *exact same dependency versions*
+that are used and tested during development, providing more reproducible and stable installations.
+
+If you want to install uv, refer to the official installation guide:
+
+https://docs.astral.sh/uv/getting-started/installation/#installing-uv
+
+To install Logprep with uv:
 
 .. code-block:: bash
 
@@ -63,6 +36,9 @@ Using uv (a python package manager) to install needed dependencies and binaries
     cd Logprep
     uv sync --frozen
     uv sync --frozen --extra dev # if you intend to contribute
+
+To see if the installation was successful run
+:code:`logprep --version`.
 
 Nix Flake
 ---------
@@ -97,7 +73,7 @@ At first you have to install the prometheus PodMonitor CRD:
 
 To install latest stable release:
 
-..  code-block:: bash
+.. code-block:: bash
 
    helm repo add logprep https://fkie-cad.github.io/Logprep
    helm install logprep logprep/logprep
@@ -105,7 +81,7 @@ To install latest stable release:
 
 To install from cloned github repository:
 
-..  code-block:: bash
+.. code-block:: bash
 
    git clone https://github.com/fkie-cad/Logprep.git
    cd Logprep
