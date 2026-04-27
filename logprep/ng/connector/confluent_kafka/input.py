@@ -607,7 +607,7 @@ class ConfluentKafkaInput(Input):
             logger.error("Failed to retrieve member ID: %s", error)
         return member_id
 
-    def health(self) -> bool:
+    async def health(self) -> bool:  # type: ignore[override]
         """Check the health of the component.
 
         Returns
@@ -625,9 +625,10 @@ class ConfluentKafkaInput(Input):
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return super().health()
+        return await super().health()
 
     async def acknowledge(self, events: list[LogEvent]):
+        # TODO implement!
         logger.debug("acknowledge called")
 
     async def shut_down(self) -> None:

@@ -176,32 +176,32 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         metadata = mock.MagicMock()
         metadata.topics = [self.object._config.topic]
         self.object._admin.list_topics.return_value = metadata
-        assert self.object.health()
+        assert await self.object.health()
 
     def test_health_returns_false_if_topic_not_present(self):
         self.object._admin = mock.MagicMock()
         metadata = mock.MagicMock()
         metadata.topics = ["not_the_topic"]
         self.object._admin.list_topics.return_value = metadata
-        assert not self.object.health()
+        assert not await self.object.health()
 
     def test_health_returns_false_on_kafka_exception(self):
         self.object._admin = mock.MagicMock()
         self.object._admin.list_topics.side_effect = KafkaException("test error")
-        assert not self.object.health()
+        assert not await self.object.health()
 
     def test_health_logs_error_on_kafka_exception(self):
         self.object._admin = mock.MagicMock()
         self.object._admin.list_topics.side_effect = KafkaException("test error")
         with mock.patch("logging.Logger.error") as mock_error:
-            self.object.health()
+            await self.object.health()
         mock_error.assert_called()
 
     def test_health_counts_metrics_on_kafka_exception(self):
         self.object.metrics.number_of_errors = 0
         self.object._admin = mock.MagicMock()
         self.object._admin.list_topics.side_effect = KafkaException("test error")
-        assert not self.object.health()
+        assert not await self.object.health()
         assert self.object.metrics.number_of_errors == 1
 
     def test_shutdown_logs_and_counts_error_if_queue_not_fully_flushed(self):
