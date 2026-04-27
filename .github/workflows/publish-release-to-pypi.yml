@@ -14,8 +14,7 @@ jobs:
         run: |
           mkdir -p dist
           nix build .#dist.python311 -o dist_sl
-          # Nix by default always creates symlinks, because im unsure how well upload artifact plays with symlinks
-          # hard copy the resulting whl and tar.gz from the dist_sl symlink into a normal dist directory
+          # hard copy contents to avoid issues with symlinks (which Nix creates by default)
           cp -rL dist_sl/* dist
       - name: Upload Artifact for next job
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # https://github.com/actions/upload-artifact/releases/tag/v7.0.0
