@@ -125,16 +125,8 @@ class ListComparisonRule(FieldManagerRule):
             http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
 
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
-        content = http_getter.get()
-
-        if isinstance(content, list):
-            compare_elements = content
-        elif isinstance(content, str):
-            compare_elements = http_getter._to_list(content)
-        else:
-            raise ValueError("Expected list or str as content")
-
-        file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
+        content = http_getter.get_list()
+        file_elem_tuples = (elem for elem in content if not elem.startswith("#"))
         self._compare_sets.update({list_path: set(file_elem_tuples)})
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
