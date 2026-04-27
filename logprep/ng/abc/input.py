@@ -119,7 +119,7 @@ class InputIterator(AsyncIterator):
         return event
 
 
-class Input(Connector):
+class Input(Connector, AsyncIterator):
     """Connect to a source for log data."""
 
     class Metrics(Connector.Metrics):
@@ -137,6 +137,10 @@ class Input(Connector):
         """
         See :class:`.PreprocessingConfig` for further details.
         """
+
+        timeout: float = field(
+            validator=(validators.instance_of(float), validators.gt(0)), default=5.0, eq=False
+        )
 
         _version_information: dict = field(
             validator=validators.instance_of(dict),
@@ -181,7 +185,7 @@ class Input(Connector):
 
     @abstractmethod
     async def acknowledge(self, events: list[LogEvent]) -> None:
-        """Acknowledge all delivered events, so Input Connector can return final ACK state."""
+        """Acknowledge all delivered events."""
 
     @property
     def _add_hmac(self) -> bool:
@@ -245,6 +249,16 @@ class Input(Connector):
         -------
         (event, raw_event, metadata) | None
         """
+
+    async def __anext__(self) -> LogEvent | None:
+        """Return the next event in the Input Connector within the configured timeout.
+
+        Returns
+        -------
+        LogEvent | None
+            The next event retrieved from the underlying data source.
+        """
+        return await self.get_next(timeout=self.config.timeout)
 
     # @Metric.measure_time()
     async def get_next(self, timeout: float) -> LogEvent | None:

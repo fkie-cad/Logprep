@@ -35,7 +35,6 @@ import logging
 import ssl
 import typing
 from collections.abc import Sequence
-from functools import cached_property
 from typing import List, Optional
 
 from attrs import define, field, validators
@@ -117,52 +116,66 @@ class OpensearchOutput(Output):
         """Addresses of opensearch/opensearch servers. Can be a list of hosts or one single host
         in the format HOST:PORT without specifying a schema. The schema is set automatically to
         https if a certificate is being used."""
+
         default_index: str = field(validator=validators.instance_of(str))
         """Default index to write to if no index was set in the document or the document could not
         be indexed. The document will be transformed into a string to prevent rejections by the
         default index."""
+
         message_backlog_size: int = field(validator=validators.instance_of(int))
         """Amount of documents to store before sending them."""
+
         timeout: int = field(validator=validators.instance_of(int), default=500)
         """(Optional) Timeout for the connection (default is 500ms)."""
+
         user: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) User used for authentication."""
+
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) Secret used for authentication."""
+
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) Path to a SSL ca certificate to verify the ssl context."""
+
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
         """(Optional) Timeout after :code:`message_backlog` is flushed if
         :code:`message_backlog_size` is not reached."""
+
         thread_count: int = field(
             default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Number of threads to use for bulk requests.
         DEPRECATED: This Argument is deprecated and doesnt do anything anymore,
         it will be removed in the future"""
+
         queue_size: int = field(
             default=4, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Number of queue size to use for bulk requests.
         DEPRECATED: This Argument is deprecated and doesnt do anything anymore,
         it will be removed in the future"""
+
         chunk_size: int = field(
             default=500, validator=(validators.instance_of(int), validators.gt(1))
         )
         """Chunk size to use for bulk requests."""
+
         max_chunk_bytes: int = field(
             default=100 * 1024 * 1024,
             validator=(validators.instance_of(int), validators.gt(1)),
         )
         """Max chunk size to use for bulk requests. The default is 100MB."""
+
         max_retries: int = field(
             default=3, validator=(validators.instance_of(int), validators.gt(0))
         )
         """Max retries for all requests. Default is 3."""
+
         desired_cluster_status: list = field(
             default=["green"], validator=validators.instance_of(list)
         )
         """Desired cluster status for health check as list of strings. Default is ["green"]"""
+
         default_op_type: str = field(
             default="index",
             validator=(
@@ -173,9 +186,8 @@ class OpensearchOutput(Output):
         """Default op_type for indexing documents. Default is 'index',
         Consider using 'create' for data streams or to prevent overwriting existing documents."""
 
-    __slots__ = ("_message_backlog",)
+    __slots__ = ("_search_context",)
 
-    _message_backlog: list[Event]
     """List of messages to be sent to Opensearch."""
 
     @property
@@ -185,56 +197,38 @@ class OpensearchOutput(Output):
 
     @property
     def config(self) -> Config:
-        """Provides the properly typed rule configuration object"""
+        """Provides the properly typed configuration object"""
         return typing.cast(OpensearchOutput.Config, self._config)
-
-    @cached_property
-    def ssl_context(self) -> ssl.SSLContext | None:
-        """Returns the ssl context
-
-        Returns
-        -------
-        SSLContext
-            The ssl context
-        """
-        return (
-            ssl.create_default_context(cafile=self.config.ca_cert) if self.config.ca_cert else None
-        )
 
     @property
     def schema(self) -> str:
-        """Returns the schema. `https` if ssl config is set, else `http`
-
-        Returns
-        -------
-        str
-            the schema
-        """
+        """Returns the schema. `https` if ssl config is set, else `http`"""
         return "https" if self.config.ca_cert else "http"
 
     @property
-    def http_auth(self) -> tuple | None:
-        """Returns the credentials
+    def http_auth(self) -> tuple[str, str] | None:
+        """Returns the credentials the credentials in format (user, secret) or None"""
+        if self.config.user and self.config.secret:
+            return (self.config.user, self.config.secret)
+        return None
 
-        Returns
-        -------
-        tuple
-            the credentials in format (user, secret)
-        """
-        return (
-            (self.config.user, self.config.secret)
-            if self.config.user and self.config.secret
-            else None
-        )
+    def describe(self) -> str:
+        """Get name of Opensearch endpoint with the host."""
+        base_description = Output.describe(self)
+        return f"{base_description} - Opensearch Output: {self.config.hosts}"
 
-    @cached_property
-    def _search_context(self):
-        """Returns the opensearch client."""
-        return AsyncOpenSearch(
+    def _create_ssl_context(self) -> ssl.SSLContext | None:
+        """Returns the ssl context"""
+        if self.config.ca_cert:
+            return ssl.create_default_context(cafile=self.config.ca_cert)
+        return None
+
+    async def setup(self):
+        self._search_context = AsyncOpenSearch(
             self.config.hosts,
             scheme=self.schema,
             http_auth=self.http_auth,
-            ssl_context=self.ssl_context,
+            ssl_context=self._create_ssl_context(),
             verify_certs=True,  # default is True, but we want to be explicit
             timeout=self.config.timeout,
             serializer=MSGPECSerializer(self),
@@ -243,48 +237,12 @@ class OpensearchOutput(Output):
             # default for connection pooling is 10 see:
             # https://github.com/opensearch-project/opensearch-py/blob/main/guides/connection_classes.md
         )
+        return await super().setup()
 
-    def __init__(self, name: str, configuration: "OpensearchOutput.Config"):
-        super().__init__(name, configuration)
-
-    async def setup(self):
-        await super().setup()
-
-    def describe(self) -> str:
-        """Get name of Opensearch endpoint with the host.
-
-        Returns
-        -------
-        opensearch_output : OpensearchOutput
-            Acts as output connector for Opensearch.
-
-        """
-        base_description = Output.describe(self)
-        return f"{base_description} - Opensearch Output: {self.config.hosts}"
-
-    async def store(self, event: Event) -> None:
-        """Store a document in the index defined in the document or to the default index."""
-        await self.store_batch([event], event.data.get("_index", self.config.default_index))
-
-    # @Output._handle_errors
-    async def store_custom(self, event: Event, target: str) -> None:
-        """Store document into backlog to be written into Opensearch with the target index.
-        The target index is determined per document by parameter :code:`target`.
-
-        Parameters
-        ----------
-        document : dict
-            Document to be stored into the target index.
-        target : str
-            Index to store the document in.
-        """
-        await self.store_batch([event], target)
-
-    # @Output._handle_errors
-    async def store_batch(
+    async def _store_batch(
         self, events: Sequence[Event], target: str | None = None
     ) -> Sequence[Event]:
-        logger.debug("store_batch called with %d events, target=%s", len(events), target)
+        logger.debug("Flushing %d documents to opensearch with target '%s'", len(events), target)
         target = target if target else self.config.default_index
 
         for event in events:
@@ -292,14 +250,9 @@ class OpensearchOutput(Output):
             document["_index"] = document.get("_index", target)
             document["_op_type"] = document.get("_op_type", self.config.default_op_type)
 
-        self._metrics.number_of_processed_events += len(events)
-        logger.debug("Flushing %d documents to Opensearch", len(events))
         await self._bulk(self._search_context, events)
+        self._metrics.number_of_processed_events += len(events)
         return events
-
-    # @Metric.measure_time()
-    async def flush(self):
-        logger.debug("flush is not required")
 
     async def _bulk(self, client: AsyncOpenSearch, events: Sequence[Event]) -> None:
         """Bulk index documents into Opensearch. Uses the parallel_bulk function from the opensearchpy library.
@@ -343,9 +296,7 @@ class OpensearchOutput(Output):
                 error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
                 event.errors.append(error)
 
-    logger.debug("done sending")
-
-    async def health(self) -> bool:  # type: ignore  # TODO: fix mypy issue
+    async def health(self) -> bool:  # type: ignore[override]
         """Check the health of the component."""
         try:
             resp = await self._search_context.cluster.health(
@@ -355,9 +306,8 @@ class OpensearchOutput(Output):
             logger.error("Health check failed: %s", error)
             self._metrics.number_of_errors += 1
             return False
-        return super().health() and resp.get("status") in self.config.desired_cluster_status
+        return await super().health() and resp.get("status") in self.config.desired_cluster_status
 
     async def shut_down(self):
-        if "_search_context" in self.__dict__:
-            await self._search_context.close()
+        self._search_context.close()
         await super().shut_down()
