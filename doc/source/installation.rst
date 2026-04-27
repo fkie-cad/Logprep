@@ -53,15 +53,19 @@ GIT
 This option is recommended if you are interested in the latest developments and might want to
 contribute to them.
 
-..  code-block:: bash
+UV
+--
+Using uv (a python package manager) to install needed dependencies and binaries
+
+.. code-block:: bash
 
     git clone https://github.com/fkie-cad/Logprep.git
     cd Logprep
     uv sync --frozen
     uv sync --frozen --extra dev # if you intend to contribute
 
-There is also the option of using nix flakes.
-
+Nix Flake
+---------
 Flakes are theoretically experimental so depending on which nix installer you used,
 you might have to follow this short guide:
 
@@ -77,26 +81,6 @@ After that, you should be able to run the following code and just start developi
 
 To see if the installation was successful run
 :code:`logprep --version`.
-
-Docker
-======
-
-This option can be used to build a container image from a specific commit
-
-..  code-block:: bash
-
-    git clone https://github.com/fkie-cad/Logprep.git
-    docker build -t logprep .
-
-To see if the installation was successful run :code:`docker run logprep --version`.
-
-**Note:**
-The provided Dockerfile uses **Python 3.11** by default via the :code:`PYTHON_VERSION` build argument.
-If you want to build Logprep with another supported Python version, override the value during build:
-
-..  code-block:: bash
-
-    docker build --build-arg PYTHON_VERSION=3.13 -t logprep .
 
 Helm
 ====
