@@ -567,7 +567,7 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         connector._wait_for_health = mock.MagicMock()
         connector.setup()
 
-        assert connector.health()
+        assert await connector.health()
 
         connector.shut_down()
 
@@ -576,19 +576,19 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         metadata = mock.MagicMock()
         metadata.topics = ["not_the_topic"]
         mock_admin.list_topics.return_value = metadata
-        assert not self.object.health()
+        assert not await self.object.health()
 
     def test_health_returns_false_on_kafka_exception(self):
         with mock.patch.object(self.object, "_consumer") as mock_consumer:
             mock_consumer.list_topics.side_effect = KafkaException("test error")
-            assert not self.object.health()
+            assert not await self.object.health()
 
     def test_health_logs_error_on_kafka_exception(self):
         with mock.patch.object(self.object, "_consumer") as mock_consumer:
             mock_consumer.list_topics.side_effect = KafkaException("test error")
 
             with mock.patch("logging.Logger.error") as mock_error:
-                self.object.health()
+                await self.object.health()
 
             mock_error.assert_called()
 
@@ -599,7 +599,7 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         with mock.patch.object(kafka_input, "_consumer") as mock_consumer:
             mock_consumer.list_topics.side_effect = KafkaException("test error")
 
-            assert not kafka_input.health()
+            assert not await kafka_input.health()
             assert kafka_input.metrics.number_of_errors == 1
 
     @pytest.mark.parametrize(
