@@ -198,7 +198,7 @@ class Getter(ABC):
         content: dict | list | str = self._get_parsed_content()
 
         if isinstance(content, str):
-            content = content.splitlines()
+            content = self._to_list(content)
 
         match content:
             case dict():
