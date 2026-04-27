@@ -67,7 +67,7 @@ you might have to follow this short guide:
 
 https://wiki.nixos.org/wiki/Flakes#Nix_standalone
 
-after that, you should be able to run the following code and just start developing.
+After that, you should be able to run the following code and just start developing.
 
 .. code-block:: bash
 
