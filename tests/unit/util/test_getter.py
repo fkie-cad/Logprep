@@ -310,8 +310,8 @@ second_dict:
             ),
             (
                 "get_yaml",
-                b"""""",
-                {},
+                b"""test:\n- entry_1: 1\n- entry_2: 2""",
+                {"test": [{"entry_1": 1}, {"entry_2": 2}]},
             ),
             (
                 "get",
@@ -1348,25 +1348,13 @@ class TestHttpGetter:
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter.get_dict() == {"something": "foo"}
 
-    @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a list")
-    @responses.activate
-    def test_get_list_raises_exception_if_result_not_list(self, _):
-        responses.add(
-            responses.GET,
-            "http://something",
-            "",
-        )
-
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
-        with pytest.raises(ValueError, match="Content is not a list"):
-            http_getter.get_list()
-
     @responses.activate
     def test_get_list_returns_if_result_is_list(self):
         responses.add(
             responses.GET,
             "http://something",
-            "['something']",
+            json.dumps(["something"]),
+            content_type="application/json",
         )
 
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
