@@ -575,6 +575,49 @@ test_cases = [  # testcase, rule, event, expected
         {"host": "example.com"},
         {"host": {"name": "example.com"}},
     ),
+    (
+        "move tree",
+        {
+            "filter": "kubernetes.labels",
+            "field_manager": {
+                "mapping": {
+                    "kubernetes.labels": "orchestrator.resources.labels",
+                },
+                "overwrite_target": False,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "keep": "this unchanged",
+            "kubernetes": {
+                "labels": {
+                    "app.kubernetes.io/name": "vault",
+                    "apps.kubernetes.io/pod-index": "2",
+                    "controller-revision-hash": "vault-123456789",
+                },
+                "annotations": {
+                    "common/annotation": "true",
+                },
+            },
+        },
+        {
+            "keep": "this unchanged",
+            "kubernetes": {
+                "annotations": {
+                    "common/annotation": "true",
+                }
+            },
+            "orchestrator": {
+                "resources": {
+                    "labels": {
+                        "app.kubernetes.io/name": "vault",
+                        "apps.kubernetes.io/pod-index": "2",
+                        "controller-revision-hash": "vault-123456789",
+                    }
+                }
+            },
+        },
+    ),
 ]
 
 failure_test_cases = [
