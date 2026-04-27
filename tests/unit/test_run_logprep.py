@@ -238,7 +238,7 @@ class TestRunLogprepCli:
             assert result.exit_code == 1
 
     def test_logprep_exits_on_request_exception(self):
-        with mock.patch("logprep.util.getter.HttpGetter.get_raw") as mock_verify:
+        with mock.patch("logprep.util.getter.HttpGetter._get_raw") as mock_verify:
             mock_verify.side_effect = requests.RequestException("connection refused")
             config_path = "http://localhost/does-not-exists"
             result = self.cli_runner.invoke(cli, ["run", config_path])
