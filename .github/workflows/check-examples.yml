@@ -17,11 +17,17 @@ jobs:
         uses: docker/setup-compose-action@364cc21a5de5b1ee4a7f5f9d3fa374ce0ccde746 # https://github.com/docker/setup-compose-action/releases/tag/v1.2.0
         with:
           version: latest
+      - name: Set up Nix
+        uses: cachix/install-nix-action@616559265b40713947b9c190a8ff4b507b5df49b # https://github.com/cachix/install-nix-action/releases/tag/v31.10.4
       - name: Build images
         working-directory: examples/compose
-        run: docker compose build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+        run: |
+          # logprep version is assumed to be set in pyproject.toml
+          nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
+          docker load < image
         env: &compose-env
           COMPOSE_PROFILES: ${{ matrix.profile }}
+          PYTHON_VERSION: ${{ matrix.python-version }}
       - name: Run Compose setup
         working-directory: examples/compose
         run: docker compose up -d
