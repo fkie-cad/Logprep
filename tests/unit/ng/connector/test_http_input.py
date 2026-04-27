@@ -530,7 +530,7 @@ class TestHttpConnector(BaseInputTestCase):
         for endpoint in self.object.health_endpoints:
             responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
 
-        assert self.object.health(), "Health endpoint should be ready"
+        assert await self.object.health(), "Health endpoint should be ready"
 
     @responses.activate
     def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_429(self):
@@ -538,7 +538,7 @@ class TestHttpConnector(BaseInputTestCase):
             responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
         endpoint = self.object.health_endpoints[-1]
         responses.get(f"http://127.0.0.1:9000{endpoint}", status=429)  # bad
-        assert not self.object.health(), "Health endpoint should not be ready"
+        assert not await self.object.health(), "Health endpoint should not be ready"
 
     @responses.activate
     def test_health_endpoint_is_not_ready_if_one_endpoint_has_status_500(self):
@@ -546,7 +546,7 @@ class TestHttpConnector(BaseInputTestCase):
             responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
         endpoint = self.object.health_endpoints[0]
         responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)  # bad
-        assert not self.object.health(), "Health endpoint should not be ready"
+        assert not await self.object.health(), "Health endpoint should not be ready"
 
     @responses.activate
     def test_health_endpoint_is_not_ready_on_connection_error(self):
@@ -554,7 +554,7 @@ class TestHttpConnector(BaseInputTestCase):
             responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
         endpoint = self.object.health_endpoints[0]
         responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.ConnectionError("bad"))
-        assert not self.object.health(), "Health endpoint should not be ready"
+        assert not await self.object.health(), "Health endpoint should not be ready"
 
     @responses.activate
     def test_health_endpoint_is_not_ready_if_one_endpoint_has_read_timeout(self):
@@ -562,7 +562,7 @@ class TestHttpConnector(BaseInputTestCase):
             responses.get(f"http://127.0.0.1:9000{endpoint}", status=200)
         endpoint = self.object.health_endpoints[0]
         responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.Timeout("bad"))
-        assert not self.object.health(), "Health endpoint should not be ready"
+        assert not await self.object.health(), "Health endpoint should not be ready"
 
     @responses.activate
     def test_health_check_logs_error(self):
@@ -570,7 +570,7 @@ class TestHttpConnector(BaseInputTestCase):
         responses.get(f"http://127.0.0.1:9000{endpoint}", body=requests.Timeout("bad"))
 
         with mock.patch("logging.Logger.error") as mock_logger:
-            assert not self.object.health(), "Health endpoint should not be ready"
+            assert not await self.object.health(), "Health endpoint should not be ready"
             mock_logger.assert_called()
 
     @responses.activate
@@ -578,7 +578,7 @@ class TestHttpConnector(BaseInputTestCase):
         self.object.metrics.number_of_errors = 0
         endpoint = self.object.health_endpoints[0]
         responses.get(f"http://127.0.0.1:9000{endpoint}", status=500)  # bad
-        assert not self.object.health()
+        assert not await self.object.health()
         assert self.object.metrics.number_of_errors == 1
 
     def test_health_endpoints_are_shortened(self):

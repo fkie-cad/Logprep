@@ -300,7 +300,7 @@ class ConfluentKafkaOutput(Output):
             f"{self.config.kafka_config.get('bootstrap.servers')}"
         )
 
-    async def store_batch(
+    async def _store_batch(
         self, events: Sequence[Event], target: str | None = None
     ) -> Sequence[Event]:
         store_target = target if target is not None else self.config.topic
@@ -309,7 +309,7 @@ class ConfluentKafkaOutput(Output):
 
         return events
 
-    async def store(self, event: Event) -> None:
+    async def _store_single(self, event: Event) -> None:
         """Store a document in the producer topic.
 
         Parameters
@@ -377,7 +377,7 @@ class ConfluentKafkaOutput(Output):
         else:
             logger.info("Producer flushed successfully. %s messages remaining.", remaining_messages)
 
-    def health(self) -> bool:
+    async def health(self) -> bool:  # type: ignore[override]
         """Check the health of kafka producer."""
         try:
             metadata = self._admin.list_topics(timeout=self.config.health_timeout)
@@ -388,7 +388,7 @@ class ConfluentKafkaOutput(Output):
             logger.error("Health check failed: %s", error)
             self.metrics.number_of_errors += 1
             return False
-        return super().health()
+        return await super().health()
 
     async def setup(self) -> None:
         """Set the confluent kafka output connector."""
