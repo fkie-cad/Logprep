@@ -64,7 +64,7 @@ jobs:
           # |           |
           # |           branch name
           # |
-          # Previous latest released version
+          # Last release version (as of pyproject.toml)
           uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
 
           nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
