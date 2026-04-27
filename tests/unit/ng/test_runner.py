@@ -8,9 +8,7 @@ from unittest import mock
 import pytest
 
 from logprep.ng.event.event_state import EventStateType
-from logprep.ng.pipeline import Pipeline
 from logprep.ng.runner import Runner
-from logprep.ng.sender import Sender
 from logprep.ng.util.configuration import Configuration
 
 

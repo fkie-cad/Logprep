@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 
-from typing import Iterator
+import asyncio
 from unittest import mock
 
 import pytest
@@ -11,10 +11,10 @@ from logprep.factory import Factory
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.pseudonym_event import PseudonymEvent
-from logprep.ng.pipeline import Pipeline
+from logprep.ng.processor import process
 
 
-@pytest.fixture(name="input_connector")
+@pytest.fixture(name="input_events")
 def get_input_mock():
     return iter(
         [
@@ -26,7 +26,7 @@ def get_input_mock():
 
 
 @pytest.fixture(name="processors", scope="session")
-def get_processors_mock():
+async def get_processors_mock():
     processors = [
         Factory.create(
             {
@@ -65,46 +65,36 @@ def get_processors_mock():
         ),
     ]
     for processor in processors:
-        processor.setup()
+        await processor.setup()
     return processors
 
 
-class TestPipeline:
-    def test_init(self, input_connector, processors):
-        pipeline = Pipeline(input_connector, processors)
-        assert isinstance(pipeline, Pipeline)
-        assert isinstance(pipeline, Iterator)
-
-    def test_pipeline_next_raises_not_implemented_error(self, input_connector, processors):
-        pipeline = Pipeline(input_connector, processors)
-
-        with pytest.raises(NotImplementedError):
-            next(pipeline)
-
-    def test_process_pipeline_success(self, input_connector, processors):
-        processed_events = list(Pipeline(input_connector, processors))
+class TestProcessing:
+    async def test_process_pipeline_success(self, input_events, processors):
+        processed_events = await asyncio.gather(
+            *(process(event, processors) for event in input_events)
+        )
 
         for event in processed_events:
             assert isinstance(event, LogEvent)
             assert not event.errors
             assert "generic added tag" in event.get_dotted_field_value("event.tags")
-            assert event.state.current_state == EventStateType.PROCESSED
 
-    def test_process_pipeline_failure(self, input_connector, processors):
+    async def test_process_pipeline_failure(self, input_events, processors):
         with mock.patch.object(
             processors[0], "_apply_rules", side_effect=[None, Exception("Processing error")]
         ):
-            pipeline = Pipeline(input_connector, processors)
-            processed_events = list(pipeline)
+            processed_events = await asyncio.gather(
+                *(process(event, processors) for event in input_events)
+            )
 
         assert len(processed_events[0].errors) == 0
         assert len(processed_events[1].errors) == 1
-        assert processed_events[0].state.current_state == EventStateType.PROCESSED
-        assert processed_events[1].state.current_state == EventStateType.FAILED
 
-    def test_process_pipeline_generates_extra_data(self, input_connector, processors):
-        pipeline = Pipeline(input_connector, processors)
-        processed_events = list(pipeline)
+    async def test_process_pipeline_generates_extra_data(self, input_events, processors):
+        processed_events = await asyncio.gather(
+            *(process(event, processors) for event in input_events)
+        )
 
         for event in processed_events:
             assert isinstance(event, LogEvent)
@@ -114,48 +104,24 @@ class TestPipeline:
         assert isinstance(extra_data_event, PseudonymEvent)
         assert extra_data_event.state.current_state == EventStateType.PROCESSED
 
-    def test_process_pipeline_none_input(self, processors):
-        empty_input = iter([None, None, None])
-        pipeline = Pipeline(empty_input, processors)
-        processed_events = list(pipeline)
-        assert processed_events == [None, None, None]
-
-    def test_process_pipeline_empty_input(self, processors):
-        empty_input = iter([])
-        pipeline = Pipeline(empty_input, processors)
-        processed_events = list(pipeline)
+    async def test_process_pipeline_empty_input(self, processors):
+        input_events = iter([])
+        processed_events = await asyncio.gather(
+            *(process(event, processors) for event in input_events)
+        )
         assert not processed_events
 
-    def test_process_pipeline_empty_events_in_input(self, processors):
-        empty_input = iter([LogEvent({}, original=b"") for _ in range(5)])
-        pipeline = Pipeline(empty_input, processors)
-        processed_events = list(pipeline)
-        assert processed_events == [None for _ in range(5)]
-
-    def test_empty_documents_are_not_forwarded_to_other_processors(
-        self, input_connector, processors
+    async def test_empty_documents_are_not_forwarded_to_other_processors(
+        self, input_events, processors
     ):
         with mock.patch.object(
             processors[0], "process", side_effect=lambda event: event.data.clear()
         ):
             with mock.patch.object(processors[1], "process"):
-                pipeline = Pipeline(input_connector, processors)
-                processed_events = list(pipeline)
+                processed_events = await asyncio.gather(
+                    *(process(event, processors) for event in input_events)
+                )
                 assert len(processed_events) == 3
                 assert processed_events[0].data == {}
                 assert processors[0].process.call_count == 3
                 assert processors[1].process.call_count == 0
-
-    def test_setup_calls_processor_setups(self, input_connector):
-        processors = [mock.MagicMock() for _ in range(5)]
-        pipeline = Pipeline(input_connector, processors)
-        pipeline.setup()
-        for processor in processors:
-            processor.setup.assert_called_once()
-
-    def test_shut_down_calls_processor_shut_down(self, input_connector):
-        processors = [mock.MagicMock() for _ in range(5)]
-        pipeline = Pipeline(input_connector, processors)
-        pipeline.shut_down()
-        for processor in processors:
-            processor.shut_down.assert_called_once()

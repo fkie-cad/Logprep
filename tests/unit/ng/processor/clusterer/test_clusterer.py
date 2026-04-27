@@ -11,18 +11,19 @@ from unittest import mock
 
 from logprep.factory import Factory
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.processor.clusterer.processor import Clusterer
 from logprep.processor.clusterer.rule import ClustererRule
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
-class TestClusterer(BaseProcessorTestCase):
+class TestClusterer(BaseProcessorTestCase[Clusterer]):
     CONFIG = {
         "type": "ng_clusterer",
         "output_field_name": "cluster_signature",
         "rules": ["tests/testdata/unit/clusterer/rules"],
     }
 
-    def test_has_tag_clusterable(self):
+    async def test_has_tag_clusterable(self):
         # Sample without PRI, since PRI makes a log clusterable irrespective of the tag
         sample_syslog_without_pri = {
             "severity_label": "Informational",
@@ -85,20 +86,20 @@ class TestClusterer(BaseProcessorTestCase):
 
     @mock.patch("logprep.ng.processor.clusterer.processor.Clusterer._is_clusterable")
     @mock.patch("logprep.ng.processor.clusterer.processor.Clusterer._cluster")
-    def test_only_clusterable_logs_are_clustered(self, mock_cluster, mock_is_clusterable):
+    async def test_only_clusterable_logs_are_clustered(self, mock_cluster, mock_is_clusterable):
         mock_is_clusterable.return_value = False
         event = LogEvent({"message": "test_message"}, original=b"test_message")
-        self.object.process(event)
+        await self.object.process(event)
         mock_is_clusterable.assert_called()
         mock_cluster.assert_not_called()
 
         mock_is_clusterable.return_value = True
         event = LogEvent({"message": "test_message"}, original=b"test_message")
-        self.object.process(event)
+        await self.object.process(event)
         mock_is_clusterable.assert_called()
         assert mock_cluster.call_count == 2
 
-    def test_syslog_has_severity_and_facility(self):
+    async def test_syslog_has_severity_and_facility(self):
         valid_syslog_with_facility_and_severity = {
             "syslog": {"facility": 3},
             "event": {"severity": 6},
@@ -111,7 +112,7 @@ class TestClusterer(BaseProcessorTestCase):
         assert self.object._syslog_has_pri(valid_syslog_with_facility_and_severity)
         assert not self.object._syslog_has_pri(invalid_syslog_with_missing_severity_and_facility)
 
-    def test_clusterable_field_determines_if_clusterable(self):
+    async def test_clusterable_field_determines_if_clusterable(self):
         """Check if clusterable has precedence over the existence of facility and severity"""
         log_with_clusterable_field_equals_true = {
             "message": "Listen normally on 5 lo ::1 UDP 123\n",
@@ -143,7 +144,7 @@ class TestClusterer(BaseProcessorTestCase):
             syslog_with_clusterable_field_equals_false, "message"
         )
 
-    def test_cluster(self):
+    async def test_cluster(self):
         rule_definition = {
             "filter": "message",
             "clusterer": {
@@ -167,7 +168,7 @@ class TestClusterer(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_rule_dependency_one(self, tmp_path):
+    async def test_rule_dependency_one(self, tmp_path):
         config = deepcopy(self.CONFIG)
         empty_rules_path = tmp_path / "empty"
         empty_rules_path.mkdir()
@@ -247,7 +248,7 @@ class TestClusterer(BaseProcessorTestCase):
             clusterer._cluster(document, rule)
         assert document == expected
 
-    def test_rule_dependency_two(self, tmp_path):
+    async def test_rule_dependency_two(self, tmp_path):
         config = deepcopy(self.CONFIG)
         empty_rules_path = tmp_path / "empty"
         empty_rules_path.mkdir()
@@ -311,7 +312,7 @@ class TestClusterer(BaseProcessorTestCase):
             clusterer._cluster(document, rule)
         assert document == expected
 
-    def test_is_new_tree_iteration(self):
+    async def test_is_new_tree_iteration(self):
         rule_1 = {
             "filter": "rule_1",
             "clusterer": {
@@ -341,7 +342,7 @@ class TestClusterer(BaseProcessorTestCase):
         assert clusterer._is_new_tree_iteration(clusterer_rule_2) is False
         assert clusterer._is_new_tree_iteration(clusterer_rule_1) is True
 
-    def test_is_clusterable_with_syslog_has_pri(self):
+    async def test_is_clusterable_with_syslog_has_pri(self):
         sample_syslog_with_pri = {
             "syslog": {"facility": 3, "severity": 6},
             "event": {"severity": 6},
@@ -354,7 +355,7 @@ class TestClusterer(BaseProcessorTestCase):
         assert self.object._is_clusterable(sample_syslog_with_pri, "message")
         assert not self.object._is_clusterable(sample_syslog_without_pri, "message")
 
-    def test_cluster_with_syslog_has_pri(self):
+    async def test_cluster_with_syslog_has_pri(self):
         sample_syslog_with_pri = {
             "syslog": {"facility": 3, "severity": 6},
             "event": {"severity": 6},
@@ -383,7 +384,7 @@ class TestClusterer(BaseProcessorTestCase):
 
         assert sample_syslog_with_pri == expected
 
-    def test_cluster_without_syslog_has_pri(self):
+    async def test_cluster_without_syslog_has_pri(self):
         sample_syslog_without_pri = {
             "message": "Listen normally on 5 lo ::1 UDP 123\n",
         }
@@ -408,7 +409,7 @@ class TestClusterer(BaseProcessorTestCase):
 
         assert sample_syslog_without_pri == expected
 
-    def test_cluster_with_raw_text_is_none(self):
+    async def test_cluster_with_raw_text_is_none(self):
         """Test that if raw_text is None, the event is not modified."""
         rule_definition = {
             "filter": "message",
@@ -428,7 +429,7 @@ class TestClusterer(BaseProcessorTestCase):
 
         assert event == {"message": None}
 
-    def test_cluster_with_rule_id_is_none(self):
+    async def test_cluster_with_rule_id_is_none(self):
         """Test that if rule_id is None, a new tree iteration is started."""
         rule_definition = {
             "filter": "message",
@@ -451,7 +452,7 @@ class TestClusterer(BaseProcessorTestCase):
             "cluster_signature": "signature",
         }
 
-    def test_test_rules_with_two_rules(self):
+    async def test_test_rules_with_two_rules(self):
         """Test that two rules can be tested correctly."""
         rule_definition_1 = {
             "filter": "message",

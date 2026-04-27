@@ -36,5 +36,6 @@ class ErrorEvent(Event):
             "original": original,
             "event": event,
         }
+        self.parent = log_event
 
         super().__init__(data=data, state=state)

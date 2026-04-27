@@ -161,7 +161,7 @@ class FileInput(Input):
             return {"message": input_line}
         return {}
 
-    def _get_event(self, timeout: float) -> tuple:
+    async def _get_event(self, timeout: float) -> tuple:
         """Returns the first message from the threadsafe queue"""
         try:
             message: dict = self._messages.get(timeout=timeout)
@@ -170,12 +170,12 @@ class FileInput(Input):
         except queue.Empty:
             return None, None, None
 
-    def setup(self) -> None:
+    async def setup(self) -> None:
         """Creates and starts the Thread that continuously monitors the given logfile.
         Right now this input connector is only started in the first process.
         It needs the class attribute pipeline_index before running setup in Pipeline
         Initiation"""
-        super().setup()
+        await super().setup()
         if not hasattr(self, "pipeline_index"):
             raise FatalInputError(
                 self, "Necessary instance attribute `pipeline_index` could not be found."  # type: ignore
@@ -191,7 +191,7 @@ class FileInput(Input):
                 file_name=self.config.logfile_path,
             )
 
-    def _shut_down(self) -> None:
+    async def shut_down(self) -> None:
         """Raises the Stop Event Flag that will stop the thread that monitors the logfile"""
         self.stop_flag.set()
-        return super()._shut_down()
+        await super().shut_down()

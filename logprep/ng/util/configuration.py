@@ -193,10 +193,10 @@ The following config file will be valid by setting the given environment variabl
 import json
 import logging
 import os
+import typing
 from copy import deepcopy
 from importlib.metadata import version
 from itertools import chain
-from logging.config import dictConfig
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
@@ -205,14 +205,13 @@ from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
-from schedule import Scheduler
 
-from logprep.abc.component import Component
 from logprep.abc.getter import Getter
-from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.ng.abc.component import NgComponent
+from logprep.ng.abc.processor import Processor
 from logprep.ng.util.defaults import (
     DEFAULT_CONFIG_LOCATION,
     DEFAULT_LOG_CONFIG,
@@ -238,13 +237,13 @@ class MyYAML(YAML):
     """helper class to dump yaml with ruamel.yaml"""
 
     def dump(self, data: Any, stream: Any | None = None, **kw: Any) -> Any:
-        inefficient = False
         if stream is None:
-            inefficient = True
             stream = StringIO()
-        YAML.dump(self, data, stream, **kw)
-        if inefficient:
+            YAML.dump(self, data, stream, **kw)
             return stream.getvalue()
+
+        YAML.dump(self, data, stream, **kw)
+        return None
 
 
 yaml = MyYAML(pure=True)
@@ -253,9 +252,9 @@ yaml = MyYAML(pure=True)
 class InvalidConfigurationErrors(InvalidConfigurationError):
     """Raise for multiple Configuration related exceptions."""
 
-    errors: List[InvalidConfigurationError]
+    errors: Sequence[InvalidConfigurationError]
 
-    def __init__(self, errors: List[Exception]) -> None:
+    def __init__(self, errors: Sequence[Exception]) -> None:
         unique_errors = []
         for error in errors:
             if not isinstance(error, InvalidConfigurationError):
@@ -339,7 +338,7 @@ class LoggerConfig:
     compatible with :func:`logging.config.dictConfig`.
     """
 
-    _LOG_LEVELS = (
+    _log_levels = (
         logging.NOTSET,  # 0
         logging.DEBUG,  # 10
         logging.INFO,  # 20
@@ -357,7 +356,7 @@ class LoggerConfig:
         default="INFO",
         validator=[
             validators.instance_of(str),
-            validators.in_([logging.getLevelName(level) for level in _LOG_LEVELS]),
+            validators.in_([logging.getLevelName(level) for level in _log_levels]),
         ],
         eq=False,
     )
@@ -442,7 +441,7 @@ class LoggerConfig:
 
         log_config = asdict(self)
         os.environ["LOGPREP_LOG_CONFIG"] = json.dumps(log_config)
-        dictConfig(log_config)
+        logging.config.dictConfig(log_config)
 
     def _set_loggers_levels(self) -> None:
         """Normalize per-logger configuration and preserve explicit levels.
@@ -653,7 +652,6 @@ class Configuration:
     _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 
     _getter: Getter = field(
-        validator=validators.instance_of(Getter),
         default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
         repr=False,
         eq=False,
@@ -663,27 +661,18 @@ class Configuration:
         validator=validators.instance_of(tuple), factory=tuple, repr=False, eq=False
     )
 
-    _scheduler: Scheduler = field(
-        factory=Scheduler,
-        validator=validators.instance_of(Scheduler),
-        repr=False,
-        eq=False,
-        init=False,
-    )
-
     _config_failure: bool = field(default=False, repr=False, eq=False, init=False)
 
     _unserializable_fields = (
         "_getter",
         "_configs",
         "_config_failure",
-        "_scheduler",
         "_metrics",
         "_unserializable_fields",
     )
 
     @define(kw_only=True)
-    class Metrics(Component.Metrics):
+    class Metrics(NgComponent.Metrics):
         """Metrics for the Logprep Runner."""
 
         version_info: GaugeMetric = field(
@@ -780,7 +769,7 @@ class Configuration:
         return config
 
     @classmethod
-    def from_sources(cls, config_paths: Iterable[str] | None = None) -> "Configuration":
+    async def from_sources(cls, config_paths: Iterable[str] | None = None) -> "Configuration":
         """Creates configuration from a list of configuration sources.
 
         Parameters
@@ -822,7 +811,7 @@ class Configuration:
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         try:
-            configuration._verify()
+            await configuration._verify()
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         if errors:
@@ -845,7 +834,7 @@ class Configuration:
         """Return the configuration as yaml string."""
         return yaml.dump(self.as_dict())
 
-    def reload(self) -> None:
+    async def reload(self) -> None:
         """Reload the application's configuration from the configured sources.
 
         This method attempts to rebuild the configuration from all paths listed in
@@ -875,9 +864,17 @@ class Configuration:
 
         errors: List[Exception] = []
         try:
-            new_config = Configuration.from_sources(self.config_paths)
+            new_config = await Configuration.from_sources(self.config_paths)
+            refresh_interval = (
+                MIN_CONFIG_REFRESH_INTERVAL
+                if self.config_refresh_interval is None
+                else max(
+                    self.config_refresh_interval,
+                    MIN_CONFIG_REFRESH_INTERVAL,
+                )
+            )
             if new_config.config_refresh_interval is None:
-                new_config.config_refresh_interval = self.config_refresh_interval
+                new_config.config_refresh_interval = refresh_interval
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
             self._set_version_info_metric()
@@ -907,48 +904,7 @@ class Configuration:
             return
         config_refresh_interval = max(config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL)
         self.config_refresh_interval = config_refresh_interval
-        self.schedule_config_refresh()
         self._metrics.config_refresh_interval += config_refresh_interval
-
-    def schedule_config_refresh(self) -> None:
-        """
-        Schedules a periodic configuration refresh based on the specified interval.
-
-        Cancels any existing scheduled configuration refresh job and schedules a new one
-        using the current :code:`config_refresh_interval`.
-        The refresh job will call the :code:`reload` method at the specified interval
-        in seconds on invoking the :code:`refresh` method.
-
-        Notes
-        -----
-        - Only one configuration refresh job is scheduled at a time
-        - Any existing job is cancelled before scheduling a new one.
-        - The interval must be an integer representing seconds.
-
-        Examples
-        --------
-        >>> self.schedule_config_refresh()
-        Config refresh interval is set to: 60 seconds
-        """
-        scheduler = self._scheduler
-        if self.config_refresh_interval is None:
-            if scheduler.jobs:
-                scheduler.cancel_job(scheduler.jobs[0])
-            return
-
-        self.config_refresh_interval = max(
-            self.config_refresh_interval, MIN_CONFIG_REFRESH_INTERVAL
-        )
-        refresh_interval = self.config_refresh_interval
-        if scheduler.jobs:
-            scheduler.cancel_job(scheduler.jobs[0])
-        if isinstance(refresh_interval, int):
-            scheduler.every(refresh_interval).seconds.do(self.reload)
-            logger.info("Config refresh interval is set to: %s seconds", refresh_interval)
-
-    def refresh(self) -> None:
-        """Wrap the scheduler run_pending method hide the implementation details."""
-        self._scheduler.run_pending()
 
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, fields(self.__class__)):
@@ -1009,7 +965,7 @@ class Configuration:
             return values[-1]
         return getattr(Configuration(), attribute)
 
-    def _verify(self) -> None:
+    async def _verify(self) -> None:
         """Verify the configuration."""
         errors: list[Exception] = []
         try:
@@ -1038,8 +994,8 @@ class Configuration:
                     errors.append(error)
         for processor_config in self.pipeline:
             try:
-                processor = Factory.create(deepcopy(processor_config))
-                processor.setup()
+                processor = typing.cast(Processor, Factory.create(deepcopy(processor_config)))
+                await processor.setup()
                 self._verify_rules(processor)
             except (
                 FactoryError,
@@ -1055,9 +1011,9 @@ class Configuration:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
-        if ENV_NAME_LOGPREP_CREDENTIALS_FILE in os.environ:
+        credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
+        if credentials_file_path is not None:
             try:
-                credentials_file_path = os.environ.get(ENV_NAME_LOGPREP_CREDENTIALS_FILE)
                 _ = CredentialsFactory.get_content(Path(credentials_file_path))
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)

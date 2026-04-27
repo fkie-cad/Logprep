@@ -13,6 +13,7 @@ from copy import deepcopy
 import pytest
 
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.processor.calculator.processor import Calculator
 from logprep.processor.calculator.fourFn import BNF
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 from tests.unit.processor.calculator.test_calculator import (
@@ -26,24 +27,24 @@ test_cases = deepcopy(non_ng_testcases)
 failure_test_cases = deepcopy(non_ng_failure_testcases)
 
 
-class TestCalculator(BaseProcessorTestCase):
+class TestCalculator(BaseProcessorTestCase[Calculator]):
     CONFIG: dict = {
         "type": "ng_calculator",
         "rules": ["tests/testdata/unit/calculator/rules"],
     }
 
     @pytest.mark.parametrize("rule, event, expected", test_cases)
-    def test_testcases(self, rule, event, expected):
-        self._load_rule(rule)
+    async def test_testcases(self, rule, event, expected):
+        await self._load_rule(rule)
         event = LogEvent(event, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data == expected
 
     @pytest.mark.parametrize("rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, rule, event, expected, error_message):
-        self._load_rule(rule)
+    async def test_testcases_failure_handling(self, rule, event, expected, error_message):
+        await self._load_rule(rule)
         event = LogEvent(event, original=b"")
-        result = self.object.process(event)
+        result = await self.object.process(event)
         assert len(result.warnings) == 1
         assert re.match(rf".*{error_message}", str(result.warnings[0]))
         assert event.data == expected
@@ -100,7 +101,7 @@ class TestCalculator(BaseProcessorTestCase):
             ("all(1,1,1,1,1,0)", False),
         ],
     )
-    def test_fourfn(self, expression, expected):
+    async def test_fourfn(self, expression, expected):
         bnf = BNF()
         _ = bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
         result = bnf.evaluate_stack()
