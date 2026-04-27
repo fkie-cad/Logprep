@@ -330,10 +330,20 @@ second_dict:
     @pytest.mark.parametrize(
         ("content", "expected"),
         [
-            ('[ "{ \\"key\\": \\"abc\\" }" ]', [['{ "key": "abc" }']]),
-            (
+            pytest.param(
+                '[ "{ \\"key\\": \\"abc\\" }" ]',
+                [['{ "key": "abc" }']],
+                id="single-line-json-array-with-serialized-object",
+            ),
+            pytest.param(
                 '{"key": "abc"}\n{"key": "def"}\n',
                 [{"key": "abc"}, {"key": "def"}],
+                id="json-object-per-line",
+            ),
+            pytest.param(
+                '["[1, 2, 3]", "[3, 4, 5]"]',
+                [["[1, 2, 3]", "[3, 4, 5]"]],
+                id="does-not-parse-serialized-json-items-inside-json-array",
             ),
         ],
     )
