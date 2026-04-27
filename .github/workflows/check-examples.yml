@@ -22,10 +22,7 @@ jobs:
       - name: Build images
         working-directory: examples/compose
         run: |
-          # We dont set the actual version here,
-          # so if you would look into the container,
-          # to find out the version its running
-          # you would see the latest released version
+          # logprep version is assumed to be set in pyproject.toml
           nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
           docker load < image
         env: &compose-env
