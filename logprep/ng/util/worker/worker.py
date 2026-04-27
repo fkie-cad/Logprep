@@ -198,14 +198,14 @@ class Worker(Generic[Input, Output]):
             case AsyncIterator():
                 while not self._stop_event.is_set():
                     item = await anext(self.in_queue)
-                    if item == STOP_SENTINEL:
+                    if item is STOP_SENTINEL:
                         break
                     await self.add(item)
                     await asyncio.sleep(0.0)
             case SizeLimitedQueue():
                 while True:
                     item = await self.in_queue.get()
-                    if item == STOP_SENTINEL:
+                    if item is STOP_SENTINEL:
                         break
                     await self.add(item)
                     await asyncio.sleep(0.0)
@@ -226,9 +226,8 @@ class Worker(Generic[Input, Output]):
 
         except StopAsyncIteration:
             logger.debug("Worker stopped due to exhausted input")
-        finally:
-            self._cancel_timer_if_needed()
-            await self.flush()
+        self._cancel_timer_if_needed()
+        await self.flush()
 
     async def stop(self) -> None:
         """Issues the worker to stop. The stopping worker has to be awaited separately."""
@@ -329,7 +328,7 @@ class WorkerOrchestrator:
 
         def _done(t: asyncio.Task[Any]) -> None:
             assert self._worker_tasks[worker] == task
-            del self._worker_tasks[worker]
+            # del self._worker_tasks[worker]
 
             logger.debug("Worker task %s is finished", worker.name)
 
@@ -340,6 +339,7 @@ class WorkerOrchestrator:
             if exc is not None:
                 logger.error("Worker task %s failed due to an exception", exc_info=exc)
                 self._exceptions.append(exc)
+                raise exc
 
         task.add_done_callback(_done)
         return task

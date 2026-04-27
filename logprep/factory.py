@@ -1,5 +1,7 @@
 """This module contains a factory to create connectors and processors."""
 
+from collections.abc import Sequence
+
 from logprep.abc.component import Component
 from logprep.configuration import Configuration
 from logprep.factory_error import (
@@ -8,11 +10,44 @@ from logprep.factory_error import (
 )
 
 
+class TrackedCreator:
+    """Helper class for tracking created components"""
+
+    def __init__(self) -> None:
+        self._tracked_components: list[Component] = []
+
+    def __enter__(self) -> "TrackedCreator":
+        self._tracked_components = []
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self._tracked_components = []
+
+    def create(self, configuration: dict) -> Component:
+        """Create and record a component"""
+        component = Factory.create(configuration)
+        self._tracked_components.append(component)
+        return component
+
+    def __call__(self, configuration: dict) -> Component:
+        return self.create(configuration)
+
+    @property
+    def components(self) -> Sequence[Component]:
+        """Return created components up to this point"""
+        return self._tracked_components
+
+
 class Factory:
     """Create components for logprep."""
 
-    @classmethod
-    def create(cls, configuration: dict) -> Component:
+    @staticmethod
+    def record() -> TrackedCreator:
+        """Get an object for tracking created components"""
+        return TrackedCreator()
+
+    @staticmethod
+    def create(configuration: dict) -> Component:
         """Create component."""
         if configuration == {} or configuration is None:
             raise InvalidConfigurationError("The component definition is empty.")

@@ -2,6 +2,7 @@
 New output endpoint types are created by implementing it.
 """
 
+import typing
 from abc import abstractmethod
 from collections.abc import Sequence
 from copy import deepcopy
@@ -62,9 +63,14 @@ class Output(Connector):
         """
 
     @property
-    def default(self):
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(Output.Config, self._config)
+
+    @property
+    def default(self) -> bool:
         """returns the default parameter"""
-        return self._config.default
+        return self.config.default
 
     @property
     def metric_labels(self) -> dict:
@@ -72,37 +78,10 @@ class Output(Connector):
         return {
             "component": "output",
             "description": self.describe(),
-            "type": self._config.type,
+            "type": self.config.type,
             "name": self.name,
         }
 
-    def __init__(self, name: str, configuration: "Connector.Config"):
-        super().__init__(name, configuration)
-        self.input_connector = None
-
-    @abstractmethod
-    async def store(self, event: Event) -> None:
-        """Store the event in the output destination.
-
-        Parameters
-        ----------
-        event : Event
-           Processed log event that will be stored.
-        """
-
-    @abstractmethod
-    async def store_custom(self, event: Event, target: str) -> None:
-        """Store the event in the output destination.
-
-        Parameters
-        ----------
-        event : Event
-           Processed log event that will be stored.
-        target : str
-            Custom target for the event.
-        """
-
-    @abstractmethod
     async def store_batch(
         self, events: Sequence[Event], target: str | None = None
     ) -> Sequence[Event]:
@@ -120,22 +99,26 @@ class Output(Connector):
         Sequence[Event]
             Events after sending.
         """
+        return await self._store_batch(events, target)
 
     @abstractmethod
-    async def flush(self):
-        """Write the backlog to the output destination.
-        Needs to be implemented in child classes to ensure
-        that the backlog is written to the output destination.
-        """
+    async def _store_batch(
+        self, events: Sequence[Event], target: str | None = None
+    ) -> Sequence[Event]:
+        """"""
+
+    @staticmethod
+    def _handle_error(event: Event, error: Exception) -> None:
+        event.errors.append(error)
 
     @staticmethod
     def _handle_errors(func: Callable) -> Callable:
         """Decorator to handle errors during the store process."""
 
-        def wrapper(self, *args, **kwargs):
+        async def wrapper(self, *args, **kwargs):
             event = args[0] if args else kwargs.get("event")
             try:
-                func(self, *args, **kwargs)
+                return await func(self, *args, **kwargs)
             except Exception as e:  # pylint: disable=broad-except
                 event.errors.append(e)
                 self.metrics.number_of_errors += 1
@@ -143,14 +126,3 @@ class Output(Connector):
                 # event.state.current_state = EventStateType.FAILED
 
         return wrapper
-
-    async def setup(self) -> None:
-        """Set up the output connector."""
-
-        await super().setup()
-
-    async def shut_down(self) -> None:
-        """Shut down the output connector and cleanup resources."""
-
-        await self.flush()
-        await super().shut_down()

@@ -80,7 +80,7 @@ class JsonlOutput(Output):
             file.write(f"{json.dumps(line)}\n")
 
     @Output._handle_errors
-    def store(self, event: Event) -> None:
+    def _store_single(self, event: Event) -> None:
         """Store the event in the output destination."""
         self.events.append(event.data)
         JsonlOutput._write_json(self.config.output_file, event.data)

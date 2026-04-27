@@ -82,6 +82,7 @@ input:
   kafka:
     type: ng_confluentkafka_input
     topic: consumer
+    timeout: 5.0
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       group.id: cgroup3
