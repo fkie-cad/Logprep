@@ -191,18 +191,6 @@ dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
         assert my_getter.get() == "this is my mytoken, and this is my $$UNVALID_PREFIXED_TOKEN"
         assert len(my_getter.missing_env_vars) == 0
 
-    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
-    def test_get_jsonl_parses_json_object_per_line(self, tmp_path):
-        testfile = tmp_path / "test_getter.jsonl"
-        testfile.write_text('{"key": "abc"}\n{"key": "def"}\n')
-
-        my_getter = GetterFactory.from_string(str(testfile))
-
-        assert my_getter.get_jsonl() == [
-            {"key": "abc"},
-            {"key": "def"},
-        ]
-
 
 class TestFileGetter:
     def test_factory_returns_file_getter_without_protocol(self):
@@ -338,6 +326,25 @@ second_dict:
         with mock.patch("pathlib.Path.open", mock.mock_open(read_data=input_content)):
             output = method()
             assert output == expected_output
+
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [
+            ('[ "{ \\"key\\": \\"abc\\" }" ]', [['{ "key": "abc" }']]),
+            (
+                '{"key": "abc"}\n{"key": "def"}\n',
+                [{"key": "abc"}, {"key": "def"}],
+            ),
+        ],
+    )
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
+    def test_get_jsonl_parses_json_object_per_line(self, tmp_path, content, expected):
+        testfile = tmp_path / "test_getter.jsonl"
+        testfile.write_text(content)
+
+        my_getter = GetterFactory.from_string(str(testfile))
+
+        assert my_getter.get_jsonl() == expected
 
 
 class TestHttpGetter:
