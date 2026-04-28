@@ -77,7 +77,6 @@ jobs:
 
             digest=$(docker inspect $tag | jq --raw-output ".[].Id")
 
-            # What happens with multiple tags?
             echo "digest=$digest" >> $GITHUB_OUTPUT
             echo "digest_no_sha=${digest#"sha256:"}" >> $GITHUB_OUTPUT
           done
