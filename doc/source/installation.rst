@@ -16,9 +16,9 @@ To see if the installation was successful run :code:`logprep --version`.
 Container Image
 ===============
 
-This option is recommended for Users just wanting to run logprep without the hassle of compiling.
-We provide a number of pre compiled Images for all officially supported python versions.
-A list of every image can be found here https://github.com/fkie-cad/Logprep/pkgs/container/logprep/versions?filters%5Bversion_type%5D=tagged.
+This option is recommended for users wanting to run logprep without the hassle of compiling.
+We provide precompiled images for all python versions supported by logprep.
+A list of available images can be found here https://github.com/fkie-cad/Logprep/pkgs/container/logprep/versions?filters%5Bversion_type%5D=tagged.
 
 To install a specific version the general structure of our tags follows this example:
 
