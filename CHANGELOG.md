@@ -11,6 +11,7 @@
 
 ### Bugfix
 * properly handle trailing newlines in lucene filters
+* properly handle lucene filters ending unexpectedly
 
 
 ## 19.0.0

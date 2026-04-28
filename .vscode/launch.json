@@ -12,7 +12,7 @@
                 "examples/exampledata/config/pipeline.yml"
             ],
             "env": {
-                "PROMETHEUS_MULTIPROC_DIR": "tmp/logprep"
+                "PROMETHEUS_MULTIPROC_DIR": "/tmp/logprep"
             },
             "justMyCode": false
         }

@@ -193,13 +193,13 @@ The following config file will be valid by setting the given environment variabl
 import json
 import logging
 import os
+import typing
 from copy import deepcopy
 from importlib.metadata import version
 from itertools import chain
 from logging.config import dictConfig
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence, Tuple
-
+from typing import Any, Iterable, Sequence
 from attrs import asdict, define, field, fields, validators
 from requests import RequestException
 from ruamel.yaml import YAML
@@ -212,6 +212,7 @@ from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError, InvalidConfigurationError
+from logprep.filter.lucene_filter import LuceneFilterError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import http
@@ -253,9 +254,9 @@ yaml = MyYAML(pure=True)
 class InvalidConfigurationErrors(InvalidConfigurationError):
     """Raise for multiple Configuration related exceptions."""
 
-    errors: List[InvalidConfigurationError]
+    errors: list[InvalidConfigurationError]
 
-    def __init__(self, errors: List[Exception]) -> None:
+    def __init__(self, errors: list[Exception]) -> None:
         unique_errors = []
         for error in errors:
             if not isinstance(error, InvalidConfigurationError):
@@ -478,7 +479,7 @@ class Configuration:
     can be printed via :code:`logprep run --version config/pipeline.yml`.
     This has no effect on the execution of logprep but is used as hook for reloading
     the configuration. Defaults to :code:`unset`."""
-    config_refresh_interval: Optional[int] = field(
+    config_refresh_interval: int | None = field(
         validator=validators.instance_of((int, type(None))), default=None, eq=False
     )
     """Configures the interval in seconds on which logprep should try to reload the configuration.
@@ -635,13 +636,13 @@ class Configuration:
     _metrics: "Configuration.Metrics" = field(init=False, repr=False, eq=False)
 
     _getter: Getter = field(
-        validator=validators.instance_of(Getter),
+        validator=validators.instance_of(Getter),  # type: ignore
         default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
         repr=False,
         eq=False,
     )
 
-    _configs: Tuple["Configuration", ...] = field(
+    _configs: tuple["Configuration", ...] = field(
         validator=validators.instance_of(tuple), factory=tuple, repr=False, eq=False
     )
 
@@ -778,8 +779,8 @@ class Configuration:
         """
         if not config_paths:
             config_paths = [DEFAULT_CONFIG_LOCATION]
-        errors = []
-        configs: List[Configuration] = []
+        errors: list[Exception] = []
+        configs: list[Configuration] = []
         for config_path in config_paths:
             try:
                 config = Configuration.from_source(config_path)
@@ -859,7 +860,7 @@ class Configuration:
         InvalidConfigurationErrors
             If the configuration is invalid.
         """
-        errors: List[Exception] = []
+        errors: list[Exception] = []
         try:
             new_config = Configuration.from_sources(self.config_paths)
             if new_config.config_refresh_interval is None:
@@ -949,7 +950,7 @@ class Configuration:
     def _build_merged_pipeline(self) -> None:
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
         pipeline = list(chain(*pipelines))
-        errors = []
+        errors: list[Exception] = []
         pipeline_with_loaded_rules = []
         for processor_definition in pipeline:
             try:
@@ -961,6 +962,7 @@ class Configuration:
                 ValueError,
                 InvalidRuleDefinitionError,
                 RefreshableGetterError,
+                LuceneFilterError,
             ) as error:
                 errors.append(error)
         if errors:
@@ -1026,6 +1028,7 @@ class Configuration:
             processor = None
             try:
                 processor = Factory.create(deepcopy(processor_config))
+                processor = typing.cast(Processor, processor)
                 processor.setup()
                 self._verify_rules(processor)
             except (
@@ -1034,6 +1037,7 @@ class Configuration:
                 ValueError,
                 InvalidRuleDefinitionError,
                 RefreshableGetterError,
+                LuceneFilterError,
             ) as error:
                 errors.append(error)
             except FileNotFoundError as error:

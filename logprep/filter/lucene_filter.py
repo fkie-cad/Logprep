@@ -110,7 +110,7 @@ from luqum.tree import (
     SearchField,
     Word,
 )
-
+from logprep.abc.exceptions import LogprepException
 from logprep.filter.expression.filter_expression import (
     Always,
     And,
@@ -133,7 +133,7 @@ from logprep.util.helper import field_list_to_dotted_field, get_dotted_field_lis
 logger = logging.getLogger("LuceneFilter")
 
 
-class LuceneFilterError(Exception):
+class LuceneFilterError(LogprepException):
     """Base class for LuceneFilter related exceptions."""
 
 
