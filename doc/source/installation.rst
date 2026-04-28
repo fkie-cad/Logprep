@@ -24,7 +24,7 @@ To install a specific version the general structure of our tags follows this exa
 
 logprep:py{PYTHON_VERSION}-v{LOGPREP_VERSION}
 
-So python 3.11 with version 19.0.0 would be:
+Python 3.11 with version 19.0.0 would be called:
 
 logprep:py3.11-v19.0.0
 
