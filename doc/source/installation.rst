@@ -2,86 +2,44 @@
 Installation
 ============
 
-UV
-==
+PyPI
+====
 
-Python should be present on the system. Currently, **Python 3.11 – 3.14** are supported.
-
-Logprep can be installed with **uv**, a fast drop-in replacement for pip.
-Using uv is optional – Logprep can still be installed with regular pip as well.
-
-We recommend using **uv**, because uv uses a lock file during installation.
-This ensures that Logprep is installed with the *exact same dependency versions*
-that are used and tested during development, providing more reproducible and stable installations.
-
-If you want to install uv, refer to the official installation guide:
-
-https://docs.astral.sh/uv/getting-started/installation/#installing-uv
-
-To install Logprep you have the following options:
-
-**1. Option:** latest stable release
-
-This option is recommended if you just want to use the latest stable release of Logprep.
-
-.. code-block:: bash
-
-    git clone https://github.com/fkie-cad/Logprep.git logprep && cd logprep && uv sync --frozen
-
-Alternative: directly from PyPI via pip:
+This option is recommended for using logprep as a library to build upon
 
 .. code-block:: bash
 
     pip install logprep
 
-
 To see if the installation was successful run :code:`logprep --version`.
 
-**2. Option:** latest development release
+Container Image
+===============
 
-This option is recommended if you want to try out the latest developments.
+This option is recommended for users wanting to run logprep without the hassle of compiling.
+We provide precompiled images for all python versions supported by logprep.
+A list of available images can be found here https://github.com/fkie-cad/Logprep/pkgs/container/logprep/versions?filters%5Bversion_type%5D=tagged.
+
+To install a specific version the general structure of our tags follows this example:
+
+logprep:py{PYTHON_VERSION}-v{LOGPREP_VERSION}
+
+Python 3.11 with version 19.0.0 would be called:
+
+logprep:py3.11-v19.0.0
+
+To download (pull) these images an OCI compliant puller (like docker) can be used like this
 
 .. code-block:: bash
 
-    git clone https://github.com/fkie-cad/Logprep.git logprep && cd logprep && uv sync --all-extras
+   docker pull ghcr.io/fkie-cad/logprep:py3.11-v19.0.0
 
-To see if the installation was successful run :code:`logprep --version`.
+To verify that the installation works you can run
 
-GIT
-===
+.. code-block:: bash
 
-This option is recommended if you are interested in the latest developments and might want to
-contribute to them.
+   docker run ghcr.io/fkie-cad/logprep:py3.11-v19.0.0 --version
 
-..  code-block:: bash
-
-    git clone https://github.com/fkie-cad/Logprep.git
-    cd Logprep
-    uv sync --frozen
-    uv sync --frozen --extra dev # if you intend to contribute
-
-To see if the installation was successful run
-:code:`logprep --version`.
-
-Docker
-======
-
-This option can be used to build a container image from a specific commit
-
-..  code-block:: bash
-
-    git clone https://github.com/fkie-cad/Logprep.git
-    docker build -t logprep .
-
-To see if the installation was successful run :code:`docker run logprep --version`.
-
-**Note:**
-The provided Dockerfile uses **Python 3.11** by default via the :code:`PYTHON_VERSION` build argument.
-If you want to build Logprep with another supported Python version, override the value during build:
-
-..  code-block:: bash
-
-    docker build --build-arg PYTHON_VERSION=3.13 -t logprep .
 
 Helm
 ====
@@ -98,7 +56,7 @@ At first you have to install the prometheus PodMonitor CRD:
 
 To install latest stable release:
 
-..  code-block:: bash
+.. code-block:: bash
 
    helm repo add logprep https://fkie-cad.github.io/Logprep
    helm install logprep logprep/logprep
@@ -106,8 +64,65 @@ To install latest stable release:
 
 To install from cloned github repository:
 
-..  code-block:: bash
+.. code-block:: bash
 
    git clone https://github.com/fkie-cad/Logprep.git
    cd Logprep
    helm install logprep charts/logprep
+
+GIT
+===
+
+This option is recommended if you are interested in the latest developments and might want to
+contribute to them.
+
+UV
+--
+Python should be present on the system. Currently, **Python 3.11 – 3.14** are supported.
+
+We recommend using **uv**, because uv uses a lock file during installation.
+This ensures that Logprep is installed with the *exact same dependency versions*
+that are used and tested during development, providing more reproducible and stable installations.
+
+If you want to install uv, refer to the official installation guide:
+
+https://docs.astral.sh/uv/getting-started/installation/#installing-uv
+
+To install Logprep with uv:
+
+.. code-block:: bash
+
+    git clone https://github.com/fkie-cad/Logprep.git
+    cd Logprep
+    uv sync --frozen
+    uv sync --frozen --extra dev # if you intend to contribute
+
+To see if the installation was successful run
+:code:`logprep --version`.
+
+Nix Flake
+---------
+`Nix` is a package manager that creates isolated, reproducible environments.
+With `flakes`, dependencies and development environments are defined in a
+declarative way, ensuring that all contributors use the exact same setup
+without manual dependency management.
+
+We recommend using this method if you are already familiar with Nix or want a
+fully reproducible development environment. However, it requires installing Nix
+and may introduce a learning curve for new users.
+
+Flakes are still marked as experimental, so depending on your Nix installation,
+you may need to enable them by following this guide:
+
+https://wiki.nixos.org/wiki/Flakes#Nix_standalone
+
+To start developing with Nix:
+
+.. code-block:: bash
+
+   git clone https://github.com/fkie-cad/Logprep.git
+   cd Logprep
+   nix develop
+
+To see if the installation was successful run
+:code:`logprep --version`.
