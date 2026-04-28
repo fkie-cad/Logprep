@@ -1374,7 +1374,7 @@ class TestHttpGetter:
     @mock.patch("logprep.abc.getter.Getter._parse_yaml", side_effect=YAMLError)
     @mock.patch("logprep.abc.getter.Getter._parse_json")
     @responses.activate
-    def test_get_collection_parses_json_if_yaml_fails(self, mock_to_json, _):
+    def test_get_collection_parses_json_if_yaml_fails(self, mock_parse_json, _):
         responses.add(
             responses.GET,
             "http://something",
@@ -1383,7 +1383,7 @@ class TestHttpGetter:
 
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         http_getter.get_collection()
-        mock_to_json.assert_called_once()
+        mock_parse_json.assert_called_once()
 
     @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a dict")
     def test_get_dict_raises_exception_if_result_not_dict(self, _):
