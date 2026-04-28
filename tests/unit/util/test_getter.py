@@ -1372,9 +1372,8 @@ class TestHttpGetter:
             http_getter._update_cache()
 
     @mock.patch("logprep.abc.getter.Getter._parse_yaml", side_effect=YAMLError)
-    @mock.patch("logprep.abc.getter.Getter._parse_json")
     @responses.activate
-    def test_get_collection_parses_json_if_yaml_fails(self, mock_parse_json, _):
+    def test_get_collection_parses_json_if_yaml_fails(self, mock_parse_yaml):
         responses.add(
             responses.GET,
             "http://something",
@@ -1383,7 +1382,7 @@ class TestHttpGetter:
 
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         http_getter.get_collection()
-        mock_parse_json.assert_called_once()
+        mock_parse_yaml.assert_called_once()
 
     @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a dict")
     def test_get_dict_raises_exception_if_result_not_dict(self, _):
@@ -1541,25 +1540,25 @@ class TestHttpGetter:
                 '{"content": {"key": "value"}}',
                 "application/json",
                 {"content": {"key": "value"}},
-                id="json-dict-with-content-field-returns-extracted-content",
+                id="json-dict-with-content-field-returns-parsed-content",
             ),
             pytest.param(
                 '["a", "b"]',
                 "application/json",
                 ["a", "b"],
-                id="json-list-returns-extracted-list",
+                id="json-list-returns-parsed-list",
             ),
             pytest.param(
                 "content:\n  key: value",
                 "application/yaml",
                 {"content": {"key": "value"}},
-                id="yaml-returns-extracted-dict",
+                id="yaml-returns-parsed-dict",
             ),
             pytest.param(
                 "content:\n  - a\n  - b",
                 "application/yaml",
                 {"content": ["a", "b"]},
-                id="yaml-list-returns-extracted-list",
+                id="yaml-list-returns-parsed-list",
             ),
             pytest.param(
                 "plain text content",

@@ -11,7 +11,7 @@ from functools import cached_property
 from importlib.metadata import version
 from pathlib import Path
 from string import Template
-from typing import ClassVar, Tuple
+from typing import ClassVar
 from urllib.parse import urlparse
 
 import requests
@@ -86,7 +86,7 @@ class GetterFactory:
         return Template(posix_expr).substitute(env)
 
     @staticmethod
-    def _dissect(getter_string: str) -> Tuple[str, str]:
+    def _dissect(getter_string: str) -> tuple[str, str]:
         regexp = r"^((?P<protocol>[^\s]+)://)?(?P<target>.+)"
         matches = re.match(regexp, getter_string)
         if matches is None:

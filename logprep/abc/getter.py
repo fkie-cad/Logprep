@@ -105,7 +105,7 @@ class Getter(ABC):
 
     @staticmethod
     def _parse_yaml(content: str) -> dict | list:
-        """Converts yaml content to dict or json.
+        """Parse yaml content to dict or json.
 
         Note: if parsed_yaml is empty, an empty dict will be returned."""
 
@@ -132,12 +132,12 @@ class Getter(ABC):
 
     @staticmethod
     def _parse_json(content: str) -> dict | list:
-        """Converts content to json"""
+        """Parse content to json"""
         return json.loads(content)
 
     def get_json(self) -> dict | list:
-        """Gets and parses the raw content to json"""
-        content: dict | list | str = self._resolve_content_by_content_type()
+        """Gets and parses the raw content as json"""
+        content = self._resolve_content_by_content_type()
 
         if isinstance(content, str):
             content = self._parse_json(content)
@@ -149,12 +149,12 @@ class Getter(ABC):
         content = self._resolve_content_by_content_type()
 
         if isinstance(content, str):
-            content = self._try_parse(content)
+            content = self._parse_yaml_or_json(content)
 
         return content
 
-    def _try_parse(self, content: str) -> dict | list:
-        """Helper which tries to convert content to list or dict"""
+    def _parse_yaml_or_json(self, content: str) -> dict | list:
+        """Helper which tries to parse content to list or dict"""
         try:
             return self._parse_yaml(content)
         except YAMLError:
@@ -168,17 +168,17 @@ class Getter(ABC):
         return result
 
     @staticmethod
-    def _parse_list(content: str) -> list:
+    def _parse_newline_seperated_list(content: str) -> list:
         """Helper which tries to convert content to list"""
         return content.splitlines()
 
     def get_list(self) -> list:
         """Gets list and fails otherwise"""
 
-        content: dict | list | str = self._resolve_content_by_content_type()
+        content = self._resolve_content_by_content_type()
 
         if isinstance(content, str):
-            content = self._parse_list(content)
+            content = self._parse_newline_seperated_list(content)
 
         match content:
             case list():
@@ -187,9 +187,9 @@ class Getter(ABC):
                 raise ValueError("Content is not a list")
 
     def get_jsonl(self) -> list:
-        """Gets and parses the raw content to jsonl"""
+        """Gets and parses the raw content as jsonl"""
         parsed_events = []
-        for json_string in self._parse_list(self.get()):
+        for json_string in self._parse_newline_seperated_list(self.get()):
             if json_string.strip() != "":
                 event = self._parse_json(json_string)
                 parsed_events.append(event)
@@ -206,12 +206,5 @@ class Getter(ABC):
         """
 
     def get_raw(self) -> bytes:
-        """Get the content.
-
-        Returns
-        -------
-        str
-            The raw serialized content.
-        """
-
+        """Get the raw content."""
         return self._get_raw()[0]
