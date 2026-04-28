@@ -28,7 +28,7 @@ So python 3.11 with version 19.0.0 would be:
 
 logprep:py3.11-v19.0.0
 
-To download (pull) these Images an OCI compliant Puller (in this example Docker) can be used like this
+To download (pull) these images an OCI compliant puller (like docker) can be used like this
 
 .. code-block:: bash
 
