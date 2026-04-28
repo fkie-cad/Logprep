@@ -136,7 +136,10 @@ class Getter(ABC):
         return json.loads(content)
 
     def get_json(self) -> dict | list:
-        """Gets and parses the raw content as json"""
+        """Gets and parses the raw content as json
+        Content may already be parsed according to its actual content type,
+        e.g. YAML content is returned as-is.
+        """
         content = self._resolve_content_by_content_type()
 
         if isinstance(content, str):
