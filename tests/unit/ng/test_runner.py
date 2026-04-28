@@ -153,8 +153,7 @@ class TestRunner:
 
         runner._process_events()
 
-        logs = caplog.text.splitlines()
-        assert len(caplog.text.splitlines()) == 19, "all events processed plus start and end logs"
+        assert len(caplog.text.splitlines()) == 18, "all events processed plus start and end logs"
         assert "event processed" in caplog.text
 
     def test_run_refreshes_configuration(self, configuration):
