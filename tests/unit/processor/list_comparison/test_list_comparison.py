@@ -288,7 +288,7 @@ Hans
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
     @responses.activate
-    def test_list_comparison_preserves_loaded_json_list(self):
+    def test_list_comparison_loads_json_list(self):
         responses.add(
             responses.GET,
             "http://localhost:8080/v2/valuestore/test_4",
@@ -316,73 +316,6 @@ Hans
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
         processor.setup()
-        assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
-
-    @responses.activate
-    def test_list_comparison_wraps_loaded_json_dict_in_array_by_content_field(self):
-        responses.add(
-            responses.GET,
-            "http://localhost:8080/v2/valuestore/test_4",
-            json.dumps({"content": ["Franz", "Heinz", "Hans"]}),
-            content_type="application/json",
-        )
-        rule_dict = {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["bad_users.list"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "list_comparison",
-            "rules": [],
-            "list_search_base_path": "http://localhost:8080/v2/valuestore/test_4",
-        }
-
-        HttpGetter._shared.clear()
-
-        processor = Factory.create({"custom_lister": config})
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-
-        with mock.patch("logprep.abc.getter.CONTENT_FIELD", "content"):
-            processor.setup()
-
-        assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
-
-    @responses.activate
-    def test_list_comparison_wraps_loaded_json_dict_in_array(self):
-        responses.add(
-            responses.GET,
-            "http://localhost:8080/v2/valuestore/test_4",
-            json.dumps(["Franz", "Heinz", "Hans"]),
-            content_type="application/json",
-        )
-        rule_dict = {
-            "filter": "user",
-            "list_comparison": {
-                "source_fields": ["user"],
-                "target_field": "user_results",
-                "list_file_paths": ["bad_users.list"],
-            },
-            "description": "",
-        }
-        config = {
-            "type": "list_comparison",
-            "rules": [],
-            "list_search_base_path": "http://localhost:8080/v2/valuestore/test_4",
-        }
-
-        HttpGetter._shared.clear()
-
-        processor = Factory.create({"custom_lister": config})
-        rule = processor.rule_class.create_from_dict(rule_dict)
-        processor._rule_tree.add_rule(rule)
-
-        processor.setup()
-
         assert processor.rules[0].compare_sets == {"bad_users.list": {"Franz", "Heinz", "Hans"}}
 
     @responses.activate
@@ -547,9 +480,7 @@ Heinz
         rule = processor.rule_class.create_from_dict(rule_dict)
         processor._rule_tree.add_rule(rule)
 
-        with mock.patch("logprep.abc.getter.CONTENT_FIELD", "content"):
-            processor.setup()
-
+        processor.setup()
         processor.process(document)
 
         assert document == expected_document

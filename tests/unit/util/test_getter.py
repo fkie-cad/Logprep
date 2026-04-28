@@ -356,6 +356,20 @@ second_dict:
 
         assert my_getter.get_jsonl() == expected
 
+    @responses.activate
+    def test_get_jsonl_raises_for_non_json_line(self):
+        http_getter: HttpGetter = GetterFactory.from_string("http://some/test/path")
+
+        responses.add(
+            responses.GET,
+            "http://some/test/path",
+            body="abc: xyz",
+            content_type="application/yaml",
+        )
+
+        with pytest.raises(json.JSONDecodeError):
+            http_getter.get_jsonl()
+
 
 class TestHttpGetter:
     def test_factory_returns_http_getter_for_http(self):
@@ -1352,8 +1366,8 @@ class TestHttpGetter:
         with pytest.raises(ValueError, match="HttpGetter cache is empty"):
             http_getter._update_cache()
 
-    @mock.patch("logprep.abc.getter.Getter._to_yaml", side_effect=YAMLError)
-    @mock.patch("logprep.abc.getter.Getter._to_json")
+    @mock.patch("logprep.abc.getter.Getter._parse_yaml", side_effect=YAMLError)
+    @mock.patch("logprep.abc.getter.Getter._parse_json")
     @responses.activate
     def test_get_collection_parses_json_if_yaml_fails(self, mock_to_json, _):
         responses.add(
@@ -1516,47 +1530,41 @@ class TestHttpGetter:
 
     @responses.activate
     @pytest.mark.parametrize(
-        ("body", "content_type", "content_field", "expected"),
+        ("body", "content_type", "expected"),
         [
             pytest.param(
                 '{"content": {"key": "value"}}',
                 "application/json",
-                "content",
-                {"key": "value"},
+                {"content": {"key": "value"}},
                 id="json-dict-with-content-field-returns-extracted-content",
             ),
             pytest.param(
-                '{"content": ["a", "b"]}',
+                '["a", "b"]',
                 "application/json",
-                "content",
                 ["a", "b"],
-                id="json-dict-with-content-field-containing-list-returns-extracted-list",
+                id="json-list-returns-extracted-list",
             ),
             pytest.param(
                 "content:\n  key: value",
                 "application/yaml",
-                "content",
-                {"key": "value"},
-                id="yaml-dict-with-content-field-returns-extracted-content",
+                {"content": {"key": "value"}},
+                id="yaml-returns-extracted-dict",
             ),
             pytest.param(
                 "content:\n  - a\n  - b",
                 "application/yaml",
-                "content",
-                ["a", "b"],
-                id="yaml-dict-with-content-field-containing-list-returns-extracted-list",
+                {"content": ["a", "b"]},
+                id="yaml-list-returns-extracted-list",
             ),
             pytest.param(
                 "plain text content",
                 "text/plain",
-                "content",
                 "plain text content",
                 id="text-plain-ignores-content-field-and-returns-content",
             ),
             pytest.param(
                 "fallback content",
                 "application/octet-stream",
-                "content",
                 "fallback content",
                 id="unknown-content-type-ignores-content-field-and-returns-content",
             ),
@@ -1566,7 +1574,6 @@ class TestHttpGetter:
         self,
         body,
         content_type,
-        content_field,
         expected,
     ):
         responses.add(
@@ -1577,60 +1584,4 @@ class TestHttpGetter:
         )
 
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
-
-        with mock.patch("logprep.abc.getter.CONTENT_FIELD", content_field):
-            assert http_getter._get_parsed_content() == expected
-
-    @responses.activate
-    @pytest.mark.parametrize(
-        ("body", "content_type", "content_field", "expected_error"),
-        [
-            pytest.param(
-                '["a", "b"]',
-                "application/json",
-                "content",
-                "'content' set, but content is a list.",
-                id="json-list-with-content-field-raises",
-            ),
-            pytest.param(
-                '{"other": "value"}',
-                "application/json",
-                "content",
-                "Field 'content' not found in content.",
-                id="json-dict-missing-content-field-raises",
-            ),
-            pytest.param(
-                "- a\n- b",
-                "application/yaml",
-                "content",
-                "'content' set, but content is a list.",
-                id="yaml-list-with-content-field-raises",
-            ),
-            pytest.param(
-                "other: value",
-                "application/yaml",
-                "content",
-                "Field 'content' not found in content.",
-                id="yaml-dict-missing-content-field-raises",
-            ),
-        ],
-    )
-    def test_get_parsed_content_with_content_field_raises_for_invalid_structures(
-        self,
-        body,
-        content_type,
-        content_field,
-        expected_error,
-    ):
-        responses.add(
-            responses.GET,
-            "http://something",
-            body=body,
-            content_type=content_type,
-        )
-
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
-
-        with mock.patch("logprep.abc.getter.CONTENT_FIELD", content_field):
-            with pytest.raises(ValueError, match=re.escape(expected_error)):
-                http_getter._get_parsed_content()
+        assert http_getter._resolve_content_by_content_type() == expected

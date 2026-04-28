@@ -23,10 +23,6 @@ BLOCKLIST_VARIABLE_NAMES = [
 
 VALID_PREFIXES = ["LOGPREP_", "CI_", "GITHUB_", "PYTEST_"]
 
-# TODO: get config informations for related processor
-CONTENT_FIELD: None | str = None
-"""If the resolved content is a mapping, use this field name to extract the actual content."""
-
 ContentType: TypeAlias = str
 
 
@@ -91,7 +87,7 @@ class Getter(ABC):
         used_braced_env_vars = map(lambda x: x[2], found_variables)
         return (item for item in {*used_named_env_vars, *used_braced_env_vars} if item)
 
-    def _get_parsed_content(self) -> dict | list | str:
+    def _resolve_content_by_content_type(self) -> dict | list | str:
         """Get content with enriched environment variables parsed based on content type."""
 
         raw, content_type = self._get_raw()
@@ -99,76 +95,57 @@ class Getter(ABC):
 
         match content_type:
             case "application/json":
-                json_content: dict | list = self._to_json(content)
-
-                if CONTENT_FIELD is not None:
-                    if isinstance(json_content, list):
-                        raise ValueError(f"'{CONTENT_FIELD}' set, but content is a list.")
-
-                    if CONTENT_FIELD in json_content:
-                        json_content = json_content[CONTENT_FIELD]
-                    else:
-                        raise ValueError(f"Field '{CONTENT_FIELD}' not found in content.")
-
+                json_content: dict | list = self._parse_json(content)
                 return json_content
             case "application/yaml":
-                yaml_content: dict | list = self._to_yaml(content)
-
-                if CONTENT_FIELD is not None:
-                    if isinstance(yaml_content, list):
-                        raise ValueError(f"'{CONTENT_FIELD}' set, but content is a list.")
-
-                    if CONTENT_FIELD in yaml_content:
-                        yaml_content = yaml_content[CONTENT_FIELD]
-                    else:
-                        raise ValueError(f"Field '{CONTENT_FIELD}' not found in content.")
-
+                yaml_content: dict | list = self._parse_yaml(content)
                 return yaml_content
             case "text/plain":
                 return content
             case _:
-                logger.warning("Unexpected content type.")
                 return content
 
     @staticmethod
-    def _to_yaml(content: str) -> dict | list:
-        """Converts yaml content to dict or json."""
+    def _parse_yaml(content: str) -> dict | list:
+        """Converts yaml content to dict or json.
+
+        Note: if parsed_yaml is empty, an empty dict will be returned."""
+
         parsed_yaml = list(yaml.load_all(content))
         if not parsed_yaml:
-            raise YAMLError("Expected content to be a yaml object.")
+            return {}
         if len(parsed_yaml) > 1:
             return parsed_yaml
         return parsed_yaml.pop()
 
     def get_yaml(self) -> dict | list:
         """Gets and parses the raw content to yaml"""
-        content = self._get_parsed_content()
+        content = self._resolve_content_by_content_type()
 
-        if isinstance(content, dict | list):
-            return content
+        if isinstance(content, str):
+            content = self._parse_yaml(content)
 
-        return self._to_yaml(content)
+        return content
 
     @staticmethod
-    def _to_json(content: str) -> dict | list:
+    def _parse_json(content: str) -> dict | list:
         """Converts content to json"""
         return json.loads(content)
 
     def get_json(self) -> dict | list:
         """Gets and parses the raw content to json"""
-        content = self._get_parsed_content()
-
-        if isinstance(content, dict | list):
-            return content
-
-        return self._to_json(content)
-
-    def get_collection(self) -> dict | list:
-        """Gets and parses the raw content to yaml or json if yaml fails"""
-        content = self._get_parsed_content()
+        content: dict | list | str = self._resolve_content_by_content_type()
 
         if isinstance(content, str):
-            # handles unknown content_type or text/plain
+            content = self._parse_json(content)
+
+        return content
+
+    def get_collection(self) -> dict | list:
+        """Gets and parses the raw content to yaml or json"""
+        content = self._resolve_content_by_content_type()
+
+        if isinstance(content, str):
             content = self._try_parse(content)
 
         return content
@@ -176,9 +153,9 @@ class Getter(ABC):
     def _try_parse(self, content: str) -> dict | list:
         """Helper which tries to convert content to list or dict"""
         try:
-            return self._to_yaml(content)
+            return self._parse_yaml(content)
         except YAMLError:
-            return self._to_json(content)
+            return self._parse_json(content)
 
     def get_dict(self) -> dict:
         """Gets dict and fails otherwise"""
@@ -188,55 +165,35 @@ class Getter(ABC):
         return result
 
     @staticmethod
-    def _to_list(content: str) -> list:
+    def _parse_list(content: str) -> list:
         """Helper which tries to convert content to list"""
         return content.splitlines()
 
     def get_list(self) -> list:
         """Gets list and fails otherwise"""
 
-        content: dict | list | str = self._get_parsed_content()
+        content: dict | list | str = self._resolve_content_by_content_type()
 
         if isinstance(content, str):
-            content = self._to_list(content)
+            content = self._parse_list(content)
+            # content = self._try_parse(content)
+
+            if not content:
+                return []
 
         match content:
-            case dict():
-                if CONTENT_FIELD is not None:
-                    if CONTENT_FIELD in content:
-                        content = cast(list | dict, content[CONTENT_FIELD])
-                    else:
-                        raise ValueError(f"Field '{CONTENT_FIELD}' not found in content.")
-
-                if isinstance(content, list):
-                    return content
-
-                if isinstance(content, str):
-                    try:
-                        content = self._try_parse(content)
-                        return content
-                    except Exception as ex:
-                        raise ValueError("Content is not a list") from ex
-
-                raise ValueError("Content is not a list")
             case list():
                 return content
             case _:
                 raise ValueError("Content is not a list")
 
-    def get_jsonl(self) -> list[dict | list]:
+    def get_jsonl(self) -> list:
         """Gets and parses the raw content to jsonl"""
         parsed_events = []
-        content = self._get_parsed_content()
-
-        if isinstance(content, str):
-            for content in self._to_list(content):
-                if content.strip() != "":
-                    event = self._to_json(content)
-                    parsed_events.append(event)
-        elif isinstance(content, list | dict):
-            parsed_events.append(content)
-
+        for json_string in self.get().splitlines():
+            if json_string.strip() != "":
+                event = json.loads(json_string)
+                parsed_events.append(event)
         return parsed_events
 
     @abstractmethod
