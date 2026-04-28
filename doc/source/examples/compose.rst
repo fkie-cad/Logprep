@@ -42,17 +42,20 @@ Run without Logprep Container (default)
 Run with Logprep Container
 --------------------------
 
-  * Before running we need to build or install the logprep image:
+  * Before running we need to build or install the logprep image
+
+    * Build the image locally:
 
     .. code-block:: bash
 
-      # To build the image locally, from root project dir run
       nix build .#docker.python311
       docker load < result
+    
+    * Download the image:
+    .. code-block:: bash
 
-      # Or to download it
       docker pull ghcr.io/fkie-cad/logprep:py3.11-v19.0.0
-      # Here we need to retag the studio so the compose file can find it correctly
+      # Here we need to retag the image so the compose file can find it correctly
       docker image tag ghcr.io/fkie-cad/logprep:py3.11-v19.0.0 logprep:py3.11
 
   * Run from within the `examples/compose` directory:
