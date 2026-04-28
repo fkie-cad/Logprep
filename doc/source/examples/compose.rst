@@ -52,6 +52,7 @@ Run with Logprep Container
 
       # Or to download it
       docker pull ghcr.io/fkie-cad/logprep:py3.11-v19.0.0
+      # Here we need to retag the studio so the compose file can find it correctly
       docker image tag ghcr.io/fkie-cad/logprep:py3.11-v19.0.0 logprep:py3.11
 
   * Run from within the `examples/compose` directory:
