@@ -11,6 +11,7 @@ from logprep.factory import Factory
 from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
+from logprep.ng.util.async_helpers import raise_from_gather
 from logprep.ng.util.configuration import Configuration
 from logprep.ng.workflow import create_orchestrator
 
@@ -85,6 +86,11 @@ class PipelineManager:
     async def _shut_down(self) -> None:
         """Shut down runner components, and required runner attributes."""
 
-        await asyncio.gather(*(component.shut_down() for component in self._components))
+        raise_from_gather(
+            await asyncio.gather(
+                *(component.shut_down() for component in self._components), return_exceptions=True
+            ),
+            "failure while shutting down components",
+        )
 
         logger.info("Manager shut down complete.")
