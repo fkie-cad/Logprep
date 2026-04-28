@@ -187,9 +187,9 @@ class Getter(ABC):
     def get_jsonl(self) -> list:
         """Gets and parses the raw content to jsonl"""
         parsed_events = []
-        for json_string in self.get().splitlines():
+        for json_string in self._parse_list(self.get()):
             if json_string.strip() != "":
-                event = json.loads(json_string)
+                event = self._parse_json(json_string)
                 parsed_events.append(event)
         return parsed_events
 
