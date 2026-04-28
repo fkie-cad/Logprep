@@ -309,5 +309,5 @@ class OpensearchOutput(Output):
         return await super().health() and resp.get("status") in self.config.desired_cluster_status
 
     async def shut_down(self):
-        self._search_context.close()
+        await self._search_context.close()
         await super().shut_down()

@@ -50,10 +50,6 @@ def cli() -> None:
 
     set_start_method("fork", force=True)
 
-    if "pytest" not in sys.modules:  # needed for not blocking tests
-        signal.signal(signal.SIGTERM, signal_handler)
-        signal.signal(signal.SIGINT, signal_handler)
-
 
 @cli.command(short_help="Run logprep ng to process log messages", epilog=EPILOG_STR)
 @click.argument("configs", nargs=-1, required=False)
@@ -81,9 +77,11 @@ def run(configs: tuple[str], version=None) -> None:
         logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
         logger.debug(f"Config path: {configs_}")
         try:
-            if "pytest" not in sys.modules:  # needed for not blocking tests
-                signal.signal(signal.SIGTERM, signal_handler)
-                signal.signal(signal.SIGINT, signal_handler)
+            if "pytest" not in sys.modules:
+                # needed for not blocking tests
+                loop = asyncio.get_running_loop()
+                loop.add_signal_handler(signal.SIGTERM, stop_runner_on_signal)
+                loop.add_signal_handler(signal.SIGINT, stop_runner_on_signal)
             logger.debug("Configuration loaded")
             await runner_.run()
         except SystemExit as error:
@@ -107,7 +105,7 @@ def run(configs: tuple[str], version=None) -> None:
         runner.run(_run(configs, version))
 
 
-def signal_handler(__: int, _) -> None:
+def stop_runner_on_signal() -> None:
     """Handle signals for stopping the NG runner."""
     logger.debug("Received termination signal, shutting down NG runner...")
     if Runner.instance:
