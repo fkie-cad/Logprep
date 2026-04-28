@@ -1,6 +1,7 @@
 """Module for getter interface"""
 
 import json
+import logging
 import os
 import re
 from abc import ABC, abstractmethod
@@ -11,6 +12,7 @@ from typing import TypeAlias
 from attrs import define, field, validators
 from ruamel.yaml import YAML, YAMLError
 
+logger = logging.getLogger("Getter")
 yaml = YAML(typ="safe", pure=True)
 
 BLOCKLIST_VARIABLE_NAMES = [
@@ -60,8 +62,7 @@ class Getter(ABC):
     def get(self) -> str:
         """Returns content with enriched environment variables."""
         raw, _ = self._get_raw()
-        content = self._resolve_content(raw)
-        return content
+        return self._resolve_content(raw)
 
     def _resolve_content(self, raw_content: bytes) -> str:
         content = raw_content.decode("utf8")
@@ -93,14 +94,13 @@ class Getter(ABC):
 
         match content_type:
             case "application/json":
-                json_content: dict | list = self._parse_json(content)
-                return json_content
+                return self._parse_json(content)
             case "application/yaml":
-                yaml_content: dict | list = self._parse_yaml(content)
-                return yaml_content
-            case "text/plain":
+                return self._parse_yaml(content)
+            case "text/plain" | None:
                 return content
             case _:
+                logger.warning("Unexpected content type.")
                 return content
 
     @staticmethod
@@ -117,7 +117,12 @@ class Getter(ABC):
         return parsed_yaml.pop()
 
     def get_yaml(self) -> dict | list:
-        """Gets and parses the raw content to yaml"""
+        """Gets and parses the raw content as yaml
+
+        Content may already be parsed according to its actual content type,
+        e.g. JSON content is returned as-is.
+        """
+
         content = self._resolve_content_by_content_type()
 
         if isinstance(content, str):
@@ -174,9 +179,6 @@ class Getter(ABC):
 
         if isinstance(content, str):
             content = self._parse_list(content)
-
-            if not content:
-                return []
 
         match content:
             case list():
