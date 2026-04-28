@@ -1407,6 +1407,24 @@ class TestHttpGetter:
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter.get_list() == ["something"]
 
+    @responses.activate
+    def test_get_list_raises_if_content_is_not_a_list(self):
+        responses.add(
+            responses.GET,
+            "http://something",
+            "",
+            content_type="text/plain",
+        )
+
+        with mock.patch(
+            "logprep.abc.getter.Getter._resolve_content_by_content_type",
+            return_value=None,
+        ):
+            http_getter: HttpGetter = GetterFactory.from_string("http://something")
+
+            with pytest.raises(ValueError, match="Content is not a list"):
+                http_getter.get_list()
+
     def test_handle_http_error_401_raises_refreshable_getter_error(self):
         response = MagicMock()
         response.status_code = 123
