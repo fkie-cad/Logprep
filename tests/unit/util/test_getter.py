@@ -310,6 +310,11 @@ second_dict:
             ),
             (
                 "get_yaml",
+                b"""""",
+                {},
+            ),
+            (
+                "get_yaml",
                 b"""test:\n- entry_1: 1\n- entry_2: 2""",
                 {"test": [{"entry_1": 1}, {"entry_2": 2}]},
             ),
