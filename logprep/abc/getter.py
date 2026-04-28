@@ -1,19 +1,17 @@
 """Module for getter interface"""
 
 import json
-import logging
 import os
 import re
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from string import Template
-from typing import TypeAlias, cast
+from typing import TypeAlias
 
 from attrs import define, field, validators
 from ruamel.yaml import YAML, YAMLError
 
 yaml = YAML(typ="safe", pure=True)
-logger = logging.getLogger("Getter")
 
 BLOCKLIST_VARIABLE_NAMES = [
     "",
@@ -176,7 +174,6 @@ class Getter(ABC):
 
         if isinstance(content, str):
             content = self._parse_list(content)
-            # content = self._try_parse(content)
 
             if not content:
                 return []

@@ -55,7 +55,6 @@ def test_start_of_logprep_with_full_configuration_http():
         with run_logprep(f"{endpoint}/{str(config_path)}") as proc:
             output = proc.stdout.readline().decode("utf8")
             while True:
-                path = config_path.resolve()
                 assert not re.search("Invalid", output), output
                 assert not re.search("Exception", output), output
                 assert not re.search("Critical", output), output
