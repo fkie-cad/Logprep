@@ -84,8 +84,8 @@ class TestHttpConnector(BaseInputTestCase):
         "logprep_number_of_http_requests",
     ]
 
-    def setup_method(self):
-        super().setup_method()
+    def async_setup(self):
+        super().async_setup()
 
         self.object.pipeline_index = 1
 
@@ -101,7 +101,7 @@ class TestHttpConnector(BaseInputTestCase):
         self.target = self.object.target
         self.client = testing.TestClient(self.object.app)
 
-    def teardown_method(self):
+    def async_teardown(self):
         while not self.object.messages.empty():
             self.object.messages.get(timeout=0.001)
         self.object.shut_down()

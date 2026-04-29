@@ -25,8 +25,8 @@ class TestNetworkComparison(BaseProcessorTestCase[NetworkComparison]):
         "list_search_base_path": "tests/testdata/unit/network_comparison/rules",
     }
 
-    async def setup_method(self):
-        await super().setup_method()
+    async def async_setup(self):
+        await super().async_setup()
         await self.object.setup()
 
     async def test_non_ip_element_has_fail_tag(self):
