@@ -27,8 +27,8 @@ class TestTemplateReplacer(BaseProcessorTestCase[TemplateReplacer]):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    async def setup_method(self):
-        await super().setup_method()
+    async def async_setup(self):
+        await super().async_setup()
         await self.object.setup()
 
     async def test_replace_message_via_template(self):

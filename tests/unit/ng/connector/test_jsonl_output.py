@@ -22,8 +22,8 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
         "output_file_custom": f"{tempfile.gettempdir()}/custom_file",
     }
 
-    def setup_method(self) -> None:
-        super().setup_method()
+    def async_setup(self) -> None:
+        super().async_setup()
         self.event = LogEvent({"message": "test message"}, original=b"")
 
     def test_store_appends_document_to_variable(self):
