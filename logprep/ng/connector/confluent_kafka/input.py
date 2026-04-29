@@ -32,7 +32,7 @@ import concurrent
 import logging
 import os
 import typing
-from functools import cached_property, partial
+from functools import partial
 from socket import getfqdn
 from types import MappingProxyType  # pylint: disable=no-name-in-module
 
@@ -326,6 +326,7 @@ class ConfluentKafkaInput(Input):
                 max_workers=self.config.max_workers
             )
             self._consumer = AIOConsumer(self._kafka_config, executor=self._executor)
+            self._admin = self._create_admin()
 
             await self._consumer.subscribe(
                 [self.config.topic],
@@ -336,8 +337,7 @@ class ConfluentKafkaInput(Input):
         except KafkaException as error:
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
 
-    @cached_property
-    def _admin(self) -> AdminClient:
+    def _create_admin(self) -> AdminClient:
         """configures and returns the admin client
 
         Returns

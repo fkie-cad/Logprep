@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from attrs import define, field, validators
 
-from logprep.ng.event.event_state import EventState, EventStateType
 from logprep.util.helper import (
     FieldValue,
     Missing,
@@ -40,14 +39,9 @@ class Event(ABC):
     Encapsulates data, warnings, errors, and processing state.
     """
 
-    __slots__: tuple[str, ...] = ("data", "_state", "errors", "warnings")
+    __slots__: tuple[str, ...] = ("data", "errors")
 
-    def __init__(
-        self,
-        data: dict[str, Any],
-        *,
-        state: EventStateType | EventState | None = None,
-    ) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         """
         Initialize an Event instance.
 
@@ -55,43 +49,8 @@ class Event(ABC):
         ----------
         data : dict[str, Any]
             The raw or processed data associated with the event.
-        state : EventStateType, EventState, optional
-            An optional initial EventState. Defaults to a new EventState() if not provided.
-
-        Examples
-        --------
-        Basic usage with automatic state:
-
-        >>> event = Event({"source": "syslog"})
-        >>> event.data
-        {'source': 'syslog'}
-        >>> event.state.current_state.name
-        'RECEIVING'
-
-        Providing a custom state
-        >>> custom_state = EventStateType.PROCESSED
-        >>> event = Event({"source": "api"}, state=custom_state)
-        >>> event.state is custom_state
-        True
-
-        Handling warnings and errors:
-
-        >>> event = Event({"id": 123})
-        >>> event.warnings.append(ValueError("Missing timestamp"))
-        >>> event.errors.append(ValueError("Invalid format"))
-        >>> isinstance(event.errors[0], ValueError)
-        True
         """
-        self._state: EventState = EventState()
-
-        if isinstance(state, EventState):
-            self._state = state
-        elif state is not None and state in list(EventStateType):
-            self._state.current_state = state
-        elif state is not None:
-            raise TypeError("state must be an instance of EventStateType or EventState, or None")
         self.data: dict[str, Any] = data
-        self.warnings: list[Exception] = []
         self.errors: list[Exception] = []
         super().__init__()
 
@@ -130,13 +89,7 @@ class Event(ABC):
         return hash(self._deep_freeze(self.data))
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(data={self.data}, state={self.state.current_state})"
-
-    @property
-    def state(self) -> EventState:
-        """Return the current EventState instance."""
-
-        return self._state
+        return f"{self.__class__.__name__}(data={self.data})"
 
     def _deep_freeze(self, obj: Any) -> Any:
         """
@@ -252,18 +205,14 @@ class ExtraDataEvent(Event):
         data: dict[str, str],
         *,
         outputs: Sequence[OutputSpec],
-        state: EventStateType | None = None,
     ) -> None:
         """
         Parameters
         ----------
         data : dict[str, str]
             The main data payload for the SRE event.
-        state : EventStateType
-            The state of the SRE event.
         outputs : Sequence[OutputSpec]
             The collection of output connector names associated with the SRE event
         """
         self.outputs = outputs
-        state = state if state is not None else EventStateType.PROCESSED
-        super().__init__(data=data, state=state)
+        super().__init__(data=data)

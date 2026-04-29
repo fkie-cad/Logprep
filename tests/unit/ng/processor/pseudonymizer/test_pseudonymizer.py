@@ -52,8 +52,8 @@ class TestPseudonymizer(BaseProcessorTestCase[Pseudonymizer]):
         "logprep_pseudonymizer_cache_load",
     ]
 
-    async def setup_method(self) -> None:
-        await super().setup_method()
+    async def async_setup(self) -> None:
+        await super().async_setup()
         self.regex_mapping = self.CONFIG.get("regex_mapping")
 
     @pytest.mark.parametrize(

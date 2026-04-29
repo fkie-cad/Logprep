@@ -27,7 +27,7 @@ from logprep.processor.base.exceptions import (
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
 from logprep.util.getter import HttpGetter, RefreshableGetterError
-from tests.unit.component.base import BaseComponentTestCase
+from tests.unit.ng.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -87,7 +87,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
 
         self.object._rule_tree.add_rule(rule)
 
-    async def setup_method(self) -> None:
+    async def async_setup(self) -> None:
         """
         setUp class for the imported TestCase
         """
@@ -96,7 +96,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
             patcher = mock.patch(name, **kwargs)
             patcher.start()
             self.patchers.append(patcher)
-        await super().setup_method()
+        await super().async_setup()
         self.rules = self.set_rules(self.rules_dirs)
         self.match_all_event = LogEvent(
             {
@@ -124,7 +124,7 @@ class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generi
             original=b"",
         )  # this is an event that can be used in all processor tests, cause it matches everywhere
 
-    async def teardown_method(self) -> None:
+    async def async_teardown(self) -> None:
         """teardown for all methods"""
         assert isinstance(self.patchers, list)
         while len(self.patchers) > 0:

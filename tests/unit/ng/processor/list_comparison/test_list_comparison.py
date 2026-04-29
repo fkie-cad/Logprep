@@ -24,8 +24,8 @@ class TestListComparison(BaseProcessorTestCase[ListComparison]):
         "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
     }
 
-    async def setup_method(self):
-        await super().setup_method()
+    async def async_setup(self):
+        await super().async_setup()
         await self.object.setup()
 
     async def test_element_in_list(self):

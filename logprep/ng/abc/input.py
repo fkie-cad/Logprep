@@ -21,8 +21,10 @@ from zoneinfo import ZoneInfo
 from attrs import define, field, validators
 
 from logprep.abc.exceptions import LogprepException
+from logprep.metrics.metrics import Metric
 from logprep.ng.abc.connector import Connector
 from logprep.ng.abc.event import EventMetadata
+from logprep.ng.event.error_event import ErrorEvent
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.converters import convert_from_dict
@@ -102,7 +104,7 @@ class InputIterator(AsyncIterator):
         self.input_connector = input_connector
         self.timeout = timeout
 
-    async def __anext__(self) -> LogEvent | None:
+    async def __anext__(self) -> LogEvent | ErrorEvent | None:
         """Return the next event in the Input Connector within the configured timeout.
 
         Returns
@@ -250,7 +252,7 @@ class Input(Connector, AsyncIterator):
         (event, raw_event, metadata) | None
         """
 
-    async def __anext__(self) -> LogEvent | None:
+    async def __anext__(self) -> LogEvent | ErrorEvent | None:
         """Return the next event in the Input Connector within the configured timeout.
 
         Returns
@@ -260,8 +262,8 @@ class Input(Connector, AsyncIterator):
         """
         return await self.get_next(timeout=self.config.timeout)
 
-    # @Metric.measure_time()
-    async def get_next(self, timeout: float) -> LogEvent | None:
+    @Metric.measure_time_async()
+    async def get_next(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Return the next document
 
         Parameters
@@ -274,74 +276,70 @@ class Input(Connector, AsyncIterator):
         input : LogEvent, None
             Input log data.
         """
-        event_tuple = await self._get_event(timeout)
-
-        if event_tuple is None:
-            return None
-
-        event, raw_event, metadata = event_tuple
-
         try:
-            if not isinstance(event, dict):
-                raise CriticalInputError(self, "not a dict", event)
+            event_tuple = await self._get_event(timeout)
 
-            self.metrics.number_of_processed_events += 1
+            if event_tuple is None:
+                return None
 
-            try:
-                if self._add_full_event_to_target_field:
-                    assert self.config.preprocessing.add_full_event_to_target_field is not None
-                    self._write_full_event_to_target_field(
-                        event,
-                        raw_event,
-                        self.config.preprocessing.add_full_event_to_target_field,
-                    )
-                if self._add_hmac:
-                    event = self._add_hmac_to(event, raw_event, self.config.preprocessing.hmac)
-                if self._add_version_info:
-                    self._add_version_information_to_event(
-                        event,
-                        self.config.preprocessing.version_info_target_field,
-                    )
-                if self._add_log_arrival_time_information:
-                    self._add_arrival_time_information_to_event(
-                        event,
-                        self.config.preprocessing.log_arrival_time_target_field,
-                    )
-                if self._add_log_arrival_timedelta_information:
-                    assert self.config.preprocessing.log_arrival_timedelta is not None
-                    self._add_arrival_timedelta_information_to_event(
-                        event,
-                        self.config.preprocessing.log_arrival_timedelta,
-                        self.config.preprocessing.log_arrival_time_target_field,
-                    )
-                if self._add_env_enrichment:
-                    self._add_env_enrichment_to_event(
-                        event, self.config.preprocessing.enrich_by_env_variables
-                    )
-            except (FieldExistsWarning, TimeParserException) as error:
-                raise CriticalInputError(self, error.args[0], event) from error
-        except CriticalInputError:
-            logger.exception("Failed to produce event")
-            # TODO handle failed event
-            # self._produce_failed_event(
-            #     event=event,
-            #     raw_event=raw_event,
-            #     metadata=metadata if metadata is not None else None,
-            #     error=error,
-            # )
-            # return None
-            return None
+            event_dict, event_bytes, metadata = event_tuple
 
-        log_event = LogEvent(
-            data=event,
-            original=raw_event,
+            if not isinstance(event_dict, dict):
+                raise CriticalInputError(self, "not a dict", event_dict)
+        except CriticalInputError as error:
+            return ErrorEvent.from_input_failure(error)
+
+        event = LogEvent(
+            data=event_dict,
+            original=event_bytes,
             metadata=metadata,
         )
 
-        return log_event
+        self.metrics.number_of_processed_events += 1
 
-    async def batch_finished_callback(self) -> None:
-        """Can be called by output connectors after processing a batch of one or more records."""
+        try:
+            await self._preprocess(event)
+        except CriticalInputError as error:
+            logger.exception("Error during preprocessing")
+            event.errors.append(error)
+            return ErrorEvent.from_failed_event(event)
+
+        return event
+
+    async def _preprocess(self, event: LogEvent) -> None:
+        try:
+            if self._add_full_event_to_target_field:
+                assert self.config.preprocessing.add_full_event_to_target_field is not None
+                self._write_full_event_to_target_field(
+                    event.data,
+                    event.original,
+                    self.config.preprocessing.add_full_event_to_target_field,
+                )
+            if self._add_hmac:
+                self._add_hmac_to(event.data, event.original, self.config.preprocessing.hmac)
+            if self._add_version_info:
+                self._add_version_information_to_event(
+                    event.data,
+                    self.config.preprocessing.version_info_target_field,
+                )
+            if self._add_log_arrival_time_information:
+                self._add_arrival_time_information_to_event(
+                    event.data,
+                    self.config.preprocessing.log_arrival_time_target_field,
+                )
+            if self._add_log_arrival_timedelta_information:
+                assert self.config.preprocessing.log_arrival_timedelta is not None
+                self._add_arrival_timedelta_information_to_event(
+                    event.data,
+                    self.config.preprocessing.log_arrival_timedelta,
+                    self.config.preprocessing.log_arrival_time_target_field,
+                )
+            if self._add_env_enrichment:
+                self._add_env_enrichment_to_event(
+                    event.data, self.config.preprocessing.enrich_by_env_variables
+                )
+        except (FieldExistsWarning, TimeParserException) as error:
+            raise CriticalInputError(self, error.args[0], event.data) from error
 
     def _add_env_enrichment_to_event(self, event: dict, enrichments: dict) -> None:
         """Add the env enrichment information to the event"""
@@ -479,13 +477,3 @@ class Input(Connector, AsyncIterator):
         }
         add_fields_to(event_dict, new_field)
         return event_dict
-
-    async def setup(self) -> None:
-        """Set up the input connector."""
-
-        await super().setup()
-
-    async def shut_down(self) -> None:
-        """Shut down input components and cleanup resources."""
-
-        await super().shut_down()

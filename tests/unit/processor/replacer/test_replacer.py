@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 from unittest import mock
+
 import pytest
 
 from logprep.processor.replacer.rule import Replacement
@@ -538,8 +539,8 @@ class TestReplacer(BaseProcessorTestCase):
         expected = {"field": "anything and something"}
         self._load_rule(rule)
         replacements = self.object.rules[0].templates["field"].replacements
-        second_replacement = replacements[1]._asdict()
-        second_replacement["match"] = "exists and does not match"
+        second_replacement = replacements[1]
+        second_replacement.match = "exists and does not match"
         replacements[1] = Replacement(**second_replacement)
         self.object.process(event)
         assert event == expected
