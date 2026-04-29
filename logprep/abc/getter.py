@@ -122,13 +122,9 @@ class Getter(ABC):
         Content may already be parsed according to its actual content type,
         e.g. JSON content is returned as-is.
         """
-
-        content = self._resolve_content_by_content_type()
-
-        if isinstance(content, str):
-            content = self._parse_yaml(content)
-
-        return content
+        raw, _ = self._get_raw()
+        content = self._resolve_content(raw)
+        return self._parse_yaml(content)
 
     @staticmethod
     def _parse_json(content: str) -> dict | list:
@@ -140,12 +136,9 @@ class Getter(ABC):
         Content may already be parsed according to its actual content type,
         e.g. YAML content is returned as-is.
         """
-        content = self._resolve_content_by_content_type()
-
-        if isinstance(content, str):
-            content = self._parse_json(content)
-
-        return content
+        raw, _ = self._get_raw()
+        content = self._resolve_content(raw)
+        return self._parse_json(content)
 
     def get_collection(self) -> dict | list:
         """Gets and parses the raw content to yaml or json"""
@@ -171,7 +164,7 @@ class Getter(ABC):
         return result
 
     @staticmethod
-    def _parse_newline_seperated_list(content: str) -> list:
+    def _parse_newline_separated_list(content: str) -> list:
         """Helper which tries to convert content to list"""
         return content.splitlines()
 
@@ -181,7 +174,7 @@ class Getter(ABC):
         content = self._resolve_content_by_content_type()
 
         if isinstance(content, str):
-            content = self._parse_newline_seperated_list(content)
+            content = self._parse_newline_separated_list(content)
 
         match content:
             case list():
@@ -192,7 +185,7 @@ class Getter(ABC):
     def get_jsonl(self) -> list:
         """Gets and parses the raw content as jsonl"""
         parsed_events = []
-        for json_string in self._parse_newline_seperated_list(self.get()):
+        for json_string in self._parse_newline_separated_list(self.get()):
             if json_string.strip() != "":
                 event = self._parse_json(json_string)
                 parsed_events.append(event)
