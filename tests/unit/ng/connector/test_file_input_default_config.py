@@ -64,7 +64,7 @@ class TestFileInput(BaseInputTestCase):
         write_file(logfile_path, test_initial_log_data)
         self.CONFIG["logfile_path"] = str(logfile_path)
 
-        super().setup_method()
+        super().async_setup()
 
         self.object.pipeline_index = 1
         self.object.setup()
@@ -77,7 +77,7 @@ class TestFileInput(BaseInputTestCase):
 
         self.object.shut_down()
 
-    def setup_method(self):
+    def async_setup(self):
         """We use the fixtures for setup & teardown in this class instead"""
         pass
 

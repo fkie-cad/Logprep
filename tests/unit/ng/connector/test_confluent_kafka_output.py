@@ -58,8 +58,8 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         "logprep_number_of_errors",
     ]
 
-    def setup_method(self):
-        super().setup_method()
+    def async_setup(self):
+        super().async_setup()
         self.object._producer = mock.MagicMock()
         self.object._admin = mock.MagicMock()
 
