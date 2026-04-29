@@ -282,7 +282,9 @@ class Processor(Component):
     def _field_exists(event: dict, dotted_field: str) -> bool:
         return has_dotted_field(event, dotted_field)
 
-    def _handle_warning_error(self, event, rule, error, failure_tags=None):
+    def _handle_warning_error(
+        self, event: dict, rule: "Rule", error: Exception, failure_tags: list | None = None
+    ):
         tags = get_dotted_field_value(event, "tags")
         if failure_tags is None:
             failure_tags = rule.failure_tags
@@ -301,6 +303,9 @@ class Processor(Component):
             self.result.warnings.append(error)
         else:
             self.result.warnings.append(ProcessingWarning(str(error), rule, event))
+
+        if rule.__class__.__name__ in ("ListComparisonRule", "NetworkComparisonRule"):
+            logger.warning("Failed applying rule %s", rule, exc_info=True)
 
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(

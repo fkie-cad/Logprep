@@ -26,6 +26,8 @@ Processor Configuration
 .. automodule:: logprep.processor.list_comparison.rule
 """
 
+import logging
+
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
@@ -35,6 +37,8 @@ from logprep.util.helper import (
     get_dotted_field_value,
     join_dotted_fields,
 )
+
+logger = logging.getLogger("ListComparison")
 
 
 class ListComparison(Processor):
@@ -56,7 +60,10 @@ class ListComparison(Processor):
     def setup(self):
         super().setup()
         for rule in self.rules:
-            rule.init_list_comparison(self._config.list_search_base_path)
+            try:
+                rule.init_list_comparison(self._config.list_search_base_path)
+            except Exception as ex:
+                logger.warning("Failed to initialize list comparison rule: %s", ex)
 
     def _apply_rules(self, event, rule):
         """
