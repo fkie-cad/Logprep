@@ -2,6 +2,17 @@
 ### Breaking
 
 ### Features
+
+### Improvements
+
+
+### Bugfix
+
+
+## 19.1.0
+### Breaking
+
+### Features
 * add content-type aware parsing to getters
 * add support for JSON list sources in `list_comparison`
 * allow `list_comparison` to load comparison lists from HTTP endpoints returning `application/json`
