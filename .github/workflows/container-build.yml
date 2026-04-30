@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       release:
-        description: "Wheter to produce a release version without .dev suffix or not"
+        description: "Whether to produce a release version without .dev suffix or not"
         required: false
         type: boolean
         default: false
