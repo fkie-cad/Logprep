@@ -494,7 +494,13 @@ Heinz
         caplog,
     ):
         document = {"user": "Foo"}
-
+        expected = {
+            "tags": ["_list_comparison_failure"],
+            "user": "Foo",
+            "user_results": {
+                "not_in_list": [],
+            },
+        }
         url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         list_name = "bad_users.list"
         url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
@@ -557,7 +563,7 @@ Heinz
 
         processor.process(document)
 
-        assert document == {"user": "Foo", "user_results": {"not_in_list": []}}
+        assert document == expected
         assert len(responses.calls) == retries.total + 1
         assert responses.calls[0].request.url == url
         assert rule.compare_sets == {}
