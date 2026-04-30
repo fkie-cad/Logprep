@@ -117,11 +117,7 @@ class Getter(ABC):
         return parsed_yaml.pop()
 
     def get_yaml(self) -> dict | list:
-        """Gets and parses the raw content as yaml
-
-        Content may already be parsed according to its actual content type,
-        e.g. JSON content is returned as-is.
-        """
+        """Gets and parses the raw content as yaml"""
         raw, _ = self._get_raw()
         content = self._resolve_content(raw)
         return self._parse_yaml(content)
