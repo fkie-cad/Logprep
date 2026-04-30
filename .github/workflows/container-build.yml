@@ -56,7 +56,6 @@ jobs:
               file.write(f"tags={', '.join(full_image)}")
           EOF
       - name: Set ephemeral uv version
-        id: set-ephemeral-version
         if: ${{ !inputs.release }}
         run: |
           # version for dev builds looks like this
