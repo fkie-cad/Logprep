@@ -4,7 +4,7 @@
 ### Features
 
 ### Improvements
-
+* allow `list_comparison` to continue processing if comparison list initialization fails and log a warning instead
 
 ### Bugfix
 
