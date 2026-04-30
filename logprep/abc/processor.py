@@ -237,10 +237,15 @@ class Processor(Component):
 
     def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
         try:
-            self._apply_rules(event, rule)
+            if rule not in self._failed_init_rules:
+                self._apply_rules(event, rule)
+            else:
+                error = self._failed_init_rules[rule]
+                self._handle_warning_error(event, rule, error)
 
-            if rule in self._failed_init_rules:
-                self._handle_warning_error(event, rule, self._failed_init_rules[rule])
+                # TODO: need to handle as error?
+                # self.result.errors.append(ProcessingCriticalError(str(error), rule))
+                # event.clear()
 
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
