@@ -311,9 +311,6 @@ class Processor(Component):
         else:
             self.result.warnings.append(ProcessingWarning(str(error), rule, event))
 
-        if rule.__class__.__name__ in ("ListComparisonRule", "NetworkComparisonRule"):
-            logger.warning("Failed applying rule %s", rule, exc_info=True)
-
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(
             dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
