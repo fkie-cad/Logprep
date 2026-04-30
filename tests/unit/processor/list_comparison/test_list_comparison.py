@@ -487,3 +487,124 @@ Heinz
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == url
         assert rule.compare_sets[list_name] == expected_result
+
+    @responses.activate
+    def test_list_comparison_setup_logs_warning_if_http_list_initialization_fails(
+        self,
+        caplog,
+    ):
+        document = {"user": "Foo"}
+
+        url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
+        list_name = "bad_users.list"
+        url = Template(url_template).substitute({"LOGPREP_LIST": list_name})
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=500,
+        )
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": [list_name],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": url_template,
+        }
+
+        HttpGetter._shared.clear()
+
+        captured_sessions = []
+        original_get_requests_session = HttpGetter._get_requests_session
+
+        def capture_session(self):
+            session = original_get_requests_session(self)
+            captured_sessions.append(session)
+            return session
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        with mock.patch.object(
+            HttpGetter,
+            "_get_requests_session",
+            autospec=True,
+            side_effect=capture_session,
+        ):
+            processor.setup()
+
+        assert captured_sessions
+
+        session = captured_sessions[0]
+        adapter = session.get_adapter(url)
+        retries = adapter.max_retries
+
+        assert retries.total == 3
+        assert 500 in retries.status_forcelist
+
+        assert "Failed to initialize list comparison rule" in caplog.text
+        assert "too many 500 error responses" in caplog.text
+
+        processor.process(document)
+
+        assert document == {"user": "Foo", "user_results": {"not_in_list": []}}
+        assert len(responses.calls) == retries.total + 1
+        assert responses.calls[0].request.url == url
+        assert rule.compare_sets == {}
+
+    def test_list_comparison_adds_failure_tag_on_field_exists_warning(
+        self,
+        caplog,
+    ):
+        document = {
+            "dot_channel": "test",
+            "user": "Franz",
+            "dotted": {"user_results": ["do_not_look_here"]},
+        }
+        expected = {
+            "tags": ["_list_comparison_failure"],
+            "dot_channel": "test",
+            "user": "Franz",
+            "dotted": {"user_results": ["do_not_look_here"]},
+        }
+
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "dotted.user_results.do_not_look_here",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "list_comparison",
+            "rules": [],
+            "list_search_base_path": "tests/testdata",
+        }
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+        result = processor.process(document)
+
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert document == expected
+
+        assert "Failed to initialize list comparison rule" in caplog.text
+        assert "Failed applying rule" in caplog.text
+        assert "FieldExistsWarning" in caplog.text
