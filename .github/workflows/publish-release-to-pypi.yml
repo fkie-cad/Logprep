@@ -45,3 +45,4 @@ jobs:
     secrets: inherit
     with:
       tags: "${{ github.ref_name }}, stable, latest"
+      release: true

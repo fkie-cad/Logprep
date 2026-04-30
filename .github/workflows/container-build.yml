@@ -6,6 +6,11 @@ on:
         description: "Tags to apply to the image"
         required: true
         type: string
+      release:
+        description: "Whether to produce a release version without .dev suffix or not"
+        required: false
+        type: boolean
+        default: false
 jobs:
   containerbuild:
     timeout-minutes: 20
@@ -50,11 +55,9 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as file:
               file.write(f"tags={', '.join(full_image)}")
           EOF
-      - name: Build and Push Image
-        id: build-and-push
+      - name: Set ephemeral uv version
+        if: ${{ !inputs.release }}
         run: |
-          export PYTHON_VERSION="${{ matrix.python-version }}"
-
           # version for dev builds looks like this
           # 19.0.0.dev0+feat-abc.h31hd73
           # ^----^      ^-------^      ^
@@ -66,6 +69,10 @@ jobs:
           # |
           # Last release version (as of pyproject.toml)
           uv version "$(uv version --short).dev0+${GITHUB_HEAD_REF}.$(git rev-parse --short HEAD)"
+      - name: Build and Push Image
+        id: build-and-push
+        run: |
+          export PYTHON_VERSION="${{ matrix.python-version }}"
 
           nix build .#packages.x86_64-linux.docker.python${PYTHON_VERSION//.} -o image
           docker load < image
