@@ -449,6 +449,13 @@ class TestNetworkComparison(BaseProcessorTestCase):
         caplog,
     ):
         document = {"ip": "1.2.3.4"}
+        expected = {
+            "ip": "1.2.3.4",
+            "ip_results": {
+                "not_in_list": [],
+            },
+            "tags": ["_network_comparison_failure"],
+        }
         url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
 
         responses.add(
@@ -486,7 +493,7 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
         processor.process(document)
 
-        assert document == {"ip": "1.2.3.4", "ip_results": {"not_in_list": []}}
+        assert document == expected
         assert len(responses.calls) == 4
         assert responses.calls[0].request.url == url
         assert rule.compare_sets == {}
