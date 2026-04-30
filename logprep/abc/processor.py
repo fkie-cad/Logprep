@@ -110,6 +110,7 @@ class Processor(Component):
         "_rule_tree",
         "_result",
         "_bypass_rule_tree",
+        "_failed_init_rules",
     ]
 
     rule_class: ClassVar[Type["Rule"] | None] = None
@@ -118,12 +119,14 @@ class Processor(Component):
     _strategy = None
     _bypass_rule_tree: bool
     _result: ProcessorResult | None
+    _failed_init_rules: dict["Rule", Exception]
 
     def __init__(self, name: str, configuration: "Processor.Config"):
         super().__init__(name, configuration)
         self._rule_tree = RuleTree(config=self.config.tree_config)
         self.load_rules(rules_targets=self.config.rules)
         self._result = None
+        self._failed_init_rules = {}
         self._bypass_rule_tree = False
         if os.environ.get("LOGPREP_BYPASS_RULE_TREE"):
             self._bypass_rule_tree = True
@@ -234,7 +237,16 @@ class Processor(Component):
 
     def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
         try:
-            self._apply_rules(event, rule)
+            if rule not in self._failed_init_rules:
+                self._apply_rules(event, rule)
+            else:
+                error = self._failed_init_rules[rule]
+                self._handle_warning_error(event, rule, error)
+
+                # TODO: need to handle as error?
+                # self.result.errors.append(ProcessingCriticalError(str(error), rule))
+                # event.clear()
+
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
@@ -282,7 +294,9 @@ class Processor(Component):
     def _field_exists(event: dict, dotted_field: str) -> bool:
         return has_dotted_field(event, dotted_field)
 
-    def _handle_warning_error(self, event, rule, error, failure_tags=None):
+    def _handle_warning_error(
+        self, event: dict, rule: "Rule", error: Exception, failure_tags: list | None = None
+    ):
         tags = get_dotted_field_value(event, "tags")
         if failure_tags is None:
             failure_tags = rule.failure_tags

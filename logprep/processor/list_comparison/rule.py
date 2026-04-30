@@ -107,6 +107,7 @@ class ListComparisonRule(FieldManagerRule):
 
     def init_list_comparison(self, list_search_base_path: Optional[str] = None):
         """init method for list_comparison lists"""
+
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         if list_search_base_path.startswith("http"):
             self._init_list_comparison_from_http(list_search_base_path)
@@ -150,3 +151,8 @@ class ListComparisonRule(FieldManagerRule):
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
         return self._compare_sets
+
+    @property
+    def failure_tags(self):
+        """Returns the failure tags"""
+        return self._config.tag_on_failure
