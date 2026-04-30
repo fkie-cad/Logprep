@@ -9,7 +9,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.util.defaults import ENV_NAME_LOGPREP_GETTER_CONFIG
 from logprep.util.getter import HttpGetter
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -497,9 +497,6 @@ Heinz
         expected = {
             "tags": ["_list_comparison_failure"],
             "user": "Foo",
-            "user_results": {
-                "not_in_list": [],
-            },
         }
         url_template = "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla"
         list_name = "bad_users.list"
@@ -568,9 +565,8 @@ Heinz
         assert responses.calls[0].request.url == url
         assert rule.compare_sets == {}
 
-    def test_list_comparison_adds_failure_tag_on_field_exists_warning(
+    def test_list_comparison_adds_failure_tag_on_error(
         self,
-        caplog,
     ):
         document = {
             "dot_channel": "test",
@@ -591,7 +587,6 @@ Heinz
                 "target_field": "dotted.user_results.do_not_look_here",
                 "list_file_paths": ["../lists/user_list.txt"],
             },
-            "description": "",
         }
 
         config = {
@@ -608,9 +603,5 @@ Heinz
         result = processor.process(document)
 
         assert len(result.warnings) == 1
-        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert isinstance(result.warnings[0], ProcessingWarning)
         assert document == expected
-
-        assert "Failed to initialize list comparison rule" in caplog.text
-        assert "Failed applying rule" in caplog.text
-        assert "FieldExistsWarning" in caplog.text

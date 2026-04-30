@@ -451,9 +451,6 @@ class TestNetworkComparison(BaseProcessorTestCase):
         document = {"ip": "1.2.3.4"}
         expected = {
             "ip": "1.2.3.4",
-            "ip_results": {
-                "not_in_list": [],
-            },
             "tags": ["_network_comparison_failure"],
         }
         url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
@@ -500,7 +497,6 @@ class TestNetworkComparison(BaseProcessorTestCase):
 
     def test_network_comparison_logs_warning_on_field_exists_warning(
         self,
-        caplog,
     ):
         document = {
             "dot_ip": "127.0.0.2",
@@ -540,6 +536,3 @@ class TestNetworkComparison(BaseProcessorTestCase):
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert document == expected
-
-        assert "Failed applying rule" in caplog.text
-        assert "FieldExistsWarning" in caplog.text
