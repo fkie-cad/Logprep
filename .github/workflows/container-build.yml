@@ -10,7 +10,7 @@ on:
         description: "Wheter to produce a release version without .dev suffix or not"
         required: false
         type: boolean
-        default: false
+        default: 'false'
 jobs:
   containerbuild:
     timeout-minutes: 20
@@ -57,7 +57,7 @@ jobs:
           EOF
       - name: Set ephemeral uv version
         id: set-ephemeral-version
-        if: !inputs.release
+        if: inputs.release == 'false'
         run: |
           # version for dev builds looks like this
           # 19.0.0.dev0+feat-abc.h31hd73
