@@ -9,13 +9,13 @@ logger:
   format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
-    "py.warnings": { "level": "ERROR" }
-    "Runner": { "level": "DEBUG" }
-    "Processor": { "level": "ERROR" }
-    "Exporter": { "level": "ERROR" }
-    "uvicorn": { "level": "ERROR" }
-    "uvicorn.access": { "level": "ERROR" }
-    "OpenSearchOutput": { "level": "ERROR" }
+    "py.warnings": {"level": "ERROR"}
+    "Runner": {"level": "DEBUG"}
+    "Processor": {"level": "ERROR"}
+    "Exporter": {"level": "ERROR"}
+    "uvicorn": {"level": "ERROR"}
+    "uvicorn.access": {"level": "ERROR"}
+    "OpenSearchOutput": {"level": "ERROR"}
 metrics:
   enabled: true
   port: 8001
@@ -34,7 +34,7 @@ pipeline:
       type: dropper
       rules:
         - examples/exampledata/rules/dropper/rules
-        - filter: "test_dropper"
+        - filter: "test_dropper OR rate:[0 TO 10]"
           dropper:
             drop:
               - drop_me

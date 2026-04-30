@@ -92,6 +92,7 @@ require additional options.
     - ip_address
 """
 
+import json
 import logging
 import re
 from itertools import chain, zip_longest
@@ -106,16 +107,20 @@ from luqum.tree import (
     Not,
     OrOperation,
     Phrase,
+    Range,
     Regex,
     SearchField,
     Word,
 )
+
 from logprep.abc.exceptions import LogprepException
 from logprep.filter.expression.filter_expression import (
     Always,
     And,
     Exists,
     FilterExpression,
+    FloatRangeFilterExpression,
+    IntegerRangeFilterExpression,
 )
 from logprep.filter.expression.filter_expression import Not as NotExpression
 from logprep.filter.expression.filter_expression import (
@@ -275,6 +280,10 @@ class LuceneTransformer:
             # pylint: enable=no-value-for-parameter
         if isinstance(tree, Group):
             return self._parse_tree(tree.children[0])
+        if isinstance(tree, Range):
+            logger.info("Range expression: %s", json.dumps(tree))
+            raise RuntimeError("HELP")
+            assert tree
         if isinstance(tree, SearchField):
             if isinstance(tree.expr, FieldGroup):
                 self._last_search_field = tree.name
@@ -337,7 +346,33 @@ class LuceneTransformer:
             value = self._strip_quote_from_string(tree.expr.value)
             value = self._remove_lucene_escaping(value)
             return self._get_filter_expression_regex(key, value)
+
+        if isinstance(tree.expr, Range):
+            key = get_dotted_field_list(tree.name)
+            return self._parse_range(key, tree.expr)
         raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
+
+    def _parse_range(self, key: Sequence[str], expr: Range) -> FilterExpression:
+        fr = expr.children[0]
+        to = expr.children[1]
+
+        if isinstance(fr, Word) and isinstance(to, Word):
+            try:
+                from_value = int(fr.value)
+                to_value = int(to.value)
+                return IntegerRangeFilterExpression(key, from_value, to_value)
+            except ValueError:
+                pass
+
+            try:
+                from_value_f: float = float(fr.value)
+                to_value_f = float(to.value)
+                return FloatRangeFilterExpression(key, from_value_f, to_value_f)
+            except ValueError:
+                pass
+
+        # TODO
+        raise LuceneFilterError(f'The expression "{str(expr)}" is invalid!')
 
     @staticmethod
     def _check_key_and_modifier(key: Sequence[str], value):
