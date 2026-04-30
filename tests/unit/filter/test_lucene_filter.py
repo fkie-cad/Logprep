@@ -59,6 +59,18 @@ class TestLueceneFilter:
 
         assert lucene_filter.matches({"key": "value"})
 
+    def test_created_range_filter_matches_document_with_correct_value(self):
+        lucene_filter = LuceneFilter.create("key:[0 TO 10]")
+
+        assert lucene_filter.matches({"key": 5})
+        assert not lucene_filter.matches({"key": 11})
+
+    def test_created_range_float_filter_matches_document_with_correct_value(self):
+        lucene_filter = LuceneFilter.create("key:[0.1 TO 8.5]")
+
+        assert lucene_filter.matches({"key": 5})
+        assert not lucene_filter.matches({"key": 8.6})
+
     def test_created_filter_matches_document_with_special_characters(self):
         assert LuceneFilter.create('key: "\n"').matches({"key": "\n"})
         assert LuceneFilter.create('key: "\t"').matches({"key": "\t"})
