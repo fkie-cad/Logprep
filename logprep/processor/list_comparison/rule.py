@@ -88,7 +88,12 @@ class ListComparisonRule(FieldManagerRule):
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
-    def __init__(self, filter_rule: FilterExpression, config: dict, processor_name: str):
+    def __init__(
+        self,
+        filter_rule: FilterExpression,
+        config: "ListComparisonRule.Config",
+        processor_name: str,
+    ):
         super().__init__(filter_rule, config, processor_name)
         self._config: ListComparisonRule.Config = self._config
         self._compare_sets = {}
@@ -120,8 +125,8 @@ class ListComparisonRule(FieldManagerRule):
             http_getter.add_callback(self._update_compare_sets_via_http, http_getter, list_path)
 
     def _update_compare_sets_via_http(self, http_getter: HttpGetter, list_path: str) -> None:
-        compare_elements = http_getter.get().splitlines()
-        file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
+        content = http_getter.get_list()
+        file_elem_tuples = (elem for elem in content if not elem.startswith("#"))
         self._compare_sets.update({list_path: set(file_elem_tuples)})
 
     def _init_list_comparison_from_local_file(self, list_search_base_path: str) -> None:
@@ -137,8 +142,7 @@ class ListComparisonRule(FieldManagerRule):
         ]
         list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
         for list_path in list_paths:
-            content = GetterFactory.from_string(list_path).get()
-            compare_elements = content.splitlines()
+            compare_elements = GetterFactory.from_string(list_path).get_list()
             file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)
             self._compare_sets.update({filename: set(file_elem_tuples)})

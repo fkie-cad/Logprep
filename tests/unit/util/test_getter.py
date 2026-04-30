@@ -313,6 +313,16 @@ second_dict:
                 b"""""",
                 {},
             ),
+            (
+                "get_yaml",
+                b"""test:\n- entry_1: 1\n- entry_2: 2""",
+                {"test": [{"entry_1": 1}, {"entry_2": 2}]},
+            ),
+            (
+                "get",
+                b""""{"version": '1',"process_count": 1,"logger": {"version":1}}""",
+                '"{"version": \'1\',"process_count": 1,"logger": {"version":1}}',
+            ),
         ],
     )
     def test_parses_content(self, method_name, input_content, expected_output):
@@ -321,6 +331,49 @@ second_dict:
         with mock.patch("pathlib.Path.open", mock.mock_open(read_data=input_content)):
             output = method()
             assert output == expected_output
+
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [
+            pytest.param(
+                '[ "{ \\"key\\": \\"abc\\" }" ]',
+                [['{ "key": "abc" }']],
+                id="single-line-json-array-with-serialized-object",
+            ),
+            pytest.param(
+                '{"key": "abc"}\n{"key": "def"}\n',
+                [{"key": "abc"}, {"key": "def"}],
+                id="json-object-per-line",
+            ),
+            pytest.param(
+                '["[1, 2, 3]", "[3, 4, 5]"]',
+                [["[1, 2, 3]", "[3, 4, 5]"]],
+                id="does-not-parse-serialized-json-items-inside-json-array",
+            ),
+        ],
+    )
+    @mock.patch.dict("os.environ", {"PYTEST_TEST_TOKEN": "mytoken"})
+    def test_get_jsonl_parses_json_object_per_line(self, tmp_path, content, expected):
+        testfile = tmp_path / "test_getter.jsonl"
+        testfile.write_text(content)
+
+        my_getter = GetterFactory.from_string(str(testfile))
+
+        assert my_getter.get_jsonl() == expected
+
+    @responses.activate
+    def test_get_jsonl_raises_for_non_json_line(self):
+        http_getter: HttpGetter = GetterFactory.from_string("http://some/test/path")
+
+        responses.add(
+            responses.GET,
+            "http://some/test/path",
+            body="abc: xyz",
+            content_type="application/yaml",
+        )
+
+        with pytest.raises(json.JSONDecodeError):
+            http_getter.get_jsonl()
 
 
 class TestHttpGetter:
@@ -455,6 +508,7 @@ class TestHttpGetter:
         }
         credentials_file: Path = tmp_path / "credentials.json"
         credentials_file.write_text(json.dumps(credentials_file_content))
+
         with mock.patch.dict(
             "os.environ", {ENV_NAME_LOGPREP_CREDENTIALS_FILE: str(credentials_file)}
         ):
@@ -1310,19 +1364,25 @@ class TestHttpGetter:
         http_getter._refresh()
         assert re.search(r"Not updating .+ cache with URI .+", caplog.text)
 
-    @mock.patch("logprep.util.getter.HttpGetter._get_from_target", return_value=(b"", False))
+    @mock.patch("logprep.util.getter.HttpGetter._get_from_target", return_value=(b"", None, False))
     def test_update_cache_raises_error_if_empty(self, _):
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         http_getter.cache = None
         with pytest.raises(ValueError, match="HttpGetter cache is empty"):
             http_getter._update_cache()
 
-    @mock.patch("logprep.abc.getter.Getter.get_yaml", side_effect=YAMLError)
-    @mock.patch("logprep.abc.getter.Getter.get_json")
-    def test_get_collection_parses_json_if_yaml_fails(self, mock_get_json, _):
+    @mock.patch("logprep.abc.getter.Getter._parse_yaml", side_effect=YAMLError)
+    @responses.activate
+    def test_get_collection_parses_json_if_yaml_fails(self, mock_parse_yaml):
+        responses.add(
+            responses.GET,
+            "http://something",
+            "{}",
+        )
+
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         http_getter.get_collection()
-        mock_get_json.assert_called_once()
+        mock_parse_yaml.assert_called_once()
 
     @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a dict")
     def test_get_dict_raises_exception_if_result_not_dict(self, _):
@@ -1335,16 +1395,35 @@ class TestHttpGetter:
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter.get_dict() == {"something": "foo"}
 
-    @mock.patch("logprep.abc.getter.Getter.get_collection", return_value="not a list")
-    def test_get_list_raises_exception_if_result_not_list(self, _):
-        http_getter: HttpGetter = GetterFactory.from_string("http://something")
-        with pytest.raises(ValueError, match="Value is not a list"):
-            http_getter.get_list()
+    @responses.activate
+    def test_get_list_returns_if_result_is_list(self):
+        responses.add(
+            responses.GET,
+            "http://something",
+            json.dumps(["something"]),
+            content_type="application/json",
+        )
 
-    @mock.patch("logprep.abc.getter.Getter.get_collection", return_value=["something"])
-    def test_get_list_returns_if_result_is_list(self, _):
         http_getter: HttpGetter = GetterFactory.from_string("http://something")
         assert http_getter.get_list() == ["something"]
+
+    @responses.activate
+    def test_get_list_raises_if_content_is_not_a_list(self):
+        responses.add(
+            responses.GET,
+            "http://something",
+            "",
+            content_type="text/plain",
+        )
+
+        with mock.patch(
+            "logprep.abc.getter.Getter._resolve_content_by_content_type",
+            return_value=None,
+        ):
+            http_getter: HttpGetter = GetterFactory.from_string("http://something")
+
+            with pytest.raises(ValueError, match="Content is not a list"):
+                http_getter.get_list()
 
     def test_handle_http_error_401_raises_refreshable_getter_error(self):
         response = MagicMock()
@@ -1470,3 +1549,61 @@ class TestHttpGetter:
             mock_run_pending.assert_not_called()
             refresh_getters()
             mock_run_pending.assert_called_once()
+
+    @responses.activate
+    @pytest.mark.parametrize(
+        ("body", "content_type", "expected"),
+        [
+            pytest.param(
+                '{"content": {"key": "value"}}',
+                "application/json",
+                {"content": {"key": "value"}},
+                id="json-dict-with-content-field-returns-parsed-content",
+            ),
+            pytest.param(
+                '["a", "b"]',
+                "application/json",
+                ["a", "b"],
+                id="json-list-returns-parsed-list",
+            ),
+            pytest.param(
+                "content:\n  key: value",
+                "application/yaml",
+                {"content": {"key": "value"}},
+                id="yaml-returns-parsed-dict",
+            ),
+            pytest.param(
+                "content:\n  - a\n  - b",
+                "application/yaml",
+                {"content": ["a", "b"]},
+                id="yaml-list-returns-parsed-list",
+            ),
+            pytest.param(
+                "plain text content",
+                "text/plain",
+                "plain text content",
+                id="text-plain-ignores-content-field-and-returns-content",
+            ),
+            pytest.param(
+                "fallback content",
+                "application/octet-stream",
+                "fallback content",
+                id="unknown-content-type-ignores-content-field-and-returns-content",
+            ),
+        ],
+    )
+    def test_get_parsed_content_with_content_field_returns_expected_content(
+        self,
+        body,
+        content_type,
+        expected,
+    ):
+        responses.add(
+            responses.GET,
+            "http://something",
+            body=body,
+            content_type=content_type,
+        )
+
+        http_getter: HttpGetter = GetterFactory.from_string("http://something")
+        assert http_getter._resolve_content_by_content_type() == expected

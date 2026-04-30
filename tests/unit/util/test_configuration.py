@@ -1039,7 +1039,7 @@ output:
             ),
             (
                 "getter raises FileNotFoundError",
-                "logprep.util.getter.FileGetter.get",
+                "logprep.util.getter.FileGetter._get_raw",
                 FileNotFoundError,
                 r"One or more of the given config file\(s\) does not exist:",
             ),
