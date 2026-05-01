@@ -308,8 +308,8 @@ def resolve_pipeline_config(ng: int) -> Path:
         Pipeline config path.
     """
     if ng == 1:
-        return Path("./examples/exampledata/config/ng_pipeline.yml")
-    return Path("./examples/exampledata/config/pipeline.yml")
+        return Path("./examples/exampledata/config/_benchmark_ng_pipeline.yml")
+    return Path("./examples/exampledata/config/_benchmark_non_ng_pipeline.yml")
 
 
 def read_vm_max_map_count() -> int:
