@@ -8,7 +8,6 @@ from unittest import mock
 import pytest
 
 from logprep.factory import Factory
-from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.pseudonym_event import PseudonymEvent
 from logprep.ng.processor import process
@@ -18,9 +17,9 @@ from logprep.ng.processor import process
 def get_input_mock():
     return iter(
         [
-            LogEvent({"message": "Log message 1"}, original=b"", state=EventStateType.RECEIVED),
-            LogEvent({"message": "Log message 2"}, original=b"", state=EventStateType.RECEIVED),
-            LogEvent({"user": {"name": "John Doe"}}, original=b"", state=EventStateType.RECEIVED),
+            LogEvent({"message": "Log message 1"}, original=b""),
+            LogEvent({"message": "Log message 2"}, original=b""),
+            LogEvent({"user": {"name": "John Doe"}}, original=b""),
         ]
     )
 
@@ -102,7 +101,6 @@ class TestProcessing:
         assert len(processed_events[2].extra_data) == 1
         extra_data_event = processed_events[2].extra_data[0]
         assert isinstance(extra_data_event, PseudonymEvent)
-        assert extra_data_event.state.current_state == EventStateType.PROCESSED
 
     async def test_process_pipeline_empty_input(self, processors):
         input_events = iter([])

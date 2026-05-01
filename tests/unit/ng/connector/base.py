@@ -24,7 +24,6 @@ from logprep.ng.abc.connector import Connector
 from logprep.ng.abc.input import CriticalInputError, Input
 from logprep.ng.abc.output import Output
 from logprep.ng.event.error_event import ErrorEvent
-from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
@@ -757,113 +756,6 @@ class BaseOutputTestCase(BaseConnectorTestCase[OutputTypeT], typing.Generic[Outp
     async def test_store_counts_processed_events(self):
         self.object.metrics.number_of_processed_events = 0
         event = LogEvent({"message": "my event message"}, original=b"")
-        self.object.store(event)
+        await self.object.setup()
+        await self.object.store_batch([event])
         assert self.object.metrics.number_of_processed_events == 1
-
-    async def test_store_changes_state_successful_path(self):
-        """This test is a placeholder for the successful path of the store method.
-        you have to override this method in some output implementations depending on the
-        implementation of the store and write_backlog methods.
-        In simple implementations, the next_state method of the event is called twice and the result
-        is the DELIVERED state.
-        In more complex implementations, the next_state method is called once and the store method and
-        a second time in the write_backlog method.
-        """
-        state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
-        event = LogEvent(
-            {"message": "test message"},
-            original=b"",
-            state=state,
-        )
-        self.object.store(event)
-        assert event.state == expected_state
-
-    async def test_store_changes_state_failed_event_with_unsuccessful_path(self):
-        """This test is a placeholder for the successful path of the store method.
-        you have to override this method in some output implementations depending on the
-        implementation of the store and write_backlog methods.
-        In simple implementations, the next_state method of the event is called twice and the result
-        is the DELIVERED state.
-        In more complex implementations, the next_state method is called once and the store method and
-        a second time in the write_backlog method.
-        """
-        state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
-        event = LogEvent(
-            {"message": "test message"},
-            original=b"",
-            state=state,
-        )
-        self.object.store(event)
-        assert event.state == expected_state
-
-    async def test_store_custom_changes_state_successful_path(self):
-        """This test is a placeholder for the successful path of the store method.
-        you have to override this method in some output implementations depending on the
-        implementation of the store and write_backlog methods.
-        In simple implementations, the next_state method of the event is called twice and the result
-        is the DELIVERED state.
-        In more complex implementations, the next_state method is called once and the store method and
-        a second time in the write_backlog method.
-        """
-        state, expected_state = EventStateType.PROCESSED, EventStateType.DELIVERED
-        event = LogEvent(
-            {"message": "test message"},
-            original=b"",
-            state=state,
-        )
-        self.object.store_custom(event, "stderr")
-        assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
-
-    async def test_store_custom_changes_state_failed_event_with_unsuccessful_path(self):
-        """This test is a placeholder for the successful path of the store method.
-        you have to override this method in some output implementations depending on the
-        implementation of the store and write_backlog methods.
-        In simple implementations, the next_state method of the event is called twice and the result
-        is the DELIVERED state.
-        In more complex implementations, the next_state method is called once and the store method and
-        a second time in the write_backlog method.
-        """
-        state, expected_state = EventStateType.FAILED, EventStateType.DELIVERED
-        event = LogEvent(
-            {"message": "test message"},
-            original=b"",
-            state=state,
-        )
-        self.object.store_custom(event, "stderr")
-        assert event.state == expected_state, f"{state=}, {expected_state=}, {event.state=} "
-
-    async def test_store_handles_errors(self):
-        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
-        self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
-        # implement mocking for target self.object here
-        assert self.object.metrics.number_of_errors == 1
-        assert len(event.errors) == 1
-        assert event.state == EventStateType.FAILED
-
-    async def test_store_custom_handles_errors(self):
-        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
-        self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.PROCESSED)
-        # implement mocking for target self.object here
-        assert self.object.metrics.number_of_errors == 1
-        assert len(event.errors) == 1
-        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"
-
-    async def test_store_handles_errors_failed_event(self):
-        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
-        self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
-        # implement mocking for target self.object start
-        assert self.object.metrics.number_of_errors == 1
-        assert len(event.errors) == 1
-        assert event.state == EventStateType.FAILED
-
-    async def test_store_custom_handles_errors_failed_event(self):
-        """you have to override this method in some output implementations depending on the implementation of the store and write_backlog methods."""
-        self.object.metrics.number_of_errors = 0
-        event = LogEvent({"message": "test message"}, original=b"", state=EventStateType.FAILED)
-        # implement mocking for target self.object start
-        assert self.object.metrics.number_of_errors == 1
-        assert len(event.errors) == 1
-        assert event.state == EventStateType.FAILED, f"{event.state} should be FAILED"

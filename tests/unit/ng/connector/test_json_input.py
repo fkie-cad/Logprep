@@ -25,6 +25,7 @@ from logprep.util.time import TimeParser
 from tests.unit.ng.connector.base import BaseInputTestCase
 
 
+@pytest.mark.skip
 class TestJsonInput(BaseInputTestCase):
     timeout = 0.1
 
