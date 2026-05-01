@@ -187,11 +187,11 @@ class TestEventClass:
 
         assert isinstance(loaded, DummyEvent)
         assert isinstance(loaded.data, dict)
-        assert all(isinstance(w, str) for w in loaded.warnings)
+        assert all(isinstance(w, Exception) for w in loaded.warnings)
         assert all(isinstance(e, Exception) for e in loaded.errors)
 
         assert loaded.data == data
-        assert loaded.warnings == warnings
+        assert [str(e) for e in loaded.warnings] == [str(e) for e in warnings]
         assert [str(e) for e in loaded.errors] == [str(e) for e in errors]
 
     def test_add_fields_to_delegates_correctly(self):
