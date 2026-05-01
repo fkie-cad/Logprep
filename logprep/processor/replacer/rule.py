@@ -87,6 +87,7 @@ Examples for replacer:
 """
 
 import re
+import typing
 from dataclasses import dataclass
 from typing import List
 
@@ -147,12 +148,17 @@ class ReplacerRule(FieldManagerRule):
         overwrite_target: bool = field(validator=validators.instance_of(bool), default=True)
         """Overwrite the target field value if exists. Defaults to :code:`True`"""
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast("ReplacerRule.Config", self._config)
+
     def __init__(
         self, filter_rule: FilterExpression, config: "ReplacerRule.Config", processor_name: str
     ) -> None:
         super().__init__(filter_rule, config, processor_name)
         self.templates = {}
-        for source, template in self._config.mapping.items():
+        for source, template in self.config.mapping.items():
             self.templates[source] = self._get_replacement_strings(template)
 
     @staticmethod

@@ -31,8 +31,8 @@ class ConsoleOutput(Output):
     ) -> Sequence[Event]:
         for event in events:
             if target:
-                pprint(event.data)
-            else:
                 pprint(event.data, stream=getattr(sys, target))
+            else:
+                pprint(event.data)
             self.metrics.number_of_processed_events += 1
         return events
