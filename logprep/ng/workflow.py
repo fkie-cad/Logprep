@@ -14,7 +14,6 @@ from logprep.ng.abc.input import Input
 from logprep.ng.abc.output import Output
 from logprep.ng.abc.processor import Processor
 from logprep.ng.event.error_event import ErrorEvent
-from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.processor import process
 from logprep.ng.util.async_helpers import raise_from_gather
@@ -27,14 +26,6 @@ logger = logging.getLogger("PipelineManager")
 BATCH_SIZE = 1000
 BATCH_INTERVAL_S = 5
 MAX_QUEUE_SIZE = BATCH_SIZE
-
-
-class LogprepExceptionGroup(ExceptionGroup):
-    """Custom ExceptionGroup for Logprep exceptions to override the default
-    string representation."""
-
-    def __str__(self) -> str:
-        return f"{self.message}: {self.exceptions}"
 
 
 class InvalidOutput(LogprepException):
@@ -159,12 +150,7 @@ def create_orchestrator(
 
     async def _send_error_output_handler(batch: list[LogEvent]) -> None:
         def _to_error(event: LogEvent) -> ErrorEvent:
-            reason = (
-                LogprepExceptionGroup("Error during processing", event.errors)
-                if event.errors
-                else Exception("Unknown error")
-            )
-            return ErrorEvent(log_event=event, reason=reason, state=EventStateType.PROCESSED)
+            return ErrorEvent.from_failed_event(event)
 
         # TODO split in two handler functions and select right handler only once
         if error_output is not None:
@@ -173,7 +159,11 @@ def create_orchestrator(
             for error_event in error_events:
                 if not error_event.errors:
                     # TODO use generic type parameter for outputs?
-                    await acknowledge_queue.put(typing.cast(ErrorEvent, error_event).parent)
+                    event = typing.cast(
+                        LogEvent | None, typing.cast(ErrorEvent, error_event).parent
+                    )  # FIXME
+                    if event is not None:
+                        await acknowledge_queue.put(event)
                 else:
                     # TODO more sophisticated error handling
                     raise RuntimeError("error output failed to send event")

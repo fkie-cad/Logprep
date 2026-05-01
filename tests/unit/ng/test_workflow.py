@@ -15,7 +15,6 @@ from logprep.ng.abc.processor import Processor
 from logprep.ng.connector.dummy.input import DummyInput
 from logprep.ng.connector.dummy.output import DummyOutput
 from logprep.ng.event.error_event import ErrorEvent
-from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.workflow import create_orchestrator
 from logprep.util.typing import is_sequence_of
@@ -24,9 +23,9 @@ from logprep.util.typing import is_sequence_of
 @pytest.fixture(name="input_events")
 def get_input_mock():
     return [
-        LogEvent({"message": "Log message 1"}, original=b"", state=EventStateType.RECEIVED),
-        LogEvent({"message": "Log message 2"}, original=b"", state=EventStateType.RECEIVED),
-        LogEvent({"user": {"name": "John Doe"}}, original=b"", state=EventStateType.RECEIVED),
+        {"message": "Log message 1"},
+        {"message": "Log message 2"},
+        {"user": {"name": "John Doe"}},
     ]
 
 

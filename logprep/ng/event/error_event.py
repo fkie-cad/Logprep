@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+from logprep.abc.exceptions import LogprepExceptionGroup
 from logprep.ng.abc.event import Event
 from logprep.ng.event.log_event import LogEvent
 
@@ -28,10 +29,15 @@ class ErrorEvent(Event):
 
     @staticmethod
     def from_failed_event(event: LogEvent) -> "ErrorEvent":
+        reason = (
+            LogprepExceptionGroup("Error during processing", event.errors)
+            if event.errors
+            else Exception("Unknown error")
+        )
         return ErrorEvent(
             data={
                 "@timestamp": datetime.now(timezone.utc).isoformat(),
-                "reason": str(event.errors[-1]),
+                "reason": str(reason),
                 "original": event.original.decode("utf-8"),
                 "event": json.dumps(event.data),
             },

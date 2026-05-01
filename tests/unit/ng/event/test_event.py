@@ -13,7 +13,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from logprep.ng.abc.event import Event
-from logprep.ng.event.event_state import EventState, EventStateType
 
 
 class DummyEvent(Event):
@@ -117,38 +116,15 @@ class TestEventClass:
         is provided.
 
         It should:
-        - Create a default EventState instance
         - Store the provided data payload
-        - Initialize empty error and warning lists
+        - Initialize empty error list
         """
 
         payload = {"message": "A test message"}
         event = DummyEvent(payload)
 
-        assert isinstance(event.state, EventState)
         assert event.data == payload
         assert event.errors == []
-        assert event.warnings == []
-
-    def test_event_initialization_with_custom_state(self):
-        """
-        Verify that a custom EventState is properly assigned to the Event.
-
-        The provided state instance should be used directly,
-        and the other attributes must still initialize correctly.
-        """
-
-        state_type = EventStateType.RECEIVING
-        payload = {"message": "A test message"}
-
-        event = DummyEvent(data=payload, state=state_type)
-
-        assert event.state.current_state is EventStateType.RECEIVING
-        assert event.data == payload
-        assert isinstance(event.errors, list)
-        assert isinstance(event.warnings, list)
-        assert event.errors == []
-        assert event.warnings == []
 
     def test_event_data_as_positional_argument(self):
         """
@@ -159,7 +135,6 @@ class TestEventClass:
         event = DummyEvent({"source": "positional"})
 
         assert event.data["source"] == "positional"
-        assert isinstance(event.state, EventState)
 
     def test_event_data_as_keyword_argument(self):
         """
@@ -170,47 +145,32 @@ class TestEventClass:
         event = DummyEvent(data={"source": "keyword"})
 
         assert event.data["source"] == "keyword"
-        assert isinstance(event.state, EventState)
-
-    def test_event_valid_state_positional_argument(self):
-        """
-        Ensure that providing 'state' as a kw argument is allowed.
-        """
-
-        DummyEvent({"source": "fail"}, state=EventStateType.RECEIVED)
 
     @pytest.mark.parametrize(
-        "data, warnings, errors, state",
+        "data, warnings, errors",
         [
-            ({"message": "A test message"}, [], [], None),
-            ({"user": "alice"}, ["Low confidence"], [], None),
-            ({"id": 123}, [], [ValueError("invalid id")], None),
+            ({"message": "A test message"}, [], []),
+            ({"user": "alice"}, ["Low confidence"], []),
+            ({"id": 123}, [], [ValueError("invalid id")]),
             (
                 {"foo": "bar"},
                 ["Deprecated format"],
                 [RuntimeError("processing error")],
-                None,
             ),
             (
                 {"status": "ok"},
                 [],
                 [],
-                EventStateType.RECEIVED,
             ),
             (
                 {"service": "auth"},
                 ["auth timeout"],
                 [TimeoutError("Service did not respond")],
-                EventStateType.PROCESSED,
             ),
         ],
     )
     def test_event_is_picklable_with_values(
-        self,
-        data: dict[str, Any],
-        warnings: list[str],
-        errors: list[Exception],
-        state: EventStateType | None,
+        self, data: dict[str, Any], warnings: list[str], errors: list[Exception]
     ):
         """
         Ensure that DummyEvent instances with type-consistent
@@ -218,7 +178,7 @@ class TestEventClass:
         can be pickled and unpickled correctly – with and without custom EventState.
         """
 
-        event = DummyEvent(data=data, state=state)
+        event = DummyEvent(data=data)
         event.warnings = warnings
         event.errors = errors
 
@@ -229,7 +189,6 @@ class TestEventClass:
         assert isinstance(loaded.data, dict)
         assert all(isinstance(w, str) for w in loaded.warnings)
         assert all(isinstance(e, Exception) for e in loaded.errors)
-        assert isinstance(loaded.state, EventState)
 
         assert loaded.data == data
         assert loaded.warnings == warnings
@@ -262,28 +221,4 @@ class TestEventClass:
 
     def test_event_repr(self):
         event = DummyEvent({"user": {"id": 42, "name": "Alice"}})
-        assert (
-            repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=receiving)"
-        )
-
-    def test_event_repr_with_custom_state(self):
-        event = DummyEvent({"user": {"id": 42, "name": "Alice"}}, state=EventStateType.PROCESSED)
-        assert (
-            repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}}, state=processed)"
-        )
-
-    @pytest.mark.parametrize(
-        "event_kwargs",
-        [
-            {"data": {"key": "value"}, "state": object()},
-            {"data": {"key": "value"}, "state": "invalid"},
-        ],
-    )
-    def test_init_raises_on_invalid_state(self, event_kwargs):
-        """
-        Ensure that initializing an Event with an invalid state raises a TypeError.
-        """
-        with pytest.raises(
-            TypeError, match="state must be an instance of EventStateType or EventState, or None"
-        ):
-            DummyEvent(**event_kwargs)
+        assert repr(event) == "DummyEvent(data={'user': {'id': 42, 'name': 'Alice'}})"

@@ -318,9 +318,6 @@ class ConfluentKafkaInput(Input):
 
     async def setup(self):
         """Set the confluent kafka input connector."""
-
-        await super().setup()
-
         try:
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self.config.max_workers
@@ -336,6 +333,8 @@ class ConfluentKafkaInput(Input):
             )
         except KafkaException as error:
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
+
+        await super().setup()
 
     def _create_admin(self) -> AdminClient:
         """configures and returns the admin client
@@ -560,7 +559,7 @@ class ConfluentKafkaInput(Input):
         for topic_partition in topic_partitions:
             offset, partition = topic_partition.offset, topic_partition.partition
             member_id = await self._get_memberid()
-            logger.debug(
+            logger.info(
                 "%s was assigned to topic: %s | partition %s",
                 member_id,
                 topic_partition.topic,

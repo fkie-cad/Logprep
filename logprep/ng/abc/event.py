@@ -36,10 +36,10 @@ class Event(ABC):
     """
     Abstract base class representing an event in the processing pipeline.
 
-    Encapsulates data, warnings, errors, and processing state.
+    Encapsulates data, warnings and errors.
     """
 
-    __slots__: tuple[str, ...] = ("data", "errors")
+    __slots__: tuple[str, ...] = ("data", "errors", "warnings")
 
     def __init__(self, data: dict[str, Any]) -> None:
         """
@@ -52,6 +52,7 @@ class Event(ABC):
         """
         self.data: dict[str, Any] = data
         self.errors: list[Exception] = []
+        self.warnings: list[str] = []
         super().__init__()
 
     def __eq__(self, other: object) -> bool:

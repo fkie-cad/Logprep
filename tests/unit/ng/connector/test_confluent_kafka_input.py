@@ -6,15 +6,29 @@
 # pylint: disable=attribute-defined-outside-init
 
 import json
+import os
+import re
 import socket
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from pathlib import Path
 from unittest import mock
 
 import pytest
+from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException
+from confluent_kafka.admin import AdminClient
+from confluent_kafka.aio import AIOConsumer
 
 from logprep.factory import Factory
-from logprep.ng.connector.confluent_kafka.input import ConfluentKafkaInput
+from logprep.factory_error import InvalidConfigurationError
+from logprep.ng.abc.input import (
+    CriticalInputParsingError,
+    FatalInputError,
+    InputWarning,
+)
+from logprep.ng.connector.confluent_kafka.input import ConfluentKafkaInput, logger
+from logprep.ng.connector.confluent_kafka.metadata import ConfluentKafkaMetadata
+from logprep.ng.event.error_event import ErrorEvent
 from logprep.util.helper import get_dotted_field_value
 from tests.unit.ng.connector.base import BaseInputTestCase
 
@@ -53,27 +67,36 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
     ]
 
     @pytest.fixture
-    # TODO do we need the whole path, or can we make this prettier?
-    @mock.patch("logprep.ng.connector.confluent_kafka.input.AIOConsumer", autospec=True)
-    def mock_consumer(self, consumer):
-        return consumer
+    def mock_consumer(self):
+        # TODO do we need the whole path, or can we make this prettier?
+        with mock.patch(
+            "logprep.ng.connector.confluent_kafka.input.AIOConsumer", spec=AIOConsumer
+        ) as mock_consumer:
+            mock_consumer.return_value = mock_consumer
+            mock_consumer._consumer = mock.MagicMock()
+            mock_consumer._consumer.memberid.return_value = 42
+            yield mock_consumer
 
     @pytest.fixture
-    @mock.patch("logprep.ng.connector.confluent_kafka.input.AdminClient", autospec=True)
-    def mock_admin(self, admin):
-        return admin
+    def mock_admin(self):
+        with mock.patch(
+            "logprep.ng.connector.confluent_kafka.input.AdminClient", spec=AdminClient
+        ) as admin:
+            admin.return_value = admin
+            yield admin
 
     @pytest.fixture
-    @mock.patch(
-        "logprep.ng.connector.confluent_kafka.input.concurrent.futures.ThreadPoolExecutor",
-        autospec=True,
-    )
-    def mock_executor(self, executor):
-        return executor
+    def mock_executor(self):
+        with mock.patch(
+            "logprep.ng.connector.confluent_kafka.input.concurrent.futures.ThreadPoolExecutor",
+            spec=ThreadPoolExecutor,
+        ) as executor:
+            executor.return_value = executor
+            yield executor
 
     @pytest.fixture(autouse=True)
     def autouse_central_fixtures(self, mock_consumer, mock_admin, mock_executor):
-        return mock_consumer, mock_admin, mock_executor  # return technically not required
+        yield mock_consumer, mock_admin, mock_executor  # return technically not required
 
     async def test_client_id_is_set_to_hostname(self):
         await self.object.setup()
@@ -130,42 +153,37 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
         await self.object.shut_down()
 
-    # async def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(
-    #     self,
-    # ):
-    #     mock_kafka_message = mock.AsyncMock()
-    #     mock_kafka_message.error.return_value = KafkaError(
-    #         error=3,
-    #         reason="Subscribed topic not available: (Test Instance Name) : "
-    #         "Broker: Unknown topic or partition",
-    #         fatal=False,
-    #         retriable=False,
-    #         txn_requires_abort=False,
-    #     )
+    async def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(
+        self, mock_consumer
+    ):
+        mock_kafka_message = mock.MagicMock()
+        mock_kafka_message.error.return_value = KafkaError(
+            error=3,
+            reason="Subscribed topic not available: (Test Instance Name) : "
+            "Broker: Unknown topic or partition",
+            fatal=False,
+            retriable=False,
+            txn_requires_abort=False,
+        )
 
-    #     self.object._consumer.poll.return_value = mock_kafka_message
+        await self.object.setup()
 
-    #     await self.object.setup()
+        mock_consumer.poll.return_value = mock_kafka_message
 
-    #     error_event = await self.object.get_next(1)
-    #     assert isinstance(error_event, ErrorEvent)
-    #     assert "A confluent-kafka record contains an error code" in error_event.data["reason"]
+        error_event = await self.object.get_next(1)
+        assert isinstance(error_event, ErrorEvent)
+        assert "A confluent-kafka record contains an error code" in error_event.data["reason"]
 
-    #     await self.object.shut_down()
+        await self.object.shut_down()
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    # async def test_shut_down_calls_consumer_close(self, _):
-    #     input_config = deepcopy(self.CONFIG)
-    #     kafka_input = Factory.create({"test": input_config})
+    async def test_shut_down_calls_consumer_close(self, mock_consumer):
+        await self.object.setup()
+        await self.object.shut_down()
 
-    #     kafka_consumer = kafka_input._consumer
-    #     kafka_input.shut_down()
-    #     kafka_consumer.close.assert_called()
+        mock_consumer.close.assert_called_once()
 
-    #     kafka_input.shut_down()
-
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    # async def test_batch_finished_callback_calls_store_offsets(self, _):
+    # TODO reintroduce batch_finished_callback?
+    # async def test_batch_finished_callback_calls_store_offsets(self, mock_consumer):
     #     input_config = deepcopy(self.CONFIG)
     #     kafka_input = Factory.create({"test": input_config})
 
@@ -208,415 +226,384 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
     #     kafka_input.shut_down()
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    # async def test_get_next_raises_critical_input_error_if_not_a_dict(self, mock_consumer):
-    #     input_config = deepcopy(self.CONFIG)
-    #     connector = Factory.create({"test": input_config})
-    #     connector._wait_for_health = mock.AsyncMock()
-    #     connector.setup()
+    async def test_get_next_raises_critical_input_error_if_not_a_dict(self, mock_consumer):
+        await self.object.setup()
 
-    #     mock_record = mock.AsyncMock()
+        mock_record = mock.MagicMock()
 
-    #     mock_record.error.return_value = None
-    #     mock_record.partition.return_value = 1
-    #     mock_record.offset.return_value = 42
-    #     mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
+        mock_record.error.return_value = None
+        mock_record.partition.return_value = 1
+        mock_record.offset.return_value = 42
+        mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
 
-    #     mock_consumer.poll = mock.AsyncMock(return_value=mock_record)
+        mock_consumer.poll.return_value = mock_record
 
-    #     assert connector.get_next(1) is None
+        error_event = await self.object.get_next(1)
+        assert isinstance(error_event, ErrorEvent)
+        assert "not a dict" in error_event.data["reason"]
 
-    #     expected_error_message = "A confluent-kafka record contains an error code"
-    #     self.check_input_registered_failed_event_with_message(
-    #         connector=connector,
-    #         expected_error_message=expected_error_message,
-    #     )
+        await self.object.shut_down()
 
-    #     connector.shut_down()
+    async def test_get_next_raises_critical_input_error_if_invalid_json(self, mock_consumer):
+        await self.object.setup()
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    # async def test_get_next_raises_critical_input_error_if_invalid_json(self, mock_consumer):
-    #     input_config = deepcopy(self.CONFIG)
-    #     connector = Factory.create({"test": input_config})
-    #     connector._wait_for_health = mock.AsyncMock()
-    #     connector.setup()
+        mock_record = mock.MagicMock()
 
-    #     mock_record = mock.AsyncMock()
+        mock_record.error.return_value = None
+        mock_record.value.return_value = "I'm not valid json".encode("utf8")
 
-    #     mock_record.error.return_value = None
-    #     mock_record.value.return_value = "I'm not valid json".encode("utf8")
+        mock_consumer.poll.return_value = mock_record
 
-    #     mock_consumer.poll = mock.AsyncMock(return_value=mock_record)
+        error_event = await self.object.get_next(1)
+        assert isinstance(error_event, ErrorEvent)
+        assert "not a valid json string" in error_event.data["reason"]
 
-    #     assert connector.get_next(1) is None
+        await self.object.shut_down()
 
-    #     expected_error_message = "A confluent-kafka record contains an error code"
-    #     self.check_input_registered_failed_event_with_message(
-    #         connector=connector,
-    #         expected_error_message=expected_error_message,
-    #     )
+    async def test_get_event_returns_event_and_raw_event(self, mock_consumer):
+        await self.object.setup()
 
-    #     connector.shut_down()
+        mock_record = mock.MagicMock()
 
-    # async def test_get_event_returns_event_and_raw_event(self):
-    #     with mock.patch.object(self.object, "_consumer") as mock_consumer:
-    #         mock_record = mock.AsyncMock()
+        mock_record.error.return_value = None
+        mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
+        mock_record.partition.return_value = 1
+        mock_record.offset.return_value = 42
 
-    #         mock_record.error.return_value = None
-    #         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
-    #         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
-    #         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
-    #         mock_record.partition.return_value = 1
-    #         mock_record.offset.return_value = 42
+        mock_consumer.poll.return_value = mock_record
 
-    #         mock_consumer.poll = mock.AsyncMock(return_value=mock_record)
+        event, raw_event, metadata = await self.object._get_event(0.001)
+        assert event == {"element": "in list"}
+        assert raw_event == '{"element":"in list"}'.encode("utf8")
+        assert metadata == ConfluentKafkaMetadata(partition=1, offset=42)
 
-    #         event, raw_event, metadata = self.object._get_event(0.001)
-    #         assert event == {"element": "in list"}
-    #         assert raw_event == '{"element":"in list"}'.encode("utf8")
-    #         assert metadata == ConfluentKafkaMetadata(partition=1, offset=42)
+    async def test_get_raw_event_is_callable(self, mock_consumer):
+        mock_record = mock.MagicMock()
+        mock_record.error.return_value = None
+        mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
 
-    # async def test_get_raw_event_is_callable(self):  # pylint: disable=arguments-differ
-    #     with mock.patch.object(self.object, "_consumer") as mock_consumer:
-    #         # should be overwritten if reimplemented
-    #         mock_record = mock.AsyncMock()
-    #         mock_record.error.return_value = None
-    #         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
+        mock_consumer.poll.return_value = mock_record
 
-    #         mock_consumer.poll = mock.AsyncMock(return_value=mock_record)
+        await self.object.setup()
 
-    #         result = self.object._get_raw_event(0.001)
+        result = await self.object._get_raw_event(0.001)
 
-    #         assert result
+        assert result
 
-    # async def test_get_event_raises_exception_if_input_invalid_json(self):
-    #     with mock.patch.object(self.object, "_consumer") as mock_consumer:
-    #         mock_record = mock.AsyncMock()
-    #         mock_record.error.return_value = None
-    #         mock_record.value.return_value = '{"invalid_json"}'.encode("utf8")
+    async def test_get_event_raises_exception_if_input_invalid_json(self, mock_consumer):
+        mock_record = mock.MagicMock()
+        mock_record.error.return_value = None
+        mock_record.value.return_value = '{"invalid_json"}'.encode("utf8")
 
-    #         mock_consumer.poll = mock.AsyncMock(return_value=mock_record)
+        mock_consumer.poll.return_value = mock_record
 
-    #         with pytest.raises(
-    #             CriticalInputParsingError,
-    #             match=(
-    #                 r"Input record value is not a valid json string ->"
-    #                 r" event was written to error output if configured"
-    #             ),
-    #         ) as error:
-    #             self.object._get_event(0.001)
-    #         assert error.value.raw_input == b'{"invalid_json"}'
+        await self.object.setup()
 
-    # async def test_get_event_raises_exception_if_input_not_utf(self):
-    #     with mock.patch.object(self.object, "_consumer") as mock_consumer:
-    #         mock_record = mock.AsyncMock()
-    #         mock_record.error.return_value = None
+        with pytest.raises(
+            CriticalInputParsingError,
+            match=(
+                r"Input record value is not a valid json string ->"
+                r" event was written to error output if configured"
+            ),
+        ) as error:
+            await self.object._get_event(0.001)
+        assert error.value.raw_input == b'{"invalid_json"}'
 
-    #         mock_record.value.return_value = '{"not_utf-8": \xfc}'.encode("cp1252")
+    async def test_get_event_raises_exception_if_input_not_utf(self, mock_consumer):
+        mock_record = mock.MagicMock()
+        mock_record.error.return_value = None
 
-    #         mock_consumer.poll = mock.AsyncMock(return_value=mock_record)
+        mock_record.value.return_value = '{"not_utf-8": \xfc}'.encode("cp1252")
 
-    #         with pytest.raises(
-    #             CriticalInputParsingError,
-    #             match=(
-    #                 r"Input record value is not \'utf-8\' encoded ->"
-    #                 r" event was written to error output if configured"
-    #             ),
-    #         ) as error:
-    #             self.object._get_event(0.001)
-    #         assert error.value.raw_input == "b'{\"not_utf-8\": \\xfc}'"
+        mock_consumer.poll.return_value = mock_record
+
+        await self.object.setup()
+
+        with pytest.raises(
+            CriticalInputParsingError,
+            match=(
+                r"Input record value is not \'utf-8\' encoded ->"
+                r" event was written to error output if configured"
+            ),
+        ) as error:
+            await self.object._get_event(0.001)
+        assert error.value.raw_input == "b'{\"not_utf-8\": \\xfc}'"
 
     # async def test_setup_raises_fatal_input_error_on_invalid_config(self):
-    #     kafka_config = {
-    #         "bootstrap.servers": "testinstance:9092",
-    #         "group.id": "sapsal",
-    #         "myconfig": "the config",
-    #     }
-    #     config = deepcopy(self.CONFIG)
-    #     config["kafka_config"] = kafka_config
-    #     connector = Factory.create({"test": config})
-    #     with pytest.raises(FatalInputError, match="No such configuration property"):
-    #         connector.setup()
-
-    # async def test_get_next_raises_critical_input_parsing_error(self):
-    #     input_config = deepcopy(self.CONFIG)
-    #     connector = Factory.create({"test": input_config})
-    #     connector._wait_for_health = mock.AsyncMock()
-    #     connector.setup()
-
-    #     return_value = b'{"invalid": "json'
-    #     mock_message = mock.AsyncMock()
-    #     mock_message.value.return_value = return_value
-
-    #     with mock.patch.object(connector, "_get_raw_event", return_value=mock_message):
-    #         assert connector.get_next(1) is None
-
-    #         self.check_input_registered_failed_event_with_message(
-    #             connector=connector,
-    #             expected_error_message="Input record value is not a valid json string",
-    #         )
-
-    # async def test_commit_callback_raises_warning_error_and_counts_failures(self):
-    #     with pytest.raises(InputWarning, match="Could not commit offsets"):
-    #         await self.object._commit_callback(Exception, ["topic_partition"])
-    #         assert self.object._commit_failures == 1
-
-    # async def test_commit_callback_counts_commit_success(self):
-    #     self.object.metrics.commit_success = 0
-    #     await self.object._commit_callback(None, [mock.MagicMock()])
-    #     assert self.object.metrics.commit_success == 1
-
-    # async def test_commit_callback_sets_committed_offsets(self):
-    #     mock_add = mock.AsyncMock()
-    #     self.object.metrics.committed_offsets.add_with_labels = mock_add
-    #     topic_partition = mock.AsyncMock()
-    #     topic_partition.partition = 99
-    #     topic_partition.offset = 666
-    #     await self.object._commit_callback(None, [topic_partition])
-    #     call_args = 666, {"description": "topic: test_input_raw - partition: 99"}
-    #     mock_add.assert_called_with(*call_args)
-
-    # async def test_default_config_is_injected(self):
-    #     kafka_input = Factory.create({"kafka_input": self.CONFIG})
-    #     injected_config = {
-    #         "enable.auto.offset.store": "false",
-    #         "enable.auto.commit": "true",
-    #         "client.id": socket.getfqdn(),
-    #         "auto.offset.reset": "earliest",
-    #         "session.timeout.ms": "6000",
-    #         "statistics.interval.ms": "30000",
-    #         "bootstrap.servers": "testserver:9092",
-    #         "group.id": "testgroup",
-    #         "group.instance.id": f"{socket.getfqdn().strip('.')}-PipelineNone-pid{os.getpid()}",
-    #         "logger": logger,
-    #         "on_commit": kafka_input._commit_callback,
-    #         "stats_cb": kafka_input._stats_callback,
-    #         "error_cb": kafka_input._error_callback,
-    #     }
-
-    #     with mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer") as mock_consumer:
-    #         _ = kafka_input._consumer
-    #         mock_consumer.assert_called_with(injected_config)
-
-    # async def test_auto_offset_store_and_auto_commit_are_managed_by_connector(self):
-    #     with mock.patch(
-    #         "logprep.ng.connector.confluent_kafka.input.Consumer", autospec=True
-    #     ) as mock_consumer:
-    #         config = deepcopy(self.CONFIG)
-    #         config["kafka_config"] |= {
-    #             "enable.auto.offset.store": "true",
-    #             "enable.auto.commit": "false",
+    #     self.object = self._create_test_instance(
+    #         config_patch={
+    #             "kafka_config": {
+    #                 "bootstrap.servers": "testinstance:9092",
+    #                 "group.id": "sapsal",
+    #                 "myconfig": "the config",
+    #             }
     #         }
-    #         kafka_input = Factory.create({"test": config})
+    #     )
+    #     with pytest.raises(FatalInputError, match="No such configuration property"):
+    #         await self.object.setup()
 
-    #         _ = kafka_input._consumer
+    async def test_get_next_raises_critical_input_parsing_error(self):
+        await self.object.setup()
 
-    #         mock_consumer.assert_called()
+        mock_message = mock.MagicMock()
+        mock_message.value.return_value = b'{"invalid": "json'
 
-    #         injected_config = mock_consumer.call_args[0][0]
-    #         assert injected_config.get("enable.auto.offset.store") == "false"
-    #         assert injected_config.get("enable.auto.commit") == "true"
+        self.object._get_raw_event = mock.AsyncMock(return_value=mock_message)
 
-    #         kafka_input.shut_down()
+        error_event = await self.object.get_next(1)
+        assert isinstance(error_event, ErrorEvent)
+        assert "Input record value is not a valid json string" in error_event.data["reason"]
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.AdminClient")
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    # async def test_client_id_can_be_overwritten(self, mock_consumer, mock_admin):
-    #     input_config = deepcopy(self.CONFIG)
-    #     input_config["kafka_config"]["client.id"] = "thisclientid"
-    #     kafka_input = Factory.create({"test": input_config})
-    #     kafka_input._wait_for_health = mock.AsyncMock()
-    #     metadata = mock.AsyncMock()
-    #     metadata.topics = [kafka_input._config.topic]
-    #     mock_admin.list_topics.return_value = metadata
-    #     kafka_input.setup()
+    async def test_commit_callback_raises_warning_error_and_counts_failures(self):
+        with pytest.raises(InputWarning, match="Could not commit offsets"):
+            await self.object._commit_callback(Exception, ["topic_partition"])
+            assert self.object._commit_failures == 1
 
-    #     mock_consumer.assert_called()
-    #     assert mock_consumer.call_args[0][0].get("client.id") == "thisclientid"
-    #     assert not mock_consumer.call_args[0][0].get("client.id") == socket.getfqdn()
+    async def test_commit_callback_counts_commit_success(self):
+        self.object.metrics.commit_success = 0
+        await self.object._commit_callback(None, [mock.MagicMock()])
+        assert self.object.metrics.commit_success == 1
 
-    #     kafka_input.shut_down()
+    async def test_commit_callback_sets_committed_offsets(self):
+        self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
+        topic_partition = mock.MagicMock()
+        topic_partition.partition = 99
+        topic_partition.offset = 666
+        await self.object._commit_callback(None, [topic_partition])
+        call_args = 666, {"description": "topic: test_input_raw - partition: 99"}
+        self.object.metrics.committed_offsets.add_with_labels.assert_called_with(*call_args)
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.AdminClient")
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    # async def test_statistics_interval_can_be_overwritten(self, mock_consumer, mock_admin):
-    #     input_config = deepcopy(self.CONFIG)
-    #     input_config["kafka_config"]["statistics.interval.ms"] = "999999999"
-    #     kafka_input = Factory.create({"test": input_config})
-    #     kafka_input._wait_for_health = mock.AsyncMock()
-    #     metadata = mock.AsyncMock()
-    #     metadata.topics = [kafka_input._config.topic]
-    #     mock_admin.list_topics.return_value = metadata
-    #     kafka_input.setup()
+    async def test_default_config_is_injected(self, mock_consumer, mock_executor):
+        injected_config = {
+            "enable.auto.offset.store": "false",
+            "enable.auto.commit": "true",
+            "client.id": socket.getfqdn(),
+            "auto.offset.reset": "earliest",
+            "session.timeout.ms": "6000",
+            "statistics.interval.ms": "30000",
+            "bootstrap.servers": "testserver:9092",
+            "group.id": "testgroup",
+            "group.instance.id": f"{socket.getfqdn().strip('.')}-PipelineNone-pid{os.getpid()}",
+            "logger": logger,
+            "on_commit": self.object._commit_callback,
+            "stats_cb": self.object._stats_callback,
+            "error_cb": self.object._error_callback,
+        }
 
-    #     mock_consumer.assert_called()
-    #     assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"
+        await self.object.setup()
+        mock_consumer.assert_called_with(injected_config, executor=mock_executor)
 
-    #     kafka_input.shut_down()
+    async def test_auto_offset_store_and_auto_commit_are_managed_by_connector(self, mock_consumer):
+        self.object = self._create_test_instance(
+            config_patch={
+                "kafka_config": {
+                    "enable.auto.offset.store": "true",
+                    "enable.auto.commit": "false",
+                    "bootstrap.servers": "testserver:9092",
+                    "group.id": "testgroup",
+                }
+            }
+        )
 
-    # async def test_raises_fatal_input_error_if_poll_raises_runtime_error(self):
-    #     input_config = deepcopy(self.CONFIG)
-    #     connector = Factory.create({"test": input_config})
-    #     connector._wait_for_health = mock.AsyncMock()
-    #     connector.setup()
+        await self.object.setup()
 
-    #     with mock.patch.object(connector, "_consumer") as mock_consumer:
-    #         mock_consumer.poll.side_effect = RuntimeError("test error")
+        mock_consumer.assert_called()
 
-    #         with pytest.raises(FatalInputError, match="test error"):
-    #             connector.get_next(0.01)
+        actual_kafka_config = mock_consumer.call_args[0][0]
+        assert actual_kafka_config.get("enable.auto.offset.store") == "false"
+        assert actual_kafka_config.get("enable.auto.commit") == "true"
 
-    # async def test_raises_value_error_if_mandatory_parameters_not_set(self):
-    #     config = deepcopy(self.CONFIG)
-    #     config.get("kafka_config").pop("bootstrap.servers")
-    #     config.get("kafka_config").pop("group.id")
-    #     expected_error_message = r"keys are missing: {'(bootstrap.servers|group.id)', '(bootstrap.servers|group.id)'}"  # pylint: disable=line-too-long
-    #     with pytest.raises(InvalidConfigurationError, match=expected_error_message):
-    #         Factory.create({"test": config})
+        await self.object.shut_down()
 
-    # @pytest.mark.parametrize(
-    #     "metric_name",
-    #     [
-    #         "current_offsets",
-    #         "committed_offsets",
-    #     ],
-    # )
-    # async def test_offset_metrics_not_initialized_with_default_label_values(self, metric_name):
-    #     metric = getattr(self.object.metrics, metric_name)
-    #     metric_object = metric.tracker.collect()[0]
-    #     assert len(metric_object.samples) == 0
+    async def test_client_id_can_be_overwritten(self, mock_consumer):
+        self.object = self._create_test_instance(
+            config_patch={
+                "kafka_config": {
+                    "bootstrap.servers": "testserver:9092",
+                    "group.id": "testgroup",
+                    "client.id": "thisclientid",
+                }
+            }
+        )
+        await self.object.setup()
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    # async def test_lost_callback_counts_warnings_and_logs(self, mock_consumer):
-    #     self.object.metrics.number_of_warnings = 0
-    #     mock_partitions = [mock.MagicMock()]
-    #     with mock.patch("logging.Logger.warning") as mock_warning:
-    #         await self.object._lost_callback(mock_consumer, mock_partitions)
-    #     mock_warning.assert_called()
-    #     assert self.object.metrics.number_of_warnings == 1
+        mock_consumer.assert_called()
+        actual_kafka_config = mock_consumer.call_args[0][0]
+        assert actual_kafka_config.get("client.id") == "thisclientid"
+        assert not actual_kafka_config.get("client.id") == socket.getfqdn()
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    # async def test_commit_callback_sets_offset_to_0_for_special_offsets(self, _):
-    #     self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
-    #     mock_partitions = [mock.MagicMock()]
-    #     mock_partitions[0].offset = OFFSET_BEGINNING
-    #     await self.object._commit_callback(None, mock_partitions)
-    #     expected_labels = {
-    #         "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
-    #     }
-    #     self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
+        await self.object.shut_down()
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.Consumer")
-    # async def test_assign_callback_sets_offsets_and_logs_info(self, mock_consumer):
-    #     self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
-    #     self.object.metrics.current_offsets.add_with_labels = mock.MagicMock()
-    #     mock_partitions = [mock.MagicMock()]
-    #     mock_partitions[0].offset = OFFSET_BEGINNING
-    #     with mock.patch("logging.Logger.info") as mock_info:
-    #         self.object._assign_callback(mock_consumer, mock_partitions)
-    #     expected_labels = {
-    #         "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
-    #     }
-    #     mock_info.assert_called()
-    #     self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
-    #     self.object.metrics.current_offsets.add_with_labels.assert_called_with(0, expected_labels)
+    async def test_statistics_interval_can_be_overwritten(self, mock_consumer):
+        self.object = self._create_test_instance(
+            config_patch={
+                "kafka_config": {
+                    "bootstrap.servers": "testserver:9092",
+                    "group.id": "testgroup",
+                    "statistics.interval.ms": "999999999",
+                }
+            }
+        )
+        await self.object.setup()
 
-    # async def test_revoke_callback_logs_warning_and_counts(self):
-    #     self.object.metrics.number_of_warnings = 0
-    #     self.object.output_connector = mock.AsyncMock()
-    #     mock_partitions = [mock.MagicMock()]
-    #     with mock.patch("logging.Logger.warning") as mock_warning:
-    #         await self.object._revoke_callback(None, mock_partitions)
-    #     mock_warning.assert_called()
-    #     assert self.object.metrics.number_of_warnings == 1
+        mock_consumer.assert_called()
+        assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"
 
-    # async def test_revoke_callback_calls_batch_finished_callback(self):
-    #     self.object.output_connector = mock.AsyncMock()
-    #     self.object.batch_finished_callback = mock.AsyncMock()
-    #     mock_partitions = [mock.MagicMock()]
-    #     await self.object._revoke_callback(None, mock_partitions)
-    #     self.object.batch_finished_callback.assert_called()
+        await self.object.shut_down()
 
-    # async def test_revoke_callback_logs_error_if_consumer_closed(self, caplog):
-    #     with mock.patch.object(self.object, "_consumer") as mock_consumer:
-    #         mock_consumer.memberid = mock.AsyncMock()
-    #         mock_consumer.memberid.side_effect = RuntimeError("Consumer is closed")
-    #         mock_partitions = [mock.MagicMock()]
-    #         await self.object._revoke_callback(None, mock_partitions)
-    #         assert re.search(r"ERROR.*Consumer is closed", caplog.text)
+    async def test_raises_fatal_input_error_if_poll_raises_runtime_error(self, mock_consumer):
+        mock_consumer.poll.side_effect = RuntimeError("test error")
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.AdminClient")
-    # async def test_health_returns_true_if_no_error(self, mock_admin_class):
-    #     mock_admin = mock.AsyncMock()
-    #     mock_admin.list_topics.return_value.topics = ["test-topic"]
-    #     mock_admin_class.return_value = mock_admin
+        await self.object.setup()
 
-    #     input_config = deepcopy(self.CONFIG)
-    #     input_config["topic"] = "test-topic"
-    #     connector = Factory.create({"test": input_config})
-    #     connector._wait_for_health = mock.AsyncMock()
-    #     connector.setup()
+        with pytest.raises(FatalInputError, match="test error"):
+            await self.object.get_next(0.01)
 
-    #     assert await connector.health()
+    async def test_raises_value_error_if_mandatory_parameters_not_set(self):
+        expected_error_message = r"keys are missing: {'(bootstrap.servers|group.id)', '(bootstrap.servers|group.id)'}"  # pylint: disable=line-too-long
+        with pytest.raises(InvalidConfigurationError, match=expected_error_message):
+            self._create_test_instance(
+                config_patch={
+                    "kafka_config": {
+                        # "bootstrap.servers": "testserver:9092",
+                        # "group.id": "testgroup",
+                    }
+                }
+            )
 
-    #     connector.shut_down()
+    @pytest.mark.parametrize(
+        "metric_name",
+        [
+            "current_offsets",
+            "committed_offsets",
+        ],
+    )
+    async def test_offset_metrics_not_initialized_with_default_label_values(self, metric_name):
+        metric = getattr(self.object.metrics, metric_name)
+        metric_object = metric.tracker.collect()[0]
+        assert len(metric_object.samples) == 0
 
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.AdminClient")
-    # async def test_health_returns_false_if_topic_not_present(self, mock_admin):
-    #     metadata = mock.AsyncMock()
-    #     metadata.topics = ["not_the_topic"]
-    #     mock_admin.list_topics.return_value = metadata
-    #     assert not await self.object.health()
+    async def test_lost_callback_counts_warnings_and_logs(self, mock_consumer):
+        await self.object.setup()
+        self.object.metrics.number_of_warnings = 0
+        mock_partitions = [mock.MagicMock()]
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            await self.object._lost_callback(mock_consumer, mock_partitions)
+        mock_warning.assert_called()
+        assert self.object.metrics.number_of_warnings == 1
 
-    # async def test_health_returns_false_on_kafka_exception(self):
-    #     with mock.patch.object(self.object, "_consumer") as mock_consumer:
-    #         mock_consumer.list_topics.side_effect = KafkaException("test error")
-    #         assert not await self.object.health()
+    async def test_commit_callback_sets_offset_to_0_for_special_offsets(self):
+        self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
+        mock_partitions = [mock.MagicMock()]
+        mock_partitions[0].offset = OFFSET_BEGINNING
+        await self.object._commit_callback(None, mock_partitions)
+        expected_labels = {
+            "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
+        }
+        self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
 
-    # async def test_health_logs_error_on_kafka_exception(self):
-    #     with mock.patch.object(self.object, "_consumer") as mock_consumer:
-    #         mock_consumer.list_topics.side_effect = KafkaException("test error")
+    async def test_assign_callback_sets_offsets_and_logs_info(self):
+        await self.object.setup()
 
-    #         with mock.patch("logging.Logger.error") as mock_error:
-    #             await self.object.health()
+        self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
+        self.object.metrics.current_offsets.add_with_labels = mock.MagicMock()
+        mock_partitions = [mock.MagicMock()]
+        mock_partitions[0].offset = OFFSET_BEGINNING
+        with mock.patch("logging.Logger.info") as mock_info:
+            await self.object._assign_callback(None, mock_partitions)
+        expected_labels = {
+            "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
+        }
+        mock_info.assert_called()
+        self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
+        self.object.metrics.current_offsets.add_with_labels.assert_called_with(0, expected_labels)
 
-    #         mock_error.assert_called()
+    async def test_revoke_callback_logs_warning_and_counts(self):
+        await self.object.setup()
 
-    # async def test_health_counts_metrics_on_kafka_exception(self):
-    #     kafka_input = Factory.create({"kafka_input": self.CONFIG})
-    #     kafka_input.metrics.number_of_errors = 0
+        self.object.metrics.number_of_warnings = 0
+        self.object.output_connector = mock.AsyncMock()
+        mock_partitions = [mock.MagicMock()]
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            await self.object._revoke_callback(None, mock_partitions)
+        mock_warning.assert_called()
+        assert self.object.metrics.number_of_warnings == 1
 
-    #     with mock.patch.object(kafka_input, "_consumer") as mock_consumer:
-    #         mock_consumer.list_topics.side_effect = KafkaException("test error")
+    async def test_revoke_callback_calls_batch_finished_callback(self):
+        await self.object.setup()
 
-    #         assert not await kafka_input.health()
-    #         assert kafka_input.metrics.number_of_errors == 1
+        self.object.output_connector = mock.AsyncMock()
+        self.object.batch_finished_callback = mock.AsyncMock()
+        mock_partitions = [mock.MagicMock()]
+        await self.object._revoke_callback(None, mock_partitions)
+        self.object.batch_finished_callback.assert_called()
 
-    # @pytest.mark.parametrize(
-    #     ["kafka_config_update", "expected_admin_client_config"],
-    #     [
-    #         ({}, {"bootstrap.servers": "testserver:9092"}),
-    #         ({"statistics.foo": "bar"}, {"bootstrap.servers": "testserver:9092"}),
-    #         (
-    #             {"security.foo": "bar"},
-    #             {"bootstrap.servers": "testserver:9092", "security.foo": "bar"},
-    #         ),
-    #         (
-    #             {"ssl.foo": "bar"},
-    #             {"bootstrap.servers": "testserver:9092", "ssl.foo": "bar"},
-    #         ),
-    #         (
-    #             {"security.foo": "bar", "ssl.foo": "bar"},
-    #             {"bootstrap.servers": "testserver:9092", "security.foo": "bar", "ssl.foo": "bar"},
-    #         ),
-    #     ],
-    # )
-    # @mock.patch("logprep.ng.connector.confluent_kafka.input.AdminClient")
-    # async def test_set_security_related_config_in_admin_client(
-    #     self, admin_client, kafka_config_update, expected_admin_client_config
-    # ):
-    #     new_kafka_config = deepcopy(self.CONFIG)
-    #     new_kafka_config["kafka_config"].update(kafka_config_update)
-    #     input_connector = Factory.create({"input_connector": new_kafka_config})
-    #     _ = input_connector._admin
-    #     admin_client.assert_called_with(expected_admin_client_config)
+    async def test_revoke_callback_logs_error_if_consumer_closed(self, mock_consumer, caplog):
+        mock_consumer._consumer.memberid.side_effect = RuntimeError("Consumer is closed")
+
+        await self.object.setup()
+        await self.object._revoke_callback(None, topic_partitions=[mock.MagicMock()])
+        assert re.search(r"ERROR.*Consumer is closed", caplog.text)
+
+    async def test_health_returns_true_if_no_error(self, mock_admin):
+        mock_admin.list_topics.return_value.topics = ["test-topic"]
+        self.object = self._create_test_instance(config_patch={"topic": "test-topic"})
+
+        await self.object.setup()
+        assert await self.object.health()
+        await self.object.shut_down()
+
+    async def test_health_returns_false_if_topic_not_present(self, mock_admin):
+        mock_admin.list_topics.return_value.topics = ["not_the_topic"]
+        await self.object.setup()
+        assert not await self.object.health()
+
+    async def test_health_returns_false_on_kafka_exception(self, mock_consumer):
+        mock_consumer.list_topics.side_effect = KafkaException("test error")
+        await self.object.setup()
+        assert not await self.object.health()
+
+    async def test_health_logs_error_on_kafka_exception(self, mock_consumer):
+        mock_consumer.list_topics.side_effect = KafkaException("test error")
+
+        await self.object.setup()
+        with mock.patch("logging.Logger.error") as mock_error:
+            await self.object.health()
+
+            mock_error.assert_called()
+
+    async def test_health_counts_metrics_on_kafka_exception(self, mock_admin):
+        mock_admin.list_topics.side_effect = KafkaException("test error")
+
+        await self.object.setup()
+        self.object.metrics.number_of_errors = 0
+        assert not await self.object.health()
+        assert self.object.metrics.number_of_errors == 1
+
+    @pytest.mark.parametrize(
+        ["kafka_config_update", "expected_admin_client_config"],
+        [
+            ({}, {"bootstrap.servers": "testserver:9092"}),
+            ({"statistics.foo": "bar"}, {"bootstrap.servers": "testserver:9092"}),
+            (
+                {"security.foo": "bar"},
+                {"bootstrap.servers": "testserver:9092", "security.foo": "bar"},
+            ),
+            (
+                {"ssl.foo": "bar"},
+                {"bootstrap.servers": "testserver:9092", "ssl.foo": "bar"},
+            ),
+            (
+                {"security.foo": "bar", "ssl.foo": "bar"},
+                {"bootstrap.servers": "testserver:9092", "security.foo": "bar", "ssl.foo": "bar"},
+            ),
+        ],
+    )
+    async def test_set_security_related_config_in_admin_client(
+        self, mock_admin, kafka_config_update, expected_admin_client_config
+    ):
+        self.object = self._create_test_instance(
+            config_patch={"kafka_config": self.CONFIG["kafka_config"] | kafka_config_update}
+        )
+        await self.object.setup()
+        mock_admin.assert_called_with(expected_admin_client_config)

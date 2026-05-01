@@ -50,6 +50,8 @@ class Runner:
     async def run(self) -> None:
         """Run the runner and continuously process events until stopped."""
 
+        # TODO refresh refreshable getter
+
         async with asyncio.TaskGroup() as tg:
 
             async def run_pipeline_manager(config: Configuration) -> StoppableTask:

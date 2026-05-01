@@ -26,6 +26,7 @@ from copy import deepcopy
 
 from attrs import define, field, validators
 
+from logprep.ng.abc.event import EventMetadata
 from logprep.ng.abc.input import Input
 from logprep.ng.event.log_event import LogEvent
 
@@ -37,7 +38,7 @@ class DummyInput(Input):
     class Config(Input.Config):
         """DummyInput specific configuration"""
 
-        documents: Sequence[LogEvent | BaseException]
+        documents: Sequence[dict | BaseException | type | None]
         """A list of documents that should be returned."""
         repeat_documents: bool = field(validator=validators.instance_of(bool), default=False)
         """If set to :code:`true`, then the given input documents will be repeated after the last
@@ -59,10 +60,7 @@ class DummyInput(Input):
             self._empty_event.set()
         return await super().setup()
 
-    async def _get_event(self, timeout):
-        raise NotImplementedError()
-
-    async def get_next(self, timeout: float) -> LogEvent | None:
+    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
         """Retrieve next document from configuration and raise warning if found"""
 
         if not self._documents:
@@ -76,10 +74,17 @@ class DummyInput(Input):
             else:
                 self._empty_event.set()
 
-        if isinstance(document, BaseException):
-            raise document
-
-        return deepcopy(document)
+        match document:
+            case BaseException():
+                raise deepcopy(document)
+            case type():
+                raise document()
+            case dict():
+                return (deepcopy(document), b"", EventMetadata())
+            case None:
+                return None
+            case _:
+                raise ValueError("unknown config type")
 
     async def acknowledge(self, events):
         self._acked_events.extend(events)

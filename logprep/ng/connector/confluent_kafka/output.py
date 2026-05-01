@@ -35,7 +35,7 @@ from confluent_kafka import KafkaException  # type: ignore
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.aio import AIOProducer
 
-from logprep.metrics.metrics import GaugeMetric
+from logprep.metrics.metrics import GaugeMetric, Metric
 from logprep.ng.abc.event import Event
 from logprep.ng.abc.output import FatalOutputError, Output
 from logprep.util.validators import keys_in_validator
@@ -319,8 +319,7 @@ class ConfluentKafkaOutput(Output):
         """
         await self.store_custom(event, self.config.topic)
 
-    # @Output._handle_errors
-    # @Metric.measure_time()
+    @Metric.measure_time_async()
     async def store_custom(self, event: Event, target: str) -> None:
         """Write document to Kafka into target topic.
 
