@@ -48,7 +48,7 @@ from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.exceptions import LogprepException
 from logprep.ng.abc.event import Event
-from logprep.ng.abc.output import Output
+from logprep.ng.abc.output import FatalOutputError, Output
 
 logger = logging.getLogger("OpenSearchOutput")
 
@@ -291,10 +291,13 @@ class OpensearchOutput(Output):
                 logger.debug("event failed to send: %s", item)
 
                 op_infos = item.values()
-                error_info = op_infos[0] if len(op_infos) > 0 else {}
+                error_info = list(op_infos)[0] if len(op_infos) > 0 else {}
 
                 error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
                 event.errors.append(error)
+        if index < len(events):
+            # TODO improve
+            raise FatalOutputError(self, "iteration ended abruptly")
 
     async def health(self) -> bool:  # type: ignore[override]
         """Check the health of the component."""
@@ -306,7 +309,7 @@ class OpensearchOutput(Output):
             logger.error("Health check failed: %s", error)
             self._metrics.number_of_errors += 1
             return False
-        return await super().health() and resp.get("status") in self.config.desired_cluster_status
+        return (await super().health()) and resp.get("status") in self.config.desired_cluster_status
 
     async def shut_down(self):
         await self._search_context.close()
