@@ -376,7 +376,7 @@ class HttpInput(Input):
         normalized_endpoints = (endpoint.replace("*", "{5}") for endpoint in normalized_endpoints)
         return [rstr.xeger(endpoint) for endpoint in normalized_endpoints]
 
-    async def health(self) -> bool:
+    async def health(self) -> bool:  # type: ignore[override]
         """Health check for the HTTP Input Connector
 
         Returns

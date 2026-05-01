@@ -52,7 +52,7 @@ class Event(ABC):
         """
         self.data: dict[str, Any] = data
         self.errors: list[Exception] = []
-        self.warnings: list[str] = []
+        self.warnings: list[Exception] = []
         super().__init__()
 
     def __eq__(self, other: object) -> bool:

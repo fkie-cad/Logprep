@@ -150,11 +150,11 @@ class TestEventClass:
         "data, warnings, errors",
         [
             ({"message": "A test message"}, [], []),
-            ({"user": "alice"}, ["Low confidence"], []),
+            ({"user": "alice"}, [Warning("Low confidence")], []),
             ({"id": 123}, [], [ValueError("invalid id")]),
             (
                 {"foo": "bar"},
-                ["Deprecated format"],
+                [DeprecationWarning("Deprecated format")],
                 [RuntimeError("processing error")],
             ),
             (
@@ -164,13 +164,13 @@ class TestEventClass:
             ),
             (
                 {"service": "auth"},
-                ["auth timeout"],
+                [RuntimeWarning("auth timeout")],
                 [TimeoutError("Service did not respond")],
             ),
         ],
     )
     def test_event_is_picklable_with_values(
-        self, data: dict[str, Any], warnings: list[str], errors: list[Exception]
+        self, data: dict[str, Any], warnings: list[Exception], errors: list[Exception]
     ):
         """
         Ensure that DummyEvent instances with type-consistent
