@@ -7,8 +7,10 @@
 # pylint: disable=too-many-arguments
 # pylint: disable=line-too-long
 
+import json
 import re
 from collections.abc import Iterable
+from contextlib import nullcontext
 from unittest import mock
 
 import pytest
@@ -206,3 +208,93 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
 
     #     mock_async_streaming_bulk.assert_called_once()
     #     assert mock_async_streaming_bulk.call_args[1]["thread_count"] == 42
+
+
+class TestAsyncStreamingBulk:
+
+    @pytest.mark.parametrize(
+        "status_codes, chunk_size, max_retries, maybe_expect_exception",
+        [
+            pytest.param(
+                [
+                    (True, (200,)),
+                    (True, (200,)),
+                    (True, (200,)),
+                    (True, (200,)),
+                ],
+                {"chunk_size": 2, "max_retries": 0},
+                nullcontext(),
+                id="4x-successful-on-first-try",
+            ),
+            pytest.param(
+                [
+                    (False, (500,)),
+                    (True, (200,)),
+                    (True, (200,)),
+                    (False, (500,)),
+                ],
+                {"chunk_size": 2, "max_retries": 0},
+                nullcontext(),
+                id="1x-final-fail-per-chunk",
+            ),
+            pytest.param(
+                [
+                    (True, (429, 200)),
+                    (True, (200,)),
+                    (True, (200,)),
+                    (True, (429, 200)),
+                ],
+                {"chunk_size": 2, "max_retries": 1},
+                pytest.raises(AssertionError, match="ordering broken"),
+                id="retries-break-ordering",
+            ),
+        ],
+    )
+    async def test_async_streaming_bulk_maintains_order_parameterized(
+        self, status_codes, client_kwargs, maybe_expect_exception
+    ):
+        item_id_to_status_code_seq = {i: list(codes) for i, (_, codes) in enumerate(status_codes)}
+        item_id_to_expected_success = {i: ok for i, (ok, _) in enumerate(status_codes)}
+
+        async def _bulk(body: str):
+            # body is a jsonl string like:
+            #   { "index": {} }\n
+            #   { "id": X     }\n <- first item id
+            #   { "index": {} }\n
+            #   { "id": X + 1 }\n <- second item id ...
+            items = [json.loads(entry) for entry in body.splitlines()][1::2]
+            item_ids = [action["id"] for action in items]
+            return {
+                "items": [
+                    {
+                        "index": {
+                            "status": item_id_to_status_code_seq[item_id].pop(0),
+                            "id": item_id,
+                        }
+                    }
+                    for item_id in item_ids
+                ]
+            }
+
+        client = mock.MagicMock()
+        client.transport.serializer.dumps = json.dumps
+        client.bulk = mock.AsyncMock(wraps=_bulk)
+
+        actions = ({"_op_type": "index", "id": i} for i in range(len(status_codes)))
+
+        last_index = None
+
+        with maybe_expect_exception:
+            async for success, item in helpers.async_streaming_bulk(
+                client,
+                actions,
+                max_backoff=0,  # disable sleep when retrying
+                max_chunk_bytes=9999,  # no limit
+                raise_on_error=False,
+                raise_on_exception=False,
+                **client_kwargs,
+            ):
+                item_id = item["index"]["id"]
+                assert success is item_id_to_expected_success[item_id]
+                assert last_index is None or last_index < item_id, "ordering broken"
+                last_index = item_id

@@ -175,7 +175,7 @@ class TestEventClass:
         """
         Ensure that DummyEvent instances with type-consistent
         data, warnings (strings), and errors (Exception instances)
-        can be pickled and unpickled correctly – with and without custom EventState.
+        can be pickled and unpickled correctly - with and without custom EventState.
         """
 
         event = DummyEvent(data=data)
