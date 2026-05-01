@@ -83,7 +83,7 @@ class InputWarning(LogprepException):
         super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
 
 
-class SourceDisconnectedWarning(InputWarning):
+class SourceDisconnectedWarning(InputWarning, StopAsyncIteration):
     """Lost (or failed to establish) contact with the source."""
 
 

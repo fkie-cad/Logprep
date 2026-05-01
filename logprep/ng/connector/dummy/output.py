@@ -115,6 +115,7 @@ class DummyOutput(Output):
             self._recorded_events.append((event, target))
             self.metrics.number_of_processed_events += 1
         except Exception as error:  # pylint: disable=W0718
+            self.metrics.number_of_errors += 1
             self._handle_error(event, error)
 
     async def _store_batch(

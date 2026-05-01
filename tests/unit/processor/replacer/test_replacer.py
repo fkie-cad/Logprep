@@ -541,7 +541,6 @@ class TestReplacer(BaseProcessorTestCase):
         replacements = self.object.rules[0].templates["field"].replacements
         second_replacement = replacements[1]
         second_replacement.match = "exists and does not match"
-        replacements[1] = Replacement(**second_replacement)
         self.object.process(event)
         assert event == expected
 

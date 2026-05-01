@@ -99,7 +99,13 @@ class Output(Connector):
         Sequence[Event]
             Events after sending.
         """
-        return await self._store_batch(events, target)
+        try:
+            return await self._store_batch(events, target)
+        except Exception as error:
+            self.metrics.number_of_errors += 1
+            for event in events:
+                self._handle_error(event, error)
+            return events
 
     @abstractmethod
     async def _store_batch(
