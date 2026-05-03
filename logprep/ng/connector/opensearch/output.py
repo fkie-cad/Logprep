@@ -35,7 +35,7 @@ import logging
 import ssl
 import typing
 from collections.abc import Sequence
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from attrs import define, field, validators
 from opensearchpy import (
@@ -61,7 +61,6 @@ class BulkError(LogprepException):
         message: str,
         status: str | None = None,
         exception: str | None = None,
-        **kwargs,
     ) -> None:
         super().__init__(message)
         self.status = status
@@ -85,8 +84,8 @@ class MSGPECSerializer(JSONSerializer):
             return data
         try:
             return self._encoder.encode(data).decode("utf-8")
-        except (ValueError, TypeError) as e:
-            raise SerializationError(data, e)
+        except (ValueError, TypeError) as error:
+            raise SerializationError(data) from error
 
     def loads(self, s):
         return self._decoder.decode(s)
@@ -255,17 +254,9 @@ class OpensearchOutput(Output):
         return events
 
     async def _bulk(self, client: AsyncOpenSearch, events: Sequence[Event]) -> None:
-        """Bulk index documents into Opensearch. Uses the parallel_bulk function from the opensearchpy library.
-        The error information is stored in a document with the following structure:
-            json
-            {
-                "op_type": {
-                    "error": "error message",
-                    "status": "status_code",
-                    "exception": "exception message"
-                    }
-                }
-            }
+        """
+        Bulk index documents into Opensearch.
+        Uses the async_streaming_bulk function from the opensearchpy library.
         """
 
         actions = (event.data for event in events)
@@ -275,26 +266,34 @@ class OpensearchOutput(Output):
             helpers.async_streaming_bulk(
                 client,
                 actions,
+                max_retries=0,  # retries break order
                 max_chunk_bytes=self.config.max_chunk_bytes,
                 chunk_size=self.config.chunk_size,
                 raise_on_error=False,
                 raise_on_exception=False,
             )
         ) as send_results:
-            async for success, item in send_results:
+            async for success, action_item in send_results:
+                # TODO improve item to event mapping to allow for automatic retries
                 event = events[index]
                 index += 1
 
                 if success:
                     continue
 
-                logger.debug("event failed to send: %s", item)
+                logger.debug("event failed to send: %s", action_item)
 
-                op_infos = item.values()
-                error_info = list(op_infos)[0] if len(op_infos) > 0 else {}
+                assert isinstance(action_item, dict) and len(action_item) == 1
+                # structure of action_item is always `{ $op_type: { ... } }`
+                op_type, item = typing.cast(tuple[str, dict[str, Any]], action_item.popitem())
 
-                error = BulkError(error_info.get("error", "Failed to index document"), **error_info)
-                event.errors.append(error)
+                event.errors.append(
+                    BulkError(
+                        message=item.get("error", f"Failed to `${op_type}` document"),
+                        exception=item.get("exception"),
+                        status=item.get("status"),
+                    )
+                )
         if index < len(events):
             # TODO improve
             raise FatalOutputError(self, "iteration ended abruptly")
