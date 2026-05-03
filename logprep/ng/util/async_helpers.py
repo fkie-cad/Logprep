@@ -35,7 +35,14 @@ class StoppableTask(Generic[T]):
     """
 
     task: asyncio.Task[T]
-    stop: Callable[[], Awaitable[T]]
+    stop: Callable[[], Awaitable]
+
+    async def stop_on_event(self, event: asyncio.Event) -> None:
+        logger.debug("waiting for event to stop task")
+        await event.wait()
+        logger.debug("event received. stopping")
+        await self.stop()
+        logger.debug("event received. stopped")
 
     def get_name(self) -> str:
         """Calls and returns the result of `get_name` of the underlying task"""
@@ -54,20 +61,17 @@ class StoppableTask(Generic[T]):
         return StoppableTask.from_event(task, stop_event)
 
     @staticmethod
-    def from_event(task: asyncio.Task[T], stop_event: asyncio.Event) -> "StoppableTask[T]":
+    def from_stop(task: asyncio.Task[T], stop: Callable[[], Any]) -> "StoppableTask[T]":
 
         async def _stop():
-            stop_event.set()
+            stop()
             await asyncio.shield(task)
 
         return StoppableTask(task, _stop)
 
-    async def stop_on_event(self, event: asyncio.Event) -> None:
-        logger.debug("waiting for event to stop task")
-        await event.wait()
-        logger.debug("event received. stopping")
-        await self.stop()
-        logger.debug("event received. stopped")
+    @staticmethod
+    def from_event(task: asyncio.Task[T], stop_event: asyncio.Event) -> "StoppableTask[T]":
+        return StoppableTask.from_stop(task, stop_event.set)
 
 
 TaskFactory = Callable[[D], Awaitable[asyncio.Task[T]]]
@@ -229,7 +233,8 @@ async def restart_stoppable_task_on_iter(
     async for data in source:
         if task is not None:
             try:
-                await asyncio.wait_for(task.stop(), cancel_timeout_s)
+                async with asyncio.timeout(cancel_timeout_s):
+                    await task.stop()
             except TimeoutError:
                 logger.debug("task cancelled due to timeout")
                 # task canceled, wait to stop
