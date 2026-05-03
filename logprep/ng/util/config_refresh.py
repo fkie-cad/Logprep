@@ -63,7 +63,8 @@ async def config_refresh_gen(
 
         try:
             # trick to wait for any of both, stop_event or sleep timeout
-            await asyncio.wait_for(stop_event.wait(), timeout=sleep_time)
+            async with asyncio.timeout(sleep_time):
+                await stop_event.wait()
             logger.debug("Config refresh sleep stopped prematurely due to stop_event. Exiting...")
             assert stop_event.is_set()
             break

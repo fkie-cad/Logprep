@@ -92,32 +92,199 @@ Behaviour of HTTP Requests
     * Responds with 405
 """
 
-import queue
+import asyncio
 import typing
+import zlib
+from abc import ABC
+from base64 import b64encode
 from collections.abc import Mapping
 from functools import cached_property
-from multiprocessing import Queue
 
+import aiohttp
 import falcon
 import falcon.asgi
-import requests
+import msgspec
 from attrs import define, field, validators
 
 from logprep.connector.http.input import (
     DEFAULT_META_HEADERS,
-    HttpEndpoint,
-    JSONHttpEndpoint,
-    JSONLHttpEndpoint,
-    PlaintextHttpEndpoint,
+    add_metadata,
+    basic_auth,
     logger,
+    raise_request_exceptions,
     route_compile_helper,
 )
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.ng.abc.event import EventMetadata
 from logprep.ng.abc.input import Input
+from logprep.ng.event.log_event import LogEvent
+from logprep.ng.util.async_helpers import StoppableTask
+from logprep.ng.util.worker.types import SizeLimitedQueue
 from logprep.util import http, rstr
-from logprep.util.credentials import CredentialsFactory
+from logprep.util.credentials import (
+    BasicAuthCredentials,
+    Credentials,
+    CredentialsFactory,
+)
+from logprep.util.helper import add_fields_to
+
+
+class HttpEndpoint(ABC):
+    """Interface for http endpoints.
+    Additional functionality is added to child classes via removable decorators.
+
+    Parameters
+    ----------
+    messages: SizeLimitedQueue
+        Input Events are put here
+    collect_meta: bool
+        Collects Metadata on True (default)
+    metafield_name: str
+        Defines key name for metadata
+    credentials: dict
+        Includes authentication credentials, if unset auth is disabled
+    """
+
+    # pylint: disable=too-many-arguments
+    def __init__(
+        self,
+        messages: SizeLimitedQueue,
+        original_event_field: dict[str, str] | None,
+        collect_meta: bool,
+        metafield_name: str,
+        credentials: list[Credentials] | Credentials | None,
+        metrics: "HttpInput.Metrics",
+        copy_headers_to_logs: set[str],
+    ) -> None:
+        self.messages = messages
+        self.original_event_field = original_event_field
+        self.copy_headers_to_logs = copy_headers_to_logs
+
+        # Deprecated
+        self.collect_meta = collect_meta
+
+        self.metafield_name = metafield_name
+        self.metrics = metrics
+        self.basicauth_b64: list[str] = []
+
+        self.credentials = None
+
+        if credentials:
+            credentials = [credentials] if isinstance(credentials, Credentials) else credentials
+            for cred in credentials:
+                if isinstance(cred, BasicAuthCredentials):
+                    self.basicauth_b64.append(
+                        b64encode(f"{cred.username}:{cred.password}".encode("utf-8")).decode(
+                            "utf-8"
+                        )
+                    )
+            self.credentials = credentials
+
+    def collect_metrics(self):
+        """Increment number of requests"""
+        self.metrics.number_of_http_requests += 1
+
+    async def get_data(self, req: falcon.asgi.Request) -> bytes:
+        """returns the data from the request body
+
+        if the request has a Content-Encoding header with the value gzip, the data will be
+        decompressed using zlib because according to
+        https://docs.python.org/3/library/gzip.html#gzip.decompress
+        zlib with wbits=31 is the faster implementation.
+
+        Parameters
+        ----------
+        req : falcon.asgi.Request
+            the incoming request
+
+        Returns
+        -------
+        bytes
+            data from the request body
+        """
+        data = await req.stream.readall()
+        if encoding := req.get_header("Content-Encoding"):
+            if encoding == "gzip":
+                data = zlib.decompress(data, 31)
+        return data
+
+    async def put_message(self, event: dict, metadata: dict):
+        """Puts message to internal queue"""
+        if self.metafield_name in event:
+            logger.warning("metadata field was in event and got overwritten")
+        await self.messages.put(event | metadata)
+
+
+class JSONHttpEndpoint(HttpEndpoint):
+    """:code:`json` endpoint to get json from request"""
+
+    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder()
+
+    @raise_request_exceptions
+    @basic_auth
+    @add_metadata
+    async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
+        """json endpoint method"""
+        self.collect_metrics()
+        data = await self.get_data(req)
+        if data:
+            event = self._decoder.decode(data)
+            if self.original_event_field:
+                target_field = self.original_event_field["target_field"]
+                event_value = (
+                    data.decode("utf8") if self.original_event_field["format"] == "str" else event
+                )
+                event = {}
+                add_fields_to(event, {target_field: event_value})
+            await self.put_message(event, kwargs["metadata"])
+
+
+class JSONLHttpEndpoint(HttpEndpoint):
+    """:code:`jsonl` endpoint to get jsonl from request"""
+
+    _decoder: msgspec.json.Decoder[dict] = msgspec.json.Decoder()
+
+    @raise_request_exceptions
+    @basic_auth
+    @add_metadata
+    async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
+        """jsonl endpoint method"""
+        self.collect_metrics()
+        data = await self.get_data(req)
+        events = self._decoder.decode_lines(data)
+        for event in events:
+            if self.original_event_field:
+                target_field = self.original_event_field["target_field"]
+                event_value = (
+                    data.decode("utf8") if self.original_event_field["format"] == "str" else event
+                )
+                event = {}
+                add_fields_to(event, {target_field: event_value})
+
+            await self.put_message(event, kwargs["metadata"])
+
+
+class PlaintextHttpEndpoint(HttpEndpoint):
+    """:code:`plaintext` endpoint to get the body from request
+    and put it in :code:`message` field"""
+
+    @raise_request_exceptions
+    @basic_auth
+    @add_metadata
+    async def __call__(self, req, resp, **kwargs):  # pylint: disable=arguments-differ
+        """plaintext endpoint method"""
+        self.collect_metrics()
+        data = await self.get_data(req)
+        event = {"message": data.decode("utf8")}
+        if self.original_event_field:
+            target_field = self.original_event_field["target_field"]
+            event_value = (
+                data.decode("utf8") if self.original_event_field["format"] == "str" else event
+            )
+            event = {}
+            add_fields_to(event, {target_field: event_value})
+        await self.put_message(event, kwargs["metadata"])
 
 
 class HttpInput(Input):
@@ -271,9 +438,7 @@ class HttpInput(Input):
                     "Cannot configure both add_full_event_to_target_field and original_event_field."
                 )
 
-    __slots__: list[str] = ["target", "app", "http_server"]
-
-    messages: typing.Optional[Queue] = None
+    __slots__: list[str] = ["target", "app", "http_server", "messages"]
 
     _endpoint_registry: Mapping[str, type[HttpEndpoint]] = {
         "json": JSONHttpEndpoint,
@@ -291,7 +456,8 @@ class HttpInput(Input):
         schema = "https" if ssl_options else "http"
         self.target = f"{schema}://{host}:{port}"
         self.app: falcon.asgi.App | None = None
-        self.http_server: http.ThreadingHTTPServer | None = None
+        self.http_server: http.AsyncHTTPServer | None = None
+        self.messages: SizeLimitedQueue[dict] = SizeLimitedQueue(self.config.message_backlog_size)
 
     @property
     def config(self) -> Config:
@@ -300,8 +466,6 @@ class HttpInput(Input):
 
     async def setup(self) -> None:
         """setup starts the actual functionality of this connector."""
-
-        await super().setup()
 
         if self.messages is None:
             raise ValueError("message queue `messages` has not been set")
@@ -332,10 +496,15 @@ class HttpInput(Input):
             )
 
         self.app = self._get_asgi_app(endpoints_config)
-        self.http_server = http.ThreadingHTTPServer(
-            self.config.uvicorn_config, self.app, daemon=False, logger_name="HTTPServer"
+
+        self.http_server = http.AsyncHTTPServer(self.config.uvicorn_config, self.app)
+        self._http_server_task = StoppableTask.from_stop(
+            asyncio.create_task(self.http_server.run()), self.http_server.stop
         )
-        self.http_server.start()
+        # give the http server a chance to start before health checks begin
+        await asyncio.sleep(0)
+
+        await super().setup()
 
     @staticmethod
     def _get_asgi_app(endpoints_config: dict) -> falcon.asgi.App:
@@ -347,20 +516,18 @@ class HttpInput(Input):
 
     async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
         """Returns the first message from the queue"""
-        messages = typing.cast(Queue[dict], self.messages)
-
-        self.metrics.message_backlog_size += messages.qsize()
+        self.metrics.message_backlog_size += self.messages.qsize()
         try:
-            message = messages.get(timeout=timeout)
+            async with asyncio.timeout(timeout):
+                message = await self.messages.get()
             raw_message = str(message).encode("utf8")
             return message, raw_message, EventMetadata.from_dict({})
-        except queue.Empty:
+        except TimeoutError:
             return None
 
     async def shut_down(self):
         """Raises Uvicorn HTTP Server internal stop flag and waits to join"""
-        if self.http_server:
-            self.http_server.shut_down()
+        await self._http_server_task.stop()
         await super().shut_down()
 
     @cached_property
@@ -384,14 +551,30 @@ class HttpInput(Input):
         bool
             :code:`True` if all endpoints can be called without error
         """
-        for endpoint in self.health_endpoints:
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(self.config.health_timeout)
+        ) as session:
+
+            async def check_endpoint_status(endpoint: str) -> None:
+                try:
+                    async with session.get(f"{self.target}{endpoint}") as response:
+                        response.raise_for_status()
+                except (aiohttp.ClientError, TimeoutError) as error:
+                    logger.error(
+                        "Health check failed for endpoint: %s due to %s",
+                        endpoint,
+                        str(error),
+                        exc_info=True,
+                    )
+                    raise
+
             try:
-                requests.get(
-                    f"{self.target}{endpoint}", timeout=self.config.health_timeout
-                ).raise_for_status()
-            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as error:
-                logger.error("Health check failed for endpoint: %s due to %s", endpoint, str(error))
+                await asyncio.gather(*map(check_endpoint_status, self.health_endpoints))
+            except (aiohttp.ClientError, TimeoutError):
                 self.metrics.number_of_errors += 1
                 return False
 
         return await super().health()
+
+    async def acknowledge(self, events: list[LogEvent]):
+        logger.info("acknowledge called but not implemented")
