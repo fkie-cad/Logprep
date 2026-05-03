@@ -26,7 +26,7 @@ Example
 import logging
 import typing
 from collections.abc import Sequence
-from functools import cached_property, partial
+from functools import partial
 from socket import getfqdn
 from types import MappingProxyType
 
@@ -201,7 +201,6 @@ class ConfluentKafkaOutput(Output):
 
     def __init__(self, name: str, configuration: "ConfluentKafkaOutput.Config"):
         super().__init__(name, configuration)
-        self._producer: AIOProducer | None = None
 
     @property
     def config(self) -> Config:
@@ -225,8 +224,7 @@ class ConfluentKafkaOutput(Output):
         DEFAULTS.update({"client.id": getfqdn()})
         return DEFAULTS | self.config.kafka_config | injected_config
 
-    @cached_property
-    def _admin(self) -> AdminClient:
+    def _create_admin(self) -> AdminClient:
         """configures and returns the admin client
 
         Returns
@@ -240,7 +238,7 @@ class ConfluentKafkaOutput(Output):
                 admin_config[key] = value
         return AdminClient(admin_config)
 
-    def get_producer(self) -> AIOProducer:
+    def _create_producer(self) -> AIOProducer:
         """
         Configures and returns the asynchronous Kafka producer.
 
@@ -250,12 +248,9 @@ class ConfluentKafkaOutput(Output):
             The pre-configured aiokafka producer object.
         """
 
-        if self._producer is None:
-            self._producer = AIOProducer(self._kafka_config)
+        return AIOProducer(self._kafka_config)
 
-        return self._producer
-
-    def _error_callback(self, error: KafkaException) -> None:
+    async def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
         This callback is served upon calling client.poll()
@@ -268,7 +263,7 @@ class ConfluentKafkaOutput(Output):
         self.metrics.number_of_errors += 1
         logger.error("%s: %s", self.describe(), error)
 
-    def _stats_callback(self, stats_raw: str) -> None:
+    async def _stats_callback(self, stats_raw: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
@@ -335,11 +330,11 @@ class ConfluentKafkaOutput(Output):
         self.metrics.number_of_processed_events += 1
 
         try:
-            producer = self.get_producer()
-            delivery_future = await producer.produce(
+            delivery_future = await self._producer.produce(
                 topic=target,
                 value=self._encoder.encode(document),
             )
+            await self._producer.flush()
             msg = await delivery_future
         except KafkaException as err:
             event.errors.append(err)
@@ -359,23 +354,6 @@ class ConfluentKafkaOutput(Output):
             msg.offset(),
         )
 
-    async def flush(self) -> None:
-        """ensures that all messages are flushed. According to
-        https://confluent-kafka-python.readthedocs.io/en/latest/#confluent_kafka.Producer.flush
-        flush without the timeout parameter will block until all messages are delivered.
-        This ensures no messages will get lost on shutdown.
-        """
-        producer = self.get_producer()
-        remaining_messages = await producer.flush()
-        if remaining_messages:
-            self.metrics.number_of_errors += 1
-            logger.error(
-                "Flushing producer timed out. %s messages are still in the buffer.",
-                remaining_messages,
-            )
-        else:
-            logger.info("Producer flushed successfully. %s messages remaining.", remaining_messages)
-
     async def health(self) -> bool:  # type: ignore[override]
         """Check the health of kafka producer."""
         try:
@@ -392,6 +370,9 @@ class ConfluentKafkaOutput(Output):
     async def setup(self) -> None:
         """Set the confluent kafka output connector."""
 
+        self._producer = self._create_producer()
+        self._admin = self._create_admin()
+
         try:
             await super().setup()
         except KafkaException as error:
@@ -402,5 +383,4 @@ class ConfluentKafkaOutput(Output):
 
         await super().shut_down()
 
-        if self._producer is not None:
-            await self._producer.close()
+        await self._producer.close()
