@@ -337,7 +337,7 @@ class WorkerOrchestrator:
 
             exc = t.exception()
             if exc is not None:
-                logger.error("Worker task %s failed due to an exception", exc_info=exc)
+                logger.error("Worker task %s failed due to an exception", worker.name, exc_info=exc)
                 self._exceptions.append(exc)
                 raise exc
 
@@ -391,13 +391,8 @@ class WorkerOrchestrator:
         )
 
         try:
-            await asyncio.wait_for(
-                # wait_for spawns a task either way, let's do it ourselves and give it a name
-                self._loop.create_task(
-                    self._stop_workers_in_topological_order(), name="orchestrator-shut_down"
-                ),
-                timeout_s,
-            )
+            async with asyncio.timeout(timeout_s):
+                await self._stop_workers_in_topological_order()
         except TimeoutError:
             logger.debug("Encountered TimeoutError")
             unfinished_workers = [t for t in self._all_worker_tasks if not t.done()]
@@ -426,9 +421,8 @@ class WorkerOrchestrator:
                 self._worker_tasks[worker] for worker in group if worker in self._worker_tasks
             ]
             try:
-                results = await asyncio.wait_for(
-                    asyncio.gather(*group_tasks, return_exceptions=True), group_timeout_s
-                )
+                async with asyncio.timeout(group_timeout_s):
+                    results = await asyncio.gather(*group_tasks, return_exceptions=True)
 
             except TimeoutError:
                 logger.error(

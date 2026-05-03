@@ -17,6 +17,8 @@ UVICORN_CONFIG_KEYS = [
     parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
 ]
 
+logger = logging.getLogger("Logprep HTTPServer")
+
 
 class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
     """Singleton Wrapper Class around Uvicorn Thread that controls
@@ -113,3 +115,32 @@ class ThreadingHTTPServer:  # pylint: disable=too-many-instance-attributes
         starting a new one"""
         self.shut_down(wait=wait)
         self.start()
+
+
+class AsyncHTTPServer:
+    """
+    Simple wrapper around uvicorn server.
+    """
+
+    def __init__(self, uvicorn_config: dict, app) -> None:
+
+        internal_uvicorn_config = {
+            "lifespan": "off",
+            "timeout_graceful_shutdown": 10,
+            "http": "httptools",
+        }
+        self.uvicorn_config = uvicorn.Config(**(internal_uvicorn_config | uvicorn_config), app=app)
+        self._server = uvicorn.Server(self.uvicorn_config)
+
+    async def run(self) -> None:
+        """Run the uvicorn server and serve the ASGI app. Blocks until server is stopped"""
+        # for uvicorn_logger_name in ["uvicorn.access", "uvicorn.error"]:
+        # TODO double check this works as intended and does not break existing functionality
+        # logging.getLogger(uvicorn_logger_name).parent = logger
+        # logging.getLogger(uvicorn_logger_name).handlers.clear()
+        await self._server.serve()
+
+    def stop(self) -> None:
+        """Set a one-shot stop signal for the server to gracefully shut down"""
+        self._server.should_exit = True
+        logger.debug("Wait for server to exit gracefully...")
