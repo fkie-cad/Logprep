@@ -21,7 +21,7 @@ Processor Configuration
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.ng.processor.datetime_extractor.rule
+.. automodule:: logprep.processor.datetime_extractor.rule
 """
 
 from datetime import datetime, tzinfo

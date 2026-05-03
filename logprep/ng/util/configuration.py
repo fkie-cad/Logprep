@@ -499,9 +499,9 @@ class Configuration:
 
     If configured, the configuration will only be reloaded if the configuration version changes.
     If HTTP-related errors occur while reloading the configuration
-    (:class:`ConfigGetterException`), :attr:`config_refresh_interval` is set to a
-    quarter of its current value, but never lower than :data:`MIN_CONFIG_REFRESH_INTERVAL`.
-    Values lower than :data:`MIN_CONFIG_REFRESH_INTERVAL` are automatically increased
+    (:class:`ConfigGetterException`), `config_refresh_interval` is set to a
+    quarter of its current value, but never lower than `MIN_CONFIG_REFRESH_INTERVAL`.
+    Values lower than `MIN_CONFIG_REFRESH_INTERVAL` are automatically increased
     to that minimum. Defaults to :code:`None`, which means that the configuration
     will not be refreshed.
 
@@ -519,8 +519,8 @@ class Configuration:
        valid config. There is no further check to ensure credibility.
 
        In case a new configuration could not be retrieved successfully and the
-       :attr:`config_refresh_interval` has already been reduced automatically to
-       :data:`MIN_CONFIG_REFRESH_INTERVAL`, this can lead to blocking behaviour or a
+       `config_refresh_interval` has already been reduced automatically to
+       `MIN_CONFIG_REFRESH_INTERVAL`, this can lead to blocking behaviour or a
        significant reduction in performance, as logprep will frequently retry loading the
        configuration. Because of that, ensure that the configuration endpoint is always
        available.
@@ -849,7 +849,7 @@ class Configuration:
         If configuration sources cannot be retrieved
         (:class:`ConfigGetterException`), the failure is logged, failure metrics are
         incremented, and the :attr:`config_refresh_interval` is reduced to a quarter
-        of its current value (but never below :data:`MIN_CONFIG_REFRESH_INTERVAL`).
+        of its current value (but never below `MIN_CONFIG_REFRESH_INTERVAL`).
         If validation errors occur (:class:`InvalidConfigurationErrors`), the
         failure is logged and metrics are updated, but the interval is not reduced.
 
