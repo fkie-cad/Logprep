@@ -24,6 +24,8 @@ from tests.unit.ng.connector.base import BaseOutputTestCase
 
 helpers.parallel_bulk = mock.MagicMock()
 
+MODULE = OpensearchOutput.__module__
+
 
 class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
     CONFIG = {
@@ -35,43 +37,52 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
     }
 
     @pytest.fixture
-    def mock_search_context(self):
+    def mock_client(self):
         # TODO do we need the whole path, or can we make this prettier?
-        with mock.patch(
-            "logprep.ng.connector.opensearch.output.AsyncOpenSearch", spec=AsyncOpenSearch
-        ) as mock_search_context:
-            mock_search_context.return_value = mock_search_context
-            mock_search_context.cluster = mock.MagicMock()
-            mock_search_context.cluster.health = mock.AsyncMock()
-            mock_search_context.cluster.health.return_value = mock.MagicMock()
-            yield mock_search_context
+        with mock.patch(f"{MODULE}.AsyncOpenSearch", spec=AsyncOpenSearch) as mock_client:
+            mock_client.return_value = mock_client
+            mock_client.cluster = mock.MagicMock()
+            mock_client.cluster.health = mock.AsyncMock()
+            mock_client.cluster.health.return_value = mock.MagicMock()
+            mock_client.transport = mock.MagicMock()
+            mock_client.transport.serializer = mock.MagicMock()
+            mock_client.transport.serializer.dumps = json.dumps
+            yield mock_client
 
     @pytest.fixture
     def mock_async_streaming_bulk_results(self, request):
-        data = request.param if hasattr(request, "param") else []
+        data = request.param if hasattr(request, "param") else None
         return data
 
     @pytest.fixture
     def mock_async_streaming_bulk(self, mock_async_streaming_bulk_results):
-        # TODO do we need the whole path, or can we make this prettier?
-        with mock.patch(
-            "logprep.ng.connector.opensearch.output.helpers.async_streaming_bulk",
-            spec=helpers.async_streaming_bulk,
-        ) as mock_async_streaming_bulk:
+        if mock_async_streaming_bulk_results is not None:
+            with mock.patch(
+                f"{MODULE}.helpers.async_streaming_bulk",
+                spec=helpers.async_streaming_bulk,
+            ) as mock_helper:
 
-            async def gen_return_values(*_, **__):
-                for item in mock_async_streaming_bulk_results:
-                    yield item
+                async def gen_return_values(*_, **__):
+                    for item in mock_async_streaming_bulk_results:
+                        yield item
 
-            mock_async_streaming_bulk.side_effect = gen_return_values
-            yield mock_async_streaming_bulk
+                mock_helper.side_effect = gen_return_values
+                yield mock_helper
+        else:
+            # no mock results configured, calling actual implementation instead
+            with mock.patch(
+                f"{MODULE}.helpers.async_streaming_bulk",
+                wraps=helpers.async_streaming_bulk,
+            ) as mock_helper:
+                yield mock_helper
 
     @pytest.fixture(autouse=True)
-    def autouse_central_fixtures(self, mock_search_context, mock_async_streaming_bulk):
-        yield mock_search_context, mock_async_streaming_bulk  # return technically not required
+    def autouse_central_fixtures(self, mock_client, mock_async_streaming_bulk):
+        yield mock_client, mock_async_streaming_bulk  # return technically not required
 
     @staticmethod
     def set_async_streaming_bulk_results(tuples: Iterable[tuple[bool, dict]]):
+        """Convenience decorator configuring what `helpers.async_streaming_bulk` should return"""
         return pytest.mark.parametrize("mock_async_streaming_bulk_results", [tuples], indirect=True)
 
     # ==========================================================================
@@ -107,33 +118,33 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
         await self.object.setup()
         mock_getmembers.assert_called_with(self.object)
 
-    async def test_health_returns_true_on_success(self, mock_search_context):
-        mock_search_context.cluster.health.return_value = {"status": "green"}
+    async def test_health_returns_true_on_success(self, mock_client):
+        mock_client.cluster.health.return_value = {"status": "green"}
         await self.object.setup()
         assert await self.object.health()
 
     @pytest.mark.parametrize("exception", [SearchException, ConnectionError])
-    async def test_health_returns_false_on_failure(self, exception, mock_search_context):
-        mock_search_context.cluster.health.side_effect = exception
+    async def test_health_returns_false_on_failure(self, exception, mock_client):
+        mock_client.cluster.health.side_effect = exception
         await self.object.setup()
         assert not await self.object.health()
 
-    async def test_health_logs_on_failure(self, mock_search_context):
-        mock_search_context.cluster.health.side_effect = SearchException
+    async def test_health_logs_on_failure(self, mock_client):
+        mock_client.cluster.health.side_effect = SearchException
         await self.object.setup()
         with mock.patch("logging.Logger.error") as mock_error:
             assert not await self.object.health()
             mock_error.assert_called()
 
-    async def test_health_counts_metrics_on_failure(self, mock_search_context):
+    async def test_health_counts_metrics_on_failure(self, mock_client):
         self.object.metrics.number_of_errors = 0
-        mock_search_context.cluster.health.side_effect = SearchException
+        mock_client.cluster.health.side_effect = SearchException
         await self.object.setup()
         assert not await self.object.health()
         assert self.object.metrics.number_of_errors == 1
 
-    async def test_health_returns_false_on_cluster_status_not_green(self, mock_search_context):
-        mock_search_context.cluster.health.return_value = {"status": "yellow"}
+    async def test_health_returns_false_on_cluster_status_not_green(self, mock_client):
+        mock_client.cluster.health.return_value = {"status": "yellow"}
         await self.object.setup()
         assert not await self.object.health()
 
@@ -209,11 +220,8 @@ class TestOpenSearchOutput(BaseOutputTestCase[OpensearchOutput]):
     #     mock_async_streaming_bulk.assert_called_once()
     #     assert mock_async_streaming_bulk.call_args[1]["thread_count"] == 42
 
-
-class TestAsyncStreamingBulk:
-
     @pytest.mark.parametrize(
-        "status_codes, chunk_size, max_retries, maybe_expect_exception",
+        "status_codes, client_kwargs, maybe_expect_exception",
         [
             pytest.param(
                 [
@@ -250,8 +258,8 @@ class TestAsyncStreamingBulk:
             ),
         ],
     )
-    async def test_async_streaming_bulk_maintains_order_parameterized(
-        self, status_codes, client_kwargs, maybe_expect_exception
+    async def test_async_streaming_bulk_maintains_order(
+        self, mock_client, status_codes, client_kwargs, maybe_expect_exception
     ):
         item_id_to_status_code_seq = {i: list(codes) for i, (_, codes) in enumerate(status_codes)}
         item_id_to_expected_success = {i: ok for i, (ok, _) in enumerate(status_codes)}
@@ -276,9 +284,7 @@ class TestAsyncStreamingBulk:
                 ]
             }
 
-        client = mock.MagicMock()
-        client.transport.serializer.dumps = json.dumps
-        client.bulk = mock.AsyncMock(wraps=_bulk)
+        mock_client.bulk = mock.AsyncMock(wraps=_bulk)
 
         actions = ({"_op_type": "index", "id": i} for i in range(len(status_codes)))
 
@@ -286,7 +292,7 @@ class TestAsyncStreamingBulk:
 
         with maybe_expect_exception:
             async for success, item in helpers.async_streaming_bulk(
-                client,
+                mock_client,
                 actions,
                 max_backoff=0,  # disable sleep when retrying
                 max_chunk_bytes=9999,  # no limit
