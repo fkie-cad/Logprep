@@ -240,6 +240,58 @@ class Metric(ABC):
 
         return with_append
 
+    @staticmethod
+    def measure_time_async(metric_name: str = "processing_time_per_event"):
+        """Decorate function to measure execution time for function and add results to event."""
+
+        if not os.environ.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
+
+            def without_append(func):
+                async def inner(self, *args, **kwargs):  # nosemgrep
+                    metric = getattr(self.metrics, metric_name)
+                    with metric.tracker.labels(**metric.labels).time():
+                        # TODO does this make sense for async functions?!
+                        result = await func(self, *args, **kwargs)
+                    return result
+
+                return inner
+
+            return without_append
+
+        def with_append(func):
+            async def inner(self, *args, **kwargs):  # nosemgrep
+                metric = getattr(self.metrics, metric_name)
+                begin = time.perf_counter()
+                # TODO does this make sense for async functions?!
+                result = await func(self, *args, **kwargs)
+                duration = time.perf_counter() - begin
+                metric += duration
+
+                if hasattr(self, "rule_type"):
+                    event = args[0]
+                    if event:
+                        _add_field_to_silent_fail(
+                            event=event,
+                            field=(f"processing_times.{self.rule_type}", duration),
+                            rule=None,
+                        )
+                if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
+                    event = args[0]
+                    if event:
+                        _add_field_to_silent_fail(
+                            event=event, field=("processing_times.pipeline", duration), rule=None
+                        )
+                        _add_field_to_silent_fail(
+                            event=event,
+                            field=("processing_times.hostname", gethostname()),
+                            rule=None,
+                        )
+                return result
+
+            return inner
+
+        return with_append
+
 
 @define(kw_only=True)
 class CounterMetric(Metric):

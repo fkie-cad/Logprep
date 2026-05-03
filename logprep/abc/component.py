@@ -77,7 +77,7 @@ class Component(ABC):
         """Labels for the metrics"""
         return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
 
-    def __init__(self, name: str, configuration: "Config", pipeline_index: int | None = None):
+    def __init__(self, name: str, configuration: Config, pipeline_index: int | None = None):
         self._config = configuration
         self.name = name
         self.pipeline_index = pipeline_index

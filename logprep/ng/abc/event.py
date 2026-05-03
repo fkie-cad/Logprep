@@ -2,13 +2,15 @@
 
 """abstract module for event"""
 
-from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from abc import ABC
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Optional
 
-from logprep.ng.event.event_state import EventState, EventStateType
+from attrs import define, field, validators
+
 from logprep.util.helper import (
     FieldValue,
+    Missing,
     add_fields_to,
     get_dotted_field_value,
     pop_dotted_field_value,
@@ -21,22 +23,25 @@ if TYPE_CHECKING:  # pragma: no cover
 class EventMetadata(ABC):
     """Abstract EventMetadata Class to define the Interface"""
 
+    @staticmethod
+    def from_dict(_: dict):
+        """
+        Constructs a metadata object from the given dict.
+        Currently implemented as a placeholder for future development.
+        """
+        return EventMetadata()
+
 
 class Event(ABC):
     """
     Abstract base class representing an event in the processing pipeline.
 
-    Encapsulates data, warnings, errors, and processing state.
+    Encapsulates data, warnings and errors.
     """
 
-    __slots__: tuple[str, ...] = ("data", "_state", "errors", "warnings")
+    __slots__: tuple[str, ...] = ("data", "errors", "warnings")
 
-    def __init__(
-        self,
-        data: dict[str, Any],
-        *,
-        state: EventStateType | EventState | None = None,
-    ) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         """
         Initialize an Event instance.
 
@@ -44,44 +49,10 @@ class Event(ABC):
         ----------
         data : dict[str, Any]
             The raw or processed data associated with the event.
-        state : EventStateType, EventState, optional
-            An optional initial EventState. Defaults to a new EventState() if not provided.
-
-        Examples
-        --------
-        Basic usage with automatic state:
-
-        >>> event = Event({"source": "syslog"})
-        >>> event.data
-        {'source': 'syslog'}
-        >>> event.state.current_state.name
-        'RECEIVING'
-
-        Providing a custom state
-        >>> custom_state = EventStateType.PROCESSED
-        >>> event = Event({"source": "api"}, state=custom_state)
-        >>> event.state is custom_state
-        True
-
-        Handling warnings and errors:
-
-        >>> event = Event({"id": 123})
-        >>> event.warnings.append(ValueError("Missing timestamp"))
-        >>> event.errors.append(ValueError("Invalid format"))
-        >>> isinstance(event.errors[0], ValueError)
-        True
         """
-        self._state: EventState = EventState()
-
-        if isinstance(state, EventState):
-            self._state = state
-        elif state is not None and state in list(EventStateType):
-            self._state.current_state = state
-        elif state is not None:
-            raise TypeError("state must be an instance of EventStateType or EventState, or None")
         self.data: dict[str, Any] = data
-        self.warnings: list[Exception] = []
         self.errors: list[Exception] = []
+        self.warnings: list[Exception] = []
         super().__init__()
 
     def __eq__(self, other: object) -> bool:
@@ -119,13 +90,7 @@ class Event(ABC):
         return hash(self._deep_freeze(self.data))
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(data={self.data}, state={self.state.current_state})"
-
-    @property
-    def state(self) -> EventState:
-        """Return the current EventState instance."""
-
-        return self._state
+        return f"{self.__class__.__name__}(data={self.data})"
 
     def _deep_freeze(self, obj: Any) -> Any:
         """
@@ -197,7 +162,7 @@ class Event(ABC):
         """
         return get_dotted_field_value(self.data, dotted_field)
 
-    def pop_dotted_field_value(self, dotted_field: str) -> FieldValue:
+    def pop_dotted_field_value(self, dotted_field: str) -> FieldValue | Missing:
         """
         Shortcut method that delegates to the global `pop_dotted_field_value` helper.
 
@@ -214,6 +179,16 @@ class Event(ABC):
         return pop_dotted_field_value(self.data, dotted_field)
 
 
+@define
+class OutputSpec:
+    """
+    Specifies an output by name and which target (e.g. topic for kafka, index for opensearch) should be addressed.
+    """
+
+    output_name: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
+    output_target: str = field(validator=(validators.instance_of(str), validators.min_len(1)))
+
+
 class ExtraDataEvent(Event):
     """
     Abstract base class for events that can contain extra data.
@@ -224,116 +199,21 @@ class ExtraDataEvent(Event):
 
     __slots__ = ("outputs",)
 
-    outputs: tuple[dict[str, str]]
+    outputs: Sequence[OutputSpec]
 
     def __init__(
-        self, data: dict[str, str], *, outputs: tuple[dict], state: EventStateType | None = None
+        self,
+        data: dict[str, str],
+        *,
+        outputs: Sequence[OutputSpec],
     ) -> None:
         """
         Parameters
         ----------
         data : dict[str, str]
             The main data payload for the SRE event.
-        state : EventStateType
-            The state of the SRE event.
-        outputs : Iterable[str]
+        outputs : Sequence[OutputSpec]
             The collection of output connector names associated with the SRE event
         """
         self.outputs = outputs
-        state = state if state is not None else EventStateType.PROCESSED
-        super().__init__(data=data, state=state)
-
-
-class EventBacklog(ABC):
-    """
-    Abstract base class for event backlogs.
-
-    Defines the interface for managing the registration, unregistration, and retrieval of events
-    based on their processing state. Subclasses must implement the core methods. The `unregister`
-    method is automatically wrapped to prevent misuse with disallowed final states.
-    """
-
-    def __init_subclass__(cls, **kwargs: dict) -> None:
-        """
-        Automatically wraps the subclass's `unregister` method to enforce a state check.
-
-        Wrapping only happens if the subclass explicitly overrides `unregister`.
-
-        Parameters
-        ----------
-        **kwargs : dict
-            Additional keyword arguments passed to the superclass.
-        """
-        super().__init_subclass__(**kwargs)
-
-        if "unregister" in cls.__dict__:
-            original = cls.__dict__["unregister"]
-
-            def guarded_unregister(self, state_type: EventStateType) -> Iterable[Event]:
-                """
-                Wrapper that enforces allowed final states for `unregister`.
-
-                Raises
-                ------
-                ValueError
-                    If an invalid state is passed.
-                """
-
-                if state_type not in (EventStateType.FAILED, EventStateType.ACKED):
-                    raise ValueError(
-                        f"Invalid state_type: {state_type}, state must be in "
-                        f"{(EventStateType.FAILED, EventStateType.ACKED)}"
-                    )
-
-                return original(self, state_type)
-
-            setattr(cls, "unregister", guarded_unregister)
-
-    @abstractmethod
-    def register(self, events: Iterable[Event]) -> None:
-        """
-        Register one or more events to the backlog.
-
-        Parameters
-        ----------
-        events : Iterable[Event]
-            An iterable of event instances to be added to the backlog.
-        """
-
-    @abstractmethod
-    def unregister(self, state_type: EventStateType) -> Iterable[Event]:
-        """
-        Unregister events from the backlog with the given final state.
-
-        Parameters
-        ----------
-        state_type : EventStateType
-            Final state indicating why the events should be removed.
-            Only `FAILED` and `ACKED` are permitted.
-
-        Returns
-        -------
-        Iterable[Event]
-            Events that were unregistered from the backlog.
-
-        Raises
-        ------
-        ValueError
-            If an invalid state is passed (automatically enforced).
-        """
-
-    @abstractmethod
-    def get(self, state_type: EventStateType) -> Iterable[Event]:
-        """
-        Retrieve all events currently in the backlog that match a specific processing state.
-
-        Parameters
-        ----------
-        state_type : EventStateType
-            The processing state used to filter events.
-
-        Returns
-        -------
-        Iterable[Event]
-            All events currently in the backlog with the specified state.
-        """
+        super().__init__(data=data)

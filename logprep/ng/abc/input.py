@@ -1,3 +1,5 @@
+# pylint: disable=line-too-long
+
 """This module provides the abstract base class for all input endpoints.
 New input endpoint types are created by implementing it.
 """
@@ -10,22 +12,20 @@ import os
 import typing
 import zlib
 from abc import abstractmethod
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from copy import deepcopy
 from functools import cached_property
 from hmac import HMAC
-from typing import Self
 from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
-from logprep.abc.connector import Connector
 from logprep.abc.exceptions import LogprepException
 from logprep.metrics.metrics import Metric
-from logprep.ng.abc.event import EventBacklog
-from logprep.ng.event.event_state import EventStateType
+from logprep.ng.abc.connector import Connector
+from logprep.ng.abc.event import EventMetadata
+from logprep.ng.event.error_event import ErrorEvent
 from logprep.ng.event.log_event import LogEvent
-from logprep.ng.event.set_event_backlog import SetEventBacklog
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.util.converters import convert_from_dict
 from logprep.util.helper import (
@@ -83,11 +83,11 @@ class InputWarning(LogprepException):
         super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
 
 
-class SourceDisconnectedWarning(InputWarning):
+class SourceDisconnectedWarning(InputWarning, StopAsyncIteration):
     """Lost (or failed to establish) contact with the source."""
 
 
-class InputIterator(Iterator):
+class InputIterator(AsyncIterator):
     """Base Class for an input Iterator"""
 
     def __init__(self, input_connector: "Input", timeout: float):
@@ -104,18 +104,7 @@ class InputIterator(Iterator):
         self.input_connector = input_connector
         self.timeout = timeout
 
-    def __iter__(self) -> Self:
-        """Return the iterator instance itself.
-
-        Returns
-        -------
-        Self
-            The iterator instance (self).
-        """
-
-        return self
-
-    def __next__(self) -> LogEvent | None:
+    async def __anext__(self) -> LogEvent | ErrorEvent | None:
         """Return the next event in the Input Connector within the configured timeout.
 
         Returns
@@ -123,7 +112,7 @@ class InputIterator(Iterator):
         LogEvent | None
             The next event retrieved from the underlying data source.
         """
-        event = self.input_connector.get_next(timeout=self.timeout)
+        event = await self.input_connector.get_next(timeout=self.timeout)
         logger.debug(
             "InputIterator fetching next event with timeout %s, is None: %s",
             self.timeout,
@@ -132,7 +121,7 @@ class InputIterator(Iterator):
         return event
 
 
-class Input(Connector):
+class Input(Connector, AsyncIterator):
     """Connect to a source for log data."""
 
     class Metrics(Connector.Metrics):
@@ -151,6 +140,10 @@ class Input(Connector):
         See :class:`.PreprocessingConfig` for further details.
         """
 
+        timeout: float = field(
+            validator=(validators.instance_of(float), validators.gt(0)), default=5.0, eq=False
+        )
+
         _version_information: dict = field(
             validator=validators.instance_of(dict),
             default={
@@ -160,7 +153,6 @@ class Input(Connector):
         )
 
     def __init__(self, name: str, configuration: "Input.Config") -> None:
-        self.event_backlog: EventBacklog = SetEventBacklog()
         super().__init__(name, configuration)
 
     @property
@@ -193,17 +185,9 @@ class Input(Connector):
 
         return InputIterator(self, timeout)
 
-    def acknowledge(self) -> None:
-        """Acknowledge all delivered events, so Input Connector can return final ACK state.
-
-        As side effect, all older events with state ACKED has to be removed from `event_backlog`
-        before acknowledging new ones.
-        """
-
-        self.event_backlog.unregister(state_type=EventStateType.ACKED)
-
-        for event in self.event_backlog.get(state_type=EventStateType.DELIVERED):
-            event.state.next_state()
+    @abstractmethod
+    async def acknowledge(self, events: list[LogEvent]) -> None:
+        """Acknowledge all delivered events."""
 
     @property
     def _add_hmac(self) -> bool:
@@ -254,23 +238,8 @@ class Input(Connector):
         """Check and return if the event should be written into one singular field."""
         return bool(self.config.preprocessing.add_full_event_to_target_field)
 
-    def _get_raw_event(self, timeout: float) -> bytes | None:  # pylint: disable=unused-argument
-        """Implements the details how to get the raw event
-
-        Parameters
-        ----------
-        timeout : float
-            timeout
-
-        Returns
-        -------
-        raw_event : bytes
-            The retrieved raw event
-        """
-        return None
-
     @abstractmethod
-    def _get_event(self, timeout: float) -> tuple:
+    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
         """Implements the details how to get the event
 
         Parameters
@@ -280,30 +249,21 @@ class Input(Connector):
 
         Returns
         -------
-        (event, raw_event, metadata)
+        (event, raw_event, metadata) | None
         """
 
-    def _register_failed_event(
-        self,
-        event: dict | None,
-        raw_event: bytes | None,
-        metadata: dict | None,
-        error: Exception,
-    ) -> None:
-        """Helper method to register the failed event to event backlog."""
+    async def __anext__(self) -> LogEvent | ErrorEvent | None:
+        """Return the next event in the Input Connector within the configured timeout.
 
-        error_log_event = LogEvent(
-            data=event if isinstance(event, dict) else {},
-            original=raw_event if raw_event is not None else b"",
-            metadata=metadata,  # type: ignore
-        )
-        error_log_event.errors.append(error)
-        error_log_event.state.current_state = EventStateType.FAILED
+        Returns
+        -------
+        LogEvent | None
+            The next event retrieved from the underlying data source.
+        """
+        return await self.get_next(timeout=self.config.timeout)
 
-        self.event_backlog.register(events=[error_log_event])
-
-    @Metric.measure_time()
-    def get_next(self, timeout: float) -> LogEvent | None:
+    @Metric.measure_time_async()
+    async def get_next(self, timeout: float) -> LogEvent | ErrorEvent | None:
         """Return the next document
 
         Parameters
@@ -316,77 +276,70 @@ class Input(Connector):
         input : LogEvent, None
             Input log data.
         """
-        self.acknowledge()
-        event: dict | None = None
-        raw_event: bytes | None = None
-        metadata: dict | None = None
-
         try:
-            event, raw_event, metadata = self._get_event(timeout)
+            event_tuple = await self._get_event(timeout)
 
-            if event is None:
+            if event_tuple is None:
                 return None
 
-            if not isinstance(event, dict):
-                raise CriticalInputError(self, "not a dict", event)
+            event_dict, event_bytes, metadata = event_tuple
 
-            self.metrics.number_of_processed_events += 1
-
-            try:
-                if self._add_full_event_to_target_field:
-                    assert self.config.preprocessing.add_full_event_to_target_field is not None
-                    self._write_full_event_to_target_field(
-                        event,
-                        raw_event,
-                        self.config.preprocessing.add_full_event_to_target_field,
-                    )
-                if self._add_hmac:
-                    event = self._add_hmac_to(event, raw_event, self.config.preprocessing.hmac)
-                if self._add_version_info:
-                    self._add_version_information_to_event(
-                        event,
-                        self.config.preprocessing.version_info_target_field,
-                    )
-                if self._add_log_arrival_time_information:
-                    self._add_arrival_time_information_to_event(
-                        event,
-                        self.config.preprocessing.log_arrival_time_target_field,
-                    )
-                if self._add_log_arrival_timedelta_information:
-                    assert self.config.preprocessing.log_arrival_timedelta is not None
-                    self._add_arrival_timedelta_information_to_event(
-                        event,
-                        self.config.preprocessing.log_arrival_timedelta,
-                        self.config.preprocessing.log_arrival_time_target_field,
-                    )
-                if self._add_env_enrichment:
-                    self._add_env_enrichment_to_event(
-                        event, self.config.preprocessing.enrich_by_env_variables
-                    )
-            except (FieldExistsWarning, TimeParserException) as error:
-                raise CriticalInputError(self, error.args[0], event) from error
+            if not isinstance(event_dict, dict):
+                raise CriticalInputError(self, "not a dict", event_dict)
         except CriticalInputError as error:
-            self._register_failed_event(
-                event=event,
-                raw_event=raw_event,
-                metadata=metadata,  # type: ignore
-                error=error,
-            )
-            return None
+            return ErrorEvent.from_input_failure(error)
 
-        log_event = LogEvent(
-            data=event,
-            original=raw_event,  # type: ignore
-            metadata=metadata,  # type: ignore
+        event = LogEvent(
+            data=event_dict,
+            original=event_bytes,
+            metadata=metadata,
         )
 
-        self.event_backlog.register(events=[log_event])
-        log_event.state.next_state()
+        self.metrics.number_of_processed_events += 1
 
-        return log_event
+        try:
+            await self._preprocess(event)
+        except CriticalInputError as error:
+            logger.exception("Error during preprocessing")
+            event.errors.append(error)
+            return ErrorEvent.from_failed_event(event)
 
-    def batch_finished_callback(self) -> None:
-        """Can be called by output connectors after processing a batch of one or more records."""
+        return event
+
+    async def _preprocess(self, event: LogEvent) -> None:
+        try:
+            if self._add_full_event_to_target_field:
+                assert self.config.preprocessing.add_full_event_to_target_field is not None
+                self._write_full_event_to_target_field(
+                    event.data,
+                    event.original,
+                    self.config.preprocessing.add_full_event_to_target_field,
+                )
+            if self._add_hmac:
+                self._add_hmac_to(event.data, event.original, self.config.preprocessing.hmac)
+            if self._add_version_info:
+                self._add_version_information_to_event(
+                    event.data,
+                    self.config.preprocessing.version_info_target_field,
+                )
+            if self._add_log_arrival_time_information:
+                self._add_arrival_time_information_to_event(
+                    event.data,
+                    self.config.preprocessing.log_arrival_time_target_field,
+                )
+            if self._add_log_arrival_timedelta_information:
+                assert self.config.preprocessing.log_arrival_timedelta is not None
+                self._add_arrival_timedelta_information_to_event(
+                    event.data,
+                    self.config.preprocessing.log_arrival_timedelta,
+                    self.config.preprocessing.log_arrival_time_target_field,
+                )
+            if self._add_env_enrichment:
+                self._add_env_enrichment_to_event(
+                    event.data, self.config.preprocessing.enrich_by_env_variables
+                )
+        except (FieldExistsWarning, TimeParserException) as error:
+            raise CriticalInputError(self, error.args[0], event.data) from error
 
     def _add_env_enrichment_to_event(self, event: dict, enrichments: dict) -> None:
         """Add the env enrichment information to the event"""

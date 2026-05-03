@@ -4,13 +4,13 @@
 
 import itertools
 import json
+import typing
 from copy import deepcopy
 from logging import getLogger
 from pathlib import Path
 from unittest import mock
 
 import pytest
-from requests.exceptions import HTTPError
 import responses
 from attrs import asdict
 from ruamel.yaml import YAML
@@ -27,19 +27,19 @@ from logprep.processor.base.exceptions import (
 from logprep.processor.base.rule import Rule
 from logprep.util.defaults import RULE_FILE_EXTENSIONS
 from logprep.util.getter import HttpGetter, RefreshableGetterError
-from tests.unit.component.base import BaseComponentTestCase
+from tests.unit.ng.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
 
+ProcessorTypeT = typing.TypeVar("ProcessorTypeT", bound=Processor)
 
-class BaseProcessorTestCase(BaseComponentTestCase):
+
+class BaseProcessorTestCase(BaseComponentTestCase[ProcessorTypeT], typing.Generic[ProcessorTypeT]):
     mocks: dict = {}
 
     CONFIG: dict = {}
 
     logger = getLogger()
-
-    object: Processor | None = None
 
     patchers: list | None = None
 
@@ -77,17 +77,17 @@ class BaseProcessorTestCase(BaseComponentTestCase):
                         rules.append(rule)
         return rules
 
-    def _load_rule(self, rule: dict | Rule):
+    async def _load_rule(self, rule: dict | Rule):
         assert isinstance(self.object, Processor)
         self.object._rule_tree = RuleTree()
-        rule = (
-            self.object.rule_class.create_from_dict(rule)
-            if isinstance(rule, dict) and self.object.rule_class is not None
-            else rule
-        )
+
+        if isinstance(rule, dict):
+            assert self.object.rule_class is not None, "rule_class is required if dict is passed"
+            rule = self.object.rule_class.create_from_dict(rule)
+
         self.object._rule_tree.add_rule(rule)
 
-    def setup_method(self) -> None:
+    async def async_setup(self) -> None:
         """
         setUp class for the imported TestCase
         """
@@ -96,7 +96,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             patcher = mock.patch(name, **kwargs)
             patcher.start()
             self.patchers.append(patcher)
-        super().setup_method()
+        await super().async_setup()
         self.rules = self.set_rules(self.rules_dirs)
         self.match_all_event = LogEvent(
             {
@@ -121,10 +121,10 @@ class BaseProcessorTestCase(BaseComponentTestCase):
                 "applyrule": "yes",
                 "A": "foobarfoo",
             },
-            original="",
+            original=b"",
         )  # this is an event that can be used in all processor tests, cause it matches everywhere
 
-    def teardown_method(self) -> None:
+    async def async_teardown(self) -> None:
         """teardown for all methods"""
         assert isinstance(self.patchers, list)
         while len(self.patchers) > 0:
@@ -200,9 +200,9 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert len(rules) == len(object_rules)
 
     @mock.patch("logging.Logger.debug")
-    def test_process_writes_debug_messages(self, mock_debug):
+    async def test_process_writes_debug_messages(self, mock_debug):
         event = LogEvent({}, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         mock_debug.assert_called()
 
     def test_config_attribute_is_config_object(self):
@@ -272,18 +272,18 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         for metric1, metric2 in pairs:
             assert metric1.name != metric2.name, f"{metric1.name} == {metric2.name}"
 
-    def test_process_return_event_object(self):
+    async def test_process_return_event_object(self):
         event = LogEvent({"some": "event"}, original=b"")
-        result = self.object.process(event)
+        result = await self.object.process(event)
         assert isinstance(result, LogEvent)
 
-    def test_process_collects_errors_in_event_object(self):
+    async def test_process_collects_errors_in_event_object(self):
         with mock.patch.object(
             self.object,
             "_apply_rules",
             side_effect=ProcessingCriticalError("side effect", rule=self.object.rules[0]),
         ):
-            result = self.object.process(self.match_all_event)
+            result = await self.object.process(self.match_all_event)
         assert len(result.errors) > 0, "minimum one error should be in result object"
 
     def test_invalid_rule_raises(self, caplog):

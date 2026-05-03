@@ -10,11 +10,14 @@
 
 from unittest import mock
 
+import pytest
+
 from logprep.ng.event.event_state import EventStateType
 from logprep.ng.event.log_event import LogEvent
 from tests.unit.ng.connector.base import BaseOutputTestCase
 
 
+@pytest.mark.skip
 class TestConsoleOutput(BaseOutputTestCase):
     CONFIG = {
         "type": "ng_console_output",

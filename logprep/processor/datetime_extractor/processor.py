@@ -57,6 +57,11 @@ class DatetimeExtractor(FieldManager):
         if destination_field:
             datetime_value = get_dotted_field_value(event, datetime_field)
 
+            if not isinstance(datetime_value, str):
+                raise ValueError(
+                    f"expected string as source field value, got {type(datetime_value)}"
+                )
+
             parsed_timestamp = TimeParser.from_string(datetime_value)
 
             if parsed_timestamp.tzname() == "UTC":

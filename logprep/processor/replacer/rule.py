@@ -87,7 +87,9 @@ Examples for replacer:
 """
 
 import re
-from typing import NamedTuple, List
+import typing
+from dataclasses import dataclass
+from typing import List
 
 from attrs import define, field, validators
 
@@ -100,7 +102,8 @@ START = "%{"
 END = "}"
 
 
-class Replacement(NamedTuple):
+@dataclass
+class Replacement:
     """Contains information how to replace the target text"""
 
     value: str
@@ -110,7 +113,8 @@ class Replacement(NamedTuple):
     greedy: bool
 
 
-class ReplacementTemplate(NamedTuple):
+@dataclass
+class ReplacementTemplate:
     """Contains list of Replacement tuples and prefix that should not be replaced"""
 
     prefix: str
@@ -144,12 +148,17 @@ class ReplacerRule(FieldManagerRule):
         overwrite_target: bool = field(validator=validators.instance_of(bool), default=True)
         """Overwrite the target field value if exists. Defaults to :code:`True`"""
 
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast("ReplacerRule.Config", self._config)
+
     def __init__(
         self, filter_rule: FilterExpression, config: "ReplacerRule.Config", processor_name: str
     ) -> None:
         super().__init__(filter_rule, config, processor_name)
         self.templates = {}
-        for source, template in self._config.mapping.items():
+        for source, template in self.config.mapping.items():
             self.templates[source] = self._get_replacement_strings(template)
 
     @staticmethod

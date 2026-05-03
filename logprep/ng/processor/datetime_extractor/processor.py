@@ -21,12 +21,14 @@ Processor Configuration
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.ng.processor.datetime_extractor.rule
+.. automodule:: logprep.processor.datetime_extractor.rule
 """
 
+import typing
 from datetime import datetime, tzinfo
 
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.rule import Rule
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
@@ -47,7 +49,8 @@ class DatetimeExtractor(FieldManager):
             local_timezone_name += f"{tz_name[:-2]}:{tz_name[-2:]}"
         return local_timezone_name
 
-    def _apply_rules(self, event: dict, rule: DatetimeExtractorRule) -> None:
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        rule = typing.cast(DatetimeExtractorRule, rule)
         datetime_field = rule.source_fields[0]
         destination_field = rule.target_field
 
@@ -56,6 +59,11 @@ class DatetimeExtractor(FieldManager):
 
         if destination_field:
             datetime_value = get_dotted_field_value(event, datetime_field)
+
+            if not isinstance(datetime_value, str):
+                raise ValueError(
+                    f"expected string as source field value, got {type(datetime_value)}"
+                )
 
             parsed_timestamp = TimeParser.from_string(datetime_value)
 

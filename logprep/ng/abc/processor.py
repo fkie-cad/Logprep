@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, Type
 
 from attrs import define, field, validators
 
-from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metrics import Metric
+from logprep.ng.abc.component import NgComponent as Component
 from logprep.ng.event.log_event import LogEvent
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.helper import (
@@ -102,7 +102,7 @@ class Processor(Component):
             "name": self.name,
         }
 
-    def process(self, event: LogEvent) -> LogEvent:
+    async def process(self, event: LogEvent) -> LogEvent:
         """Process a log event.
 
         Parameters
@@ -117,6 +117,7 @@ class Processor(Component):
             extra data
 
         """
+        # TODO make processors async
         self._event = event
         logger.debug("%s processing event %s", self.describe(), event)
         if self._bypass_rule_tree:
@@ -255,7 +256,15 @@ class Processor(Component):
                 overwrite_target=getattr(rule, "overwrite_target", False),
             )
 
-    def setup(self) -> None:
-        super().setup()
+    async def setup(self) -> None:
+        """Set up the processor."""
+
+        await super().setup()
+
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics to show them on startup
+
+    async def shut_down(self) -> None:
+        """Shut down the processor and run required cleanups"""
+
+        await super().shut_down()

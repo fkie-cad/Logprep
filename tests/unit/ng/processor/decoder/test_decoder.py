@@ -7,6 +7,7 @@ from copy import deepcopy
 import pytest
 
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.processor.decoder.processor import Decoder
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
 from logprep.util.typing import is_list_of
 from tests.unit.ng.processor.base import BaseProcessorTestCase
@@ -19,7 +20,7 @@ test_cases = deepcopy(non_ng_test_cases)
 failure_test_cases = deepcopy(non_ng_failure_test_cases)
 
 
-class TestDecoder(BaseProcessorTestCase):
+class TestDecoder(BaseProcessorTestCase[Decoder]):
 
     CONFIG: dict = {
         "type": "ng_decoder",
@@ -30,20 +31,20 @@ class TestDecoder(BaseProcessorTestCase):
         "rule, event, expected",
         test_cases,
     )
-    def test_testcases(self, rule, event, expected):
-        self._load_rule(rule)
+    async def test_testcases(self, rule, event, expected):
+        await self._load_rule(rule)
         event = LogEvent(event, original=b"")
-        result = self.object.process(event)
+        result = await self.object.process(event)
         assert event.data == expected, f"{result.errors}"
 
     @pytest.mark.parametrize(
         "rule, event, expected",
         failure_test_cases,
     )
-    def test_testcases_failure_handling(self, rule, event, expected):
-        self._load_rule(rule)
+    async def test_testcases_failure_handling(self, rule, event, expected):
+        await self._load_rule(rule)
         event = LogEvent(event, original=b"")
-        result = self.object.process(event)
+        result = await self.object.process(event)
         assert len(result.errors) > 0 or len(result.warnings) > 0
         assert is_list_of(
             result.errors, ProcessingError
@@ -53,7 +54,7 @@ class TestDecoder(BaseProcessorTestCase):
         ), f"ProcessingWarning expected: {result.warnings}"
         assert event.data == expected
 
-    def test_decodes_different_source_json_escaping(self):
+    async def test_decodes_different_source_json_escaping(self):
         """has to be tested from external file to avoid auto format from black"""
         rule = {
             "filter": "message",
@@ -63,9 +64,9 @@ class TestDecoder(BaseProcessorTestCase):
             for line in f.readlines():
                 log_input, source_format, expected_output = line.split(",")
                 rule["decoder"]["source_format"] = source_format
-                self._load_rule(rule)
+                await self._load_rule(rule)
                 expected_output = expected_output.lstrip().strip("\n")
                 event = self.object._decoder.decode(log_input)
                 event = LogEvent(event, original=b"")
-                self.object.process(event)
+                await self.object.process(event)
                 assert json.dumps(event.data["parsed"]) == expected_output

@@ -2,17 +2,50 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug non-ng example pipeline",
+            "name": "pipeline",
             "type": "debugpy",
             "request": "launch",
             "program": "logprep/run_logprep.py",
-            "console": "integratedTerminal",
+            "console": "internalConsole",
             "args": [
                 "run",
                 "examples/exampledata/config/pipeline.yml"
             ],
             "env": {
                 "PROMETHEUS_MULTIPROC_DIR": "/tmp/logprep"
+            },
+        },
+        {
+            "name": "ng pipeline",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "logprep/run_ng.py",
+            "console": "internalConsole",
+            "args": [
+                "run",
+                "examples/exampledata/config/ng_pipeline.yml"
+            ],
+            "env": {
+                "PROMETHEUS_MULTIPROC_DIR": "/tmp/logprep",
+                // async debug can lead to segfaults with opensearch and maybe kafka as well
+                "PYTHONASYNCIODEBUG": "1",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "ng connector",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "logprep/run_ng.py",
+            "console": "internalConsole",
+            "args": [
+                "run",
+                "examples/exampledata/config/ng_http_pipeline.yml"
+            ],
+            "env": {
+                "PROMETHEUS_MULTIPROC_DIR": "/tmp/logprep",
+                // async debug can lead to segfaults with opensearch and maybe kafka as well
+                "PYTHONASYNCIODEBUG": "1",
             },
             "justMyCode": false
         }
