@@ -24,7 +24,7 @@ Processor Configuration
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.ng.processor.network_comparison.rule
+.. automodule:: logprep.processor.network_comparison.rule
 """
 
 import typing
