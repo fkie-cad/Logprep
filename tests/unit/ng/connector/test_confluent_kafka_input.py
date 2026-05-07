@@ -16,7 +16,6 @@ from unittest import mock
 
 import pytest
 from confluent_kafka import OFFSET_BEGINNING, KafkaError, KafkaException
-from confluent_kafka.admin import AdminClient
 from confluent_kafka.aio import AIOConsumer
 
 from logprep.factory import Factory
@@ -78,14 +77,6 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             yield mock_consumer
 
     @pytest.fixture
-    def mock_admin(self):
-        with mock.patch(
-            "logprep.ng.connector.confluent_kafka.input.AdminClient", spec=AdminClient
-        ) as admin:
-            admin.return_value = admin
-            yield admin
-
-    @pytest.fixture
     def mock_executor(self):
         with mock.patch(
             "logprep.ng.connector.confluent_kafka.input.concurrent.futures.ThreadPoolExecutor",
@@ -95,8 +86,8 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
             yield executor
 
     @pytest.fixture(autouse=True)
-    def autouse_central_fixtures(self, mock_consumer, mock_admin, mock_executor):
-        yield mock_consumer, mock_admin, mock_executor  # return technically not required
+    def autouse_central_fixtures(self, mock_consumer, mock_executor):
+        yield mock_consumer, mock_executor  # return technically not required
 
     async def test_client_id_is_set_to_hostname(self):
         await self.object.setup()
@@ -545,16 +536,16 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
         await self.object._revoke_callback(None, topic_partitions=[mock.MagicMock()])
         assert re.search(r"ERROR.*Consumer is closed", caplog.text)
 
-    async def test_health_returns_true_if_no_error(self, mock_admin):
-        mock_admin.list_topics.return_value.topics = ["test-topic"]
+    async def test_health_returns_true_if_no_error(self, mock_consumer):
+        mock_consumer.list_topics.return_value.topics = ["test-topic"]
         self.object = self._create_test_instance(config_patch={"topic": "test-topic"})
 
         await self.object.setup()
         assert await self.object.health()
         await self.object.shut_down()
 
-    async def test_health_returns_false_if_topic_not_present(self, mock_admin):
-        mock_admin.list_topics.return_value.topics = ["not_the_topic"]
+    async def test_health_returns_false_if_topic_not_present(self, mock_consumer):
+        mock_consumer.list_topics.return_value.topics = ["not_the_topic"]
         await self.object.setup()
         assert not await self.object.health()
 
@@ -572,38 +563,10 @@ class TestConfluentKafkaInput(BaseInputTestCase[ConfluentKafkaInput]):
 
             mock_error.assert_called()
 
-    async def test_health_counts_metrics_on_kafka_exception(self, mock_admin):
-        mock_admin.list_topics.side_effect = KafkaException("test error")
+    async def test_health_counts_metrics_on_kafka_exception(self, mock_consumer):
+        mock_consumer.list_topics.side_effect = KafkaException("test error")
 
         await self.object.setup()
         self.object.metrics.number_of_errors = 0
         assert not await self.object.health()
         assert self.object.metrics.number_of_errors == 1
-
-    @pytest.mark.parametrize(
-        ["kafka_config_update", "expected_admin_client_config"],
-        [
-            ({}, {"bootstrap.servers": "testserver:9092"}),
-            ({"statistics.foo": "bar"}, {"bootstrap.servers": "testserver:9092"}),
-            (
-                {"security.foo": "bar"},
-                {"bootstrap.servers": "testserver:9092", "security.foo": "bar"},
-            ),
-            (
-                {"ssl.foo": "bar"},
-                {"bootstrap.servers": "testserver:9092", "ssl.foo": "bar"},
-            ),
-            (
-                {"security.foo": "bar", "ssl.foo": "bar"},
-                {"bootstrap.servers": "testserver:9092", "security.foo": "bar", "ssl.foo": "bar"},
-            ),
-        ],
-    )
-    async def test_set_security_related_config_in_admin_client(
-        self, mock_admin, kafka_config_update, expected_admin_client_config
-    ):
-        self.object = self._create_test_instance(
-            config_patch={"kafka_config": self.CONFIG["kafka_config"] | kafka_config_update}
-        )
-        await self.object.setup()
-        mock_admin.assert_called_with(expected_admin_client_config)

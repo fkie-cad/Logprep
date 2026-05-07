@@ -48,8 +48,8 @@ class Component(ABC):
         _labels: dict
 
         def __attrs_post_init__(self):
-            for attribute in asdict(self):
-                attribute = getattr(self, attribute)
+            for attr_name in asdict(self):
+                attribute = getattr(self, attr_name)
                 if isinstance(attribute, Metric):
                     attribute.labels = self._labels
                     attribute.init_tracker()

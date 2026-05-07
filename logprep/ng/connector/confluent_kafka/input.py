@@ -47,7 +47,6 @@ from confluent_kafka import (
     Message,
     TopicPartition,
 )
-from confluent_kafka.admin import AdminClient
 from confluent_kafka.aio import AIOConsumer
 
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
@@ -318,12 +317,13 @@ class ConfluentKafkaInput(Input):
 
     async def setup(self):
         """Set the confluent kafka input connector."""
+
         try:
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self.config.max_workers
             )
+
             self._consumer = AIOConsumer(self._kafka_config, executor=self._executor)
-            self._admin = self._create_admin()
 
             await self._consumer.subscribe(
                 [self.config.topic],
@@ -335,20 +335,6 @@ class ConfluentKafkaInput(Input):
             raise FatalInputError(self, f"Could not setup kafka consumer: {error}") from error
 
         await super().setup()
-
-    def _create_admin(self) -> AdminClient:
-        """configures and returns the admin client
-
-        Returns
-        -------
-        AdminClient
-            confluent_kafka admin client object
-        """
-        admin_config = {"bootstrap.servers": self.config.kafka_config["bootstrap.servers"]}
-        for key, value in self.config.kafka_config.items():
-            if key.startswith(("security.", "ssl.")):
-                admin_config[key] = value
-        return AdminClient(admin_config)
 
     async def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
@@ -616,7 +602,7 @@ class ConfluentKafkaInput(Input):
         """
 
         try:
-            metadata = self._admin.list_topics(timeout=self.config.health_timeout)
+            metadata = await self._consumer.list_topics(timeout=self.config.health_timeout)
             if self.config.topic not in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self.config.topic)
                 return False
@@ -634,6 +620,7 @@ class ConfluentKafkaInput(Input):
         """Shut down the confluent kafka input connector and cleanup resources."""
 
         if self._consumer is not None:
+            await self._consumer.unsubscribe()
             await self._consumer.close()
             self._consumer = None
         if self._executor is not None:
