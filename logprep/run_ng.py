@@ -67,6 +67,8 @@ def run(configs: tuple[str], version=None) -> None:
     """
 
     async def _run(configs_: tuple[str], version_=None):
+        if (task := asyncio.current_task()) is not None:
+            task.set_name("root")
         configuration = await _get_configuration(configs_)
         runner_ = Runner(configuration)
         runner_.setup_logging()
