@@ -87,40 +87,6 @@ class SourceDisconnectedWarning(InputWarning, StopAsyncIteration):
     """Lost (or failed to establish) contact with the source."""
 
 
-class InputIterator(AsyncIterator):
-    """Base Class for an input Iterator"""
-
-    def __init__(self, input_connector: "Input", timeout: float):
-        """Initialize the input iterator with a timeout.
-
-        Parameters
-        ----------
-        input_connector : Input
-            The input connector to retrieve events from.
-        timeout : float
-            The time in seconds to wait for the next event before timing out.
-        """
-
-        self.input_connector = input_connector
-        self.timeout = timeout
-
-    async def __anext__(self) -> LogEvent | ErrorEvent | None:
-        """Return the next event in the Input Connector within the configured timeout.
-
-        Returns
-        -------
-        LogEvent | None
-            The next event retrieved from the underlying data source.
-        """
-        event = await self.input_connector.get_next(timeout=self.timeout)
-        logger.debug(
-            "InputIterator fetching next event with timeout %s, is None: %s",
-            self.timeout,
-            event is None,
-        )
-        return event
-
-
 class Input(Connector, AsyncIterator):
     """Connect to a source for log data."""
 
@@ -159,31 +125,6 @@ class Input(Connector, AsyncIterator):
     def config(self) -> Config:
         """Provides the properly typed configuration object"""
         return typing.cast(Input.Config, self._config)
-
-    def __call__(self, *, timeout: float) -> InputIterator:
-        """Create and return a new input iterator with the specified timeout.
-
-        This enables the input connector instance to be called directly as a function
-        to obtain an iterator, e.g. `for event in input_connector(timeout=5.0):`.
-
-        Parameters
-        ----------
-        timeout : float
-            Keyword-only. The time to wait for blocking.
-
-        Returns
-        -------
-        InputIterator
-            An iterator object that retrieves events from the input connector.
-
-        Examples
-        --------
-        >>> input_connector = Input(...)
-        >>> for event in input_connector(timeout=5.0):
-        ...     process(event)
-        """
-
-        return InputIterator(self, timeout)
 
     @abstractmethod
     async def acknowledge(self, events: list[LogEvent]) -> None:
