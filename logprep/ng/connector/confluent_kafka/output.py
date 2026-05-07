@@ -32,7 +32,6 @@ from types import MappingProxyType
 
 from attrs import define, field, validators
 from confluent_kafka import KafkaException  # type: ignore
-from confluent_kafka.admin import AdminClient
 from confluent_kafka.aio import AIOProducer
 
 from logprep.metrics.metrics import GaugeMetric, Metric
@@ -224,20 +223,6 @@ class ConfluentKafkaOutput(Output):
         DEFAULTS.update({"client.id": getfqdn()})
         return DEFAULTS | self.config.kafka_config | injected_config
 
-    def _create_admin(self) -> AdminClient:
-        """configures and returns the admin client
-
-        Returns
-        -------
-        AdminClient
-            confluent_kafka admin client object
-        """
-        admin_config = {"bootstrap.servers": self.config.kafka_config["bootstrap.servers"]}
-        for key, value in self.config.kafka_config.items():
-            if key.startswith(("security.", "ssl.")):
-                admin_config[key] = value
-        return AdminClient(admin_config)
-
     def _create_producer(self) -> AIOProducer:
         """
         Configures and returns the asynchronous Kafka producer.
@@ -357,7 +342,7 @@ class ConfluentKafkaOutput(Output):
     async def health(self) -> bool:  # type: ignore[override]
         """Check the health of kafka producer."""
         try:
-            metadata = self._admin.list_topics(timeout=self.config.health_timeout)
+            metadata = await self._producer.list_topics(timeout=self.config.health_timeout)
             if self.config.topic not in metadata.topics:
                 logger.error("Topic  '%s' does not exit", self.config.topic)
                 return False
@@ -371,7 +356,6 @@ class ConfluentKafkaOutput(Output):
         """Set the confluent kafka output connector."""
 
         self._producer = self._create_producer()
-        self._admin = self._create_admin()
 
         try:
             await super().setup()
