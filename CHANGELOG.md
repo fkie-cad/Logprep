@@ -9,7 +9,8 @@
 * fix urllib vulnerabilities CVE-2026-44431 & CVE-2026-44432
 
 ### Bugfix
-
+* fix `decoder` to support special characters in logfmt keys
+* fix `decoder` to support empty values in logfmt items
 
 ## 19.1.0
 ### Breaking
