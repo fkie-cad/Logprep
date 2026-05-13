@@ -6,6 +6,7 @@ import json
 import pytest
 
 from logprep.processor.base.exceptions import ProcessingError, ProcessingWarning
+from logprep.processor.decoder.decoders import parse_logfmt
 from logprep.util.typing import is_list_of
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -430,6 +431,36 @@ test_cases = [
             "filter": "message",
             "decoder": {
                 "mapping": {"message": "parsed"},
+                "source_format": "logfmt",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "message": "time=2012-11-01T22:08:41+00:00 app.name=loki level=WARN debug="
+            ' total_duration=125 message-content="this is a log line"'
+            ' extra="user.bonus-info_v2=foo"',
+        },
+        {
+            "message": "time=2012-11-01T22:08:41+00:00 app.name=loki level=WARN debug="
+            ' total_duration=125 message-content="this is a log line"'
+            ' extra="user.bonus-info_v2=foo"',
+            "parsed": {
+                "app.name": "loki",
+                "total_duration": "125",
+                "extra": "user.bonus-info_v2=foo",
+                "level": "WARN",
+                "message-content": "this is a log line",
+                "time": "2012-11-01T22:08:41+00:00",
+                "debug": "",
+            },
+        },
+        id="parse logfmt with dots, underscores and hyphens",
+    ),
+    pytest.param(
+        {
+            "filter": "message",
+            "decoder": {
+                "mapping": {"message": "parsed"},
                 "source_format": "cri",
                 "overwrite_target": True,
             },
@@ -773,3 +804,28 @@ class TestDecoder(BaseProcessorTestCase):
                 event = self.object._decoder.decode(log_input)
                 self.object.process(event)
                 assert json.dumps(event["parsed"]) == expected_output
+
+    @pytest.mark.parametrize(
+        "log_line, expected",
+        [
+            pytest.param("k=123", {"k": "123"}, id="single character key"),
+            pytest.param("=1 \t=2 \n=3 \x1b=4", {}, id="empty key not supported"),
+            pytest.param("k=1 =435", {"k": "1"}, id="item before empty key"),
+            pytest.param("k=", {"k": ""}, id="empty value"),
+            pytest.param("k1= k2=2", {"k1": "", "k2": "2"}, id="item after empty value"),
+            pytest.param(
+                "key1=value1 key2=value2", {"key1": "value1", "key2": "value2"}, id="multiple keys"
+            ),
+        ],
+    )
+    def test_parse_logfmt(self, log_line, expected: dict):
+        assert expected == parse_logfmt(log_line)
+
+    @pytest.mark.parametrize("char", [pytest.param(c, id=f"{c} in key name") for c in "*?.|#@/-"])
+    def test_parse_logfmt_special_characters(self, char):
+        assert {
+            f"{char}": "1",
+            f"k{char}k": "2",
+            f"{char}k": "3",
+            f"k{char}": "4",
+        } == parse_logfmt(f"{char}=1 k{char}k=2 {char}k=3 k{char}=4")
