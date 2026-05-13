@@ -442,3 +442,97 @@ class TestNetworkComparison(BaseProcessorTestCase):
         processor.setup()
         processor.process(document)
         assert document == expected, testcase
+
+    @responses.activate
+    def test_network_comparison_setup_logs_warning_if_http_list_initialization_fails(
+        self,
+        caplog,
+    ):
+        document = {"ip": "1.2.3.4"}
+        expected = {
+            "ip": "1.2.3.4",
+            "tags": ["_network_comparison_failure"],
+        }
+        url = "http://localhost/tests/testdata/bad_ips.list?ref=bla"
+
+        responses.add(
+            responses.GET,
+            url=url,
+            status=500,
+        )
+
+        rule_dict = {
+            "filter": "ip",
+            "network_comparison": {
+                "source_fields": ["ip"],
+                "target_field": "ip_results",
+                "list_file_paths": ["bad_ips.list"],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "network_comparison",
+            "rules": [],
+            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
+        }
+
+        HttpGetter._shared.clear()
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+
+        processor.setup()
+
+        assert "Failed to initialize list comparison rule" in caplog.text
+        assert "too many 500 error responses" in caplog.text
+
+        processor.process(document)
+
+        assert document == expected
+        assert len(responses.calls) == 4
+        assert responses.calls[0].request.url == url
+        assert rule.compare_sets == {}
+
+    def test_network_comparison_logs_warning_on_field_exists_warning(
+        self,
+    ):
+        document = {
+            "dot_ip": "127.0.0.2",
+            "ip1": "127.0.0.1",
+            "dotted": {"ip_results": ["do_not_look_here"]},
+        }
+        expected = {
+            "tags": ["_network_comparison_failure"],
+            "dot_ip": "127.0.0.2",
+            "ip1": "127.0.0.1",
+            "dotted": {"ip_results": ["do_not_look_here"]},
+        }
+
+        rule_dict = {
+            "filter": "ip1",
+            "network_comparison": {
+                "source_fields": ["ip1"],
+                "target_field": "dotted.ip_results.do_not_look_here",
+                "list_file_paths": ["../lists/network_list.txt"],
+            },
+            "description": "",
+        }
+
+        config = {
+            "type": "network_comparison",
+            "rules": [],
+            "list_search_base_path": self.CONFIG["list_search_base_path"],
+        }
+
+        processor = Factory.create({"custom_lister": config})
+        rule = processor.rule_class.create_from_dict(rule_dict)
+        processor._rule_tree.add_rule(rule)
+        processor.setup()
+
+        result = processor.process(document)
+
+        assert len(result.warnings) == 1
+        assert isinstance(result.warnings[0], FieldExistsWarning)
+        assert document == expected

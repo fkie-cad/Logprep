@@ -7,6 +7,7 @@
 * upgrade transitive dependencies
 * fix #904 by upgrading opensearch-py to 3.2.0
 * fix urllib vulnerabilities CVE-2026-44431 & CVE-2026-44432
+* allow `list_comparison` to continue processing if comparison list initialization fails and log a warning instead
 
 ### Bugfix
 * fix `decoder` to support special characters in logfmt keys
