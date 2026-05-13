@@ -8,7 +8,7 @@ metadata:
 spec:
   replicas: {{ .Values.replicas }}
   strategy:
-    type: Recreate
+    type: {{ .Values.deploymentStrategy }}
   selector:
     matchLabels:
       {{- include "logprep.selectorLabels" . | nindent 6 }}
