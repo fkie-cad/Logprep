@@ -54,7 +54,7 @@ dependencies = [
   "luqum<2",
   "more-itertools==8.10.0",
   "numpy>=1.26.0,<3",
-  "opensearch-py<4",
+  "opensearch-py>=3.2,<4", # [>=3.2]: #904
   "prometheus_client<1",
   "protobuf>=3.20.2,<7",
   "pycryptodome<4",
@@ -66,7 +66,7 @@ dependencies = [
   "requests>=2.33.0,<3", # [>=2.33.0]: CVE-2026-25645
   "ruamel.yaml<1",
   "schedule<2",
-  "urllib3>=2.6.3,<3", # [>=2.6.0]: CVE-2025-66418, CVE-2025-66471, [>=2.6.3]: CVE-2026-21441
+  "urllib3>=2.7.0,<3", # [>=2.7.0]: CVE-2026-44431, CVE-2026-44432
   "uvicorn<1",
   "deepdiff>=8.6.2,<9", # [>=8.6.2]: CVE-2026-33155
   "msgspec<1",
