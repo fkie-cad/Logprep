@@ -20,6 +20,7 @@ Example
 
 import json
 import typing
+from collections.abc import Sequence
 
 from attrs import define, field, validators
 
@@ -79,22 +80,18 @@ class JsonlOutput(Output):
         with open(filepath, "a+", encoding="utf8") as file:
             file.write(f"{json.dumps(line)}\n")
 
-    @Output._handle_errors
-    def _store_single(self, event: Event) -> None:
+    def _store_single(self, event: Event, target: str | None = None) -> None:
         """Store the event in the output destination."""
-        self.events.append(event.data)
-        JsonlOutput._write_json(self.config.output_file, event.data)
-        self.metrics.number_of_processed_events += 1
+        document = event.data if target is None else {target: event.data}
+        events_file = self.config.output_file if target is None else self.config.output_file_custom
 
-    @Output._handle_errors
-    def store_custom(self, event: Event, target: str) -> None:
-        """Store the event in the output destination with a custom target."""
-        document = {target: event.data}
         self.events.append(document)
-
-        if self.config.output_file_custom:
-            JsonlOutput._write_json(self.config.output_file_custom, document)
+        JsonlOutput._write_json(events_file, document)
         self.metrics.number_of_processed_events += 1
 
-    def flush(self):
-        """Flush is not implemented because it has no backlog."""
+    async def store_batch(
+        self, events: Sequence[Event], target: str | None = None
+    ) -> Sequence[Event]:
+        for event in events:
+            self._store_single(event, target=target)
+        return events

@@ -115,6 +115,7 @@ Processor Specific Metrics
    :inherited-members:
 """
 
+import functools
 import os
 import time
 import typing
@@ -247,6 +248,7 @@ class Metric(ABC):
         if not os.environ.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
 
             def without_append(func):
+                @functools.wraps(func)
                 async def inner(self, *args, **kwargs):  # nosemgrep
                     metric = getattr(self.metrics, metric_name)
                     with metric.tracker.labels(**metric.labels).time():
@@ -259,6 +261,7 @@ class Metric(ABC):
             return without_append
 
         def with_append(func):
+            @functools.wraps(func)
             async def inner(self, *args, **kwargs):  # nosemgrep
                 metric = getattr(self.metrics, metric_name)
                 begin = time.perf_counter()

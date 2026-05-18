@@ -23,14 +23,6 @@ if TYPE_CHECKING:  # pragma: no cover
 class EventMetadata(ABC):
     """Abstract EventMetadata Class to define the Interface"""
 
-    @staticmethod
-    def from_dict(_: dict):
-        """
-        Constructs a metadata object from the given dict.
-        Currently implemented as a placeholder for future development.
-        """
-        return EventMetadata()
-
 
 class Event(ABC):
     """

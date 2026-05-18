@@ -285,7 +285,7 @@ class ConfluentKafkaOutput(Output):
     ) -> Sequence[Event]:
         store_target = target if target is not None else self.config.topic
         for event in events:
-            await self.store_custom(event, store_target)
+            await self._store_custom(event, store_target)
 
         return events
 
@@ -297,10 +297,10 @@ class ConfluentKafkaOutput(Output):
         event : Event
             The event to store.
         """
-        await self.store_custom(event, self.config.topic)
+        await self._store_custom(event, self.config.topic)
 
     @Metric.measure_time_async()
-    async def store_custom(self, event: Event, target: str) -> None:
+    async def _store_custom(self, event: Event, target: str) -> None:
         """Write document to Kafka into target topic.
 
         Parameters
