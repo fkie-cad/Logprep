@@ -12,11 +12,12 @@ import responses
 
 from logprep.factory import Factory
 from logprep.ng.event.log_event import LogEvent
+from logprep.ng.processor.amides.processor import Amides
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
 
 @pytest.mark.filterwarnings("ignore:Trying to unpickle.*")
-class TestAmides(BaseProcessorTestCase):
+class TestAmides(BaseProcessorTestCase[Amides]):
     CONFIG = {
         "type": "ng_amides",
         "rules": ["tests/testdata/unit/amides/rules"],
@@ -36,12 +37,12 @@ class TestAmides(BaseProcessorTestCase):
         "logprep_amides_mean_rule_attribution_time",
     ]
 
-    def test_process_event_malicious_process_command_line(self):
+    async def test_process_event_malicious_process_command_line(self):
         self.object.metrics.total_cmdlines = 0
         self.object.metrics.new_results = 0
         self.object.metrics.num_cache_entries = 0
         self.object.metrics.cache_load = 0.0
-        self.object.setup()
+        await self.object.setup()
         document = {
             "winlog": {
                 "event_id": 1,
@@ -50,7 +51,7 @@ class TestAmides(BaseProcessorTestCase):
             },
         }
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
 
         result = document.get("amides")
         assert result
@@ -63,12 +64,12 @@ class TestAmides(BaseProcessorTestCase):
         assert self.object.metrics.num_cache_entries == 1
         assert self.object.metrics.cache_load == 0.2
 
-    def test_process_event_benign_process_command_line(self):
+    async def test_process_event_benign_process_command_line(self):
         self.object.metrics.total_cmdlines = 0
         self.object.metrics.new_results = 0
         self.object.metrics.num_cache_entries = 0
         self.object.metrics.cache_load = 0.0
-        self.object.setup()
+        await self.object.setup()
         document = {
             "winlog": {
                 "event_id": 1,
@@ -77,7 +78,7 @@ class TestAmides(BaseProcessorTestCase):
             },
         }
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         result = document.get("amides")
         assert result
         assert result["confidence"] < self.CONFIG.get("decision_threshold") and not result.get(
@@ -96,45 +97,45 @@ class TestAmides(BaseProcessorTestCase):
     ]
 
     @pytest.mark.parametrize("document", no_pc_events)
-    def test_process_event_no_process_creation_events(self, document):
+    async def test_process_event_no_process_creation_events(self, document):
         self.object.metrics.total_cmdlines = 0
         self.object.metrics.new_results = 0
         self.object.metrics.num_cache_entries = 0
         self.object.metrics.cache_load = 0.0
-        self.object.setup()
+        await self.object.setup()
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.num_cache_entries == 0
         assert self.object.metrics.cache_load == 0.0
 
-    def test_process_event_without_command_line_field(self):
+    async def test_process_event_without_command_line_field(self):
         self.object.metrics.total_cmdlines = 0
         self.object.metrics.new_results = 0
         self.object.metrics.num_cache_entries = 0
         self.object.metrics.cache_load = 0.0
-        self.object.setup()
+        await self.object.setup()
         document = {
             "winlog": {"event_id": 1, "provider_name": "Microsoft-Windows-Sysmon"},
             "some": {"random": "data"},
         }
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.num_cache_entries == 0
         assert self.object.metrics.cache_load == 0.0
 
-    def test_classification_results_from_cache(self):
+    async def test_classification_results_from_cache(self):
         self.object.metrics.total_cmdlines = 0
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
         self.object.metrics.cache_load = 0.0
-        self.object.setup()
+        await self.object.setup()
         document = {
             "winlog": {
                 "event_id": 1,
@@ -145,8 +146,8 @@ class TestAmides(BaseProcessorTestCase):
         other_document = deepcopy(document)
         event = LogEvent(document, original=b"")
         other_event = LogEvent(other_document, original=b"")
-        self.object.process(event)
-        self.object.process(other_event)
+        await self.object.process(event)
+        await self.object.process(other_event)
 
         assert other_document.get("amides") == document.get("amides")
         assert self.object.metrics.total_cmdlines == 2
@@ -161,8 +162,8 @@ class TestAmides(BaseProcessorTestCase):
         # end strange mock
         assert self.object.metrics.cached_results == 1
 
-    def test_process_event_raise_duplication_error(self):
-        self.object.setup()
+    async def test_process_event_raise_duplication_error(self):
+        await self.object.setup()
         document = {
             "winlog": {
                 "event_id": 1,
@@ -171,16 +172,16 @@ class TestAmides(BaseProcessorTestCase):
             }
         }
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert document.get("amides")
-        result = self.object.process(event)
+        result = await self.object.process(event)
         assert len(result.warnings) > 0
         assert re.match(
             r".*missing source_fields: \['process.command_line'].*", str(result.warnings)
         )
         assert re.match(".*FieldExistsWarning.*", str(result.warnings))
 
-    def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
+    async def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
         model_uri = "file://tests/testdata/unit/amides/model.zip"
         model_original = Path(self.CONFIG["models_path"])
         expected_checksum = hashlib.md5(model_original.read_bytes()).hexdigest()  # nosemgrep
@@ -196,14 +197,14 @@ class TestAmides(BaseProcessorTestCase):
 
         with monkeypatch.context() as monkey_context:
             monkey_context.chdir(tmp_path)
-            self.object.setup()
+            await self.object.setup()
             cached_file = Path(f"{current_process().name}-{self.object.name}.zip")
             assert cached_file.exists()
             cached_checksum = hashlib.md5(cached_file.read_bytes()).hexdigest()  # nosemgrep
             assert expected_checksum == cached_checksum
 
     @responses.activate
-    def test_setup_get_model_via_http_getter(self, tmp_path, monkeypatch):
+    async def test_setup_get_model_via_http_getter(self, tmp_path, monkeypatch):
         model_uri = "http://model-path-target/model.zip"
         model_original = Path(self.CONFIG["models_path"])
         model_original_content = model_original.read_bytes()
@@ -216,13 +217,13 @@ class TestAmides(BaseProcessorTestCase):
 
         with monkeypatch.context() as monkey_context:
             monkey_context.chdir(tmp_path)
-            self.object.setup()
+            await self.object.setup()
             loaded_file = Path(f"{current_process().name}-{self.object.name}.zip")
             assert loaded_file.exists()
             loaded_checksum = hashlib.md5(loaded_file.read_bytes()).hexdigest()  # nosemgrep
             assert expected_checksum == loaded_checksum
 
-    def test_normalizer_returns_empty_string(self):
+    async def test_normalizer_returns_empty_string(self):
         with mock.patch.object(self.object, "_normalizer") as mock_normalizer:
             with mock.patch.object(self.object, "_write_target_field") as mock_write_target:
                 mock_normalizer.normalize = mock.MagicMock()
@@ -235,5 +236,5 @@ class TestAmides(BaseProcessorTestCase):
                     }
                 }
                 event = LogEvent(document, original=b"")
-                self.object.process(event)
+                await self.object.process(event)
                 mock_write_target.assert_not_called()

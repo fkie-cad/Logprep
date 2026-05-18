@@ -9,6 +9,7 @@ from deepdiff import DeepDiff
 
 from logprep.ng.event.log_event import LogEvent
 from logprep.ng.event.sre_event import SreEvent
+from logprep.ng.processor.pre_detector.processor import PreDetector
 from logprep.util.helper import get_dotted_field_value
 from tests.unit.ng.processor.base import BaseProcessorTestCase
 
@@ -29,7 +30,7 @@ DETECTION_EVENT_FIELDS = frozenset(
 """Static fields known to be written to the detection events by the processor"""
 
 
-class TestPreDetector(BaseProcessorTestCase):
+class TestPreDetector(BaseProcessorTestCase[PreDetector]):
     CONFIG = {
         "type": "ng_pre_detector",
         "rules": ["tests/testdata/unit/pre_detector/rules"],
@@ -40,7 +41,7 @@ class TestPreDetector(BaseProcessorTestCase):
 
     uuid_pattern = re.compile(r"^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$")
 
-    def test_perform_successful_pre_detection(self):
+    async def test_perform_successful_pre_detection(self):
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         expected = deepcopy(document)
         expected_detection_results = [
@@ -55,13 +56,13 @@ class TestPreDetector(BaseProcessorTestCase):
             },
         ]
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         assert event.extra_data
         assert len(event.extra_data) == 1, "one extra data item expected"
         assert isinstance(event.extra_data[0], SreEvent), "extra data should be SreEvent"
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
-    def test_perform_pre_detection_that_fails_if_filter_children_were_slots(self):
+    async def test_perform_pre_detection_that_fails_if_filter_children_were_slots(self):
         document = {"A": "foo X bar Y"}
         expected = deepcopy(document)
         event = LogEvent(document, original=b"")
@@ -76,16 +77,16 @@ class TestPreDetector(BaseProcessorTestCase):
                 "title": "RULE_FOUR",
             },
         ]
-        event = self.object.process(event)
+        event = await self.object.process(event)
         _ = event.extra_data[0]
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
         document = {"A": "foo X bar Y baz"}
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         assert event.extra_data == []
 
-    def test_perform_successful_pre_detection_with_host_name(self):
+    async def test_perform_successful_pre_detection_with_host_name(self):
         document = {
             "host": {"name": "Test hostname"},
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
@@ -104,10 +105,10 @@ class TestPreDetector(BaseProcessorTestCase):
             },
         ]
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
-    def test_perform_successful_pre_detection_with_same_existing_pre_detection(self):
+    async def test_perform_successful_pre_detection_with_same_existing_pre_detection(self):
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         expected = deepcopy(document)
         expected_detection_results = [
@@ -124,10 +125,12 @@ class TestPreDetector(BaseProcessorTestCase):
 
         document["pre_detection_id"] = "11fdfc1f-8e00-476e-b88f-753d92af989c"
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
-    def test_perform_successful_pre_detection_with_pre_detector_complex_rule_suceeds_msg_t1(self):
+    async def test_perform_successful_pre_detection_with_pre_detector_complex_rule_suceeds_msg_t1(
+        self,
+    ):
         document = {"tags": "test", "process": {"program": "test"}, "message": "test1*xyz"}
         expected = deepcopy(document)
         expected_detection_results = [
@@ -143,10 +146,12 @@ class TestPreDetector(BaseProcessorTestCase):
             },
         ]
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
-    def test_perform_successful_pre_detection_with_pre_detector_complex_rule_succeeds_msg_t2(self):
+    async def test_perform_successful_pre_detection_with_pre_detector_complex_rule_succeeds_msg_t2(
+        self,
+    ):
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Xxyz"}
         expected = deepcopy(document)
         expected_detection_results = [
@@ -162,10 +167,10 @@ class TestPreDetector(BaseProcessorTestCase):
             },
         ]
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
-    def test_perform_successful_pre_detection_with_two_rules(self):
+    async def test_perform_successful_pre_detection_with_two_rules(self):
         document = {"first_match": "something", "second_match": "something"}
         expected = deepcopy(document)
         expected_detection_results = [
@@ -189,84 +194,84 @@ class TestPreDetector(BaseProcessorTestCase):
             },
         ]
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
-    def test_correct_star_wildcard_behavior(self):
+    async def test_correct_star_wildcard_behavior(self):
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyzA"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyzA"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2*xyzA"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2*xyzA"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2xyz"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data != expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2Axyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2Axyz"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data != expected
 
         document = {"tags": "test", "process": {"program": "test"}, "message": "test2AAxyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test2AAxyz"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data != expected
 
-    def test_correct_questionmark_wildcard_behavior(self):
+    async def test_correct_questionmark_wildcard_behavior(self):
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyzA"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2*xyzA"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data == expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2xyz"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data != expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2Axyz"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data != expected
 
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test2AAxyz"}
         event = LogEvent(document, original=b"")
-        self.object.process(event)
+        await self.object.process(event)
         assert event.data == expected
 
-    def test_ignores_case(self):
+    async def test_ignores_case(self):
         document = {"tags": "test", "process": {"program": "test"}, "message": "TEST2*xyz"}
         expected = deepcopy(document)
         expected_detection_results = [
@@ -281,10 +286,10 @@ class TestPreDetector(BaseProcessorTestCase):
             },
         ]
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
-    def test_ignores_case_list(self):
+    async def test_ignores_case_list(self):
         document = {"tags": "test", "process": {"program": "test"}, "message": ["TEST2*xyz"]}
         expected = deepcopy(document)
         expected_detection_results = [
@@ -299,7 +304,7 @@ class TestPreDetector(BaseProcessorTestCase):
             },
         ]
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         self._assert_equality_of_results(event, expected, expected_detection_results)
 
     def _assert_equality_of_results(
@@ -331,7 +336,7 @@ class TestPreDetector(BaseProcessorTestCase):
 
             assert not diff
 
-    def test_adds_timestamp_to_extra_data_if_provided_by_event(self):
+    async def test_adds_timestamp_to_extra_data_if_provided_by_event(self):
         rule = {
             "filter": 'winlog.event_id: 123 AND winlog.event_data.ServiceName: "VERY BAD"',
             "pre_detector": {
@@ -347,9 +352,9 @@ class TestPreDetector(BaseProcessorTestCase):
             "@timestamp": "2024-08-12T12:13:04+00:00",
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         sre_event = event.extra_data[0]
         assert sre_event.data.get("@timestamp") == "2024-08-12T12:13:04Z"
 
@@ -408,18 +413,18 @@ class TestPreDetector(BaseProcessorTestCase):
             ),
         ],
     )
-    def test_timestamp_is_normalized(self, testcase, rule, timestamp, expected):
-        self._load_rule(rule)
+    async def test_timestamp_is_normalized(self, testcase, rule, timestamp, expected):
+        await self._load_rule(rule)
         document = {
             "@timestamp": timestamp,
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
         }
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         sre_event = event.extra_data[0]
         assert sre_event.data.get("@timestamp") == expected, testcase
 
-    def test_custom_timestamp_field_can_be_used(self):
+    async def test_custom_timestamp_field_can_be_used(self):
         rule = {
             "filter": "*",
             "pre_detector": {
@@ -439,14 +444,14 @@ class TestPreDetector(BaseProcessorTestCase):
             "second_match": "something",
             "@timestamp": "19960531153655",
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         sre_event = event.extra_data[0]
         assert sre_event.data.get("custom_timestamp") == "2024-08-11T02:11:45Z"
         assert sre_event.data.get("@timestamp") is None, "should not be in detection data"
 
-    def test_appends_processing_warning_if_timestamp_could_not_be_parsed(self):
+    async def test_appends_processing_warning_if_timestamp_could_not_be_parsed(self):
         rule = {
             "filter": "*",
             "pre_detector": {
@@ -461,9 +466,9 @@ class TestPreDetector(BaseProcessorTestCase):
         document = {
             "@timestamp": "this is not a timestamp",
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         assert event.warnings
         assert len(event.warnings) == 1
         assert "Could not parse timestamp" in str(event.warnings[0])
@@ -473,7 +478,7 @@ class TestPreDetector(BaseProcessorTestCase):
         assert "_pre_detector_failure" in document["tags"]
         assert "_pre_detector_timeparsing_failure" in document["tags"]
 
-    def test_generate_detection_result_does_not_modify_rule_data(self):
+    async def test_generate_detection_result_does_not_modify_rule_data(self):
         rule = {
             "filter": "*",
             "pre_detector": {
@@ -485,10 +490,10 @@ class TestPreDetector(BaseProcessorTestCase):
             },
             "description": "Test rule one",
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         event = LogEvent(document, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         assert (
             "rule_filter" not in self.object.rules[0].detection_data
         ), "rule_filter should not be in detection data"
@@ -613,10 +618,10 @@ class TestPreDetector(BaseProcessorTestCase):
             ),
         ],
     )
-    def test_copy_fields_to_detection_event_matrix(
+    async def test_copy_fields_to_detection_event_matrix(
         self, extra_rule_config: dict, event_data: dict, expected_extra_fields_in_output: dict
     ):
-        self._load_rule(
+        await self._load_rule(
             {
                 "filter": "*",
                 "pre_detector": {
@@ -643,12 +648,12 @@ class TestPreDetector(BaseProcessorTestCase):
             },
         ]
         event = LogEvent(event_data, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         self._assert_equality_of_results(event, event_data, expected_detection_results)
 
-    def test_detection_event_fields_is_correct(self):
+    async def test_detection_event_fields_is_correct(self):
         event_data = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
-        self._load_rule(
+        await self._load_rule(
             {
                 "filter": "*",
                 "pre_detector": {
@@ -663,7 +668,7 @@ class TestPreDetector(BaseProcessorTestCase):
             }
         )
         event = LogEvent(event_data, original=b"")
-        event = self.object.process(event)
+        event = await self.object.process(event)
         detection_event = event.extra_data[0].data
         detection_event_keys = set(detection_event.keys())
 
@@ -673,9 +678,9 @@ class TestPreDetector(BaseProcessorTestCase):
         "field_name",
         DETECTION_EVENT_FIELDS,
     )
-    def test_copy_fields_to_detection_event_fails_on_illegal_fields(self, field_name: str):
+    async def test_copy_fields_to_detection_event_fails_on_illegal_fields(self, field_name: str):
         with pytest.raises(ValueError, match="Illegal fields") as exc_info:
-            self._load_rule(
+            await self._load_rule(
                 {
                     "filter": "*",
                     "pre_detector": {
@@ -691,7 +696,7 @@ class TestPreDetector(BaseProcessorTestCase):
             )
         assert exc_info is not None
 
-    def test_host_name_not_reused_with_same_rule_for_different_events(self):
+    async def test_host_name_not_reused_with_same_rule_for_different_events(self):
         rule = {
             "filter": "match",
             "pre_detector": {
@@ -703,19 +708,19 @@ class TestPreDetector(BaseProcessorTestCase):
             },
             "description": "Test rule",
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         event = LogEvent({"match": "something", "host": {"name": "host_name"}}, original=b"")
-        detection_results = self.object.process(event).data
-        assert get_dotted_field_value(detection_results, "host.name") == "host_name"
+        detection_results = await self.object.process(event)
+        assert get_dotted_field_value(detection_results.data, "host.name") == "host_name"
 
         event = LogEvent({"match": "something"}, original=b"")
-        detection_results = self.object.process(event).data
-        assert get_dotted_field_value(detection_results, "host.name") is None
+        detection_results = await self.object.process(event)
+        assert get_dotted_field_value(detection_results.data, "host.name") is None
 
-    def test_extra_rule_config_fields_not_reused_with_same_rule_for_different_events(self):
+    async def test_extra_rule_config_fields_not_reused_with_same_rule_for_different_events(self):
         extra_rule_config = {"copy_fields_to_detection_event": {"host.name", "custom"}}
-        self._load_rule(
+        await self._load_rule(
             {
                 "filter": "*",
                 "pre_detector": {
@@ -734,11 +739,11 @@ class TestPreDetector(BaseProcessorTestCase):
             {"match": "something", "host": {"name": "host_name"}, "custom": "custom_value"},
             original=b"",
         )
-        detection_results = self.object.process(event).data
-        assert get_dotted_field_value(detection_results, "host.name") == "host_name"
-        assert get_dotted_field_value(detection_results, "custom") == "custom_value"
+        detection_results = await self.object.process(event)
+        assert get_dotted_field_value(detection_results.data, "host.name") == "host_name"
+        assert get_dotted_field_value(detection_results.data, "custom") == "custom_value"
 
         event = LogEvent({"match": "something"}, original=b"")
-        detection_results = self.object.process(event).data
-        assert get_dotted_field_value(detection_results, "host.name") is None
-        assert get_dotted_field_value(detection_results, "custom") is None
+        detection_results = await self.object.process(event)
+        assert get_dotted_field_value(detection_results.data, "host.name") is None
+        assert get_dotted_field_value(detection_results.data, "custom") is None

@@ -48,8 +48,8 @@ class Component(ABC):
         _labels: dict
 
         def __attrs_post_init__(self):
-            for attribute in asdict(self):
-                attribute = getattr(self, attribute)
+            for attr_name in asdict(self):
+                attribute = getattr(self, attr_name)
                 if isinstance(attribute, Metric):
                     attribute.labels = self._labels
                     attribute.init_tracker()
@@ -77,7 +77,7 @@ class Component(ABC):
         """Labels for the metrics"""
         return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
 
-    def __init__(self, name: str, configuration: "Config", pipeline_index: int | None = None):
+    def __init__(self, name: str, configuration: Config, pipeline_index: int | None = None):
         self._config = configuration
         self.name = name
         self.pipeline_index = pipeline_index

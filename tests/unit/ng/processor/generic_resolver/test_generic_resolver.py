@@ -87,7 +87,7 @@ resolve_value_variants = [
 ]
 
 
-class TestGenericResolver(BaseProcessorTestCase):
+class TestGenericResolver(BaseProcessorTestCase[GenericResolver]):
     CONFIG = {
         "type": "ng_generic_resolver",
         "rules": ["tests/testdata/unit/generic_resolver/rules"],
@@ -101,12 +101,12 @@ class TestGenericResolver(BaseProcessorTestCase):
         "logprep_generic_resolver_cache_load",
     ]
 
-    def test_resolve_generic_instantiates(self):
+    async def test_resolve_generic_instantiates(self):
         rule = {"filter": "anything", "generic_resolver": {"field_mapping": {}}}
-        self._load_rule(rule)
+        await self._load_rule(rule)
         assert isinstance(self.object, GenericResolver)
 
-    def test_resolve_not_dotted_field_no_conflict_match(self):
+    async def test_resolve_not_dotted_field_no_conflict_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -115,18 +115,18 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
 
         document = {"to_resolve": "something HELLO1"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_with_dict_value(self):
+    async def test_resolve_with_dict_value(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -135,19 +135,19 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": {"Greeting": "Hello"}}
 
         document = {"to_resolve": "something HELLO1"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
     @pytest.mark.parametrize(["resolve_value"], resolve_value_variants)
-    def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
+    async def test_resolve_not_dotted_field_no_conflict_different_values_match(self, resolve_value):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -156,18 +156,18 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": resolve_value}
         document = {"to_resolve": "something HELLO1"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
     @pytest.mark.parametrize(["resolve_value"], resolve_value_variants)
-    def test_resolve_not_dotted_field_no_conflict_different_values_match_from_file(
+    async def test_resolve_not_dotted_field_no_conflict_different_values_match_from_file(
         self, resolve_value, tmp_path
     ):
         resolve_file_path = tmp_path / "rule.json"
@@ -189,14 +189,14 @@ class TestGenericResolver(BaseProcessorTestCase):
         with open(resolve_file_path, mode="w+", encoding="utf8") as stream:
             stream.write(json.dumps(resolve_dict))
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_from_mapping_with_ignore_case(self):
+    async def test_resolve_from_mapping_with_ignore_case(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -206,21 +206,21 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
         document = {"to_resolve": "something HELLO1"}
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
         assert log_event.data == expected
 
         expected = {"to_resolve": "something hello1", "resolved": "Greeting"}
         document = {"to_resolve": "something hello1"}
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
         assert log_event.data == expected
 
-    def test_resolve_not_dotted_field_no_conflict_no_match_case_sensitive(self):
+    async def test_resolve_not_dotted_field_no_conflict_no_match_case_sensitive(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -229,18 +229,18 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "something hello1"}
 
         document = {"to_resolve": "something hello1"}
         log_event = LogEvent(document, original=b"")
 
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert document == expected
 
-    def test_resolve_not_dotted_field_no_conflict_and_to_list_entries_match(
+    async def test_resolve_not_dotted_field_no_conflict_and_to_list_entries_match(
         self,
     ):
         rule = {
@@ -251,23 +251,23 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "resolved": "Greeting"}
 
         document = {"to_resolve": "something HELLO1"}
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
         assert log_event.data == expected
 
         expected = {"to_resolve": "something BYE1", "resolved": "Farewell"}
 
         document = {"to_resolve": "something BYE1"}
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
         assert log_event.data == expected
 
-    def test_resolve_not_dotted_field_no_conflict_no_match(self):
+    async def test_resolve_not_dotted_field_no_conflict_no_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -276,17 +276,17 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "something no"}
         document = {"to_resolve": "something no"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_field_no_conflict_match(self):
+    async def test_resolve_dotted_field_no_conflict_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -294,18 +294,18 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to": {"resolve": "something HELLO1"}, "resolved": "Greeting"}
 
         document = {"to": {"resolve": "something HELLO1"}}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_field_no_conflict_match_from_file(
+    async def test_resolve_dotted_field_no_conflict_match_from_file(
         self,
     ):
         rule = {
@@ -319,18 +319,18 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {"FOO": "BAR"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "ab", "resolved": "ab_server_type"}
 
         document = {"to_resolve": "ab"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_field_no_conflict_no_match_from_file_case_sensitive(
+    async def test_resolve_dotted_field_no_conflict_no_match_from_file_case_sensitive(
         self,
     ):
         rule = {
@@ -344,17 +344,17 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {"FOO": "BAR"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "Ab"}
         document = {"to_resolve": "Ab"}
         log_event = LogEvent(document, original=b"")
 
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert document == expected
 
-    def test_resolve_dotted_field_no_conflict_match_from_file_case_insensitive(
+    async def test_resolve_dotted_field_no_conflict_match_from_file_case_insensitive(
         self,
     ):
         rule = {
@@ -369,17 +369,17 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "ignore_case": True,
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "Ab", "resolved": "ab_server_type"}
         document = {"to_resolve": "Ab"}
         log_event = LogEvent(document, original=b"")
 
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_from_file_with_ignore_case(
+    async def test_resolve_from_file_with_ignore_case(
         self,
     ):
         rule = {
@@ -394,21 +394,21 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {"FOO": "BAR"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "ab", "resolved": "ab_server_type"}
         document = {"to_resolve": "ab"}
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
         assert log_event.data == expected
 
         expected = {"to_resolve": "AB", "resolved": "ab_server_type"}
         document = {"to_resolve": "AB"}
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
         assert log_event.data == expected
 
-    def test_resolve_from_file_and_from_list(self):
+    async def test_resolve_from_file_and_from_list(self):
         rule = {
             "filter": "to_resolve_1 AND to_resolve_2",
             "generic_resolver": {
@@ -424,7 +424,7 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {
             "to_resolve_1": "ab",
@@ -436,11 +436,11 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to_resolve_1": "ab", "to_resolve_2": "fg"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_field_no_conflict_no_match_from_file(
+    async def test_resolve_dotted_field_no_conflict_no_match_from_file(
         self,
     ):
         rule = {
@@ -454,7 +454,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {"FOO": "BAR"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {
             "to_resolve": "not_in_list",
@@ -463,11 +463,11 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to_resolve": "not_in_list"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_field_no_conflict_match_from_file_and_list(
+    async def test_resolve_dotted_field_no_conflict_match_from_file_and_list(
         self,
     ):
         rule = {
@@ -481,16 +481,16 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "merge_with_target": True,
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
 
         document = {"to_resolve": "12ab34"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
-    def test_resolve_dotted_field_to_list_match_from_file_and_list(
+    async def test_resolve_dotted_field_to_list_match_from_file_and_list(
         self,
     ):
         rule = {
@@ -504,18 +504,18 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "merge_with_target": True,
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["aa_server_type", "ab_server_type"]}
 
         document = {"to_resolve": "12ab34", "resolved": ["aa_server_type"]}
         log_event = LogEvent(document, original=b"")
 
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert document == expected
 
-    def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict(
+    async def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict(
         self,
     ):
         rule = {
@@ -529,19 +529,19 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "merge_with_target": True,
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
 
         document = {"to_resolve": "12ab34"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
-        self.object.process(log_event)
+        await self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict_and_diff_inputs(
+    async def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict_and_diff_inputs(
         self,
     ):
         rule = {
@@ -558,7 +558,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "merge_with_target": True,
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {
             "to_resolve": "12ab34",
@@ -569,12 +569,12 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to_resolve": "12ab34", "other_to_resolve": "00de11"}
         log_event = LogEvent(document, original=b"")
 
-        self.object.process(log_event)
-        self.object.process(log_event)
+        await self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert document == expected
 
-    def test_resolve_dotted_field_no_conflict_match_from_list_to_dict(
+    async def test_resolve_dotted_field_no_conflict_match_from_list_to_dict(
         self,
     ):
         rule = {
@@ -585,18 +585,18 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "merge_with_target": True,
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "12ab34", "resolved": {"foo": "bar", "baz": "test"}}
 
         document = {"to_resolve": "12ab34", "resolved": {"foo": "bar"}}
         log_event = LogEvent(document, original=b"")
 
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert document == expected
 
-    def test_resolve_dotted_field_conflict_match_from_list_to_dict(
+    async def test_resolve_dotted_field_conflict_match_from_list_to_dict(
         self,
     ):
         rule = {
@@ -606,7 +606,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {"12ab34": {"baz": "test"}},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {
             "to_resolve": "12ab34",
@@ -617,11 +617,11 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to_resolve": "12ab34", "resolved": "foo"}
         log_event = LogEvent(document, original=b"")
 
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert document == expected
 
-    def test_resolve_dotted_field_conflict_match_from_list_to_dict_with_overwrite(
+    async def test_resolve_dotted_field_conflict_match_from_list_to_dict_with_overwrite(
         self,
     ):
         rule = {
@@ -632,7 +632,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "overwrite_target": True,
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {
             "to_resolve": "12ab34",
@@ -642,11 +642,11 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to_resolve": "12ab34", "resolved": "foo"}
         log_event = LogEvent(document, original=b"")
 
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert document == expected
 
-    def test_resolve_dotted_field_no_conflict_match_from_file_to_dict(
+    async def test_resolve_dotted_field_no_conflict_match_from_file_to_dict(
         self,
     ):
         rule = {
@@ -660,18 +660,18 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "merge_with_target": True,
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"foo": {"bar": "12ab34", "foo": "ab"}}
         document = {"foo": {"bar": "12ab34"}}
         log_event = LogEvent(document, original=b"")
 
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert document == expected
 
     @responses.activate
-    def test_resolve_from_http(self, tmp_path):
+    async def test_resolve_from_http(self, tmp_path):
         target = "localhost:123"
         url = f"http://{target}"
 
@@ -698,25 +698,25 @@ class TestGenericResolver(BaseProcessorTestCase):
         mock_env = {ENV_NAME_LOGPREP_GETTER_CONFIG: str(http_getter_conf)}
         with patch.dict("os.environ", mock_env):
             scheduler = HttpGetter(protocol="http", target=target).scheduler
-            self._load_rule(rule)
+            await self._load_rule(rule)
 
             expected_1 = {"to_resolve": "12ab34", "resolved": {"new1": "1"}}
             expected_2 = {"to_resolve": "12ab34", "resolved": {"new1": "1", "new2": "2"}}
             document = {"to_resolve": "12ab34"}
             log_event = LogEvent(document, original=b"")
 
-            self.object.process(log_event)
+            await self.object.process(log_event)
             assert document == expected_1
 
             HttpGetter.refresh()  # Try refresh, but no time to update yet
-            self.object.process(log_event)
+            await self.object.process(log_event)
             assert document == expected_1
 
             scheduler.run_all()  # Force update
-            self.object.process(log_event)
+            await self.object.process(log_event)
             assert document == expected_2
 
-    def test_resolve_dotted_field_no_conflict_no_match(self):
+    async def test_resolve_dotted_field_no_conflict_no_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -724,17 +724,17 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to": {"resolve": "something no"}}
         document = {"to": {"resolve": "something no"}}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_field_is_missing(self):
+    async def test_resolve_dotted_field_is_missing(self):
         rule = {
             "filter": "to.other_field",
             "generic_resolver": {
@@ -742,7 +742,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {
             "to": {"other_field": "something no"},
@@ -751,11 +751,11 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to": {"other_field": "something no"}}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_dest_field_no_conflict_match(self):
+    async def test_resolve_dotted_dest_field_no_conflict_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -763,17 +763,17 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "something HELLO1", "re": {"solved": "Greeting"}}
         document = {"to_resolve": "something HELLO1"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_dest_field_no_conflict_no_match(self):
+    async def test_resolve_dotted_dest_field_no_conflict_no_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -781,17 +781,17 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to_resolve": "something no"}
         document = {"to_resolve": "something no"}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_src_and_dest_field_no_conflict_match(
+    async def test_resolve_dotted_src_and_dest_field_no_conflict_match(
         self,
     ):
         rule = {
@@ -801,17 +801,17 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
 
         expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
         document = {"to": {"resolve": "something HELLO1"}}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_dotted_src_and_dest_field_and_conflict_match(self, caplog):
+    async def test_resolve_dotted_src_and_dest_field_and_conflict_match(self, caplog):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -819,7 +819,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 "resolve_list": {".*HELLO\\d": "Greeting"},
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
         document = {
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
@@ -830,12 +830,12 @@ class TestGenericResolver(BaseProcessorTestCase):
             "re": {"solved": "I already exist!"},
         }
         result = log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
         assert len(result.warnings) == 1
         assert isinstance(result.warnings[0], FieldExistsWarning)
         assert log_event.data == expected
 
-    def test_resolve_generic_and_multiple_match_first_only(self):
+    async def test_resolve_generic_and_multiple_match_first_only(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -850,16 +850,16 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
 
-        self._load_rule(rule)
+        await self._load_rule(rule)
         expected = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "Greeting"}}
         document = {"to": {"resolve": "something HELLO1"}}
 
         log_event = LogEvent(document, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert log_event.data == expected
 
-    def test_resolve_from_cache_with_large_enough_cache(self):
+    async def test_resolve_from_cache_with_large_enough_cache(self):
         """The metrics are mocked and their values are the sum of previously added cache values,
         instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
@@ -874,22 +874,22 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
         event = {"to_resolve": "foo"}
-        self._load_rule(rule_dict)
-        self.object.setup()
+        await self._load_rule(rule_dict)
+        await self.object.setup()
 
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
 
         log_event = LogEvent(event, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 1
 
         log_event = LogEvent(event, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 2
         assert self.object.metrics.cached_results == 1
@@ -897,13 +897,13 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         event_bar = {"to_resolve": "bar"}
         log_event_bar = LogEvent(event_bar, original=b"")
-        self.object.process(log_event_bar)
+        await self.object.process(log_event_bar)
 
         assert self.object.metrics.new_results == 4
         assert self.object.metrics.cached_results == 2
         assert self.object.metrics.num_cache_entries == 4
 
-    def test_resolve_from_cache_with_cache_smaller_than_results(self):
+    async def test_resolve_from_cache_with_cache_smaller_than_results(self):
         """The metrics are mocked and their values are the sum of previously added cache values,
         instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
@@ -918,22 +918,22 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
         event = {"to_resolve": "foo"}
-        self._load_rule(rule_dict)
-        self.object.setup()
+        await self._load_rule(rule_dict)
+        await self.object.setup()
 
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
 
         log_event = LogEvent(event, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 1
 
         log_event = LogEvent(event, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 2
         assert self.object.metrics.cached_results == 1
@@ -941,13 +941,13 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         event_bar = {"to_resolve": "bar"}
         log_event_bar = LogEvent(event_bar, original=b"")
-        self.object.process(log_event_bar)
+        await self.object.process(log_event_bar)
 
         assert self.object.metrics.new_results == 4
         assert self.object.metrics.cached_results == 2
         assert self.object.metrics.num_cache_entries == 3
 
-    def test_resolve_without_cache(self):
+    async def test_resolve_without_cache(self):
         config = deepcopy(self.CONFIG)
         config["max_cache_entries"] = 0
         self.object = Factory.create({"generic_resolver": config})
@@ -960,22 +960,22 @@ class TestGenericResolver(BaseProcessorTestCase):
             },
         }
         event = {"to_resolve": "foo"}
-        self._load_rule(rule_dict)
-        self.object.setup()
+        await self._load_rule(rule_dict)
+        await self.object.setup()
 
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
 
         log_event = LogEvent(event, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 0
 
         log_event = LogEvent(event, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.cached_results == 0
@@ -983,13 +983,13 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         event_bar = {"to_resolve": "bar"}
         log_event_bar = LogEvent(event_bar, original=b"")
-        self.object.process(log_event_bar)
+        await self.object.process(log_event_bar)
 
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 0
 
-    def test_resolve_from_cache_with_update_interval(self):
+    async def test_resolve_from_cache_with_update_interval(self):
         """The metrics are mocked and their values are the sum of previously added cache values,
         instead of being the current cache values."""
         config = deepcopy(self.CONFIG)
@@ -1006,42 +1006,42 @@ class TestGenericResolver(BaseProcessorTestCase):
         }
         event = {"to_resolve": "foo"}
         other_event = {"to_resolve": "bar"}
-        self._load_rule(rule_dict)
-        self.object.setup()
+        await self._load_rule(rule_dict)
+        await self.object.setup()
 
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
 
         log_event = LogEvent(event, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.cached_results == 0
         assert self.object.metrics.num_cache_entries == 0
 
         log_event = LogEvent(event, original=b"")
-        self.object.process(log_event)
+        await self.object.process(log_event)
 
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
         assert self.object.metrics.num_cache_entries == 1
 
         log_event_other = LogEvent(other_event, original=b"")
-        self.object.process(log_event_other)
+        await self.object.process(log_event_other)
 
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
         assert self.object.metrics.num_cache_entries == 1
 
         log_event_other = LogEvent(other_event, original=b"")
-        self.object.process(log_event_other)
+        await self.object.process(log_event_other)
 
         assert self.object.metrics.new_results == 3
         assert self.object.metrics.cached_results == 3
         assert self.object.metrics.num_cache_entries == 3
 
-    def test_resolve_with_numeric_key(self):
+    async def test_resolve_with_numeric_key(self):
         event = {"event": {"code": 4625}}
         expected = {
             "event": {"code": 4625},
@@ -1059,13 +1059,13 @@ class TestGenericResolver(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_rule(rule)
+        await self._load_rule(rule)
         event = LogEvent(event, original=b"")
-        result = self.object.process(event)
+        result = await self.object.process(event)
         assert not result.errors
         assert event == expected
 
-    def test_resolve_with_explicit_none_value(self):
+    async def test_resolve_with_explicit_none_value(self):
         event = {"event": {"code": None}}
         event = LogEvent(event, original=b"")
         expected = {
@@ -1086,7 +1086,7 @@ class TestGenericResolver(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_rule(rule)
-        result = self.object.process(event)
+        await self._load_rule(rule)
+        result = await self.object.process(event)
         assert not result.errors
         assert event == expected

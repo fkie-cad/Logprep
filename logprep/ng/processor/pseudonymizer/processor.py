@@ -44,6 +44,8 @@ Processor Configuration
 """
 
 import re
+import typing
+from collections.abc import Sequence
 from functools import cached_property, lru_cache
 from itertools import chain
 from typing import Callable, Pattern
@@ -54,17 +56,21 @@ from attrs import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
+from logprep.ng.abc.event import OutputSpec
 from logprep.ng.event.pseudonym_event import PseudonymEvent
 from logprep.ng.processor.field_manager.processor import FieldManager
+from logprep.processor.base.rule import Rule
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
+from logprep.util.converters import convert_ordered_tuples_with_factory
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import add_fields_to, get_dotted_field_value
+from logprep.util.helper import add_fields_to, get_dotted_field_values
 from logprep.util.pseudo.encrypter import (
     DualPKCS1HybridCTREncrypter,
     DualPKCS1HybridGCMEncrypter,
     Encrypter,
 )
+from logprep.util.typing import is_lru_cached
 from logprep.util.url.url import extract_urls
 
 
@@ -75,22 +81,12 @@ class Pseudonymizer(FieldManager):
     class Config(FieldManager.Config):
         """Pseudonymizer config"""
 
-        outputs: tuple[dict[str, str]] = field(
-            validator=[
-                validators.deep_iterable(
-                    member_validator=[
-                        validators.instance_of(dict),
-                        validators.deep_mapping(
-                            key_validator=validators.instance_of(str),
-                            value_validator=validators.instance_of(str),
-                            mapping_validator=validators.max_len(1),
-                        ),
-                    ],
-                    iterable_validator=validators.instance_of(tuple),
-                ),
-                validators.min_len(1),
-            ],
-            converter=tuple,
+        outputs: Sequence[OutputSpec] = field(
+            validator=validators.deep_iterable(
+                iterable_validator=validators.min_len(1),
+                member_validator=validators.instance_of(OutputSpec),
+            ),
+            converter=lambda d: convert_ordered_tuples_with_factory(d, OutputSpec),
         )
         """list of output mappings in form of :code:`output_name:topic`.
         Only one mapping is allowed per list element"""
@@ -193,27 +189,38 @@ class Pseudonymizer(FieldManager):
 
     @cached_property
     def _encrypter(self) -> Encrypter:
-        if self._config.mode == "CTR":
-            encrypter = DualPKCS1HybridCTREncrypter()
-        else:
-            encrypter = DualPKCS1HybridGCMEncrypter()
-        encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
+        encrypter = (
+            DualPKCS1HybridCTREncrypter()
+            if self.config.mode == "CTR"
+            else DualPKCS1HybridGCMEncrypter()
+        )
+        encrypter.load_public_keys(self.config.pubkey_analyst, self.config.pubkey_depseudo)
         return encrypter
 
     @cached_property
     def _regex_mapping(self) -> dict:
-        return GetterFactory.from_string(self._config.regex_mapping).get_yaml()
+        return GetterFactory.from_string(self.config.regex_mapping).get_dict()
 
     @cached_property
     def _get_pseudonym_dict_cached(self) -> Callable:
-        return lru_cache(maxsize=self._config.max_cached_pseudonyms)(self._pseudonymize)
+        return lru_cache(maxsize=self.config.max_cached_pseudonyms)(self._pseudonymize)
 
     @cached_property
     def _pseudonymize_url_cached(self) -> Callable:
-        return lru_cache(maxsize=self._config.max_cached_pseudonymized_urls)(self._pseudonymize_url)
+        return lru_cache(maxsize=self.config.max_cached_pseudonymized_urls)(self._pseudonymize_url)
 
-    def setup(self) -> None:
-        super().setup()
+    @property
+    def config(self) -> Config:
+        """Provides the properly typed configuration object"""
+        return typing.cast(Pseudonymizer.Config, self._config)
+
+    @property
+    def rules(self) -> Sequence[PseudonymizerRule]:
+        """Returns all rules"""
+        return typing.cast(Sequence[PseudonymizerRule], super().rules)
+
+    async def setup(self) -> None:
+        await super().setup()
         self._replace_regex_keywords_by_regex_expression()
 
     def _replace_regex_keywords_by_regex_expression(self) -> None:
@@ -223,13 +230,12 @@ class Pseudonymizer(FieldManager):
                     rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
                 elif isinstance(regex_keyword, str):  # after the first run, the regex is compiled
                     raise InvalidConfigurationError(
-                        f"Regex keyword '{regex_keyword}' not found in regex_mapping '{self._config.regex_mapping}'"
+                        f"Regex keyword '{regex_keyword}' not found in regex_mapping '{self.config.regex_mapping}'"
                     )
 
-    def _apply_rules(self, event: dict, rule: PseudonymizerRule) -> None:
-        source_dict = {}
-        for source_field in rule.pseudonyms:
-            source_dict[source_field] = get_dotted_field_value(event, source_field)
+    def _apply_rules(self, event: dict, rule: Rule) -> None:
+        rule = typing.cast(PseudonymizerRule, rule)
+        source_dict = get_dotted_field_values(event, rule.pseudonyms)
         self._handle_missing_fields(event, rule, source_dict.keys(), source_dict.values())
 
         for dotted_field, field_value in source_dict.items():
@@ -242,7 +248,7 @@ class Pseudonymizer(FieldManager):
                     for value in field_value
                 ]
             else:
-                field_value = self._pseudonymize_field(rule, dotted_field, regex, field_value)
+                field_value = self._pseudonymize_field(rule, dotted_field, regex, str(field_value))
             add_fields_to(
                 event, fields={dotted_field: field_value}, rule=rule, overwrite_target=True
             )
@@ -277,13 +283,13 @@ class Pseudonymizer(FieldManager):
         if self.pseudonymized_pattern.match(value):
             return value
         pseudonym_dict = self._get_pseudonym_dict_cached(value)
-        pseudonym_event = PseudonymEvent(pseudonym_dict, outputs=self._config.outputs)
+        pseudonym_event = PseudonymEvent(pseudonym_dict, outputs=self.config.outputs)
         if pseudonym_event not in self._event.extra_data:
             self._event.extra_data.append(pseudonym_event)
         return self._wrap_hash(pseudonym_dict["pseudonym"])
 
     def _pseudonymize(self, value: str) -> dict[str, str]:
-        hash_string = self._hasher.hash_str(value, salt=self._config.hash_salt)
+        hash_string = self._hasher.hash_str(value, salt=self.config.hash_salt)
         encrypted_origin = self._encrypter.encrypt(value)
         return {"pseudonym": hash_string, "origin": encrypted_origin}
 
@@ -325,11 +331,15 @@ class Pseudonymizer(FieldManager):
         return self.HASH_PREFIX + hash_string + self.HASH_SUFFIX
 
     def _update_cache_metrics(self) -> None:
-        cache_info_pseudonyms = self._get_pseudonym_dict_cached.cache_info()
-        cache_info_urls = self._pseudonymize_url_cached.cache_info()
-        self.metrics.new_results += cache_info_pseudonyms.misses + cache_info_urls.misses
-        self.metrics.cached_results += cache_info_pseudonyms.hits + cache_info_urls.hits
-        self.metrics.num_cache_entries += cache_info_pseudonyms.currsize + cache_info_urls.currsize
-        self.metrics.cache_load += (cache_info_pseudonyms.currsize + cache_info_urls.currsize) / (
-            cache_info_pseudonyms.maxsize + cache_info_urls.maxsize
+        caches = [
+            f.cache_info()
+            for f in [self._get_pseudonym_dict_cached, self._pseudonymize_url_cached]
+            if is_lru_cached(f)
+        ]
+
+        self.metrics.new_results += sum(c.misses for c in caches)
+        self.metrics.cached_results += sum(c.hits for c in caches)
+        self.metrics.num_cache_entries += sum(c.currsize for c in caches)
+        self.metrics.cache_load += (sum(c.currsize for c in caches)) / (
+            sum(typing.cast(int, c.maxsize) for c in caches)
         )
