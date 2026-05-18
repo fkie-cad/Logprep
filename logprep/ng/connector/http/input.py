@@ -521,7 +521,7 @@ class HttpInput(Input):
             async with asyncio.timeout(timeout):
                 message = await self.messages.get()
             raw_message = str(message).encode("utf8")
-            return message, raw_message, EventMetadata.from_dict({})
+            return message, raw_message, EventMetadata()
         except TimeoutError:
             return None
 

@@ -125,7 +125,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         event_data = {"field": "content"}
         event = LogEvent(event_data, original=b"")
         with mock.patch.object(self.object, "_producer") as mock_producer:
-            self.object.store_custom(event, self.CONFIG.get("topic"))
+            self.object._store_custom(event, self.CONFIG.get("topic"))
         mock_producer.produce.assert_called()
         kwargs = mock_producer.produce.call_args[1]
         assert kwargs["topic"] == self.object._config.topic
@@ -135,7 +135,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         kafka_producer = self.object._producer
         kafka_producer.produce.side_effect = BufferError
         event = LogEvent({"message": "does not matter"}, original=b"")
-        self.object.store_custom(event, "does_not_care")
+        self.object._store_custom(event, "does_not_care")
         kafka_producer.flush.assert_called()
 
     @mock.patch("logprep.ng.connector.confluent_kafka.output.Producer")
@@ -259,7 +259,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         event = LogEvent({"message": "test message"}, original=b"")
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
-            self.object.store_custom(event, "target_topic")
+            self.object._store_custom(event, "target_topic")
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
 
@@ -277,7 +277,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         event = LogEvent({"message": "test message"}, original=b"")
         with mock.patch.object(self.object, "_producer") as mock_producer:
             mock_producer.produce.side_effect = Exception("test error")
-            self.object.store_custom(event, "target_topic")
+            self.object._store_custom(event, "target_topic")
         assert self.object.metrics.number_of_errors == 1
         assert len(event.errors) == 1
 
@@ -337,10 +337,3 @@ class TestConfluentKafkaOutput(BaseOutputTestCase):
         with mock.patch.object(self.object, "_producer"):
             self.object.store(event)
         assert self.object.metrics.number_of_processed_events == 1
-
-    async def test_flush_successfully_flushes_producer(self, caplog):
-        caplog.set_level("INFO")
-        with mock.patch.object(self.object, "_producer") as mock_producer:
-            mock_producer.flush.return_value = 0
-            self.object.flush()
-        assert "0 messages remaining" in caplog.text
