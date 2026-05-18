@@ -10,14 +10,12 @@ logger:
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
     "py.warnings": {"level": "ERROR"}
-    "Runner": {"level": "ERROR"}
+    "Runner": {"level": "DEBUG"}
     "Processor": {"level": "ERROR"}
     "Exporter": {"level": "ERROR"}
     "uvicorn": {"level": "ERROR"}
     "uvicorn.access": {"level": "ERROR"}
-    "OpenSearchOutput": {"level": "DEBUG"}
-    "KafkaOutput": {"level": "ERROR"}
-    "Input": {"level": "ERROR"}
+    "OpenSearchOutput": {"level": "ERROR"}
 metrics:
   enabled: true
   port: 8001

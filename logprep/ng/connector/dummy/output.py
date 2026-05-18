@@ -58,9 +58,6 @@ class DummyOutput(Output):
         by the output decorator.
         """
 
-        reset_on_flush: bool = field(default=False)
-        """If set to True, the stored events will be cleared when flush() is called."""
-
     _recorded_events: list[tuple[Event, str | None]]
     failed_events: list[Event]
     setup_called_count: int
