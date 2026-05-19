@@ -1,6 +1,6 @@
 version: 2
 process_count: 1
-timeout: 5.0
+timeout: 0.1
 restart_count: 2
 config_refresh_interval: 5
 error_backlog_size: 15000
@@ -79,7 +79,7 @@ input:
   kafka:
     type: ng_confluentkafka_input
     topic: consumer
-    timeout: 5.0
+    timeout: 0.1
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       group.id: cgroup3

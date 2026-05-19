@@ -5,8 +5,8 @@ restart_count: 2
 config_refresh_interval: 5
 error_backlog_size: 15000
 logger:
-  level: INFO
-  format: "%(asctime)-15s %(hostname)-5s %(name)-10s %(levelname)-8s: %(message)s"
+  level: WARNING
+  format: "%(asctime)-15s %(hostnab__me)-5s %(name)-10s %(levelname)-8s: %(message)s"
   datefmt: "%Y-%m-%d %H:%M:%S"
   loggers:
     "py.warnings": {"level": "ERROR"}
@@ -75,15 +75,6 @@ pipeline:
           calculator:
             target_field: "calculation"
             calc: "1 + 1"
-  - generic_resolver:
-      type: generic_resolver
-      rules:
-        - filter: "test_label"
-          generic_resolver:
-            field_mapping:
-              test_label: resolved
-            resolve_list:
-              - .*Hello.*: Greeting
 input:
   kafka:
     type: confluentkafka_input
@@ -117,14 +108,7 @@ output:
     user: admin
     secret: admin
     desired_cluster_status: ["green", "yellow"]
-  kafka:
-    type: confluentkafka_output
-    default: false
-    topic: producer
-    flush_timeout: 300
-    kafka_config:
-      bootstrap.servers: 127.0.0.1:9092
-      statistics.interval.ms: "60000"
+    chunk_size: 25
 error_output:
   opensearch:
     type: opensearch_output
