@@ -21,8 +21,11 @@ import socket
 import subprocess
 import sys
 import time
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from itertools import cycle, islice
+from multiprocessing import Process
 from pathlib import Path
 from statistics import mean, median, stdev
 
@@ -35,6 +38,9 @@ _shutdown_requested: bool = False
 _current_logprep_proc: subprocess.Popen | None = None
 _current_compose_dir: Path | None = None
 _current_env: dict[str, str] | None = None
+
+PROCESSED_TO_EVENT_NUM_WARNING_THRESHOLD_RATIO = 0.9
+"""If more than XX% of generated events are processed -> warn"""
 
 
 def _handle_sigint(signum, frame):
@@ -100,8 +106,9 @@ class Tee:
 class RunResult:
     """Single benchmark run result."""
 
+    generated: int
     run_seconds: int
-    startup_s: float
+    generate_s: float
     window_s: float
     processed: int
 
@@ -109,70 +116,6 @@ class RunResult:
     def rate(self) -> float:
         """Processed documents per second."""
         return self.processed / self.window_s if self.window_s > 0 else 0.0
-
-
-# -------------------------
-# METADATA PRINT
-# -------------------------
-def print_benchmark_config(args: argparse.Namespace) -> None:
-    """
-    Print the current benchmark configuration including environment metadata.
-
-    Args:
-        args: Parsed CLI arguments namespace.
-    """
-    now_local = datetime.now()
-    now_utc = datetime.now(timezone.utc)
-
-    print("\n=== BENCHMARK CONFIGURATION ===")
-    print(f"{'timestamp (local)':30s}: {now_local.isoformat()}")
-    print(f"{'timestamp (UTC)':30s}: {now_utc.isoformat()}")
-    print(f"{'python version':30s}: {sys.version.split()[0]}")
-    print("-" * 40)
-
-    args_dict = vars(args).copy()
-
-    for key in sorted(args_dict):
-        value = args_dict[key]
-
-        # Format integers with underscore separator
-        if isinstance(value, int):
-            formatted = f"{value:_}"
-
-        # Format list of integers (e.g. runs)
-        elif isinstance(value, list) and all(isinstance(v, int) for v in value):
-            formatted = "[" + ", ".join(f"{v:_}" for v in value) + "]"
-
-        else:
-            formatted = value
-
-        print(f"{key:30s}: {formatted}")
-
-        if key == "ng":
-            pipeline_config = resolve_pipeline_config(args.ng)
-            mode = "logprep-ng" if args.ng == 1 else "logprep"
-            print(f"{'  ↳ mode':30s}: {mode}")
-            print(f"{'  ↳ pipeline_config':30s}: {pipeline_config}")
-
-    print("================================\n")
-
-
-def print_single_run_result(run_result: RunResult, *, event_num: int) -> None:
-    """
-    Print the result block for a single run.
-
-    Args:
-        run_result: RunResult.
-        event_num: Number of generated events.
-    """
-    print("--- RESULT ---")
-    print(f"run_seconds:            {run_result.run_seconds:_}")
-    print(f"events generated:       {event_num:_}")
-    print(f"startup time:           {run_result.startup_s:.3f} s")
-    print(f"measurement window:     {run_result.window_s:.3f} s")
-    print(f"processed (OpenSearch): {run_result.processed:_}")
-    print(f"throughput:             {run_result.rate:,.2f} docs/s")
-    print("--------------")
 
 
 # -------------------------
@@ -437,6 +380,49 @@ def wait_for_kafka_topic(
     raise TimeoutError(f"Kafka not ready (topic '{topic}' not describable). Last error: {last_err}")
 
 
+def send_test_data_to_kafka(
+    gen_input_source: Path,
+    event_num: int,
+    bootstrap_servers: str,
+    topic: str = "consumer",
+):
+    """
+    Produces the desired amount of test data and sends it directly to the kafka topic.
+
+    Parameters
+    ----------
+    gen_input_source : Path
+        JSONL file with events
+    event_num : int
+        Number of events to produce, repeats source events if required
+    bootstrap_servers : str
+        Kafka server to address
+    topic : str, optional
+        The topic to produce the events to, by default "consumer"
+    """
+    with open(gen_input_source, "r", encoding="utf-8") as f:
+        events = f.readlines()
+
+    with subprocess.Popen(
+        [
+            "docker",
+            "exec",
+            "-i",
+            "kafka",
+            "kafka-console-producer.sh",
+            "--bootstrap-server",
+            bootstrap_servers,
+            "--topic",
+            topic,
+        ],
+        stdin=subprocess.PIPE,
+        text=True,
+    ) as proc:
+        assert proc.stdin
+        for line in islice(cycle(events), event_num):
+            proc.stdin.write(line)
+
+
 def compose_config_services(
     *,
     compose_dir: Path,
@@ -500,10 +486,10 @@ def benchmark_run(
     prometheus_multiproc_dir: str,
     compose_dir: Path,
     pipeline_config: Path,
-    gen_input_dir: Path,
+    gen_input_source: Path,
+    kafka_partitions: int,
     bootstrap_servers: str,
     sleep_after_compose_up_s: int,
-    sleep_after_generate_s: int,
     sleep_after_logprep_start_s: int,
     opensearch_url: str,
     processed_index: str,
@@ -519,7 +505,8 @@ def benchmark_run(
         prometheus_multiproc_dir: Metrics directory.
         compose_dir: Docker compose directory.
         pipeline_config: Pipeline configuration file.
-        gen_input_dir: Generator input directory (shared for ng and non-ng).
+        gen_input_source: Event source data to be sent (and cycled).
+        kafka_partitions: Number of kafka partitions for consumer topic.
         bootstrap_servers: Kafka bootstrap.servers value.
         sleep_after_compose_up_s: Sleep after compose up.
         sleep_after_generate_s: Sleep after generation.
@@ -533,6 +520,7 @@ def benchmark_run(
     """
     env = os.environ.copy()
     env["PROMETHEUS_MULTIPROC_DIR"] = prometheus_multiproc_dir
+    env["KAFKA_CONSUMER_PARTITIONS"] = str(kafka_partitions)
 
     reset_prometheus_dir(prometheus_multiproc_dir)
 
@@ -566,42 +554,30 @@ def benchmark_run(
             wait_for_tcp("127.0.0.1", 9200, timeout_s=float(sleep_after_compose_up_s))
             wait_for_opensearch(opensearch_url, timeout_s=float(sleep_after_compose_up_s))
 
-        batch_size = max(event_num // 10, 10)
-        output_config = f'{{"bootstrap.servers": "{bootstrap_servers}"}}'
-
-        run_cmd(
-            [
-                "logprep",
-                "generate",
-                "kafka",
-                "--input-dir",
-                str(gen_input_dir),
-                "--batch-size",
-                str(batch_size),
-                "--events",
-                str(event_num),
-                "--output-config",
-                output_config,
-            ],
-            env=env,
-        )
-
-        time.sleep(sleep_after_generate_s)
-
         binary = "logprep-ng" if ng == 1 else "logprep"
-
-        t_startup = time.time()
 
         logprep_proc = popen_cmd([binary, "run", str(pipeline_config)], env=env)
         _current_logprep_proc = logprep_proc
 
         time.sleep(sleep_after_logprep_start_s)
 
-        baseline = opensearch_count_processed(opensearch_url, processed_index)
-        startup_s = time.time() - t_startup
-
+        generate_s = time.time()
+        generator = Process(
+            target=send_test_data_to_kafka,
+            args=(
+                gen_input_source,
+                event_num,
+                bootstrap_servers,
+            ),
+        )
+        generator.start()
         t_run = time.time()
-        time.sleep(run_seconds)
+
+        generator.join()
+        generate_s = time.time() - generate_s
+
+        time.sleep(run_seconds - (time.time() - t_run))
+
         window_s = time.time() - t_run
 
         kill_hard(logprep_proc)
@@ -611,11 +587,14 @@ def benchmark_run(
         # ensure near-real-time writes are visible to _count before measuring
         opensearch_refresh(opensearch_url, processed_index)
 
-        after = opensearch_count_processed(opensearch_url, processed_index)
-        processed = max(0, after - baseline)
+        processed = opensearch_count_processed(opensearch_url, processed_index)
 
         return RunResult(
-            run_seconds=run_seconds, startup_s=startup_s, window_s=window_s, processed=processed
+            generated=event_num,
+            run_seconds=run_seconds,
+            generate_s=generate_s,
+            window_s=window_s,
+            processed=processed,
         )
 
     finally:
@@ -628,6 +607,70 @@ def benchmark_run(
 # -------------------------
 # REPORTING
 # -------------------------
+
+
+def print_benchmark_config(args: argparse.Namespace) -> None:
+    """
+    Print the current benchmark configuration including environment metadata.
+
+    Args:
+        args: Parsed CLI arguments namespace.
+    """
+    now_local = datetime.now()
+    now_utc = datetime.now(timezone.utc)
+
+    print("\n=== BENCHMARK CONFIGURATION ===")
+    print(f"{'timestamp (local)':30s}: {now_local.isoformat()}")
+    print(f"{'timestamp (UTC)':30s}: {now_utc.isoformat()}")
+    print(f"{'python version':30s}: {sys.version.split()[0]}")
+    print("-" * 40)
+
+    args_dict = vars(args).copy()
+
+    for key in sorted(args_dict):
+        value = args_dict[key]
+
+        # Format integers with underscore separator
+        if isinstance(value, int):
+            formatted = f"{value:_}"
+
+        # Format list of integers (e.g. runs)
+        elif isinstance(value, list) and all(isinstance(v, int) for v in value):
+            formatted = "[" + ", ".join(f"{v:_}" for v in value) + "]"
+
+        else:
+            formatted = value
+
+        print(f"{key:30s}: {formatted}")
+
+        if key == "ng":
+            pipeline_config = resolve_pipeline_config(args.ng)
+            mode = "logprep-ng" if args.ng == 1 else "logprep"
+            print(f"{'  ↳ mode':30s}: {mode}")
+            print(f"{'  ↳ pipeline_config':30s}: {pipeline_config}")
+
+    print("================================\n")
+
+
+def print_single_run_result(run_result: RunResult) -> None:
+    """
+    Print the result block for a single run.
+
+    Args:
+        run_result: RunResult.
+        event_num: Number of generated events.
+    """
+    print("--- RESULT ---")
+    print(f"run_seconds:            {run_result.run_seconds:_}")
+    print(f"events generated:       {run_result.generated:_}")
+    print(f"generation time:        {run_result.generate_s:.3f} s")
+    print(f"measurement window:     {run_result.window_s:.3f} s")
+    print(f"processed (OpenSearch): {run_result.processed:_}")
+    print(f"throughput:             {run_result.rate:,.2f} docs/s")
+    print_measurement_warnings(run_result)
+    print("--------------")
+
+
 def print_runs_table_and_summary(run_results: list[RunResult]) -> None:
     """
     Print run table and aggregated throughput statistics.
@@ -655,7 +698,26 @@ def print_runs_table_and_summary(run_results: list[RunResult]) -> None:
     print(f"throughput (average):  {mean(rates):,.2f} docs/s")
     print(f"throughput (min/max):  {min(rates):,.2f} / {max(rates):,.2f} docs/s")
     print(f"throughput (std dev):  {stdev(rates) if len(rates) >= 2 else 0.0:,.2f} docs/s")
+    print_measurement_warnings(*run_results)
     print("================================")
+
+
+def print_measurement_warnings(*run_results: RunResult) -> None:
+    """Report potential measurement problems reducing result significance"""
+    warnings = list(check_results_gen(*run_results))
+    if warnings:
+        print()
+        for warning in warnings:
+            print(warning)
+
+
+def check_results_gen(*run_results: RunResult) -> Generator[str]:
+    """Collect potential measurement problems reducing result significance"""
+    if any(
+        result.processed > result.generated * PROCESSED_TO_EVENT_NUM_WARNING_THRESHOLD_RATIO
+        for result in run_results
+    ):
+        yield "WARNING: insufficient event number for measured throughput"
 
 
 # -------------------------
@@ -693,7 +755,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--event-num",
         type=int,
-        default=50_000,
+        default=200_000,
         help="Number of events generated per run.",
     )
 
@@ -726,16 +788,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--sleep-after-generate-s",
-        type=int,
-        default=2,
-        help="Seconds to wait after event generation completes.",
-    )
-
-    parser.add_argument(
         "--sleep-after-logprep-start-s",
         type=int,
-        default=5,
+        default=10,
         help="Warmup time in seconds before measurement window starts.",
     )
 
@@ -762,10 +817,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--gen-input-dir",
+        "--gen-input-source",
         type=Path,
-        default=Path("./examples/exampledata/kafka_generate_input_logdata/"),
-        help="Input directory for logprep generate kafka (shared for ng and non-ng).",
+        default=Path(
+            "./examples/exampledata/kafka_generate_input_logdata/logclass/test_input.jsonl"
+        ),
+        help="Input source file (JSONL) to produce the desired number of events from.",
+    )
+
+    parser.add_argument(
+        "--kafka-partitions",
+        type=int,
+        default=1,
+        help="Number of kafka partitions for the consumer topic",
     )
 
     return parser
@@ -825,17 +889,17 @@ if __name__ == "__main__":
             prometheus_multiproc_dir=args_.prometheus_multiproc_dir,
             compose_dir=args_.compose_dir,
             pipeline_config=pipeline_config_,
-            gen_input_dir=args_.gen_input_dir,
+            gen_input_source=args_.gen_input_source,
             bootstrap_servers=args_.bootstrap_servers,
+            kafka_partitions=args_.kafka_partitions,
             sleep_after_compose_up_s=args_.sleep_after_compose_up_s,
-            sleep_after_generate_s=args_.sleep_after_generate_s,
             sleep_after_logprep_start_s=args_.sleep_after_logprep_start_s,
             opensearch_url=args_.opensearch_url,
             processed_index=args_.processed_index,
             services=args_.services,
         )
         results.append(result)
-        print_single_run_result(result, event_num=args_.event_num)
+        print_single_run_result(result)
         print()
 
     print_runs_table_and_summary(results)
