@@ -18,7 +18,12 @@ from logprep.ng.event.log_event import LogEvent
 from logprep.ng.processor import process
 from logprep.ng.util.async_helpers import raise_from_gather
 from logprep.ng.util.worker.types import SizeLimitedQueue
-from logprep.ng.util.worker.worker import Worker, WorkerOrchestrator
+from logprep.ng.util.worker.worker import (
+    BatchingWorker,
+    SequentialWorker,
+    Worker,
+    WorkerOrchestrator,
+)
 
 logger = logging.getLogger("PipelineManager")
 
@@ -48,25 +53,27 @@ def create_orchestrator(
     process_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
     send_to_default_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
     send_to_extras_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
-    send_to_error_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
+    send_to_error_queue = SizeLimitedQueue[LogEvent | ErrorEvent](maxsize=MAX_QUEUE_SIZE)
     acknowledge_queue = SizeLimitedQueue[LogEvent](maxsize=MAX_QUEUE_SIZE)
 
-    async def transfer_batch(batch: list[LogEvent]) -> None:
-        batch = [e for e in batch if e is not None]
-
+    async def transfer_batch(batch: Sequence[LogEvent | ErrorEvent]) -> None:
         for event in batch:
-            await process_queue.put(event)
+            match event:
+                case LogEvent():
+                    await process_queue.put(event)
+                case ErrorEvent():
+                    await send_to_error_queue.put(event)
 
-    input_worker: Worker[LogEvent, LogEvent] = Worker(
+    input_worker: Worker[Sequence[LogEvent | ErrorEvent]] = SequentialWorker(
         name="input_worker",
         batch_size=500,
         batch_interval_s=BATCH_INTERVAL_S,
         in_queue=input_source,
-        out_queues=[process_queue],
+        out_queues=[process_queue, send_to_error_queue],
         handler=transfer_batch,
     )
 
-    async def _processor_handler(batch: list[LogEvent]) -> None:
+    async def _processor_handler(batch: Sequence[LogEvent]) -> None:
         async def _handle(event: LogEvent):
             processed_event = await process(event, processors)
 
@@ -80,7 +87,7 @@ def create_orchestrator(
 
         await asyncio.gather(*map(_handle, batch))
 
-    processing_worker: Worker[LogEvent, LogEvent] = Worker(
+    processing_worker: Worker[LogEvent] = BatchingWorker(
         name="processing_worker",
         batch_size=BATCH_SIZE,
         batch_interval_s=BATCH_INTERVAL_S,
@@ -89,7 +96,7 @@ def create_orchestrator(
         handler=_processor_handler,
     )
 
-    async def _send_extras_handler(batch: list[LogEvent]) -> None:
+    async def _send_extras_handler(batch: Sequence[LogEvent]) -> None:
         output_buffers: dict[str, dict[str, list[ExtraDataEvent]]] = {
             output_name: defaultdict(list) for output_name in named_outputs.keys()
         }
@@ -121,7 +128,7 @@ def create_orchestrator(
             else:
                 await send_to_default_queue.put(event)
 
-    extra_output_worker: Worker[LogEvent, LogEvent] = Worker(
+    extra_output_worker: Worker[LogEvent] = BatchingWorker(
         name="extra_output_worker",
         batch_size=BATCH_SIZE,
         batch_interval_s=BATCH_INTERVAL_S,
@@ -130,7 +137,7 @@ def create_orchestrator(
         handler=_send_extras_handler,
     )
 
-    async def _send_default_output_handler(batch: list[LogEvent]):
+    async def _send_default_output_handler(batch: Sequence[LogEvent]):
         await default_output.store_batch(batch)
 
         for event in batch:
@@ -139,7 +146,7 @@ def create_orchestrator(
             else:
                 await acknowledge_queue.put(event)
 
-    output_worker: Worker[LogEvent, LogEvent] = Worker(
+    output_worker: Worker[LogEvent] = BatchingWorker(
         name="output_worker",
         batch_size=BATCH_SIZE,
         batch_interval_s=BATCH_INTERVAL_S,
@@ -148,9 +155,13 @@ def create_orchestrator(
         handler=_send_default_output_handler,
     )
 
-    async def _send_error_output_handler(batch: list[LogEvent]) -> None:
-        def _to_error(event: LogEvent) -> ErrorEvent:
-            return ErrorEvent.from_failed_event(event)
+    async def _send_error_output_handler(batch: Sequence[LogEvent | ErrorEvent]) -> None:
+        def _to_error(event: LogEvent | ErrorEvent) -> ErrorEvent:
+            match event:
+                case LogEvent():
+                    return ErrorEvent.from_failed_event(event)
+                case ErrorEvent():
+                    return event
 
         # TODO split in two handler functions and select right handler only once
         if error_output is not None:
@@ -159,19 +170,20 @@ def create_orchestrator(
             for error_event in error_events:
                 if not error_event.errors:
                     # TODO use generic type parameter for outputs?
-                    event = typing.cast(
+                    parent = typing.cast(
                         LogEvent | None, typing.cast(ErrorEvent, error_event).parent
                     )  # FIXME
-                    if event is not None:
-                        await acknowledge_queue.put(event)
+                    if parent is not None:
+                        await acknowledge_queue.put(parent)
                 else:
                     # TODO more sophisticated error handling
                     raise RuntimeError("error output failed to send event")
         else:
             for event in batch:
-                await acknowledge_queue.put(event)
+                # TODO fix
+                await acknowledge_queue.put(event)  # type: ignore
 
-    error_worker: Worker[LogEvent, LogEvent] = Worker(
+    error_worker: Worker[LogEvent | ErrorEvent] = BatchingWorker(
         name="error_worker",
         batch_size=BATCH_SIZE,
         batch_interval_s=BATCH_INTERVAL_S,
@@ -180,7 +192,7 @@ def create_orchestrator(
         handler=_send_error_output_handler,
     )
 
-    acknowledge_worker: Worker[LogEvent, LogEvent] = Worker(
+    acknowledge_worker: Worker[LogEvent] = BatchingWorker(
         name="acknowledge_worker",
         batch_size=BATCH_SIZE,
         batch_interval_s=BATCH_INTERVAL_S,

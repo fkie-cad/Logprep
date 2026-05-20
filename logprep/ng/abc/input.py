@@ -4,6 +4,7 @@
 New input endpoint types are created by implementing it.
 """
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -12,7 +13,7 @@ import os
 import typing
 import zlib
 from abc import abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from copy import deepcopy
 from functools import cached_property
 from hmac import HMAC
@@ -87,7 +88,7 @@ class SourceDisconnectedWarning(InputWarning):
     """Lost (or failed to establish) contact with the source."""
 
 
-class Input(Connector, AsyncIterator):
+class Input(Connector, AsyncIterator[Sequence[LogEvent | ErrorEvent]]):
     """Connect to a source for log data."""
 
     class Metrics(Connector.Metrics):
@@ -127,7 +128,7 @@ class Input(Connector, AsyncIterator):
         return typing.cast(Input.Config, self._config)
 
     @abstractmethod
-    async def acknowledge(self, events: list[LogEvent]) -> None:
+    async def acknowledge(self, events: Sequence[LogEvent]) -> None:
         """Acknowledge all delivered events."""
 
     @property
@@ -180,7 +181,7 @@ class Input(Connector, AsyncIterator):
         return bool(self.config.preprocessing.add_full_event_to_target_field)
 
     @abstractmethod
-    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
+    async def _get_event(self, timeout: float) -> Sequence[tuple[dict, bytes, EventMetadata]]:
         """Implements the details how to get the event
 
         Parameters
@@ -190,10 +191,10 @@ class Input(Connector, AsyncIterator):
 
         Returns
         -------
-        (event, raw_event, metadata) | None
+        (event, raw_event, metadata)
         """
 
-    async def __anext__(self) -> LogEvent | ErrorEvent | None:
+    async def __anext__(self) -> Sequence[LogEvent | ErrorEvent]:
         """Return the next event in the Input Connector within the configured timeout.
 
         Returns
@@ -204,7 +205,7 @@ class Input(Connector, AsyncIterator):
         return await self.get_next(timeout=self.config.timeout)
 
     @Metric.measure_time_async()
-    async def get_next(self, timeout: float) -> LogEvent | ErrorEvent | None:
+    async def get_next(self, timeout: float) -> Sequence[LogEvent | ErrorEvent]:
         """Return the next document
 
         Parameters
@@ -218,13 +219,22 @@ class Input(Connector, AsyncIterator):
             Input log data.
         """
         try:
-            event_tuple = await self._get_event(timeout)
+            event_tuples = await self._get_event(timeout)
+        except CriticalInputError as error:
+            # not originating from single broken event
+            raise error
 
-            if event_tuple is None:
-                return None
+        return await asyncio.gather(
+            *(self._event_tuple_to_event(event_tuple) for event_tuple in event_tuples)
+        )
 
-            event_dict, event_bytes, metadata = event_tuple
+    async def _event_tuple_to_event(
+        self, event_tuple: tuple[dict, bytes, EventMetadata]
+    ) -> LogEvent | ErrorEvent:
 
+        event_dict, event_bytes, metadata = event_tuple
+
+        try:
             if not isinstance(event_dict, dict):
                 raise CriticalInputError(self, "not a dict", event_dict)
         except CriticalInputError as error:
