@@ -32,6 +32,7 @@ import concurrent
 import logging
 import os
 import typing
+from collections.abc import Sequence
 from functools import partial
 from socket import getfqdn
 from types import MappingProxyType  # pylint: disable=no-name-in-module
@@ -428,7 +429,7 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self.config.kafka_config['bootstrap.servers']}"
 
-    async def _get_raw_event(self, timeout: float) -> Message | None:
+    async def _get_raw_event(self, timeout: float) -> Sequence[Message]:
         """Get next raw Message from Kafka.
 
         Parameters
@@ -447,26 +448,35 @@ class ConfluentKafkaInput(Input):
             Raises if an input is invalid or if it causes an error.
         """
         try:
-            message = await self._consumer.poll(timeout=timeout)
+            messages = await self._consumer.consume(timeout=timeout)
         except RuntimeError as error:
             raise FatalInputError(self, str(error)) from error
-        if message is None:
-            return None
-        if message.value() is None or message.partition() is None or message.offset() is None:
-            logger.warning("Unexpected empty input message or empty metadata. Skipping")
-            return None
-        kafka_error = message.error()
-        if kafka_error:
-            raise CriticalInputError(
-                self, "A confluent-kafka record contains an error code", str(kafka_error)
+
+        filtered_messages = []
+        for message in messages:
+            if message.value() is None or message.partition() is None or message.offset() is None:
+                logger.warning("Unexpected empty input message or empty metadata. Skipping")
+                continue
+            if message_error := message.error():
+                raise CriticalInputError(
+                    self, "A confluent-kafka record contains an error code", str(message_error)
+                )
+            filtered_messages.append(message)
+
+        if filtered_messages:
+            last_message = filtered_messages[-1]
+
+            self._last_valid_record = last_message
+            labels = {
+                "description": f"topic: {self.config.topic} - partition: {last_message.partition()}"
+            }
+            self.metrics.current_offsets.add_with_labels(
+                typing.cast(int, last_message.offset()) + 1, labels
             )
-        self._last_valid_record = message
-        labels = {"description": f"topic: {self.config.topic} - partition: {message.partition()}"}
-        self.metrics.current_offsets.add_with_labels(typing.cast(int, message.offset()) + 1, labels)
 
-        return message
+        return filtered_messages
 
-    async def _get_event(self, timeout: float) -> tuple[dict, bytes, EventMetadata] | None:
+    async def _get_event(self, timeout: float) -> Sequence[tuple[dict, bytes, EventMetadata]]:
         """Parse the raw document from Kafka into a json.
 
         Parameters
@@ -489,10 +499,12 @@ class ConfluentKafkaInput(Input):
             Raises if an input is invalid or if it causes an error.
         """
 
-        message = await self._get_raw_event(timeout)
+        messages = await self._get_raw_event(timeout)
 
-        if message is None:
-            return None
+        return [self._decode_message(message) for message in messages]
+
+    def _decode_message(self, message: Message) -> tuple[dict, bytes, EventMetadata]:
+        """Parse the raw document from Kafka into a json."""
 
         raw_event = typing.cast(bytes, message.value())
 
@@ -612,7 +624,7 @@ class ConfluentKafkaInput(Input):
             return False
         return await super().health()
 
-    async def acknowledge(self, events: list[LogEvent]):
+    async def acknowledge(self, events: Sequence[LogEvent]):
         # TODO implement!
         logger.debug("acknowledge called")
 

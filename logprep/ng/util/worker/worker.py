@@ -13,6 +13,7 @@ interaction with the output queue.
 import asyncio
 import graphlib
 import logging
+from abc import ABC, abstractmethod
 from asyncio import AbstractEventLoop, Task
 from collections import deque
 from collections.abc import AsyncIterator, Generator, Iterable, Sequence
@@ -25,13 +26,119 @@ logger = logging.getLogger("Worker")  # pylint: disable=no-member
 
 T = TypeVar("T")
 Input = TypeVar("Input")
+Intermediate = TypeVar("Intermediate")
 Output = TypeVar("Output")
 
 
 WorkerSource: TypeAlias = SizeLimitedQueue[Input] | AsyncIterator[Input]
 
 
-class Worker(Generic[Input, Output]):
+class Worker(Generic[Input], ABC):
+    """
+    Generic worker.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        in_queue: WorkerSource[Input],
+        out_queues: Sequence[SizeLimitedQueue],
+    ) -> None:
+        self.name = name
+
+        self.in_queue = in_queue
+        self.out_queues = out_queues
+
+        self._stop_event = asyncio.Event()
+
+    @abstractmethod
+    async def _handle_next(self, item: Input) -> None:
+        """
+        Handle next item from input
+        """
+
+    async def _process_items(self) -> None:
+        match self.in_queue:
+            case AsyncIterator():
+                while not self._stop_event.is_set():
+                    item = await anext(self.in_queue)
+                    if item is STOP_SENTINEL:
+                        break
+                    await self._handle_next(item)
+                    await asyncio.sleep(0.0)
+            case SizeLimitedQueue():
+                while True:
+                    item = await self.in_queue.get()
+                    if item is STOP_SENTINEL:
+                        break
+                    await self._handle_next(item)
+                    await asyncio.sleep(0.0)
+            case _:
+                raise TypeError(f"Unexpected in_queue type {type(self.in_queue)}")
+
+    async def run(self) -> None:
+        """
+        Execute the worker processing loop.
+
+        Continuously consumes items until stop_event is set or the task is
+        cancelled. Ensures a final buffer flush during shutdown.
+        """
+
+        try:
+            logger.debug("Start continuous processing")
+            await self._process_items()
+
+        except StopAsyncIteration:
+            logger.debug("Worker stopped due to exhausted input")
+
+    async def stop(self) -> None:
+        """Issues the worker to stop. The stopping worker has to be awaited separately."""
+        match (self.in_queue):
+            case SizeLimitedQueue():
+                await self.in_queue.put(STOP_SENTINEL)  # type: ignore
+            case AsyncIterator():
+                self._stop_event.set()
+            case _:
+                raise TypeError(f"Unexpected in_queue type {type(self.in_queue)}")
+
+
+class SequentialWorker(Worker[Input], Generic[Input]):
+    """
+    Worker processing items one by one.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        handler: AsyncHandler[Input],
+        in_queue: WorkerSource[Input],
+        out_queues: Sequence[SizeLimitedQueue],
+        batch_size: int,
+        batch_interval_s: float,
+    ) -> None:
+        super().__init__(name, in_queue, out_queues)
+
+        self._handler = handler
+
+        self._batch_interval_s = batch_interval_s
+        self._batch_size = batch_size
+
+        self._batch_buffer: deque[Input] = deque()
+        self._buffer_lock = asyncio.Lock()
+
+        self._flush_timer: asyncio.Task[None] | None = None
+
+    async def _handle_next(self, item) -> None:
+        await self._handler(item)
+
+    def __repr__(self):
+        elements = [self.name]
+        if isinstance(self.in_queue, SizeLimitedQueue):
+            elements.append(f"#queue={self.in_queue.qsize()}")
+        return f"Worker({', '.join(elements)})"
+
+
+class BatchingWorker(Worker[Input], Generic[Input]):
     """
     Generic batching worker.
     """
@@ -39,20 +146,15 @@ class Worker(Generic[Input, Output]):
     def __init__(
         self,
         name: str,
+        handler: AsyncHandler[Sequence[Input]],
+        in_queue: WorkerSource[Input],
+        out_queues: Sequence[SizeLimitedQueue],
         batch_size: int,
         batch_interval_s: float,
-        handler: AsyncHandler[Input],
-        in_queue: WorkerSource[Input],
-        out_queues: Sequence[SizeLimitedQueue[Output]],
     ) -> None:
-        self.name = name
+        super().__init__(name, in_queue, out_queues)
 
         self._handler = handler
-
-        self.in_queue = in_queue
-        self.out_queues = out_queues
-
-        self._stop_event = asyncio.Event()
 
         self._batch_interval_s = batch_interval_s
         self._batch_size = batch_size
@@ -135,7 +237,7 @@ class Worker(Generic[Input, Output]):
         self._flush_timer = None
         return batch
 
-    async def add(self, item: Input) -> None:
+    async def _handle_next(self, item: Input) -> None:
         """
         Add a single item to the batch buffer.
 
@@ -193,25 +295,6 @@ class Worker(Generic[Input, Output]):
 
         await asyncio.sleep(0)
 
-    async def _process_items(self) -> None:
-        match self.in_queue:
-            case AsyncIterator():
-                while not self._stop_event.is_set():
-                    item = await anext(self.in_queue)
-                    if item is STOP_SENTINEL:
-                        break
-                    await self.add(item)
-                    await asyncio.sleep(0.0)
-            case SizeLimitedQueue():
-                while True:
-                    item = await self.in_queue.get()
-                    if item is STOP_SENTINEL:
-                        break
-                    await self.add(item)
-                    await asyncio.sleep(0.0)
-            case _:
-                raise TypeError(f"Unexpected in_queue type {type(self.in_queue)}")
-
     async def run(self) -> None:
         """
         Execute the worker processing loop.
@@ -219,25 +302,9 @@ class Worker(Generic[Input, Output]):
         Continuously consumes items until stop_event is set or the task is
         cancelled. Ensures a final buffer flush during shutdown.
         """
-
-        try:
-            logger.debug("Start continuous processing")
-            await self._process_items()
-
-        except StopAsyncIteration:
-            logger.debug("Worker stopped due to exhausted input")
+        await super().run()
         self._cancel_timer_if_needed()
         await self.flush()
-
-    async def stop(self) -> None:
-        """Issues the worker to stop. The stopping worker has to be awaited separately."""
-        match (self.in_queue):
-            case SizeLimitedQueue():
-                await self.in_queue.put(STOP_SENTINEL)  # type: ignore
-            case AsyncIterator():
-                self._stop_event.set()
-            case _:
-                raise TypeError(f"Unexpected in_queue type {type(self.in_queue)}")
 
 
 def create_worker_graph(workers: Iterable[Worker]) -> dict[Worker, Sequence[Worker]]:
