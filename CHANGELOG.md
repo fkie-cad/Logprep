@@ -5,6 +5,7 @@
 ### Features
 
 ### Improvements
+* remove pre-releases
 * upgrade transitive dependencies
 * fix #904 by upgrading opensearch-py to 3.2.0
 * fix urllib vulnerabilities CVE-2026-44431 & CVE-2026-44432
